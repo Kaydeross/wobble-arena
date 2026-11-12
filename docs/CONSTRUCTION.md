@@ -2,6 +2,27 @@
 
 Scaffold for a tradie-themed offline mode. Keeps the existing Claude / class / online flow intact: no new Locker classes, no `cls` protocol changes, and Construction stays offline like Sandbox.
 
+## Standing product instructions (Claude flow)
+
+These decisions stay in force for this branch and later Construction PRs (same answers as the Godot / iOS plan interview):
+
+| # | Decision |
+|---|---|
+| Platforms | **Web + PC wrapper + iOS**, with **cross-play** between them |
+| First TestFlight | Start from the **web client** (touch + phone layout already there) |
+| Engine | **Godot everywhere** — one codebase for web / PC / iOS long-term; web three.js stays the live client until Godot parity |
+| Priority | **Playable on iPhone soonest** — do not block the Godot / protocol path |
+| App Store v1.0 | **Everything** in scope eventually; ship Construction as data-first content, unlock gameplay in follow-ups |
+
+How this PR respects that:
+
+- Content lands in `shared/*.json` so a Godot client can load the same mode / weapons / map later.
+- Construction is **offline-only** until cross-play host parity exists (`netMode` → Classic).
+- No protocol (`PROTO`) bump and no new `cls` values — parallel Claude class / mobile / Godot PRs keep merging.
+- Boss rush and cosmetics stay documented follow-ups, not blockers for iPhone.
+
+See also [`docs/IOS_PLAN.md`](IOS_PLAN.md) and [`docs/PROTOCOL.md`](PROTOCOL.md).
+
 ## Shipped in this PR (scaffold)
 
 | Piece | Id / notes |
