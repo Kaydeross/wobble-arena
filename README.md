@@ -39,7 +39,7 @@ It plays in any modern browser on desktop and phone (touch controls and safe-are
 
 ## Features
 
-- **14 game modes**: Classic, Melee Only, Guns Only, Ninja, Explosive, Giant, Mega Damage, Weapon Ladder, Pillars, Sandbox, and 1v1, 2v2, 3v3 and 4v4 team fights.
+- **15 game modes**: Classic, Melee Only, Guns Only, Ninja, Explosive, Giant, Mega Damage, Weapon Ladder, Pillars, Sandbox, Construction (coming soon), and 1v1, 2v2, 3v3 and 4v4 team fights.
 - **About 30 maps**: from the Sunny Arena and Slippery Rink to a Pirate Ship, Volcano Rim, Moon Base, Candy Land, Haunted Hollow and a Giant's Playroom. Some are built for one mode, such as the Moonlit Dojo for ninjas and the Blast Yard for explosives.
 - **28 weapons**: bats, mallets and spring gloves, shotguns, snipers, miniguns, flamethrowers, boomerangs, net guns, snake shooters, rocket and cluster launchers, Typhoon Blades, the Ninja Katana and more.
 - **Bots on 4 difficulties**: Easy, Normal, Hard and Insane. They fill teams and rooms so there is always a match.
@@ -65,8 +65,9 @@ It plays in any modern browser on desktop and phone (touch controls and safe-are
 | **1v1 Duel** | You against one bot. First to 5. |
 | **2v2, 3v3, 4v4** | Team scores with no friendly fire. First team to 15 (3v3) or 20 (4v4). |
 | **Sandbox** | Build an arena, place blocks and mess about. |
+| **Construction** | Coming soon. Tradie tools (hammer, live wire, air blower) on Site Yard. |
 
-Sandbox and the Weapon Ladder are offline only for now.
+Sandbox, Construction and the Weapon Ladder are offline only for now. See `docs/CONSTRUCTION.md` for the scaffold and boss-rush follow-ups.
 
 ## Quick start
 
