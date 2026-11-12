@@ -1884,6 +1884,7 @@ const ENV_DEFAULT = {
   shrink: { scene: 'mountains', top: 0x6a5aa8, mid: 0xf0a8a0, sunElev: 0.36, sunSize: 1.4, sunColor: 0xffb878, rock: 0x9a7a8a },
   gunrange: { scene: 'mesas', turbines: 5, rock: 0xc4764c, sunElev: 0.8 },
   blast: { scene: 'industrial', clouds: 'smoke', speck: 'ember', top: 0x4a3566, mid: 0xc4727e, sunElev: 0.26, sunSize: 1.6, sunColor: 0xff9a5a },
+  siteyard: { scene: 'industrial', clouds: 'smoke', speck: 'dust', top: 0x6a86a8, mid: 0xd8c8a8, sunElev: 0.55, sunSize: 1.2, sunColor: 0xffe2a8 },
   playroom: { scene: 'toys', balloons: 3 },
   dojo: { scene: 'fuji', clouds: 'wispy', birds: false },
   craterdome: { scene: 'lunar', clouds: 'none', birds: false, earth: true },
@@ -2749,6 +2750,10 @@ const WEAPONS = {
              ammo: 5, speedMul: 1.05, color: 0xd9a066 },
   blower:  { name: 'Air Blower', type: 'blower', cooldown: 0.06, stiff: 50, range: 9, drain: 28, ammo: 100,
              speedMul: 0.9, color: 0x4aa3d8 },
+  hammer:  { name: 'Claw Hammer', type: 'melee', cooldown: 0.75, swingTime: 0.32, stiff: 40, dmg: 32, force: 16,
+             tip: 1.45, thick: 0.42, lift: 0.4, topple: 0.35, hitSfx: 'whack', speedMul: 1, ammo: 8, constructionOnly: true, color: 0xc4ccd4 },
+  wirewhip:{ name: 'Live Wire', type: 'melee', cooldown: 0.55, swingTime: 0.28, stiff: 48, dmg: 18, force: 9,
+             tip: 3.15, thick: 0.22, lift: 0.2, topple: 0.15, hitSfx: 'clink', speedMul: 1.05, ammo: 10, constructionOnly: true, color: 0xffd24a },
 };
 for (const k in WEAPONS) { const w_ = WEAPONS[k]; if (w_.type !== 'melee' && k !== 'minigun' && k !== 'typhoon') w_.speedMul = 1; }   // only the minigun slows you down
 const MELEE_KEYS = ['bat', 'mallet', 'glove', 'trident'];
@@ -2756,22 +2761,23 @@ const GUN_KEYS = ['net', 'shotgun', 'sniper', 'ak', 'smg', 'uzi', 'minigun', 're
 const TEAM_COL = [0x3b82f6, 0xef4444];
 function isFriend(a, b) { return !!(cfg.teams && a && b && a !== b && a.team === b.team); }
 function teamKo(t) { let n = 0; for (const f of fighters) if (f.team === t) n += f.ko; return n; }
-const PIL_BAN = ['heal', 'flame', 'katana', 'typhoon', 'rocket', 'glauncher', 'cluster', 'meteor', 'net', 'bat', 'snow', 'snake', 'minigun', 'shotgun', 'sniper', 'glove', 'mallet', 'blower', 'boomerang'];   // Pillars: nothing explosive and nothing that shoves you back
+const PIL_BAN = ['heal', 'flame', 'katana', 'typhoon', 'rocket', 'glauncher', 'cluster', 'meteor', 'net', 'bat', 'snow', 'snake', 'minigun', 'shotgun', 'sniper', 'glove', 'mallet', 'blower', 'boomerang', 'hammer', 'wirewhip'];   // Pillars: nothing explosive and nothing that shoves you back
 const MODES = {
-  classic: { name: 'Classic', desc: 'Everything drops from the sky', allow: k => k !== 'katana' && k !== 'typhoon', start: null },
+  classic: { name: 'Classic', desc: 'Everything drops from the sky', allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
   melee:   { name: 'Melee Only', desc: 'Bats, mallets and spring gloves', allow: k => k === 'heal' || MELEE_KEYS.includes(k), start: null },
   guns:    { name: 'Guns Only', desc: 'SMGs, shotguns, snipers and launchers', allow: k => k === 'heal' || GUN_KEYS.includes(k), start: 'smg' },
   ninja:   { name: 'Ninja', desc: 'Shuriken, throwing knives, Typhoon Blades and the Ninja Katana, plus 3 dashes', allow: k => k === 'heal' || k === 'shuriken' || k === 'knife' || k === 'katana' || k === 'typhoon', start: 'shuriken' },
-  duel:    { name: '1v1 Duel', desc: 'You vs one bot. First to 5', teams: 1, preset: { limit: 5 }, allow: k => k !== 'katana' && k !== 'typhoon', start: null },
-  t2:      { name: '2v2', desc: 'You + 1 bot vs 2 bots. Team score, no friendly fire', teams: 2, preset: { limit: 10 }, allow: k => k !== 'katana' && k !== 'typhoon', start: null },
-  t3:      { name: '3v3', desc: 'Squads of 3. First team to 15', teams: 3, preset: { limit: 15 }, allow: k => k !== 'katana' && k !== 'typhoon', start: null },
-  t4:      { name: '4v4', desc: 'Big team fight. First team to 20', teams: 4, preset: { limit: 20 }, allow: k => k !== 'katana' && k !== 'typhoon', start: null },
+  duel:    { name: '1v1 Duel', desc: 'You vs one bot. First to 5', teams: 1, preset: { limit: 5 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  t2:      { name: '2v2', desc: 'You + 1 bot vs 2 bots. Team score, no friendly fire', teams: 2, preset: { limit: 10 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  t3:      { name: '3v3', desc: 'Squads of 3. First team to 15', teams: 3, preset: { limit: 15 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  t4:      { name: '4v4', desc: 'Big team fight. First team to 20', teams: 4, preset: { limit: 20 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
   explosive:{ name: 'Explosive', desc: 'Rockets and grenade launchers. Boom', preset: { hp: 300, limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || k === 'rocket' || k === 'glauncher' || k === 'cluster' || k === 'meteor', start: 'rocket' },
   pillars: { name: 'Pillars', desc: 'Start on tall pillars too far apart to jump (dash with any weapon!). Every 10 seconds a new weapon drops into your inventory. Fall or die and you are out. Most K.O.s when the 3 minutes end wins. No launchers, explosives or knockback guns', pillars: true, lives: 1, kbMul: 0.4, preset: { limit: 0, count: 7, behav: 'brawl', ffa: true }, allow: k => !PIL_BAN.includes(k), start: null },
   mega:    { name: 'Mega Damage', desc: 'Double damage, heavy weapons, only 3 lives and a huge arena that keeps shrinking', lives: 3, dmgMul: 2, kbMul: 0.8, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || ['shotgun', 'sniper', 'revolver', 'mammoth', 'rocket', 'glauncher', 'mallet'].includes(k), start: 'mallet' },
   giant:   { name: 'Giant', desc: 'Weapons are double size', dmgMul: 2, kbMul: 1.1, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || ['bat', 'mallet', 'glove', 'trident', 'shotgun', 'mammoth', 'rocket', 'bow'].includes(k), start: 'bat' },
-  gungame: { name: 'Weapon Ladder', desc: 'Every K.O. swaps you to the next weapon. Finish the whole ladder to win', ladder: true, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k !== 'katana' && k !== 'typhoon', start: null },
-  sandbox: { name: 'Sandbox', desc: 'Build your own arena, place blocks and mess about', allow: k => k !== 'katana' && k !== 'typhoon', start: null },
+  gungame: { name: 'Weapon Ladder', desc: 'Every K.O. swaps you to the next weapon. Finish the whole ladder to win', ladder: true, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  sandbox: { name: 'Sandbox', desc: 'Build your own arena, place blocks and mess about', allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  construction: { name: 'Construction', desc: 'Tradies fight with hammers, live wire and air blowers on a worksite', allow: k => k === 'heal' || k === 'hammer' || k === 'wirewhip' || k === 'blower', start: 'hammer' },
 };
 const LOWG_KEYS = ['shotgun', 'mammoth', 'revolver', 'sniper', 'rocket', 'glauncher', 'cluster', 'ak', 'smg', 'uzi', 'minigun', 'net'];   // Moon Drift: seven that shove (shotgun, Mammoth, revolver, sniper, rocket, grenade and cluster launchers) and five that don't (AK, SMG, Uzis, minigun, net). No melee, flamethrower, ninja gear or bow
 MODES.lowg = { name: 'Moon Drift', desc: 'Super low gravity. Float, soar and knock rivals around', preset: { hp: 200, limit: 0, count: 3, behav: 'brawl', ffa: true, grav: 0.15 }, allow: k => k === 'heal' || LOWG_KEYS.includes(k), start: 'smg' };
@@ -2780,6 +2786,7 @@ MODES.melee.maps = ['arena', 'park', 'ice', 'rooftops', 'cloud', 'tower', 'brawl
 MODES.guns.maps = ['arena', 'temple', 'rooftops', 'gunrange'];
 MODES.ninja.maps = ['temple', 'cloud', 'rooftops', 'tower'];
 MODES.sandbox.maps = ['custom'];
+MODES.construction.maps = ['siteyard'];
 MODES.mega.maps = ['shrink', 'squeeze']; MODES.pillars.maps = ['pillars', 'pillars2']; MODES.lowg.maps = ['craterdome', 'capsule'];
 const TEAM_MAPS = ['arena', 'park', 'ice', 'temple', 'rooftops'];
 MODES.duel.maps = MODES.t2.maps = MODES.t3.maps = MODES.t4.maps = TEAM_MAPS;
@@ -3000,6 +3007,34 @@ MAPS.blast = {
     for (const [x, z, w, d] of [[-12, -9, 0.8, 6], [12, 9, 0.8, 6], [9, -12, 6, 0.8], [-9, 12, 6, 0.8]]) addBox(x, z, w, d, 1.6, 0x9a9ea7);   // concrete barriers to duck behind
     for (const [x, z] of [[-5, -15], [-3.9, -15.9], [5, 15], [3.9, 15.9], [16, -3], [16, -4.2], [-16, 3], [-16, 4.2]]) { addBox(x, z, 0.95, 0.95, 1.2, 0xc0392b); addBox(x, z, 1.0, 1.0, 0.12, 0xf2c230, 1.2); }   // explosive barrels
     addBouncePad(0, -15); addBouncePad(0, 15);
+  },
+};
+MAPS.siteyard = {
+  name: 'Site Yard', cat: 'obstacle', tags: ['Construction', 'Scaffold', 'Cover'], only: 'construction',
+  blurb: 'A dusty worksite stub for Construction mode. Scaffold towers, timber stacks, hazard barriers and a site office. Open edges, so one big swing can send you off the slab.',
+  sky: 0xd6e4ef, skyTop: 0x7a9ab8, voidColor: 0x8a9aa8, hills: [0xa8b090, 0x98a080, 0xb8c0a0, 0x889070], shadow: 44, orbit: 48, orbitH: 28, hemi: 0.9, sunI: 1.05,
+  spawns: [[-18, 0], [18, 0], [0, -18], [0, 18], [-12, -12], [12, 12], [-12, 12], [12, -12]], player: [0, 18],
+  bots: [[-18, 0], [18, 0], [0, -18], [-12, -12], [12, 12], [-12, 12], [12, -12]], wander: 18,
+  drops: [[-10, 0], [10, 0], [0, -10], [0, 10], [-20, -8], [20, 8], [-8, 20], [8, -20], [-16, -16, 4.45], [16, 16, 4.45], [0, 0, 2.6]],
+  build() {
+    addBox(0, 0, 48, 48, 2, 0x8a9098, -2); addFloorPad(44, 0xa8aeb6);
+    for (let i = -5; i <= 5; i++) addBox(i * 4, 0, 0.4, 44, 0.05, i % 2 ? 0xf2c230 : 0x2a2f36, 0);   // hazard lane stripes
+    addBox(0, 0, 8, 8, 2.4, 0xc9a24a); addBox(0, 0, 8.4, 8.4, 0.2, 0xf2c230, 2.4);                 // site office / hub
+    for (const sz of [-1, 1]) addStairs(0, sz * 8.2, 0, -sz, 5, 0.48, 0.9, 4, 0xb89a5a, 0xa8884a);
+    for (const [tx, tz] of [[-16, -16], [16, -16], [-16, 16], [16, 16]]) {                         // scaffold towers
+      addBox(tx, tz, 5, 5, 4.2, 0xd8c090); addBox(tx, tz, 5.4, 5.4, 0.25, 0xf2c230, 4.2);
+      for (const sx of [-1, 1]) addBox(tx + sx * 2.6, tz, 0.25, 5.2, 4.2, 0x6a7480);
+      for (const sz of [-1, 1]) addBox(tx, tz + sz * 2.6, 5.2, 0.25, 4.2, 0x6a7480);
+      addStairs(tx - Math.sign(tx) * (2.5 + 4.5), tz, Math.sign(tx), 0, 5, 0.48, 0.9, 3.2, 0xb89a5a, 0xa8884a);
+    }
+    for (const [x, z, w, d] of [[-8, -6, 6, 0.7], [8, 6, 6, 0.7], [6, -8, 0.7, 6], [-6, 8, 0.7, 6]]) addBox(x, z, w, d, 1.35, 0xf2c230);   // barrier boards
+    for (const [x, z] of [[-4, -14], [4, 14], [14, -4], [-14, 4]]) {                               // timber / pipe stacks (keep clear of crate spots)
+      addBox(x, z, 2.2, 1.2, 1.1, 0xb07a3a); addBox(x, z, 2.0, 1.0, 0.9, 0xc9944a, 1.1);
+    }
+    for (const [x, z] of [[-20, 10], [20, -10], [10, -20], [-10, 20]]) {                           // traffic cones (block stubs)
+      addBox(x, z, 0.55, 0.55, 0.2, 0x2a2f36); addBox(x, z, 0.4, 0.4, 0.85, 0xff7a2e, 0.2);
+    }
+    addBouncePad(-10, 10); addBouncePad(10, -10);
   },
 };
 MAPS.gunrange = {
@@ -3376,19 +3411,20 @@ MODES.melee.maps = MODES.melee.maps.concat(NEW_ARENAS); MODES.guns.maps = MODES.
 MODES.giant.maps = ['playroom'].concat(BIG_ARENAS);                  // Giant: its own toy-room map, then the big arenas
 MODES.explosive.maps = ['blast', 'arena', 'park', 'ice'].concat(BIG_ARENAS);   // Explosive: its own map, the small arenas, then the big ones. No rooms or sky maps
 for (const m in MODES) if (m !== 'explosive') { const old = MODES[m].allow; MODES[m].allow = k => k !== 'meteor' && old(k); }   // the Meteor Launcher belongs to Explosive only
+for (const m in MODES) if (m !== 'construction') { const old = MODES[m].allow; MODES[m].allow = k => k !== 'hammer' && k !== 'wirewhip' && old(k); }   // Claw Hammer and Live Wire belong to Construction only
 MODES.melee.maps = MODES.melee.maps.filter(k => k !== 'cloud').concat(BIG_ARENAS); MODES.guns.maps = MODES.guns.maps.concat(BIG_ARENAS);
 MODES.ninja.maps = ['dojo', 'arenaxl', 'fortress', 'temple', 'rooftops', 'tower'];      // Ninja: its own map first, then the Grand Arena and Fortress Yard, then Temple Ruins, then the rest
-const MAP_ORDER = ['test', 'practice', 'dojo', 'blast', 'gunrange', 'brawlpit', 'craterdome', 'capsule', 'playroom', 'arena', 'park', 'ice', 'arenaxl', 'rinkxl', 'colosseum', 'fortress', 'temple', 'farm', 'rooftops', 'tower', 'shrink', 'squeeze', 'crossroads', 'donut', 'chasm', 'summit', 'moonbase', 'candy', 'haunted', 'beach', 'volcano', 'pirate', 'pillars', 'pillars2', 'custom'];   // big open arenas first, then rooms and sky levels, the odd one-offs last
+const MAP_ORDER = ['test', 'practice', 'dojo', 'blast', 'gunrange', 'brawlpit', 'siteyard', 'craterdome', 'capsule', 'playroom', 'arena', 'park', 'ice', 'arenaxl', 'rinkxl', 'colosseum', 'fortress', 'temple', 'farm', 'rooftops', 'tower', 'shrink', 'squeeze', 'crossroads', 'donut', 'chasm', 'summit', 'moonbase', 'candy', 'haunted', 'beach', 'volcano', 'pirate', 'pillars', 'pillars2', 'custom'];   // big open arenas first, then rooms and sky levels, the odd one-offs last
 { const old = Object.assign({}, MAPS); for (const k of Object.keys(MAPS)) delete MAPS[k]; for (const k of MAP_ORDER) if (old[k]) MAPS[k] = old[k]; for (const k in old) if (!MAPS[k]) MAPS[k] = old[k]; }
 for (const m in MODES) if (MODES[m].maps) MODES[m].maps = MODES[m].maps.filter(k => MAPS[k]).sort((a, b) => MAP_ORDER.indexOf(a) - MAP_ORDER.indexOf(b));
 MODES.classic.icon = 'Everything drops'; MODES.sandbox.icon = 'Your level';
 const VS = ['duel', 't2', 't3', 't4'];
 let hostFlow = false, editFlow = false;
-const MODE_ORDER = ['classic', 'versus', 'pillars', 'ninja', 'mega', 'giant', 'gungame', 'guns', 'melee', 'explosive', 'lowg', 'sandbox'];   // two to a row, left to right
+const MODE_ORDER = ['classic', 'versus', 'pillars', 'ninja', 'mega', 'giant', 'gungame', 'guns', 'melee', 'explosive', 'lowg', 'construction', 'sandbox'];   // two to a row, left to right
 const modeSmall = k => MODES[k].desc + (MODES[k].wl ? '<span class="wl">' + MODES[k].wl + '</span>' : '') + (MODES[k].ex ? '<span class="ex">' + MODES[k].ex + '</span>' : '');
-const MODE_ICON = {"classic": "<path d=\"M3 10C3 5.5 7 3 12 3s9 2.5 9 7z\"/><path d=\"M3 10l6 7M21 10l-6 7M12 10v7M8 10c1.5-2 2.5-5 4-7M16 10c-1.5-2-2.5-5-4-7\"/><rect x=\"8.5\" y=\"17\" width=\"7\" height=\"5\" rx=\"1\"/>", "versus": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"15\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">VS</text>", "duel": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">1v1</text>", "t2": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">2v2</text>", "t3": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">3v3</text>", "t4": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">4v4</text>", "pillars": "<rect x=\"3\" y=\"12\" width=\"5\" height=\"8\" rx=\"1\"/><rect x=\"9.5\" y=\"5\" width=\"5\" height=\"15\" rx=\"1\"/><rect x=\"16\" y=\"9\" width=\"5\" height=\"11\" rx=\"1\"/>", "ninja": "<path d=\"M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z\"/><circle cx=\"12\" cy=\"12\" r=\"1.8\"/>", "mega": "<path d=\"M12 2l3 6 6.5.9-4.7 4.5 1.2 6.6L12 17l-6 3 1.2-6.6L2.5 8.9 9 8z\"/>", "giant": "<circle cx=\"12\" cy=\"4.5\" r=\"2.5\"/><path d=\"M12 7v9M6 10l6-2 6 2M8.5 22 12 16l3.5 6\"/>", "gungame": "<path d=\"M7 3v18M17 3v18M7 7h10M7 12h10M7 17h10\"/>", "guns": "<path d=\"M3 7h14a2 2 0 0 1 2 2v2h-8l-1 6H6l1-6H3z\"/><path d=\"M19 8h2\"/>", "melee": "<g transform=\"rotate(45 12 12)\"><path d=\"M12 1.5l3 4.5v9H9V6z\"/><path d=\"M6.5 15h11M12 15v5.5\"/><circle cx=\"12\" cy=\"21.5\" r=\"1\"/></g>", "explosive": "<circle cx=\"11\" cy=\"14\" r=\"7\"/><path d=\"M13 7.2c0-2 1.2-3 3.2-3M18.5 2v3M16.8 3.5h3.4\"/>", "lowg": "<path d=\"M20 14A8 8 0 1 1 10 4a6.5 6.5 0 0 0 10 10z\"/>", "sandbox": "<path d=\"M12 3l8 4v10l-8 4-8-4V7zM12 12l8-5M12 12v9M12 12 4 7\"/>"};
+const MODE_ICON = {"classic": "<path d=\"M3 10C3 5.5 7 3 12 3s9 2.5 9 7z\"/><path d=\"M3 10l6 7M21 10l-6 7M12 10v7M8 10c1.5-2 2.5-5 4-7M16 10c-1.5-2-2.5-5-4-7\"/><rect x=\"8.5\" y=\"17\" width=\"7\" height=\"5\" rx=\"1\"/>", "versus": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"15\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">VS</text>", "duel": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">1v1</text>", "t2": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">2v2</text>", "t3": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">3v3</text>", "t4": "<text x=\"12\" y=\"16.5\" text-anchor=\"middle\" font-size=\"11.5\" font-weight=\"900\" font-family=\"Inter,Arial,sans-serif\" fill=\"currentColor\" stroke=\"none\">4v4</text>", "pillars": "<rect x=\"3\" y=\"12\" width=\"5\" height=\"8\" rx=\"1\"/><rect x=\"9.5\" y=\"5\" width=\"5\" height=\"15\" rx=\"1\"/><rect x=\"16\" y=\"9\" width=\"5\" height=\"11\" rx=\"1\"/>", "ninja": "<path d=\"M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z\"/><circle cx=\"12\" cy=\"12\" r=\"1.8\"/>", "mega": "<path d=\"M12 2l3 6 6.5.9-4.7 4.5 1.2 6.6L12 17l-6 3 1.2-6.6L2.5 8.9 9 8z\"/>", "giant": "<circle cx=\"12\" cy=\"4.5\" r=\"2.5\"/><path d=\"M12 7v9M6 10l6-2 6 2M8.5 22 12 16l3.5 6\"/>", "gungame": "<path d=\"M7 3v18M17 3v18M7 7h10M7 12h10M7 17h10\"/>", "guns": "<path d=\"M3 7h14a2 2 0 0 1 2 2v2h-8l-1 6H6l1-6H3z\"/><path d=\"M19 8h2\"/>", "melee": "<g transform=\"rotate(45 12 12)\"><path d=\"M12 1.5l3 4.5v9H9V6z\"/><path d=\"M6.5 15h11M12 15v5.5\"/><circle cx=\"12\" cy=\"21.5\" r=\"1\"/></g>", "explosive": "<circle cx=\"11\" cy=\"14\" r=\"7\"/><path d=\"M13 7.2c0-2 1.2-3 3.2-3M18.5 2v3M16.8 3.5h3.4\"/>", "lowg": "<path d=\"M20 14A8 8 0 1 1 10 4a6.5 6.5 0 0 0 10 10z\"/>", "construction": "<path d=\"M4 20h16v-2H4z\"/><path d=\"M6 18V9l3 2V9l3 2V8l3 2V6l3 2v10\"/><path d=\"M3 9l2-4h3l1 2h2L9 3H5L2 8z\"/>", "sandbox": "<path d=\"M12 3l8 4v10l-8 4-8-4V7zM12 12l8-5M12 12v9M12 12 4 7\"/>"};
 const modeIco = k => MODE_ICON[k] ? '<svg class="mico" viewBox="0 0 24 24">' + MODE_ICON[k] + '</svg>' : '';
-const renderModeButtons = () => { el('row-mode').innerHTML = MODE_ORDER.map(k => k === 'versus' ? '<button id="mode-versus">' + modeIco('versus') + 'Versus<small>1v1, 2v2, 3v3 or 4v4 against bots. You choose the size</small></button>' : '<button id="mode-' + k + '">' + modeIco(k) + MODES[k].name + '<small>' + modeSmall(k) + '</small></button>').join(''); const sb = el('mode-sandbox'); if (sb) sb.classList.add('locked'); };
+const renderModeButtons = () => { el('row-mode').innerHTML = MODE_ORDER.map(k => k === 'versus' ? '<button id="mode-versus">' + modeIco('versus') + 'Versus<small>1v1, 2v2, 3v3 or 4v4 against bots. You choose the size</small></button>' : '<button id="mode-' + k + '">' + modeIco(k) + MODES[k].name + '<small>' + modeSmall(k) + '</small></button>').join(''); const sb = el('mode-sandbox'); if (sb) sb.classList.add('locked'); const cm = el('mode-construction'); if (cm) cm.classList.add('locked'); };
 renderModeButtons();
 el('row-vs').innerHTML = VS.map(k => '<button id="vs-' + k + '">' + modeIco(k) + MODES[k].name + '<small>' + modeSmall(k) + '</small></button>').join('');
 const tcase = t => t.replace(/(^|[\s(\/-])([a-z])/g, (m, a, b) => a + b.toUpperCase());          // every word starts with a capital
@@ -3397,12 +3433,13 @@ const wnames = (keys) => keys.filter(k => WEAPONS[k]).map(k => WEAPONS[k].name).
 const wallowed = m => Object.keys(WEAPONS).filter(k => k !== 'spatula' && MODES[m].allow(k));
 MODES.melee.allow = (old => k => k !== 'trident' && old(k))(MODES.melee.allow);          // the trident is not a melee-only weapon
 const BLURB = { classic: 'Everything drops from the sky', duel: 'You vs one bot. First to 5', t2: 'You + 1 bot vs 2 bots. No friendly fire', t3: 'Squads of 3. First to 15', t4: 'Big team fight. First to 20',
-  sandbox: 'Coming soon. Build your own arena', melee: 'Melee weapons only', guns: 'Guns only', explosive: 'Explosives only. Always 300 health', ninja: 'Ninja weapons plus 3 dashes',
+  sandbox: 'Coming soon. Build your own arena', construction: 'Coming soon. Tradies fight with hammers, live wire and air blowers', melee: 'Melee weapons only', guns: 'Guns only', explosive: 'Explosives only. Always 300 health', ninja: 'Ninja weapons plus 3 dashes',
   giant: 'Weapons are double size. Huge reach, huge hits', mega: 'Double damage, 3 lives, a huge shrinking arena', pillars: 'Start on pillars. A new weapon every 10 seconds. One life', lowg: 'Super low gravity. Float, soar and knock rivals around', gungame: 'Every K.O. swaps your weapon. Finish the ladder to win' };
 for (const m in MODES) { MODES[m].desc = BLURB[m] || MODES[m].desc; MODES[m].wl = m === 'gungame' ? GG_NAMES() : wnames(wallowed(m)); MODES[m].ex = ''; }
 MODES.explosive.ex = 'Exclusive gun: Meteor Launcher';
 for (const m of ['classic', 'duel', 't2', 't3', 't4']) MODES[m].wl = 'All guns and weapons';
 MODES.sandbox.wl = 'Fully customisable: modifiers, arena and guns';
+MODES.construction.wl = 'Claw Hammer, Live Wire, Air Blower';
 for (const id in MAPS) { const o = MAPS[id].only; if (o && MODES[o] && o !== 'sandbox') MODES[o].ex = (MODES[o].ex ? MODES[o].ex + ' · ' : '') + 'Exclusive map: ' + MAPS[id].name; }   // modes with their own map say so
 MODES.lowg.ex = 'Exclusive maps: Crater Dome, Space Capsule · Exclusive gravity: Drift';
 renderModeButtons(); el('row-vs').innerHTML = VS.map(k => '<button id="vs-' + k + '">' + modeIco(k) + MODES[k].name + '<small>' + modeSmall(k) + '</small></button>').join('');
@@ -3414,7 +3451,7 @@ const PU_KEYS = ['heal', 'speed', 'rage', 'shield'], isPU = k => PU_KEYS.include
 const PU_MODE = { pillars: [], mega: ['speed'] };                      // Pillars: no power-ups at all. Mega Damage: speed only (no extra damage). Everything else gets all of them
 for (const m in MODES) { const o = MODES[m].allow; MODES[m].allow = k => (k === 'speed' || k === 'rage' || k === 'shield') ? (PU_MODE[m] ? PU_MODE[m].includes(k) : true) : o(k); }
 const DROP_POOL = ['net', 'net', 'flame', 'flame', 'boomerang', 'boomerang', 'shuriken', 'shuriken', 'bow', 'bow', 'heal', 'heal', 'mallet', 'snow', 'glauncher', 'glauncher', 'cluster', 'cluster', 'knife', 'knife', 'snake', 'ak', 'ak', 'minigun', 'smg', 'smg', 'revolver', 'uzi', 'uzi', 'shotgun', 'shotgun', 'rocket', 'blower', 'blower', 'bat', 'bat',
-                   'sniper', 'mammoth', 'glove', 'katana', 'katana', 'typhoon', 'typhoon', 'trident', 'speed', 'rage', 'shield'];
+                   'sniper', 'mammoth', 'glove', 'katana', 'katana', 'typhoon', 'typhoon', 'trident', 'hammer', 'hammer', 'wirewhip', 'wirewhip', 'speed', 'rage', 'shield'];
 
 let flameGeo = null;
 function flameFx(pos, vx, vy, vz, life) {
@@ -3843,6 +3880,19 @@ function makeWeaponMesh(key, skin) {
     add(new THREE.CylinderGeometry(0.2, 0.2, 0.7, 8), 0x4aa3d8, 0, -0.35, 0);
     add(new THREE.ConeGeometry(0.42, 0.6, 8), 0xdff3fb, 0, -0.95, 0);                   // wide end faces away from you
     add(new THREE.BoxGeometry(0.14, 0.3, 0.16), 0x2a3640, 0, 0.1, 0.18);
+  } else if (key === 'hammer') {            // carpenter claw hammer: wood handle, steel head with claw
+    add(new THREE.CylinderGeometry(0.055, 0.07, 1.15, 6), 0x8a5a2b, 0, -0.45, 0);
+    bx(0.14, 0.55, 0.22, 0xc4ccd4, 0, -1.15, 0);
+    bx(0.18, 0.12, 0.24, 0x8a949c, 0, -0.92, 0);
+    bx(0.08, 0.22, 0.1, 0xc4ccd4, -0.08, -1.32, 0, 0, 0, 0.35);
+    bx(0.08, 0.22, 0.1, 0xc4ccd4, 0.08, -1.32, 0, 0, 0, -0.35);
+    cy(0.08, 0.08, 0.08, 0xffd24a, 0, 0.12, 0, 6);
+  } else if (key === 'wirewhip') {          // sparky live wire: coil grip and a long yellow whip tip
+    cy(0.1, 0.1, 0.35, 0x2a3640, 0, -0.05, 0, 8);
+    for (const y of [-0.12, 0.0, 0.12]) cy(0.12, 0.12, 0.04, 0xffd24a, 0, y, 0, 8);
+    cy(0.035, 0.035, 2.2, 0xffd24a, 0, -1.25, 0, 5);
+    cy(0.05, 0.02, 0.18, 0xe3566b, 0, -2.4, 0, 5);
+    bx(0.06, 0.1, 0.06, 0x4aa3d8, 0, -0.28, -0.12);
   }
   return g;
 }
@@ -7769,7 +7819,7 @@ function showPage(pg) {
   if (editFlow && pg !== 'mods') editFlow = false;
   el('play').textContent = hostFlow && pg === 'mods' ? 'CREATE ROOM' : editFlow && pg === 'mods' ? 'SAVE SETTINGS' : el('play').textContent;
   { const rf = (hostFlow || editFlow) && pg === 'mods'; el('bn').max = rf ? 7 : 12; if (rf && cfg.count > 7) setBotCfg({ count: 7 }); el('bn-lbl').textContent = rf ? 'Bots in the room (players take their seats)' : 'How many'; el('row-ffa').style.display = rf ? 'none' : ''; }
-  { const mv = el('mode-versus'), ms = el('mode-sandbox'), mp = el('mode-pillars'), mg = el('mode-gungame'); if (mg) mg.style.display = ''; if (mv) mv.style.display = hostFlow ? 'none' : ''; if (ms) ms.style.display = hostFlow ? 'none' : ''; if (mp) mp.style.display = ''; }
+  { const mv = el('mode-versus'), ms = el('mode-sandbox'), mc = el('mode-construction'), mp = el('mode-pillars'), mg = el('mode-gungame'); if (mg) mg.style.display = ''; if (mv) mv.style.display = hostFlow ? 'none' : ''; if (ms) ms.style.display = hostFlow ? 'none' : ''; if (mc) mc.style.display = hostFlow ? 'none' : ''; if (mp) mp.style.display = ''; }
   if (ONL.includes(pg)) { netShowLobby(); netPill(); if (!net) { srvConnect(() => {}); if (pg === 'online' || pg === 'onquick' || pg === 'onrooms') setTimeout(netRefreshRooms, 50); } }
   if (pg === 'shop') renderShop();
   if (pg === 'locker') { previewSkin(look.skin); renderLocker(); }
@@ -7793,7 +7843,7 @@ function refreshHome() {
   el('guestbar').style.display = acct.user || !acct.guest ? 'none' : 'flex'; el('go-online').classList.toggle('lockd', !acct.user);
   const ids = Object.keys(MAPS).filter(i => i !== 'test' && i !== 'practice' && !MAPS[i].only), fid = ids[Math.floor(Date.now() / 86400000) % ids.length], im = el('mimg-' + fid);
   el('feat-name').textContent = MAPS[fid].name; el('feat-blurb').textContent = MAPS[fid].blurb; if (im && im.src) el('feat-img').src = im.src;
-  el('feat-go').onclick = () => { const m = Object.keys(MODES).find(k => k !== 'sandbox' && (!MODES[k].maps || MODES[k].maps.includes(fid))) || 'classic'; if (!mapAllowed(fid) || cfg.mode === 'sandbox') setBotCfg({ mode: m }); loadMap(fid); showPage('mods'); };
+  el('feat-go').onclick = () => { const m = Object.keys(MODES).find(k => k !== 'sandbox' && k !== 'construction' && (!MODES[k].maps || MODES[k].maps.includes(fid))) || 'classic'; if (!mapAllowed(fid) || cfg.mode === 'sandbox' || cfg.mode === 'construction') setBotCfg({ mode: m }); loadMap(fid); showPage('mods'); };
   el('tip').textContent = 'Tip: ' + TIPS[Math.floor(Math.random() * TIPS.length)];
   try { homePanels(fid, im); } catch (e) { devLog('home', 'panels: ' + (e && e.message)); }
 }
@@ -7830,7 +7880,7 @@ el('hd-go').onclick = claimDaily;
 for (const id of ['quick', 'go-practice', 'go-play', 'go-test', 'go-online', 'go-me', 'hl-go']) { const b = el(id); if (b) b.addEventListener('click', () => { try { showStop(true); } catch (e) { /* x */ } }, true); }
 el('quick').onclick = () => {
   leaveTest();
-  const modes = Object.keys(MODES).filter(k => k !== 'sandbox'), m = modes[Math.floor(Math.random() * modes.length)];
+  const modes = Object.keys(MODES).filter(k => k !== 'sandbox' && k !== 'construction'), m = modes[Math.floor(Math.random() * modes.length)];
   setBotCfg({ mode: m }); const ok = Object.keys(MAPS).filter(mapAllowed); loadMap(ok[Math.floor(Math.random() * ok.length)]);
   toast(MODES[m].name + ' on ' + MAPS[currentMap].name); el('play').onclick();
 };
@@ -8247,6 +8297,7 @@ const WCATS = [
   ['Melee', ['bat', 'mallet', 'trident', 'glove']],
   ['Throwing & ranged (not guns)', ['knife', 'shuriken', 'boomerang', 'bow', 'snake', 'blower']],
   ['Ninja mode only', ['katana', 'typhoon']],
+  ['Construction mode only', ['hammer', 'wirewhip']],
   ['Power-ups', ['heal', 'speed', 'rage', 'shield']],
 ];
 function renderChips() {
@@ -8429,7 +8480,7 @@ el('settings-reset').onclick = () => askConfirm('Reset ALL settings (keys, sensi
 });
 
 /* ============================== online play (test) ============================== */
-const NET_PREFIX = 'wobble-arena-', NET_HZ = 30, NET_MAX = 8, NET_BUILD = 'b76.0', NET_PROTO = 1, PUB_SLOTS = 24;   // PUB_SLOTS: public rooms live at fixed spots (pub0, pub1, ...) so anybody can look them up
+const NET_PREFIX = 'wobble-arena-', NET_HZ = 30, NET_MAX = 8, NET_BUILD = 'b77.0', NET_PROTO = 1, PUB_SLOTS = 24;   // PUB_SLOTS: public rooms live at fixed spots (pub0, pub1, ...) so anybody can look them up
 const slotCap = () => net.started && net.slots ? net.slots.length : NET_MAX;
 function netStatus(t) {
   t = t || ''; const busy = /(\u2026|\.\.\.)$/.test(t); if (t && !busy) netUnlock();
@@ -8806,7 +8857,7 @@ function netSlotChanged(slot, kind, info) {                // everyone else: tha
   if (g) { g.setClass(info.cls); g.botName = info.name; g.setHat(info.hat); g.setSkin(info.skin); g.botColor = SKINS[info.skin] ? SKINS[info.skin].col : info.color; g.recolor(g.botColor, false); }
   netShowLobby(); toast(info.name + (kind === 'human' ? ' joined!' : ' (bot) is back'));
 }
-const netMode = m => MODES[m] && !MODES[m].teams && m !== 'sandbox' ? m : 'classic';          // team modes and Sandbox are not online yet
+const netMode = m => MODES[m] && !MODES[m].teams && m !== 'sandbox' && m !== 'construction' ? m : 'classic';          // team modes, Sandbox and Construction are not online yet
 function cfgReal() { return SHOW.on && SHOW.saved ? Object.assign({}, cfg, SHOW.saved.cfg) : cfg; }      // the player's own settings, not the menu battle's
 function ruleSnap() { const cfg = cfgReal(); return { mode: netMode(cfg.mode), hp: cfg.hp, crate: cfg.crate, wstate: cfg.wstate, grav: cfg.grav, kb: cfg.kb, inf: cfg.inf, pp: net && net.pp ? net.pp : undefined }; }
 function netStartMatch(slots, mapId, custom, isHost, limit, rules) {
@@ -9751,7 +9802,7 @@ function crossInRange() {            // the crosshair turns yellow when a hit wo
 const SIM = 1 / 120;
 
 /* ---- build 56: weapon pictures for the hotbar (drawn once from the real 3D models) ---- */
-const RARITY = { spatula: 'common', bat: 'common', snow: 'common', snake: 'common', blower: 'common', knife: 'uncommon', shuriken: 'uncommon', boomerang: 'uncommon', ak: 'uncommon', smg: 'uncommon', uzi: 'rare', glove: 'uncommon', net: 'uncommon', bow: 'rare', shotgun: 'rare', revolver: 'rare', flame: 'rare', glauncher: 'rare', cluster: 'epic', typhoon: 'rare', katana: 'rare', sniper: 'epic', minigun: 'epic', rocket: 'epic', meteor: 'legendary', grenade: 'epic', mallet: 'epic', mammoth: 'legendary', trident: 'rare' };
+const RARITY = { spatula: 'common', bat: 'common', snow: 'common', snake: 'common', blower: 'common', hammer: 'uncommon', wirewhip: 'uncommon', knife: 'uncommon', shuriken: 'uncommon', boomerang: 'uncommon', ak: 'uncommon', smg: 'uncommon', uzi: 'rare', glove: 'uncommon', net: 'uncommon', bow: 'rare', shotgun: 'rare', revolver: 'rare', flame: 'rare', glauncher: 'rare', cluster: 'epic', typhoon: 'rare', katana: 'rare', sniper: 'epic', minigun: 'epic', rocket: 'epic', meteor: 'legendary', grenade: 'epic', mallet: 'epic', mammoth: 'legendary', trident: 'rare' };
 const ICONS = {}, FLAT_KEYS = ['shuriken', 'typhoon', 'boomerang'];
 function weaponIcon(key) {
   if (ICONS[key] !== undefined) return ICONS[key];
@@ -9778,7 +9829,7 @@ function weaponIcon(key) {
   finally { try { renderer.setSize(window.innerWidth, window.innerHeight); } catch (e) { /* cosmetic */ } }
   return ICONS[key];
 }
-const SHORT = { spatula: 'SPATULA', bat: 'BAT', mallet: 'MALLET', snow: 'SNOWBALL', snake: 'SNAKE', blower: 'BLOWER', knife: 'KNIVES', shuriken: 'SHURIKEN', boomerang: 'BOOMERANG', ak: 'AK-47', smg: 'SMG', uzi: 'DUAL UZIS', glove: 'GLOVE', net: 'NET GUN', bow: 'BOW', shotgun: 'SHOTGUN', revolver: 'REVOLVER', flame: 'FLAMER', glauncher: 'GRENADER', cluster: 'CLUSTER', typhoon: 'TYPHOON', katana: 'KATANA', sniper: 'SNIPER', minigun: 'MINIGUN', rocket: 'ROCKET', meteor: 'METEOR', mammoth: 'MAMMOTH', trident: 'TRIDENT' };   // short enough to always fit on a slot
+const SHORT = { spatula: 'SPATULA', bat: 'BAT', mallet: 'MALLET', snow: 'SNOWBALL', snake: 'SNAKE', blower: 'BLOWER', hammer: 'HAMMER', wirewhip: 'LIVE WIRE', knife: 'KNIVES', shuriken: 'SHURIKEN', boomerang: 'BOOMERANG', ak: 'AK-47', smg: 'SMG', uzi: 'DUAL UZIS', glove: 'GLOVE', net: 'NET GUN', bow: 'BOW', shotgun: 'SHOTGUN', revolver: 'REVOLVER', flame: 'FLAMER', glauncher: 'GRENADER', cluster: 'CLUSTER', typhoon: 'TYPHOON', katana: 'KATANA', sniper: 'SNIPER', minigun: 'MINIGUN', rocket: 'ROCKET', meteor: 'METEOR', mammoth: 'MAMMOTH', trident: 'TRIDENT' };   // short enough to always fit on a slot
 function hotbarHtml() {
   let html = '';
   const tile = (i, key, ammo, on, kLabel, mag) => {
