@@ -562,7 +562,7 @@ func _update_mode_ui(delta: float) -> void:
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
-	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 10.0)
+	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)      # under the crate toast (hud.gd keeps that at the very top)
 	if _banner.visible:
 		_banner_t -= delta
 		_banner.reset_size()

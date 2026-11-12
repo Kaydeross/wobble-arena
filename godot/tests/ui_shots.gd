@@ -2,7 +2,7 @@ extends SceneTree
 ## Renders UI screenshots for visual review (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot match --out FILE.png
 ## Shots: title (scenes/main.tscn), title-online (its Play online tab), match (offline world with the HUD), touch (same with the touch layer forced on and
-## a few fingers down), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
+## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
 ## Mode picker on Construction), construction (a Construction match on Site Yard, mid hammer swing). Used by tools/shoot-godot-ui.sh.
 
 const FRAME := 1.0 / 60.0
@@ -34,7 +34,9 @@ func _start() -> void:
 		frames = 40
 		process_frame.connect(_wait)
 		return
-	_settings().set_value("touch_mode", "on" if shot == "touch" else "off")
+	var touch_shot := shot == "touch" or shot == "touch-lefty"
+	_settings().set_value("touch_mode", "on" if touch_shot else "off")
+	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
 	world = load("res://world/world.tscn").instantiate()
 	world.map_id = "siteyard" if shot == "construction" else "arena"
@@ -47,7 +49,7 @@ func _start() -> void:
 	world.rng_seed = 777
 	world.hp_setting = 200.0
 	root.add_child(world)
-	if shot != "touch":
+	if not touch_shot:
 		world.touch.visible = false
 	process_frame.connect(_frame)
 
@@ -81,7 +83,7 @@ func _frame() -> void:
 	if i == 2:
 		sim.combat.pickup(p, "katana")
 		sim.combat.pickup(p, "smg")      # the last pickup is the active slot
-		if shot != "touch": world.hud.last_touch = false
+		if not shot.begins_with("touch"): world.hud.last_touch = false
 	var go := Vector2.ZERO
 	var fire := false
 	var tg := _nearest(p)
@@ -99,13 +101,14 @@ func _frame() -> void:
 		world._toast("K.O.!")
 	if i == 330 and not p.dead:
 		p.hp = sim.combat.max_hp(p) * 0.22   # show the damage trail and the low-health pulse
-	if shot == "touch" and i == 340:
+	if shot.begins_with("touch") and i == 340:
 		var vs: Vector2 = world.touch.get_viewport_rect().size
-		_touch(7, Vector2(vs.x * 0.16, vs.y * 0.72), true)
+		var sx := vs.x * (0.84 if shot == "touch-lefty" else 0.16)
+		_touch(7, Vector2(sx, vs.y * 0.62), true)
 		var e := InputEventScreenDrag.new()
-		e.index = 7; e.position = Vector2(vs.x * 0.16 + 40, vs.y * 0.72 - 50)
+		e.index = 7; e.position = Vector2(sx + 40, vs.y * 0.62 - 50)
 		world.touch._input(e)
-		_touch(8, world.touch.button_rect(world.touch.BUTTONS[0])[0], true)
+		_touch(8, world.touch.button_rect(world.touch.button("fire"))[0], true)
 	if shot == "pause" and i == 345:
 		world._toggle_pause()
 	if i == 352:

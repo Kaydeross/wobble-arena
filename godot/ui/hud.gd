@@ -88,6 +88,8 @@ func bind(w: Node) -> void:
 	_plates.cam = w.cam
 	_radar.sim = sim
 	last_touch = w.touch.visible
+	if w.touch.has_method("attach"):
+		w.touch.attach(sim, _hotbar)      # context button + tappable hotbar slots
 	for it: Array in _feed_items: it[0].queue_free()
 	_feed_items.clear()
 	_last_ko = -1

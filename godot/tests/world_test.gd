@@ -130,13 +130,65 @@ func _touch_test() -> void:
 	check(not st.is_held("fire"), "touch FIRE released")
 	_touch(tc, 0, o, false)
 	check(st.move() == Vector2.ZERO and not st.is_held("sprint"), "touch stick released")
-	# tap buttons queue one press; AIM toggles
-	var reload: Array = tc.button_rect(tc.BUTTONS[5])
-	_touch(tc, 2, reload[0], true); _touch(tc, 2, reload[0], false)
+	# at most 4 action buttons; MELEE: a tap shoves, a hold or a flick kicks
+	check(tc.BUTTONS.size() <= 4, "at most 4 touch action buttons (%d)" % tc.BUTTONS.size())
+	var melee: Array = tc.button_rect(tc.button("melee"))
+	_touch(tc, 2, melee[0], true); _touch(tc, 2, melee[0], false)
+	check(st.consume("shove") and not st.consume("shove") and not st.consume("kick"), "touch MELEE tap = one shove")
+	_touch(tc, 2, melee[0], true); tc._process(0.4)
+	check(st.consume("kick") and not st.consume("kick"), "touch MELEE hold = one kick")
+	_touch(tc, 2, melee[0], false)
+	check(not st.consume("shove"), "touch MELEE hold does not also shove")
+	_touch(tc, 2, melee[0], true); _drag(tc, 2, melee[0] + Vector2(0, -60)); _touch(tc, 2, melee[0] + Vector2(0, -60), false)
+	check(st.consume("kick") and not st.consume("shove"), "touch MELEE flick = kick")
+	# context button: hidden empty-handed, RELOAD with a gun, DASH with a ninja weapon
+	var sim: MatchSim = world.sim
+	var p := sim.player
+	tc._process(0.016)
+	check(tc.context_action() == "" and tc.visible_buttons().size() == 3, "context button hidden empty-handed (%s)" % [tc.visible_buttons()])
+	sim.combat.pickup(p, "smg")
+	var gs: Dictionary = p.current_slot()
+	gs["mag"] = 3
+	tc._process(0.016)
+	check(tc.context_action() == "reload", "context button = RELOAD with a gun (%s)" % tc.context_action())
+	var ctx: Array = tc.button_rect(tc.button("context"))
+	_touch(tc, 3, ctx[0], true); _touch(tc, 3, ctx[0], false)
 	check(st.consume("reload") and not st.consume("reload"), "touch RELOAD tap = one press")
-	var aim: Array = tc.button_rect(tc.BUTTONS[2])
-	_touch(tc, 3, aim[0], true); _touch(tc, 3, aim[0], false)
-	check(st.aiming(), "touch AIM toggles on")
+	sim.combat.pickup(p, "katana")
+	for i in 3:
+		if p.slots[i] != null and p.slots[i]["key"] == "katana": sim.combat.equip_slot(p, i)
+	tc._process(0.016)
+	var want_dash: bool = sim.combat.rules.dash_gear(p)
+	check(tc.context_action() == ("dash" if want_dash else ""), "context button follows the katana (%s)" % tc.context_action())
+	# hotbar: tap a slot equips it, tap the slot in hand swaps back, swipe cycles
+	world.tick(1.0 / 60.0)
+	var smg_i := -1
+	var kat_i := -1
+	for i in 3:
+		if p.slots[i] != null and p.slots[i]["key"] == "smg": smg_i = i
+		if p.slots[i] != null and p.slots[i]["key"] == "katana": kat_i = i
+	var r0: Rect2 = tc.hotbar_slot_rect(smg_i)
+	check(r0.size.x > 20.0, "hotbar slot has a touch area (%s)" % r0)
+	_touch(tc, 5, r0.get_center(), true); _touch(tc, 5, r0.get_center(), false)
+	check(st.peek("slot%d" % (smg_i + 1)), "tap on a hotbar slot equips it")
+	world.tick(1.0 / 60.0)
+	check(p.slot == smg_i, "smg in hand after the slot tap (%d)" % p.slot)
+	_touch(tc, 5, r0.get_center(), true); _touch(tc, 5, r0.get_center(), false)
+	check(st.consume("slot%d" % (kat_i + 1)), "tap on the slot in hand swaps back to the last weapon")
+	var r1: Rect2 = tc.hotbar_slot_rect(1)
+	_touch(tc, 5, r1.get_center(), true); _drag(tc, 5, r1.get_center() + Vector2(80, 0)); _touch(tc, 5, r1.get_center() + Vector2(80, 0), false)
+	check(st.consume("swap"), "swipe across the hotbar cycles weapons")
+	while st.consume("slot1") or st.consume("slot2") or st.consume("slot3"): pass
+	# AIM: double-tap the look area toggles the scope; one tap does not
+	st.aim_toggle = false
+	var ap := Vector2(vs.x * 0.62, vs.y * 0.3)
+	_touch(tc, 6, ap, true); _touch(tc, 6, ap, false)
+	check(not st.aiming(), "one tap on the look area does not aim")
+	_touch(tc, 6, ap, true); _touch(tc, 6, ap, false)
+	check(st.aiming(), "double-tap on the look area toggles AIM on")
+	_touch(tc, 6, ap, true); _touch(tc, 6, ap, false)
+	_touch(tc, 6, ap, true); _touch(tc, 6, ap, false)
+	check(not st.aiming(), "double-tap again toggles AIM off")
 	# drag on the right half (away from the buttons) turns the camera: drag right -> yaw decreases
 	st.take_look()
 	var lp := Vector2(vs.x * 0.6, vs.y * 0.2)
@@ -147,6 +199,8 @@ func _touch_test() -> void:
 	root.get_node("Settings").set_value("touch_lefty", true)
 	var fire_l: Array = tc.button_rect(tc.BUTTONS[0])
 	check(fire_l[0].x < vs.x * 0.5, "left-handed FIRE on the left")
+	var melee_l: Array = tc.button_rect(tc.button("melee"))
+	check(melee_l[0].x < vs.x * 0.5, "left-handed MELEE on the left")
 	root.get_node("Settings").set_value("touch_lefty", false)
 	print("TOUCH ok" if fails == 0 else "TOUCH checks failed")
 	world.free()
