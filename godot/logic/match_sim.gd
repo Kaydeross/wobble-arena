@@ -152,7 +152,7 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 ## One fixed simulation step (simStep).
 func step(dt: float) -> void:
 	combat.time += dt
-	combat.rules.update(dt, pickups)        # updatePotato / updatePillars / updateShrink (+ the end-of-match countdown)
+	combat.rules.update(dt, pickups, dyn)   # updatePotato / updatePillars / updateShrink (+ the end-of-match countdown)
 	dyn.update(dyn_clock(), fighters)       # updateDyn
 	var net_pre: Variant = net.call("pre_step") if net != null else null
 	for f: FighterState in fighters:

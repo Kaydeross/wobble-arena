@@ -54,6 +54,7 @@ var invuln := 0.0
 var flash := 0.0
 var shield_t := 0.0
 var rage_t := 0.0
+var big_t := 0.0                 ## Chaos "Giant" event: bigger hit spheres, double health, harder hits (ModeRules)
 var spd_t := 0.0                 ## speed boost: x1.4 run speed (FighterPhysics)
 var dash_air_t := 0.0            ## Pillars dash: air steering stays at 3 while > 0 (FighterPhysics counts it down)
 var trap_t := 0.0
@@ -171,7 +172,7 @@ func set_class(cid: String, c: Dictionary) -> void:
 
 ## Hit spheres [cx, cy, cz, r, is_head] (Fighter.spheres). Head, chest and legs are the points written by the animation.
 func spheres(giant: bool) -> Array:
-	var k := 1.5 if giant else 1.0
+	var k := 1.5 if (giant or big_t > 0.0) else 1.0
 	return [[head_x, head_y, head_z, 0.4 * k, true], [chest_x, chest_y, chest_z, 0.62 * k, false],
 		[leg_x, leg_y, leg_z, 0.5 * k, false]]
 

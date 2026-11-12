@@ -189,6 +189,16 @@ func _logic() -> void:
 	w.set_mode("t2")
 	check(w.bot_total() == 3, "2v2 plays 3 bots")
 	check(w._bot_bs[3].button_pressed and w._bot_bs[1].disabled, "2v2 locks the bot count")
+	w.set_mode("tdm")                    # Godot-only modes: Team Deathmatch sizes the teams, odd bot counts only
+	w.set_bots(4)
+	check(w.bot_total() == 5 and w._bot_bs[5].button_pressed and w._bot_bs[4].disabled and not w._bot_bs[7].disabled, "TDM keeps the sides even (%d)" % w.bot_total())
+	check(w.players_hint.text.contains("3 vs 3"), "TDM hint: %s" % w.players_hint.text)
+	w.set_mode("chaos")
+	check(w.bot_total() == 9 and w._bot_bs[7].disabled and w.players_hint.text.contains("5 vs 5"), "Chaos locks 5 v 5 (%d)" % w.bot_total())
+	var cm: Array = w.maps_for("chaos")
+	check(cm.size() >= 4 and cm.all(func(id: String) -> bool: return ModeRules.CHAOS_MAPS.has(id)) and cm.has(w.map_id), "Chaos on the big arenas only (%s)" % [cm])
+	check(w.maps_for("sudden").has("shrink") and w.maps_for("sudden").has("arena"), "Sudden Death on every arena incl. the shrinking ones")
+	w.set_mode("t2")
 	w.set_mode("classic")
 	w.set_bots(5); w.set_diff("hard"); w.set_class("bruiser"); w.set_dyn("tilt")
 	check(int(st.get_value("bots")) == 5 and str(st.get_value("difficulty")) == "hard" and str(st.get_value("class")) == "bruiser" \
