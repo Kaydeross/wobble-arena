@@ -3,6 +3,22 @@
 _Approved 2026-11-12. Supersedes the plan and decisions in docs/IOS_PLAN.md (sections 1-4 of that file remain a useful review of build b76)._
 
 
+## Status (2026-11-13)
+
+Honest state of the Godot port after the unattended build-out. "Done" means ported, parity/behaviour tests passing in the repo and merged to main; it does **not** mean verified on a real iPhone (nobody has measured phone GPU time or thermals yet, and the TestFlight builds have only been played briefly by one person).
+
+| Phase | State | What is in | What is open |
+|---|---|---|---|
+| 0 Clean up and unblock | Done | export pipeline, signing, TestFlight upload (`tools/build-ios.sh`, 0.2.0 train), App Store Connect record "Wobblers Arena" | API key for CI uploads; Keychain use is Phase 5 |
+| 1 Vertical slice | Done | map builder, Wobbler rig, combat core, input, net guest, look baseline | none |
+| 2 Gameplay parity | Done for offline; online mostly | all weapons (batch 1 and 2), 19 offline modes incl. Godot-only ones (Team Deathmatch, Death Match, Sudden Death, Chaos 5v5, Pillars + Lava Pillars, Explosive, Moon Drift, Practice Range, Sandbox), full bot AI at 4 difficulties, all 34 maps with decor, body-part damage zones, Godot host role (web and app guests, host migration, rules sheet) | web guests only play Classic online; host cannot change rules from the lobby; no wstate editor; mixed web/Godot rooms need a manual phone-to-browser check (docs/CROSSPLAY_TEST.md section 5) |
+| 3 Interface and meta | Done | theme, wizard (game type, arena, players, character, start), title, HUD, 4-button touch layout, locker, shop (coins only), emotes, results with coins, accounts + cloud sync + in-app deletion, kill cam, room browser, Settings screen, pause menu + controls help, first-run how-to, UI scale (44 pt targets) | no music; aim-assist toggle; Keychain token storage; big-emote props; daily gift / redeem codes |
+| 4 Graphics | Done in code | tone mapping + grade, sky/clouds, tiered shadows, stylised materials, tree wind, animated scenery, ragdoll wobble rig, pooled particles, trails, squash and stretch, hitstop, shake; per-tier budgets in `docs/GRAPHICS.md` (CPU under 4 ms in the benchmark) | **phone GPU time and 15-minute thermal run not measured**; particle depth sorting; some far-scenery gaps (birds) |
+| 5 Store platforms | Not started | | Game Center, haptics, Keychain, orientation lock, privacy manifest, Android/PC/web exports |
+| 6 Store readiness | Not started | | wallet and StoreKit, server host, App Review items |
+
+Release tracking: TestFlight 0.2.0 builds 1 to 8 are uploaded (internal testers). Build 115 (0.1.0) has been waiting for Apple's external Beta App Review since 2026-11-12; external group "Friends" has two testers. The Phase 3 and 4 exit criteria ("a new player can install and reach a match with no dead ends", "60 fps on iPhone 12 for 15 minutes without thermal throttling") need device play and cannot be signed off from tests alone.
+
 ## Context
 
 Decisions made in this session, which replace the earlier "Godot for iOS + web game for browsers" plan:
