@@ -818,6 +818,43 @@ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-ri
   #menu.storefx .mhead{top:calc(10px + var(--sat))}
 }
   .cbar{display:flex;align-items:center;gap:6px;font-size:10px;margin:2px 0;width:100%}.cbar span{width:46px;text-align:left;opacity:.85}.cbar i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden}.cbar u{display:block;height:100%;background:#7fe8ff;border-radius:3px}
+/* ---- build 77: touch controls overlay and the small-screen HUD ---- */
+#touch{position:fixed;inset:0;z-index:30;display:none;pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;--to:.85;--ts:1}
+body.tplay #touch{display:block}
+#touch *{touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+#tz-move,#tz-look{position:absolute;bottom:0;pointer-events:auto}
+#tz-move{left:0;width:45%;top:14%}#tz-look{left:45%;right:0;top:0}
+#touch.lefty #tz-move{left:auto;right:0}#touch.lefty #tz-look{left:0;right:45%}
+#tstick{position:absolute;display:none;width:calc(108px * var(--ts));height:calc(108px * var(--ts));margin:calc(-54px * var(--ts)) 0 0 calc(-54px * var(--ts));border-radius:50%;background:rgba(16,43,53,.35);border:2px solid rgba(255,255,255,.5);opacity:var(--to);pointer-events:none}
+#tstick b{position:absolute;left:50%;top:50%;width:calc(46px * var(--ts));height:calc(46px * var(--ts));margin:calc(-23px * var(--ts)) 0 0 calc(-23px * var(--ts));border-radius:50%;background:rgba(255,255,255,.75);box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.tb{position:absolute;pointer-events:auto;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:rgba(16,43,53,.5);color:#fff;font-weight:900;font-size:10px;line-height:1;font-family:inherit;letter-spacing:.02em;padding:0;opacity:var(--to);box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.tb span{pointer-events:none}
+#tb-fire{background:rgba(255,110,70,.62);font-size:17px}#tb-jump{background:rgba(255,207,90,.5);font-size:13px;color:#102b35}#tb-aim,#tb-swap,#tb-dash{font-size:11px}
+#tb-dash{display:none;background:rgba(126,232,255,.5);color:#102b35}
+.tb.down{transform:scale(.9);background:rgba(255,255,255,.65);color:#102b35}
+#tb-pause{position:absolute;pointer-events:auto;top:calc(6px + var(--sat));right:calc(8px + var(--sar));width:44px;height:44px;border-radius:12px;border:2px solid rgba(255,255,255,.5);background:rgba(16,43,53,.55);color:#fff;font-weight:900;font-size:16px;line-height:1;font-family:inherit;letter-spacing:.1em;padding:0 0 0 .1em;opacity:var(--to)}
+#tpill{display:none}
+body.ptouch .wslot .k,body.ptouch #titlesmall,body.ptouch #ctrl-ref{display:none}
+body.tplay #ko,body.tplay #board{display:none !important}
+body.tplay #tpill{display:block;background:rgba(16,43,53,.72);color:#fff;font-weight:700;font-size:13px;line-height:1;font-family:inherit;padding:7px 14px;border-radius:99px;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+body.tplay #tpill b{color:#ffcf5a}
+body.tplay #lcol{left:calc(10px + var(--sal));top:calc(8px + var(--sat))}
+body.tplay #rcol{right:calc(60px + var(--sar));top:calc(8px + var(--sat));max-width:180px}
+body.tplay #radar{width:84px;height:84px}
+body.tplay #feed{font-size:11px}
+body.tplay #hp{left:calc(10px + var(--sal));bottom:calc(8px + var(--sab));width:132px;height:16px}
+body.tplay #hptxt{font-size:11px}
+body.tplay.tlefty #hp{left:auto;right:calc(10px + var(--sar))}
+body.tplay #weapon{left:50%;right:auto;transform:translateX(-50%);bottom:calc(6px + var(--sab));gap:4px;pointer-events:auto}
+body.tplay .wslot{width:58px;height:46px}
+body.tplay .wslot .nm{font-size:7px;letter-spacing:0;overflow:visible}
+body.tplay .wslot .am{font-size:10px}body.tplay .wslot.empty::after{font-size:8px;top:19px}
+body.tplay .wslot.on{transform:translateY(-4px) scale(1.06)}
+body.tplay #dashbar{left:50%;transform:translateX(-50%);bottom:calc(60px + var(--sab))}
+body.tplay #modehud{top:calc(8px + var(--sat));font-size:16px}
+body.tplay #pilhud{top:calc(6px + var(--sat))}
+body.tplay #toast{top:48px;font-size:15px}
+body.tplay #chat{display:none}
 </style>
 </head>
 <body>
@@ -1481,8 +1518,9 @@ const SFX = {
 function sfx(name) { try { if (SFX[name]) SFX[name](); } catch (e) { /* ignore */ } }
 
 /* ============================== renderer / scene ============================== */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const IS_TOUCH_DEV = (() => { try { return matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(any-pointer:fine)').matches); } catch (e) { return false; } })();      // phones and tablets get the touch controls and the lighter graphics tier
+const renderer = new THREE.WebGLRenderer({ antialias: !IS_TOUCH_DEV });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_TOUCH_DEV ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
@@ -7139,6 +7177,7 @@ function finishMatch() {
   endT = 0;
   mouse.l = mouse.r = false;
   try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* ignore */ }
+  touchLeave(false);
   setUi('lobby'); showPage('result');
   el('fade').style.opacity = '0';
 }
@@ -7521,7 +7560,7 @@ const aimOn = () => mouse.r || scopeHeld || scopeToggled;           // the aim b
 let locked = false;
 const cam = { yaw: Math.PI, pitch: -0.2, aim: 0, shake: 0 };
 
-el('play').onclick = () => { initAudio(); if (matchOver) loadMap(currentMap); if (canvas.requestPointerLock) canvas.requestPointerLock(); };
+el('play').onclick = () => { initAudio(); if (matchOver) loadMap(currentMap); if (touchWanted()) touchEnter(); else if (canvas.requestPointerLock) canvas.requestPointerLock(); };
 function buildMapCards() {
   el('maps').innerHTML = Object.keys(MAPS).map(id => {
     const m = MAPS[id];
@@ -8221,8 +8260,8 @@ function load() {
   } catch (e) { /* ignore */ }
 }
 function applyQuality() {
-  const q = settings.quality, dpr = window.devicePixelRatio || 1, sh = q !== 'low', ms = q === 'high' ? 2048 : 1024;
-  basePR = q === 'low' ? 1 : q === 'medium' ? Math.min(dpr, 1.5) : Math.min(dpr, 2); PERF.scale = 1;
+  const q = settings.quality, dpr = window.devicePixelRatio || 1, sh = q !== 'low', ms = q === 'high' && !IS_TOUCH_DEV ? 2048 : 1024;
+  basePR = q === 'low' ? 1 : q === 'medium' || IS_TOUCH_DEV ? Math.min(dpr, 1.5) : Math.min(dpr, 2); PERF.scale = 1;
   renderer.setPixelRatio(basePR);
   renderer.setSize(window.innerWidth, window.innerHeight);
   const was = renderer.shadowMap.enabled; renderer.shadowMap.enabled = sh; sun.castShadow = sh;
@@ -8971,7 +9010,115 @@ const _play = el('play').onclick; el('play').onclick = () => { if (editFlow && p
 el('pz-new').onclick = () => { inMatch = false; loadMap(currentMap); setUi('lobby'); el('play').onclick(); };
 el('pz-menu').onclick = () => { if (net && net.started) netLeave('You left the match.'); inMatch = false; leaveTest(); loadMap(currentMap); setUi('lobby'); showPage('home'); };
 
-window.__wa = { get player() { return player; }, get locked() { return locked; }, get ui() { return ui; }, showPage, cam, keys };   // read-only handle for the Playwright tests
+/* ============================== touch controls (build 77) ==============================
+   A floating move stick on one side, buttons and a look area on the other. Everything feeds the same keys table and camera the
+   keyboard and mouse use (through the player's own key binds), so gameplay is identical. No Pointer Lock needed. */
+const TC = Object.assign({ mode: 'auto', scale: 1, opacity: 0.85, lefty: false, assist: true }, (() => { try { return JSON.parse(localStorage.getItem('waTouch') || '{}'); } catch (e) { return {}; } })());
+const TOUCH = { on: false, mid: -1, lid: -1, mx: 0, my: 0, ox: 0, oy: 0, lx: 0, ly: 0, drag: 0, t0: 0 };
+const tcSave = () => { try { localStorage.setItem('waTouch', JSON.stringify(TC)); } catch (e) { /* private mode */ } };
+const touchWanted = () => TC.mode === 'on' || (TC.mode === 'auto' && (IS_TOUCH_DEV || !canvas.requestPointerLock));
+const codeOf = a => { const c = settings.binds[a]; return c && c !== 'None' ? c : null; };
+const tHold = (a, v) => { const c = codeOf(a); if (c) keys[c] = v; };                       // held actions: move keys and sprint
+function tPress(a, v) {                                                                        // press or release the bound key, so every key action (jump, reload, shove, slots...) runs its normal handler
+  const c = codeOf(a); if (!c) return;
+  if (v) { if (!keys[c]) fakeKey('keydown', c); keys[c] = true; } else { keys[c] = false; fakeKey('keyup', c); }
+}
+const TBTN = [   // id, label, bind (or 'scope'), size, distance from the thumb-side edge, distance from the bottom, held while touched (else a short tap)
+  ['fire', 'FIRE', 'attack', 92, 24, 20, 1], ['jump', 'JUMP', 'jump', 66, 134, 22, 1], ['aim', 'AIM', 'scope', 54, 30, 128, 0],
+  ['swap', 'SWAP', 'cycle', 50, 104, 112, 0], ['dash', 'DASH', 'dash', 54, 176, 92, 0], ['reload', 'RELOAD', 'reload', 54, 222, 18, 0],
+  ['shove', 'SHOVE', 'shove', 52, 168, 160, 0], ['kick', 'KICK', 'kick', 50, 238, 100, 0],
+];
+function tcLayout() {
+  const o = el('touch'); if (!o) return; const L = TC.lefty, s = TC.scale;
+  o.style.setProperty('--to', TC.opacity); o.style.setProperty('--ts', s); o.classList.toggle('lefty', L); document.body.classList.toggle('tlefty', L);
+  for (const [id, , , sz, x, y] of TBTN) { const b = el('tb-' + id); b.style.width = b.style.height = sz * s + 'px'; b.style.bottom = 'calc(' + y * s + 'px + var(--sab))'; b.style[L ? 'right' : 'left'] = 'auto'; b.style[L ? 'left' : 'right'] = 'calc(' + x * s + 'px + var(' + (L ? '--sal' : '--sar') + '))'; }
+}
+function touchBuild() {
+  const o = document.createElement('div'); o.id = 'touch';
+  o.innerHTML = '<div id="tz-move"></div><div id="tz-look"></div><div id="tstick"><b></b></div>' + TBTN.map(t => '<button class="tb" id="tb-' + t[0] + '"><span>' + t[1] + '</span></button>').join('') + '<button id="tb-pause" aria-label="Menu">II</button>';
+  document.body.appendChild(o);
+  const st = el('tstick'), mv = el('tz-move'), lk = el('tz-look'), R = () => 54 * TC.scale;
+  const moveKeys = () => { const f = -TOUCH.my, r = TOUCH.mx, m = Math.hypot(f, r), th = 0.3; tHold('forward', f > th); tHold('back', f < -th); tHold('right', r > th); tHold('left', r < -th); tHold('sprint', m > 0.93 && f > th); };
+  const moveEnd = () => { TOUCH.mid = -1; TOUCH.mx = TOUCH.my = 0; moveKeys(); st.style.display = 'none'; };
+  mv.addEventListener('pointerdown', e => { if (TOUCH.mid >= 0) return; TOUCH.mid = e.pointerId; mv.setPointerCapture(e.pointerId); TOUCH.ox = e.clientX; TOUCH.oy = e.clientY; st.style.display = 'block'; st.style.left = e.clientX + 'px'; st.style.top = e.clientY + 'px'; st.firstChild.style.transform = ''; e.preventDefault(); });
+  mv.addEventListener('pointermove', e => {
+    if (e.pointerId !== TOUCH.mid) return; let dx = e.clientX - TOUCH.ox, dy = e.clientY - TOUCH.oy; const d = Math.hypot(dx, dy), r = R();
+    if (d > r) { const k = (d - r) / d; TOUCH.ox += dx * k; TOUCH.oy += dy * k; dx = e.clientX - TOUCH.ox; dy = e.clientY - TOUCH.oy; st.style.left = TOUCH.ox + 'px'; st.style.top = TOUCH.oy + 'px'; }   // the base follows your thumb when you drag past its edge
+    TOUCH.mx = dx / r; TOUCH.my = dy / r; st.firstChild.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; moveKeys();
+  });
+  for (const t of ['pointerup', 'pointercancel']) mv.addEventListener(t, e => { if (e.pointerId === TOUCH.mid) moveEnd(); });
+  const look = (dx, dy) => { const k = 0.0052 * settings.sens * zoomScale(); cam.yaw -= dx * k; cam.pitch = clamp(cam.pitch - dy * k * (settings.invertY ? -1 : 1), -1.1, 0.8); TOUCH.drag = performance.now(); };
+  lk.addEventListener('pointerdown', e => { if (TOUCH.lid >= 0) return; TOUCH.lid = e.pointerId; lk.setPointerCapture(e.pointerId); TOUCH.lx = e.clientX; TOUCH.ly = e.clientY; e.preventDefault(); });
+  lk.addEventListener('pointermove', e => { if (e.pointerId !== TOUCH.lid) return; look(e.clientX - TOUCH.lx, e.clientY - TOUCH.ly); TOUCH.lx = e.clientX; TOUCH.ly = e.clientY; });
+  for (const t of ['pointerup', 'pointercancel']) lk.addEventListener(t, e => { if (e.pointerId === TOUCH.lid) TOUCH.lid = -1; });
+  for (const t of TBTN) {
+    const b = el('tb-' + t[0]), a = t[2], hold = t[6]; let pid = -1, lx = 0, ly = 0;
+    b.addEventListener('pointerdown', e => {
+      if (pid >= 0) return; pid = e.pointerId; b.setPointerCapture(pid); b.classList.add('down'); lx = e.clientX; ly = e.clientY; e.preventDefault();
+      if (a === 'scope') scopeToggled = !scopeToggled; else tPress(a, true);
+    });
+    b.addEventListener('pointermove', e => { if (e.pointerId !== pid || a !== 'attack') return; look(e.clientX - lx, e.clientY - ly); lx = e.clientX; ly = e.clientY; });   // hold FIRE and drag to aim
+    const up = e => { if (e.pointerId !== pid) return; pid = -1; b.classList.remove('down'); if (a === 'scope') return; if (hold) tPress(a, false); else setTimeout(() => tPress(a, false), 90); };
+    b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+  }
+  el('tb-pause').addEventListener('pointerdown', e => { e.preventDefault(); touchLeave(true); });
+  el('weapon').addEventListener('pointerdown', e => {                                          // tap a hotbar tile to equip it (the fourth is the quick spatula)
+    if (!TOUCH.on) return; const w = e.target.closest ? e.target.closest('.wslot') : null; if (!w) return;
+    const a = ['slot1', 'slot2', 'slot3', 'spatula'][Array.prototype.indexOf.call(el('weapon').children, w)]; if (!a) return;
+    e.preventDefault(); tPress(a, true); setTimeout(() => tPress(a, false), 90);
+  });
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  tcLayout();
+}
+function touchEnter() {
+  if (!inMatch) TOUCH.t0 = simTime;
+  TOUCH.on = true; locked = true; document.body.classList.add('tplay');
+  PERF.grace = performance.now() + 3500; PERF.lowN = 0; PERF.hiN = 0; try { perfAcc = 0; perfN = 0; perfT0 = 0; prevNow = 0; } catch (e) { /* x */ }
+  setUi('play');
+}
+function touchLeave(toMenu) {
+  if (!TOUCH.on) return; TOUCH.on = false; locked = false; document.body.classList.remove('tplay');
+  mouse.l = mouse.r = false; scopeHeld = scopeToggled = false; for (const k in keys) keys[k] = false; TOUCH.mid = TOUCH.lid = -1; TOUCH.mx = TOUCH.my = 0;
+  PERF.grace = performance.now() + 3500; PERF.lowN = 0; PERF.hiN = 0;
+  if (toMenu && ui === 'play') setUi('lobby');
+}
+setInterval(() => { if (TOUCH.on && ui !== 'play') touchLeave(false); }, 200);             // the match ended or you were kicked: let go of the controls
+function touchAssist() {                                                                    // aim assist: while firing, ease the camera toward the nearest enemy in front of you (never while you are dragging)
+  if (!TOUCH.on || !TC.assist || !down('attack') || performance.now() - TOUCH.drag < 250 || player.dead) return;
+  let best = null, bd = 1e9; const px = player.pos.x, pz = player.pos.z;
+  for (const e of fighters) {
+    if (e === player || e.dead || e.left || e.elim || e.isGhost || isFriend(player, e) || !e.root.visible) continue;
+    const dx = e.pos.x - px, dz = e.pos.z - pz, d = Math.hypot(dx, dz); if (d > 32 || d < 0.5) continue;
+    let da = Math.atan2(dx, dz) - cam.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) > 0.7) continue;
+    const sc = d * (1 + Math.abs(da) * 2); if (sc < bd) { bd = sc; best = { da, d, e }; }
+  }
+  if (!best) return;
+  const k = 0.07; cam.yaw += best.da * k;
+  const pit = Math.atan2(best.e.pos.y + 1.1 - (player.pos.y + 1.9), best.d); cam.pitch = clamp(cam.pitch + (pit - cam.pitch) * k * 0.6, -1.1, 0.8);
+}
+function touchPill(rows) {                                                                   // compact scoreboard for small screens: your K.O.s, who leads, and the clock
+  const p = el('tpill'); if (!p) return; const s = Math.max(0, Math.floor(simTime - TOUCH.t0)), top = rows[0];
+  const h = 'K.O. <b>' + (player.ko | 0) + '</b>' + (top && top.ko > 0 ? ' &middot; ' + (top === player ? 'You lead' : '👑 ' + top.botName + ' ' + top.ko) : '') + ' &middot; ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  if (p._h !== h) { p._h = h; p.innerHTML = h; }
+}
+touchBuild();
+{ const lc = el('lcol'); if (lc) { const p = document.createElement('div'); p.id = 'tpill'; lc.insertBefore(p, lc.firstChild); } }
+{ const grp = document.querySelector('#pg-controls .grp[data-tab="controls"]');                // settings: touch controls
+  if (grp) {
+    const d = document.createElement('div'); d.id = 'touchset';
+    d.innerHTML = '<h3>Touch controls</h3><label style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Touch controls (Auto = on phones and tablets)</span><button class="opt" id="tc-mode" style="flex:0 0 auto;min-width:120px">Auto</button></label><div class="tog"><span>Left-handed layout</span><button id="tc-lefty">Off</button></div><div class="tog"><span>Aim assist toward the nearest enemy</span><button id="tc-assist">On</button></div><label>Button size <input id="tc-scale" type="range" min="0.7" max="1.5" step="0.05"></label><label>Button opacity <input id="tc-op" type="range" min="0.3" max="1" step="0.05"></label><small class="help">Left thumb: move (push to the edge to sprint). Right side: hold FIRE and drag to aim, drag anywhere else to look, tap the weapon tiles to swap.</small>';
+    grp.insertBefore(d, grp.firstChild);
+    const sync = () => { el('tc-mode').textContent = { auto: 'Auto', on: 'Always on', off: 'Off' }[TC.mode]; tog('tc-lefty', TC.lefty); tog('tc-assist', TC.assist); el('tc-scale').value = TC.scale; el('tc-op').value = TC.opacity; tcLayout(); tcSave(); };
+    el('tc-mode').onclick = () => { TC.mode = { auto: 'on', on: 'off', off: 'auto' }[TC.mode]; sync(); };
+    el('tc-lefty').onclick = () => { TC.lefty = !TC.lefty; sync(); }; el('tc-assist').onclick = () => { TC.assist = !TC.assist; sync(); };
+    el('tc-scale').oninput = e => { TC.scale = +e.target.value; sync(); }; el('tc-op').oninput = e => { TC.opacity = +e.target.value; sync(); }; sync();
+  } }
+{ const setT = v => document.body.classList.toggle('ptouch', v);                                 // the last input decides whether keyboard hints show
+  setT(IS_TOUCH_DEV);
+  document.addEventListener('pointerdown', e => setT(e.pointerType === 'touch' || e.pointerType === 'pen'), true);
+  document.addEventListener('keydown', () => { if (!TOUCH.on) setT(false); }, true); }
+{ const lm = loadMap; loadMap = function (id) { try { TOUCH.t0 = simTime; } catch (e) { /* not ready yet */ } return lm.apply(this, arguments); }; }
+window.__wa = { get player() { return player; }, get locked() { return locked; }, get ui() { return ui; }, showPage, cam, keys, TOUCH, TC, tcLayout };   // read-only handle for the Playwright tests
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   PERF.grace = performance.now() + 3500; PERF.lowN = 0; PERF.hiN = 0; try { perfAcc = 0; perfN = 0; perfT0 = 0; prevNow = 0; } catch (e) { /* x */ }
@@ -9348,7 +9495,7 @@ function simStep(dt) {
   updatePotato(dt); updatePillars(dt); updateShrink(dt);
   const netPre = net && net.started ? netSnap() : null;
   if (DEVS.ammo && !net) { const sl = player.slots[player.slot]; if (sl && sl.ammo < 60) sl.ammo = 60; }
-  playerControl(dt);
+  touchAssist(); playerControl(dt);
   for (const b of bots) if (!b.isGhost && !(DEVS.freeze && !net)) botThink(b, dt);
   if (netPre) netStep(dt, netPre);
   for (const f of fighters) { f.timers(dt); if (!f.isGhost) f.physics(dt); }
@@ -9541,17 +9688,20 @@ let boardT = 0, boardKey = '';
 { let h = ''; for (let i = 0; i < 12; i++) h += '<div class="tag" id="tag' + i + '"><span id="tagn' + i + '"></span><u><i id="tagh' + i + '"></i></u></div>'; el('tags').innerHTML = h; }
 function updateTags() {
   const can = typeof tmpA.project === 'function';
+  const cap = document.body.classList.contains('ptouch') || window.innerHeight < 520, near = [];          // small screens: only the 3 nearest name tags
+  if (cap && can && locked) for (const b of bots) if (!b.dead && !b.left) near.push([camera.position.distanceTo(b.pos), b]);
+  near.sort((x, y) => x[0] - y[0]); const nearSet = new Set(near.slice(0, 3).map(x => x[1]));
   allBots.forEach((b, i) => {
     const t = el('tag' + i);
     let show = false;
     if (can && bots.includes(b) && !b.dead && !b.left && locked) {
       tmpA.set(b.pos.x, b.pos.y + 2.5, b.pos.z).project(camera);
       const d = camera.position.distanceTo(b.pos);
-      if (tmpA.z < 1 && Math.abs(tmpA.x) < 1.1 && Math.abs(tmpA.y) < 1.1 && d < 45) {
+      if (tmpA.z < 1 && Math.abs(tmpA.x) < 1.1 && Math.abs(tmpA.y) < 1.1 && d < 45 && (!cap || nearSet.has(b))) {
         show = true;
         t.style.left = ((tmpA.x * 0.5 + 0.5) * window.innerWidth) + 'px';
         t.style.top = ((-tmpA.y * 0.5 + 0.5) * window.innerHeight) + 'px';
-        t.style.opacity = d > 30 ? 0.6 : 1;
+        t.style.opacity = cap ? Math.max(0.3, Math.min(1, 1.5 - d / 22)) : d > 30 ? 0.6 : 1;
         const n = el('tagn' + i); if (n.textContent !== b.botName) { n.textContent = b.botName; }
         n.style.color = cfg.teams ? (isFriend(player, b) ? '#8fd0ff' : '#ff9a9a') : '';
         const hh = el('tagh' + i), showBar = d < 16 || (b.lastAttacker === player && simTime - b.lastHitTime < 4); hh.parentNode.style.display = showBar ? 'block' : 'none';        // far away you only see the name, until you hit them
@@ -9615,10 +9765,11 @@ function updateHud(dt) {
     el('scopeov').style.display = sc ? 'block' : 'none'; el('cross').style.visibility = sc ? 'hidden' : 'visible'; }
   { const db = el('dashbar'), on = !player.dead && dashGear(player);      // ninja dashes (only shown while holding a ninja weapon): 3 charges, each refills on its own
     if (on) {
-      let h = '<span>DASH [' + keyName(settings.binds.dash).replace('Key', '') + ']</span>'; for (let i = 0; i < 3; i++) h += i < player.dashN ? '<i class="full"></i>' : '<i style="--f:' + (i === player.dashN ? (player.dashRegen / DASH_REGEN).toFixed(2) : 0) + '"></i>';
+      let h = '<span>DASH' + (TOUCH.on ? '' : ' [' + keyName(settings.binds.dash).replace('Key', '') + ']') + '</span>'; for (let i = 0; i < 3; i++) h += i < player.dashN ? '<i class="full"></i>' : '<i style="--f:' + (i === player.dashN ? (player.dashRegen / DASH_REGEN).toFixed(2) : 0) + '"></i>';
       if (db._h !== h) { db._h = h; db.innerHTML = h; }
       db.style.display = 'flex';
-    } else db.style.display = 'none'; }
+    } else db.style.display = 'none';
+    el('tb-dash').style.display = on ? '' : 'none'; }
   { const sw = WEAPONS[player.weapon], ring = el('sgring');       // shotgun: a ring showing where the pellets can land (bigger from the hip, smaller zoomed in)
     if (sw && sw.adsMul && !player.dead && player.slot >= 0) {
       const d = Math.max(24, Math.tan(shotSpread(sw, cam.aim)) / Math.tan(camera.fov * Math.PI / 360) * window.innerHeight);
@@ -9659,7 +9810,7 @@ function updateHud(dt) {
     boardT = 0.4;
     const rows = [player, ...bots.filter(f => !f.left)].sort((x, y) => y.ko - x.ko).slice(0, 6);
     leader = rows[0].ko > 0 && (!rows[1] || rows[0].ko > rows[1].ko) ? rows[0] : null;
-    el('ko').classList.toggle('lead', leader === player);
+    el('ko').classList.toggle('lead', leader === player); touchPill(rows);
     const h = rows.map(f => '<div class="' + (f.isPlayer ? 'me ' : '') + (f === leader ? 'lead' : '') + '">' + (f === leader ? '👑 ' : '') + '<i style="background:' + colOf(f) + '"></i>' + (f.isPlayer ? 'You' : f.botName) + (cfg.lives ? ' <small>' + (f.elim ? 'out' : (cfg.mode === 'pillars' ? '' : '\u2665' + f.lives)) + '</small>' : '') + '<b>' + f.ko + '</b></div>').join('');
     if (h !== boardKey) { boardKey = h; el('board').innerHTML = h; }
   }
