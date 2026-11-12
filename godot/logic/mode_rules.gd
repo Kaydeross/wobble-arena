@@ -15,8 +15,14 @@ extends RefCounted
 ## Godot-only modes (res://data/extra/modes.json, merged by merge_extra): Team Deathmatch (tdm: two teams sized by the
 ## Players page, team limit 30), Death Match (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
 ## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events).
-## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there), Pillars (needs the
-## pillar-hopping bot AI and pillarGive), Explosive / Moon Drift (their weapons are ported now; not listed in PLAYABLE yet).
+## Pillars (initPillars, pillarGive, updatePillars): 8 fighters on the eight pillars (PillarsMap), one life, any weapon
+## dashes, a random weapon into everyone's inventory every 10 s (first at 1.2 s), last one standing or the most K.O.s
+## (fewest deaths on a tie) when the 3-minute clock runs out. Explosive: launchers only, always 300 health. Moon Drift
+## (lowg): its preset gravity 0.15 goes to Combat.grav_setting and every fighter's FighterPhysics.grav_scale (projG and
+## the gentler jump follow from it). Practice Range (practice, the web PRACTICE button): the range maps' dummies
+## (PracticeRange), no score.
+## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there), Sandbox (the block
+## building UI), Lava Pillars (pillars2: not in the web export).
 
 const TEAM_COL := [0x3b82f6, 0xef4444]                  ## TEAM_COL
 const GG := ["smg", "ak", "uzi", "shotgun", "revolver", "sniper", "bow", "shuriken", "knife", "glauncher", "bat", "spatula"]   ## the Weapon Ladder
@@ -26,10 +32,23 @@ const DASH_CD := 0.45
 const DASH_GEAR := ["katana", "shuriken", "knife", "typhoon"]
 const END_TIME := 3.4                                   ## endT: the game keeps running for a moment after the last K.O.
 const MODE_DEFAULTS := {"count": 3, "hp": 200, "behav": "brawl", "ffa": true, "limit": 0}   ## MODE_DEFAULTS (pickMode)
-## Modes the Godot port can play offline (the picker lists these). Explosive needs rockets, Pillars its bot AI, Sandbox and
-## Construction belong to other tracks.
+## Modes the Godot port can play offline (the picker lists these). Sandbox and Construction belong to other tracks.
 const PLAYABLE := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4", "mega", "giant", "gungame",
-	"tdm", "deathmatch", "sudden", "chaos"]
+	"tdm", "deathmatch", "sudden", "chaos", "pillars", "explosive", "lowg", "practice"]
+## Short card text for the wizard (the web menu's BLURB, index.html ~3743), where the mode's `desc` is too long.
+const BLURB := {"pillars": "Start on pillars. A new weapon every 10 seconds. One life",
+	"explosive": "Explosives only. Always 300 health", "lowg": "Super low gravity. Float, soar and knock rivals around",
+	"practice": "Dummies to shoot and a rack of weapons. No score"}
+## Pillars (MODES.pillars, PIL_BAN, pillarGive): the weapons pillarGive hands out, in DROP_POOL order, with their WT
+## weight (common 8, uncommon 6, rare 4, epic 2.5, legendary 2 by RARITY) = unique DROP_POOL minus PIL_BAN, heal and
+## the power-ups (shared/modes.json cannot carry it: the web `allow` reads PIL_BAN, which the export does not see).
+## tools/modes-reference.js runs the real pillarGive, so a change on the web side fails the parity test.
+const PIL_POOL := [["shuriken", 6.0], ["bow", 4.0], ["knife", 6.0], ["ak", 6.0], ["smg", 6.0], ["revolver", 4.0], ["uzi", 4.0],
+	["mammoth", 2.0], ["trident", 4.0]]
+const PIL_TIME := 180.0              ## the 3-minute clock
+const PIL_FIRST := 1.2               ## the first weapon
+const PIL_EVERY := 10.0
+const PIL_BOTS := 7                  ## setBotCfg: every pillar without a player gets a bot
 ## Godot-only modes (not in shared/modes.json, which `npm run content` regenerates from the web game).
 const EXTRA_PATH := "res://data/extra/modes.json"
 ## Chaos needs room for 10: maps with at least 9 bot spots away from the player (bots + spawns) and wander >= 20.
@@ -59,7 +78,7 @@ const MODE_MAPS := {"melee": ["arena", "park", "ice", "rooftops", "cloud", "towe
 	"mega": ["shrink", "squeeze"], "pillars": ["pillars", "pillars2"], "lowg": ["craterdome", "capsule"],
 	"giant": ["playroom"] + BIG_ARENAS, "explosive": ["blast", "arena", "park", "ice"] + BIG_ARENAS,
 	"duel": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS, "t2": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS,
-	"t3": TEAM_MAPS + BIG_ARENAS, "t4": TEAM_MAPS + BIG_ARENAS, "chaos": CHAOS_MAPS}
+	"t3": TEAM_MAPS + BIG_ARENAS, "t4": TEAM_MAPS + BIG_ARENAS, "chaos": CHAOS_MAPS, "practice": ["practice", "test"]}
 ## MAP_ORDER (index.html ~3725): big open arenas first, then rooms and sky levels, the odd one-offs last. Arena lists follow it.
 const MAP_ORDER := ["test", "practice", "dojo", "blast", "gunrange", "brawlpit", "siteyard", "craterdome", "capsule", "playroom",
 	"arena", "park", "ice", "arenaxl", "rinkxl", "colosseum", "fortress", "temple", "farm", "rooftops", "tower", "shrink", "squeeze",
@@ -84,6 +103,8 @@ var shrink := {}
 ## event), left (s the running event has left), last (the previous event), giant (the fighter made a giant), kb0 (the
 ## knockback setting to restore), floor (the floor kind forced). Empty = not Chaos.
 var chaos := {}
+## Pillars (`pil`): t (clock left), next (s to the next weapon), first, timeout (the clock ended it). Empty = not Pillars.
+var pil := {}
 
 func _init(c: Combat) -> void:
 	_combat = weakref(c)
@@ -101,7 +122,21 @@ static func bot_count(mode_id: String, modes: Dictionary, requested: int) -> int
 		var n := clampi(requested, 1, 7)
 		return n if n % 2 == 1 else n + 1
 	if t: return t * 2 - 1
+	var fx := fixed_bots(mode_id, modes)
+	if fx >= 0: return fx
 	return clampi(requested, 0, 12)
+
+## Modes whose bot count is not the player's pick: Pillars (one bot per free pillar), the Practice Range (its 10
+## dummies). -1 = the Players page decides.
+static func fixed_bots(mode_id: String, modes: Dictionary) -> int:
+	var m: Dictionary = modes.get(mode_id, {})
+	if m.get("pillars", false): return PIL_BOTS
+	if mode_id == "practice": return 10
+	return -1
+
+## The wizard's card line for a mode (BLURB, else the mode's desc).
+static func blurb(mode_id: String, modes: Dictionary) -> String:
+	return str(BLURB.get(mode_id, modes.get(mode_id, {}).get("desc", "")))
 
 ## Players per side for `bots` bots (team modes; 0 = free for all).
 static func team_size(mode_id: String, modes: Dictionary, bots: int) -> int:
@@ -111,6 +146,7 @@ static func team_size(mode_id: String, modes: Dictionary, bots: int) -> int:
 	return t
 
 static func maps_for(mode_id: String) -> Array:
+	if mode_id == "practice": return MODE_MAPS["practice"].duplicate()     # the Practice Range first, then the Test Map
 	return sort_maps(MODE_MAPS.get(mode_id, []))
 
 ## `ids` in MAP_ORDER (unknown ids last, in their own order).
@@ -150,9 +186,11 @@ func configure(mode_id: String, p_limit: int = -1) -> void:
 	if c.teams: c.brawl = true; c.ffa = true
 	c.giant = mode_id == "giant"
 	if mode_id == "explosive": c.hp_setting = 300.0           # Explosive is always 300 health
+	c.grav_setting = float(pre.get("grav", 1.0))               # pickMode: MODE_DEFAULTS.grav 1, Moon Drift's preset 0.15
 	limit = p_limit if p_limit >= 0 else preset_limit(mode_id, c.modes)
 	match_over = false; winner = null; end_t = 0.0
 	chaos = {}
+	pil = {}
 
 ## setBotCfg team split + loadMap's per-fighter reset (dashes, lives) + initLadder. `bots` in setup order.
 func start_match(player: FighterState, bots: Array) -> void:
@@ -164,6 +202,8 @@ func start_match(player: FighterState, bots: Array) -> void:
 		b.team = (0 if i < c.teams - 1 else 1) if c.teams else -1
 	for f: FighterState in [player] + bots:
 		f.dash_n = DASH_MAX; f.dash_regen = 0.0; f.dash_cd = 0.0; f.lives = c.lives_mode; f.elim = false
+		f.phys.grav_scale = c.grav_setting                     # cfg.grav (Moon Drift)
+	init_pillars()
 	for f: FighterState in [player] + bots:                     # initLadder
 		f.gg_rung = 0
 		if c.mode_id == "gungame" and not f.is_ghost: gg_give(f)
@@ -214,7 +254,7 @@ func end_match(w: FighterState) -> void:
 	var title := ""
 	if combat.teams: title = "YOUR TEAM WINS!" if won else "ENEMY TEAM WINS!"
 	else: title = "YOU WIN!" if w.is_player else "%s WINS!" % w.name.to_upper()
-	var sub := "Last one standing" if combat.lives_mode else ("Finished the Weapon Ladder" if combat.mode.get("ladder", false) else
+	var sub := "Most K.O.s when the clock ran out" if pil.get("timeout", false) else "Last one standing" if combat.lives_mode else ("Finished the Weapon Ladder" if combat.mode.get("ladder", false) else
 		"First %sto %d K.O.s" % ["team " if combat.teams else "", limit])
 	combat.ev({"type": "match_over", "winner": w, "won": won, "title": title, "sub": sub})
 
@@ -260,6 +300,51 @@ func gg_advance(killer: FighterState) -> void:
 		gg_give(killer); killer.invuln = maxf(killer.invuln, 1.0)
 	if killer.is_player:
 		combat.ev({"type": "toast", "text": "Weapon %d of %d: %s" % [killer.gg_rung + 1, GG.size(), combat.wdata(GG[killer.gg_rung]).get("name", "Spatula")]})
+
+# ============================== Pillars ==============================
+
+## initPillars: the 3-minute clock and the first weapon in 1.2 s (Pillars only).
+func init_pillars() -> void:
+	pil = {"t": PIL_TIME, "next": PIL_FIRST, "first": false, "timeout": false} if combat.mode_id == "pillars" else {}
+
+## pillarGive: a random weapon (PIL_POOL weights) goes into the inventory; whatever was in the hand stays there.
+func pillar_give(f: FighterState) -> void:
+	var c := combat
+	var tot := 0.0
+	for e: Array in PIL_POOL: tot += e[1]
+	var r := c.rng.next() * tot
+	var key: String = PIL_POOL[0][0]
+	for e: Array in PIL_POOL:
+		r -= e[1]
+		if r <= 0.0: key = e[0]; break
+	var prev := f.slot
+	c.pickup(f, key)
+	if prev >= 0 and f.slots[prev] != null and f.slot != prev: c.equip_slot(f, prev)
+	if f.is_player: c.ev({"type": "toast", "text": "New weapon: " + str(c.wdata(key).get("name", key))})
+
+## updatePillars: the weapon handout every 10 s and the clock (online only the host calls time).
+func update_pillars(dt: float) -> void:
+	if pil.is_empty() or match_over: return
+	var c := combat
+	pil["t"] -= dt; pil["next"] -= dt
+	if pil["next"] <= 0.0:
+		pil["next"] = PIL_EVERY
+		for f: FighterState in c.fighters:
+			if not f.dead and not f.elim and not f.is_ghost and not f.left: pillar_give(f)
+		pil["first"] = true
+	if pil["t"] <= 0.0 and not (c.net_started and not c.net_host):
+		var w: FighterState = null                 # most K.O.s, then fewest deaths, first in fighter order
+		for f: FighterState in c.fighters:
+			if f.left or f.is_ghost: continue
+			if w == null or f.ko > w.ko or (f.ko == w.ko and int(f.st["deaths"]) < int(w.st["deaths"])): w = f
+		if w != null:
+			pil["timeout"] = true
+			end_match(w)
+
+## "2:41" for the Pillars clock.
+func pillars_clock() -> String:
+	var t := maxi(0, ceili(float(pil.get("t", 0.0))))
+	return "%d:%02d" % [t / 60, t % 60]
 
 # ============================== ninja dash ==============================
 
@@ -477,6 +562,7 @@ func chaos_text() -> String:
 
 ## simStep's mode updates (updatePotato / updatePillars / updateShrink) plus the end-of-match countdown.
 func update(dt: float, pickups: Pickups = null, dyn: ArenaDyn = null) -> void:
+	update_pillars(dt)
 	update_shrink(dt, pickups)
 	if not chaos.is_empty(): update_chaos(dt, pickups, dyn)
 	if end_t > 0.0:
@@ -492,7 +578,11 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	var t := ""
 	if c.mode.get("spectate", false):                       # Sudden Death: in or out, and how many are left
 		t = ("♥" if not player.elim else "OUT") + "  ·  %d left" % survivors().size()
-	elif c.lives_mode and c.mode_id != "pillars":
+	elif c.mode_id == "pillars":                           # updateKoText: the K.O. count (one life, no hearts)
+		t = ("OUT" if player.elim else "%d K.O.s" % player.ko) + "  ·  %d left" % survivors().size()
+	elif not c.brawl:                                       # the Practice Range's dummies
+		t = "Practice  ·  %d K.O.s" % player.ko
+	elif c.lives_mode:
 		t = "♥".repeat(player.lives) if player.lives > 0 else "OUT"
 	elif c.teams:
 		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
@@ -503,6 +593,8 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	var extra := ""
 	if c.mode_id == "gungame" and not match_over:
 		extra = "Weapon %d of %d · %s" % [player.gg_rung + 1, GG.size(), c.wdata(GG[player.gg_rung]).get("name", "Spatula")]
+	elif not pil.is_empty() and not match_over:
+		extra = "%s  ·  New weapon in %d" % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
 	elif chaos_text() != "":
 		extra = "⚡ " + chaos_text()
 	elif not shrink.is_empty() and not match_over:

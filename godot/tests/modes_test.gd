@@ -8,9 +8,13 @@ extends SceneTree
 ## Godot-only modes (res://data/extra/modes.json): Team Deathmatch (a team reaches 30), Death Match (first to 20),
 ## Sudden Death (one life: K.O.s and falls eliminate, the player is pushed off and spectates until one stands) and Chaos
 ## (10 fighters, 5 v 5 to 50, random events that end cleanly; prints the step time).
+## Pillars (8 fighters on the eight pillars, a weapon for everyone at 1.2 s and every 10 s, one life: last one standing
+## or the most K.O.s when the 3-minute clock ends; the scripted player stays on its pillar), Explosive (300 health,
+## rocket start, to 5) and Moon Drift (gravity 0.15 on every fighter, people float high, to 5).
 
 const FRAME := 1.0 / 30.0           ## coarse frames: the sim still steps at 1/120
-## [mode, map, K.O. limit (-1 = preset), hp, max simulated minutes]
+## [mode, map, K.O. limit (-1 = preset), hp, max simulated minutes, options ("shielded": nobody takes damage, so only
+## falls eliminate and a Pillars match runs to its clock)]
 const CASES := [
 	["classic", "arena", 5, 100.0, 6.0],
 	["melee", "park", 5, 100.0, 6.0],
@@ -29,6 +33,10 @@ const CASES := [
 	["sudden", "arena", -1, 100.0, 8.0],
 	["sudden", "shrink", -1, 100.0, 8.0],
 	["chaos", "arenaxl", -1, 50.0, 20.0],
+	["pillars", "pillars", -1, 100.0, 3.6],
+	["pillars", "pillars", -1, 100.0, 3.6, "shielded"],
+	["explosive", "blast", 5, 100.0, 8.0],
+	["lowg", "craterdome", 5, 100.0, 10.0],
 ]
 
 var fails := 0
@@ -57,7 +65,7 @@ func _run() -> void:
 	var nodes0 := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 	for cs: Array in CASES:
 		if only != "" and cs[0] != only: continue
-		await _play(cs[0], cs[1], cs[2], cs[3], cs[4])
+		await _play(cs[0], cs[1], cs[2], cs[3], cs[4], cs[5] if cs.size() > 5 else "")
 	await process_frame
 	await process_frame
 	var nodes1 := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
@@ -68,7 +76,12 @@ func _run() -> void:
 	print("MODES %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
 	quit(0 if fails == 0 else 1)
 
-func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> void:
+func _falls(sim: MatchSim) -> int:
+	var n := 0
+	for f: FighterState in sim.fighters: n += int(f.st["falls"])
+	return n
+
+func _play(mode: String, map: String, limit: int, hp: float, minutes: float, opts := "") -> void:
 	var t0 := Time.get_ticks_msec()
 	var world: Node = load("res://world/world.tscn").instantiate()
 	world.map_id = map
@@ -86,7 +99,7 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 	var r := c.rules
 	var p := sim.player
 	var st: InputState = world.input.state
-	var tag := "%s/%s" % [mode, map]
+	var tag := "%s/%s%s" % [mode, map, ("/" + opts) if opts != "" else ""]
 	check(c.mode_id == mode, "%s: mode set" % tag)
 	if c.teams:
 		check(sim.fighters.size() == c.teams * 2, "%s: %d fighters for teams of %d" % [tag, sim.fighters.size(), c.teams])
@@ -103,6 +116,25 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 	if mode == "chaos":
 		check(sim.fighters.size() == 10 and c.teams == 5, "%s: 10 fighters, 5 v 5 (%d)" % [tag, sim.fighters.size()])
 		check(not r.chaos.is_empty(), "%s: chaos events armed" % tag)
+	var pils := {}
+	if mode == "pillars":
+		check(sim.fighters.size() == 8 and not r.pil.is_empty() and c.lives_mode == 1, "%s: 8 fighters, one life, the clock (%d)" % [tag, sim.fighters.size()])
+		var ps: Array = sim.map["spawns"]
+		for f: FighterState in sim.fighters:
+			var k := BotBrain._pillar_at(ps, f.phys.px, f.phys.pz)
+			check(k >= 0 and f.phys.py > 10.0, "%s: %s starts on a pillar top" % [tag, f.name])
+			pils[k] = true
+			check(f.slot < 0, "%s: %s starts with only the spatula" % [tag, f.name])
+		check(pils.size() == 8, "%s: one fighter per pillar (%d)" % [tag, pils.size()])
+	if mode == "explosive":
+		check(c.hp_setting == 300.0, "%s: always 300 health (%s)" % [tag, c.hp_setting])
+		for f: FighterState in sim.fighters: check(f.weapon == "rocket" and f.hp >= 300.0 * f.cls_hp - 0.01, "%s: %s starts with a rocket and 300 health (%s %.0f)" % [tag, f.name, f.weapon, f.hp])
+	if mode == "lowg":
+		check(is_equal_approx(c.grav_setting, 0.15), "%s: drift gravity %s" % [tag, c.grav_setting])
+		for f: FighterState in sim.fighters: check(is_equal_approx(f.phys.grav_scale, 0.15), "%s: %s floats (grav %s)" % [tag, f.name, f.phys.grav_scale])
+	var handed := -1                     # Pillars: fighters holding a handed-out weapon right after the first handout
+	var gives := 0
+	var top_y := -1e9
 	var chaos_seq: Array = []
 	var chaos_bad := 0
 	var step_us := 0
@@ -130,6 +162,7 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 			world.cam.pitch = -0.12
 			var reach := 1.6 if c.wdata(p.weapon if p.weapon != "" else "spatula").get("type", "") == "melee" else 7.0
 			go = Vector2(0, 1) if d.length() > reach else Vector2.ZERO
+			if mode == "pillars" and d.length() > 4.0: go = Vector2.ZERO        # stay on the pillar: the bots hop over
 			fire = d.length() < reach + 1.5
 			if i % 41 == 0: st.press("kick")
 			if i % 67 == 0: st.press("spatula")
@@ -141,6 +174,8 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 		for f: FighterState in sim.fighters: dn += f.dash_n
 		if mode == "sudden" and not pushed and sim.elapsed() > 3.0 and not p.dead:   # off the edge: a fall eliminates too
 			p.phys.place(60.0, -30.0, 0.0); p.last_attacker = null; pushed = true
+		if opts == "shielded":
+			for f: FighterState in sim.fighters: f.invuln = 1.0
 		var us0 := Time.get_ticks_usec()
 		world.tick(FRAME)
 		step_us += Time.get_ticks_usec() - us0; steps += 1
@@ -161,6 +196,15 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 		for f: FighterState in sim.fighters: dn2 += f.dash_n
 		if dn2 < dn: dashes += 1
 		if shrinks: min_size = minf(min_size, float(r.shrink["size"]))
+		if mode == "pillars" and handed < 0 and sim.elapsed() > 1.4:
+			handed = 0
+			for f: FighterState in sim.fighters:
+				var has := false
+				for sl: Variant in f.slots: if sl != null: has = true
+				if has or f.dead or f.elim: handed += 1
+		if mode == "pillars" and not r.pil.is_empty(): gives = maxi(gives, int(floor((ModeRules.PIL_TIME - float(r.pil["t"]) - ModeRules.PIL_FIRST) / ModeRules.PIL_EVERY)) + 1)
+		if mode == "lowg":
+			for f: FighterState in sim.fighters: if not f.dead: top_y = maxf(top_y, f.phys.py)
 		for f: FighterState in sim.fighters:
 			for v in [f.phys.px, f.phys.py, f.phys.pz, f.hp]:
 				if not is_finite(v): nonfinite += 1
@@ -178,7 +222,19 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 	check(world._results != null, "%s: results panel shown after the end" % tag)
 	check(nonfinite == 0, "%s: state finite (%d bad)" % [tag, nonfinite])
 	if w != null:
-		if c.lives_mode:
+		if mode == "pillars":
+			var most := 0
+			for f: FighterState in sim.fighters: most = maxi(most, f.ko)
+			var timeout: bool = r.pil.get("timeout", false)
+			var alive := r.survivors().size()
+			if timeout: check(w.ko == most and absf(over_at - ModeRules.PIL_TIME) < 0.1, "%s: the clock ended it at %.1fs with the most K.O.s (%d of %d)" % [tag, over_at, w.ko, most])
+			else: check(not w.elim and alive <= 1, "%s: last one standing (%d left)" % [tag, alive])
+			print("PILLARS %-13s ended by %s at %.0fs, winner %s (%d K.O.s), %d left, handed at 1.4s %d/8, handouts %d, falls %d" % [tag,
+				"the clock" if timeout else "last one standing", over_at, w.name, w.ko, alive, handed, gives, _falls(sim)])
+			check(handed == 8, "%s: everyone got a weapon at 1.2 s (%d)" % [tag, handed])
+			if opts == "shielded" and alive >= 2: check(timeout, "%s: with %d still standing the clock ended it" % [tag, alive])
+			if timeout: check(gives == 18, "%s: 18 handouts in 3 minutes (%d)" % [tag, gives])
+		elif c.lives_mode:
 			var alive := 0
 			for f: FighterState in sim.fighters: if not f.elim: alive += 1
 			check(not w.elim, "%s: the winner is still in" % tag)
@@ -190,7 +246,10 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 			check(r.team_ko(1 - w.team) < r.limit, "%s: losing team below the limit" % tag)
 		else:
 			check(w.ko >= r.limit and r.limit > 0, "%s: winner reached %d K.O.s (%d)" % [tag, r.limit, w.ko])
-	if mode == "ninja": check(dashes > 0, "%s: someone dashed" % tag)
+	if mode == "ninja" or mode == "pillars": check(dashes > 0, "%s: someone dashed" % tag)
+	if mode == "lowg":
+		print("LOWG %-16s highest fighter %.1f m (dome ceiling %s)" % [tag, top_y, sim.map.get("ceil", "-")])
+		check(top_y > 4.0, "%s: fighters float high in drift gravity (%.1f m)" % [tag, top_y])
 	if mode == "sudden":
 		check(pushed and p.elim and int(p.st["falls"]) >= 1, "%s: the player's fall eliminated them" % tag)
 		check(spect_ok, "%s: the camera followed a survivor after the player was out" % tag)

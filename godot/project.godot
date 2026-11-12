@@ -22,6 +22,7 @@ Content="*res://autoload/content.gd"
 Settings="*res://autoload/settings.gd"
 FpsOverlay="*res://ui/fps_overlay.gd"
 Sfx="*res://autoload/audio.gd"
+Save="*res://autoload/save.gd"
 
 [audio]
 

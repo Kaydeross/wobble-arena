@@ -81,18 +81,26 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	fighters = combat.fighters
 	pickups.set_map(map)
 	match_start = combat.time
+	var rng_map := PracticeRange.is_range(map)     # Practice Range / Test Map: always its dummies (loadMap: m.range)
+	if rng_map:
+		bot_count = PracticeRange.dummy_count(map); combat.brawl = false
+		PracticeRange.place_rack(map_id, pickups)
 
 	player = _new_fighter(player_class, true)
 	player.name = "You"
 	controllers[player] = player_control
 	var pp: Array = map.get("player", [0, 0])
+	var rand_spawn: bool = map.get("randSpawn", false) and combat.spawns.size() > 0
+	if rand_spawn:                                    # Pillars: the player starts on a random pillar, facing the middle
+		var sp0: Array = combat.spawns[int(floor(combat.rng.next() * combat.spawns.size()))]
+		pp = [sp0[0], sp0[1], pp[2] if pp.size() > 2 else map.get("spawnY", 0.01)]
 	combat.place_at(player, float(pp[0]), float(pp[1]), float(pp[2]) if pp.size() > 2 else 0.01)
-	player.yaw = PI; player.face_yaw = PI
+	player.yaw = atan2(-float(pp[0]), -float(pp[1])) if rand_spawn else PI; player.face_yaw = player.yaw
 
 	# bots start in a different spot every match: bot spots + spawns, not next to the player, shuffled
 	var pool: Array = []
 	var seen := {}
-	for sp: Array in map.get("bots", []) + map.get("spawns", []):
+	for sp: Array in ([] if rng_map else map.get("bots", []) + map.get("spawns", [])):
 		var key := "%s,%s" % [sp[0], sp[1]]
 		if seen.has(key) or Vector2(float(sp[0]) - float(pp[0]), float(sp[1]) - float(pp[1])).length() < 5.0: continue
 		seen[key] = true
@@ -107,11 +115,12 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	var hats: Array = []
 	for h: String in (Combat.read_json("res://data/cosmetics.json") as Dictionary).get("hats", []):
 		if h != "none" and h != "crown": hats.append(h)
+	var map_bots: Array = map.get("bots", [])
 	for i in bot_count:
-		var b := _new_fighter(BOT_CLASS_ORDER[i % BOT_CLASS_ORDER.size()], false)
+		var b := _new_fighter(BOT_CLASS_ORDER[i % BOT_CLASS_ORDER.size()] if combat.brawl else "wobbler", false)   # setBotCfg: dummies are Wobblers
 		b.name = names[i % names.size()]
-		b.dmg_scale = float(difficulty.get("dmg", 0.45))
-		b.phys.speed = float(difficulty.get("speed", 4.4))
+		b.dmg_scale = float(difficulty.get("dmg", 0.45)) if combat.brawl else PracticeRange.DUMMY_DMG
+		b.phys.speed = float(difficulty.get("speed", 4.4)) if combat.brawl else PracticeRange.DUMMY_SPEED
 		looks[b] = {"skin": "none", "hat": hats[i % hats.size()] if hats.size() > 0 else "none", "color": BOT_COLORS[i % BOT_COLORS.size()]}
 		var brain := BotBrain.new(difficulty, diff)
 		brain.ai_t = combat.rng.range_f(0.5, 3); b.kick_cool = combat.rng.range_f(1, 4)
@@ -120,7 +129,11 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		var x := 0.0
 		var z := 0.0
 		var y := 0.01
-		if i < pool.size():
+		if rng_map and i < map_bots.size():         # range dummies stand on the map's bot spots in order and come back there
+			var hb: Array = map_bots[i]
+			x = float(hb[0]); z = float(hb[1]); y = float(hb[2]) if hb.size() > 2 else 0.01
+			b.home = [x, z]
+		elif i < pool.size():
 			var sp: Array = pool[i]
 			x = float(sp[0]); z = float(sp[1]); y = float(sp[2]) if sp.size() > 2 else float(map.get("spawnY", 0.01))
 		else:                             # extra bots: a spot on a ring around the middle

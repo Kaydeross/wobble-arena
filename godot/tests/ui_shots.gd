@@ -7,7 +7,13 @@ extends SceneTree
 ## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
 ## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
 ## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
-## teams (Team Deathmatch with the team scoreboard), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
+## teams (Team Deathmatch with the team scoreboard), locker-skin / locker-hat / locker-color / locker-emote /
+## locker-class (the Locker tabs, ui/locker.gd, with 1500 coins and a card picked), shop (the Shop, an outfit tried on),
+## shop-confirm (its Buy card), emote-wheel (a match with the emote wheel open while the player dances), results (the
+## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
+## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
+## after the first weapon handout), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
+## modes2-practice (the Practice Range: the player with a rack AK shooting down the range at the dummies).
 
 const FRAME := 1.0 / 60.0
 
@@ -28,11 +34,29 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
+	if shot.begins_with("locker") or shot.begins_with("shop"):
+		var sv: Node = root.get_node("Save")
+		sv.add_coins(1000)
+		for id in ["griddy", "dab", "flip"]: sv.buy("emote", id)
+		if shot.begins_with("shop"): sv.add_coins(700)
+		var m: Node = load("res://scenes/main.tscn").instantiate()
+		root.add_child(m)
+		var shop := shot.begins_with("shop")
+		var tab: String = "skin" if shop else shot.substr(7)
+		m.open_locker(shop, tab)
+		var pick: String = {"skin": "cowboy", "hat": "crown", "color": "", "emote": "griddy", "class": "bruiser"}.get(tab, "")
+		if shop: pick = "pirate"
+		if pick != "" and m.locker.cards.has(pick): m.locker._select_card(pick)
+		if shot == "shop-confirm": m.locker.act()
+		frames = 150
+		process_frame.connect(_wait)
+		return
 	if shot == "title-construction": _settings().set_value("mode", "construction")
+	if shot == "modes2-mode": shot = "newmodes-mode2"
 	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
 		if shot.begins_with("wizard") or shot.begins_with("newmodes"):   # a fixed setup so the shots are comparable
-			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm"}.get(shot, "classic")
-			for kv in [["offline_map", "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
+			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm", "newmodes-mode2": "pillars"}.get(shot, "classic")
+			for kv in [["offline_map", "pillars" if md == "pillars" else "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
 				_settings().set_value(kv[0], kv[1])
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
@@ -44,12 +68,12 @@ func _start() -> void:
 		elif shot.begins_with("wizard"):
 			m.open_wizard(["wizard-mode", "wizard-arena", "wizard-players", "wizard-character", "wizard-start"].find(shot))
 		elif shot.begins_with("newmodes"):
-			m.open_wizard(0 if shot == "newmodes-mode" else 2)
-			if shot == "newmodes-mode": _scroll_wizard = m.wizard
+			m.open_wizard(2 if shot == "newmodes-players" else 0)
+			if shot != "newmodes-players": _scroll_wizard = m.wizard
 		frames = 40
 		process_frame.connect(_wait)
 		return
-	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate"
+	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel"
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
 	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
@@ -63,6 +87,10 @@ func _start() -> void:
 		world.dyn_choice = "off"
 	if shot == "teams":                                  # Team Deathmatch: the TeamBoard (colour chips, YOU tag)
 		world.mode_id = "tdm"
+		world.dyn_choice = "off"
+	if shot.begins_with("modes2-"):                      # Pillars / Moon Drift / Practice Range
+		var mm: Array = {"modes2-pillars": ["pillars", "pillars"], "modes2-lowg": ["lowg", "craterdome"], "modes2-practice": ["practice", "practice"]}[shot]
+		world.mode_id = mm[0]; world.map_id = mm[1]
 		world.dyn_choice = "off"
 	world.auto_run = false
 	world.bot_count = 3
@@ -109,6 +137,9 @@ func _frame() -> void:
 	if shot == "spectate":
 		_spectate_frame(sim, p)
 		return
+	if shot.begins_with("modes2-"):
+		_modes2_frame(sim, p, st)
+		return
 	if i == 2:
 		sim.combat.pickup(p, "katana")
 		sim.combat.pickup(p, "smg")      # the last pickup is the active slot
@@ -138,6 +169,20 @@ func _frame() -> void:
 		e.index = 7; e.position = Vector2(sx + 40, vs.y * 0.62 - 50)
 		world.touch._input(e)
 		_touch(8, world.touch.button_rect(world.touch.button("fire"))[0], true)
+	if shot == "emote-wheel" and i == 300:
+		var sv: Node = root.get_node("Save")
+		sv.add_coins(3000)
+		for id in ["griddy", "dab", "flip", "floss", "robot", "galaxy"]: sv.buy("emote", id)
+		st.set_move("script", Vector2.ZERO); st.hold("script", "fire", false)
+		world.player_view.wobbler.play_emote("griddy")
+		world.emote_wheel.open_wheel(true)
+	if shot == "emote-wheel" and i > 300:
+		st.set_move("script", Vector2.ZERO); st.hold("script", "fire", false)
+	if shot == "results" and i == 340:
+		var sv: Node = root.get_node("Save")
+		sv.on_ko(true, false); sv.on_ko(true, false)
+		world._reward = sv.finish_match(true, "Classic", "Arena")
+		world._show_offline_results(true, "")
 	if shot == "pause" and i == 345:
 		world._toggle_pause()
 	if i == 352:
@@ -178,6 +223,42 @@ func _spectate_frame(sim: MatchSim, p: FighterState) -> void:
 		world.cam.yaw = lerp_angle(world.cam.yaw, atan2(-d.x, -d.y) + PI, 0.05)
 		world.cam.pitch = -0.2
 	if i == 400 or (i > 140 and sim.combat.rules.match_over):
+		process_frame.disconnect(_frame)
+		_save()
+
+## The new modes: Pillars looks across the ring at the next pillars, Moon Drift jumps and saves high in the air, the
+## Practice Range takes an AK and shoots down the range.
+func _modes2_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
+	if i == 2: world.hud.last_touch = false
+	var go := Vector2.ZERO
+	var fire := false
+	var done := false
+	match shot:
+		"modes2-pillars":
+			world.cam.yaw = lerp_angle(world.cam.yaw, atan2(-p.phys.px, -p.phys.pz) + 0.55, 0.1)
+			world.cam.pitch = -0.08
+			done = i == 330
+		"modes2-lowg":
+			if i == 2: sim.combat.pickup(p, "shotgun")
+			var tg := _nearest(p)
+			if tg:
+				var d := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
+				world.cam.yaw = lerp_angle(world.cam.yaw, atan2(d.x, d.y) + 0.3, 0.1)
+				go = Vector2(0, 0.6) if d.length() > 8.0 else Vector2.ZERO
+			world.cam.pitch = -0.25
+			st.hold("script", "jump", i > 150 and i < 160)
+			done = (i > 170 and p.phys.py > 6.0 and p.phys.vy < 0.5) or i == 600
+		"modes2-practice":
+			if i == 2: sim.combat.pickup(p, "ak")
+			world.cam.yaw = lerp_angle(world.cam.yaw, PI + 0.12, 0.2)
+			world.cam.pitch = -0.06
+			fire = i > 200 and i < 300
+			done = i == 290
+	st.set_move("script", go)
+	st.hold("script", "fire", fire)
+	world.tick(FRAME)
+	i += 1
+	if done:
 		process_frame.disconnect(_frame)
 		_save()
 
