@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Wobble Arena</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Wobble Arena: wobbly low-poly brawls with bots and friends. Free, plays in your browser.">
 <meta name="theme-color" content="#102b35">
 <meta property="og:title" content="Wobble Arena">
@@ -625,12 +625,12 @@
 #menu.homefx{--card:linear-gradient(160deg,rgba(26,66,82,.96),rgba(13,34,44,.97));--rim:inset 0 0 0 1px rgba(255,255,255,.09);
   background:radial-gradient(ellipse at center,rgba(16,43,53,0),rgba(16,43,53,.42)),linear-gradient(90deg,rgba(16,43,53,.62) 0%,rgba(16,43,53,.28) 34%,transparent 58%),linear-gradient(0deg,rgba(16,43,53,.5),transparent 24%);backdrop-filter:none;-webkit-backdrop-filter:none;display:flex}
 #menu.homefx #hbg{display:block;position:absolute;inset:0;overflow:hidden;pointer-events:none}
-#menu.homefx .card{width:100vw;max-width:none;height:100vh;max-height:none;border-radius:0;background:none;box-shadow:none;padding:0;animation:none;position:relative}
+#menu.homefx .card{width:100vw;max-width:none;height:100vh;height:100dvh;max-height:none;border-radius:0;background:none;box-shadow:none;padding:0;animation:none;position:relative}
 #menu.homefx .mbody{overflow:hidden;padding:0;margin:0}
 #menu.homefx .mhead{position:absolute;top:20px;right:28px;z-index:3}#menu.homefx .mhead h1,#menu.homefx .mhead p{display:none}
 #menu.homefx #coinchip{font-size:20px;font-weight:900;padding:7px 18px;border-radius:99px;background:rgba(255,207,90,.22);color:#ffe9a8;box-shadow:inset 0 0 0 2px rgba(255,207,90,.4)}
 #menu.homefx .mfoot,#menu.homefx #crumbs-top,#menu.homefx #greet{display:none}
-#menu.homefx #pg-home{display:grid;grid-template-columns:minmax(360px,41%) 1fr;height:100vh;box-sizing:border-box;padding:4vh 5vw 12vh;gap:2vw;position:relative}
+#menu.homefx #pg-home{display:grid;grid-template-columns:minmax(360px,41%) 1fr;height:100vh;height:100dvh;box-sizing:border-box;padding:4vh 5vw 12vh;gap:2vw;position:relative}
 #menu.homefx #hleft{display:flex;flex-direction:column;justify-content:center;min-height:0;grid-column:1}
 #menu.homefx #hlogo{display:block;font-size:min(9.6vw,clamp(48px,10.4vh,92px));line-height:.95;font-weight:900;letter-spacing:.03em;text-align:left;margin:0 0 1vh;color:#fff;text-shadow:0 6px 0 rgba(16,43,53,.55),0 0 40px rgba(255,207,90,.35)}
 #hlogo div{white-space:nowrap}#hlogo div+div{margin-left:3vw}
@@ -691,14 +691,14 @@
 #menu.storefx{--card:linear-gradient(160deg,rgba(26,66,82,.96),rgba(13,34,44,.97));--rim:inset 0 0 0 1px rgba(255,255,255,.09);
   background:radial-gradient(ellipse at center,rgba(16,43,53,.35),rgba(16,43,53,.7)),linear-gradient(90deg,rgba(16,43,53,.55),rgba(16,43,53,.2) 50%,rgba(16,43,53,.45)),linear-gradient(0deg,rgba(16,43,53,.5),transparent 24%);backdrop-filter:none;-webkit-backdrop-filter:none;display:flex}
 #menu.storefx #hbg{display:none}
-#menu.storefx .card{width:100vw;max-width:none;height:100vh;max-height:none;border-radius:0;background:none;box-shadow:none;padding:0;animation:none;position:relative}
+#menu.storefx .card{width:100vw;max-width:none;height:100vh;height:100dvh;max-height:none;border-radius:0;background:none;box-shadow:none;padding:0;animation:none;position:relative}
 #menu.storefx .mbody{overflow:hidden;padding:0;margin:0}
 #menu.storefx .mhead{position:absolute;top:20px;right:28px;z-index:3}#menu.storefx .mhead h1,#menu.storefx .mhead p{display:none}
 #menu.storefx #coinchip{font-size:20px;font-weight:900;padding:7px 18px;border-radius:99px;background:rgba(255,207,90,.22);color:#ffe9a8;box-shadow:inset 0 0 0 2px rgba(255,207,90,.4)}
 #menu.storefx #crumbs-top,#menu.storefx #crumbs,#menu.storefx #greet{display:none}
 #menu.homefx #netbanner,#menu.storefx #netbanner{position:absolute;top:14px;right:28px;z-index:5;margin:0;white-space:nowrap;background:rgba(40,34,12,.92);box-shadow:0 5px 0 rgba(0,0,0,.35)}
 #menu.homefx.inroom .mhead,#menu.storefx.inroom .mhead{top:70px}#menu.homefx.inroom #homesmall{top:72px}
-#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{display:grid;grid-template-columns:minmax(250px,31%) 1fr;grid-template-rows:auto minmax(0,1fr);column-gap:2.4vw;height:100vh;box-sizing:border-box;padding:3.6vh 5vw 11vh;animation:none}
+#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{display:grid;grid-template-columns:minmax(250px,31%) 1fr;grid-template-rows:auto minmax(0,1fr);column-gap:2.4vw;height:100vh;height:100dvh;box-sizing:border-box;padding:3.6vh 5vw 11vh;animation:none}
 #menu.storefx h2.step{grid-column:1/-1;margin:0 0 1.6vh;font-size:clamp(38px,8.4vh,72px);line-height:1;font-weight:900;letter-spacing:.05em;text-align:left;color:#fff;text-shadow:0 6px 0 rgba(16,43,53,.55),0 0 40px rgba(255,207,90,.35);display:flex;align-items:center;flex-wrap:wrap;gap:0 16px}
 #menu.storefx h2.step .ptitle>span{display:inline-block;animation:wob 1.7s ease-in-out infinite}#menu.storefx h2.step .ptitle>span:nth-child(even){color:#ffcf5a}
 #menu.storefx h2.step small{font-size:15px;font-weight:800;letter-spacing:.04em;opacity:1;margin:0;padding:6px 16px;border-radius:99px;background:var(--card);box-shadow:var(--rim);color:#ffe9a8;text-shadow:none;white-space:nowrap}
@@ -750,6 +750,7 @@
 #menu.storefx .mfoot #back{white-space:nowrap;flex:0 0 auto !important;width:auto}
 @media(max-width:900px){#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);overflow:auto;padding:3vh 4vw 13vh}#menu.storefx .vcol{grid-column:1;grid-row:2;flex-direction:row;flex-wrap:wrap;justify-content:center;overflow:visible}#menu.storefx #shopcv,#menu.storefx #lockcv{max-width:200px;max-height:none}#menu.storefx .vmain{grid-column:1;grid-row:3;overflow:visible}#menu.storefx .eshelf{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
 @media(prefers-reduced-motion:reduce){#menu.storefx h2.step .ptitle>span,#menu.storefx .ecard.r-mythic::before{animation:none !important}}
+body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
 </style>
 </head>
 <body>
@@ -7943,7 +7944,8 @@ el('sc-delete').onclick = () => {
   });
 };
 for (const id of ['sc-old', 'sc-new', 'sc-del', 'sc-rpw', 'au-code-in']) { el(id).onkeydown = e => e.stopPropagation(); el(id).onkeyup = e => e.stopPropagation(); }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cloudBeacon(); });
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cloudBeacon(); else if (actx && actx.state !== 'running') { try { actx.resume(); } catch (e) { /* x */ } } });
+for (const ev of ['pointerdown', 'touchend']) document.addEventListener(ev, () => { if (actx && actx.state !== 'running') { try { actx.resume(); } catch (e) { /* x */ } } }, { passive: true });     // a call or Siri can stop the sound: the next touch brings it back
 window.addEventListener('pagehide', cloudBeacon);
 async function verifyLogin() {                                       // at start-up: is the saved login still good, and is the cloud save newer than this device's copy?
   if (!acct.user) return;
