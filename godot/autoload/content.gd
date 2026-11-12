@@ -26,6 +26,14 @@ func reload() -> void:
 	crate_rates = load_json("crate-rates")
 	drops = load_json("drops")
 	maps = load_json("maps")
+	add_extra_maps(maps)
+
+## Levels the web export leaves out, added for the wizard: Lava Pillars (PillarsMap.lava_entry, from Pillars) and the
+## Sandbox arena 'custom' (MapBuilder.custom_map with the defaults; MapBuilder.build("custom") uses the saved layout).
+static func add_extra_maps(m: Dictionary) -> Dictionary:
+	if m.has("pillars") and not m.has("pillars2"): m["pillars2"] = PillarsMap.lava_entry(m["pillars"])
+	if not m.has("custom"): m["custom"] = MapBuilder.custom_map({})
+	return m
 
 ## One data file as a Dictionary ({} and an error if missing or invalid). Static so headless tests can use it without the autoload.
 static func load_json(file_name: String) -> Dictionary:

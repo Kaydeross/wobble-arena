@@ -448,6 +448,7 @@ func play_offline() -> void:
 	world.mode_id = wizard.mode_id
 	world.bot_count = wizard.bots
 	world.difficulty = wizard.diff
+	world.build_mode = wizard.mode_id == "sandbox"     # Sandbox opens the arena in build mode (ui/build_hud.gd)
 	get_tree().change_scene_to_node(world)
 
 # ---------------- hosting and the lobby ----------------

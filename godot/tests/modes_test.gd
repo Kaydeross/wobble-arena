@@ -10,7 +10,8 @@ extends SceneTree
 ## (10 fighters, 5 v 5 to 50, random events that end cleanly; prints the step time).
 ## Pillars (8 fighters on the eight pillars, a weapon for everyone at 1.2 s and every 10 s, one life: last one standing
 ## or the most K.O.s when the 3-minute clock ends; the scripted player stays on its pillar), Explosive (300 health,
-## rocket start, to 5) and Moon Drift (gravity 0.15 on every fighter, people float high, to 5).
+## rocket start, to 5), Lava Pillars (pillars2: the same, over a lava lake at PillarsMap.LAVA_Y that ends a faller
+## there, not at -25), Sandbox (a free for all on the custom arena to ModeRules.SANDBOX_LIMIT) and Moon Drift (gravity 0.15 on every fighter, people float high, to 5).
 
 const FRAME := 1.0 / 30.0           ## coarse frames: the sim still steps at 1/120
 ## [mode, map, K.O. limit (-1 = preset), hp, max simulated minutes, options ("shielded": nobody takes damage, so only
@@ -35,6 +36,8 @@ const CASES := [
 	["chaos", "arenaxl", -1, 50.0, 20.0],
 	["pillars", "pillars", -1, 100.0, 3.6],
 	["pillars", "pillars", -1, 100.0, 3.6, "shielded"],
+	["pillars", "pillars2", -1, 100.0, 3.6],
+	["sandbox", "custom", -1, 100.0, 8.0],
 	["explosive", "blast", 5, 100.0, 8.0],
 	["lowg", "craterdome", 5, 100.0, 10.0],
 ]
@@ -132,6 +135,13 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float, opt
 	if mode == "lowg":
 		check(is_equal_approx(c.grav_setting, 0.15), "%s: drift gravity %s" % [tag, c.grav_setting])
 		for f: FighterState in sim.fighters: check(is_equal_approx(f.phys.grav_scale, 0.15), "%s: %s floats (grav %s)" % [tag, f.name, f.phys.grav_scale])
+	var lava := map == "pillars2"
+	var low_y := 1e9                     # Lava Pillars: lowest fighter still in play (nobody swims below the lake)
+	if lava:
+		check(is_equal_approx(sim.ring_out_y, PillarsMap.LAVA_Y) and world.map_node.get_node_or_null("LavaLake") != null, "%s: the lava lake is there and ends you (ring-out at %.1f)" % [tag, sim.ring_out_y])
+		check(str(sim.map.get("name", "")) == "Lava Pillars" and (sim.map["geometry"]["boxes"] as Array).size() == PillarsMap.boxes().size(), "%s: Lava Pillars built from the Pillars layout" % tag)
+	if mode == "sandbox":
+		check(r.limit == ModeRules.SANDBOX_LIMIT and sim.map.get("only", "") == "sandbox", "%s: a test run to %d on the custom arena" % [tag, r.limit])
 	var handed := -1                     # Pillars: fighters holding a handed-out weapon right after the first handout
 	var gives := 0
 	var top_y := -1e9
@@ -205,6 +215,9 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float, opt
 		if mode == "pillars" and not r.pil.is_empty(): gives = maxi(gives, int(floor((ModeRules.PIL_TIME - float(r.pil["t"]) - ModeRules.PIL_FIRST) / ModeRules.PIL_EVERY)) + 1)
 		if mode == "lowg":
 			for f: FighterState in sim.fighters: if not f.dead: top_y = maxf(top_y, f.phys.py)
+		if lava:
+			if i == 200 and not p.dead and not p.elim: p.phys.place(0.0, 2.0, 0.0); p.last_attacker = null    # into the lava
+			for f: FighterState in sim.fighters: if not f.dead and not f.elim: low_y = minf(low_y, f.phys.py)
 		for f: FighterState in sim.fighters:
 			for v in [f.phys.px, f.phys.py, f.phys.pz, f.hp]:
 				if not is_finite(v): nonfinite += 1
@@ -247,6 +260,10 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float, opt
 		else:
 			check(w.ko >= r.limit and r.limit > 0, "%s: winner reached %d K.O.s (%d)" % [tag, r.limit, w.ko])
 	if mode == "ninja" or mode == "pillars": check(dashes > 0, "%s: someone dashed" % tag)
+	if lava:
+		print("LAVA %-16s lowest fighter in play %.1f m, lake %.1f m, falls %d, player out %s" % [tag, low_y, PillarsMap.LAVA_Y, _falls(sim), p.elim])
+		check(low_y >= PillarsMap.LAVA_Y - 0.6, "%s: nobody stays in play below the lava (%.1f)" % [tag, low_y])
+		check(p.elim and int(p.st["falls"]) >= 1, "%s: the player dropped into the lava and was out" % tag)
 	if mode == "lowg":
 		print("LOWG %-16s highest fighter %.1f m (dome ceiling %s)" % [tag, top_y, sim.map.get("ceil", "-")])
 		check(top_y > 4.0, "%s: fighters float high in drift gravity (%.1f m)" % [tag, top_y])

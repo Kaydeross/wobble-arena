@@ -69,6 +69,7 @@ func _run() -> void:
 	world.free()
 	await process_frame
 	await _team_layout()
+	await _build_layout()
 	SafeArea.override = []
 	print("HUD ok" if fails == 0 else "HUD checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
@@ -245,3 +246,61 @@ func _team_layout() -> void:
 		print("HUD teams %s checked (%s)" % [mode, ", ".join(keys)])
 		world.free()
 		await process_frame
+
+## Sandbox build mode (ui/build_hud.gd): the palette, its status line and the open Style panel stay inside the safe area,
+## apart from each other, the touch buttons, the pause and emote buttons and a toast, on a phone (1170 x 540 canvas)
+## and a tablet (4:3) shape, right- and left-handed; every tap target is at least 44 pt (60 canvas units).
+func _build_layout() -> void:
+	var win0 := root.size
+	for shape: Vector2i in [Vector2i(1170, 540), Vector2i(720, 540)]:
+		root.size = shape
+		var world: Node = load("res://world/world.tscn").instantiate()
+		world.auto_run = false
+		world.build_mode = true
+		world.rng_seed = 5
+		root.add_child(world)
+		await process_frame
+		var bh: BuildHud = world.build_hud
+		check(bh != null, "build mode palette")
+		if bh == null:
+			world.free(); continue
+		for lefty in [false, true]:
+			_settings().set_value("touch_lefty", lefty)
+			bh.toggle_style(true)
+			world.hud.toast("Blocks cleared")
+			world.tick(FRAME)
+			await process_frame
+			world.tick(FRAME)
+			await process_frame
+			bh.layout_ui()
+			var tag := "%dx%d %s" % [int(bh.get_viewport_rect().size.x), int(bh.get_viewport_rect().size.y), "lefty" if lefty else "right"]
+			var vs: Vector2 = bh.get_viewport_rect().size
+			var ins: Array = SafeArea.override
+			var safe := Rect2(Vector2(ins[0], ins[1]), vs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
+			var touch: Control = world.touch
+			var rects := {"Palette": bh.bar.get_global_rect(), "Status": bh.status.get_global_rect(), "Style": bh.panel.get_global_rect(),
+				"Pause": touch.pause_rect(), "Emote": world.emote_wheel.button_rect()}
+			var tst: Control = world.hud.get_node("Toast")
+			if tst.visible: rects["Toast"] = Rect2(tst.position, tst.size * tst.scale)
+			for b: Array in touch.BUTTONS:
+				if not touch.visible_buttons().has(b[0]): continue
+				var r: Array = touch.button_rect(b)
+				rects["btn_" + str(b[0])] = Rect2(r[0] - Vector2(r[1], r[1]), Vector2(r[1], r[1]) * 2.0)
+			for k: String in ["Palette", "Status", "Style"]:
+				check(safe.grow(0.5).encloses(rects[k]), "build %s %s %s inside safe %s" % [tag, k, rects[k], safe])
+			var keys := rects.keys()
+			for i in keys.size():
+				for j in range(i + 1, keys.size()):
+					if keys[i].begins_with("btn_") and keys[j].begins_with("btn_"): continue
+					if keys[i] in ["Pause", "Emote"] and keys[j] in ["Pause", "Emote"]: continue
+					check(not rects[keys[i]].intersects(rects[keys[j]]), "%s: %s %s overlaps %s %s" % [tag, keys[i], rects[keys[i]], keys[j], rects[keys[j]]])
+			var taps: Array = bh.tool_bs.values() + bh.color_bs.values() + bh.size_bs.values() + bh.height_bs.values()
+			for b: Button in taps:
+				var r2 := b.get_global_rect()
+				check(r2.size.x >= BuildHud.MIN_TAP - 0.5 and r2.size.y >= BuildHud.MIN_TAP - 0.5, "%s %s %s at least 44 pt" % [tag, b.name, r2.size])
+			print("HUD build %s checked (%s)" % [tag, ", ".join(keys)])
+			bh.toggle_style(false)
+		_settings().set_value("touch_lefty", false)
+		world.free()
+		await process_frame
+	root.size = win0

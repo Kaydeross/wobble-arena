@@ -170,6 +170,20 @@ func apply_blob(d: Variant) -> bool:
 	changed.emit()
 	return true
 
+## The Sandbox arena (SandboxLayout): the blob's cfg (web cfg.custom, cfg.blocks; Godot cfg.blockCols). {} if none.
+func sandbox_cfg() -> Dictionary:
+	var c: Variant = extra.get("cfg")
+	return (c as Dictionary).duplicate(true) if c is Dictionary else {}
+
+## Stores the Sandbox arena (SandboxLayout.to_cfg(): custom, blocks, blockCols) in the blob's cfg, keeping the rest of
+## cfg as the web game wrote it, then saves (the cloud save follows `changed`).
+func set_sandbox(d: Dictionary) -> void:
+	var c: Dictionary = (extra.get("cfg") as Dictionary).duplicate(true) if extra.get("cfg") is Dictionary else {}
+	for k: String in ["custom", "blocks", "blockCols"]:
+		if d.has(k): c[k] = d[k]
+	extra["cfg"] = c
+	_commit()
+
 ## Nothing played or bought yet (a new device): a cloud save can replace it without asking.
 func is_fresh() -> bool:
 	return coins == START_COINS and owned == ["wobble"] and skins.size() == 1 + LockerData.free_skins().size() \

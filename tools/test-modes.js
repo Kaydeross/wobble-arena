@@ -40,7 +40,7 @@ let bad = 0;
 const only = process.env.MODES_ONLY ? ['--only=' + process.env.MODES_ONLY] : [];
 for (const [name, args, re] of [
   ['parity', ['res://tests/modes_parity_test.gd', '--', path.join(__dirname, '..', 'shared'), tf], /^(MODES|FIRST)/],
-  ['matches', ['res://tests/modes_test.gd', '--', '--no-save', ...only], /^(MATCH|SUDDEN|CHAOS|PILLARS|LOWG|NODES|MODES|FAIL)/],
+  ['matches', ['res://tests/modes_test.gd', '--', '--no-save', ...only], /^(MATCH|SUDDEN|CHAOS|PILLARS|LAVA|LOWG|NODES|MODES|FAIL)/],
 ]) {
   const r = spawnSync(GODOT, ['--headless', '--path', GD, '--script', ...args], { encoding: 'utf8', timeout: 1200000, maxBuffer: 256 * 1024 * 1024 });
   const out = (r.stdout || '') + (r.stderr || '');
