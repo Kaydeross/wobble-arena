@@ -1,8 +1,10 @@
 extends Control
-## Title scene: the logo, one big PLAY (opens the offline setup wizard, ui/setup_wizard.gd: Arena -> Game type ->
-## Players -> Your fighter -> START), a smaller "Play online" (the online panel: server address, room code, name, Join
-## as a guest with GuestSession, and a minimal login: POST /api/login, token kept in Settings), the guest/status chip,
-## a gear for the settings sheet (Show FPS) and a tip line. Laid out with containers inside a safe-area
+## Title scene, readable in two seconds: the logo, one big "Play" (offline, against computer players: opens the setup
+## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), one secondary "Play online with
+## friends" (its sub line says it needs internet, or the room state while connected; it opens the online panel: server
+## address, room code, name, Join as a guest with GuestSession, and a minimal login: POST /api/login, token kept in
+## Settings), a chip saying who you are ("Guest" or "Signed in as NAME"), a gear for the settings sheet (Show FPS) and
+## a small tip line. Laid out with containers inside a safe-area
 ## MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks 852x393, 1170x540,
 ## 1280x720 and 390x844: the title, the online panel, every wizard page and the settings sheet).
 ## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
@@ -12,11 +14,11 @@ const WORLD := "res://world/world.tscn"
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
 const TIPS := [
 	"Tip: push the stick to the edge to sprint.",
-	"Tip: knock fighters off the edge for a K.O.",
+	"Tip: knock other players off the edge to score.",
 	"Tip: crates drop weapons, heals and power-ups.",
 	"Tip: kick and shove work even without a weapon.",
-	"Tip: press F3 (or tap with three fingers) to show the FPS meter.",
 ]
+const ONLINE_SUB := "Needs internet · join a room code"
 
 ## Set by the world when it hands an active session back (host migration) and/or a message to show.
 var session: GuestSession = null
@@ -25,9 +27,7 @@ var notice := ""
 const O := "Safe/Col/Body/Online/Box/"
 @onready var safe: MarginContainer = $Safe
 @onready var col: VBoxContainer = $Safe/Col
-@onready var chip: Label = $Safe/Col/Top/GuestChip/Row/Status
 @onready var who: Label = $Safe/Col/Top/GuestChip/Row/Who
-@onready var dot: Panel = $Safe/Col/Top/GuestChip/Row/Dot
 @onready var gear: Button = $Safe/Col/Top/Gear
 @onready var home: Control = $Safe/Col/Body/Home
 @onready var online_panel: Control = $Safe/Col/Body/Online
@@ -78,7 +78,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(apply_safe_area)
 	apply_safe_area()
 	if Tier.is_pc():
-		play.grab_focus.call_deferred()   # keyboard / gamepad start on PLAY
+		play.grab_focus.call_deferred()   # keyboard / gamepad start on Play
 
 func _process(dt: float) -> void:
 	if session != null:
@@ -88,13 +88,13 @@ func _process(dt: float) -> void:
 func maps_for(mode: String) -> Array:
 	return SetupWizard.maps_for(mode)
 
-## The title (PLAY / Play online) or the online panel.
+## The title (Play / Play online with friends) or the online panel.
 func show_tab(online: bool) -> void:
 	home.visible = not online
 	online_panel.visible = online
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
 
-## The setup wizard (page 0 = Arena) instead of the title column.
+## The setup wizard (page 0 = Game type) instead of the title column.
 func open_wizard(p: int = 0) -> void:
 	col.visible = false
 	wizard.visible = true
@@ -106,8 +106,9 @@ func close_wizard() -> void:
 	_play_sub()
 	if Tier.is_pc(): play.grab_focus.call_deferred()
 
+## Play keeps one plain sub line; the last setup is its tooltip (the wizard opens on it anyway).
 func _play_sub() -> void:
-	($Safe/Col/Body/Home/Play/Stack/Sub as Label).text = wizard.summary_line()
+	play.tooltip_text = "Last time: " + wizard.summary_line()
 
 func show_settings(on: bool) -> void:
 	sheet.visible = on
@@ -191,19 +192,14 @@ func _on_setting(key: String, v: Variant) -> void:
 	if key == "show_fps" and fps_toggle.button_pressed != bool(v):
 		fps_toggle.set_pressed_no_signal(bool(v))
 
-## Status line in the online panel; the chip at the top shows it short, with a coloured dot.
+## Status line in the online panel; while connected the Play online button's sub line shows it too.
 func _status(t: String) -> void:
 	status.text = t
 	status.tooltip_text = t
 	var on := session != null and session.is_active()
-	chip.text = t if on else "Offline"
-	_dot(UiTheme.GOOD if on else UiTheme.MUTED)
-
-func _dot(c: Color) -> void:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = c
-	sb.set_corner_radius_all(5)
-	dot.add_theme_stylebox_override("panel", sb)
+	var sub: Label = $Safe/Col/Body/Home/Online/Stack/Sub
+	sub.text = ("Connected · " + t) if on else ONLINE_SUB
+	sub.tooltip_text = sub.text
 
 ## Safe-area insets (notch, home indicator) plus our own padding.
 func apply_safe_area() -> void:
@@ -249,7 +245,8 @@ func _refresh_login() -> void:
 	_ui["logout"].visible = logged
 	for k in ["user", "pass", "login"]:
 		_ui[k].visible = not logged
-	who.text = u.to_upper().substr(0, 12) if logged and u != "" else "GUEST"
+	who.text = ("Signed in as " + u.substr(0, 12)) if logged and u != "" else "Guest"
+	who.tooltip_text = "Sign in from Play online with friends" if not logged else "Signed in: " + u
 
 func _refresh_buttons() -> void:
 	var on := session != null and session.is_active()
