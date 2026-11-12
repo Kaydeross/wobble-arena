@@ -1,12 +1,15 @@
 extends SceneTree
 ## Title-screen layout test (headless): instances scenes/main.tscn in a viewport the size of the stretched canvas
 ## for several window sizes (iPhone landscape 852x393, 1170x540, 1280x720, iPhone portrait 390x844), with and
-## without phone safe-area insets, on every screen (title, online panel, settings sheet, the five setup-wizard pages),
+## without phone safe-area insets, on every screen (title, online panel, settings sheet, the host-a-room sheet, the
+## lobby sheet, the five setup-wizard pages),
 ## and checks that the controls stay inside the safe area, do not overlap each other, can be reached (card grids
 ## scroll), that no label is squeezed below its text size and that the title / wizard frame labels are not cut off
 ## ("…"). Then drives the wizard (step names, navigation, saved choices, arena moved by a game type, team bot counts),
 ## the card grid scrolling (mouse drag and touch drag scroll + fling and never pick a card, a tap picks one, the
 ## selected card is scrolled into view) and the character stage (one SubViewport, renders only on its page).
+## The Locker (5 tabs) and the Shop (2 tabs) get the same layout checks (ui/locker.gd: header, preview, tabs, card
+## grid, footer), and the title's Locker / Shop row.
 ##   godot --headless --path godot --script res://tests/ui_layout_test.gd -- --no-save   (npm run test:godot-ui)
 
 const BASE := Vector2(1170, 540)   ## project.godot viewport size (stretch canvas_items, aspect expand)
@@ -18,18 +21,30 @@ const CASES := [
 	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0]],
 ]
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
-const SCREENS := ["title", "online", "settings", "w0", "w1", "w2", "w3", "w4"]
+const SCREENS := ["title", "online", "settings", "host", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1"]
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
-const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online"]
+const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop"]
 const OB := "Safe/Col/Body/Online/Box/"
 ## the online panel (back, server, room, name, join, login fields, status, roster): also must not overlap each other
-const ONLINE := [OB + "Head/Back", OB + "ServerRow/Server", OB + "RoomRow/Room", OB + "RoomRow/Name", OB + "RoomRow/Join",
+const ONLINE := [OB + "Head/Back", OB + "ServerRow/Server", OB + "RoomRow/Room", OB + "RoomRow/Name", OB + "RoomRow/Join", OB + "RoomRow/Host",
 	OB + "AcctRow/User", OB + "AcctRow/Pass", OB + "AcctRow/Login", OB + "Status", OB + "Roster"]
 const SHEET := ["Sheet/Center/Card/Box/Fps", "Sheet/Center/Card/Box/Done"]
+const HB := "HostSheet/Center/Card/Box/"
+## host a room: name, who can join, seats, bots, Cancel / Create room
+const HOSTS := [HB + "Title", HB + "RoomName", HB + "Vis/P0", HB + "Vis/P1", HB + "Max/P2", HB + "Max/P8", HB + "Bots/P0", HB + "Bots/P7",
+	HB + "Hint", HB + "Buttons/Cancel", HB + "Buttons/Create"]
+const LB := "Lobby/Center/Card/Box/"
+## the lobby: room, code, players, info, Leave / Start
+const LOBBY := [LB + "Title", LB + "Code", LB + "Players", LB + "Info", LB + "Buttons/Leave", LB + "Buttons/Start"]
 const W := "Safe/Wizard/"
 ## wizard frame: header, page, footer buttons (must not overlap each other)
 const WFRAME := [W + "Head/Title", W + "Head/Step", W + "Pages", W + "Foot/Back", W + "Foot/Steps", W + "Foot/Next"]
+
+const L := "Safe/Locker/"
+## Locker / Shop frame (must not overlap each other); the tab buttons are added per mode
+const LFRAME := [L + "Head/Title", L + "Head/Sub", L + "Head/Coins", L + "Head/Switch", L + "Body/Preview", L + "Body/Right/Tabs",
+	L + "Body/Right/Frame", L + "Foot/Back", L + "Foot/Action"]
 
 const STEP_TEXT := ["1 Game type", "2 Arena", "3 Players", "4 Character", "5 Start"]
 
@@ -80,11 +95,29 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	vp.add_child(main)
 	var wiz := scr.begins_with("w")
-	if scr == "online":
+	var lock := scr.begins_with("l") or scr.begins_with("s") and scr != "settings"
+	if lock:
+		var shop := scr.begins_with("s")
+		main.open_locker(shop)
+		main.locker._show_tab(main.locker.tabs()[int(scr.substr(1))])
+	elif scr == "online":
 		main.show_tab(true)
 		main.get_node(OB + "Roster").text = "In the room: Alice, Bob, Carol"
 	elif scr == "settings":
 		main.show_settings(true)
+	elif scr == "host":
+		main.show_tab(true)
+		main.show_host(true)
+	elif scr == "lobby":
+		main.show_tab(true)
+		main.show_lobby(true)
+		main.get_node(LB + "Code").text = "Room code ABCDE"
+		main.get_node(LB + "Info").text = "8 / 8 players · empty seats get bots"
+		for i in 8:
+			var pl := Label.new()
+			pl.text = "Wobbly name %d%s" % [i, "  (host)" if i == 0 else ""]
+			pl.add_theme_font_size_override("font_size", 20)
+			main.get_node(LB + "Players").add_child(pl)
 	elif wiz:
 		main.open_wizard(int(scr.substr(1)))
 	for i in 4:
@@ -93,16 +126,24 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	var safe := Rect2(Vector2(ins[0], ins[1]), cs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	var inside: Array = []
 	var groups: Array = []      ## lists of paths that must not overlap each other
-	if wiz:
+	if lock:
+		inside = LFRAME.duplicate()
+		for b in main.locker.tab_row.get_children(): inside.append(L + "Body/Right/Tabs/" + b.name)
+		groups.append(LFRAME)
+		groups.append(inside.slice(LFRAME.size()))
+	elif wiz:
 		inside = WFRAME.duplicate()
 		for b in main.wizard.step_bs: inside.append(W + "Foot/Steps/" + b.name)
 		groups.append(WFRAME)
 		groups.append(inside.slice(WFRAME.size()))
 	else:
-		inside = BLOCKS + (ONLINE if scr == "online" else HOME)
+		var on_panel := scr in ["online", "host", "lobby"]
+		inside = BLOCKS + (ONLINE if on_panel else HOME)
 		groups.append(BLOCKS)
 		if scr == "online": groups.append(ONLINE)
-		else: groups.append(HOME)
+		elif not on_panel: groups.append(HOME)
+		if scr == "host": inside = inside + HOSTS; groups.append(HOSTS)
+		if scr == "lobby": inside = inside + LOBBY; groups.append(LOBBY)
 		if scr == "settings": inside = inside + SHEET; groups.append(SHEET)
 	var rects := {}
 	for p: String in inside:
@@ -114,11 +155,19 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		check(safe.grow(0.5).encloses(r), "%s %s %s inside the safe area %s" % [tag, p, r, safe])
 	for g: Array in groups: _no_overlap(rects, g, tag)
 	if wiz: _page(main, int(scr.substr(1)), safe, tag)
+	if lock: _locker_grid(main.locker, safe, tag)
 	# the whole column fits (containers would otherwise overflow past the bottom)
-	var col: Control = main.wizard if wiz else main.get_node("Safe/Col")
+	var col: Control = main.wizard if wiz else main.locker if lock else main.get_node("Safe/Col")
 	check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 	_labels_fit(main, tag)
-	if wiz:
+	if lock:
+		_not_cut(main.locker.get_node("Head"), tag)
+		_not_cut(main.locker.get_node("Foot"), tag)
+		check(main.locker.title_l.text == ("Shop" if scr.begins_with("s") else "Locker"), "%s title says %s" % [tag, main.locker.title_l.text])
+		for b: Button in main.locker.tab_row.get_children():
+			check(b.size.x + 0.5 >= b.get_minimum_size().x, "%s tab '%s' squeezed" % [tag, b.text])
+		check(main.locker.preview_tr.get_global_rect().size.y >= 110.0, "%s preview big enough (%s)" % [tag, main.locker.preview_tr.get_global_rect().size])
+	elif wiz:
 		_not_cut(main.wizard.get_node("Head"), tag)
 		_not_cut(main.wizard.get_node("Foot"), tag)
 		if scr == "w4": _not_cut(main.wizard.pages[4], tag)
@@ -177,6 +226,28 @@ func _page(main: Control, p: int, safe: Rect2, tag: String) -> void:
 	for i in free.size():
 		for j in range(i + 1, free.size()):
 			check(not (free[i] as Control).get_global_rect().grow(-0.5).intersects((free[j] as Control).get_global_rect().grow(-0.5)), "%s %s overlaps %s" % [tag, free[i].name, free[j].name])
+
+## The Locker / Shop card grid: no horizontal overflow, cards apart and big enough to tap, the first row visible, every
+## card reachable by scrolling.
+func _locker_grid(lk: Control, safe: Rect2, tag: String) -> void:
+	var sc: ScrollContainer = lk.scroll
+	var g: GridContainer = lk.grid
+	var sr := sc.get_global_rect()
+	check(safe.grow(0.5).encloses(sr), "%s locker scroll %s inside the safe area" % [tag, sr])
+	check(g.get_combined_minimum_size().x <= sr.size.x + 0.5, "%s locker grid min width %.0f fits %.0f" % [tag, g.get_combined_minimum_size().x, sr.size.x])
+	var cards: Array = g.get_children()
+	check(cards.size() == lk.items(lk.tab).size() and cards.size() > 0, "%s locker %s has a card per item (%d)" % [tag, lk.tab, cards.size()])
+	var bottom := 0.0
+	for i in cards.size():
+		var c: Control = cards[i]
+		var r := c.get_global_rect()
+		bottom = maxf(bottom, c.position.y + c.size.y)
+		check(r.position.x >= sr.position.x - 0.5 and r.end.x <= sr.end.x + 0.5, "%s locker card %s within the scroll width" % [tag, c.name])
+		check(c.size.y >= 90.0 and c.size.x >= 120.0, "%s locker card %s big enough to tap (%s)" % [tag, c.name, c.size])
+		if i < g.columns: check(sr.grow(0.5).encloses(r), "%s locker first-row card %s visible" % [tag, c.name])
+		if i + 1 < cards.size():
+			check(not r.grow(-0.5).intersects((cards[i + 1] as Control).get_global_rect().grow(-0.5)), "%s locker cards %s and %s overlap" % [tag, c.name, cards[i + 1].name])
+	check(bottom - sc.size.y <= maxf(0.0, g.size.y - sc.size.y) + 0.5, "%s every locker card reachable" % tag)
 
 ## Wizard behaviour: step names, navigation, remembered choices, the arena moving when a game type does not allow it,
 ## team bot counts; then scrolling and the character stage.

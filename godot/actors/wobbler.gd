@@ -92,6 +92,17 @@ var _time: float = 0.0
 var _state_flash := false
 var _stiff_override := -1.0
 
+# --- emotes (web Fighter.emote + emotePose; actors/emote_poses.gd). Visual only: play_emote(id) / stop_emote().
+var emote_id := ""                    ## the emote playing ("" = none)
+var emote_t := 0.0
+var emote_dur := 0.0
+var e_yaw := 0.0                      ## this frame's emote offsets (web eYaw, eLX, eLZ, eHop, ePitch)
+var e_lx := 0.0
+var e_lz := 0.0
+var e_hop := 0.0
+var e_pitch := 0.0
+var _e_crouch := 0.0
+
 # --- ragdoll overlay (docs/RAGDOLL.md): "classic" | "ragdoll". Presentation only: Fighter reads the gameplay points
 # from the classic pose, then overlay() re-poses the visible nodes; the next animate() restores the classic pose first.
 var rig_mode: String = "classic"
@@ -371,10 +382,53 @@ func set_weapon(key: Variant) -> void:
 		var holder := _group(hand, Vector3.ZERO, "W_" + k)
 		holder.add_child(WeaponModels.build(k, _make_mat))
 		_weapon_nodes[k] = holder
-	for wk in _weapon_nodes:
-		_weapon_nodes[wk].visible = wk == k
+	_show_weapon()
 	var wd: Dictionary = WobblerLooks.data("weapons").get(k, {})
 	stiff = float(wd.get("stiff", 25.0)) if k != "" else 25.0
+
+
+## Emotes put the weapon away (web build 60): the held weapon shows only when no emote plays.
+func _show_weapon() -> void:
+	for wk in _weapon_nodes:
+		_weapon_nodes[wk].visible = wk == weapon and emote_id == ""
+
+
+# ================================================================ emotes
+## Starts emote `id` (data/extra/locker.json EMOTES). false when it cannot play now (web playEmote: not while down,
+## dead, trapped, swinging or kicking) or the id is unknown.
+func play_emote(id: String) -> bool:
+	var e := LockerData.emote(id)
+	if e.is_empty() or dead or down_t > 0.0 or trap or swing >= 0.0 or kick_t >= 0.0:
+		return false
+	emote_id = id
+	emote_t = 0.0
+	emote_dur = float(e.get("dur", 2.0))
+	_show_weapon()
+	return true
+
+
+func stop_emote() -> void:
+	if emote_id == "":
+		return
+	emote_id = ""
+	_show_weapon()
+
+
+func is_emoting() -> bool:
+	return emote_id != ""
+
+
+## This frame's emote pose ({} when none). It ends when its time is up, or on a fall, K.O., net, swing or kick, or
+## when the fighter walks off (the web game slows you down instead; this port keeps gameplay untouched).
+func _emote_pose(dt: float) -> Dictionary:
+	if emote_id == "":
+		return {}
+	emote_t += dt
+	var walks := wish.length_squared() > 0.09 and emote_t > 0.3
+	if emote_t >= emote_dur or dead or down_t > 0.0 or trap or swing >= 0.0 or kick_t >= 0.0 or walks:
+		stop_emote()
+		return {}
+	return EmotePoses.pose(emote_id, emote_t, emote_dur, yaw)
 
 
 # ================================================================ state in
@@ -477,9 +531,16 @@ func animate(dt: float) -> void:
 	lean.step(dt, 95.0 / wob, 0.28, -a_f * 0.45, -a_r * 0.45, clampf(v_f * 0.03, -0.45, 0.45), clampf(v_r * 0.03, -0.4, 0.4))
 	head.step(dt, 60.0 / wob, 0.2, -a_f * 0.9, -a_r * 0.9)
 
-	# poses that steer the aiming arm: melee swing (meleeTick), falling over, lying trapped
+	# poses that steer the aiming arm: emote, melee swing (meleeTick), falling over, lying trapped
 	var st := stiff if _stiff_override < 0.0 else _stiff_override
 	var target := aim_target
+	var ep := _emote_pose(dt)
+	if not ep.is_empty() and ep["aim"] != null and (ep["aim"] as Vector3).length_squared() > 1e-8:
+		target = (ep["aim"] as Vector3).normalized()
+		st = 70.0
+	e_yaw = ep.get("yaw", 0.0); e_lx = ep.get("lx", 0.0); e_lz = ep.get("lz", 0.0)
+	e_hop = ep.get("hop", 0.0); e_pitch = ep.get("pitch", 0.0)
+	_e_crouch += (float(ep.get("crouch", 0.0)) - _e_crouch) * minf(1.0, dt * 14.0)
 	if swing >= 0.0 and not dead and down_t <= 0.0:
 		var ss := sin(swing_yaw)
 		var cs := cos(swing_yaw)
@@ -552,6 +613,13 @@ func animate(dt: float) -> void:
 		leg1 = a
 		leg0 = 0.15
 		arm_lz = 0.9
+	if not ep.is_empty():                                   # the emote's own off-arm, legs and head
+		if ep["arm_l"] != null:
+			arm_lx = ep["arm_l"].x; arm_lz = ep["arm_l"].y
+		if ep["legs"] != null:
+			leg0 = ep["legs"].x; leg1 = ep["legs"].y
+		if ep["head"] != null:
+			head.kick(ep["head"].x * dt * 20.0, ep["head"].y * dt * 20.0)
 	if grounded and not was_g and prev_vy < -4.0:          # landing squash
 		squash = minf(0.28, -prev_vy * 0.025)
 	was_g = grounded
@@ -564,16 +632,16 @@ func animate(dt: float) -> void:
 	var d_t0 := fall_side * (PI / 2.0 * 0.98 + TAU)
 	var d_p := clampf(fall_a / d_t0, 0.0, 1.15) if dead else 0.0
 	var lift := 1.5 * sin(PI * clampf(d_p * 1.5, 0.0, 1.0)) if dead else absf(sin(fall_a)) * 0.4
-	rig.position = Vector3(pos.x, pos.y + lift + lie_k * 0.3, pos.z)
+	rig.position = Vector3(pos.x, pos.y + lift + lie_k * 0.3 + e_hop, pos.z)
 	var rx := lie_k * lie_side * PI / 2.0 * 0.98 + (-fall_side * TAU * clampf(d_p * 1.1, 0.0, 1.0) if dead else 0.0)
 	var size_k := float(cls.get("size", 1.0))
 	var stv := 0.0 if grounded else clampf(vel.y * 0.012, -0.08, 0.1)
-	var sy := (1.0 - 0.3 * crouch_k * (1.0 - lie_k)) * (1.0 - squash + stv)
+	var sy := (1.0 - 0.3 * maxf(crouch_k, _e_crouch) * (1.0 - lie_k)) * (1.0 - squash + stv)
 	var sxz := 1.0 + squash * 0.6 - stv * 0.5
 	rig_scale = Vector3(sxz, sy, sxz) * size_k
-	rig.basis = _euler_yxz(Vector3(rx, yaw, fall_a)).scaled_local(rig_scale)
+	rig.basis = _euler_yxz(Vector3(rx - e_pitch, yaw + e_yaw, fall_a)).scaled_local(rig_scale)
 	body.position.y = body_y
-	body.basis = _euler_xyz(Vector3(lean.x, 0, lean.y))
+	body.basis = _euler_xyz(Vector3(lean.x + e_lx, 0, lean.y + e_lz))
 	var neck_x := head.x
 	if dead and d_p > 0.02:                                # flailing while it tumbles, then limp
 		var fl := sin(d_p * 34.0) * (1.0 - clampf(d_p, 0.0, 1.0))
@@ -595,6 +663,8 @@ func animate(dt: float) -> void:
 
 ## Ragdoll overlay (rig_mode "ragdoll"): call AFTER the gameplay points were read from the classic pose.
 func overlay(dt: float) -> void:
+	if emote_id != "":                                      # a dance keeps the classic pose (the ragdoll would undo it)
+		return
 	if not _overlaid:
 		_xf_saved.resize(_xf_nodes.size())
 		for i in _xf_nodes.size():

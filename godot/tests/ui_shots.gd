@@ -7,7 +7,10 @@ extends SceneTree
 ## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
 ## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
 ## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
-## teams (Team Deathmatch with the team scoreboard), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
+## teams (Team Deathmatch with the team scoreboard), locker-skin / locker-hat / locker-color / locker-emote /
+## locker-class (the Locker tabs, ui/locker.gd, with 1500 coins and a card picked), shop (the Shop, an outfit tried on),
+## shop-confirm (its Buy card), emote-wheel (a match with the emote wheel open while the player dances), results (the
+## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
 ## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
 ## after the first weapon handout), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
 ## modes2-practice (the Practice Range: the player with a rack AK shooting down the range at the dummies).
@@ -31,6 +34,23 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
+	if shot.begins_with("locker") or shot.begins_with("shop"):
+		var sv: Node = root.get_node("Save")
+		sv.add_coins(1000)
+		for id in ["griddy", "dab", "flip"]: sv.buy("emote", id)
+		if shot.begins_with("shop"): sv.add_coins(700)
+		var m: Node = load("res://scenes/main.tscn").instantiate()
+		root.add_child(m)
+		var shop := shot.begins_with("shop")
+		var tab: String = "skin" if shop else shot.substr(7)
+		m.open_locker(shop, tab)
+		var pick: String = {"skin": "cowboy", "hat": "crown", "color": "", "emote": "griddy", "class": "bruiser"}.get(tab, "")
+		if shop: pick = "pirate"
+		if pick != "" and m.locker.cards.has(pick): m.locker._select_card(pick)
+		if shot == "shop-confirm": m.locker.act()
+		frames = 150
+		process_frame.connect(_wait)
+		return
 	if shot == "title-construction": _settings().set_value("mode", "construction")
 	if shot == "modes2-mode": shot = "newmodes-mode2"
 	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
@@ -53,7 +73,7 @@ func _start() -> void:
 		frames = 40
 		process_frame.connect(_wait)
 		return
-	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate"
+	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel"
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
 	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
@@ -149,6 +169,20 @@ func _frame() -> void:
 		e.index = 7; e.position = Vector2(sx + 40, vs.y * 0.62 - 50)
 		world.touch._input(e)
 		_touch(8, world.touch.button_rect(world.touch.button("fire"))[0], true)
+	if shot == "emote-wheel" and i == 300:
+		var sv: Node = root.get_node("Save")
+		sv.add_coins(3000)
+		for id in ["griddy", "dab", "flip", "floss", "robot", "galaxy"]: sv.buy("emote", id)
+		st.set_move("script", Vector2.ZERO); st.hold("script", "fire", false)
+		world.player_view.wobbler.play_emote("griddy")
+		world.emote_wheel.open_wheel(true)
+	if shot == "emote-wheel" and i > 300:
+		st.set_move("script", Vector2.ZERO); st.hold("script", "fire", false)
+	if shot == "results" and i == 340:
+		var sv: Node = root.get_node("Save")
+		sv.on_ko(true, false); sv.on_ko(true, false)
+		world._reward = sv.finish_match(true, "Classic", "Arena")
+		world._show_offline_results(true, "")
 	if shot == "pause" and i == 345:
 		world._toggle_pause()
 	if i == 352:
