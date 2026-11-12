@@ -192,29 +192,54 @@ static func interp(g: Array, s: Dictionary, clock_now: float, rt: float, dt: flo
 
 # ============================== per step (netSnap / netStep) ==============================
 
-## netSnap: what my fighter was doing before this step's input.
-func pre_step() -> Dictionary:
-	var p := sim.player
-	return {"pc": p.cool, "ps": p.swing, "pk": p.kick_t, "pd": p.draw}
+## The fighters this side runs and reports (`S`, `sw`, `f`, `k`): the guest only its own; HostMatch adds the bots.
+func owned() -> Array:
+	return [sim.player]
+
+## netSnap: what each fighter I run was doing before this step's input.
+func pre_step() -> Array:
+	var out: Array = []
+	for f: FighterState in owned():
+		out.append({"f": f, "pc": f.cool, "ps": f.swing, "pk": f.kick_t, "pd": f.draw})
+	return out
 
 ## netStep: tell everyone what I just did, my `S` at 30 Hz, then move the ghosts toward their snapshots.
 func post_controls(dt: float, pre: Variant) -> void:
 	clock += dt
-	var p := sim.player
-	if pre is Dictionary and not p.dead:
-		if pre["ps"] < 0.0 and p.swing >= 0.0:
-			_send({"t": "sw", "id": my_slot, "yaw": NetSnapshot.fixed(p.swing_yaw, 2), "w": p.weapon})
-		elif pre["pc"] <= 0.0 and p.cool > 0.0:
-			_send({"t": "f", "id": my_slot, "w": p.weapon, "dr": NetSnapshot.fixed(pre["pd"], 2)})
-		if pre["pk"] < 0.0 and p.kick_t >= 0.0:
-			_send({"t": "k", "id": my_slot, "yaw": NetSnapshot.fixed(p.yaw, 2)})
+	_before_report(dt)
+	if pre is Array: report(pre, dt)
+	step_ghosts(dt)
+
+## Hook for HostMatch (the host's end-of-match checks).
+func _before_report(_dt: float) -> void:
+	pass
+
+## sw / f / k for what the owned fighters just started, and one `S` with all of them at 30 Hz.
+func report(pre: Array, dt: float) -> void:
+	for o: Dictionary in pre:
+		var p: FighterState = o["f"]
+		if p.dead or p.net_slot < 0: continue
+		if o["ps"] < 0.0 and p.swing >= 0.0:
+			_send({"t": "sw", "id": p.net_slot, "yaw": NetSnapshot.fixed(p.swing_yaw, 2), "w": p.weapon})
+		elif o["pc"] <= 0.0 and p.cool > 0.0:
+			_send({"t": "f", "id": p.net_slot, "w": p.weapon, "dr": NetSnapshot.fixed(o["pd"], 2)})
+		if o["pk"] < 0.0 and p.kick_t >= 0.0:
+			_send({"t": "k", "id": p.net_slot, "yaw": NetSnapshot.fixed(p.yaw, 2)})
 	send_t -= dt
 	if send_t <= 0.0:
 		send_t += 1.0 / HZ
 		if send_t < 0.0: send_t = 0.0
-		var c: Variant = sim.controllers.get(p)
-		var sq := 1 if c != null and c.get("squat") else 0
-		_send(NetSnapshot.encode_state([NetSnapshot.encode_entry(p, {"sq": sq})]))
+		var list: Array = []
+		for o: Dictionary in pre:
+			var p: FighterState = o["f"]
+			if p.net_slot < 0: continue
+			var c: Variant = sim.controllers.get(p)
+			var sq := 1 if c != null and c.get("squat") else 0
+			list.append(NetSnapshot.encode_entry(p, {"sq": sq}))
+		if not list.is_empty(): _send(NetSnapshot.encode_state(list))
+
+## The ghosts: replay swings, ease toward the last snapshot (netStep's ghost loop).
+func step_ghosts(dt: float) -> void:
 	for s: int in ghosts:
 		var g: FighterState = ghosts[s]
 		if g.left: continue

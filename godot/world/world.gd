@@ -8,7 +8,7 @@ extends Node3D
 ## limit from Settings "limit" (-1 = the mode's preset); this node adds team colours, the mode line, the dash puff,
 ## the shrinking floor mesh, the end-of-match banner and the offline results panel.
 ## Dynamic arenas: MatchSim.dyn moves the collision; this node moves the tile / block meshes to match (_dyn_views).
-## Online (guest): set `session` (a GuestSession that got `start`) and `start_msg` before adding the world; the map,
+## Online: set `session` (a GuestSession that got `start`, or a HostSession that started the match) and `start_msg` before adding the world; the map,
 ## rules and slots then come from the host, the other players are ghosts driven by a NetMatch (net/net_match.gd).
 
 const SIM := 1.0 / 120.0
@@ -149,9 +149,7 @@ func load_map(id: String) -> void:
 	if rng_seed > 0: sim.combat.rng = CombatRng.new(rng_seed)
 	sim.combat.hp_setting = hp_setting
 	if session != null:
-		NetMatch.apply_rules(sim.combat, start_msg.get("rules", {}))
-		var rd := NetMatch.rule_dyn(start_msg.get("rules", {}))
-		sim.dyn_choice = rd["choice"]; sim.dyn_seed = rd["seed"]; sim.dyn_t0 = rd["t0"]
+		session.prepare_sim(sim, start_msg)   # rules + dynamic arena from `start` (the host also sets its mode / K.O. limit)
 	else:
 		var mode := mode_id if mode_id != "" else str(Settings.get_value("mode", "classic"))
 		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
@@ -170,11 +168,11 @@ func load_map(id: String) -> void:
 		bots = ModeRules.bot_count(mid, sim.combat.modes, bot_count)
 	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
 	if not Content.difficulties.has(skill): skill = "normal"
-	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bots, skill)
+	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, session.sim_bots(start_msg) if session != null else bots, skill)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
 	_build_dyn_views()
 	if session != null:
-		net_match = NetMatch.new(sim, session.send, session.slot)
+		net_match = session.make_match(sim)   # NetMatch (guest) or HostMatch (net/host_match.gd: bots, relaying)
 		net_match.setup(start_msg)
 		sim.player.name = str(Settings.get_value("name", "Player"))
 	var scene: PackedScene = load("res://actors/fighter.tscn")
@@ -317,6 +315,7 @@ func _drain_events() -> void:
 					_reward = Save.finish_match(bool(e["won"]), str(sim.combat.mode.get("name", sim.combat.mode_id)), str(map_node.map.get("name", map_id)))
 			"match_finished":
 				if session == null: _show_offline_results(bool(e["won"]), str(e["winner"].name) if e.get("winner") else "")
+				elif session.is_host(): _show_results("You" if e["won"] else (str(e["winner"].name) if e.get("winner") else "?"))
 			"eliminated":
 				if f:
 					hud.add_feed(null, f, "", false)

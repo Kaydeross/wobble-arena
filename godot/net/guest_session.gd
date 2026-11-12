@@ -125,6 +125,25 @@ func _set_status(t: String) -> void:
 	status = t
 	status_changed.emit(t)
 
+# ============================== the world's hooks ==============================
+
+func is_host() -> bool:
+	return false
+
+## Online match setup in the world (before MatchSim.setup): the host's rules and dynamic arena from `start`.
+func prepare_sim(sim: MatchSim, start: Dictionary) -> void:
+	NetMatch.apply_rules(sim.combat, start.get("rules", {}))
+	var rd := NetMatch.rule_dyn(start.get("rules", {}))
+	sim.dyn_choice = rd["choice"]; sim.dyn_seed = rd["seed"]; sim.dyn_t0 = rd["t0"]
+
+## Bots MatchSim.setup creates: none on a guest (the host runs them, they are ghosts here).
+func sim_bots(_start: Dictionary) -> int:
+	return 0
+
+## The world's NetMatch for this match (HostSession returns a HostMatch).
+func make_match(sim: MatchSim) -> NetMatch:
+	return NetMatch.new(sim, send, slot)
+
 # ============================== layer 1 ==============================
 
 func _on_connected() -> void:
