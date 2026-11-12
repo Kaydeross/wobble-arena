@@ -135,8 +135,8 @@ func load_map(id: String) -> void:
 	map_node = MapBuilder.build(id)
 	add_child(map_node)
 	solids = map_node.solids
-	env_node.environment = MapBuilder.make_environment(map_node.map)
-	MapBuilder.setup_sun(sun, map_node.map)
+	env_node.environment = MapBuilder.make_environment(map_node.map, id)
+	MapBuilder.setup_sun(sun, map_node.map, id)
 	Tier.configure_sun(sun, map_node.shadow_area)
 	sim = MatchSim.new()
 	if rng_seed > 0: sim.combat.rng = CombatRng.new(rng_seed)
