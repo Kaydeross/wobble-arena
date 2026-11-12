@@ -30,14 +30,28 @@ function customRef(cfgs) {
   });
 }
 
+// the web game's MAPS.pillars build() (PIL_PTS lives outside the MAPS literal, so the export has no boxes): Godot's PillarsMap must match
+function pillarsRef() {
+  const SRC = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
+  const a = SRC.indexOf('const PIL_PTS = '), b = SRC.indexOf('MAPS.pillars2 = ');
+  if (a < 0 || b < 0) throw new Error('MAPS.pillars not found in public/index.html');
+  const boxes = [];
+  const ctx = vm.createContext({ Math, Object, Array, addBox: (x, z, w, d, h, color, y = 0) => { boxes.push({ x, z, w, d, h, y, color }); return {}; } });
+  const m = vm.runInContext(SRC.slice(a, b).replace(/^MAPS\.pillars = /m, 'var PIL = ') + '\nPIL;', ctx);
+  m.build();
+  return { boxes, spawns: m.spawns, player: m.player, bots: m.bots };
+}
+const pref = path.join(os.tmpdir(), 'wa-pillars-ref-' + process.pid + '.json');
+fs.writeFileSync(pref, JSON.stringify(pillarsRef()));
+
 const cfgs = [{}, { size: 60, theme: 'desert', obs: 16, plat: 6, pads: 5, walls: 6, seed: 123 }, { size: 32, theme: 'night', obs: 4, plat: 1, pads: 1, walls: 2, ice: true, seed: 99991 }];
 const ref = path.join(os.tmpdir(), 'wa-custom-ref-' + process.pid + '.json');
 fs.writeFileSync(ref, JSON.stringify(customRef(cfgs)));
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });
-const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/maps_test.gd', '--', '--no-save', '--ref', ref], { encoding: 'utf8', timeout: 240000 });
-fs.unlinkSync(ref);
+const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/maps_test.gd', '--', '--no-save', '--ref', ref, '--pillars', pref], { encoding: 'utf8', timeout: 240000 });
+fs.unlinkSync(ref); fs.unlinkSync(pref);
 const out = (r.stdout || '') + (r.stderr || '');
-const lines = out.split('\n').filter(l => (verbose ? /^(AUDIT|CUSTOM|MODE|MAPS|FAIL)|ERROR/ : /^(CUSTOM|MAPS|FAIL)|ERROR/).test(l));
+const lines = out.split('\n').filter(l => (verbose ? /^(AUDIT|CUSTOM|PILLARS|MODE|MAPS|FAIL)|ERROR/ : /^(CUSTOM|PILLARS|MAPS|FAIL)|ERROR/).test(l));
 console.log(lines.join('\n'));
 const ok = r.status === 0 && /^MAPS ok/m.test(out) && !/SCRIPT ERROR|^ERROR/m.test(out);
 if (!ok) { if (!lines.length) console.log(out.slice(0, 3000)); console.log('godot maps test FAILED'); process.exit(1); }

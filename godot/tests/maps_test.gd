@@ -28,8 +28,11 @@ func _run() -> void:
 	var ids: Array = content.map_ids().duplicate()
 	ids.append("custom")
 	for id: String in ids:
-		_audit(id, MapBuilder.custom_map({}) if id == "custom" else content.get_map(id))
+		var m: Dictionary = MapBuilder.custom_map({}) if id == "custom" else content.get_map(id)
+		if PillarsMap.IDS.has(id): m = PillarsMap.complete(m)        # built from MAPS.pillars (the export has no boxes)
+		_audit(id, m)
 	_custom_ref()
+	_pillars_ref()
 	_mode_lists()
 	print("MAPS %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
 	quit(0 if fails == 0 else 1)
@@ -49,7 +52,7 @@ func _audit(id: String, m: Dictionary) -> void:
 	for p in m.get("spawns", []): pts.append(p)
 	for p in m.get("bots", []): pts.append(p)
 	if m.has("player"): pts.append(m["player"])
-	var dyn_floor := node.solids.is_empty()       # Pillars: the pillars are built by the mode, not the map
+	var dyn_floor := node.solids.is_empty()       # a level without boxes (none left: Pillars is built by PillarsMap)
 	if not dyn_floor:
 		for p: Array in pts:
 			var y := float(p[2]) if p.size() > 2 else float(m.get("spawnY", 0.0))
@@ -139,6 +142,32 @@ func _custom_ref() -> void:
 		check(bool(m.has("grip")) == bool(r.get("grip", false)), "custom %s ice grip" % [r["cfg"]])
 		n += 1
 	print("CUSTOM %d settings match the web generator" % n)
+
+## PillarsMap matches MAPS.pillars build() box for box, and its spawns / player / bot spots.
+func _pillars_ref() -> void:
+	var path := ""
+	var a := OS.get_cmdline_user_args()
+	for i in a.size():
+		if a[i] == "--pillars" and i + 1 < a.size(): path = a[i + 1]
+	if path == "":
+		print("PILLARS no reference (run through tools/test-godot-maps.js)"); return
+	var ref: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	check(ref is Dictionary, "pillars reference readable")
+	if not (ref is Dictionary): return
+	var m := PillarsMap.complete(root.get_node("Content").get_map("pillars"))
+	var gb: Array = m["geometry"]["boxes"]
+	var wb: Array = ref["boxes"]
+	var same: bool = gb.size() == wb.size()
+	if same:
+		for i in gb.size():
+			for k in ["x", "z", "w", "d", "h", "y", "color"]:
+				if absf(float(gb[i][k]) - float(wb[i][k])) > 1e-9: same = false
+	check(same, "pillars boxes match the web build() (%d vs %d)" % [gb.size(), wb.size()])
+	check(_close(m["spawns"], ref["spawns"]) and _close(m["bots"], ref["bots"]) and _close([m["player"]], [ref["player"]]), "pillars spots match the web")
+	var ys := true
+	for b: Array in m["bots"]: ys = ys and is_equal_approx(float(b[2]), float(ref["bots"][0][2]))
+	check(ys and is_equal_approx(float(m["player"][2]), float(ref["player"][2])), "pillars start heights match")
+	print("PILLARS %d boxes, %d spawns match the web build()" % [gb.size(), m["spawns"].size()])
 
 func _close(a: Array, b: Array) -> bool:
 	if a.size() != b.size(): return false

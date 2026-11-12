@@ -83,7 +83,7 @@ exclusive map, and classic-style modes every open map.
 | brawlpit | 62/0/4/1 | 16 ok | 1734 | night | - | 2 moving backdrop pieces, specks:ember |
 | craterdome | 15/0/0/1 | 16 ok | 17968 | night | dome ceil 24.0 | 51 moving backdrop pieces, specks:star |
 | capsule | 12/0/0/0 | 16 ok | 17788 | night | dome ceil 20.0 | 51 moving backdrop pieces, specks:star |
-| pillars | 0/0/0/0 | 1 ok (dynamic floor) | 5130 | sky | moving pillars (Pillars mode) | 12 moving backdrop pieces, specks:bubble, birds |
+| pillars | 35/0/0/0 (`PillarsMap`) | 16 ok | 5130 | sky | Pillars mode | 12 moving backdrop pieces, specks:bubble, birds |
 | playroom | 82/0/6/1 | 16 ok | 10138 | sky | - | 3 moving backdrop pieces, specks:pollen, birds |
 | farm | 94/0/1/1 | 18 ok | 40676 | sky | - | 20 moving backdrop pieces, specks:pollen, birds |
 | crossroads | 14/0/4/0 | 12 ok | 6628 | night | pad power [15.0] | 2 moving backdrop pieces, specks:star |
@@ -92,8 +92,9 @@ exclusive map, and classic-style modes every open map.
 | summit | 12/0/2/0 | 12 ok | 6120 | sky | pad power [15.0] | specks:petal, birds |
 | custom | 11/0/3/1 | 12 ok | 8422 | sky | - | 2 moving backdrop pieces, specks:pollen, birds |
 
-Everything builds and every spawn is on solid ground. Pillars has no boxes: its pillars come from the Pillars mode,
-which the port does not play yet (the map is not offered; its decor and look are exported).
+Everything builds and every spawn is on solid ground. Pillars has no boxes in the web export (`PIL_PTS` lives outside
+the MAPS literal, so `export-maps.js` cannot run its build()): `logic/pillars_map.gd` builds them, and the audit checks
+them box for box against the web game's real `MAPS.pillars.build()` plus its spawns, player and bot spots.
 
 ## Known gaps
 
@@ -104,5 +105,5 @@ which the port does not play yet (the map is not offered; its decor and look are
   hemisphere light shades side faces darker. Depth fog in Godot tints far objects a little darker than three.js.
 - Textured materials are flattened to their colour: the prototype grid on floors (Practice Range), the glow blob is a
   radial falloff in the shader. Lamp sprites and the sun rays / halo are not drawn.
-- The Practice Range's still and moving dummies (`range.movers`) are not ported: bots there play normally.
+- Lava Pillars (`pillars2`) is not exported at all (no collision, decor or look), so the Pillars mode only offers Pillars.
 - Custom levels in themes other than grass use the plain hills and void, not the meadow scenery.
