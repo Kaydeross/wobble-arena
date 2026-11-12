@@ -3,7 +3,7 @@ extends RefCounted
 ## A reduced port of the web game's bot AI (botThink, public/index.html ~7441) for the Phase 1 slice: re-pick the
 ## nearest enemy a few times a second, walk to it (or to a crate it wants), circle-strafe and shoot with a gun once
 ## the wobbly arm is lined up, kick and swing up close, hop when stuck. Not ported yet (full AI task): edge
-## awareness, the stuck watchdog's escape, pillars hops, hot potato, ninja dashes, bows and launchers.
+## awareness, the stuck watchdog's escape, pillars hops, hot potato, bows and launchers.
 ## Random numbers come from combat.rng, so a seeded match is repeatable.
 
 const AIM_ERR := {"easy": 2.2, "normal": 1.1, "hard": 0.45, "insane": 0.12}       ## BOT_AIM_ERR
@@ -71,7 +71,7 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 	ai_t -= dt
 	if ai_t <= 0.0:
 		ai_t = rng.range_f(2, 5)
-		var wr := float(sim.map.get("wander", 10))
+		var wr := sim.wander()
 		wander = null if rng.next() < 0.35 else [rng.range_f(-wr, wr), rng.range_f(-wr, wr)]
 
 	var crate: Dictionary = {}               # a crate worth walking to?
@@ -121,6 +121,9 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 		elif brawl and wl > 0.3 and jump_t <= 0.0 and rng.next() < dt * 0.25 * maxf(0.4, float(d.get("jump", 0)) * 3.0):
 			p.want_jump = true; jump_t = rng.range_f(1.5, 3.5)
 
+	if combat.mode_id != "pillars" and combat.rules.dash_gear(b) and tg and not tg.dead and b.dash_n > 0 and b.dash_cd <= 0.0 \
+			and dist > 6.0 and dist < 26.0 and rng.next() < dt * 0.35:
+		combat.rules.do_dash(b, tg.phys.px - p.px, tg.phys.pz - p.pz)      # ninja dash toward the target
 	var aiming := false
 	if ranged and tg and not tg.dead and not busy and dist < float(d.get("sight", 20)) and crate.is_empty():
 		var ax := tg.chest_x + aim_off.x - b.shoulder_x

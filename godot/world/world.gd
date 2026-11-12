@@ -3,7 +3,10 @@ extends Node3D
 ## game's fixed step (SIM = 1/120, one accumulator, like `frame`/`simStep` in public/index.html ~10077 / ~9630),
 ## presents every fighter with a Wobbler, drains Combat events into effects, and feeds the HUD (ui/hud.tscn).
 ## Per frame (like `frame`): camera -> sim steps -> animate/applyPose (Fighter.present) -> melee sweep -> effects/HUD.
-## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n> --dyn=<off|random|wobble|tilt|quake|drift>.
+## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n> --dyn=<off|random|wobble|tilt|quake|drift>
+## --mode=<id> --limit=<n>. Game modes (logic/mode_rules.gd): offline the mode comes from Settings "mode" and the K.O.
+## limit from Settings "limit" (-1 = the mode's preset); this node adds team colours, the mode line, the dash puff,
+## the shrinking floor mesh, the end-of-match banner and the offline results panel.
 ## Dynamic arenas: MatchSim.dyn moves the collision; this node moves the tile / block meshes to match (_dyn_views).
 ## Online (guest): set `session` (a GuestSession that got `start`) and `start_msg` before adding the world; the map,
 ## rules and slots then come from the host, the other players are ghosts driven by a NetMatch (net/net_match.gd).
@@ -20,6 +23,8 @@ const FX_DMG_LIFE := 0.9
 @export var rng_seed := 0          ## 0 = random
 @export var hp_setting := 200.0    ## cfg.hp (the web menu offers 100 / 150 / 200 / 300 / 500)
 @export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
+@export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
+@export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
 
 @onready var env_node: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $Sun
@@ -53,6 +58,10 @@ var _mats := {}
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
+var _mode_l: Label                 ## the mode line (lives, team score, ladder rung, arena size, dashes)
+var _banner: Label                 ## "YOU WIN!" at the end of a match
+var _banner_t := 0.0
+var _shrink_mesh: MeshInstance3D   ## the shrinking floor (shrink / squeeze maps)
 
 ## The player's physics (tests and the camera read it).
 var phys: FighterPhysics:
@@ -65,6 +74,8 @@ func _ready() -> void:
 		elif a.begins_with("--bots="): bot_count = int(a.substr(7))
 		elif a.begins_with("--seed="): rng_seed = int(a.substr(7))
 		elif a.begins_with("--dyn="): dyn_choice = a.substr(6)
+		elif a.begins_with("--mode="): mode_id = a.substr(7)
+		elif a.begins_with("--limit="): ko_limit = int(a.substr(8))
 	Tier.configure_viewport(get_viewport())
 	touch.state = input.state
 	touch.pause_pressed.connect(_toggle_pause)
@@ -79,6 +90,7 @@ func _ready() -> void:
 	pause_menu.visible = false
 	_fx_root = Node3D.new(); _fx_root.name = "Fx"; add_child(_fx_root)
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
+	_build_mode_ui()
 	if session != null:
 		map_id = start_msg.get("map", map_id)
 		session.match_started.connect(_on_net_start)
@@ -106,6 +118,8 @@ func load_map(id: String) -> void:
 	if net_match: net_match.dispose(); net_match = null
 	if sim: sim.dispose()
 	if _results: _results.queue_free(); _results = null
+	if _shrink_mesh: _shrink_mesh.queue_free(); _shrink_mesh = null
+	_banner_t = 0.0
 	map_id = id
 	map_node = MapBuilder.build(id)
 	add_child(map_node)
@@ -126,7 +140,13 @@ func load_map(id: String) -> void:
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
-	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bot_count)
+	var bots := bot_count
+	if session == null:                    # offline game mode (pickMode / setBotCfg)
+		var mid := mode_id if mode_id != "" else str(Settings.get_value("mode", "classic"))
+		if not sim.combat.modes.has(mid): mid = "classic"
+		sim.configure(mid, ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1)))
+		bots = ModeRules.bot_count(mid, sim.combat.modes, bot_count)
+	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bots)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
 	_build_dyn_views()
 	if session != null:
@@ -141,8 +161,12 @@ func load_map(id: String) -> void:
 		v.bind(f, lk)
 		if v.tag:   # the HUD draws the nameplates (ui/hud_nameplates.gd)
 			v.tag.queue_free(); v.tag = null
+		var tc := sim.combat.rules.team_color(f)
+		if tc >= 0:                      # team modes: everyone wears the team colour (recolor(TEAM_COL[team], true))
+			v.look["color"] = tc; v.wobbler.recolor(tc, true)
 		views[f] = v
 	player_view = views[sim.player]
+	_build_shrink_view()
 	cam.yaw = PI; cam.pitch = -0.2
 	feed.clear()
 	acc = 0.0
@@ -171,7 +195,8 @@ func sim_step(dt: float) -> void:
 ## One rendered frame: sim steps from the accumulator, then the presentation (animation, melee sweep, effects, HUD).
 func tick(delta: float) -> void:
 	var dt := minf(delta, 0.05)
-	if not paused or net_match != null:      # online the match keeps running behind the menu
+	var finished := _results != null and session == null     # offline results panel up: finishMatch left the match
+	if (not paused or net_match != null) and not finished:      # online the match keeps running behind the menu
 		if not paused: cam.add_look(input.state.take_look())
 		cam.follow(dt, player_pos(), input.state.aiming(), solids)
 		acc += minf(dt, 0.1)
@@ -200,6 +225,7 @@ func present(dt: float) -> void:
 	_drain_events()
 	_update_crates(dt)
 	_update_dyn_views()
+	_update_shrink_view()
 	_update_fx(dt)
 
 # ============================== combat events -> visuals ==============================
@@ -241,6 +267,16 @@ func _drain_events() -> void:
 				_toast(str(e["text"]))
 			"match_end":
 				_show_results(str(e["name"]))
+			"match_over":
+				_show_banner(str(e["title"]), str(e["sub"]), bool(e["won"]))
+			"match_finished":
+				if session == null: _show_offline_results(bool(e["won"]), str(e["winner"].name) if e.get("winner") else "")
+			"eliminated":
+				if f:
+					hud.add_feed(null, f, "", false)
+					_toast("You're out!" if f == sim.player else "%s is out!" % f.name)
+			"puff":
+				if str(e.get("kind", "")) == "dash": _puff(Vector3(e["x"], e["y"], e["z"]), Color(0.85, 0.92, 1.0), 6, 3.5)
 			"relook":
 				_relook(f)
 	evs.clear()
@@ -477,6 +513,110 @@ func _toast(t: String) -> void:
 
 func _update_hud(delta: float) -> void:
 	hud.update(delta)
+	_update_mode_ui(delta)
+
+# ============================== game modes (logic/mode_rules.gd) ==============================
+
+func _build_mode_ui() -> void:
+	_mode_l = Label.new()
+	_mode_l.name = "ModeLine"
+	_mode_l.theme_type_variation = &"HudLabel"
+	_mode_l.add_theme_font_size_override("font_size", 22)
+	_mode_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_mode_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	$UI.add_child(_mode_l)
+	$UI.move_child(_mode_l, hud.get_index() + 1)
+	_banner = Label.new()
+	_banner.name = "Banner"
+	_banner.theme_type_variation = &"TitleLabel"
+	_banner.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_banner.visible = false
+	$UI.add_child(_banner)
+	$UI.move_child(_banner, hud.get_index() + 1)
+
+func _update_mode_ui(delta: float) -> void:
+	if sim == null or _mode_l == null: return
+	var vs := get_viewport().get_visible_rect().size
+	var ins := SafeArea.insets(get_viewport())
+	var t := sim.combat.rules.hud_text(sim.player) if session == null else ""
+	if _mode_l.text != t: _mode_l.text = t
+	_mode_l.visible = t != ""
+	_mode_l.reset_size()
+	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 10.0)
+	if _banner.visible:
+		_banner_t -= delta
+		_banner.reset_size()
+		_banner.position = Vector2(vs.x / 2.0 - _banner.size.x / 2.0, vs.y * 0.3)
+		if _banner_t <= 0.0: _banner.visible = false
+
+## endMatch's "YOU WIN!" pop (shown while the match runs on for ModeRules.END_TIME).
+func _show_banner(title: String, sub: String, won: bool) -> void:
+	_banner.text = title + "\n" + sub
+	_banner.add_theme_color_override("font_color", UiTheme.ACCENT if won else Color(1, 0.85, 0.8))
+	_banner.visible = true
+	_banner_t = ModeRules.END_TIME + 0.5
+
+## finishMatch offline: the result with Play again / Title (themed, centred, over the HUD).
+func _show_offline_results(won: bool, winner_name: String) -> void:
+	if _results: _results.queue_free()
+	_banner.visible = false
+	var p := PanelContainer.new()
+	p.name = "Results"
+	p.set_anchors_preset(Control.PRESET_CENTER)
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.grow_vertical = Control.GROW_DIRECTION_BOTH
+	p.custom_minimum_size = Vector2(380, 0)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
+	p.add_child(box)
+	var l := Label.new()
+	l.theme_type_variation = &"TitleLabel"
+	l.add_theme_color_override("font_color", UiTheme.ACCENT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var teams := sim.combat.teams != 0
+	l.text = ("Your team wins!" if won else "Enemy team wins!") if teams else ("You win!" if won else winner_name + " wins!")
+	box.add_child(l)
+	var info := Label.new()
+	info.theme_type_variation = &"MutedLabel"
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.text = "%s  ·  %d K.O.s  ·  %d deaths" % [str(sim.combat.mode.get("name", sim.combat.mode_id)), sim.player.ko, int(sim.player.st["deaths"])]
+	box.add_child(info)
+	var again := Button.new(); again.text = "Play again"; again.custom_minimum_size = Vector2(0, 58)
+	again.theme_type_variation = &"PrimaryButton"
+	again.add_theme_font_size_override("font_size", 26)
+	again.pressed.connect(func() -> void: load_map.call_deferred(map_id))
+	box.add_child(again)
+	var lv := Button.new(); lv.text = "Title"; lv.custom_minimum_size = Vector2(0, 54)
+	lv.pressed.connect(_on_title_pressed)
+	box.add_child(lv)
+	JuicyButton.attach_all(box)
+	$UI.add_child(p)
+	$UI.move_child(p, pause_menu.get_index())
+	_results = p
+	touch.release_all()
+	input.release_mouse()
+
+## The shrinking floor: the map's first box is drawn by its own mesh, scaled to ModeRules.shrink every frame.
+func _build_shrink_view() -> void:
+	var s: Dictionary = sim.combat.rules.shrink
+	if s.is_empty(): return
+	var boxes: Array = map_node.map.get("geometry", {}).get("boxes", [])
+	MapBuilder.rebuild_boxes(map_node, boxes, {0: true})
+	var b: Dictionary = boxes[0]
+	var mi := MeshInstance3D.new()
+	var bm := BoxMesh.new(); bm.size = Vector3(float(b["w"]), float(b["h"]), float(b["d"]))
+	mi.mesh = bm; mi.material_override = MapBuilder.material(int(b["color"])); mi.name = "ShrinkFloor"
+	mi.position = Vector3(float(b["x"]), float(b["y"]) + float(b["h"]) / 2.0, float(b["z"]))
+	map_node.add_child(mi)
+	_shrink_mesh = mi
+	_update_shrink_view()
+
+func _update_shrink_view() -> void:
+	if _shrink_mesh == null: return
+	var s: Dictionary = sim.combat.rules.shrink
+	var k: float = s["size"] / s["S0"]
+	_shrink_mesh.scale = Vector3(k, 1.0, k if s["both"] else 1.0)
 
 func _on_setting(key: String, v: Variant) -> void:
 	if key == "show_fps":
