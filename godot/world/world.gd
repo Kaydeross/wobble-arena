@@ -248,9 +248,12 @@ func _drain_events() -> void:
 			"lean", "head", "arm":
 				if views.has(f): views[f].on_event(e)
 			"dmg_number":
-				if f: _dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), float(e["dmg"]), bool(e["head"]))
+				if f: _dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), float(e["dmg"]), String(e.get("part", "head" if e["head"] else "")), int(e.get("pct", 0)))
 			"hit":
-				if f: _puff(Vector3(f.chest_x, f.chest_y, f.chest_z), Color(1, 0.95, 0.8), 4, 3.0)
+				if f:
+					_puff(Vector3(f.chest_x, f.chest_y, f.chest_z), Color(1, 0.95, 0.8), 4, 3.0)
+					if e.has("x") and PART_COL.has(String(e.get("part", ""))):   # body-part flash where it struck
+						_puff(Vector3(e["x"], e["y"], e["z"]), PART_COL[e["part"]], 3, 1.5)
 			"ko":
 				_on_ko(e)
 			"ko_burst":
@@ -331,15 +334,20 @@ func _puff(at: Vector3, col: Color, n: int, spd: float, dir: Array = []) -> void
 		if dir.size() == 3: d = (Vector3(dir[0], dir[1], dir[2]) * 1.6 + d.normalized() * 0.35).normalized() * spd * randf_range(0.6, 1.0)
 		_add_fx(m, randf_range(0.3, 0.6), d, "puff")
 
-func _dmg_number(at: Vector3, dmg: float, head: bool) -> void:
+## Damage-number colour and size per body part (Combat.body_part; docs/DAMAGE.md). "" = whole body (splash, flame).
+const PART_COL := {"head": Color(1, 0.35, 0.25), "torso": Color(1, 0.95, 0.4), "arms": Color(0.55, 0.85, 1), "legs": Color(0.75, 0.8, 0.9)}
+const PART_SIZE := {"head": 56, "torso": 44, "arms": 40, "legs": 38}
+
+## The number floats up from the head; a non-zero part bonus adds a second line ("+50%", "-25%").
+func _dmg_number(at: Vector3, dmg: float, part: String, pct: int = 0) -> void:
 	var l := Label3D.new()
-	l.text = str(int(round(dmg)))
+	l.text = str(int(round(dmg))) + ("\n%+d%%" % pct if pct != 0 else "")
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.no_depth_test = true
-	l.font_size = 56 if head else 44
+	l.font_size = PART_SIZE.get(part, 44)
 	l.pixel_size = 0.006
 	l.outline_size = 12
-	l.modulate = Color(1, 0.35, 0.25) if head else Color(1, 0.95, 0.4)
+	l.modulate = PART_COL.get(part, Color(1, 0.95, 0.4))
 	l.position = at
 	_add_fx(l, FX_DMG_LIFE, Vector3(0, 1.6, 0), "text")
 
