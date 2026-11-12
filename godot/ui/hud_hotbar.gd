@@ -1,7 +1,8 @@
 extends Control
 ## HUD hotbar (bottom centre): slots 1-3 and the spatula (Q), the active slot raised with a yellow glow, ammo,
 ## a reload progress strip, the weapon name shrunk to fit (never clipped) and keybind badges that hide while the
-## last input was touch. `slots` is filled by hud.gd from the player's FighterState each frame.
+## last input was touch. `slots` is filled by hud.gd from the player's FighterState each frame. On touch screens the
+## touch layer (input/touch_controls.gd) makes the slots tappable through slot_rect().
 
 const SLOT := Vector2(104, 66)
 const GAP := 8.0
@@ -17,6 +18,10 @@ func _ready() -> void:
 	_font = UiTheme.font(700)
 	custom_minimum_size = Vector2(SLOT.x * 4 + GAP * 3, SLOT.y + 8)
 	size = custom_minimum_size
+
+## Slot i (0..3) in local coordinates, including the space the active slot rises into (touch hit area).
+func slot_rect(i: int) -> Rect2:
+	return Rect2(Vector2(i * (SLOT.x + GAP), 2), Vector2(SLOT.x, SLOT.y + 6))
 
 func tick(dt: float) -> void:
 	for i in mini(slots.size(), 4):

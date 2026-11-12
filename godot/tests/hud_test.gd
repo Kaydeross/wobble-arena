@@ -89,6 +89,20 @@ func _layout(world: Node, hud: Control, tag: String) -> void:
 		var br := Rect2(r[0] - Vector2(r[1], r[1]), Vector2(r[1], r[1]) * 2.0)
 		check(not rects["Hotbar"].intersects(br), "%s hotbar clear of %s" % [tag, b[0]])
 		check(not rects["Health"].intersects(br), "%s health clear of %s" % [tag, b[0]])
+	# touch buttons: at most 4 shown, inside the safe area, apart from each other and from the pause button
+	check(touch.visible_buttons().size() <= 4, "%s at most 4 action buttons (%s)" % [tag, touch.visible_buttons()])
+	var circles := []
+	for b: Array in touch.BUTTONS:
+		var r: Array = touch.button_rect(b)
+		var br := Rect2(r[0] - Vector2(r[1], r[1]), Vector2(r[1], r[1]) * 2.0)
+		check(safe.grow(0.5).encloses(br), "%s button %s %s inside safe %s" % [tag, b[0], br, safe])
+		check(not br.intersects(touch.pause_rect()), "%s button %s clear of pause" % [tag, b[0]])
+		for o: Array in circles:
+			check(r[0].distance_to(o[0]) >= r[1] + o[1] + 6.0, "%s button %s apart from the others" % [tag, b[0]])
+		circles.append(r)
+	for i in 4:
+		var sr: Rect2 = touch.hotbar_slot_rect(i)
+		check(sr.size.x >= 40.0 and sr.size.y >= 40.0, "%s hotbar slot %d tappable (%s)" % [tag, i, sr])
 	var hb: Control = hud.get_node("Hotbar")
 	check(hb.scale.x >= 0.6, "%s hotbar readable (scale %.2f)" % [tag, hb.scale.x])
 	print("HUD layout %s checked" % tag)

@@ -374,7 +374,8 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		sp = shot_spread(w, f.ads if f.is_player else 0.0)
 	elif f.is_player and f.ads > 0.5:
 		sp *= 0.45
-	var victims := {}                  # FighterState -> {dmg, force, dx, dy, dz, head}; insertion order = hit order
+	var victims := {}                  # FighterState -> {dmg, force, dx, dy, dz, head, parts}; insertion order = hit order
+	var gun_head := combat.weapon_head("gun", w)
 	var lx := bx
 	var ly := by
 	var lz := bz
@@ -422,13 +423,21 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 				var t := ray_sphere(o[0], o[1], o[2], dx, dy, dz, s[0], s[1], s[2], s[3])
 				if t >= 0.0 and t < best_t: best_t = t; victim = e; head = s[4]
 		if victim != null:
-			var rec: Dictionary = victims.get(victim, {"dmg": 0.0, "force": 0.0, "dx": 0.0, "dy": 0.0, "dz": 0.0, "head": false})
+			var rec: Dictionary = victims.get(victim, {"dmg": 0.0, "force": 0.0, "dx": 0.0, "dy": 0.0, "dz": 0.0, "head": false, "parts": {}})
 			var fo := 1.0
 			if w.has("falloff"):
 				var fl: Array = w["falloff"]
 				fo = Combat.lerp_js(1.0, fl[2], Combat.clampf_js((best_t - fl[0]) / (fl[1] - fl[0]), 0.0, 1.0))
-			var hm := (float(w.get("headMul", 2.0)) if w.get("headMul", 0) else 2.0) if head else 1.0
-			rec["dmg"] += float(w["dmg"]) * f.dmg_scale * hm * fo
+			var hx: float = o[0] + dx * best_t
+			var hy: float = o[1] + dy * best_t
+			var hz: float = o[2] + dz * best_t
+			var part := combat.body_part(victim, hx, hy, hz, head)
+			var hm := combat.part_mul(part, gun_head)    # classic: headMul (or 2) on the head, 1 elsewhere
+			var pd := float(w["dmg"]) * f.dmg_scale * hm * fo
+			rec["dmg"] += pd
+			var pr_: Dictionary = rec["parts"]
+			if not pr_.has(part): pr_[part] = [0.0, hm, hx, hy, hz]
+			pr_[part][0] += pd
 			rec["force"] += float(w["force"]) * (0.45 + 0.55 * fo)
 			rec["dx"] += dx; rec["dy"] += dy; rec["dz"] += dz
 			rec["head"] = rec["head"] or head
@@ -439,7 +448,7 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 	for v: FighterState in victims:
 		var rec: Dictionary = victims[v]
 		var rd := Combat.norm3(rec["dx"], rec["dy"], rec["dz"])
-		combat.hit(v, rec["dmg"], rd[0], rd[1], rd[2], minf(rec["force"], max_force), rec["head"], f)
+		combat.hit(v, rec["dmg"], rd[0], rd[1], rd[2], minf(rec["force"], max_force), rec["head"], f, _main_part(rec["parts"], rec["head"]))
 		if rec["head"] and key == "mammoth" and not v.dead:   # a Mammoth headshot snaps their head back
 			var s_ := sin(v.yaw)
 			var c_ := cos(v.yaw)
@@ -471,6 +480,16 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		var kb2 := float(w["kickback"])
 		f.phys.vx -= lx * kb2; f.phys.vz -= lz * kb2
 	combat.ev({"type": "shot", "f": f, "key": key})
+
+## The part a (shotgun) volley is labelled with: the head if any pellet hit it, else the part that took the most damage.
+static func _main_part(parts: Dictionary, head: bool) -> Dictionary:
+	var best := "head" if head and parts.has("head") else ""
+	if best == "":
+		for p: String in parts:
+			if best == "" or float(parts[p][0]) > float(parts[best][0]): best = p
+	if best == "": return {}
+	var r: Array = parts[best]
+	return Combat.zone_info(best, r[1], r[2], r[3], r[4])
 
 ## fireGun style 'punch' (Spring Glove): a big springy fist that hits whoever is roughly in front of it.
 func _punch(f: FighterState, w: Dictionary, o: Array) -> void:
@@ -628,7 +647,10 @@ func step_projectiles(dt: float) -> void:
 						var hd: bool = s[4]
 						var vd := Combat.norm3(k.vx, k.vy, k.vz)
 						var ds := k.owner.dmg_scale if k.owner != null else 1.0
-						combat.hit(f, float(k.w["dmg"]) * ds * (1.8 if hd else 1.0), vd[0], vd[1], vd[2], float(k.w["force"]), hd, k.owner)
+						var part := combat.body_part(f, k.px, k.py, k.pz, hd)
+						var pm := combat.part_mul(part, combat.weapon_head("thrown"))   # classic: 1.8 on the head, 1 elsewhere
+						combat.hit(f, float(k.w["dmg"]) * ds * pm, vd[0], vd[1], vd[2], float(k.w["force"]), hd, k.owner,
+							Combat.zone_info(part, pm, k.px, k.py, k.pz))
 						combat.ev({"type": "sfx", "name": "clink", "x": k.px, "y": k.py, "z": k.pz})
 						if k.pierce: k.hit_set[f] = true; break
 						gone = true; break
@@ -902,8 +924,10 @@ func step_arrows(dt: float) -> void:
 						var hd: bool = s[4]
 						var vd := Combat.norm3(k.vx, k.vy, k.vz)
 						var ds := k.owner.dmg_scale if k.owner != null else 1.0
-						var dmg := Combat.lerp_js(float(k.w["minDmg"]), float(k.w["dmg"]), k.ch) * ds * (1.8 if hd else 1.0)
-						combat.hit(f, dmg, vd[0], vd[1], vd[2], 5.0 + k.ch * 8.0, hd, k.owner)
+						var part := combat.body_part(f, k.px, k.py, k.pz, hd)
+						var pm := combat.part_mul(part, combat.weapon_head("arrow"))    # classic: 1.8 on the head, 1 elsewhere
+						var dmg := Combat.lerp_js(float(k.w["minDmg"]), float(k.w["dmg"]), k.ch) * ds * pm
+						combat.hit(f, dmg, vd[0], vd[1], vd[2], 5.0 + k.ch * 8.0, hd, k.owner, Combat.zone_info(part, pm, k.px, k.py, k.pz))
 						combat.ev({"type": "sfx", "name": "clink", "x": k.px, "y": k.py, "z": k.pz})
 						gone = true; break
 				if gone: break
