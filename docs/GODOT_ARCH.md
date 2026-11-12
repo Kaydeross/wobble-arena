@@ -16,7 +16,7 @@ autoload/   content.gd (loads ../shared/*.json via res:// copy), tier.gd, settin
 logic/      fighter_physics.gd fighter_state.gd combat.gd weapons.gd pickups.gd match_sim.gd bot_brain.gd player_control.gd spring.gd ...   (RefCounted, headless)
 actors/     wobbler.tscn/.gd   (visual only)     fighter.tscn/.gd (FighterState + Wobbler)
 world/      world.tscn/.gd (sim loop, camera, map)  map_builder.gd
-ui/         (later phases)
+ui/         theme_builder.gd -> theme.tres (project theme), juicy_button.gd, safe_area.gd, logo.gd, hud.tscn/.gd (+ hud_*.gd), fps_overlay.gd (autoload)
 net/        net_client.gd (exists) snapshot.gd ...
 tests/      one script per parity/unit test + tools/test-*.js runner in the repo's tools/
 ```
@@ -53,5 +53,13 @@ How the pieces fit since the integration track (`npm run test:godot-integration`
 
 Each track merges to `main` behind its own tests. The lead integrates `Fighter` (physics + combat + wobbler) in a second round once all three exist. Do not edit another track's files; if you need a change, describe it in your report.
 
+## UI (first UI pass)
+
+- **Theme**: `ui/theme_builder.gd` (`UiTheme`, colour constants + `box()`/`font()` helpers) writes `ui/theme.tres`, set as `gui/theme/custom` in project.godot. Rebuild: `godot --headless --path godot --script res://ui/theme_builder.gd`. Font: Fredoka (SIL OFL, `ui/fonts/OFL.txt`). Type variations: `PrimaryButton`, `HudPanel`, `ChipPanel`, `HudLabel`, `TitleLabel`, `MutedLabel`. `JuicyButton.attach_all(node)` adds the hover/press tween to every button under a node.
+- **Safe area**: `SafeArea.insets(viewport)` (canvas units; phones only; tests set `SafeArea.override`). Used by the title screen, HUD, touch layer and FPS overlay.
+- **HUD**: `ui/hud.tscn` (`MatchHud`) under `world.tscn` `UI/Hud`; World calls `hud.bind(self)` after `load_map`, `hud.update(delta)` per frame, `hud.toast()` and `hud.add_feed()` from Combat events. It only reads `sim`/`cam`/`touch`/`input` (no gameplay accessors were needed: FighterState/MatchSim fields are public). The old `Fighter.tag` Label3D is removed by World in favour of the HUD nameplates.
+- **FPS overlay**: autoload `FpsOverlay` (`ui/fps_overlay.gd`), Settings `show_fps` (title Options + pause menu), F3 or a three-finger tap.
+- **Brand**: `tools/shoot-godot-brand.sh` renders `icon.png` and `ui/brand/launch_logo.png` (boot splash + iOS storyboard). `tools/shoot-godot-ui.sh` renders `docs/style/godot-ui-*.png`.
+
 ## Test commands
-`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.
+`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match), `npm run test:godot-ui` (title layout at 4 window sizes with safe areas, HUD layout vs touch buttons, FPS overlay toggles). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.

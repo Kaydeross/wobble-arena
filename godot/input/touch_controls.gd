@@ -334,16 +334,19 @@ func _icon(id: String, c: Vector2, s: float, col: Color) -> void:
 				var x := palm.position.x + s * 0.14 + i * s * 0.27
 				_cap(Vector2(x, palm.position.y + s * 0.1), Vector2(x, palm.position.y - s * (0.6 if i == 1 or i == 2 else 0.45)), s * 0.22, col)
 			_cap(Vector2(palm.position.x + s * 0.1, palm.position.y + s * 0.45), Vector2(palm.position.x - s * 0.4, palm.position.y + s * 0.05), s * 0.22, col)
-		"kick":   # boot + motion lines
+		"kick":   # a boot swung up (drawn tilted around the button centre) + motion lines
+			draw_set_transform(c, -0.45, Vector2.ONE)
 			var boot := PackedVector2Array()
-			for q: Vector2 in [Vector2(-0.75, -0.9), Vector2(-0.15, -0.9), Vector2(-0.15, 0.05), Vector2(0.45, 0.2),
-					Vector2(0.62, 0.42), Vector2(0.55, 0.75), Vector2(-0.75, 0.75)]:
-				boot.append(c + q * s)
+			for q: Vector2 in [Vector2(-0.6, -0.95), Vector2(-0.05, -0.95), Vector2(-0.05, 0.0), Vector2(0.55, 0.12),
+					Vector2(0.78, 0.38), Vector2(0.7, 0.62), Vector2(-0.6, 0.62)]:
+				boot.append(q * s * 0.9)
 			draw_colored_polygon(boot, col)
 			boot.append(boot[0])
 			draw_polyline(boot, col, 1.5, true)
-			_cap(c + Vector2(s * 0.2, -s * 0.6), c + Vector2(s * 0.85, -s * 0.6), w * 0.55, col)
-			_cap(c + Vector2(s * 0.35, -s * 0.25), c + Vector2(s * 0.95, -s * 0.25), w * 0.55, col)
+			_cap(Vector2(-0.6, 0.78) * s * 0.9, Vector2(0.62, 0.78) * s * 0.9, w * 0.5, col)   # sole
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_cap(c + Vector2(-s * 1.0, s * 0.55), c + Vector2(-s * 0.55, s * 0.55), w * 0.5, col)
+			_cap(c + Vector2(-s * 0.95, s * 0.9), c + Vector2(-s * 0.35, s * 0.9), w * 0.5, col)
 		"dash":   # speed lines + chevron
 			_cap(c + Vector2(-s * 0.95, -s * 0.4), c + Vector2(-s * 0.35, -s * 0.4), w * 0.6, col)
 			_cap(c + Vector2(-s * 1.05, 0), c + Vector2(-s * 0.2, 0), w * 0.6, col)

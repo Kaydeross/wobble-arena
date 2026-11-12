@@ -2,7 +2,7 @@ extends SceneTree
 ## Renders UI screenshots for visual review (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot match --out FILE.png
 ## Shots: title (scenes/main.tscn), match (offline world with the HUD), touch (same with the touch layer forced on and
-## a few fingers down), fps (match with the FPS overlay on). Used by tools/shoot-godot-ui.sh.
+## a few fingers down), fps (match with the FPS overlay on), pause (the pause menu). Used by tools/shoot-godot-ui.sh.
 
 const FRAME := 1.0 / 60.0
 
@@ -94,6 +94,8 @@ func _frame() -> void:
 		e.index = 7; e.position = Vector2(vs.x * 0.16 + 40, vs.y * 0.72 - 50)
 		world.touch._input(e)
 		_touch(8, world.touch.button_rect(world.touch.BUTTONS[0])[0], true)
+	if shot == "pause" and i == 345:
+		world._toggle_pause()
 	if i == 352:
 		process_frame.disconnect(_frame)
 		_save()
