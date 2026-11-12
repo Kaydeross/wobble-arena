@@ -1,5 +1,7 @@
 node_modules
 data/
+# game data synced from shared/ for the Godot app (tools/sync-shared.js)
+!godot/data/
 
 # Godot
 godot/.godot/

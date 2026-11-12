@@ -22,6 +22,8 @@ tests/      one script per parity/unit test + tools/test-*.js runner in the repo
 ```
 `shared/*.json` is the source of truth; Godot reads copies synced by `tools/sync-shared.js` into `godot/data/` (committed, checked by `npm test` the same way as shared/).
 
+Foundation pieces (Phase 1): autoloads `Tier`, `Content` (res://data/*.json), `Settings` (ConfigFile key/value); `world/map_builder.gd` (`MapBuilder.build(id)` -> `MapNode` with `solids`, `pads`, `ladders`; `MapBuilder.material()` is the one material factory); `world/world.tscn` (offline test world, fixed 1/120 step); `input/input_state.gd` (`InputState`, the one input object), `input/player_input.gd` (keyboard/mouse/gamepad), `input/touch_controls.tscn` (touch). `FighterPhysics` stays in `scripts/` until the lead moves it to `logic/`.
+
 ## Contracts between tracks
 
 **FighterState** (plain Dictionary or class `FighterState` in `logic/`), the only thing visuals need:
@@ -39,4 +41,4 @@ tests/      one script per parity/unit test + tools/test-*.js runner in the repo
 Each track merges to `main` behind its own tests. The lead integrates `Fighter` (physics + combat + wobbler) in a second round once all three exist. Do not edit another track's files; if you need a change, describe it in your report.
 
 ## Test commands
-`npm test` (JS + content), `npm run test:godot-physics`, `npm run test:godot` (cross-client join). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.
+`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.

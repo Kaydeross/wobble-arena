@@ -1,0 +1,321 @@
+{
+ "hats": [
+  "none",
+  "party",
+  "top",
+  "crown",
+  "prop",
+  "wizard",
+  "bunny",
+  "cone",
+  "pirate",
+  "chef",
+  "cowboy",
+  "halo",
+  "viking",
+  "phones",
+  "beanie",
+  "santa"
+ ],
+ "swatch": [
+  3782056,
+  14898795,
+  4886745,
+  15774780,
+  9333720,
+  6272864,
+  15764028,
+  16052464
+ ],
+ "skins": {
+  "hoodie": {
+   "name": "Hoodie",
+   "icon": "🧥",
+   "col": 5996502,
+   "tone": 15845797,
+   "pants": 3886970,
+   "shoes": 16053492
+  },
+  "skater": {
+   "name": "Skater",
+   "icon": "🛹",
+   "col": 14703175,
+   "tone": 13010498,
+   "pants": "skin",
+   "shoes": 2829099
+  },
+  "chef": {
+   "name": "Chef",
+   "icon": "🍳",
+   "col": 16119280,
+   "tone": 14724223,
+   "pants": 4013380,
+   "shoes": 2236966
+  },
+  "suit": {
+   "name": "Suit",
+   "icon": "💼",
+   "col": 3095378,
+   "tone": 9262372,
+   "pants": 2435896,
+   "shoes": 1118484
+  },
+  "builder": {
+   "name": "Builder",
+   "icon": "🦺",
+   "col": 16095779,
+   "tone": 14724223,
+   "pants": 4873594,
+   "shoes": 7031339
+  },
+  "sporty": {
+   "name": "Sporty",
+   "icon": "⚽",
+   "col": 3055195,
+   "tone": 16767916,
+   "pants": "skin",
+   "shoes": 16777215
+  },
+  "jacket": {
+   "name": "Jacket",
+   "icon": "🎸",
+   "col": 2829107,
+   "tone": 14262899,
+   "pants": 1908004,
+   "shoes": 8006700
+  },
+  "dress": {
+   "name": "Sundress",
+   "icon": "👗",
+   "col": 15900864,
+   "tone": 15845797,
+   "pants": "skin",
+   "shoes": 12597547
+  },
+  "cowboy": {
+   "name": "Sheriff",
+   "icon": "🤠",
+   "col": 13081178,
+   "tone": 14262899,
+   "pants": 4020874,
+   "shoes": 5913122
+  },
+  "pirate": {
+   "name": "Captain Salt",
+   "icon": "🏴‍☠️",
+   "col": 8004656,
+   "tone": 13010498,
+   "pants": 1908004,
+   "shoes": 1118484
+  },
+  "wizard": {
+   "name": "Star Wizard",
+   "icon": "🧙",
+   "col": 5914552,
+   "tone": 15845797,
+   "pants": 3811968,
+   "shoes": 2760016
+  },
+  "astro": {
+   "name": "Astronaut",
+   "icon": "🧑‍🚀",
+   "col": 15922424,
+   "tone": 14724223,
+   "pants": 15133167,
+   "shoes": 16747054
+  },
+  "robot": {
+   "name": "Bolt-Bot",
+   "icon": "🤖",
+   "col": 10465474,
+   "tone": 9082534,
+   "pants": 7109258,
+   "shoes": 4475990
+  },
+  "shadow": {
+   "name": "Shadow Ninja",
+   "icon": "🥷",
+   "col": 1842214,
+   "tone": 14724223,
+   "pants": 1315868,
+   "shoes": 921106
+  },
+  "knight": {
+   "name": "Silver Knight",
+   "icon": "🛡️",
+   "col": 9411243,
+   "tone": 14724223,
+   "pants": 8029332,
+   "shoes": 5923440
+  },
+  "samurai": {
+   "name": "Crimson Samurai",
+   "icon": "🗡️",
+   "col": 9051935,
+   "tone": 14724223,
+   "pants": 2039594,
+   "shoes": 2759956
+  },
+  "vampire": {
+   "name": "Count Dusk",
+   "icon": "🧛",
+   "col": 2757168,
+   "tone": 15327464,
+   "pants": 1707296,
+   "shoes": 919312
+  },
+  "viking": {
+   "name": "Frost Viking",
+   "icon": "🪓",
+   "col": 4156303,
+   "tone": 15845797,
+   "pants": 4864554,
+   "shoes": 3811866
+  },
+  "scientist": {
+   "name": "Lab Genius",
+   "icon": "🧪",
+   "col": 16119285,
+   "tone": 14724223,
+   "pants": 3820126,
+   "shoes": 2238513
+  },
+  "racer": {
+   "name": "Turbo Racer",
+   "icon": "🏎️",
+   "col": 15022389,
+   "tone": 14262899,
+   "pants": 15022389,
+   "shoes": 16777215
+  },
+  "pharaoh": {
+   "name": "Sun Pharaoh",
+   "icon": "🏺",
+   "col": 16116944,
+   "tone": 13010498,
+   "pants": 16116944,
+   "shoes": 13081146
+  },
+  "fire": {
+   "name": "Fire Fighter",
+   "icon": "🧑‍🚒",
+   "col": 12986408,
+   "tone": 14724223,
+   "pants": 3816004,
+   "shoes": 2763312
+  },
+  "detective": {
+   "name": "Detective",
+   "icon": "🕵️",
+   "col": 13215610,
+   "tone": 15845797,
+   "pants": 4866104,
+   "shoes": 2759956
+  },
+  "pilot": {
+   "name": "Ace Pilot",
+   "icon": "✈️",
+   "col": 9067051,
+   "tone": 14724223,
+   "pants": 4873594,
+   "shoes": 3811866
+  },
+  "jester": {
+   "name": "Jester",
+   "icon": "🎭",
+   "col": 15022389,
+   "tone": 15845797,
+   "pants": 2781142,
+   "shoes": 16765503
+  },
+  "dev": {
+   "name": "Developer",
+   "icon": "💻",
+   "col": 1382175,
+   "tone": 15845797,
+   "pants": 1908784,
+   "shoes": 3141887,
+   "noBelt": true,
+   "noHat": true,
+   "premium": true
+  },
+  "beta": {
+   "name": "Beta Tester",
+   "icon": "🧬",
+   "col": 2078115,
+   "tone": 14724223,
+   "pants": 2832981,
+   "shoes": 16777215,
+   "noBelt": true,
+   "premium": true
+  },
+  "deckhand": {
+   "name": "Deck Hand",
+   "icon": "⚓",
+   "col": 4881050,
+   "tone": 14262899,
+   "pants": 3816004,
+   "shoes": 2759956,
+   "noHat": true
+  },
+  "tripleT": {
+   "name": "Triple T",
+   "icon": "🪵",
+   "col": 11565635,
+   "tone": 11565635,
+   "pants": 9067051,
+   "shoes": 5913116,
+   "noBelt": true,
+   "noHead": true,
+   "noEyes": true,
+   "noHat": true,
+   "noTorso": true
+  },
+  "ballerina": {
+   "name": "Ballerina Cappuccina",
+   "icon": "☕",
+   "col": 15845797,
+   "tone": 15845797,
+   "pants": 15978419,
+   "shoes": 16762076,
+   "thin": 0.68,
+   "noBelt": true,
+   "noHead": true,
+   "noEyes": true,
+   "noHat": true,
+   "noTorso": true
+  },
+  "assassino": {
+   "name": "Cappuccino Assassino",
+   "icon": "🍵",
+   "col": 1513247,
+   "tone": 1513247,
+   "pants": 1513247,
+   "shoes": 1513247,
+   "noBelt": true,
+   "noHead": true,
+   "noEyes": true,
+   "noHat": true,
+   "noTorso": true
+  },
+  "thunder": {
+   "name": "Thunder Titan",
+   "icon": "⚡",
+   "col": 2836932,
+   "tone": 14724223,
+   "pants": 1716102,
+   "shoes": 15909424,
+   "noBelt": true,
+   "noTorso": true,
+   "noHat": true
+  },
+  "hero": {
+   "name": "Captain Comet",
+   "icon": "🦸",
+   "col": 2774728,
+   "tone": 15845797,
+   "pants": 2774728,
+   "shoes": 13840175
+  }
+ }
+}

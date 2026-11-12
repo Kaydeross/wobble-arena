@@ -1,0 +1,38 @@
+{
+ "easy": {
+  "speed": 3,
+  "dmg": 0.3,
+  "atk": 0.55,
+  "sight": 12,
+  "kick": 0.6,
+  "jump": 0,
+  "react": 0.45
+ },
+ "normal": {
+  "speed": 4.4,
+  "dmg": 0.45,
+  "atk": 1,
+  "sight": 20,
+  "kick": 1,
+  "jump": 0,
+  "react": 0.25
+ },
+ "hard": {
+  "speed": 5.4,
+  "dmg": 0.7,
+  "atk": 1.7,
+  "sight": 30,
+  "kick": 1.5,
+  "jump": 0.35,
+  "react": 0.12
+ },
+ "insane": {
+  "speed": 6.4,
+  "dmg": 1,
+  "atk": 2.6,
+  "sight": 60,
+  "kick": 2.2,
+  "jump": 0.7,
+  "react": 0.04
+ }
+}
