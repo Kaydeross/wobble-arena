@@ -3,8 +3,15 @@
 </p>
 
 <p align="center">
-  <b>A wobbly, chaotic party brawler that runs right in your browser. No download, no install.</b><br>
+  <b>A wobbly, chaotic party brawler. Play it in your browser today; iPhone and PC apps are on the way, all playing against each other.</b><br>
   Bonk your friends off floating arenas with bats, rockets and spring gloves.
+</p>
+
+<p align="center">
+  <img alt="Play in the browser" src="https://img.shields.io/badge/play-in%20the%20browser-ffcf5a?style=for-the-badge&labelColor=102b35">
+  <img alt="iPhone" src="https://img.shields.io/badge/iPhone-TestFlight%20soon-4aa3d8?style=for-the-badge&labelColor=102b35">
+  <img alt="Cross-play" src="https://img.shields.io/badge/cross--play-web%20%2B%20native-8fe0a5?style=for-the-badge&labelColor=102b35">
+  <img alt="Engine" src="https://img.shields.io/badge/engine-three.js%20%2B%20Godot%204-e3566b?style=for-the-badge&labelColor=102b35">
 </p>
 
 ---
@@ -13,7 +20,7 @@
 
 Wobble Arena is a 3D, physics-driven arena brawler. You play a floppy, spring-limbed character and fight on floating maps with open edges. Weapons rain from crates and the goal is simple: **knock everyone else off, or out**. Every hit sends bodies flying, and falling off the map is just as deadly as getting shot.
 
-It plays in any modern browser on desktop and phone (touch controls and safe-area fixes are built in). You can play solo against bots, practise, or jump into online rooms with friends.
+It plays in any modern browser on desktop and phone (touch controls and safe-area fixes are built in). You can play solo against bots, practise, or jump into online rooms with friends. A native Godot 4 client for iPhone, PC and the web is being built alongside it and joins the same rooms.
 
 ## Screenshots
 
@@ -37,17 +44,35 @@ It plays in any modern browser on desktop and phone (touch controls and safe-are
   <img src="docs/img/iphone-match.jpg" alt="A match on a phone" width="48%">
 </p>
 
+## Pick your wobbler
+
+Five character classes, each with one real strength and one real cost. Your friends see your pick, and the stats apply in every match.
+
+| Class | Style | Strength | Cost |
+|---|---|---|---|
+| **Wobbler** | Balanced | No surprises | None |
+| **Bruiser** | Big and heavy | 30% more health, hits harder, hard to shove | Slow, clumsy in the air |
+| **Scamp** | Tiny and zippy | Fastest, floaty, great air control | Fragile, easy to launch |
+| **Gramps** | Control freak | Sharp steering, fast reloads, extra ammo | Lower top speed |
+| **Zorp** | Alien tech | Guns fire 20% faster, reloads quicker, 50% more ammo | Lowest health |
+
+<p align="center">
+  <img src="docs/style/godot-wobbler-classes.png" alt="The five classes" width="90%">
+</p>
+
 ## Features
 
 - **15 game modes**: Classic, Melee Only, Guns Only, Ninja, Explosive, Giant, Mega Damage, Weapon Ladder, Pillars, Sandbox, Construction (coming soon), and 1v1, 2v2, 3v3 and 4v4 team fights.
-- **About 30 maps**: from the Sunny Arena and Slippery Rink to a Pirate Ship, Volcano Rim, Moon Base, Candy Land, Haunted Hollow and a Giant's Playroom. Some are built for one mode, such as the Moonlit Dojo for ninjas and the Blast Yard for explosives.
-- **28 weapons**: bats, mallets and spring gloves, shotguns, snipers, miniguns, flamethrowers, boomerangs, net guns, snake shooters, rocket and cluster launchers, Typhoon Blades, the Ninja Katana and more.
+- **33 maps**: from the Sunny Arena and Slippery Rink to a Pirate Ship, Volcano Rim, Moon Base, Candy Land, Haunted Hollow and a Giant's Playroom. Some are built for one mode, such as the Moonlit Dojo for ninjas and the Blast Yard for explosives.
+- **30 weapons**: bats, mallets and spring gloves, shotguns, snipers, miniguns, flamethrowers, boomerangs, net guns, snake shooters, rocket and cluster launchers, Typhoon Blades, the Ninja Katana and more.
 - **Bots on 4 difficulties**: Easy, Normal, Hard and Insane. They fill teams and rooms so there is always a match.
 - **Online play**: Quick play, a live list of open rooms, and room codes to invite friends (up to 8 players).
 - **Accounts and cloud save**: coins, outfits, controls, settings and stats follow you to any device.
 - **Locker and shop**: earn coins and unlock hats, skins and colours.
 - **Practice range and Sandbox**: test weapons on dummies, or build your own arena block by block.
+- **5 character classes** with their own stats and looks (see above).
 - **Kill-cam and radar**, so you can see who got you and who is above or below you.
+- **Cross-platform**: browser, iPhone and PC players share the same rooms (native clients in progress).
 
 ## Game modes
 
@@ -69,6 +94,22 @@ It plays in any modern browser on desktop and phone (touch controls and safe-are
 
 Sandbox, Construction and the Weapon Ladder are offline only for now. See `docs/CONSTRUCTION.md` for the scaffold and boss-rush follow-ups.
 
+## One game, three platforms
+
+| Platform | Status |
+|---|---|
+| **Browser** (three.js) | Playable now. The reference implementation. |
+| **iPhone** (Godot 4) | Offline matches, online guest role, sound and all 30 weapon models work. First TestFlight build is the next milestone. |
+| **PC** (Godot 4, macOS and Windows) | Builds from the same project; after iPhone. |
+| **Web** (Godot 4 export) | Replaces the browser version once the native game reaches parity. |
+
+Every system in the Godot client is ported from the web game and checked against it with parity tests (movement, collision, hits and knockback, springs, snapshots match to rounding error), so players on different platforms get the same game. The plan, phases and risks are in [`docs/ROADMAP.md`](docs/ROADMAP.md).
+
+<p align="center">
+  <img src="docs/style/godot-slice-wide.png" alt="The Godot client: a match on Sunny Arena" width="48%">
+  <img src="docs/style/godot-weapons-held.png" alt="Weapons in the Godot client" width="48%">
+</p>
+
 ## Quick start
 
 ```bash
@@ -82,20 +123,26 @@ Open <http://localhost:3000> in two browser tabs. In each, press **Play online â
 
 | Path | What it is |
 |---|---|
-| `public/index.html` | The whole game (rendering, physics, bots, UI) in one file. |
+| `public/index.html` | The web game (rendering, physics, bots, UI) in one file. |
 | `server.js`, `accounts.js` | Node.js server: serves the game, keeps the room list, relays messages, stores accounts. |
-| `shared/` | Game content (modes, maps, weapons, cosmetics) exported as JSON. Do not edit by hand, run `npm run content`. |
-| `godot/` | An early Godot client that speaks the same room protocol. |
-| `docs/` | `PROTOCOL.md` (the wire protocol) and `IOS_PLAN.md` (the plan for a native iOS version). |
-| `tools/` | Content export, protocol test client, and server and browser tests. |
+| `godot/` | The native client (Godot 4.7): world, input, wobbler, combat logic, weapons, audio, online guest role. |
+| `shared/`, `godot/data/` | Game content (modes, maps, weapons, classes, cosmetics) exported as JSON. Do not edit by hand: `npm run content`. |
+| `docs/` | `ROADMAP.md`, `PROTOCOL.md` (wire protocol), `CODEMAP.md` (where things live in the web game), `GODOT_ARCH.md`, `COMBAT_PORTING.md`, `ARENAS.md`, `BUILD_IOS.md`, `CROSSPLAY_TEST.md`, `AUDIO.md`. |
+| `tools/` | Content export, protocol test client, parity references, screenshot tools, tests, `build-ios.sh`. |
 
 ## Tests
 
 ```bash
-npm test               # content drift check + server integration test
-npm run test:browser   # browser smoke test (needs Playwright)
-npm run test:godot     # Godot client cross-test
+npm test                       # content drift, map checker, server integration
+npm run test:browser           # browser smoke test (needs Playwright)
+npm run test:touch             # touch controls on an iPhone-sized screen
+npm run test:godot             # Godot client joins a room (needs Godot 4.7)
+npm run test:godot-physics     # movement/collision parity with the web game
+npm run test:godot-combat      # hit, knockback, weapons parity
+npm run test:godot-netguest    # Godot as a guest in a web-style room
 ```
+
+CI runs the Node and Godot suites on every pull request. To try cross-play on your own machine, see [`docs/CROSSPLAY_TEST.md`](docs/CROSSPLAY_TEST.md); to build the iPhone app, see [`docs/BUILD_IOS.md`](docs/BUILD_IOS.md).
 
 ---
 
@@ -148,7 +195,7 @@ Without those two values the server still works (accounts go in a file under `./
 
 ### Updating
 
-- New game version: replace `public/index.html` and restart. Each build has a version tag, and the server will not let a player on an old build into a room of a new build ("different version, refresh the page"). That stops half-broken matches after an update.
+- New game version: replace `public/index.html` and restart. Web and native clients release on different schedules, so rooms check a **protocol version** (`proto`, see `docs/PROTOCOL.md`) when a player joins, not the build number. A player on an incompatible protocol is told to update.
 - The server squashes the game page (brotli or gzip, about 800 KB down to about 215 KB) and remembers it, so friends on slow wifi load it much faster. The page is only re-sent when it changes.
 - Check it is alive: open `/health`. It shows how many rooms and players there are.
 
