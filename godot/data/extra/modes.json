@@ -1,5 +1,5 @@
 {
- "_note": "Godot-only game modes (not in the web game). ModeRules.merge_extra() adds these to shared/modes.json at load. allowFrom / dropsAs = copy that mode's weapon list and crate pool. teams = players per side; flexTeams = the Players page sets the side size (odd bot counts only).",
+ "_note": "Godot-only game modes (not in the web game). ModeRules.merge_extra() adds these to shared/modes.json at load. allowFrom / dropsAs = copy that mode's weapon list and crate pool. teams = players per side; flexTeams = the Players page sets the side size (odd bot counts only). dropAllow = the crate pool. lowg (Moon Drift) is a web mode (MODES.lowg, index.html ~3091) that tools/export-content.js misses because it is added after the MODES literal: copied here by hand. practice = the Practice Range (the web PRACTICE button: the practice / test maps with their dummies).",
  "tdm": {
   "name": "Team Deathmatch",
   "desc": "Two teams, no friendly fire. First team to 30 K.O.s",
@@ -34,6 +34,22 @@
   "teams": 5,
   "chaos": true,
   "preset": {"limit": 50},
+  "start": null,
+  "allowFrom": "classic",
+  "dropsAs": "classic"
+ },
+ "lowg": {
+  "name": "Moon Drift",
+  "desc": "Super low gravity. Float, soar and knock rivals around",
+  "preset": {"hp": 200, "limit": 0, "count": 3, "behav": "brawl", "ffa": true, "grav": 0.15},
+  "start": "smg",
+  "allowWeapons": ["shotgun", "sniper", "mammoth", "rocket", "glauncher", "cluster", "net", "ak", "smg", "uzi", "minigun", "revolver"],
+  "dropAllow": ["net", "heal", "glauncher", "cluster", "ak", "minigun", "smg", "revolver", "uzi", "shotgun", "rocket", "sniper", "mammoth", "speed", "rage", "shield"]
+ },
+ "practice": {
+  "name": "Practice Range",
+  "desc": "Dummies that stand, slide and pop back up, and a rack of weapons to try. No score",
+  "preset": {"limit": 0, "behav": "dummy", "ffa": true},
   "start": null,
   "allowFrom": "classic",
   "dropsAs": "classic"

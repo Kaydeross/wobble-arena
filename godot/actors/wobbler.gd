@@ -122,7 +122,10 @@ func _init() -> void:
 
 
 # ================================================================ material: the ONE place parts get their look
-## Flat-shaded low-poly material (web `lm`). The graphics pass swaps this for the rim-light shader.
+## Flat-shaded low-poly material (web `lm`). MID / HIGH tiers (docs/GRAPHICS.md): soft wrap lighting (keeps every
+## facet its own tone; full toon flattened the low-poly look) and a sun rim light so fighters read against busy
+## levels; specular off.
+## LOW keeps plain lambert. Stays a StandardMaterial3D: hit flash and recolours drive albedo / emission as before.
 func _make_mat(c: int) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color.hex(c << 8 | 0xff)
@@ -131,7 +134,20 @@ func _make_mat(c: int) -> StandardMaterial3D:
 	m.emission_enabled = true
 	m.emission = Color.hex(0xff6644ff)
 	m.emission_energy_multiplier = 0.0
+	if _gfx_q() >= 1:
+		m.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT_WRAP
+		m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		m.roughness = 0.6
+		m.rim_enabled = true
+		m.rim = 0.6
+		m.rim_tint = 0.3
 	return m
+
+
+static func _gfx_q() -> int:
+	var tree := Engine.get_main_loop() as SceneTree
+	var t: Node = tree.root.get_node_or_null("Tier") if tree and tree.root else null
+	return int(t.call("quality")) if t else 2
 
 
 ## A flashing body material, sorted into the colour groups the web game recolours.

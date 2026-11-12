@@ -13,6 +13,9 @@ extends SceneTree
 ## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on),
 ## account-guest / account-signed (the Account sheet from the title chip; signed in, saved to the cloud 2 min ago),
 ## killcam (a fast K.O. by the player, mid replay in slow-mo). Used by tools/shoot-godot-ui.sh.
+## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
+## after the first weapon handout), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
+## modes2-practice (the Practice Range: the player with a rack AK shooting down the range at the dummies).
 
 const FRAME := 1.0 / 60.0
 
@@ -63,10 +66,11 @@ func _start() -> void:
 		process_frame.connect(_wait)
 		return
 	if shot == "title-construction": _settings().set_value("mode", "construction")
+	if shot == "modes2-mode": shot = "newmodes-mode2"
 	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
 		if shot.begins_with("wizard") or shot.begins_with("newmodes"):   # a fixed setup so the shots are comparable
-			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm"}.get(shot, "classic")
-			for kv in [["offline_map", "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
+			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm", "newmodes-mode2": "pillars"}.get(shot, "classic")
+			for kv in [["offline_map", "pillars" if md == "pillars" else "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
 				_settings().set_value(kv[0], kv[1])
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
@@ -78,8 +82,8 @@ func _start() -> void:
 		elif shot.begins_with("wizard"):
 			m.open_wizard(["wizard-mode", "wizard-arena", "wizard-players", "wizard-character", "wizard-start"].find(shot))
 		elif shot.begins_with("newmodes"):
-			m.open_wizard(0 if shot == "newmodes-mode" else 2)
-			if shot == "newmodes-mode": _scroll_wizard = m.wizard
+			m.open_wizard(2 if shot == "newmodes-players" else 0)
+			if shot != "newmodes-players": _scroll_wizard = m.wizard
 		frames = 40
 		process_frame.connect(_wait)
 		return
@@ -97,6 +101,10 @@ func _start() -> void:
 		world.dyn_choice = "off"
 	if shot == "teams":                                  # Team Deathmatch: the TeamBoard (colour chips, YOU tag)
 		world.mode_id = "tdm"
+		world.dyn_choice = "off"
+	if shot.begins_with("modes2-"):                      # Pillars / Moon Drift / Practice Range
+		var mm: Array = {"modes2-pillars": ["pillars", "pillars"], "modes2-lowg": ["lowg", "craterdome"], "modes2-practice": ["practice", "practice"]}[shot]
+		world.mode_id = mm[0]; world.map_id = mm[1]
 		world.dyn_choice = "off"
 	world.auto_run = false
 	world.kill_cam_in_tests = shot == "killcam"
@@ -144,6 +152,7 @@ func _frame() -> void:
 	if shot == "spectate":
 		_spectate_frame(sim, p)
 		return
+<<<<<<< HEAD
 	if shot == "killcam" and i == 100:
 		for f: FighterState in sim.fighters:
 			if f != p: f.hp = 1.0                       # the next hit is a fast K.O.
@@ -153,6 +162,10 @@ func _frame() -> void:
 		if world.kill_cam.shown > 1.5:
 			process_frame.disconnect(_frame)
 			_save()
+=======
+	if shot.begins_with("modes2-"):
+		_modes2_frame(sim, p, st)
+>>>>>>> origin/main
 		return
 	if i == 2:
 		sim.combat.pickup(p, "katana")
@@ -237,6 +250,42 @@ func _spectate_frame(sim: MatchSim, p: FighterState) -> void:
 		world.cam.yaw = lerp_angle(world.cam.yaw, atan2(-d.x, -d.y) + PI, 0.05)
 		world.cam.pitch = -0.2
 	if i == 400 or (i > 140 and sim.combat.rules.match_over):
+		process_frame.disconnect(_frame)
+		_save()
+
+## The new modes: Pillars looks across the ring at the next pillars, Moon Drift jumps and saves high in the air, the
+## Practice Range takes an AK and shoots down the range.
+func _modes2_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
+	if i == 2: world.hud.last_touch = false
+	var go := Vector2.ZERO
+	var fire := false
+	var done := false
+	match shot:
+		"modes2-pillars":
+			world.cam.yaw = lerp_angle(world.cam.yaw, atan2(-p.phys.px, -p.phys.pz) + 0.55, 0.1)
+			world.cam.pitch = -0.08
+			done = i == 330
+		"modes2-lowg":
+			if i == 2: sim.combat.pickup(p, "shotgun")
+			var tg := _nearest(p)
+			if tg:
+				var d := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
+				world.cam.yaw = lerp_angle(world.cam.yaw, atan2(d.x, d.y) + 0.3, 0.1)
+				go = Vector2(0, 0.6) if d.length() > 8.0 else Vector2.ZERO
+			world.cam.pitch = -0.25
+			st.hold("script", "jump", i > 150 and i < 160)
+			done = (i > 170 and p.phys.py > 6.0 and p.phys.vy < 0.5) or i == 600
+		"modes2-practice":
+			if i == 2: sim.combat.pickup(p, "ak")
+			world.cam.yaw = lerp_angle(world.cam.yaw, PI + 0.12, 0.2)
+			world.cam.pitch = -0.06
+			fire = i > 200 and i < 300
+			done = i == 290
+	st.set_move("script", go)
+	st.hold("script", "fire", fire)
+	world.tick(FRAME)
+	i += 1
+	if done:
 		process_frame.disconnect(_frame)
 		_save()
 

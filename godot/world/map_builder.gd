@@ -44,6 +44,7 @@ static func build(map_id: String) -> MapNode:
 	var map: Dictionary = content.get_map(map_id) if content else _load_maps_file().get(map_id, {})
 	if map.is_empty():
 		push_error("MapBuilder: unknown map " + map_id)
+	if PillarsMap.IDS.has(map_id): map = PillarsMap.complete(map)   # its pillars and spots are not in the web export
 	return build_from(map_id, map)
 
 ## Build from a map Dictionary (one entry of maps.json).
@@ -68,7 +69,16 @@ static func build_from(map_id: String, map: Dictionary) -> MapNode:
 		root.ladders.append(l)
 	if not _add_decor(root, _decor_id(map_id, map)):
 		_add_backdrop(root, map)
+	if gfx_q() >= 1:
+		_add_cloud_layer(root, look(map_id) if map_id != "custom" else {})
 	return root
+
+## Graphics quality from the Tier autoload: 0 LOW (web), 1 MID (phones), 2 HIGH (PC); 2 without the autoload.
+## See docs/GRAPHICS.md for what each level turns on.
+static func gfx_q() -> int:
+	var tree := Engine.get_main_loop() as SceneTree
+	var t: Node = tree.root.get_node_or_null("Tier") if tree and tree.root else null
+	return int(t.call("quality")) if t else 2
 
 ## THE material factory (like the web game's `lm`). Swap this for the art pass; everything in a map goes through it.
 static func material(color: int) -> StandardMaterial3D:
@@ -137,7 +147,57 @@ static func make_environment(map: Dictionary, id := "") -> Environment:
 	env.fog_depth_end = float(fog[1])
 	env.fog_depth_curve = 1.0
 	env.fog_sky_affect = 0.0
+	_grade(env, lk)
 	return env
+
+## Post and colour grade by tier (docs/GRAPHICS.md). LOW keeps the web game's look (linear tonemap, depth fog only).
+## MID / HIGH: filmic tonemap with the exposure lifted back to the web brightness, a gentle per-map grade from
+## map_look.json (contrast / saturation, a split tone: shadows toward the hemisphere ground colour, highlights toward
+## the sun). Godot's height fog and aerial perspective were tried and dropped: both wash the pastel sky and the
+## fog-free far scenery out; the far scenery fades toward the fog colour in its own shader instead (decor_material).
+## HIGH adds glow (only HDR pixels bloom: the sun disc, lamps, lava) and SSAO (SSIL was tried: noisy on flat
+## colour faces and not worth its cost).
+static func _grade(env: Environment, lk: Dictionary) -> void:
+	var q := gfx_q()
+	if q == 0:
+		return
+	var night := bool(lk.get("night", false))
+	var indoor := bool(lk.get("indoor", false))
+	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
+	env.tonemap_white = 1.4          # a gentle shoulder: mid-tones stay at the web brightness, highlights roll off
+	env.tonemap_exposure = 0.88 if not night else 0.94
+	env.adjustment_enabled = true
+	env.adjustment_contrast = 1.1
+	env.adjustment_saturation = 1.1 if night else (1.08 if indoor else 1.18)
+	var sun_c := hex(int(lk["sun"][0])) if lk.get("sun") is Array else Color(1.0, 0.95, 0.85)
+	var gnd_c := hex(int(lk["hemi"][1])) if lk.get("hemi") is Array else Color(0.45, 0.42, 0.4)
+	var g := Gradient.new()
+	g.set_color(0, Color.BLACK.lerp(gnd_c.darkened(0.5), 0.1))
+	g.set_color(1, Color.WHITE)
+	g.add_point(0.5, Color(0.5, 0.5, 0.5).lerp(sun_c, 0.07))
+	var gt := GradientTexture1D.new()
+	gt.gradient = g
+	gt.width = 128
+	gt.use_hdr = false
+	env.adjustment_color_correction = gt
+	if q >= 2:
+		env.glow_enabled = true
+		env.glow_intensity = 0.5
+		env.glow_strength = 1.0
+		env.glow_bloom = 0.0
+		env.glow_hdr_threshold = 1.0
+		env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SCREEN
+		env.set_glow_level(0, 0.0)
+		env.set_glow_level(1, 0.0)
+		env.set_glow_level(2, 1.0)
+		env.set_glow_level(3, 0.8)
+		env.set_glow_level(4, 0.5)
+		env.ssao_enabled = true
+		env.ssao_radius = 1.3
+		env.ssao_intensity = 1.6
+		env.ssao_power = 1.5
+		env.ssao_detail = 0.5
+		env.ssao_horizon = 0.06
 
 static func _procedural_sky(top: int, sky_c: int, void_c: int) -> ProceduralSkyMaterial:
 	var sm := ProceduralSkyMaterial.new()
@@ -212,6 +272,7 @@ static func sky_material(lk: Dictionary) -> ShaderMaterial:
 	sm.set_shader_parameter("sun_size", float(disc[1]))
 	var night := bool(lk.get("night", false))
 	sm.set_shader_parameter("night", 1.0 if night else 0.0)
+	sm.set_shader_parameter("sun_boost", 1.6 if gfx_q() >= 2 else 1.0)   # HIGH: the disc is HDR so it blooms
 	if lk.get("moon") is Array:
 		sm.set_shader_parameter("moon_col", _lin(int(lk["moon"][0])))
 		sm.set_shader_parameter("moon_size", float(lk["moon"][1]) * 1.15)
@@ -228,6 +289,7 @@ uniform vec3 below_col;
 uniform vec3 sun_dir = vec3(0.49, 0.83, 0.26);
 uniform vec3 sun_col = vec3(1.0);
 uniform float sun_size = 1.0;
+uniform float sun_boost = 1.0;
 uniform float night = 0.0;
 uniform vec3 moon_col = vec3(0.9);
 uniform float moon_size = 1.15;
@@ -258,7 +320,7 @@ void sky() {
 		float r = atan(19.0 * sun_size / 315.0);
 		c = mix(c, sun_col, 0.1 * (1.0 - smoothstep(r * 4.0, r * 5.3, ang)));
 		c = mix(c, sun_col, 0.28 * (1.0 - smoothstep(r * 2.2, r * 2.45, ang)));
-		c = mix(c, sun_col, 1.0 - smoothstep(r * 0.97, r * 1.03, ang));
+		c = mix(c, sun_col * sun_boost, 1.0 - smoothstep(r * 0.97, r * 1.03, ang));
 	} else {
 		float r = atan(15.0 * moon_size / 300.0);
 		c = mix(c, moon_col, 0.16 * (1.0 - smoothstep(r * 1.9, r * 2.05, ang)));
@@ -288,6 +350,8 @@ static func _shader(key: String, code: String) -> Shader:
 ## `styles` (map_look.json `boxes`, by box index) restyles boxes the way the level's build() does after addBox: hidden
 ## (invisible walls), op (glass), basic (self-lit), color, emissive / ei, noShadow. `idx[i]` = the index of boxes[i].
 static func _add_boxes(root: Node3D, boxes: Array, styles := {}, idx := []) -> void:
+	var q := gfx_q()
+	var grid := root is MapNode and (root as MapNode).map_id == "practice"
 	var groups := {}
 	for i in boxes.size():
 		var b: Dictionary = boxes[i]
@@ -303,16 +367,78 @@ static func _add_boxes(root: Node3D, boxes: Array, styles := {}, idx := []) -> v
 		var st: Dictionary = JSON.parse_string(key[2])
 		var st_tool := SurfaceTool.new()
 		st_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-		for b in groups[key]:
-			var bm := BoxMesh.new()
-			bm.size = Vector3(float(b["w"]), float(b["h"]), float(b["d"]))
-			st_tool.append_from(bm, 0, Transform3D(Basis(), Vector3(float(b["x"]), float(b["y"]) + float(b["h"]) / 2.0, float(b["z"]))))
+		if q == 0 or not (st.is_empty() or _only_keys(st, ["color", "noShadow"])):
+			for b in groups[key]:
+				var bm := BoxMesh.new()
+				bm.size = Vector3(float(b["w"]), float(b["h"]), float(b["d"]))
+				st_tool.append_from(bm, 0, Transform3D(Basis(), Vector3(float(b["x"]), float(b["y"]) + float(b["h"]) / 2.0, float(b["z"]))))
 		var mi := MeshInstance3D.new()
 		mi.name = ("Boxes_%06x" if key[1] == 1 else "Roof_%06x") % key[0]
-		mi.mesh = st_tool.commit()
-		mi.material_override = material(key[0]) if st.is_empty() or (st.keys() == ["noShadow"]) else _styled(key[0], st)
+		var plain := st.is_empty() or (st.keys() == ["noShadow"])
+		var shaded := q >= 1 and (plain or _only_keys(st, ["color", "noShadow"]))
+		if shaded:
+			var faces := SurfaceTool.new()
+			faces.begin(Mesh.PRIMITIVE_TRIANGLES)
+			for b in groups[key]:
+				_append_box(faces, Vector3(float(b["x"]), float(b["y"]) + float(b["h"]) / 2.0, float(b["z"])), Vector3(float(b["w"]), float(b["h"]), float(b["d"])))
+			mi.mesh = faces.commit()
+			mi.material_override = box_material(key[0], grid and not plain)
+		else:
+			mi.mesh = st_tool.commit()
+			mi.material_override = material(key[0]) if plain else _styled(key[0], st)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if key[1] == 1 and not st.get("noShadow", false) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(mi)
+
+static func _only_keys(d: Dictionary, allowed: Array) -> bool:
+	for k in d:
+		if not allowed.has(k): return false
+	return true
+
+## The stylised box material (MID / HIGH): res://shaders/box.gdshader in one colour, cached. grid = the Practice
+## Range's prototype grid.
+static func box_material(color: int, grid := false) -> ShaderMaterial:
+	var k := "box_%06x_%d" % [color, int(grid)]
+	if _materials.has(k):
+		return _materials[k]
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/box.gdshader")
+	m.set_shader_parameter("albedo", hex(color))
+	if grid:
+		m.set_shader_parameter("grid", 1.0)
+		m.set_shader_parameter("grid_minor", 0.06)
+		m.set_shader_parameter("grid_major", 0.11)
+	_materials[k] = m
+	return m
+
+## One box as 6 faces for box.gdshader: normal, UV = metres along the face (v up on the sides), UV2 = face size.
+static func _append_box(st: SurfaceTool, c: Vector3, sz: Vector3) -> void:
+	var h := sz / 2.0
+	# [normal, origin corner, U axis, V axis, U length, V length]
+	var faces := [
+		[Vector3.UP, c + Vector3(-h.x, h.y, -h.z), Vector3.RIGHT, Vector3.BACK, sz.x, sz.z],
+		[Vector3.DOWN, c + Vector3(-h.x, -h.y, -h.z), Vector3.RIGHT, Vector3.BACK, sz.x, sz.z],
+		[Vector3.RIGHT, c + Vector3(h.x, -h.y, -h.z), Vector3.BACK, Vector3.UP, sz.z, sz.y],
+		[Vector3.LEFT, c + Vector3(-h.x, -h.y, -h.z), Vector3.BACK, Vector3.UP, sz.z, sz.y],
+		[Vector3.BACK, c + Vector3(-h.x, -h.y, h.z), Vector3.RIGHT, Vector3.UP, sz.x, sz.y],
+		[Vector3.FORWARD, c + Vector3(-h.x, -h.y, -h.z), Vector3.RIGHT, Vector3.UP, sz.x, sz.y],
+	]
+	for f in faces:
+		var n: Vector3 = f[0]
+		var o: Vector3 = f[1]
+		var u: Vector3 = f[2]
+		var v: Vector3 = f[3]
+		var lu: float = f[4]
+		var lv: float = f[5]
+		var pts := [Vector2(0, 0), Vector2(lu, 0), Vector2(lu, lv), Vector2(0, lv)]
+		var flip := u.cross(v).dot(n) > 0.0     # Godot front faces wind clockwise seen from outside
+		for tri in [[0, 1, 2], [0, 2, 3]]:
+			var order: Array = [tri[0], tri[2], tri[1]] if flip else tri
+			for i in order:
+				var p: Vector2 = pts[i]
+				st.set_normal(n)
+				st.set_uv(p)
+				st.set_uv2(Vector2(lu, lv))
+				st.add_vertex(o + u * p.x + v * p.y)
 
 static func _styled(color: int, st: Dictionary) -> StandardMaterial3D:
 	var k := "style_%06x_%s" % [color, JSON.stringify(st)]
@@ -443,45 +569,63 @@ static func _decor_id(map_id: String, map: Dictionary) -> String:
 		return "custom" if str(map.get("theme", "grass")) == "grass" else ""
 	return map_id
 
-## Adds the exported decor of `id` as at most two MeshInstance3Ds (shadow casters / the rest), one surface per
-## material kind. Returns false when there is no decor file (the native hills and void are used instead).
+## Adds the exported decor of `id` as at most four MeshInstance3Ds (shadow casters / the rest, each split into still
+## and moving pieces), one surface per material kind. Moving pieces (balloons, ships, turbines, smoke, swaying leaves,
+## lava / water) carry their motion per vertex (CUSTOM0-2, tools/export-map-decor.js ANIM) and move in the vertex
+## shader, so they cost no script time. Returns false when there is no decor file (native hills and void instead).
 static func _add_decor(root: MapNode, id: String) -> bool:
 	var d := load_decor(id)
 	if d.is_empty():
 		return false
+	var lk := look(id) if root.map_id != "custom" else look("custom")
+	var haze := _lin(int(lk["fog"][0])) if lk.get("fog") is Array else Vector3(0.75, 0.85, 0.9)
 	for cast in [true, false]:
-		var mesh := ArrayMesh.new()
-		for g: Dictionary in d:
-			if bool(int(g["shadow"]) & 1) != cast:
+		for moving in [false, true]:
+			var mesh := ArrayMesh.new()
+			for g: Dictionary in d:
+				if bool(int(g["shadow"]) & 1) != cast or g.has("anim") != moving:
+					continue
+				var arr := []
+				arr.resize(Mesh.ARRAY_MAX)
+				arr[Mesh.ARRAY_VERTEX] = g["pos"]
+				arr[Mesh.ARRAY_COLOR] = g["col"]
+				if g.has("uv"):
+					arr[Mesh.ARRAY_TEX_UV] = g["uv"]
+				arr[Mesh.ARRAY_INDEX] = g["idx"]
+				var flags := 0
+				if moving:
+					var a: Array = g["anim"]
+					arr[Mesh.ARRAY_CUSTOM0] = a[0]
+					arr[Mesh.ARRAY_CUSTOM1] = a[1]
+					arr[Mesh.ARRAY_CUSTOM2] = a[2]
+					flags = (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM2_SHIFT)
+				mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, flags)
+				var m := decor_material(int(g["kind"]), bool(g["fog"]), float(g["em"]), bool(int(g["shadow"]) & 2), moving)
+				m.set_shader_parameter("haze_col", haze)
+				mesh.surface_set_material(mesh.get_surface_count() - 1, m)
+			if mesh.get_surface_count() == 0:
 				continue
-			var arr := []
-			arr.resize(Mesh.ARRAY_MAX)
-			arr[Mesh.ARRAY_VERTEX] = g["pos"]
-			arr[Mesh.ARRAY_COLOR] = g["col"]
-			if g.has("uv"):
-				arr[Mesh.ARRAY_TEX_UV] = g["uv"]
-			arr[Mesh.ARRAY_INDEX] = g["idx"]
-			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
-			mesh.surface_set_material(mesh.get_surface_count() - 1, decor_material(int(g["kind"]), bool(g["fog"]), float(g["em"]), bool(int(g["shadow"]) & 2)))
-		if mesh.get_surface_count() == 0:
-			continue
-		var mi := MeshInstance3D.new()
-		mi.name = "Decor" if cast else "DecorFar"
-		mi.mesh = mesh
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if cast else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		root.add_child(mi)
+			var mi := MeshInstance3D.new()
+			mi.name = ("Decor" if cast else "DecorFar") + ("Moving" if moving else "")
+			mi.mesh = mesh
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if cast else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			if moving:   # pieces orbit the level: never cull them by their t = 0 box
+				mi.custom_aabb = AABB(Vector3(-700, -120, -700), Vector3(1400, 400, 1400))
+			root.add_child(mi)
 	root.decor_tris = 0
 	for g: Dictionary in d:
 		root.decor_tris += (g["idx"] as PackedInt32Array).size() / 3
 	return true
 
-## Reads res://data/extra/decor/<id>.bin: [{kind, fog, shadow, op, em, pos, col, uv?, idx}] ([] if missing or bad).
+## Reads res://data/extra/decor/<id>.bin: [{kind, fog, shadow, op, em, pos, col, uv?, anim?, idx}] ([] if missing or
+## bad). anim (groups with shadow bit 2, "WAD2" files) = [CUSTOM0, CUSTOM1, CUSTOM2] as PackedFloat32Arrays.
 static func load_decor(id: String) -> Array:
 	var path := DECOR_DIR + id + ".bin"
 	if id == "" or not FileAccess.file_exists(path):
 		return []
 	var b := FileAccess.get_file_as_bytes(path)
-	if b.size() < 8 or b.slice(0, 4).get_string_from_ascii() != "WAD1":
+	var magic := b.slice(0, 4).get_string_from_ascii() if b.size() >= 8 else ""
+	if magic != "WAD1" and magic != "WAD2":
 		push_error("MapBuilder: bad decor file " + path)
 		return []
 	var n := b.decode_u32(4)
@@ -514,6 +658,16 @@ static func load_decor(id: String) -> Array:
 		g["col"] = col
 		if st == 12:
 			g["uv"] = uv
+		if magic == "WAD2" and (int(g["shadow"]) & 4):
+			var f := b.slice(o, o + nv * 48).to_float32_array()
+			o += nv * 48
+			var cs := [PackedFloat32Array(), PackedFloat32Array(), PackedFloat32Array()]
+			for c in cs: c.resize(nv * 4)
+			for i in nv:
+				for k in 3:
+					for e in 4:
+						cs[k][i * 4 + e] = f[i * 12 + k * 4 + e]
+			g["anim"] = cs
 		g["idx"] = b.slice(o, o + ni * 4).to_int32_array()
 		o += ni * 4
 		out.append(g)
@@ -521,10 +675,14 @@ static func load_decor(id: String) -> Array:
 
 ## Decor kinds: 0 lit (flat shaded, emission = colour * em: the far scenery glows a little so it never goes muddy),
 ## 1 unlit, 2 unlit see-through, 3 additive glow (soft radial blob, fake bloom round lamps), 4 lit see-through.
-## fog = false for the far scenery, which the web draws without fog; receive = false: no shadows land on it (the
-## void plane, trees). One cached material per combination.
-static func decor_material(kind: int, fog: bool, em: float, receive := true) -> ShaderMaterial:
-	var key := "decor_%d_%d_%d_%.3f" % [kind, int(fog), int(receive), em]
+## fog = false for the far scenery, which the web draws without fog (it gets the web's foot-to-top shading, farPatch,
+## and on MID / HIGH a little aerial haze toward the fog colour with distance); receive = false: no shadows land on
+## it (the void plane, trees). anim: the vertex shader moves the piece (see _add_decor; flags in CUSTOM1.w: 1 far
+## leaves, 2 level trees, 3 lava, 4 water). MID / HIGH light lit kinds with the soft cel ramp. One cached material per
+## combination.
+static func decor_material(kind: int, fog: bool, em: float, receive := true, anim := false) -> ShaderMaterial:
+	var q := gfx_q()
+	var key := "decor_%d_%d_%d_%d_%d_%.3f" % [kind, int(fog), int(receive), int(anim), q, em]
 	if _materials.has(key):
 		return _materials[key]
 	var modes := ["specular_disabled"]
@@ -538,8 +696,20 @@ static func decor_material(kind: int, fog: bool, em: float, receive := true) -> 
 		modes.append("fog_disabled")
 	if not receive and (kind == 0 or kind == 4):
 		modes.append("shadows_disabled")
-	var code := "shader_type spatial;\nrender_mode %s;\nuniform float emission = 0.0;\nvoid fragment() {\n\tvec3 c = pow(COLOR.rgb, vec3(2.2));\n" % ", ".join(modes)
-	if kind == 0 or kind == 4:
+	var lit := kind == 0 or kind == 4
+	var code := "shader_type spatial;\nrender_mode %s;\nuniform float emission = 0.0;\nuniform vec3 haze_col = vec3(0.8);\nuniform float wind = %.1f;\nvarying vec3 wpos;\n" % [", ".join(modes), 1.0 if q >= 1 else 0.0]
+	if anim:
+		code += DECOR_ANIM_VERTEX
+	else:
+		code += "void vertex() {\n\twpos = VERTEX;\n}\n"
+	code += "void fragment() {\n\tvec3 c = pow(COLOR.rgb, vec3(2.2));\n"
+	if lit and not fog:      # web farPatch: darker at the foot, lighter at the top
+		code += "\tc *= mix(0.84, 1.07, smoothstep(-30.0, 65.0, wpos.y));\n"
+		if q >= 1:
+			code += "\tc = mix(c, haze_col, 0.1 * smoothstep(150.0, 380.0, length(wpos.xz)));\n"
+	if anim:
+		code += DECOR_LIQUID
+	if lit:
 		code += "\tvec3 n = normalize(cross(dFdx(VERTEX), dFdy(VERTEX)));\n\tNORMAL = dot(n, VERTEX) > 0.0 ? -n : n;\n\tROUGHNESS = 0.95;\n\tEMISSION = c * emission;\n"
 	code += "\tALBEDO = c;\n"
 	if kind == 2 or kind == 4:
@@ -547,12 +717,95 @@ static func decor_material(kind: int, fog: bool, em: float, receive := true) -> 
 	if kind == 3:
 		code += "\tfloat r = length(UV - 0.5) * 2.0;\n\tfloat k = r < 0.35 ? mix(1.0, 0.45, r / 0.35) : mix(0.45, 0.0, clamp((r - 0.35) / 0.65, 0.0, 1.0));\n\tALBEDO = c * k * COLOR.a;\n"
 	code += "}\n"
+	if lit and fog and q >= 1:
+		code += SOFT_CEL_LIGHT
 	var m := ShaderMaterial.new()
-	m.shader = _shader("decor_%d_%d_%d" % [kind, int(fog), int(receive)], code)
+	m.shader = _shader("decor_%d_%d_%d_%d_%d" % [kind, int(fog), int(receive), int(anim), q], code)
 	m.set_shader_parameter("emission", em)
 	m.render_priority = -1 if kind == 3 else 0
 	_materials[key] = m
 	return m
+
+## Moving decor (tools/export-map-decor.js ANIM): CUSTOM0 = pivot, CUSTOM1 = angular velocity (rad/s, axis through
+## the pivot) + flag, CUSTOM2 = bob vector * sin(bob rate * TIME). Leaves sway like the web's farPatch (far, flag 1)
+## or a little round the canopy (level trees, flag 2). Decor vertices are in world space (identity transform).
+const DECOR_ANIM_VERTEX := """varying flat float vflag;
+void vertex() {
+	vec3 v = VERTEX;
+	vec3 w = CUSTOM1.xyz;
+	float sp = length(w);
+	if (sp > 1e-5) {
+		vec3 a = w / sp;
+		float th = sp * TIME;
+		vec3 p = v - CUSTOM0.xyz;
+		v = CUSTOM0.xyz + p * cos(th) + cross(a, p) * sin(th) + a * dot(a, p) * (1.0 - cos(th));
+	}
+	v += CUSTOM2.xyz * sin(CUSTOM2.w * TIME);
+	float f = CUSTOM1.w;
+	if (f > 0.5 && f < 1.5) {
+		float ph = v.x * 0.045 + v.z * 0.045;
+		float k = clamp((v.y + 30.0) / 45.0, 0.0, 1.0) * wind;
+		v.x += sin(TIME * 1.1 + ph) * 0.6 * k;
+		v.z += cos(TIME * 0.85 + ph * 1.3) * 0.4 * k;
+	} else if (f > 1.5 && f < 2.5) {
+		float ph = CUSTOM0.x * 0.31 + CUSTOM0.z * 0.27;
+		float k = clamp((v.y - CUSTOM0.y + 1.5) / 4.0, 0.0, 1.0) * wind;
+		v.x += sin(TIME * 1.3 + ph) * 0.1 * k;
+		v.z += cos(TIME * 1.05 + ph) * 0.08 * k;
+	}
+	vflag = f;
+	wpos = v;
+	VERTEX = v;
+}
+"""
+
+## Lava (flag 3): slow bright / dark churn, emissive. Water (flag 4): soft moving ripple highlights. Cheap sines only.
+const DECOR_LIQUID := """	if (vflag > 2.5 && vflag < 3.5) {
+		float n = sin(wpos.x * 0.21 + TIME * 0.6) * sin(wpos.z * 0.19 - TIME * 0.45) + 0.5 * sin((wpos.x - wpos.z) * 0.55 + TIME * 1.3);
+		c *= 0.82 + 0.3 * (n * 0.5 + 0.5);
+	} else if (vflag > 3.5) {
+		float n = sin(wpos.x * 0.35 + TIME * 0.8) + sin(wpos.z * 0.29 - TIME * 0.6) + sin((wpos.x + wpos.z) * 0.6 + TIME * 1.1);
+		c = mix(c, c * 1.18 + 0.035, smoothstep(1.6, 2.6, n) * wind);
+	}
+"""
+
+## Soft cel light for lit shaders (MID / HIGH): a short ramp round the terminator plus a bit of plain lambert.
+const SOFT_CEL_LIGHT := """void light() {
+	float ndl = dot(NORMAL, LIGHT);
+	float ramp = smoothstep(-0.02, 0.32, ndl) * 0.8 + clamp(ndl, 0.0, 1.0) * 0.2;
+	DIFFUSE_LIGHT += ramp * ATTENUATION * LIGHT_COLOR / PI;
+}
+"""
+
+## A slowly drifting flat cloud layer high over the level (MID / HIGH; res://shaders/clouds.gdshader), tinted from
+## the map's look: white with a touch of sun and of the horizon colour by day, a few dim grey-blue wisps at night.
+static func _add_cloud_layer(root: Node3D, lk: Dictionary) -> void:
+	if bool(lk.get("indoor", false)):
+		return
+	var night := bool(lk.get("night", false))
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/clouds.gdshader")
+	var sun_c := hex(int(lk["sun"][0])) if lk.get("sun") is Array else Color.WHITE
+	var fog_c := hex(int(lk["fog"][0])) if lk.get("fog") is Array else Color(0.75, 0.85, 0.95)
+	if night:
+		m.set_shader_parameter("col", fog_c.lerp(Color(0.55, 0.6, 0.75), 0.5))
+		m.set_shader_parameter("shade", fog_c.lerp(Color(0.2, 0.22, 0.35), 0.5))
+		m.set_shader_parameter("opacity", 0.32)
+		m.set_shader_parameter("cover", 0.62)
+	else:
+		m.set_shader_parameter("col", Color.WHITE.lerp(sun_c, 0.15).lerp(fog_c, 0.3))
+		m.set_shader_parameter("shade", fog_c.lerp(Color.WHITE, 0.25).darkened(0.08))
+		m.set_shader_parameter("opacity", 0.62)
+		m.set_shader_parameter("cover", 0.64)
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(720, 720)
+	var mi := MeshInstance3D.new()
+	mi.name = "CloudLayer"
+	mi.mesh = pm
+	mi.material_override = m
+	mi.position.y = 78.0
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
 
 # ---------------------------------------------------------------- the custom level (MAPS.custom, index.html ~1907)
 

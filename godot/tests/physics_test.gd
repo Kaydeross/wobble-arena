@@ -1,7 +1,8 @@
 extends SceneTree
 ## Replays the scripted input from tools/physics-reference.js and compares with the web game's trace
 ## (movement, status effects stun/down/trap/speed/dash-air/dead, ladders, bounce pads).
-## godot --headless --path godot --script res://tests/physics_test.gd -- MAPS_JSON MAP_ID TRACE_JSON [CLASS_JSON]
+## godot --headless --path godot --script res://tests/physics_test.gd -- MAPS_JSON MAP_ID TRACE_JSON [CLASS_JSON] [GRAV]
+## GRAV = cfg.grav (FighterPhysics.grav_scale; Moon Drift 0.15, used by tools/test-modes.js).
 
 const DT := 1.0 / 60.0
 
@@ -19,6 +20,7 @@ func _initialize() -> void:
 	if a.size() > 3:
 		var c: Dictionary = JSON.parse_string(a[3])
 		f.speed_mul = c["spd"]; f.accel_mul = c["acc"]; f.air_mul = c["air"]; f.jump_mul = c["jump"]
+	if a.size() > 4: f.grav_scale = float(a[4])
 	f.place(0.0, 0.01, 0.0)
 	var worst := 0.0
 	var worst_k := -1

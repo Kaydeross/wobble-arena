@@ -92,6 +92,7 @@ func _ready() -> void:
 		elif a.begins_with("--mode="): mode_id = a.substr(7)
 		elif a.begins_with("--limit="): ko_limit = int(a.substr(8))
 	Tier.configure_viewport(get_viewport())
+	Gfx.add_post(self)                   # MID / HIGH vignette (docs/GRAPHICS.md)
 	touch.state = input.state
 	touch.pause_pressed.connect(_toggle_pause)
 	touch.spectate_tap.connect(_on_spectate_tap)
@@ -192,6 +193,7 @@ func load_map(id: String) -> void:
 		var tc := sim.combat.rules.team_color(f)
 		if tc >= 0:                      # team modes: everyone wears the team colour (recolor(TEAM_COL[team], true))
 			v.look["color"] = tc; v.wobbler.recolor(tc, true)
+		Gfx.dress_fighter(v)             # LOW tier: blob shadow (docs/GRAPHICS.md)
 		views[f] = v
 	player_view = views[sim.player]
 	kill_cam.stop()
@@ -874,6 +876,7 @@ func _relook(f: FighterState) -> void:
 	var v: Fighter = load("res://actors/fighter.tscn").instantiate()
 	_fighters_root.add_child(v)
 	v.bind(f, sim.looks.get(f, {}))
+	Gfx.dress_fighter(v)
 	views[f] = v
 
 ## pend: the host ended the match. Results + rematch vote (themed panel, centred, over the HUD).
