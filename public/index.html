@@ -1230,6 +1230,11 @@ body.tplay #chat{display:none}
           <div class="row"><button class="opt" id="kb-0.5">Low</button><button class="opt on" id="kb-1">Normal</button><button class="opt" id="kb-1.5">High</button><button class="opt" id="kb-2">Huge</button><button class="opt" id="kb-3">Yeet<small>Maximum</small></button></div>
           <div class="tog" style="margin-top:10px"><span>Infinite ammo</span><button id="inf-tog">Off</button></div>
         </div>
+        <div class="grp" id="grp-dyn">
+          <h3>Arena</h3>
+          <div class="row" id="row-dyn"><button class="opt on" id="dyn-off" title="The floor stays still">Steady<small>Solid ground</small></button><button class="opt" id="dyn-random" title="A different moving arena every match">Random<small>Surprise me</small></button><button class="opt" id="dyn-wobble" title="A slow wave rolls across the floor tiles">Wobble<small>Rolling waves</small></button><button class="opt" id="dyn-tilt" title="The floor rocks like a see-saw on a turning axis">Tilt<small>See-saw</small></button><button class="opt" id="dyn-quake" title="Every 12-18 s the ground shakes and a few tiles drop away for 3 s">Quake<small>Holes open</small></button><button class="opt" id="dyn-drift" title="Free-standing blocks and platforms slide back and forth">Drift<small>Platforms slide</small></button></div>
+          <small class="help" id="dyn-note" style="margin-top:6px"></small>
+        </div>
       <h3>Weapons &amp; crates</h3>
         <h3 style="margin-top:4px">Crate speed</h3>
         <div class="row" id="row-rate">
@@ -1626,6 +1631,7 @@ const glowMat = (color, op) => new THREE.MeshBasicMaterial({ color, map: glowTex
 /* ============================== world / maps ============================== */
 const solids = [];       // collision boxes
 const solidMeshes = [];  // for raycasts (camera + bullets)
+const solidMesh = new WeakMap();   // solid record -> its mesh (dynamic arenas move them together)
 const mapObjs = [];      // everything the current map added to the scene (removed when switching maps)
 const pads = [];         // bounce pads
 const ladders = [];      // climbable ladders: { x, z, nx, nz (which way the climber stands), y0, y1 }
@@ -1637,7 +1643,8 @@ function addBox(cx, cz, w, d, h, color, yBase = 0) {
   mesh.castShadow = true; mesh.receiveShadow = true;
   addDecor(mesh);
   mesh.updateMatrixWorld(true);
-  solids.push({ minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2, top: yBase + h, bottom: yBase, color });
+  const sol = { minX: cx - w / 2, maxX: cx + w / 2, minZ: cz - d / 2, maxZ: cz + d / 2, top: yBase + h, bottom: yBase, color };
+  solids.push(sol); solidMesh.set(sol, mesh);
   solidMeshes.push(mesh);
   return mesh;
 }
@@ -2591,6 +2598,239 @@ function inSolid(x, y, z, rad) {
     if (x > b.minX - rad && x < b.maxX + rad && z > b.minZ - rad && z < b.maxZ + rad && y - rad < b.top && y + rad > b.bottom) return true;
   }
   return false;
+}
+
+/* ==== DYN-PURE BEGIN ====
+   Dynamic arenas: pure deterministic functions (no three.js, no Math.random, no globals).
+   tools/test-dynamics.js slices this block out of the page; the Godot port mirrors it line by line (see docs/DYNAMICS.md).
+   Integers are uint32 with wrap-around (Math.imul = low 32 bits of the product); trig is plain sin/cos on doubles (parity tolerance 1e-9). */
+const DYN_KINDS = ['off', 'random', 'wobble', 'tilt', 'quake', 'drift'];
+const DYN_RAMP = 4;                                                       // seconds: everything eases in from 0 so nothing moves under a spawn at t = 0
+const DYN_WOB_A = 0.3, DYN_WOB_P = 6;                                     // wobble: amplitude (m), period (s); wavelength = the whole floor
+const DYN_TILT_A = 0.5, DYN_TILT_P = 12, DYN_TILT_ROT = 40;               // tilt: edge amplitude (m), see-saw period (s), one turn of the axis (s)
+const DYN_Q_FIRST = 12, DYN_Q_SLOT = 15, DYN_Q_JIT = 3;                   // quake: first event at 12 s, then one per 15 s slot (+0..3 s) = every 12-18 s
+const DYN_Q_SHAKE = 1.5, DYN_Q_DROP = 0.6, DYN_Q_DOWN = 3, DYN_Q_RISE = 1.2, DYN_Q_DEPTH = 30, DYN_Q_JA = 0.05, DYN_Q_HZ = 9, DYN_Q_HOLE = 0.4;
+const DYN_DRIFT_A = 2, DYN_DRIFT_P = 10, DYN_DRIFT_PV = 4;                // drift: +-2 m, period 10..14 s per block
+function dynHash(seed, a, b, c) {                                         // -> uint32
+  let h = (seed >>> 0) ^ Math.imul(a | 0, 0x27d4eb2d) ^ Math.imul(b | 0, 0x165667b1) ^ Math.imul(c | 0, 0x9e3779b1);
+  h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+  h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+function dynRand(seed, a, b, c) { return dynHash(seed, a, b, c) / 4294967296; }       // [0, 1)
+function dynRamp(t) { if (t <= 0) return 0; if (t >= DYN_RAMP) return 1; const x = t / DYN_RAMP; return x * x * (3 - 2 * x); }
+function dynMapAllowed(id, m) { return !!m && !m.noDynamics && !m.shrinks && !m.range && !m.randSpawn && !['custom', 'test', 'practice', 'pillars'].includes(id); }
+function dynResolve(kind, seed, canTile, canDrift) {                      // the kind that actually runs on this map ('random' picks one from the seed)
+  if (!DYN_KINDS.includes(kind) || kind === 'off') return 'off';
+  if (kind === 'random') {
+    const list = canTile ? ['wobble', 'tilt', 'quake'] : [];
+    if (canDrift) list.push('drift');
+    return list.length ? list[dynHash(seed, 7, 0, 0) % list.length] : 'off';
+  }
+  if (kind === 'drift') return canDrift ? 'drift' : 'off';
+  return canTile ? kind : 'off';
+}
+// vertical offset (m) of floor tile (ix, iz) in an nx * nz grid at match time t (s). mask: bit 1 = anchored (never moves), bit 2 = never becomes a hole
+function dynOffset(kind, seed, t, ix, iz, nx, nz, mask) {
+  if ((mask & 1) || !(t > 0)) return 0;
+  const TAU = 2 * Math.PI, r = dynRamp(t), u = (ix + 0.5) / nx - 0.5, v = (iz + 0.5) / nz - 0.5;
+  if (kind === 'wobble') {
+    const th = dynRand(seed, 1, 0, 0) * TAU;
+    return DYN_WOB_A * r * Math.sin(TAU * (t / DYN_WOB_P - (u * Math.cos(th) + v * Math.sin(th))));
+  }
+  if (kind === 'tilt') {
+    const dir = dynHash(seed, 1, 1, 0) & 1 ? 1 : -1, ph = dynRand(seed, 1, 0, 0) * TAU + dir * TAU * t / DYN_TILT_ROT;
+    const h = 2 * (u * Math.cos(ph) + v * Math.sin(ph));                 // -1..1 across the floor (corners clipped)
+    return DYN_TILT_A * r * Math.sin(TAU * t / DYN_TILT_P) * Math.max(-1, Math.min(1, h));
+  }
+  if (kind === 'quake') {
+    if (t < DYN_Q_FIRST) return 0;
+    const k = Math.floor((t - DYN_Q_FIRST) / DYN_Q_SLOT), lt = t - (DYN_Q_FIRST + k * DYN_Q_SLOT + DYN_Q_JIT * dynRand(seed, 2, k, 0));
+    if (lt < 0 || lt >= DYN_Q_SHAKE + DYN_Q_DROP + DYN_Q_DOWN + DYN_Q_RISE) return 0;
+    const rx = Math.floor(dynRand(seed, 3, k, 0) * nx), rz = Math.floor(dynRand(seed, 3, k, 1) * nz), dx = ix - rx, dz = iz - rz;
+    if (dx * dx + dz * dz > 2) return 0;                                  // the 3 x 3 tiles round the epicentre
+    if (lt < DYN_Q_SHAKE) return DYN_Q_JA * Math.sin(TAU * (DYN_Q_HZ * lt + dynRand(seed, 5, ix, iz))) * Math.sin(Math.PI * lt / DYN_Q_SHAKE);
+    if ((mask & 2) || dynRand(seed, 4, k, ix * 4096 + iz) >= DYN_Q_HOLE) return 0;
+    let q = lt - DYN_Q_SHAKE;
+    if (q < DYN_Q_DROP) { const x = q / DYN_Q_DROP; return -DYN_Q_DEPTH * x * x; }
+    q -= DYN_Q_DROP;
+    if (q < DYN_Q_DOWN) return -DYN_Q_DEPTH;
+    const x = (q - DYN_Q_DOWN) / DYN_Q_RISE; return -DYN_Q_DEPTH * (1 - x) * (1 - x);
+  }
+  return 0;
+}
+// drift: signed slide (m) of drifting block number bi (its index in plan.drift) along its axis
+function dynDelta(seed, t, bi) {
+  if (!(t > 0)) return 0;
+  const p = DYN_DRIFT_P + DYN_DRIFT_PV * dynRand(seed, 6, bi, 0), dir = dynHash(seed, 6, bi, 1) & 1 ? 1 : -1;
+  return dir * DYN_DRIFT_A * dynRamp(t) * Math.sin(2 * Math.PI * t / p);
+}
+// the static plan for a map, from collision data only (same data the Godot port loads):
+// solids [{minX,maxX,minZ,maxZ,top,bottom}] in load order, ladders [{x,z}], pads [{x,z,r}], spawns [[x,z,y?]] (spawns, bot starts, player start)
+function dynPlan(solids, ladders, pads, spawns) {
+  const plan = { floor: -1, nx: 0, nz: 0, mask: [], free: 0, canTile: false, drift: [] };
+  const big = [], slabs = [];
+  solids.forEach((s, i) => {
+    const w = s.maxX - s.minX, d = s.maxZ - s.minZ;
+    if (s.bottom < -0.5 && s.top <= 0.05 && s.top >= -0.6 && w * d >= 30) slabs.push(i);
+    if (s.bottom < -0.5 && Math.abs(s.top) < 0.05 && w >= 12 && d >= 12) big.push(i);
+  });
+  if (big.length !== 1 || slabs.length !== 1) return plan;                // the floor must be one single slab
+  const fi = big[0], F = solids[fi];
+  const nx = Math.max(4, Math.min(12, Math.round((F.maxX - F.minX) / 4))), nz = Math.max(4, Math.min(12, Math.round((F.maxZ - F.minZ) / 4)));
+  const tw = (F.maxX - F.minX) / nx, td = (F.maxZ - F.minZ) / nz;
+  Object.assign(plan, { floor: fi, nx, nz });
+  const ov = (a0, a1, b0, b1, m) => a0 < b1 - m && b0 < a1 - m;
+  for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) {
+    const x0 = F.minX + ix * tw, x1 = x0 + tw, z0 = F.minZ + iz * td, z1 = z0 + td;
+    let mask = 0;
+    solids.forEach((s, i) => { if (i !== fi && s.bottom <= 0.05 && s.top > -0.05 && ov(x0, x1, s.minX, s.maxX, 0.01) && ov(z0, z1, s.minZ, s.maxZ, 0.01)) mask |= 1; });
+    for (const l of ladders) if (l.x > x0 - 0.8 && l.x < x1 + 0.8 && l.z > z0 - 0.8 && l.z < z1 + 0.8) mask |= 1;
+    for (const p of pads) if (p.x > x0 - p.r - 0.3 && p.x < x1 + p.r + 0.3 && p.z > z0 - p.r - 0.3 && p.z < z1 + p.r + 0.3) mask |= 1;
+    for (const sp of spawns) if (sp[0] > x0 - 1.2 && sp[0] < x1 + 1.2 && sp[1] > z0 - 1.2 && sp[1] < z1 + 1.2) mask |= 2;
+    if (mask & 1) mask |= 2;
+    plan.mask.push(mask); if (!(mask & 1)) plan.free++;
+  }
+  plan.canTile = plan.free >= 0.3 * nx * nz;
+  solids.forEach((s, j) => {                                              // drift: free-standing blocks with room to slide
+    if (j === fi || plan.drift.length >= 12) return;
+    const w = s.maxX - s.minX, d = s.maxZ - s.minZ;
+    if (w > 10 || d > 10 || s.top < 0.6 || s.top > 8 || s.bottom < -0.05) return;
+    const near = (x0, x1, z0, z1) => solids.some((o, k) => k !== fi && k !== j && ov(x0, x1, o.minX, o.maxX, 0) && ov(z0, z1, o.minZ, o.maxZ, 0));
+    if (near(s.minX - 0.3, s.maxX + 0.3, s.minZ - 0.3, s.maxZ + 0.3)) return;
+    if (ladders.some(l => l.x > s.minX - 1 && l.x < s.maxX + 1 && l.z > s.minZ - 1 && l.z < s.maxZ + 1)) return;
+    if (pads.some(p => p.x > s.minX - p.r - 0.5 && p.x < s.maxX + p.r + 0.5 && p.z > s.minZ - p.r - 0.5 && p.z < s.maxZ + p.r + 0.5)) return;
+    if (spawns.some(sp => sp[0] > s.minX - 1 && sp[0] < s.maxX + 1 && sp[1] > s.minZ - 1 && sp[1] < s.maxZ + 1)) return;
+    const M = DYN_DRIFT_A + 1.2;
+    for (const axis of (j & 1) ? ['z', 'x'] : ['x', 'z']) {
+      const x0 = s.minX - (axis === 'x' ? M : 0), x1 = s.maxX + (axis === 'x' ? M : 0), z0 = s.minZ - (axis === 'z' ? M : 0), z1 = s.maxZ + (axis === 'z' ? M : 0);
+      if (x0 < F.minX + 0.5 || x1 > F.maxX - 0.5 || z0 < F.minZ + 0.5 || z1 > F.maxZ - 0.5) continue;
+      if (near(x0, x1, z0, z1)) continue;
+      if (spawns.some(sp => sp[0] > x0 - 0.5 && sp[0] < x1 + 0.5 && sp[1] > z0 - 0.5 && sp[1] < z1 + 0.5)) continue;
+      plan.drift.push({ i: j, axis }); break;
+    }
+  });
+  return plan;
+}
+/* ==== DYN-PURE END ==== */
+
+/* ---- dynamic arenas: runtime (tiles, drift blocks, riders). dynSetup runs from loadMap after the level is built; updateDyn runs first thing in every simStep ---- */
+const dyn = { kind: 'off', choice: 'off', seed: 0, t0: 0, plan: null, tiles: [], drift: [], riders: [], support: { tile: false, drift: false } };
+const DYN_NAMES = { off: 'Steady', random: 'Random', wobble: 'Wobble', tilt: 'Tilt', quake: 'Quake', drift: 'Drift' };
+function dynClock() { return simTime - dyn.t0; }
+function dynSetup(id) {
+  const m = MAPS[id];
+  Object.assign(dyn, { kind: 'off', plan: null, tiles: [], drift: [], riders: [], support: { tile: false, drift: false } });
+  const online = !!(net && net.started);
+  dyn.choice = online ? net.dyn || 'off' : SHOW.on ? 'off' : cfg.dyn || 'off';
+  dyn.seed = online ? (net.dseed >>> 0) : (Math.random() * 4294967296) >>> 0;
+  dyn.t0 = simTime - (online ? net.dt0 || 0 : 0);
+  if (!dynMapAllowed(id, m)) return;
+  const spawns = [...(m.spawns || []), ...(m.bots || []), ...(m.player ? [m.player] : [])];
+  const plan = dynPlan(solids, ladders.map(l => ({ x: l.x, z: l.z })), pads.map(p => ({ x: p.x, z: p.z, r: p.r })), spawns);
+  dyn.support = { tile: plan.canTile, drift: plan.drift.length > 0 };
+  if (dyn.choice === 'off') return;
+  const kind = dynResolve(dyn.choice, dyn.seed, plan.canTile, plan.drift.length > 0);
+  if (kind === 'off') return;
+  dyn.kind = kind; dyn.plan = plan;
+  if (kind === 'drift') dynBuildDrift(plan); else dynBuildTiles(plan);
+}
+function dynDecor() {                                                     // map meshes that are not collision boxes, with their bounds
+  const out = [], sm = new Set(solidMeshes), bb = new THREE.Box3();
+  for (const o of mapObjs) {
+    if (sm.has(o) || !o.visible || o.isLight) continue;
+    bb.setFromObject(o); if (bb.isEmpty()) continue;
+    out.push({ o, b: bb.clone() });
+  }
+  return out;
+}
+function dynBuildTiles(plan) {
+  const fi = plan.floor, F = solids[fi], fm = solidMesh.get(F);
+  if (!fm) { dyn.kind = 'off'; return; }
+  const { nx, nz } = plan, W = F.maxX - F.minX, D = F.maxZ - F.minZ, tw = W / nx, td = D / nz, h = F.top - F.bottom;
+  Object.assign(plan, { x0: F.minX, z0: F.minZ, tw, td });
+  // flat paint on the floor (pads, rings, lanes) cannot follow the tiles: small pieces ride the tile under them, big ones are hidden and their colour goes onto the tiles
+  const tint = new Array(nx * nz).fill(null), decor = dynDecor(), tileAt = (x, z) => { const ix = Math.floor((x - F.minX) / tw), iz = Math.floor((z - F.minZ) / td); return ix >= 0 && ix < nx && iz >= 0 && iz < nz ? iz * nx + ix : -1; };
+  for (const { o, b } of decor) {
+    const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2, ti = tileAt(cx, cz), sx = b.max.x - b.min.x, sz = b.max.z - b.min.z;
+    if (ti < 0 || b.min.y < -0.35 || b.min.y > 0.3) continue;
+    if (sx <= tw * 1.2 && sz <= td * 1.2) { dyn.riders.push({ o, y0: o.position.y, ti }); continue; }
+    if (b.max.y - b.min.y < 0.12) {
+      o.visible = false;
+      const col = o.material && o.material.color;
+      if (col && o.geometry && o.geometry.type === 'PlaneGeometry') for (let k = 0; k < nx * nz; k++) { const x = F.minX + (k % nx + 0.5) * tw, z = F.minZ + (Math.floor(k / nx) + 0.5) * td; if (x > b.min.x && x < b.max.x && z > b.min.z && z < b.max.z) tint[k] = col.getHex(); }
+    }
+  }
+  const base = fm.material, mats = {};
+  const matFor = (hex, odd) => {
+    const key = hex + (odd ? 'o' : 'e'); if (mats[key]) return mats[key];
+    const mt = base.clone(); if (base.onBeforeCompile) { mt.onBeforeCompile = base.onBeforeCompile; if (base.customProgramCacheKey) mt.customProgramCacheKey = base.customProgramCacheKey; }
+    if (mt.color) { mt.color.setHex(hex); mt.color.offsetHSL(0, 0, odd ? 0.035 : -0.01); }
+    return (mats[key] = mt);
+  };
+  const geo = new THREE.BoxGeometry(tw, h, td), baseHex = base.color ? base.color.getHex() : F.color, tilesS = [];
+  for (let iz = 0; iz < nz; iz++) for (let ix = 0; ix < nx; ix++) {
+    const k = iz * nx + ix, s = { minX: F.minX + ix * tw, maxX: ix === nx - 1 ? F.maxX : F.minX + (ix + 1) * tw, minZ: F.minZ + iz * td, maxZ: iz === nz - 1 ? F.maxZ : F.minZ + (iz + 1) * td, top: F.top, bottom: F.bottom, color: F.color };
+    const mesh = new THREE.Mesh(geo, matFor(tint[k] !== null ? tint[k] : baseHex, (ix + iz) & 1));
+    mesh.position.set(F.minX + (ix + 0.5) * tw, F.bottom + h / 2, F.minZ + (iz + 0.5) * td); mesh.receiveShadow = true; mesh.castShadow = false;
+    addDecor(mesh); mesh.updateMatrixWorld(true); solidMeshes.push(mesh); solidMesh.set(s, mesh); tilesS.push(s);
+    dyn.tiles.push({ s, mesh, ix, iz, mask: plan.mask[k], off: 0, dy: 0 });
+  }
+  solids.splice(fi, 1, ...tilesS);                                        // the tiles take the floor's place in the collision list (same order for the Godot port)
+  scene.remove(fm); const a = mapObjs.indexOf(fm); if (a >= 0) mapObjs.splice(a, 1); const b = solidMeshes.indexOf(fm); if (b >= 0) solidMeshes.splice(b, 1);
+}
+function dynBuildDrift(plan) {
+  const decor = dynDecor();
+  plan.drift.forEach((d, bi) => {
+    const s = solids[d.i], mesh = solidMesh.get(s), rid = [];
+    for (const { o, b } of decor) {                                       // trims, caps and props sitting on or in the block go with it
+      const cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2;
+      if (cx > s.minX - 0.05 && cx < s.maxX + 0.05 && cz > s.minZ - 0.05 && cz < s.maxZ + 0.05 && b.min.y > s.bottom - 0.3 && b.min.y < s.top + 0.3) rid.push({ o, p0: o.position[d.axis] });
+    }
+    dyn.drift.push({ s, mesh, axis: d.axis, bi, d: 0, dd: 0, lo: d.axis === 'x' ? s.minX : s.minZ, hi: d.axis === 'x' ? s.maxX : s.maxZ, p0: mesh ? mesh.position[d.axis] : 0, rid });
+  });
+}
+// what each fighter is standing on (only things that move): ridden by small per-step moves so a sinking tile does not make you "fall" every other step
+function dynSupport(f, list) {
+  if (f.isGhost || !f.grounded || f.dead) return null;
+  const p = f.pos; let best = null;
+  for (const e of list) { const s = e.s; if (Math.abs(p.y - s.top) < 0.002 && p.x > s.minX - R && p.x < s.maxX + R && p.z > s.minZ - R && p.z < s.maxZ + R && (!best || s.top > best.s.top)) best = e; }
+  return best;
+}
+function updateDyn() {
+  if (dyn.kind === 'off') return;
+  const t = dynClock();
+  if (dyn.kind === 'drift') {
+    const on = fighters.map(f => dynSupport(f, dyn.drift));
+    for (const e of dyn.drift) {
+      const d = dynDelta(dyn.seed, t, e.bi), dd = d - e.d; e.dd = dd; if (dd === 0) continue;
+      e.d = d;
+      if (e.axis === 'x') { e.s.minX += dd; e.s.maxX += dd; } else { e.s.minZ += dd; e.s.maxZ += dd; }
+      if (e.mesh) { e.mesh.position[e.axis] += dd; e.mesh.updateMatrixWorld(true); }
+      for (const r of e.rid) r.o.position[e.axis] += dd;
+    }
+    fighters.forEach((f, i) => { const e = on[i]; if (e && e.dd) f.pos[e.axis] += e.dd; });
+    return;
+  }
+  const P = dyn.plan, on = fighters.map(f => dynSupport(f, dyn.tiles));
+  for (const e of dyn.tiles) {
+    const off = dynOffset(dyn.kind, dyn.seed, t, e.ix, e.iz, P.nx, P.nz, e.mask), dy = off - e.off; e.dy = dy;
+    if (dy === 0) continue;
+    if (dyn.kind === 'quake' && !SHOW.on) {
+      const c = V(e.mesh.position.x, e.s.top, e.mesh.position.z);
+      if (!e.low && off <= -0.3) { e.low = true; puff(c, 0xb9a88c, 8, 3); if (Math.hypot(c.x - player.pos.x, c.z - player.pos.z) < 14) cam.shake = Math.max(cam.shake, 0.05); }
+      else if (e.low && off >= -0.02) { e.low = false; ringFx(V(c.x, off, c.z), 0xf1e7d4, Math.max(P.tw, P.td) * 0.6, 0.5, 0.06); puff(V(c.x, off + 0.1, c.z), 0xd8cdb8, 6, 2.5); }
+    }
+    e.off = off; e.s.top += dy; e.s.bottom += dy;
+    e.mesh.position.y += dy; e.mesh.updateMatrixWorld(true);
+  }
+  for (const r of dyn.riders) r.o.position.y = r.y0 + Math.max(dyn.tiles[r.ti].off, -1);
+  fighters.forEach((f, i) => { const e = on[i]; if (e && e.dy && Math.abs(e.dy) <= 0.03) f.pos.y += e.dy; });
+}
+function dynFloorDy(x, z) {                                               // how far the floor at (x, z) is off its normal height (crates use it to stay on the floor)
+  if (dyn.kind === 'off' || dyn.kind === 'drift' || !dyn.plan) return 0;
+  const P = dyn.plan, ix = Math.floor((x - P.x0) / P.tw), iz = Math.floor((z - P.z0) / P.td);
+  return ix >= 0 && ix < P.nx && iz >= 0 && iz < P.nz ? dyn.tiles[iz * P.nx + ix].off : 0;
 }
 
 class Spring2 {
@@ -6337,7 +6577,7 @@ function updatePickups(dt) {
       p.net.set(Math.max(0, Math.min(1.08, e)));
       p.prev.scale.setScalar(0.4 + 0.6 * p.open);
     }
-    p.g.position.y = p.y;
+    p.g.position.y = p.y + (p.grounded && Math.abs(p.gy) < 0.05 ? Math.max(dynFloorDy(p.x, p.z), -1) : 0);      // crates ride the moving floor tiles
     if (p.grounded) { p.prev.position.y = 0.5 + p.open * 0.38 + Math.sin(p.t * 3) * 0.08; p.prev.rotation.y += dt * 2; }
     if (p.grounded) {
       let taken = false;
@@ -7209,7 +7449,7 @@ const DIFFS = {
   hard:   { speed: 5.4, dmg: 0.70, atk: 1.7,  sight: 30, kick: 1.5, jump: 0.35, react: 0.12 },
   insane: { speed: 6.4, dmg: 1.00, atk: 2.6,  sight: 60, kick: 2.2, jump: 0.7,  react: 0.04 },
 };
-const cfg = { grav: 1, kb: 1, inf: false, mode: 'classic', count: 3, behav: 'brawl', diff: 'normal', ffa: true, limit: 0, hp: 200, crate: 'normal', wstate: {}, custom: Object.assign({}, { size: 44, theme: 'grass', obs: 10, plat: 4, pads: 3, walls: 4, ice: false, seed: 7 }), blocks: [] };
+const cfg = { grav: 1, kb: 1, inf: false, dyn: 'random', mode: 'classic', count: 3, behav: 'brawl', diff: 'normal', ffa: true, limit: 0, hp: 200, crate: 'normal', wstate: {}, custom: Object.assign({}, { size: 44, theme: 'grass', obs: 10, plat: 4, pads: 3, walls: 4, ice: false, seed: 7 }), blocks: [] };
 const maxHp = () => cfg.hp * (giantOn() ? 2 : 1);
 const allBots = [];
 for (let i = 0; i < 12; i++) {
@@ -7766,6 +8006,8 @@ function loadMap(id) {
   scene.fog.near = (m.fog || [50, 160])[0]; scene.fog.far = (m.fog || [50, 160])[1]; hemi.intensity = m.hemi || 0.95; sun.intensity = m.sunI || 1.35;
   hills.forEach((h, i) => h.material.color.setHex(m.hills[i % 4]));
   voidPlane.material.color.setHex(m.voidColor); setBackdrop(m, id); gradeLook(m, id);
+  try { dynSetup(id); } catch (e) { dyn.kind = 'off'; devLog('dyn', 'setup failed: ' + (e && e.message)); }      // dynamic arenas: split the floor into moving tiles (or pick drifting blocks)
+  if (!SHOW.on) try { syncRules(); } catch (e) { /* menus not built yet */ }
   el('kopop').innerHTML = ''; endT = 0; el('fade').style.opacity = '0'; player.st = newSt(); matchStart = simTime; const pp = m.randSpawn ? (() => { const sp = m.spawns[Math.floor(Math.random() * m.spawns.length)]; return [sp[0], sp[1], m.player[2]]; })() : m.player;
   if (!SHOW.busy && ui === 'lobby' && page === 'map') setTimeout(() => { try { showSync(); } catch (e) { /* x */ } }, 0);
   player.placeAt(pp[0], pp[1], pp[2]); player.ko = 0; player.hp = hpOf(player); matchOver = false; el('winner').style.display = 'none'; feedItems.length = 0; updateKoText();
@@ -8050,10 +8292,20 @@ function syncRules() {
   el('grav-0.15').style.display = cfg.mode === 'lowg' ? '' : 'none';      // Drift gravity only exists in Moon Drift
   for (const v of [0.5, 1, 1.5, 2, 3]) el('kb-' + v).classList.toggle('on', cfg.kb === v);
   tog('inf-tog', cfg.inf);
+  for (const k of DYN_KINDS) el('dyn-' + k).classList.toggle('on', (cfg.dyn || 'off') === k);
+  const dm = MAPS[currentMap], sup = dyn.support, want = cfg.dyn || 'off';
+  el('dyn-note').textContent = want === 'off' ? 'The floor stays put.' : !dynMapAllowed(currentMap, dm) ? (dm ? dm.name : 'This level') + ' always stays steady.'
+    : want === 'random' ? (sup.tile || sup.drift ? 'Picked from the kinds ' + (dm ? dm.name : 'this level') + ' supports, new every match.' : (dm ? dm.name : 'This level') + ' stays steady.')
+    : (want === 'drift' ? sup.drift : sup.tile) ? 'Starts gently over the first 4 seconds.' : (dm ? dm.name : 'This level') + ' cannot do ' + DYN_NAMES[want] + ': it stays steady.';
 }
 for (const v of [0.15, 0.5, 1, 1.5]) el('grav-' + v).onclick = () => { cfg.grav = v; syncRules(); };
 for (const v of [0.5, 1, 1.5, 2, 3]) el('kb-' + v).onclick = () => { cfg.kb = v; syncRules(); };
 el('inf-tog').onclick = () => { cfg.inf = !cfg.inf; syncRules(); };
+for (const k of DYN_KINDS) el('dyn-' + k).onclick = () => {
+  cfg.dyn = k;
+  if (!net && !SHOW.on && (!inMatch || matchOver) && MAPS[currentMap]) loadMap(currentMap);      // before a match: rebuild the level with the new floor now (mid-match it waits for the next one)
+  syncRules();
+};
 
 // controls
 function syncSettings() {
@@ -8489,7 +8741,7 @@ function load() {
       const ws = {}; for (const k of Object.keys(d.cfg.wstate || {})) if (DROP_BASE[k] && STATES.includes(d.cfg.wstate[k])) ws[k] = d.cfg.wstate[k];
       setBotCfg({ mode: MODES[d.cfg.mode] ? d.cfg.mode : 'classic', count: d.v >= 64 ? d.cfg.count : 3, behav: d.cfg.behav, diff: DIFFS[d.cfg.diff] ? d.cfg.diff : 'normal', ffa: !!d.cfg.ffa, limit: d.cfg.limit | 0,
                   hp: d.v >= 64 && [100, 150, 200, 300, 500].includes(d.cfg.hp) ? d.cfg.hp : 200, crate: CRATE_RATE[d.cfg.crate] ? d.cfg.crate : 'normal', wstate: ws,
-                  grav: [0.5, 1, 1.5].includes(d.cfg.grav) || (d.cfg.mode === 'lowg' && d.cfg.grav === 0.15) ? d.cfg.grav : 1, kb: [0.5, 1, 1.5, 2, 3].includes(d.cfg.kb) ? d.cfg.kb : 1, inf: !!d.cfg.inf });
+                  grav: [0.5, 1, 1.5].includes(d.cfg.grav) || (d.cfg.mode === 'lowg' && d.cfg.grav === 0.15) ? d.cfg.grav : 1, kb: [0.5, 1, 1.5, 2, 3].includes(d.cfg.kb) ? d.cfg.kb : 1, inf: !!d.cfg.inf, dyn: DYN_KINDS.includes(d.cfg.dyn) ? d.cfg.dyn : 'random' });
       if (d.cfg.custom) { const c = d.cfg.custom; for (const k of ['size', 'obs', 'plat', 'walls', 'pads', 'seed']) if (Number.isFinite(c[k])) cfg.custom[k] = c[k]; if (CUSTOM_THEMES[c.theme]) cfg.custom.theme = c.theme; cfg.custom.ice = !!c.ice; }
       if (Array.isArray(d.cfg.blocks)) cfg.blocks = d.cfg.blocks.filter(b => Array.isArray(b) && b.length === 3 && b.every(Number.isFinite)).slice(0, 150);
     }
@@ -8610,7 +8862,7 @@ function roomSumParts() {
 const roomSumText = () => roomSumParts().map(([k, v]) => k.toLowerCase() === 'ends' ? 'ends ' + v : v + (k === 'Fighters' ? ' fighters' : k === 'Bots' ? ' bots' : '')).join(', ');
 const roomSumHtml = () => roomSumParts().map(([k, v]) => '<div><span>' + k + '</span><b>' + escH(v) + '</b></div>').join('');
 function applyRoomOpts() { if (!net || !net.host || net.started) return; const o = roomOpts(); net.optMax = o.max; net.optBots = o.bots; net.optLim = o.lim; net.bhv = o.bhv; netAllConns(rosterMsg()); netShowLobby(); }
-function rosterMsg() { const sc = netMode(cfg.mode), mp = MAPS[currentMap]; return { t: 'roster', roster: net.roster, max: net.optMax, bots: net.optBots, lim: net.optLim, bhv: net.bhv || 'brawl', diff: net.host ? cfg.diff : undefined, modeName: MODES[sc].name, map: mp ? mp.name : '' }; }
+function rosterMsg() { const sc = netMode(cfg.mode), mp = MAPS[currentMap]; return { t: 'roster', roster: net.roster, max: net.optMax, bots: net.optBots, lim: net.optLim, bhv: net.bhv || 'brawl', diff: net.host ? cfg.diff : undefined, modeName: modeLabel(sc), map: mp ? mp.name : '' }; }
 function netShowLobby() {
   const inRoom = !!net;
   el('hud').classList.toggle('net', !!(net && net.started)); netBannerUpdate(); if (inRoom) netUnlock();
@@ -8712,7 +8964,7 @@ function srvRecv(m) {
 }
 function srvInfo(n) {                                                 // what the room list shows about my room
   const sc = netMode(cfg.mode), mp = MAPS[n.started ? n.map : currentMap];
-  return { name: n.roomName, host: n.roster[0] ? n.roster[0].name : '?', mode: sc, modeName: MODES[sc].name, map: mp ? mp.name : '', max: n.started && n.slots ? n.slots.length : n.optMax, started: !!n.started, build: NET_BUILD };
+  return { name: n.roomName, host: n.roster[0] ? n.roster[0].name : '?', mode: sc, modeName: modeLabel(sc), map: mp ? mp.name : '', max: n.started && n.slots ? n.slots.length : n.optMax, started: !!n.started, build: NET_BUILD };
 }
 function netPushInfo() { if (!net || !net.srv || !net.host) return; const i = srvInfo(net), s = JSON.stringify(i); if (s === net.lastInfo) return; net.lastInfo = s; srvTx({ op: 'update', info: i }); }
 function netAllConns(m, except) {
@@ -8788,7 +9040,7 @@ function netHostPeer(opts) {
 const humanCount = () => !net ? 0 : net.started ? net.slotKind.filter(k => k === 'human').length : net.roster.length;
 function roomInfo() {
   const sc = netMode(cfg.mode), mp = MAPS[net.started ? net.map : currentMap];
-  return { t: 'info', build: NET_BUILD, name: net.roomName, host: net.roster[0] ? net.roster[0].name : '?', mode: sc, modeName: MODES[sc].name, map: mp ? mp.name : '', n: humanCount(), max: net.started && net.slots ? net.slots.length : net.optMax, started: !!net.started, pub: !!net.pub };
+  return { t: 'info', build: NET_BUILD, name: net.roomName, host: net.roster[0] ? net.roster[0].name : '?', mode: sc, modeName: modeLabel(sc), map: mp ? mp.name : '', n: humanCount(), max: net.started && net.slots ? net.slots.length : net.optMax, started: !!net.started, pub: !!net.pub };
 }
 function hostRecv(c, m) {
   if (!m || typeof m !== 'object') return;
@@ -8927,7 +9179,8 @@ function netSlotChanged(slot, kind, info) {                // everyone else: tha
 }
 const netMode = m => MODES[m] && !MODES[m].teams && m !== 'sandbox' && m !== 'construction' ? m : 'classic';          // team modes, Sandbox and Construction are not online yet
 function cfgReal() { return SHOW.on && SHOW.saved ? Object.assign({}, cfg, SHOW.saved.cfg) : cfg; }      // the player's own settings, not the menu battle's
-function ruleSnap() { const cfg = cfgReal(); return { mode: netMode(cfg.mode), hp: cfg.hp, crate: cfg.crate, wstate: cfg.wstate, grav: cfg.grav, kb: cfg.kb, inf: cfg.inf, pp: net && net.pp ? net.pp : undefined }; }
+function modeLabel(sc) { const d = net && net.started ? net.dyn : cfgReal().dyn; return MODES[sc].name + (d && d !== 'off' && DYN_NAMES[d] ? ' \u00b7 ' + DYN_NAMES[d] : ''); }      // room list: a small tag when the arena moves
+function ruleSnap() { const cfg = cfgReal(); return { mode: netMode(cfg.mode), hp: cfg.hp, crate: cfg.crate, wstate: cfg.wstate, grav: cfg.grav, kb: cfg.kb, inf: cfg.inf, pp: net && net.pp ? net.pp : undefined, dyn: net && net.started ? net.dyn || 'off' : DYN_KINDS.includes(cfg.dyn) ? cfg.dyn : 'off', dseed: net && net.started ? net.dseed >>> 0 : undefined, dt0: net && net.started && dyn.kind !== 'off' ? Math.round(Math.max(0, dynClock()) * 1000) / 1000 : undefined }; }
 function netStartMatch(slots, mapId, custom, isHost, limit, rules) {
   try { if (SHOW.on) showStop(true); } catch (e) { /* x */ }          // the menu battle gives the room's own settings back before the match is set up
   const wasStarted = !!net.started;
@@ -8935,6 +9188,8 @@ function netStartMatch(slots, mapId, custom, isHost, limit, rules) {
   net.rv = new Set(); net.rvList = []; net.rvTotal = 0; net.myVote = false; if (net.rvTimer) { clearTimeout(net.rvTimer); net.rvTimer = null; }
   net.slots = slots; net.slotKind = slots.map(x => x.kind); net.started = true; net.map = MAPS[mapId] ? mapId : 'arena';
   if (mapId === 'custom' && custom) for (const k of ['size', 'obs', 'plat', 'walls', 'pads', 'seed', 'theme', 'ice']) if (custom[k] !== undefined) cfg.custom[k] = custom[k];
+  if (isHost) { const dk = cfgReal().dyn; net.dyn = DYN_KINDS.includes(dk) ? dk : 'off'; net.dseed = (Math.random() * 4294967296) >>> 0; net.dt0 = 0; }      // dynamic arena: a fresh seed every match (rematch too)
+  else { const r = rules || {}; net.dyn = DYN_KINDS.includes(r.dyn) ? r.dyn : 'off'; net.dseed = Number.isFinite(r.dseed) ? r.dseed >>> 0 : 0; net.dt0 = Number.isFinite(r.dt0) ? clamp(r.dt0, 0, 36000) : 0; }      // unknown kind => steady
   if (isHost && !rules) { net.pp = null; rules = ruleSnap(); }                          // the host plays by the rules it picked (before, they were thrown away and everything ran as Classic)
   { const r = rules || {}; const rm = netMode(r.mode); net.limit = MODES[rm].lives || MODES[rm].ladder || rm === 'pillars' ? 0 : limit || 0; setBotCfg({ mode: rm, behav: isHost && net.bhv === 'dummy' ? 'dummy' : 'brawl', ffa: true, count: slots.length - 1, limit: net.limit, hp: [100, 150, 200, 300, 500].includes(r.hp) ? r.hp : 100, crate: CRATE_RATE[r.crate] ? r.crate : cfg.crate, wstate: r.wstate && typeof r.wstate === 'object' ? r.wstate : cfg.wstate, grav: [0.5, 1, 1.5].includes(r.grav) || (r.mode === 'lowg' && r.grav === 0.15) ? r.grav : 1, kb: [0.5, 1, 1.5, 2, 3].includes(r.kb) ? r.kb : 1, inf: !!r.inf }); }
   loadMap(net.map);
@@ -9749,7 +10004,7 @@ function showCamera(dt) {
 function simStep(dt) {
   giantSizes();
   simTime += dt; if (ui === 'play') stats.secs += dt;
-  updatePotato(dt); updatePillars(dt); updateShrink(dt);
+  updatePotato(dt); updatePillars(dt); updateShrink(dt); updateDyn();
   const netPre = net && net.started ? netSnap() : null;
   if (DEVS.ammo && !net) { const sl = player.slots[player.slot]; if (sl && sl.ammo < 60) sl.ammo = 60; }
   touchAssist(); playerControl(dt);
@@ -10662,7 +10917,7 @@ function bootStep(i) {
   if (i % 6 === 0) el('boottip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   setTimeout(() => { try { BOOT[i][1](); } catch (e) { /* a thumbnail failing should never stop the game */ } setTimeout(() => bootStep(i + 1), BOOT[i][2] || 0); }, 120);
 }
-globalThis.__wobbleTest = { CLASSES, CLASS_IDS, hpOf, player, look, cfg, myInfo, cleanInfo, renderLocker, showPage, setLockTab: t => { lockTab = t; }, loadMap, setBotCfg, getBots: () => bots, getNet: () => net, netHost, netShowLobby, setUi, play: () => el('play').onclick(), applyLook, SKINS, camera, renderer, scene };      // read-only handles for tools/test-browser.js
+globalThis.__wobbleTest = { CLASSES, CLASS_IDS, hpOf, player, look, cfg, myInfo, cleanInfo, renderLocker, showPage, setLockTab: t => { lockTab = t; }, loadMap, setBotCfg, getBots: () => bots, getNet: () => net, netHost, netShowLobby, setUi, play: () => el('play').onclick(), applyLook, SKINS, camera, renderer, scene, dyn, solids, dynOffset, dynPlan, dynClock, syncRules, get simTime() { return simTime; } };      // read-only handles for tools/test-browser.js
 setUi('boot');
 setTimeout(() => bootStep(0), 100);
 </script>
