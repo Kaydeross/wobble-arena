@@ -48,11 +48,15 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	p.face_yaw = face
 
 	# aim target: from the shoulder toward whatever the crosshair is on
+	p.aim_pt = aim_point
 	if aim_point.size() == 3:
 		var a := Combat.norm3(aim_point[0] - p.shoulder_x, aim_point[1] - p.shoulder_y, aim_point[2] - p.shoulder_z)
 		p.aim_x = a[0]; p.aim_y = a[1]; p.aim_z = a[2]
 	if not w.get("spinup", 0): p.spin = 0.0
 	if w.get("type", "") != "bow" or incap: p.draw = 0.0
+	if not w.get("throwable", false) or incap:         # trident charge state resets when it is not in hand
+		p.t_charge = -1.0; p.t_pend = -1.0
+		if p.throw_hold: p.throw_hold = false; p.throw_key = ""
 	if incap:
 		_drain_taps()
 		return
@@ -70,7 +74,9 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	w = combat.wdata(key)
 	var t: String = w.get("type", "")
 	if t == "melee":
-		if fire and p.cool <= 0.0 and p.swing < 0.0:
+		if w.get("throwable", false):   # trident: a tap jabs someone close, holding charges a throw
+			combat.weapons.trident_tick(p, fire, dt, cam_yaw)
+		elif fire and p.cool <= 0.0 and p.swing < 0.0:
 			combat.try_melee(p, cam_yaw)
 		if p.swing >= 0.0 and combat.melee_tick(p, key, dt, cam_yaw): combat.after_swing(p)
 	elif t == "gun":

@@ -1,13 +1,15 @@
 extends SceneTree
-## Weapons batch 1 (rocket, meteor, grenade + cluster launchers, bow, net gun, flamethrower) in a real offline match.
+## Weapons batches 1 and 2 (rocket, meteor, grenade + cluster launchers, bow, net gun, flamethrower; shuriken, typhoon,
+## boomerang, snake, snowball cannon, trident throw) in a real offline match.
 ##   godot --headless --path godot --script res://tests/weapons_shots.gd -- --no-save --smoke
-##       bots armed with every batch-1 weapon fight for 40 s; checks they fire, things blow up, nets land and burn,
-##       and nothing errors (prints WSMOKE ... ok/FAILED).
-##   godot --path godot --resolution 1280x720 --script res://tests/weapons_shots.gd -- --no-save --shot rocket|net --out FILE.png
+##       bots armed with every batch-1/2 weapon fight for 60 s; checks they fire, things blow up, nets land and burn,
+##       every batch-2 projectile flies, and nothing errors (prints WSMOKE ... ok/FAILED).
+##   godot --path godot --resolution 1280x720 --script res://tests/weapons_shots.gd -- --no-save --shot rocket|net|throw|roll --out FILE.png
 ##       renders an in-match screenshot (needs a real renderer: opens a window for a moment).
 
 const FRAME := 1.0 / 60.0
-const BATCH := ["rocket", "meteor", "glauncher", "cluster", "bow", "net", "flame"]
+const BATCH := ["rocket", "meteor", "glauncher", "cluster", "bow", "net", "flame", "shuriken", "typhoon", "boomerang", "snake", "snow", "trident"]
+const SECS := 60
 
 var mode := "smoke"
 var out := "shot.png"
@@ -15,6 +17,7 @@ var world: Node
 var i := 0
 var hold_until := -1
 var saved_at := -1
+var seen := {}                     ## batch-2 projectile looks seen in flight
 
 func _initialize() -> void:
 	var a := OS.get_cmdline_user_args()
@@ -52,8 +55,9 @@ func _arm_bots() -> void:
 	var k := 0
 	for f: FighterState in world.sim.fighters:
 		if f.is_player or f.dead: continue
-		if f.slot < 0 or world.sim.combat.wdata(f.weapon).get("type", "") == "melee":
-			world.sim.combat.pickup(f, BATCH[k % BATCH.size()])
+		if k == 0: world.sim.combat.pickup(f, BATCH[7 + (i / 120) % 6])     # one bot always holds a batch-2 weapon, in turn
+		elif f.slot < 0 or world.sim.combat.wdata(f.weapon).get("type", "") == "melee":
+			world.sim.combat.pickup(f, BATCH[(k + i / 120) % BATCH.size()])
 		k += 1
 
 # ============================== smoke ==============================
@@ -62,7 +66,8 @@ func _smoke() -> void:
 	var sim: MatchSim = world.sim
 	if i % 120 == 0: _arm_bots()               # re-arm (weapons run dry, bots die and respawn)
 	var p := sim.player
-	if i % 240 == 0 and not p.dead: sim.combat.pickup(p, BATCH[(i / 240) % BATCH.size()])
+	var want: String = BATCH[(i / 180) % BATCH.size()]      # the player cycles through every weapon (again after a K.O.)
+	if not p.dead and p.weapon != want: sim.combat.pickup(p, want)
 	var tg := _nearest(p)
 	var fire := false
 	if tg:
@@ -73,8 +78,9 @@ func _smoke() -> void:
 	var st: InputState = world.input.state
 	st.hold("script", "fire", fire)
 	world.tick(FRAME)
+	_note_seen(sim.combat.weapons)
 	i += 1
-	if i < 60 * 40: return
+	if i < 60 * SECS: return
 	process_frame.disconnect(_smoke)
 	var c: Dictionary = world.counts
 	var kinds := {}
@@ -84,12 +90,20 @@ func _smoke() -> void:
 	if kinds["net_land"] < 1: fails.append("nets landed")
 	if kinds["flame"] < 30: fails.append("flames")
 	if kinds["projectile"] < 10: fails.append("projectiles")
+	for k2: String in ["shuriken", "typhoon", "boomerang", "snake", "ball", "trident"]:
+		if not seen.has(k2): fails.append("no " + k2 + " in flight")
 	var w: Weapons = sim.combat.weapons
-	var live := w.rockets.size() + w.grenades.size() + w.arrows.size() + w.nets.size() + w.projectiles.size()
+	var live := w.rockets.size() + w.grenades.size() + w.arrows.size() + w.nets.size() + w.projectiles.size() + w.boomers.size() + w.snakes.size() + w.balls.size()
 	var views: int = world.proj_views._views.size()
 	if views != live: fails.append("views %d != live projectiles %d" % [views, live])
-	print("WSMOKE counts=%s live=%d views=%d fx=%d %s" % [str(kinds), live, views, world.proj_views._fx.size(), "ok" if fails.is_empty() else "FAILED " + str(fails)])
+	print("WSMOKE counts=%s seen=%s live=%d views=%d fx=%d %s" % [str(kinds), str(seen.keys()), live, views, world.proj_views._fx.size(), "ok" if fails.is_empty() else "FAILED " + str(fails)])
 	quit(0 if fails.is_empty() else 1)
+
+func _note_seen(w: Weapons) -> void:
+	for k: Weapons.Proj in w.projectiles: seen[ProjectileViews._kind(k)] = true
+	if not w.boomers.is_empty(): seen["boomerang"] = true
+	if not w.snakes.is_empty(): seen["snake"] = true
+	if not w.balls.is_empty(): seen["ball"] = true
 
 # ============================== screenshots ==============================
 
@@ -97,11 +111,17 @@ func _shot() -> void:
 	var sim: MatchSim = world.sim
 	var p := sim.player
 	var st: InputState = world.input.state
-	if i == 2:
+	var b2 := mode == "throw" or mode == "roll"
+	if i == 2 or (b2 and i % 120 == 0):
 		var k := 0
-		for f: FighterState in sim.fighters:           # bots: bow, grenade launcher, rocket
-			if not f.is_player: sim.combat.pickup(f, ["bow", "glauncher", "rocket"][k % 3]); k += 1
-		sim.combat.pickup(p, "net" if mode == "net" else "rocket")
+		var kit: Array = ["bow", "glauncher", "rocket"]
+		if mode == "throw": kit = ["boomerang", "shuriken", "typhoon"]
+		elif mode == "roll": kit = ["snow", "snake", "snow"]
+		for f: FighterState in sim.fighters:           # bots: bow, grenade launcher, rocket (batch 2: the new throws)
+			if not f.is_player and (i == 2 or f.slot < 0): sim.combat.pickup(f, kit[k % 3])
+			if not f.is_player: k += 1
+		if i == 2 or p.slot < 0:
+			sim.combat.pickup(p, {"net": "net", "throw": "typhoon", "roll": "snake"}.get(mode, "rocket"))
 	var tg := _nearest(p)
 	var fire := false
 	if tg:
@@ -127,6 +147,14 @@ func _shot() -> void:
 		done = i >= saved_at
 	elif mode == "net" and hold_until > 0 and i >= hold_until - 4:
 		done = true
+	elif b2 and i > 200:                     # enough of the new things in the air at once
+		var w: Weapons = sim.combat.weapons
+		if mode == "throw":                  # the player's typhoon blades fanned out, plus a boomerang somewhere
+			var mine := 0
+			for k: Weapons.Proj in w.projectiles:
+				if k.owner == p and k.age > 0.04 and k.age < 0.1: mine += 1
+			done = mine >= 3 and not w.boomers.is_empty()
+		else: done = not w.snakes.is_empty() and not w.balls.is_empty() and (w.balls[0] as Weapons.Ball).rolling
 	if done or i > 1500:
 		process_frame.disconnect(_shot)
 		_save()
