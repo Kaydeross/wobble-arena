@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "content": "node tools/export-content.js && node tools/sync-shared.js", "sync": "node tools/sync-shared.js",
-    "test:browser": "node tools/test-browser.js", "test:touch": "node tools/test-touch.js", "shots": "node tools/shoot-maps.js", "check:maps": "node tools/check-maps.js", "test:godot": "node tools/test-godot.js", "test:godot-physics": "node tools/test-physics.js", "content:check": "node tools/export-content.js --check && node tools/sync-shared.js --check", "test:godot-world": "node tools/test-world.js", "test:godot-combat": "node tools/test-combat.js",
+    "test:browser": "node tools/test-browser.js", "test:touch": "node tools/test-touch.js", "shots": "node tools/shoot-maps.js", "check:maps": "node tools/check-maps.js", "test:godot": "node tools/test-godot.js", "test:godot-physics": "node tools/test-physics.js", "content:check": "node tools/export-content.js --check && node tools/sync-shared.js --check", "test:godot-world": "node tools/test-world.js", "test:godot-spring": "node tools/test-spring.js", "test:godot-wobbler": "node tools/test-wobbler.js", "test:godot-combat": "node tools/test-combat.js",
     "test": "node tools/export-content.js --check && node tools/sync-shared.js --check && node tools/check-maps.js --quiet && node tools/test-server.js"
   },
   "engines": {
