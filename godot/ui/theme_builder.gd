@@ -143,6 +143,38 @@ static func build() -> Theme:
 	t.set_icon("unchecked_disabled", "CheckButton", _switch_icon(false))
 	t.set_constant("h_separation", "CheckButton", 14)
 
+	# tab pills (title: Offline / Play online)
+	t.set_type_variation("TabButton", "Button")
+	_button_boxes(t, "TabButton", Color(PANEL_HI.r, PANEL_HI.g, PANEL_HI.b, 0.55), Color(1, 1, 1, 0.14), MUTED)
+	for k in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		var sb: StyleBoxFlat = (t.get_stylebox(k, "TabButton") as StyleBoxFlat).duplicate()
+		sb.set_corner_radius_all(99)
+		sb.border_width_bottom = BORDER
+		sb.shadow_size = 0
+		sb.content_margin_top = 6; sb.content_margin_bottom = 6
+		if k == "pressed" or k == "hover_pressed":
+			sb.bg_color = ACCENT; sb.border_color = ACCENT_DARK
+		t.set_stylebox(k, "TabButton", sb)
+	t.set_color("font_pressed_color", "TabButton", INK)
+	t.set_color("font_hover_pressed_color", "TabButton", INK)
+	t.set_color("font_hover_color", "TabButton", TEXT)
+	t.set_font_size("font_size", "TabButton", 19)
+
+	# text fields
+	var le := box(Color(0.03, 0.1, 0.12, 0.9), 12, Color(1, 1, 1, 0.18), BORDER, 0)
+	le.content_margin_left = 12; le.content_margin_right = 12; le.content_margin_top = 6; le.content_margin_bottom = 6
+	var lf: StyleBoxFlat = le.duplicate()
+	lf.border_color = ACCENT
+	var lr: StyleBoxFlat = le.duplicate()
+	lr.bg_color = Color(0.03, 0.1, 0.12, 0.5)
+	t.set_stylebox("normal", "LineEdit", le)
+	t.set_stylebox("focus", "LineEdit", lf)
+	t.set_stylebox("read_only", "LineEdit", lr)
+	t.set_color("font_color", "LineEdit", TEXT)
+	t.set_color("font_placeholder_color", "LineEdit", Color(MUTED.r, MUTED.g, MUTED.b, 0.55))
+	t.set_color("caret_color", "LineEdit", ACCENT)
+	t.set_color("selection_color", "LineEdit", Color(ACCENT.r, ACCENT.g, ACCENT.b, 0.4))
+
 	# popups (OptionButton lists)
 	var pm := box(PANEL_SOLID, 14, Color(1, 1, 1, 0.22), BORDER, 10)
 	pm.content_margin_top = 8; pm.content_margin_bottom = 8; pm.content_margin_left = 8; pm.content_margin_right = 8

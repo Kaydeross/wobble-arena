@@ -1,7 +1,7 @@
 extends SceneTree
 ## Renders UI screenshots for visual review (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot match --out FILE.png
-## Shots: title (scenes/main.tscn), match (offline world with the HUD), touch (same with the touch layer forced on and
+## Shots: title (scenes/main.tscn), title-online (its Play online tab), match (offline world with the HUD), touch (same with the touch layer forced on and
 ## a few fingers down), fps (match with the FPS overlay on), pause (the pause menu). Used by tools/shoot-godot-ui.sh.
 
 const FRAME := 1.0 / 60.0
@@ -23,8 +23,12 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
-	if shot == "title":
-		root.add_child(load("res://scenes/main.tscn").instantiate())
+	if shot == "title" or shot == "title-online":
+		var m: Node = load("res://scenes/main.tscn").instantiate()
+		root.add_child(m)
+		if shot == "title-online":
+			m.show_tab(true)
+			m.get_node("Safe/Col/Body/Picks/Box/Online/Roster").text = "In the room: Alice, Bob"
 		frames = 40
 		process_frame.connect(_wait)
 		return

@@ -44,27 +44,24 @@ Gotcha: Godot's `JSON.parse_string` (and `String.to_float`) are **not exact** fo
 |---|---|
 | `hit`: mode `dmgMul`, Giant Mammoth 0.65, class `dmg`, rage x1.5, shield x0.5, knocked-down x0.5 (not when trapped), friendly fire, stats, light (<8) vs heavy knockback with `kb` setting x 0.8 x mode `kbMul` x class `kb`, stun, lean/head/arm kicks, death (deathT 1.2 / 3 / `BOT_RESPAWN` 5, pop up 6.5, drop inventory), `addKo` streak/multi/weps, ghost victims -> `h`, own K.O. online -> `ko` | ported, parity tested |
 | `topple` + getup immunity, `timers` (cooldowns x class `rate`, invuln, flash, trap struggle, burn ticks, down/getup, death timer, player regen), `respawn` (spawn pick, invuln 2.5 / dummies 0.3, lives), `placeAt` (mode start weapon) | ported, parity tested (lives-mode elimination is an event only) |
-| inventory: `pickup` (ammo x class `ammo`, swap rules), `equipSlot`, `dropSlot`, `clearInventory`, `useAmmo`, reload (`startReload/tickReload/finishReload/cancelReload/autoReload`, `reload` x class `reload`, shell reloads) | ported, parity tested (shell reload untested: no shotgun yet) |
+| inventory: `pickup` (ammo x class `ammo`, swap rules), `equipSlot`, `dropSlot`, `clearInventory`, `useAmmo`, reload (`startReload/tickReload/finishReload/cancelReload/autoReload`, `reload` x class `reload`, shell reloads) | ported, parity tested (shell reload covered by the shotgun block) |
 | kick (`doKick`, `kickStep`), `shove` | ported, parity tested |
-| melee: `meleeBegin` (lunge, slam in the air, katana target/stab, typhoon cyclone, trident jab), `meleeTick`, `meleeSweep` (8 points, 3 sub-steps, `swingHit`), `afterSwing` (breaking) | ported; spatula, bat, katana (incl. slam, giant) parity tested; cyclone/trident paths ported but not yet in the scenario |
-| guns: `fireGun` plain hitscan (spread, assist/aim point, climb, falloff, head multiplier, victim merge, `maxForce`, Mammoth headshot, topple chance, recoil, kickback/hop, `hipD`) | ported; SMG parity tested |
+| melee: `meleeBegin` (lunge, slam in the air, katana target/stab, typhoon cyclone, trident jab), `meleeTick`, `meleeSweep` (8 points, 3 sub-steps, `swingHit`), `afterSwing` (breaking) | ported; spatula, bat, katana (incl. slam, giant), mallet, hammer, wirewhip, trident (jab, slam, giant, breaking, interrupted) parity tested (blocks `melee`, `melee2`). Typhoon cyclone path ported but untested (typhoon is a thrown type, next batch). The melee code is fully data driven: no weapon-specific code beyond katana/typhoon/trident |
+| guns: `fireGun` plain hitscan (spread, assist/aim point, climb, falloff, head multiplier, victim merge, `maxForce`, Mammoth headshot, topple chance, recoil, kickback/hop, `hipD`) | ported; smg, ak (incl. ADS), sniper, revolver, mammoth (head snap, Giant), shotgun (`shotSpread` + pellet circle, ADS, falloff, hop; the on-screen circle in `frame` ~10031 is HUD only and stays with the HUD), dual Uzi (`uziSide`, right axis of the arm = `Weapons.arm_right`, a port of the `arm.quaternion` maths in `animate` ~6029), minigun spin-up (`Weapons.gun_tick`, mirrors the `playerControl` gun lines; bots skip spin-up like the JS), Spring Glove (`style: 'punch'`, `Weapons._punch`) parity tested (blocks `guns`, `uziMinigun`, `shotgun`, `glove`) |
 | knife: `throwKnife`, `releaseKnife`, `updateKnives` (4 sub-steps, gravity, wall stick, hits, homing/pierce fields) | ported; knife parity tested, homing (shuriken) ported but untested |
 | net: `S` entry, `h`, `ko`, `netCleanHit`, `netGuard` rules | ported; rounding/cleaning parity tested against JS, round-trip test |
 
-Not ported yet (TODO in code): emotes in `timers`, ninja dash (`dashTick`, `doDash`), hot potato in `hit`, dev god mode, kill cam, gun styles `flame` and `punch`, `adsMul` pellet circle (`shotSpread`, shotgun), dual Uzi second muzzle, minigun spin-up, all other projectile types, shrinking-arena respawn, Weapon Ladder (`ggGive/ggAdvance`), crates/drops (`pickCrateKey`, `spawnDrop`, `updatePickups`), match end on KO limit (the world reads the `ko` event).
+Not ported yet (TODO in code): emotes in `timers`, ninja dash (`dashTick`, `doDash`), hot potato in `hit`, dev god mode, kill cam, gun style `flame`, the trident throw (`throwTrident`), all other projectile types (next batch), shrinking-arena respawn, Weapon Ladder (`ggGive/ggAdvance`), crates/drops (`pickCrateKey`, `spawnDrop`, `updatePickups`), match end on KO limit (the world reads the `ko` event).
 
 `FighterPhysics.step(dt, solids, st)` (now `logic/fighter_physics.gd`) applies `stun`, `down_t`, `trap_t`, `spd_t` and `dash_air_t` from the FighterState, parity tested; `MatchSim` (`logic/match_sim.gd`) runs the whole step order below for an offline match.
 
 ## Where each remaining weapon type lives (JS)
 
+Already done and removed from this table: plain guns, shotgun, dual Uzi, minigun, glove, all plain melee. Crates only drop weapons for which `Pickups.usable` is true (only `style: flame` guns and the types below are filtered out).
+
 | `type` (weapons.json) | Keys | JS | Port into |
 |---|---|---|---|
 | `gun` style `flame` | flame | `fireGun` flame branch ~5960, burn in `timers` | `Weapons.fire_gun` |
-| `gun` style `punch` | glove | `fireGun` punch branch ~5985 | `Weapons.fire_gun` |
-| `gun` `adsMul` / `pellets` | shotgun | `shotSpread` ~2590, pellet circle in `fireGun` | `Weapons.fire_gun` |
-| `gun` `dual` | uzi | `fireGun` (`uziSide`) | `Weapons.fire_gun` (needs the arm right axis) |
-| `gun` `spinup` | minigun | `playerControl` ~9433, `hipD` | `Weapons.try_fire` |
-| `gun` plain | ak, sniper, revolver, mammoth | `fireGun` | done (add scenario blocks) |
 | `rocket` | rocket, meteor, cluster | `launchRocket` ~6257, `updateRockets` ~6985, `explode` ~6938 | new `launch_rocket`, `step_rockets`, `explode` |
 | `glauncher` | glauncher | `launchGrenade` ~6345, `updateGrenades` ~7026 | `LAUNCH`/`RELEASE` + own stepper |
 | `bow` | bow | `shootArrow` ~6401, `updateArrows` ~6414 (draw charge) | own stepper |
@@ -74,7 +71,7 @@ Not ported yet (TODO in code): emotes in `timers`, ninja dash (`dashTick`, `doDa
 | `snake` | snake | `shootSnake/updateSnakes` ~6714 | own stepper |
 | `ball` | snow | `shootBall/updateBalls` ~6796 | own stepper |
 | `net` | net | `shootNet/landNet/updateNets` ~6807 (sets `trap_t`) | own stepper |
-| `melee` | trident (throwable), mallet, katana, typhoon | `meleeBegin` etc. (done), `throwTrident/releaseTrident` ~6283 | `Combat` melee (done) + `LAUNCH` for the throw |
+| `melee` | trident (throwable) | swing done; `throwTrident/releaseTrident` ~6283 | `LAUNCH` for the throw (TODO) |
 | `heal` / power-ups | heal, speed, rage, shield | `updatePickups` ~6182 | pickups task |
 
 ## How to add a weapon type

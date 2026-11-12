@@ -26,6 +26,8 @@ var ported_only := true
 ## Live crates: {id, key, spot (index), gy, x, z, y, vy, grounded, open, t, age}
 var list: Array = []
 var _next_id := 0
+## Online guest: only the host drops crates; they arrive as `crate`/`crates` messages (spawn_at) and leave on `take`.
+var remote := false
 
 func _init(c: Combat, drops_data: Dictionary, rates_data: Dictionary) -> void:
 	combat = c
@@ -85,13 +87,51 @@ func spawn_drop(force_key: String = "") -> Dictionary:
 	combat.ev({"type": "toast", "text": "Crate incoming: " + label(key) + "!"})
 	return p
 
-## Heal, power-ups and the weapons whose behaviour is ported (melee, plain hitscan guns, thrown knives).
+## spawnDrop(key, null, spot) for a crate the host announced (`crate` message): `spot` = [x, z, floor y?] as in
+## MAPS[map].drops, `cid` = the host's crate id (sent back in `take`). Returns the crate or {} for junk.
+func spawn_at(key: String, spot: Variant, cid: int) -> Dictionary:
+	if not (spot is Array) or spot.size() < 2 or cid <= 0 or find_cid(cid) >= 0:
+		return {}
+	if key != "heal" and not drops.get("powerups", {}).has(key) and combat.wdata(key).is_empty():
+		return {}
+	var x := NetSnapshot.num(spot[0], -500.0, 500.0, NAN)
+	var z := NetSnapshot.num(spot[1], -500.0, 500.0, NAN)
+	if is_nan(x) or is_nan(z):
+		return {}
+	var gy := NetSnapshot.num(spot[2], -100.0, 200.0, 0.0) if spot.size() > 2 else 0.0
+	var si := -1
+	for k in spots.size():
+		if is_equal_approx(float(spots[k][0]), x) and is_equal_approx(float(spots[k][1]), z): si = k
+	_next_id += 1
+	var p := {"id": _next_id, "cid": cid, "key": key, "spot": si, "gy": gy, "x": x, "z": z, "y": 26.0 + gy, "vy": 0.0,
+		"grounded": false, "open": 0.0, "t": 0.0, "age": 0.0}
+	list.append(p)
+	combat.ev({"type": "crate", "crate": p})
+	combat.ev({"type": "toast", "text": "Crate incoming: " + label(key) + "!"})
+	return p
+
+## Index in `list` of the crate with the host's id `cid`, or -1.
+func find_cid(cid: int) -> int:
+	for i in list.size():
+		if int(list[i].get("cid", 0)) == cid: return i
+	return -1
+
+## Somebody else took crate `cid` (`take` message).
+func remove_cid(cid: int) -> bool:
+	var i := find_cid(cid)
+	if i < 0: return false
+	var p: Dictionary = list[i]
+	list.remove_at(i)
+	combat.ev({"type": "crate_gone", "crate": p})
+	return true
+
+## Heal, power-ups and the weapons whose behaviour is ported (melee, hitscan guns incl. shotgun/Uzi/minigun, thrown knives).
 func usable(key: String) -> bool:
 	if key == "heal" or PU_TIMERS.has(key): return true
 	var w := combat.wdata(key)
 	match String(w.get("type", "")):
 		"melee": return true
-		"gun": return w.get("style", "") == "" and not w.get("adsMul", 0) and not w.get("dual", false) and not w.get("spinup", 0)
+		"gun": return w.get("style", "") != "flame"      # TODO(next batch): flame
 	return Weapons.LAUNCH.has(String(w.get("type", "")))
 
 ## Display name of a drop key (weapon, heal or power-up).
@@ -112,7 +152,7 @@ func bot_wants(b: FighterState, p: Dictionary) -> bool:
 ## updatePickups: drop timer, falling, landing, being picked up, expiring.
 func update(dt: float) -> void:
 	drop_timer -= dt
-	if not no_crates and drop_timer <= 0.0:
+	if not no_crates and not remote and drop_timer <= 0.0:
 		drop_timer = combat.rng.range_f(3, 5) * float(rates.get(crate_rate, 0.42))
 		spawn_drop()
 	for i in range(list.size() - 1, -1, -1):

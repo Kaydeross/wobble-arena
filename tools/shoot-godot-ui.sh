@@ -1,6 +1,6 @@
 #!/bin/sh
 # Renders the Godot UI for visual review (needs a real renderer: opens a window for a moment).
-#   sh tools/shoot-godot-ui.sh [suffix] [shot ...]     shots: title match touch fps pause (default: all)
+#   sh tools/shoot-godot-ui.sh [suffix] [shot ...]     shots: title title-online match touch fps pause (default: all)
 # Writes docs/style/godot-ui-<shot>[-suffix].png at the iPhone landscape size (852x393 pt; RES=WxH overrides).
 set -e
 cd "$(dirname "$0")/.."
@@ -11,7 +11,7 @@ SUFFIX="${1:-}"
 RES="${RES:-852x393}"
 mkdir -p "$OUT"
 timeout 120 "$GODOT" --headless --path godot --import >/dev/null 2>&1 || true
-for s in ${@:-title match touch fps pause}; do
+for s in ${@:-title title-online match touch fps pause}; do
 	name="godot-ui-$s${SUFFIX:+-$SUFFIX}.png"
 	timeout 120 "$GODOT" --path godot --resolution "$RES" --script res://tests/ui_shots.gd -- --no-save --shot "$s" --out "$OUT/$name" 2>&1 | grep -E '^SHOT|SCRIPT ERROR' || { echo "FAIL $s"; exit 1; }
 done

@@ -15,7 +15,12 @@ const CASES := [
 ]
 ## Controls (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Body/Play", "Safe/Col/Body/Picks", "Safe/Col/Tip", "Safe/Col/Build"]
-const INSIDE := ["Safe/Col/Body/Picks/Box/ClassRow/Class", "Safe/Col/Body/Picks/Box/MapRow/Map", "Safe/Col/Body/Picks/Box/FpsRow/Fps"]
+const PB := "Safe/Col/Body/Picks/Box/"
+const TABS := [PB + "Tabs/OfflineTab", PB + "Tabs/OnlineTab"]
+const OFFLINE := [PB + "Offline/ClassRow/Class", PB + "Offline/MapRow/Map", PB + "Offline/FpsRow/Fps"]
+## the online panel (server, room, name, join, login fields, status, roster): also must not overlap each other
+const ONLINE := [PB + "Online/ServerRow/Server", PB + "Online/RoomRow/Room", PB + "Online/RoomRow/Name", PB + "Online/RoomRow/Join",
+	PB + "Online/AcctRow/User", PB + "Online/AcctRow/Pass", PB + "Online/AcctRow/Login", PB + "Online/Status", PB + "Online/Roster"]
 
 var fails := 0
 
@@ -35,12 +40,13 @@ static func canvas_size(win: Vector2) -> Vector2:
 func _run() -> void:
 	for c: Array in CASES:
 		for with_insets in [false, true]:
-			await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0])
+			for online in [false, true]:
+				await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], online)
 	SafeArea.override = []
 	print("UI ok" if fails == 0 else "UI layout checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
 
-func _case(win: Vector2, ins_pt: Array) -> void:
+func _case(win: Vector2, ins_pt: Array, online: bool) -> void:
 	var cs := canvas_size(win)
 	var k := cs.x / win.x
 	var ins := [ins_pt[0] * k, ins_pt[1] * k, ins_pt[2] * k, ins_pt[3] * k]
@@ -51,12 +57,15 @@ func _case(win: Vector2, ins_pt: Array) -> void:
 	root.add_child(vp)
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	vp.add_child(main)
+	main.show_tab(online)
+	if online: main.get_node(PB + "Online/Roster").text = "In the room: Alice, Bob, Carol"
 	for i in 4:
 		await process_frame
-	var tag := "%dx%d%s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else ""]
+	var tag := "%dx%d%s%s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else "", " online" if online else ""]
+	var inside: Array = TABS + (ONLINE if online else OFFLINE)
 	var safe := Rect2(Vector2(ins[0], ins[1]), cs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	var rects := {}
-	for p: String in BLOCKS + INSIDE:
+	for p: String in BLOCKS + inside:
 		var n: Control = main.get_node(p)
 		var r := n.get_global_rect()
 		rects[p] = r
@@ -68,6 +77,12 @@ func _case(win: Vector2, ins_pt: Array) -> void:
 			var a: Rect2 = rects[BLOCKS[i]]
 			var b: Rect2 = rects[BLOCKS[j]]
 			check(not a.grow(-0.5).intersects(b.grow(-0.5)), "%s %s %s overlaps %s %s" % [tag, BLOCKS[i], a, BLOCKS[j], b])
+	if online:
+		for i in ONLINE.size():
+			for j in range(i + 1, ONLINE.size()):
+				var a: Rect2 = rects[ONLINE[i]]
+				var b: Rect2 = rects[ONLINE[j]]
+				check(not a.grow(-0.5).intersects(b.grow(-0.5)), "%s %s overlaps %s" % [tag, ONLINE[i], ONLINE[j]])
 	# the whole column fits (containers would otherwise overflow past the bottom)
 	var col: Control = main.get_node("Safe/Col")
 	check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])

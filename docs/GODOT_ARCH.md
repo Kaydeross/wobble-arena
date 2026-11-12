@@ -53,6 +53,13 @@ How the pieces fit since the integration track (`npm run test:godot-integration`
 
 Each track merges to `main` behind its own tests. The lead integrates `Fighter` (physics + combat + wobbler) in a second round once all three exist. Do not edit another track's files; if you need a change, describe it in your report.
 
+## Online guest (Phase 1)
+
+- **`scripts/net_client.gd` `NetClient`**: layer 1 + hello (`cls` from Settings). `BUILD` = the web game's `NET_BUILD`.
+- **`net/guest_session.gd` `GuestSession`** (RefCounted, lives across scenes): connect -> `auth` (Settings `token`) -> join (retries once without `build` on `nojoin build`: proto decides) -> hello -> welcome -> roster/start/slot/crates/rvs, ping every 1.5 s, kick/full/badver/kicked, `rehost` (hello again, back to the title) and `promoted` (leave with a message: hosting is Phase 2). Room messages carrying `from` (only a host ever gets those) and everything before `welcome` except welcome/full/badver/kick are dropped. `clean_info`/`clean_start` = the web `cleanInfo`.
+- **`net/net_match.gd` `NetMatch`**: the guest half of netStartMatch/netHandle/netSnap/netStep over a MatchSim (`sim.net`; MatchSim calls `pre_step`/`post_controls` around the controllers). Ghost fighters (`is_ghost`) for every other slot, interpolated like `netStep` (`NetMatch.interp`, parity-tested against the sliced JS); `sw`/`f`/`k` replayed for looks; `h` applied with `Combat.net_apply`; my `S` at 30 Hz and `sw/f/k/h/ko/take`. `Pickups.remote` + `spawn_at`/`remove_cid` for host crates.
+- **`net/account_api.gd` `AccountApi`**: POST `/api/login` (token to Settings). World: `session` + `start_msg` switch it to online (no bots, ghosts, results/rematch panel). Title: server/room/name/login fields, `-- --join=ROOM --server=URL --name=N`. Manual steps: `docs/CROSSPLAY_TEST.md`.
+
 ## UI (first UI pass)
 
 - **Theme**: `ui/theme_builder.gd` (`UiTheme`, colour constants + `box()`/`font()` helpers) writes `ui/theme.tres`, set as `gui/theme/custom` in project.godot. Rebuild: `godot --headless --path godot --script res://ui/theme_builder.gd`. Font: Fredoka (SIL OFL, `ui/fonts/OFL.txt`). Type variations: `PrimaryButton`, `HudPanel`, `ChipPanel`, `HudLabel`, `TitleLabel`, `MutedLabel`. `JuicyButton.attach_all(node)` adds the hover/press tween to every button under a node.
@@ -62,4 +69,4 @@ Each track merges to `main` behind its own tests. The lead integrates `Fighter` 
 - **Brand**: `tools/shoot-godot-brand.sh` renders `icon.png` and `ui/brand/launch_logo.png` (boot splash + iOS storyboard). `tools/shoot-godot-ui.sh` renders `docs/style/godot-ui-*.png`.
 
 ## Test commands
-`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match), `npm run test:godot-ui` (title layout at 4 window sizes with safe areas, HUD layout vs touch buttons, FPS overlay toggles). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.
+`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match), `npm run test:godot-netguest` (Godot guest in a room hosted by a Node bot on the real server, plus interpolation parity), `npm run test:godot-ui` (title layout at 4 window sizes with safe areas, HUD layout vs touch buttons, FPS overlay toggles). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.

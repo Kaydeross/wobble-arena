@@ -34,3 +34,4 @@ jobs:
       - run: npm run test:godot-wobbler
       - run: npm run test:godot-weapons
       - run: npm run test:godot
+      - run: npm run test:godot-netguest
