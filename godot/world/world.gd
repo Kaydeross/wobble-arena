@@ -4,6 +4,8 @@ extends Node3D
 ## presents every fighter with a Wobbler, drains Combat events into effects, and draws a minimal HUD.
 ## Per frame (like `frame`): camera -> sim steps -> animate/applyPose (Fighter.present) -> melee sweep -> effects/HUD.
 ## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n>.
+## Online (guest): set `session` (a GuestSession that got `start`) and `start_msg` before adding the world; the map,
+## rules and slots then come from the host, the other players are ghosts driven by a NetMatch (net/net_match.gd).
 
 const SIM := 1.0 / 120.0
 const FEED_TIME := 5.0
@@ -26,6 +28,10 @@ const FX_DMG_LIFE := 0.9
 @onready var pause_menu: Control = $UI/Pause
 
 var sim: MatchSim
+var session: GuestSession = null   ## online guest session (null = offline)
+var start_msg := {}                ## the cleaned `start` this match was built from
+var net_match: NetMatch = null
+var _results: Control = null
 var control: PlayerControl
 var map_node: MapBuilder.MapNode
 var solids: Array = []
@@ -61,14 +67,24 @@ func _ready() -> void:
 	touch.pause_pressed.connect(_toggle_pause)
 	input.pause_requested.connect(_toggle_pause)
 	$UI/Pause/Box/Resume.pressed.connect(_toggle_pause)
-	$UI/Pause/Box/Title.pressed.connect(func(): get_tree().change_scene_to_file("res://scenes/main.tscn"))
+	$UI/Pause/Box/Title.pressed.connect(_on_title_pressed)
 	pause_menu.visible = false
 	_fx_root = Node3D.new(); _fx_root.name = "Fx"; add_child(_fx_root)
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
 	_build_hud()
+	if session != null:
+		map_id = start_msg.get("map", map_id)
+		session.match_started.connect(_on_net_start)
+		session.match_message.connect(_on_net_message)
+		session.votes_changed.connect(_on_net_votes)
+		session.ended.connect(_on_net_ended)
+		session.rehosted.connect(_on_net_rehosted)
+		$UI/Pause/Box/Title.text = "Leave room"
 	load_map(map_id)
 
 func _exit_tree() -> void:
+	if net_match:
+		net_match.dispose()
 	if sim:
 		sim.dispose()
 
@@ -80,7 +96,9 @@ func load_map(id: String) -> void:
 	views.clear()
 	for c in _crates.values(): c.queue_free()
 	_crates.clear()
+	if net_match: net_match.dispose(); net_match = null
 	if sim: sim.dispose()
+	if _results: _results.queue_free(); _results = null
 	map_id = id
 	map_node = MapBuilder.build(id)
 	add_child(map_node)
@@ -91,21 +109,32 @@ func load_map(id: String) -> void:
 	sim = MatchSim.new()
 	if rng_seed > 0: sim.combat.rng = CombatRng.new(rng_seed)
 	sim.combat.hp_setting = hp_setting
+	if session != null: NetMatch.apply_rules(sim.combat, start_msg.get("rules", {}))
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
-	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, bot_count)
+	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bot_count)
+	if session != null:
+		net_match = NetMatch.new(sim, session.send, session.slot)
+		net_match.setup(start_msg)
+		sim.player.name = str(Settings.get_value("name", "Player"))
 	var scene: PackedScene = load("res://actors/fighter.tscn")
 	for f: FighterState in sim.fighters:
 		var v: Fighter = scene.instantiate()
 		_fighters_root.add_child(v)
-		var lk: Dictionary = sim.looks.get(f, {"skin": "none", "hat": "none", "color": int(Settings.get_value("color", 0x39b5a8))})
+		var lk: Dictionary = sim.looks.get(f, _my_look())
 		v.bind(f, lk)
 		views[f] = v
 	player_view = views[sim.player]
 	cam.yaw = PI; cam.pitch = -0.2
 	feed.clear()
 	acc = 0.0
+
+func _my_look() -> Dictionary:
+	var col := int(Settings.get_value("color", 0x39b5a8))
+	var sk: Dictionary = Content.cosmetics.get("skins", {}).get(str(Settings.get_value("skin", "none")), {})
+	if sk.has("col"): col = int(sk["col"])
+	return {"skin": str(Settings.get_value("skin", "none")), "hat": str(Settings.get_value("hat", "none")), "color": col}
 
 func player_pos() -> Vector3:
 	var p := sim.player.phys
@@ -124,17 +153,20 @@ func sim_step(dt: float) -> void:
 ## One rendered frame: sim steps from the accumulator, then the presentation (animation, melee sweep, effects, HUD).
 func tick(delta: float) -> void:
 	var dt := minf(delta, 0.05)
-	if not paused:
-		cam.add_look(input.state.take_look())
+	if not paused or net_match != null:      # online the match keeps running behind the menu
+		if not paused: cam.add_look(input.state.take_look())
 		cam.follow(dt, player_pos(), input.state.aiming(), solids)
 		acc += minf(dt, 0.1)
 		while acc >= SIM:
 			sim_step(SIM)
 			acc -= SIM
-	present(dt if not paused else 0.0)
+	present(dt if (not paused or net_match != null) else 0.0)
 	_update_hud(delta)
 
 func _process(delta: float) -> void:
+	if session != null:
+		session.poll(delta)
+		if not is_inside_tree() or sim == null: return
 	if auto_run:
 		tick(delta)
 	else:
@@ -144,6 +176,7 @@ func _process(delta: float) -> void:
 ## applyPose + meleeSweep + effects (also used by tests that step the sim by hand).
 func present(dt: float) -> void:
 	for v: Fighter in views.values():
+		v.visible = not v.state.left
 		v.present(dt)
 	sim.sweep()
 	_drain_events()
@@ -156,6 +189,8 @@ func _drain_events() -> void:
 	var evs: Array = sim.combat.events
 	for e: Dictionary in evs:
 		counts[e["type"]] = int(counts.get(e["type"], 0)) + 1
+		Sfx.on_event(e, sim)
+		if net_match != null: net_match.on_event(e)
 		var f: FighterState = e.get("f") if e.get("f") is FighterState else null
 		match String(e["type"]):
 			"lean", "head", "arm":
@@ -185,6 +220,10 @@ func _drain_events() -> void:
 				if f: _puff(Vector3(f.phys.px, 0.15, f.phys.pz), Color(0.62, 0.96, 0.92), 6, 3.0)
 			"toast":
 				_toast(str(e["text"]))
+			"match_end":
+				_show_results(str(e["name"]))
+			"relook":
+				_relook(f)
 	evs.clear()
 
 func _on_ko(e: Dictionary) -> void:
@@ -406,6 +445,75 @@ func _update_hud(delta: float) -> void:
 	if Tier.is_pc() and not touch.visible and not input.mouse_captured() and not paused:
 		hint = "\nClick to look around (Esc: menu)"
 	hud.text = "%s  |  %s  |  %d fps%s" % [name_s, Tier.tier_name(), Engine.get_frames_per_second(), hint]
+
+# ============================== online (guest) ==============================
+
+func _on_net_message(m: Dictionary) -> void:
+	if net_match != null: net_match.handle(m)
+
+## `start` again: a rematch (or the host restarted). Rebuild the match from it.
+func _on_net_start(s: Dictionary) -> void:
+	start_msg = s
+	load_map.call_deferred(str(s["map"]))
+
+func _on_net_ended(reason: String) -> void:
+	_to_title(reason)
+
+func _on_net_rehosted() -> void:
+	_to_title("The host left. Waiting for the new host to start…")
+
+func _on_title_pressed() -> void:
+	if session != null:
+		session.leave("You left the room.")     # _on_net_ended goes to the title
+	else:
+		get_tree().change_scene_to_file("res://scenes/main.tscn")
+
+## Back to the title screen; an active session (re-hosting) stays alive there.
+func _to_title(msg: String) -> void:
+	if not is_inside_tree(): return
+	if session != null:
+		for sig: Array in [[session.match_started, _on_net_start], [session.match_message, _on_net_message], [session.votes_changed, _on_net_votes], [session.ended, _on_net_ended], [session.rehosted, _on_net_rehosted]]:
+			if (sig[0] as Signal).is_connected(sig[1]): (sig[0] as Signal).disconnect(sig[1])
+	var main: Node = load("res://scenes/main.tscn").instantiate()
+	main.set("session", session if session != null and session.is_active() else null)
+	main.set("notice", msg)
+	session = null
+	get_tree().change_scene_to_node.call_deferred(main)
+
+## A ghost's owner changed (slot): rebuild its look.
+func _relook(f: FighterState) -> void:
+	if f == null or not views.has(f): return
+	views[f].queue_free()
+	var v: Fighter = load("res://actors/fighter.tscn").instantiate()
+	_fighters_root.add_child(v)
+	v.bind(f, sim.looks.get(f, {}))
+	views[f] = v
+
+## pend: the host ended the match. Results + rematch vote (placeholder UI).
+func _show_results(winner: String) -> void:
+	if _results: _results.queue_free()
+	var p := PanelContainer.new()
+	p.name = "Results"
+	_pin(p, 0.5, 0.5, Rect2(-220, -110, 440, 220))
+	var box := VBoxContainer.new()
+	p.add_child(box)
+	var l := _label(box, 30, HORIZONTAL_ALIGNMENT_CENTER)
+	l.text = ("You win!" if winner == "You" else winner + " wins!")
+	var votes := _label(box, 18, HORIZONTAL_ALIGNMENT_CENTER)
+	votes.name = "Votes"
+	var rm := Button.new(); rm.text = "Rematch"; rm.custom_minimum_size = Vector2(0, 54)
+	rm.pressed.connect(func() -> void:
+		if session: session.vote_rematch()
+		rm.disabled = true; rm.text = "Waiting for the others…")
+	box.add_child(rm)
+	var lv := Button.new(); lv.text = "Leave room"; lv.custom_minimum_size = Vector2(0, 54)
+	lv.pressed.connect(_on_title_pressed)
+	box.add_child(lv)
+	$UI.add_child(p)
+	_results = p
+
+func _on_net_votes(list: Array, total: int) -> void:
+	if _results: (_results.find_child("Votes", true, false) as Label).text = "Rematch votes: %d / %d" % [list.size(), total]
 
 func _toggle_pause() -> void:
 	paused = not paused
