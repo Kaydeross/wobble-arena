@@ -74,7 +74,7 @@ theme_override_font_sizes/font_size = 17
 text = "Guest"
 
 [node name="Gear" type="Button" parent="Safe/Col/Top"]
-custom_minimum_size = Vector2(56, 56)
+custom_minimum_size = Vector2(60, 60)
 layout_mode = 2
 size_flags_vertical = 4
 tooltip_text = "Settings"

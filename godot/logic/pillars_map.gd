@@ -10,7 +10,25 @@ extends RefCounted
 const RING := 28.0
 const SPAWN_Y := 10.35                 ## m.player[2] / the bots' y
 const COLS := [0xe8d9b0, 0xd9c8a0, 0xf0e2bc, 0xcfbf94, 0xf4e8c8, 0xd4c49a, 0xe6d6ac, 0xcdbd92]
-const IDS := ["pillars"]               ## levels built this way (Lava Pillars, pillars2, is not exported from the web game)
+const IDS := ["pillars", "pillars2"]   ## levels built this way
+## Lava Pillars (MAPS.pillars2 = Object.assign({}, MAPS.pillars, {...}), index.html ~3491): the same eight pillars and
+## rules over a lake of lava under a red sky. tools/export-maps.js does not export it (shared/maps.json has no pillars2):
+## lava_entry() makes its maps.json entry from the Pillars one with the web overrides; its look and decor (the volcano
+## backdrop, embers) are exported like every level by tools/export-map-decor.js. Godot adds the lava lake itself
+## (MapBuilder: LavaLake below the pillars) and the lake kills: `lavaY` is the ring-out height (MatchSim) instead of
+## falling to -25 (the web game's lava is only the void colour, far below).
+const LAVA_Y := -9.0
+const LAVA := {"name": "Lava Pillars", "tags": ["Pillars", "Height", "Lava"],
+	"blurb": "The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you are out for the match. Most K.O.s when the clock ends wins.",
+	"env": {"speck": "ember", "speckColor": 0xffb070}, "peaks": false,
+	"sky": 0xff9a60, "skyTop": 0x3a1020, "voidColor": 0xff5a1e, "hills": [0x7a2a1e, 0x642018, 0x8a362a, 0x521812], "fog": [70, 230]}
+
+## The pillars2 maps.json entry: MAPS.pillars' (`pillars`) with the Lava Pillars overrides and the lava height.
+static func lava_entry(pillars: Dictionary) -> Dictionary:
+	var m := pillars.duplicate(true)
+	for k: String in LAVA: m[k] = LAVA[k].duplicate(true) if LAVA[k] is Dictionary or LAVA[k] is Array else LAVA[k]
+	m["lavaY"] = LAVA_Y
+	return m
 
 ## PIL_PTS: [x, z] of the eight pillars (rounded to 0.01 like the web game).
 static func points() -> Array:

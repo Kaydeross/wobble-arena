@@ -30,6 +30,7 @@ var looks := {}                   ## FighterState -> {skin, hat, color}
 var diff := "normal"
 var difficulty: Dictionary = {}
 var match_start := 0.0
+var ring_out_y := RING_OUT_Y       ## below this you are out: the map's `lavaY` (Lava Pillars' lake) or RING_OUT_Y
 ## Online: the NetMatch (net/net_match.gd) of this match, or null offline. step() calls its pre_step() before the
 ## controllers (netSnap) and post_controls() after them (netStep), like simStep.
 var net: RefCounted = null
@@ -69,6 +70,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	map_id = p_map_id
 	map = p_map
 	solids = FighterPhysics.solids_from_map(map)
+	ring_out_y = float(map.get("lavaY", RING_OUT_Y))
 	ladders = map_ladders
 	pads = map_pads
 	diff = p_diff
@@ -209,7 +211,7 @@ func sweep() -> void:
 ## Ring-out: knocked off the edge (simStep ~9640). The kill cam is not ported: the player respawns at once.
 func _ring_out() -> void:
 	for d: FighterState in fighters:
-		if d.phys.py >= RING_OUT_Y or d.elim or d.is_ghost or d.dead: continue
+		if d.phys.py >= ring_out_y or d.elim or d.is_ghost or d.dead: continue
 		var a := d.last_attacker
 		var knocked := a != null and a != d and combat.time - d.last_hit_time < 10.0
 		d.st["streak"] = 0; d.st["multi"] = 0; d.st["deaths"] += 1; d.st["falls"] += 1

@@ -26,7 +26,7 @@ func _run() -> void:
 	if content == null:
 		print("FAIL no Content autoload"); quit(1); return
 	var ids: Array = content.map_ids().duplicate()
-	ids.append("custom")
+	if not ids.has("custom"): ids.append("custom")              # (Content adds it for the wizard; the audit builds it either way)
 	for id: String in ids:
 		var m: Dictionary = MapBuilder.custom_map({}) if id == "custom" else content.get_map(id)
 		if PillarsMap.IDS.has(id): m = PillarsMap.complete(m)        # built from MAPS.pillars (the export has no boxes)
@@ -168,6 +168,33 @@ func _pillars_ref() -> void:
 	for b: Array in m["bots"]: ys = ys and is_equal_approx(float(b[2]), float(ref["bots"][0][2]))
 	check(ys and is_equal_approx(float(m["player"][2]), float(ref["player"][2])), "pillars start heights match")
 	print("PILLARS %d boxes, %d spawns match the web build()" % [gb.size(), m["spawns"].size()])
+	# Lava Pillars: the web MAPS.pillars2 overrides on top of Pillars, the same boxes, its lake
+	var lv: Dictionary = ref.get("lava", {})
+	var l2 := PillarsMap.complete(root.get_node("Content").get_map("pillars2"))
+	var diff: Array = []
+	for k: String in lv:
+		if not _same(l2.get(k), lv[k]): diff.append(k)
+	check(lv.size() == 10 and diff.is_empty(), "Lava Pillars overrides match the web MAPS.pillars2 (differ: %s)" % [diff])
+	check((l2["geometry"]["boxes"] as Array).size() == gb.size() and str(l2.get("only", "")) == "pillars" and float(l2.get("lavaY", 0.0)) == PillarsMap.LAVA_Y, "Lava Pillars: the Pillars boxes, Pillars only, a lava lake")
+	var node := MapBuilder.build("pillars2")
+	check(node.get_node_or_null("LavaLake") != null and node.decor_tris > 0, "Lava Pillars draws its lake and the exported volcano decor")
+	node.free()
+	print("PILLARS lava: %d web overrides match, lake at %.1f m" % [lv.size(), PillarsMap.LAVA_Y])
+
+## Deep equality with numbers compared as numbers (JSON gives floats, Godot constants are ints).
+func _same(a: Variant, b: Variant) -> bool:
+	if (a is int or a is float) and (b is int or b is float): return is_equal_approx(float(a), float(b))
+	if a is Array and b is Array:
+		if a.size() != b.size(): return false
+		for i in a.size():
+			if not _same(a[i], b[i]): return false
+		return true
+	if a is Dictionary and b is Dictionary:
+		if a.size() != b.size(): return false
+		for k in a:
+			if not b.has(k) or not _same(a[k], b[k]): return false
+		return true
+	return a == b
 
 func _close(a: Array, b: Array) -> bool:
 	if a.size() != b.size(): return false

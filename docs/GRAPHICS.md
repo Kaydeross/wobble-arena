@@ -31,6 +31,28 @@ Tried and dropped: Godot height fog and aerial perspective (with depth fog at de
 fog-free far scenery white), SSIL (noisy on flat colour faces, not worth its cost), full toon diffuse on fighters
 (flattens the low-poly facets).
 
+## Tier parity (LOW vs MID brightness)
+
+LOW used to look washed out and clipped next to MID (sunlit floors about a third brighter, bright pinks clipped to
+white) while its night sky and far scenery were near black. Causes, found with probes on Godot 4.7:
+
+- Compatibility shades in sRGB and writes shader values as they are: an unshaded `ALBEDO = vec3(0.2)` shows as 50 on
+  Compatibility, 123 on Mobile. Values we had linearised by hand (sky bands `_lin`, decor `pow(COLOR, 2.2)`) came out
+  far too dark. On Compatibility `_lin` now returns the sRGB colour, decor shaders use the vertex colour as it is and
+  the decor glow is `emission^(1/2.2)`.
+- The sun casts shadows, so Compatibility draws it in its own additive pass, and that pass adds sRGB-encoded colours:
+  enc(ambient) + enc(sun) instead of enc(ambient + sun) (farm floor 165 vs 122; without the shadow both read 122).
+  `MapBuilder.compat_sun_scale` scales the sun per map so the sum lands on the linear one for an up-facing surface.
+- MID's filmic curve lifts the mid-tones; the same tonemap on Compatibility measured brighter, not darker, so LOW
+  keeps a linear tonemap and lit surfaces get the lift from the lights (`COMPAT_LIFT` 1.2 on ambient and sun).
+
+All of it is set once when a map loads: no extra passes or per-pixel work on LOW. `godot/tests/gfx_parity.gd` renders
+Farm, Candy and Moon Base from two fixed cameras (wide with the sky, low across the floor) on each tier and prints
+the mean luminance; `npm run test:godot-gfx` (windowed) fails when LOW is more than 12 % from MID. Before / after:
+farm-wide -3.2 / +6.4 %, farm-play -4.6 / -0.7 %, candy-wide +3.6 / +8.4 %, candy-play +11.0 / +6.0 %,
+moonbase-wide -40.0 / -2.4 %, moonbase-play -11.1 / -9.1 %. Pictures: `docs/style/godot-uiscale-tiers-before.png` and
+`-after.png` (MID left, LOW right).
+
 ## Where it lives
 
 - `godot/world/map_builder.gd`: `make_environment` + `_grade` (tonemap, grade, glow, SSAO), sky shader (sun boost),

@@ -38,8 +38,8 @@ static var _materials: Dictionary = {}
 
 ## Build a map by id from the Content autoload.
 static func build(map_id: String) -> MapNode:
-	if map_id == "custom":
-		return build_from("custom", custom_map({}))
+	if map_id == "custom":                                          # the Sandbox arena saved in the profile (cfg.custom + cfg.blocks)
+		return build_from("custom", custom_map(saved_custom()))
 	var content := _content()
 	var map: Dictionary = content.get_map(map_id) if content else _load_maps_file().get(map_id, {})
 	if map.is_empty():
@@ -71,7 +71,12 @@ static func build_from(map_id: String, map: Dictionary) -> MapNode:
 		_add_backdrop(root, map)
 	if gfx_q() >= 1:
 		_add_cloud_layer(root, look(map_id) if map_id != "custom" else {})
+	if map.has("lavaY"): add_lava_lake(root, float(map["lavaY"]))     # Lava Pillars: the lake that kills (PillarsMap)
 	return root
+
+## True on the Compatibility renderer (web; also a PC forced to it), whatever the effects level says.
+static func compat() -> bool:
+	return RenderingServer.get_current_rendering_method() == "gl_compatibility"
 
 ## Graphics quality from the Tier autoload: 0 LOW (web), 1 MID (phones), 2 HIGH (PC); 2 without the autoload.
 ## See docs/GRAPHICS.md for what each level turns on.
@@ -123,16 +128,10 @@ static func make_environment(map: Dictionary, id := "") -> Environment:
 		sky.process_mode = Sky.PROCESS_MODE_QUALITY if lk.is_empty() else Sky.PROCESS_MODE_INCREMENTAL
 		env.background_mode = Environment.BG_SKY
 		env.sky = sky
-	# HemisphereLight stand-in: a flat ambient between the hemisphere's sky and ground colours
-	var hemi := float(map.get("hemi", 0.95))
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = hex(0xffffff).lerp(hex(0x9bb7c4), 0.5)
-	if lk.has("hemi"):
-		var h: Array = lk["hemi"]
-		env.ambient_light_color = hex(int(h[1])).lerp(hex(int(h[0])), 0.8)   # mostly the sky colour: floors face up
-		hemi = float(h[2])
-	# three.js r160 (physically based lights) divides by PI where Godot does not: energy = intensity / PI keeps the same look
-	env.ambient_light_energy = hemi / PI
+	var amb := _ambient(map, lk)
+	env.ambient_light_color = amb[0]
+	env.ambient_light_energy = amb[1] * (COMPAT_LIFT if compat() else 1.0)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var fog: Array = map.get("fog", [50, 160])
@@ -149,6 +148,37 @@ static func make_environment(map: Dictionary, id := "") -> Environment:
 	env.fog_sky_affect = 0.0
 	_grade(env, lk)
 	return env
+
+## HemisphereLight stand-in: a flat ambient between the hemisphere's sky and ground colours. [colour, energy]
+static func _ambient(map: Dictionary, lk: Dictionary) -> Array:
+	var hemi := float(map.get("hemi", 0.95))
+	var c := hex(0xffffff).lerp(hex(0x9bb7c4), 0.5)
+	if lk.has("hemi"):
+		var h: Array = lk["hemi"]
+		c = hex(int(h[1])).lerp(hex(int(h[0])), 0.8)   # mostly the sky colour: floors face up
+		hemi = float(h[2])
+	# three.js r160 (physically based lights) divides by PI where Godot does not: energy = intensity / PI keeps the same look
+	return [c, hemi / PI]
+
+## Compatibility (web / LOW) draws a shadow-casting directional light in its own additive pass, and that pass blends
+## the already sRGB-encoded colours: a sunlit floor shows enc(ambient) + enc(sun) instead of enc(ambient + sun), about
+## a third brighter than the same scene on Mobile / Forward+ (tests/gfx_parity.gd measured farm floor 165 vs 122). The
+## sun is scaled so the sum lands where the linear sum would on an up-facing surface: with enc(x) ~ x^g (g = 1/2.2)
+## and r = ambient / sun, enc(A) + enc(k L) = enc(A + L) gives k = ((1 + r)^g - r^g)^(1/g), the same for every
+## albedo. Shadowed pixels get no sun pass and are already right. Costs nothing at run time.
+static func compat_sun_scale(amb: Color, amb_e: float, sun: Color, sun_e: float, sun_dir_y: float) -> float:
+	var a := amb.srgb_to_linear().get_luminance() * amb_e
+	var l := sun.srgb_to_linear().get_luminance() * sun_e * clampf(sun_dir_y, 0.2, 1.0)
+	if l <= 1e-4: return 1.0
+	var g := 1.0 / 2.2
+	var r := a / l
+	return clampf(pow(pow(1.0 + r, g) - pow(r, g), 1.0 / g), 0.05, 1.0)
+
+## LOW has no tone curve (the same filmic settings on Compatibility measured brighter, not darker, with its sRGB passes):
+## MID / HIGH's filmic curve lifts the mid-tones about a fifth. Lit surfaces on Compatibility get that lift from the
+## lights instead (ambient and sun x COMPAT_LIFT); the sky and the unlit scenery keep their colours, as the filmic
+## shoulder keeps those bright ones. tests/gfx_parity.gd checks the result against MID.
+const COMPAT_LIFT := 1.2
 
 ## Post and colour grade by tier (docs/GRAPHICS.md). LOW keeps the web game's look (linear tonemap, depth fog only).
 ## MID / HIGH: filmic tonemap with the exposure lifted back to the web brightness, a gentle per-map grade from
@@ -225,6 +255,9 @@ static func setup_sun(sun: DirectionalLight3D, map: Dictionary, id := "") -> voi
 	if lk.get("sun") is Array:
 		sun.light_color = hex(int(lk["sun"][0]))
 		sun.light_energy = float(lk["sun"][1]) / PI
+	if compat():      # the shadowed sun's own pass blends in sRGB there (compat_sun_scale); COMPAT_LIFT: the grade
+		var amb := _ambient(map, lk)
+		sun.light_energy *= compat_sun_scale(amb[0], amb[1], sun.light_color, sun.light_energy, sun.transform.basis.z.y) * COMPAT_LIFT
 
 # ---------------------------------------------------------------- the web look (sky, fog, lights)
 
@@ -245,8 +278,11 @@ static func look(id: String) -> Dictionary:
 			_look = v
 	return _look.get(id, {})
 
+## A colour for a shader value without a source_color hint (sky bands, haze): linear on Mobile / Forward+. The
+## Compatibility renderer shades in sRGB and writes the result as it is (tests/gfx_parity.gd: ALBEDO = 0.2 shows as
+## 50 there, 123 on Mobile), so there it is the plain sRGB colour; linear values made its sky and far scenery too dark.
 static func _lin(c: int) -> Vector3:
-	var k := hex(c).srgb_to_linear()
+	var k := hex(c) if compat() else hex(c).srgb_to_linear()
 	return Vector3(k.r, k.g, k.b)
 
 ## The web sky dome as a sky shader: 12 colour bands by angle from the zenith (blended), the sun disc with two soft
@@ -702,7 +738,8 @@ static func decor_material(kind: int, fog: bool, em: float, receive := true, ani
 		code += DECOR_ANIM_VERTEX
 	else:
 		code += "void vertex() {\n\twpos = VERTEX;\n}\n"
-	code += "void fragment() {\n\tvec3 c = pow(COLOR.rgb, vec3(2.2));\n"
+	# vertex colours are sRGB: linear for Mobile / Forward+, as they are on Compatibility (it shades in sRGB, see _lin)
+	code += "void fragment() {\n\tvec3 c = %s;\n" % ("COLOR.rgb" if compat() else "pow(COLOR.rgb, vec3(2.2))")
 	if lit and not fog:      # web farPatch: darker at the foot, lighter at the top
 		code += "\tc *= mix(0.84, 1.07, smoothstep(-30.0, 65.0, wpos.y));\n"
 		if q >= 1:
@@ -721,7 +758,7 @@ static func decor_material(kind: int, fog: bool, em: float, receive := true, ani
 		code += SOFT_CEL_LIGHT
 	var m := ShaderMaterial.new()
 	m.shader = _shader("decor_%d_%d_%d_%d_%d" % [kind, int(fog), int(receive), int(anim), q], code)
-	m.set_shader_parameter("emission", em)
+	m.set_shader_parameter("emission", pow(em, 1.0 / 2.2) if compat() else em)   # the same glow on sRGB colours
 	m.render_priority = -1 if kind == 3 else 0
 	_materials[key] = m
 	return m
@@ -807,6 +844,46 @@ static func _add_cloud_layer(root: Node3D, lk: Dictionary) -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
 
+# ---------------------------------------------------------------- Lava Pillars' lake
+
+const LAVA_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform vec3 hot : source_color = vec3(1.0, 0.78, 0.3);
+uniform vec3 mid : source_color = vec3(0.98, 0.36, 0.08);
+uniform vec3 cool : source_color = vec3(0.42, 0.06, 0.03);
+varying vec3 wp;
+float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y);
+}
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 p = wp.xz * 0.09;
+	float t = TIME * 0.12;
+	float a = n2(p + vec2(t, -t * 0.7)) * 0.6 + n2(p * 2.3 - vec2(t * 1.3, t)) * 0.3 + n2(p * 5.1 + t) * 0.1;
+	float crust = smoothstep(0.38, 0.62, a);
+	vec3 c = mix(mix(hot, mid, smoothstep(0.15, 0.45, a)), cool, crust);
+	ALBEDO = c;
+	EMISSION = c * (1.0 - crust) * 0.6;
+}
+"""
+
+## A wide lava lake at `y` (Lava Pillars): one animated plane, unlit and glowing, under the pillars.
+static func add_lava_lake(root: Node3D, y: float) -> void:
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(260, 260)
+	var m := ShaderMaterial.new()
+	m.shader = _shader("lava", LAVA_SHADER)
+	var mi := MeshInstance3D.new()
+	mi.name = "LavaLake"
+	mi.mesh = pm
+	mi.material_override = m
+	mi.position.y = y
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+
 # ---------------------------------------------------------------- the custom level (MAPS.custom, index.html ~1907)
 
 const CUSTOM_THEMES := {
@@ -880,8 +957,12 @@ static func custom_map(cfg: Dictionary) -> Dictionary:
 	place.call(int(c["pads"]), func(x: float, z: float) -> bool:
 		pads.append({"x": x, "z": z, "r": 1.2, "power": 17})
 		return true, 4.2, 3.5)
-	for r in c.get("blocks", []):
-		add_box.call(float(r[0]), float(r[2]), 2.0, 2.0, 2.0, 0xffe08a, float(r[1]))
+	var bcols: Array = c.get("blockCols", []) if c.get("blockCols") is Array else []
+	var blks: Array = SandboxLayout.clean_blocks(c.get("blocks", []))
+	for i in blks.size():                                           # addPlayerBlock (Godot: the colour from cfg.blockCols)
+		var r: Array = blks[i]
+		var col := int(bcols[i]) if i < bcols.size() and SandboxLayout._num(bcols[i]) else SandboxLayout.WEB_YELLOW
+		add_box.call(float(r[0]), float(r[2]), 2.0, 2.0, 2.0, col, float(r[1]))
 	var night := theme == "night"
 	var m := {"name": "Build Your Own", "only": "sandbox", "cat": "sandbox", "tags": ["Custom", "Random"], "theme": theme,
 		"blurb": "Pick the size, theme, seed and how much stuff goes in.",
@@ -892,6 +973,14 @@ static func custom_map(cfg: Dictionary) -> Dictionary:
 	if bool(c["ice"]):
 		m["grip"] = 0.2
 	return m
+
+## The Sandbox arena in the Save profile (Save.sandbox_cfg(): cfg.custom + cfg.blocks + cfg.blockCols), as
+## custom_map() settings; {} (the defaults, no blocks) without the Save autoload.
+static func saved_custom() -> Dictionary:
+	var tree := Engine.get_main_loop() as SceneTree
+	var sv: Node = tree.root.get_node_or_null("Save") if tree and tree.root else null
+	if sv == null or not sv.has_method("sandbox_cfg"): return {}
+	return SandboxLayout.new(sv.sandbox_cfg()).map_cfg()
 
 ## ringPts: n points on a circle, rounded to 0.1 like the web game (Math.round, 6.2832).
 static func _ring_pts(n: int, r: float, a0 := 0.0) -> Array:

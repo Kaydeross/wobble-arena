@@ -21,8 +21,10 @@ extends RefCounted
 ## (lowg): its preset gravity 0.15 goes to Combat.grav_setting and every fighter's FighterPhysics.grav_scale (projG and
 ## the gentler jump follow from it). Practice Range (practice, the web PRACTICE button): the range maps' dummies
 ## (PracticeRange), no score.
-## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there), Sandbox (the block
-## building UI), Lava Pillars (pillars2: not in the web export).
+## Sandbox (sandbox, offline only like the web game): build your own arena on 'custom' (SandboxLayout, ui/build_hud.gd),
+## then Play runs a free for all with bots on it, first to SANDBOX_LIMIT K.O.s. Pillars plays on Pillars or Lava
+## Pillars (pillars2, PillarsMap.lava_entry: the same rules, a lava lake that ends you).
+## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there).
 
 const TEAM_COL := [0x3b82f6, 0xef4444]                  ## TEAM_COL
 const GG := ["smg", "ak", "uzi", "shotgun", "revolver", "sniper", "bow", "shuriken", "knife", "glauncher", "bat", "spatula"]   ## the Weapon Ladder
@@ -34,11 +36,15 @@ const END_TIME := 3.4                                   ## endT: the game keeps 
 const MODE_DEFAULTS := {"count": 3, "hp": 200, "behav": "brawl", "ffa": true, "limit": 0}   ## MODE_DEFAULTS (pickMode)
 ## Modes the Godot port can play offline (the picker lists these). Sandbox and Construction belong to other tracks.
 const PLAYABLE := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4", "mega", "giant", "gungame",
-	"tdm", "deathmatch", "sudden", "chaos", "pillars", "explosive", "lowg", "practice"]
+	"tdm", "deathmatch", "sudden", "chaos", "pillars", "explosive", "lowg", "practice", "sandbox"]
+## Offline only (the web netMode sends Sandbox and Construction matches online as Classic).
+const OFFLINE_ONLY := ["sandbox", "construction"]
+const SANDBOX_LIMIT := 10            ## a test run on your arena ends at this many K.O.s (the web Sandbox has no limit)
 ## Short card text for the wizard (the web menu's BLURB, index.html ~3743), where the mode's `desc` is too long.
 const BLURB := {"pillars": "Start on pillars. A new weapon every 10 seconds. One life",
 	"explosive": "Explosives only. Always 300 health", "lowg": "Super low gravity. Float, soar and knock rivals around",
-	"practice": "Dummies to shoot and a rack of weapons. No score"}
+	"practice": "Dummies to shoot and a rack of weapons. No score",
+	"sandbox": "Build your own arena with blocks, then play it with bots"}
 ## Pillars (MODES.pillars, PIL_BAN, pillarGive): the weapons pillarGive hands out, in DROP_POOL order, with their WT
 ## weight (common 8, uncommon 6, rare 4, epic 2.5, legendary 2 by RARITY) = unique DROP_POOL minus PIL_BAN, heal and
 ## the power-ups (shared/modes.json cannot carry it: the web `allow` reads PIL_BAN, which the export does not see).
@@ -114,6 +120,7 @@ func _init(c: Combat) -> void:
 
 ## The K.O. limit a mode starts with (MODE_DEFAULTS + preset).
 static func preset_limit(mode_id: String, modes: Dictionary) -> int:
+	if mode_id == "sandbox": return SANDBOX_LIMIT
 	return int(modes.get(mode_id, {}).get("preset", {}).get("limit", MODE_DEFAULTS["limit"]))
 
 ## How many bots a mode plays with (setBotCfg): teams force teams * 2 - 1, otherwise `requested` (0..12). flexTeams
