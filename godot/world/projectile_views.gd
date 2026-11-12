@@ -1,6 +1,7 @@
 class_name ProjectileViews
 extends Node3D
-## What flies and blows up: rockets, grenades, arrows, nets and knives in flight (Weapons.Shot / Weapons.Proj), nets
+## What flies and blows up: rockets, grenades, arrows, nets, knives, shuriken stars, typhoon blades, thrown tridents,
+## boomerangs, snakes and snowballs in flight (Weapons.Shot and its Boom / Snake / Ball, Weapons.Proj), nets
 ## lying on the ground (Weapons.TrapNet), explosions and flames. Pure presentation: World forwards the Combat events
 ## (on_event) and calls update() every rendered frame; the views read the positions straight from the logic objects.
 ## Kept cheap for iPhone: shared low-poly meshes and materials, effects fade by scale only (no per-effect
@@ -50,7 +51,10 @@ func on_event(e: Dictionary) -> void:
 			var p: Object = e["p"]
 			if _views.has(p):
 				var n: Node3D = _views[p]
-				if p is Weapons.Shot and (p as Weapons.Shot).kind == "net": _burst(n.position, 0xf2ead2, 5, 3.0)
+				match _kind(p):
+					"net": _burst(n.position, 0xf2ead2, 5, 3.0)
+					"ball": _burst(n.position, 0xffffff, 8, 5.0)
+					"snake": _burst(n.position, 0x7dff8a, 5, 3.0)
 				n.queue_free(); _views.erase(p)
 		"explode": explode(Vector3(e["x"], e["y"], e["z"]), float(e["gy"]), float(e["rad"]))
 		"flame":
@@ -62,14 +66,24 @@ func on_event(e: Dictionary) -> void:
 				_burst((_nets[t] as Node3D).position + Vector3(0, 0.3, 0), 0xf2ead2, 6, 3.0)
 				(_nets[t] as Node3D).queue_free(); _nets.erase(t)
 		"net_miss": _burst(Vector3(e["x"], e["y"], e["z"]), 0xf2ead2, 8, 4.0)
+		"ball_smash": _burst(Vector3(e["x"], e["y"], e["z"]), 0xffffff, 10, 7.0)
+
+## Which look a flying thing gets: the Shot kind, or the thrown weapon's key for knife-like projectiles.
+static func _kind(p: Object) -> String:
+	if p is Weapons.Shot: return (p as Weapons.Shot).kind
+	var key: String = p.get("key")
+	return key if key in ["shuriken", "typhoon", "trident"] else "knife"
 
 # ============================== things in flight ==============================
 
 func _spawn(p: Object) -> void:
 	if _views.has(p): return
 	var g := Node3D.new()
-	var kind := (p as Weapons.Shot).kind if p is Weapons.Shot else "knife"
+	var kind := _kind(p)
 	var key: String = p.get("key")
+	var inner := Node3D.new()                # spinning part (stars, blades, boomerang)
+	inner.name = "Inner"
+	g.add_child(inner)
 	match kind:
 		"rocket":                   # glowing warhead with a flame tail (meteor: bigger and redder)
 			var big: bool = (p as Weapons.Shot).w.get("big", false)
@@ -90,6 +104,37 @@ func _spawn(p: Object) -> void:
 			_mi(g, LowPoly.ico(1.0, 1), mat(0xf2ead2, 0.35))
 			_mi(g, LowPoly.torus(1.0, 0.05, 4, 16), mat(0xd8cfb4), Vector3.ZERO, Vector3(PI / 2, 0, 0))
 			g.scale = Vector3.ONE * 0.3
+		"shuriken":                 # two crossed blades and a red hub, lying flat
+			for r: float in [PI / 4, -PI / 4]:
+				_mi(inner, LowPoly.box(0.62, 0.025, 0.11), mat(0xeef3f7), Vector3.ZERO, Vector3(0, r, 0))
+			_mi(inner, LowPoly.cyl(0.08, 0.08, 0.05, 8), mat(0xe3566b))
+		"typhoon":                  # a disc with three swept blades (the shuriken's size)
+			_mi(inner, LowPoly.cyl(0.19, 0.19, 0.05, 10), mat(0x2d7fb0))
+			for k in 3:
+				var a := k / 3.0 * TAU
+				_mi(inner, LowPoly.box(0.42, 0.02, 0.1), mat(0x7ee8ff), Vector3(cos(a) * 0.3, 0, -sin(a) * 0.3), Vector3(0, a + 0.5, 0))
+			inner.scale = Vector3.ONE * 0.62
+		"trident":                  # pole along -Z with three prongs at the front
+			_mi(g, LowPoly.cyl(0.035, 0.035, 1.6, 5), mat(0x8a5a2b), Vector3(0, 0, 0.2), Vector3(PI / 2, 0, 0))
+			for x: float in [-0.09, 0.0, 0.09]:
+				_mi(g, LowPoly.box(0.03, 0.03, 0.34), mat(0xffd24a), Vector3(x, 0, -0.75))
+			_mi(g, LowPoly.box(0.24, 0.04, 0.04), mat(0xffd24a), Vector3(0, 0, -0.58))
+		"boomerang":                # a bent stick lying flat, striped tips, yellow hub
+			for sg: float in [-1.0, 1.0]:
+				_mi(inner, LowPoly.box(0.62, 0.055, 0.17), mat(0xe8ab5c), Vector3(sg * 0.26, 0, 0.1), Vector3(0, sg * 0.45, 0))
+				_mi(inner, LowPoly.box(0.12, 0.06, 0.15), mat(0xe3566b), Vector3(sg * 0.53, 0, 0.24), Vector3(0, sg * 0.45, 0))
+			_mi(inner, LowPoly.cyl(0.09, 0.09, 0.075, 8), mat(0xffd24a))
+		"snake":                    # head (eyes, tongue) + body segments that follow its path (update)
+			var head := _mi(g, LowPoly.ico(0.24, 0), mat(0x4cc25a))
+			for sx: float in [-0.1, 0.1]: _mi(head, LowPoly.box(0.06, 0.06, 0.06), mat(0xffd93b), Vector3(sx, 0.12, 0.17))
+			_mi(head, LowPoly.box(0.04, 0.02, 0.22), mat(0xe3566b), Vector3(0, -0.02, 0.3))
+			head.name = "Head"
+			for n in range(1, 8):
+				_mi(inner, LowPoly.ico(0.2 - n * 0.012, 0), mat(0x2e7a3a if n % 2 else 0x4cc25a))
+			g.set_meta("hist", [])
+		"ball":                     # a snowball that grows as it rolls
+			_mi(inner, LowPoly.ico(1.0, 1), mat(0xf4fbff))
+			g.scale = Vector3.ONE * 0.35
 		_:                          # knife (and other knife-like throws)
 			_mi(g, LowPoly.box(0.06, 0.02, 0.42), mat(0xeef3f7), Vector3(0, 0, -0.2))
 			_mi(g, LowPoly.box(0.05, 0.05, 0.22), mat(0x6a4a2a), Vector3(0, 0, 0.1))
@@ -106,8 +151,27 @@ func update(dt: float) -> void:
 		var pos := Vector3(p.get("px"), p.get("py"), p.get("pz"))
 		var vel := Vector3(p.get("vx"), p.get("vy"), p.get("vz"))
 		g.position = pos
-		var kind := (p as Weapons.Shot).kind if p is Weapons.Shot else "knife"
-		if kind == "grenade":
+		var kind := _kind(p)
+		if kind == "ball":
+			var b := p as Weapons.Ball
+			g.position.y = Weapons.ball_y(b)
+			g.scale = Vector3.ONE * b.r
+			g.rotation.y = b.heading
+			(g.get_child(0) as Node3D).rotation.x += dt * (7.0 if b.rolling else 3.0)
+		elif kind == "snake":
+			_snake(g, p as Weapons.Snake, dt)
+		elif kind == "boomerang":
+			var bm := p as Weapons.Boom
+			(g.get_child(0) as Node3D).rotation.y += dt * 26.0
+			var bank := minf(1.0, bm.age / 0.5) if bm.phase == 0 else 1.0     # leans into the turn
+			g.rotation = Vector3(0.25 + 0.55 * bank, bm.h, -0.5 * bank * (1.0 if bm.phase == 0 else -0.6))
+			g.scale = Vector3.ONE * 1.15 * (0.5 + bm.age / 0.15 * 0.5 if bm.age < 0.15 else 1.0)
+		elif kind == "shuriken" or kind == "typhoon":
+			if float(p.get("stuck")) <= 0.0 and vel.length_squared() > 0.01:
+				var up2 := Vector3.UP if absf(vel.normalized().y) < 0.99 else Vector3.RIGHT
+				g.look_at_from_position(pos, pos + vel, up2)
+				(g.get_child(0) as Node3D).rotation.y += dt * float(p.get("spin"))
+		elif kind == "grenade":
 			var s := p as Weapons.Shot
 			g.rotation.x += dt * 9.0
 			var base := 0.9 if s.key == "cluster" else 1.15
@@ -126,6 +190,20 @@ func update(dt: float) -> void:
 		var k := clampf((tn.life - tn.t) / 0.4, 0.01, 1.0) if tn.t > tn.life - 0.4 else 1.0
 		(_nets[t] as Node3D).scale = Vector3.ONE * k
 	_update_fx(dt)
+
+## The snake's body follows the head along its recent path (hist, like the web game's 0.045 s samples).
+func _snake(g: Node3D, s: Weapons.Snake, dt: float) -> void:
+	var hist: Array = g.get_meta("hist")
+	var t := float(g.get_meta("ht", 0.0)) - dt
+	if t <= 0.0:
+		t = 0.045; hist.push_front(g.position)
+		if hist.size() > 9: hist.pop_back()
+	g.set_meta("ht", t)
+	(g.get_node("Head") as Node3D).rotation.y = s.heading
+	var segs := g.get_child(0)
+	for n in segs.get_child_count():
+		var at: Vector3 = hist[mini(n + 1, hist.size() - 1)] if hist.size() > 0 else g.position
+		(segs.get_child(n) as Node3D).position = at - g.position
 
 # ============================== nets on the ground ==============================
 

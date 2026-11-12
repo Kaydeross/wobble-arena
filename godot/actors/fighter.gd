@@ -74,6 +74,9 @@ func present(dt: float) -> void:
 	f.hand_x = hp.x; f.hand_y = hp.y; f.hand_z = hp.z
 	var ad := wobbler.arm_dir
 	f.arm_x = ad.x; f.arm_y = ad.y; f.arm_z = ad.z
+	if wobbler.arm_l:                     # off hand (the shuriken's second star)
+		var h2 := wobbler.arm_l.global_transform * Vector3(0, -0.8, 0)
+		f.hand2_x = h2.x; f.hand2_y = h2.y; f.hand2_z = h2.z; f.hand2_ok = true
 	var sp := wobbler.arm.global_position
 	f.shoulder_x = sp.x; f.shoulder_y = sp.y; f.shoulder_z = sp.z
 	var hd := wobbler.head_mesh.global_position

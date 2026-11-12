@@ -16,7 +16,7 @@ extends RefCounted
 ## Players page, team limit 30), Death Match (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
 ## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events).
 ## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there), Pillars (needs the
-## pillar-hopping bot AI and pillarGive), Explosive / Moon Drift (their weapons are not ported yet).
+## pillar-hopping bot AI and pillarGive), Explosive / Moon Drift (their weapons are ported now; not listed in PLAYABLE yet).
 
 const TEAM_COL := [0x3b82f6, 0xef4444]                  ## TEAM_COL
 const GG := ["smg", "ak", "uzi", "shotgun", "revolver", "sniper", "bow", "shuriken", "knife", "glauncher", "bat", "spatula"]   ## the Weapon Ladder
@@ -486,7 +486,7 @@ func update(dt: float, pickups: Pickups = null, dyn: ArenaDyn = null) -> void:
 			combat.ev({"type": "match_finished", "winner": winner, "won": player_won(winner)})
 
 ## The mode line under the K.O. counter (updateModeHud + updateKoText), "" = nothing to show.
-func hud_text(player: FighterState) -> String:
+func hud_text(player: FighterState, with_teams := true) -> String:
 	var c := combat
 	if player == null: return ""
 	var t := ""
@@ -495,8 +495,9 @@ func hud_text(player: FighterState) -> String:
 	elif c.lives_mode and c.mode_id != "pillars":
 		t = "♥".repeat(player.lives) if player.lives > 0 else "OUT"
 	elif c.teams:
-		var mine := player.team
-		t = "Team %d v %d" % [team_ko(mine), team_ko(1 - mine)] + (" / %d" % limit if limit else "")
+		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
+			var mine := player.team
+			t = "Team %d v %d" % [team_ko(mine), team_ko(1 - mine)] + (" / %d" % limit if limit else "")
 	elif limit:
 		t = "%d / %d K.O.s" % [player.ko, limit]
 	var extra := ""

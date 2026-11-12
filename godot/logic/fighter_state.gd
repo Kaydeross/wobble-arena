@@ -126,6 +126,12 @@ var thrown := false
 var throw_hold := false
 var knife_t := -1.0
 var twirl_len := 1.4
+var throw_pow := 0.3             ## trident: how far the throw was charged (throwPow)
+var t_charge := -1.0             ## trident input state (tCharge): >= 0 charging, -1 idle, -2 waiting for release, -3 jab-or-throw
+var t_pend := -1.0
+var t_chg := 0.0                 ## last charge (the HUD bar / spin)
+var boom: Object = null          ## Weapons.Boom in the air (p.boom): no second throw until it is back
+var aim_pt: Array = []           ## the player's crosshair point (aimPoint), written by PlayerControl; homing throws read it on release
 
 # --- points written by the animation (world space) ---
 var hand_x := 0.0
@@ -137,6 +143,10 @@ var arm_z := 1.0
 var aim_x := 0.0                 ## where the arm wants to point (aimTarget)
 var aim_y := 0.0
 var aim_z := 1.0
+var hand2_x := 0.0               ## off hand (armL.localToWorld(0, -0.8, 0)): the shuriken's second star; hand2_ok = written
+var hand2_y := 0.0
+var hand2_z := 0.0
+var hand2_ok := false
 var shoulder_x := 0.0
 var shoulder_y := 0.0
 var shoulder_z := 0.0
