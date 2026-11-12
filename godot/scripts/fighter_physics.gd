@@ -18,6 +18,11 @@ var vz := 0.0
 var wish_x := 0.0
 var wish_z := 0.0
 var speed := 7.5
+## Character class multipliers (shared/classes.json: spd, acc, air, jump). 1.0 = the default Wobbler.
+var speed_mul := 1.0
+var accel_mul := 1.0
+var air_mul := 1.0
+var jump_mul := 1.0
 var want_jump := false
 var grounded := false
 var crouch_k := 0.0
@@ -42,9 +47,9 @@ func place(x: float, y: float, z: float) -> void:
 
 func step(dt: float, solids: Array) -> void:
 	var ctrl := 0.0 if incapacitated else 1.0
-	var tx := wish_x * speed * ctrl
-	var tz := wish_z * speed * ctrl
-	var acc := 40.0 if grounded else 14.0
+	var tx := wish_x * speed * speed_mul * ctrl
+	var tz := wish_z * speed * speed_mul * ctrl
+	var acc := 40.0 * accel_mul if grounded else 14.0 * air_mul
 	if ice_grip and grounded and not incapacitated:
 		acc = 32.0 if hypot(wish_x, wish_z) > 0.05 else 20.0 * pow(0.05, 0.5)
 	var dx := tx - vx
@@ -57,7 +62,7 @@ func step(dt: float, solids: Array) -> void:
 		vx += dx / length * md; vz += dz / length * md
 
 	if want_jump and grounded and not incapacitated:
-		vy = 7.4 if grav_scale < 0.3 else 9.2
+		vy = (7.4 if grav_scale < 0.3 else 9.2) * jump_mul
 		grounded = false
 	want_jump = false
 

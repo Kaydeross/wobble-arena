@@ -751,6 +751,7 @@
 @media(max-width:900px){#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);overflow:auto;padding:3vh 4vw 13vh}#menu.storefx .vcol{grid-column:1;grid-row:2;flex-direction:row;flex-wrap:wrap;justify-content:center;overflow:visible}#menu.storefx #shopcv,#menu.storefx #lockcv{max-width:200px;max-height:none}#menu.storefx .vmain{grid-column:1;grid-row:3;overflow:visible}#menu.storefx .eshelf{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
 @media(prefers-reduced-motion:reduce){#menu.storefx h2.step .ptitle>span,#menu.storefx .ecard.r-mythic::before{animation:none !important}}
 body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+  .cbar{display:flex;align-items:center;gap:6px;font-size:10px;margin:2px 0;width:100%}.cbar span{width:46px;text-align:left;opacity:.85}.cbar i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden}.cbar u{display:block;height:100%;background:#7fe8ff;border-radius:3px}
 </style>
 </head>
 <body>
@@ -1251,7 +1252,8 @@ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-ri
             <div class="eshelf" id="eshop"></div></div></div></div>
       <div class="tab" id="pg-locker"><h2 class="step"><span class="ptitle" id="lockertitle">Locker</span> <small id="lockname"></small> <small id="lockcoins"></small></h2>
         <div class="vwrap"><div class="vcol"><canvas id="lockcv" width="240" height="300"></canvas><small class="help" id="lockinc">Your wobbler. Pick an outfit or emote to see it</small></div>
-          <div class="vmain"><div class="row" style="gap:8px;margin:0 0 6px"><button class="opt on" id="locktab-skins">Outfits</button><button class="opt" id="locktab-emotes">Emotes</button><button class="opt" id="locktab-hats">Hats</button></div>
+          <div class="vmain"><div class="row" style="gap:8px;margin:0 0 6px"><button class="opt on" id="locktab-skins">Outfits</button><button class="opt" id="locktab-emotes">Emotes</button><button class="opt" id="locktab-hats">Hats</button><button class="opt" id="locktab-class">Class</button></div>
+            <div id="lock-class" style="display:none"><small class="help">Pick who you play as. It changes your stats in every match, and your friends see it too.</small><div class="eshelf" id="lclass"></div></div>
             <div id="lock-skins"><div class="eshelf" id="lskins"></div></div>
             <div id="lock-hats" style="display:none"><small class="help">Hats are free. Pick one to wear it in every match.</small><div class="eshelf" id="lhats"></div></div>
             <div id="lock-emotes" style="display:none"><small class="help">Pick a slot, then pick one of your emotes to put in it. In a match press the slot's key.</small><div class="eslots" id="eslots"></div><div class="eshelf" id="elocker"></div></div>
@@ -4451,11 +4453,20 @@ function buyEmote(k) {
   const free = wallet.slots.indexOf(null); if (free >= 0) wallet.slots[free] = k;          // goes straight into an empty slot
   sfx('pickup'); toast('Bought ' + E.name + '!'); shopEmote = k; save(); updateCoins(); renderShop(); return true;
 }
+const CLS_BARS = [['hp', 'Health'], ['spd', 'Speed'], ['acc', 'Control', c => (c.acc + c.air) / 2], ['kb', 'Weight', c => 2 - c.kb], ['dmg', 'Power'], ['rate', 'Tech', c => (c.rate + 1 / c.reload + c.ammo) / 3]];
+function classCard(k) {
+  const c = CLASSES[k];
+  const bars = CLS_BARS.map(([key, lab, fn]) => { const v = fn ? fn(c) : c[key], pc = Math.round(clamp((v - 0.4) / 1.2, 0.05, 1) * 100); return '<div class="cbar"><span>' + lab + '</span><i><u style="width:' + pc + '%"></u></i></div>'; }).join('');
+  return '<div class="ecard r-common' + (look.cls === k ? ' sel' : '') + '"><span class="ei">' + c.icon + '</span><b>' + c.name + '</b><small>' + c.tag + '</small>' + bars + '<button class="opt clspick" data-k="' + k + '">' + (look.cls === k ? 'Playing' : 'Play as') + '</button></div>';
+}
 function renderLocker() {
   updateCoins();                                                  // the coin counts must show on every page, not only after the Shop has been opened
   el('lockname').textContent = skinName(look.skin); { const li = el('lockinc'); if (li) li.textContent = (spatOf(look.skin) ? 'Includes the ' + spatOf(look.skin) + ' instead of the spatula' : '') + (REACTIVE[look.skin] ? (spatOf(look.skin) ? '. ' : '') + '\u2728 Reactive face: shows pain when hit and gets excited after a kill' : '') || 'Your wobbler. Pick an outfit or emote to see it'; }
   el('locktab-skins').classList.toggle('on', lockTab === 'skins'); el('locktab-emotes').classList.toggle('on', lockTab === 'emotes');
   el('lock-skins').style.display = lockTab === 'skins' ? 'block' : 'none'; el('lock-emotes').style.display = lockTab === 'emotes' ? 'block' : 'none';
+  el('locktab-class').classList.toggle('on', lockTab === 'class'); el('lock-class').style.display = lockTab === 'class' ? 'block' : 'none';
+  el('lclass').innerHTML = CLASS_IDS.map(k => classCard(k)).join('');
+  for (const b of sub(el('lclass'), '.clspick')) b.onclick = () => { look.cls = b.dataset.k; applyLook(); save(); try { pvSettle(8); } catch (e) { /* cosmetic */ } renderLocker(); };
   el('locktab-hats').classList.toggle('on', lockTab === 'hats'); el('lock-hats').style.display = lockTab === 'hats' ? 'block' : 'none';
   el('lhats').innerHTML = HATS.map(h => '<div class="ecard r-common' + (look.hat === h ? ' sel' : '') + '"><span class="ei">' + (HAT_ICON[h] || '\u{1F3A9}') + '</span><b>' + HAT_LABEL[h] + '</b><small>Hat</small><button class="opt hatwear" data-h="' + h + '">' + (look.hat === h ? 'Wearing' : 'Wear') + '</button></div>').join('');
   for (const b of sub(el('lhats'), '.hatwear')) b.onclick = () => { look.hat = b.dataset.h; applyLook(); save(); try { player.setHat(look.hat); pvSettle(2); } catch (e) { /* cosmetic */ } renderLocker(); };
@@ -4476,6 +4487,7 @@ el('shoptab-emotes').onclick = () => { shopTab = 'emotes'; renderShop(); };
 el('locktab-skins').onclick = () => { lockTab = 'skins'; renderLocker(); };
 el('locktab-emotes').onclick = () => { lockTab = 'emotes'; renderLocker(); };
 el('locktab-hats').onclick = () => { lockTab = 'hats'; renderLocker(); };
+el('locktab-class').onclick = () => { lockTab = 'class'; renderLocker(); };
 
 /* ---- a live picture of your wobbler for the shop and locker ---- */
 let pvAng = 0.5, pvT = 0, pvLast = 0, pvSkin = null;
@@ -4584,6 +4596,20 @@ function makeSurron() {                                // a Sur-Ron style electr
   g.gripR = new THREE.Object3D(); g.gripR.position.set(-0.355, 1.1, 0.4); rear.add(g.gripR);
   g.fork = rear; g.visible = false; return g;
 }
+/* ---- character classes (pure data, exported to shared/classes.json). Every value is a multiplier on the Wobbler (1 = unchanged). Hitboxes and collision never change; `size` and `wob` are looks only.
+   hp: max health. spd: run speed. acc / air: ground / air steering. jump: jump push. kb: knockback taken (weight: lower = heavier). dmg: damage dealt. rate: weapon fire-rate. reload: reload time. ammo: ammo from pickups. wob: wobbliness. size: body scale ---- */
+const CLASSES = {
+  wobbler: { name: 'Wobbler', icon: '\u{1F642}', tag: 'Balanced. No surprises',        hp: 1,    spd: 1,    acc: 1,    air: 1,    jump: 1,    kb: 1,    dmg: 1,    rate: 1,    reload: 1,    ammo: 1,   wob: 1,    size: 1 },
+  bruiser: { name: 'Bruiser', icon: '\u{1F4AA}', tag: 'Big, slow, hard to shove',                 hp: 1.3,  spd: 0.88, acc: 0.85, air: 0.8,  jump: 0.92, kb: 0.65, dmg: 1.12, rate: 0.95, reload: 1,    ammo: 1,   wob: 0.7,  size: 1.12 },
+  kid:     { name: 'Scamp',   icon: '\u{1F9D2}', tag: 'Tiny and zippy, easy to launch', hp: 0.75, spd: 1.22, acc: 1.2,  air: 1.3,  jump: 1.12, kb: 1.3,  dmg: 0.92, rate: 1.05, reload: 1,    ammo: 1,   wob: 1.45, size: 0.86 },
+  elder:   { name: 'Gramps',  icon: '\u{1F474}', tag: 'Sharp steering, quick reloads',      hp: 1.05, spd: 0.95, acc: 1.55, air: 2.1,  jump: 1,    kb: 0.9,  dmg: 1,    rate: 1,    reload: 0.75, ammo: 1.1, wob: 0.55, size: 0.98 },
+  alien:   { name: 'Zorp',    icon: '\u{1F47D}', tag: 'Fragile, floaty, great tech',   hp: 0.7,  spd: 1.02, acc: 1,    air: 1.25, jump: 1.18, kb: 1.1,  dmg: 1,    rate: 1.2,  reload: 0.8,  ammo: 1.5, wob: 1.2,  size: 0.95 },
+};
+const CLASS_IDS = Object.keys(CLASSES);
+const BOT_CLASS_ORDER = ['bruiser', 'kid', 'alien', 'elder', 'wobbler'];
+const clsOf = id => CLASSES[id] ? id : 'wobbler';
+const hpOf = f => cfg.hp * (giantOn() ? 2 : 1) * (f && f.cls ? f.cls.hp : 1);       // a fighter's own max health (class x rules)
+
 class Fighter {
   constructor({ color, accent, isPlayer = false }) {
     this.isPlayer = isPlayer;
@@ -4656,7 +4682,7 @@ class Fighter {
     // inventory: three slots (keys 1 2 3); the spatula is always there (Q, or in hand when the slots are empty)
     this.weapon = null; this.slots = [null, null, null]; this.slot = -1; this.returnSlot = null;
     this.emote = null; this.eYaw = 0; this.eLX = 0; this.eLZ = 0; this.eHop = 0; this.eCrouch = 0; this.reloading = false; this.rlT = 0; this.rlDur = 1; this.rlSlot = -1; this.rlTilt = 0; this.rlBoltP = 0; this.boltDurO = 0; this.uziSide = 0; this.uziK = [0, 0];
-    this.dmgScale = 1;
+    this.dmgScale = 1; this.cls = CLASSES.wobbler; this.clsId = 'wobbler';
     this.swing = -1; this.swingYaw = 0; this.swingHit = new Set(); this.batValid = false;
     this.batNow = []; this.batPrev = [];
     for (let i = 0; i < BAT_N; i++) { this.batNow.push(V()); this.batPrev.push(V()); }
@@ -4772,7 +4798,7 @@ class Fighter {
       this.rlShells = cap - s.mag; this.rlDur = 0.35 + this.rlShells * w.perRound + 0.3;
       this.boltOn = false; this.boltT = -1;
       if (this.sgShell) { this.sgShell = false; ejectShell(this, WEAPONS.shotgun); }
-    } else this.rlDur = w.reload;
+    } else this.rlDur = w.reload * this.cls.reload;
     return true;
   }
   canReloadNow() { return !(this.dead || this.downT > 0 || this.trapT > 0 || this.swing >= 0 || this.kickT >= 0 || this.throwFn); }
@@ -4901,9 +4927,9 @@ class Fighter {
     const w = WEAPONS[key];
     let i = this.slots.findIndex(s => s && s.key === key);        // already carrying it: its ammo is added on top of what you have
     if (i >= 0) {
-      this.slots[i].ammo += w.ammo;
+      this.slots[i].ammo += Math.round(w.ammo * this.cls.ammo);
       if (this.slot !== i && this.autoEq(i)) this.equipSlot(i);
-      if (this.isPlayer) { toast('+' + w.ammo + ' ' + w.name + ' ammo (now ' + this.slots[i].ammo + ')'); sfx('pickup'); }
+      if (this.isPlayer) { toast('+' + Math.round(w.ammo * this.cls.ammo) + ' ' + w.name + ' ammo (now ' + this.slots[i].ammo + ')'); sfx('pickup'); }
       return;
     }
     if (i < 0) i = this.slots.findIndex(s => !s);                 // first free slot
@@ -4915,7 +4941,7 @@ class Fighter {
         i = best;
       }
     }
-    this.slots[i] = { key, ammo: w.ammo, mag: w.mag ? Math.min(w.mag, w.ammo) : undefined };
+    this.slots[i] = { key, ammo: Math.round(w.ammo * this.cls.ammo), mag: w.mag ? Math.min(w.mag, w.ammo) : undefined };
     if (this.autoEq(i)) this.equipSlot(i);
     if (this.isPlayer) { toast('Picked up ' + w.name + '! (slot ' + (i + 1) + ')'); sfx('pickup'); }
   }
@@ -4994,7 +5020,7 @@ class Fighter {
     }
     if (this.emote) { this.emote.t += dt; if (this.emote.t >= this.emote.dur || this.dead || this.downT > 0 || this.trapT > 0 || this.swing >= 0 || this.kickT >= 0) this.emote = null; }
     if (this.spdT > 0) this.spdT -= dt; if (this.rageT > 0) this.rageT -= dt; if (this.shieldT > 0) this.shieldT -= dt;
-    this.cool -= dt; this.meleeCool -= dt; this.shoveCool -= dt; this.kickCool -= dt; this.padCool -= dt;
+    this.cool -= dt * this.cls.rate; this.meleeCool -= dt; this.shoveCool -= dt; this.kickCool -= dt; this.padCool -= dt;
     if (this.invuln > 0) this.invuln -= dt;
     if (this.flash > 0) this.flash -= dt;
     if (this.trapT > 0) {                                      // stuck under a net: can't move, jump or attack, and wriggles about
@@ -5028,7 +5054,7 @@ class Fighter {
       if (this.deathT <= 0) this.respawn();
     }
     if (this.kickT >= 0) this.kickStep(dt);
-    if (this.isPlayer && !this.dead && this.hp < maxHp() && simTime - this.lastHitTime > 4) this.hp = Math.min(maxHp(), this.hp + 8 * maxHp() / 100 * dt);
+    if (this.isPlayer && !this.dead && this.hp < hpOf(this) && simTime - this.lastHitTime > 4) this.hp = Math.min(hpOf(this), this.hp + 8 * hpOf(this) / 100 * dt);
   }
 
   respawn() {
@@ -5045,9 +5071,11 @@ class Fighter {
     if (cfg.lives) updateKoText();
   }
 
+  setClass(id) { id = clsOf(id); this.clsId = id; this.cls = CLASSES[id]; }
+
   placeAt(x, z, y = 0.01) {
     this.pos.set(x, y, z); this.vel.set(0, 0, 0);
-    this.hp = maxHp(); this.dead = false; this.fall.a = 0; this.fall.v = 0; this.burn = 0;
+    this.hp = hpOf(this); this.dead = false; this.fall.a = 0; this.fall.v = 0; this.burn = 0;
     this.downT = 0; this.getupImmune = 0; this.kickT = -1; this.swing = -1; this.stun = 0; this.trapT = 0; this.trapNet = null;
     this.clearInventory(); this.setWeapon('spatula');
     const st = MODES[cfg.mode] && MODES[cfg.mode].start; if (st) this.pickup(st);
@@ -5066,6 +5094,7 @@ class Fighter {
     if (DEVS.god && this.isPlayer && !net) return false;                   // developer panel: god mode (offline only)
     if (attacker && isFriend(attacker, this)) return false;                // teammates can't hurt each other
     { const dm = MODES[cfg.mode].dmgMul; if (dm !== undefined) dmg *= dm; if (giantOn() && attacker && attacker.weapon === 'mammoth') dmg *= 0.65; }       // Giant: double damage, but the Mammoth Pistol only gets a bit more
+    if (attacker && attacker !== this && attacker.cls) dmg *= attacker.cls.dmg;                // class damage
     if (attacker && attacker !== this && attacker.rageT > 0) dmg *= 1.5;           // damage boost
     if (this.shieldT > 0) dmg *= 0.5;                                              // shield       // Mega Damage x2, Hot Potato x0
     if (this.downT > 0 && !(this.trapT > 0)) dmg *= 0.5;                          // knocked down on the floor: half damage (pinned under a net you take the full amount)
@@ -5077,7 +5106,7 @@ class Fighter {
     if (this.isPlayer) hurtFlash = Math.min(1, hurtFlash + 0.35 + dmg / 90);
     const light = force < 8;                           // bullets, knives: a small shove, no stun, you keep your footing
     const kf = light ? 0.4 : 1;
-    const fk = (cfg.kb || 1) * 0.8 * (MODES[cfg.mode].kbMul || 1);                    // the knockback setting (and everything shoves a bit softer than before)
+    const fk = (cfg.kb || 1) * 0.8 * (MODES[cfg.mode].kbMul || 1) * this.cls.kb;                    // the knockback setting (and everything shoves a bit softer than before)
     this.vel.x += dir.x * force * kf * fk;
     this.vel.z += dir.z * force * kf * fk;
     if (!light) {
@@ -5318,8 +5347,8 @@ class Fighter {
     const incap = this.dead || this.downT > 0 || this.trapT > 0;
     const ctrl = incap ? 0 : 1;
     const spm = this.spdT > 0 ? 1.4 : 1;
-    const tx = this.wish.x * this.speed * ctrl * spm, tz = this.wish.z * this.speed * ctrl * spm;
-    let acc = this.grounded ? 40 : 14;
+    const cs = this.cls.spd, tx = this.wish.x * this.speed * cs * ctrl * spm, tz = this.wish.z * this.speed * cs * ctrl * spm;
+    let acc = this.grounded ? 40 * this.cls.acc : 14 * this.cls.air;
     const grip = MAPS[currentMap].grip;                 // ice: steering is nearly normal, but you glide a bit when you let go
     if (grip && this.grounded && !incap) acc = Math.hypot(this.wish.x, this.wish.z) > 0.05 ? 32 : 20 * Math.pow(0.05, settings.ice);
     if (this.dashAirT > 0) { this.dashAirT -= dt; if (!this.grounded) acc = 3; }      // Pillars: a dash in the air carries you across the gap
@@ -5330,7 +5359,7 @@ class Fighter {
     if (len <= md) { this.vel.x = tx; this.vel.z = tz; }
     else { this.vel.x += dx / len * md; this.vel.z += dz / len * md; }
 
-    if (this.wantJump && this.grounded && !incap) { this.vel.y = cfg.grav < 0.3 ? 7.4 : 9.2; this.grounded = false; }      // Drift: a slightly gentler push-off, you still go very high
+    if (this.wantJump && this.grounded && !incap) { this.vel.y = (cfg.grav < 0.3 ? 7.4 : 9.2) * this.cls.jump; this.grounded = false; }      // Drift: a slightly gentler push-off, you still go very high
     this.wantJump = false;
 
     this.vel.y = Math.max(this.vel.y - GRAV * (cfg.grav || 1) * dt, -22);
@@ -5346,7 +5375,7 @@ class Fighter {
   }
 
   animate(dt) {
-    const f = 2.2;                                   // wobbliness is fixed at the old slider maximum
+    const f = 2.2 * this.cls.wob;                    // wobbliness is fixed at the old slider maximum
     // smooth turning
     this.yaw += wrapPi(this.faceYaw - this.yaw) * Math.min(1, 12 * dt);
 
@@ -5618,7 +5647,7 @@ class Fighter {
       this.root.position.x += Math.sin(ya) * oz; this.root.position.z += Math.cos(ya) * oz; this.root.position.y += oy;
     }
     this.root.rotation.set(this.lieK * this.lieSide * Math.PI / 2 * 0.98 + (this.ePitch ? -this.ePitch : 0) + (this.dead ? -this.fallSide * Math.PI * 2 * clamp(dP * 1.1, 0, 1) : 0), this.yaw + this.eYaw, this.fall.a);   // dead: a full somersault while it cartwheels, ending lying down
-    { const sq = this.squash || 0, stv = this.grounded ? 0 : clamp(this.vel.y * 0.012, -0.08, 0.1), sy = (1 - 0.3 * this.crouchK * (1 - this.lieK)) * (1 - sq + stv), sxz = 1 + sq * 0.6 - stv * 0.5; { const K = giantOn() ? 1.5 : 1; this.root.scale.set(sxz * K, sy * K, sxz * K); this.arm.scale.setScalar(K); } }
+    { const sq = this.squash || 0, stv = this.grounded ? 0 : clamp(this.vel.y * 0.012, -0.08, 0.1), sy = (1 - 0.3 * this.crouchK * (1 - this.lieK)) * (1 - sq + stv), sxz = 1 + sq * 0.6 - stv * 0.5; { const K = (giantOn() ? 1.5 : 1) * this.cls.size; this.root.scale.set(sxz * K, sy * K, sxz * K); this.arm.scale.setScalar(K); } }
     this.body.rotation.set(this.lean.x + this.eLX, 0, this.lean.y + this.eLZ);
     this.neck.rotation.set(this.head.x, 0, this.head.y);
     if (this.dead && dP > 0.02) {                                           // flailing: arms and legs thrash while it tumbles, then go limp
@@ -5921,7 +5950,7 @@ function removePickup(i) {
 const BOT_GUNS = ['net', 'flame', 'katana', 'boomerang', 'shuriken', 'bow', 'glauncher', 'cluster', 'knife', 'snake', 'snow', 'ak', 'smg', 'minigun', 'revolver', 'mammoth', 'typhoon', 'uzi', 'shotgun', 'sniper', 'rocket', 'meteor', 'bat', 'glove', 'mallet', 'trident', 'snow'];
 function botWants(b, p) {
   if (cfg.behav !== 'brawl') return false;
-  if (p.key === 'heal') return b.hp < maxHp() * 0.85;
+  if (p.key === 'heal') return b.hp < hpOf(b) * 0.85;
   if (PU_META[p.key]) return true;
   return BOT_GUNS.includes(p.key) && b.slot < 0;                 // only grab a weapon when empty-handed
 }
@@ -5958,7 +5987,7 @@ function updatePickups(dt) {
         const dx = f.pos.x - p.x, dz = f.pos.z - p.z;
         if (dx * dx + dz * dz < 1.3 * 1.3 && Math.abs(f.pos.y - (p.y - 0.4)) < 2) {
           if (p.key === 'heal') {
-            f.hp = Math.min(maxHp(), f.hp + maxHp() * 0.6);
+            f.hp = Math.min(hpOf(f), f.hp + hpOf(f) * 0.6);
             puff(V(p.x, 0.8, p.z), 0x7dffa0, 10, 4);
             if (f.isPlayer) { toast('+60 health!'); sfx('pickup'); }
           } else if (PU_META[p.key]) {
@@ -7077,7 +7106,7 @@ function setBotCfg(patch) {
   for (const b of allBots) b.recolor(cfg.teams && b.team >= 0 ? TEAM_COL[b.team] : b.botColor, cfg.teams && b.team >= 0);
   const D = DIFFS[cfg.diff];
   for (const b of allBots) { const on = bots.includes(b); b.root.visible = on; b.arm.visible = on; }
-  for (const b of bots) { b.speed = cfg.behav === 'brawl' ? D.speed : 2.2; b.dmgScale = cfg.behav === 'brawl' ? D.dmg : 0.45; b.kickCool = rand(1, 4); b.target = null; }
+  for (const b of bots) { b.setClass(cfg.behav === 'brawl' && !b.isGhost ? BOT_CLASS_ORDER[allBots.indexOf(b) % BOT_CLASS_ORDER.length] : 'wobbler'); b.speed = cfg.behav === 'brawl' ? D.speed : 2.2; b.dmgScale = cfg.behav === 'brawl' ? D.dmg : 0.45; b.kickCool = rand(1, 4); b.target = null; }
   const on = (id, v) => el(id).classList.toggle('on', v);
   on('behav-dummy', cfg.behav === 'dummy'); on('behav-brawl', cfg.behav === 'brawl');
   for (const k of Object.keys(DIFFS)) on('diff-' + k, cfg.diff === k);
@@ -7378,7 +7407,7 @@ function loadMap(id) {
   voidPlane.material.color.setHex(m.voidColor); setBackdrop(m, id);
   el('kopop').innerHTML = ''; endT = 0; el('fade').style.opacity = '0'; player.st = newSt(); matchStart = simTime; const pp = m.randSpawn ? (() => { const sp = m.spawns[Math.floor(Math.random() * m.spawns.length)]; return [sp[0], sp[1], m.player[2]]; })() : m.player;
   if (!SHOW.busy && ui === 'lobby' && page === 'map') setTimeout(() => { try { showSync(); } catch (e) { /* x */ } }, 0);
-  player.placeAt(pp[0], pp[1], pp[2]); player.ko = 0; player.hp = maxHp(); matchOver = false; el('winner').style.display = 'none'; feedItems.length = 0; updateKoText();
+  player.placeAt(pp[0], pp[1], pp[2]); player.ko = 0; player.hp = hpOf(player); matchOver = false; el('winner').style.display = 'none'; feedItems.length = 0; updateKoText();
   player.yaw = player.faceYaw = cam.yaw = m.randSpawn ? Math.atan2(-pp[0], -pp[1]) : Math.PI;
   let spawnPool = null;                             // bots start in a different spot every match
   if (!m.range) {
@@ -8003,9 +8032,9 @@ for (const k of VS) el('vs-' + k).onclick = () => { pickMode(k); if (page === 'v
 for (const n of [0, 5, 10, 20]) el('match-' + n).onclick = () => { setBotCfg({ limit: n }); loadMap(currentMap); };
 
 const SWATCH = [0x39b5a8, 0xe3566b, 0x4a90d9, 0xf0b43c, 0x8e6bd8, 0x5fb760, 0xf08a3c, 0xf4f0f0];
-const look = { color: 0x39b5a8, hat: 'none', skin: 'none' };
+const look = { color: 0x39b5a8, hat: 'none', skin: 'none', cls: 'wobbler' };
 function applyLook() {
-  player.setSkin(look.skin); player.recolor(cfg.teams ? TEAM_COL[0] : look.color, cfg.teams); player.setHat(look.hat);
+  player.setSkin(look.skin); player.recolor(cfg.teams ? TEAM_COL[0] : look.color, cfg.teams); player.setHat(look.hat); player.setClass(look.cls);
   ['none', ...SKIN_KEYS].forEach(k => el('skin-' + k).classList.toggle('on', k === look.skin));
   SWATCH.forEach((c, i) => el('sw' + i).classList.toggle('on', c === look.color));
   HATS.forEach(h => el('hat-' + h).classList.toggle('on', h === look.hat));
@@ -8102,7 +8131,7 @@ function load() {
       if (d.cfg.custom) { const c = d.cfg.custom; for (const k of ['size', 'obs', 'plat', 'walls', 'pads', 'seed']) if (Number.isFinite(c[k])) cfg.custom[k] = c[k]; if (CUSTOM_THEMES[c.theme]) cfg.custom.theme = c.theme; cfg.custom.ice = !!c.ice; }
       if (Array.isArray(d.cfg.blocks)) cfg.blocks = d.cfg.blocks.filter(b => Array.isArray(b) && b.length === 3 && b.every(Number.isFinite)).slice(0, 150);
     }
-    if (d.look) { look.color = SWATCH.includes(d.look.color) ? d.look.color : look.color; look.hat = HATS.includes(d.look.hat) ? d.look.hat : 'none'; look.skin = SKINS[d.look.skin] ? d.look.skin : 'none'; }
+    if (d.look) { look.color = SWATCH.includes(d.look.color) ? d.look.color : look.color; look.hat = HATS.includes(d.look.hat) ? d.look.hat : 'none'; look.skin = SKINS[d.look.skin] ? d.look.skin : 'none'; look.cls = clsOf(d.look.cls); }
     if (!wallet.skins.includes(look.skin)) look.skin = 'none';
     if (d.map && MAPS[d.map]) currentMap = d.map;
     if (!mapAllowed(currentMap)) currentMap = (MODES[cfg.mode].maps || Object.keys(MAPS).filter(mapAllowed))[0];
@@ -8199,9 +8228,9 @@ function netDiag() {                               // works out which step is fa
     });
   });
 }
-const myInfo = () => ({ name: (settings.name || 'Player').slice(0, 12), skin: look.skin, hat: look.hat, color: look.color });
-const cleanInfo = (m, id) => ({ id, name: String(m.name || 'Player').slice(0, 12), skin: SKINS[m.skin] ? m.skin : 'none', hat: HATS.includes(m.hat) ? m.hat : 'none', color: SWATCH.includes(m.color) ? m.color : 0x39b5a8 });
-const infoOfBot = (b, slot) => ({ id: slot, name: b.botName, skin: b.skinKey || 'none', hat: b.hatName || 'none', color: b.botColor });
+const myInfo = () => ({ name: (settings.name || 'Player').slice(0, 12), skin: look.skin, hat: look.hat, color: look.color, cls: look.cls });
+const cleanInfo = (m, id) => ({ id, name: String(m.name || 'Player').slice(0, 12), skin: SKINS[m.skin] ? m.skin : 'none', hat: HATS.includes(m.hat) ? m.hat : 'none', color: SWATCH.includes(m.color) ? m.color : 0x39b5a8, cls: clsOf(m.cls) });
+const infoOfBot = (b, slot) => ({ id: slot, name: b.botName, skin: b.skinKey || 'none', hat: b.hatName || 'none', color: b.botColor, cls: b.clsId });
 function netBannerUpdate() {                                        // the "you are in a room" strip shows on every page except the lobby itself
   el('netbanner').style.display = net && page !== 'onlobby' ? 'flex' : 'none';
   try { el('menu').classList.toggle('inroom', !!net && page !== 'onlobby'); } catch (e) { /* cosmetic */ }
@@ -8236,7 +8265,7 @@ function netShowLobby() {
   el('on-chips').innerHTML = [modeName, mapName, pubr ? 'Public' : 'Private'].filter((t, i, a) => t && a.indexOf(t) === i).map(t => '<i>' + escH(t) + '</i>').join('');
   const list = st && net.slots ? net.slots.map((r, i) => Object.assign({}, r, { id: i, bot: net.slotKind[i] === 'bot', empty: net.slotKind[i] === 'empty' })).filter(r => !r.empty) : net.roster;
   const cap = st && net.slots ? net.slots.length : net.optMax, nHum = humanCount();
-  const seat = r => '<div class="seat' + (r.id === net.id ? ' me' : '') + '"><i class="av" style="background:#' + (SKINS[r.skin] ? SKINS[r.skin].col : r.color).toString(16).padStart(6, '0') + '"></i><span class="t"><b>' + escH(r.name) + '</b><small>' + (r.id === 0 ? 'Host' : r.bot ? 'Bot' : 'Player') + (r.id === net.id ? ' · you' : '') + '</small></span></div>';
+  const seat = r => '<div class="seat' + (r.id === net.id ? ' me' : '') + '"><i class="av" style="background:#' + (SKINS[r.skin] ? SKINS[r.skin].col : r.color).toString(16).padStart(6, '0') + '"></i><span class="t"><b>' + escH(r.name) + '</b><small>' + (r.id === 0 ? 'Host' : r.bot ? 'Bot' : 'Player') + (r.id === net.id ? ' · you' : '') + ' · ' + CLASSES[clsOf(r.cls)].icon + ' ' + CLASSES[clsOf(r.cls)].name + '</small></span></div>';
   let html = list.map(seat).join('');
   if (!st) for (let i = list.length; i < cap; i++) html += '<div class="seat empty"><i class="av"></i><span class="t"><b>' + (net.optBots ? 'Bot' : 'Open seat') + '</b><small>' + (net.optBots ? 'a player replaces it' : 'waiting for a player') + '</small></span></div>';
   el('on-roster').innerHTML = html || '<div class="seat empty"><span class="t"><b>Waiting…</b></span></div>';
@@ -8502,14 +8531,14 @@ function clientRecv(m) {
   if (m.t === 'slot') { netSlotChanged(m.slot, m.kind, m.info); return; }
   if (net && net.started) netHandle(m);
 }
-const EMPTY_INFO = { name: '', skin: 'none', hat: 'none', color: 0xcccccc };
+const EMPTY_INFO = { name: '', skin: 'none', hat: 'none', color: 0xcccccc, cls: 'wobbler' };
 function netRemoveGhost(id) {
   const g = net && net.ghosts[id]; if (!g) return;
   g.left = true; g.dead = true; g.hp = 0; g.root.visible = false; g.arm.visible = false; g.pos.set(0, -300, 0);
 }
 function makeGhost(b, slot, info) {
-  if (!b.orig) b.orig = { name: b.botName, skin: b.skinKey || 'none', hat: b.hatName || 'none', color: b.botColor };
-  b.isGhost = true; b.left = false; b.root.visible = true; b.arm.visible = true; b.netSlot = slot; b.ns = null; b.dead = false; b.hp = maxHp(); b.invuln = 0; b.slot = -1; b.slots = [null, null, null]; b.burn = 0;
+  if (!b.orig) b.orig = { cls: b.clsId, name: b.botName, skin: b.skinKey || 'none', hat: b.hatName || 'none', color: b.botColor };
+  b.isGhost = true; b.left = false; b.root.visible = true; b.arm.visible = true; b.netSlot = slot; b.ns = null; b.setClass(info.cls); b.dead = false; b.hp = hpOf(b); b.invuln = 0; b.slot = -1; b.slots = [null, null, null]; b.burn = 0;
   b.botName = info.name; b.setHat(info.hat); b.setSkin(info.skin); b.botColor = SKINS[info.skin] ? SKINS[info.skin].col : info.color; b.recolor(b.botColor, false); b.weapon = null; ghostEquip(b, 'spatula');
   net.ghosts[slot] = b; delete net.ai[slot];
 }
@@ -8520,7 +8549,7 @@ function netBotToHuman(slot, info) {                       // host: a friend tak
 function netHumanToBot(slot) {                             // host: the friend left, the bot is back
   const b = net.ghosts[slot]; if (!b) return;
   delete net.ghosts[slot]; const o = b.orig || { name: 'Bot', skin: 'none', hat: 'none', color: 0xcccccc };
-  b.isGhost = false; b.left = false; b.ns = null; b.botName = o.name; b.setHat(o.hat); b.setSkin(o.skin); b.botColor = o.color; b.recolor(o.color, false);
+  b.isGhost = false; b.left = false; b.ns = null; b.setClass(o.cls); b.botName = o.name; b.setHat(o.hat); b.setSkin(o.skin); b.botColor = o.color; b.recolor(o.color, false);
   b.clearInventory(); b.setWeapon('spatula'); b.root.visible = true; b.arm.visible = true;
   if (b.dead) b.deathT = 0;
   net.ai[slot] = b; net.slots[slot] = Object.assign({ kind: 'bot' }, infoOfBot(b, slot)); net.slotKind[slot] = 'bot';
@@ -8530,8 +8559,8 @@ function netSlotChanged(slot, kind, info) {                // everyone else: tha
   net.slotKind[slot] = kind; net.slots[slot] = Object.assign({ kind }, info);
   const g = net.ghosts[slot];
   if (g && kind === 'empty') { netRemoveGhost(slot); netShowLobby(); return; }
-  if (g && g.left) { g.left = false; g.root.visible = true; g.arm.visible = true; g.dead = false; g.hp = maxHp(); g.ns = null; g.weapon = null; ghostEquip(g, 'spatula'); }
-  if (g) { g.botName = info.name; g.setHat(info.hat); g.setSkin(info.skin); g.botColor = SKINS[info.skin] ? SKINS[info.skin].col : info.color; g.recolor(g.botColor, false); }
+  if (g && g.left) { g.left = false; g.root.visible = true; g.arm.visible = true; g.dead = false; g.hp = hpOf(g); g.ns = null; g.weapon = null; ghostEquip(g, 'spatula'); }
+  if (g) { g.setClass(info.cls); g.botName = info.name; g.setHat(info.hat); g.setSkin(info.skin); g.botColor = SKINS[info.skin] ? SKINS[info.skin].col : info.color; g.recolor(g.botColor, false); }
   netShowLobby(); toast(info.name + (kind === 'human' ? ' joined!' : ' (bot) is back'));
 }
 const netMode = m => MODES[m] && !MODES[m].teams && m !== 'sandbox' ? m : 'classic';          // team modes and Sandbox are not online yet
@@ -9459,7 +9488,7 @@ function updateTags() {
         const n = el('tagn' + i); if (n.textContent !== b.botName) { n.textContent = b.botName; }
         n.style.color = cfg.teams ? (isFriend(player, b) ? '#8fd0ff' : '#ff9a9a') : '';
         const hh = el('tagh' + i), showBar = d < 16 || (b.lastAttacker === player && simTime - b.lastHitTime < 4); hh.parentNode.style.display = showBar ? 'block' : 'none';        // far away you only see the name, until you hit them
-        const pc = Math.max(0, b.hp / maxHp() * 100); hh.style.width = pc + '%'; hh.style.background = pc > 50 ? '#4bd18a' : pc > 25 ? '#f5b942' : '#ef5350';
+        const pc = Math.max(0, b.hp / hpOf(b) * 100); hh.style.width = pc + '%'; hh.style.background = pc > 50 ? '#4bd18a' : pc > 25 ? '#f5b942' : '#ef5350';
       }
     }
     t.style.display = show ? 'block' : 'none';
@@ -9545,7 +9574,7 @@ function updateHud(dt) {
   if (key !== hudKey) {
     hudKey = key;
     el('weapon').innerHTML = html;
-    const hpc = Math.min(100, hp / maxHp() * 100);
+    const hpc = Math.min(100, hp / hpOf(player) * 100);
     el('hpfill').style.width = hpc + '%';
     { const pb = el('pubuffs'), P = player, parts = []; for (const [t, nm, col] of [[P.spdT, 'Speed', '#4fd8ff'], [P.rageT, 'Damage', '#ff7a4c'], [P.shieldT, 'Shield', '#8fb4ff']]) if (t > 0 && !P.dead) parts.push('<div class="pu" style="color:' + col + '"><span style="color:#fff">' + nm + ' ' + Math.ceil(t) + 's</span><i style="width:' + Math.min(100, t / 12 * 100) + '%"></i></div>'); const h = parts.join(''); if (pb._h !== h) { pb._h = h; pb.innerHTML = h; } }
     if (hp < lastHpShown) { const h = el('hp'); h.classList.remove('hit'); void h.offsetWidth; h.classList.add('hit'); } lastHpShown = hp;
@@ -9568,7 +9597,7 @@ function updateHud(dt) {
     if (h !== boardKey) { boardKey = h; el('board').innerHTML = h; }
   }
   el('specbar').style.display = ui === 'play' && cfg.lives && player.elim && !matchOver ? 'block' : 'none';
-  el('lowhp').classList.toggle('on', ui === 'play' && !player.dead && player.hp > 0 && player.hp / maxHp() < 0.3);
+  el('lowhp').classList.toggle('on', ui === 'play' && !player.dead && player.hp > 0 && player.hp / hpOf(player) < 0.3);
   flashV = Math.max(0, flashV - dt * 2.2); el('flash').style.opacity = flashV > 0.01 ? flashV.toFixed(2) : '0';
   if (hurtFlash > 0.01 || el('hurt').style.opacity !== '0') {
     hurtFlash = Math.max(0, hurtFlash - dt * 1.6);
@@ -10158,6 +10187,7 @@ function bootStep(i) {
   if (i % 6 === 0) el('boottip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   setTimeout(() => { try { BOOT[i][1](); } catch (e) { /* a thumbnail failing should never stop the game */ } setTimeout(() => bootStep(i + 1), BOOT[i][2] || 0); }, 120);
 }
+globalThis.__wobbleTest = { CLASSES, CLASS_IDS, hpOf, player, look, cfg, myInfo, cleanInfo, renderLocker, showPage, setLockTab: t => { lockTab = t; } };      // read-only handles for tools/test-browser.js
 setUi('boot');
 setTimeout(() => bootStep(0), 100);
 </script>
