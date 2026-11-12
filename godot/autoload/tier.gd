@@ -42,20 +42,58 @@ func touch_default() -> bool:
 		return DisplayServer.is_touchscreen_available()
 	return false
 
+## Graphics quality the look follows (docs/GRAPHICS.md): HIGH = PC (Forward+), MID = phones (Mobile renderer, the
+## iPhone 12 budget), LOW = web (Compatibility). Every post effect, shader variant and extra scenery layer checks this.
+enum Quality { LOW, MID, HIGH }
+
+func quality() -> Quality:
+	match kind:
+		Kind.PC: return Quality.HIGH
+		Kind.MOBILE: return Quality.MID
+	return Quality.LOW
+
+## The Tier autoload's quality as an int (0 LOW, 1 MID, 2 HIGH) from static code (MapBuilder, Wobbler, Gfx); HIGH
+## when the autoload is not there.
+static func q() -> int:
+	var tree := Engine.get_main_loop() as SceneTree
+	var t: Node = tree.root.get_node_or_null("Tier") if tree and tree.root else null
+	return int(t.quality()) if t else 2
+
 ## Directional shadow settings for the sun. `area` is the map's shadow half-size (maps.json `shadow`, default 32).
+## HIGH: 3 PSSM cascades (crisp near the fighters, the whole level in range), soft PCF blur. MID: 2 cascades, a
+## little blur (2048 map, soft filter quality 1 in project.godot). LOW: one orthogonal map, no blur; fighters use
+## blob shadows there (BlobShadow) and do not cast.
 func configure_sun(sun: DirectionalLight3D, area: float) -> void:
 	sun.shadow_enabled = true
 	sun.shadow_bias = 0.04
 	sun.shadow_normal_bias = 1.0
-	sun.shadow_blur = 1.5 if kind == Kind.PC else 1.0
 	match kind:
 		Kind.PC:
+			sun.shadow_normal_bias = 2.0     # 4 cascades + PCF blur show acne on sunlit flat faces at the default
+			sun.shadow_bias = 0.06
+			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
+			sun.directional_shadow_split_1 = 0.08
+			sun.directional_shadow_split_2 = 0.22
+			sun.directional_shadow_split_3 = 0.5
+			sun.directional_shadow_blend_splits = true
+			sun.directional_shadow_max_distance = area * 2.6
+			sun.directional_shadow_fade_start = 0.85
+			sun.shadow_blur = 1.3
+			sun.shadow_opacity = 0.92
+		Kind.MOBILE:
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-			sun.directional_shadow_max_distance = area * 2.4
+			sun.directional_shadow_split_1 = 0.22
+			sun.directional_shadow_blend_splits = false
+			sun.directional_shadow_max_distance = area * 1.9
+			sun.directional_shadow_fade_start = 0.8
+			sun.shadow_blur = 1.2
+			sun.shadow_opacity = 0.9
 		_:
-			# one cascade: cheapest on phones and in WebGL
+			# one cascade: cheapest in WebGL
 			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 			sun.directional_shadow_max_distance = area * 1.6
+			sun.shadow_blur = 1.0
+			sun.shadow_opacity = 0.85
 
 ## Viewport-level quality switches (MSAA, scaling). Called once by World.
 func configure_viewport(vp: Viewport) -> void:

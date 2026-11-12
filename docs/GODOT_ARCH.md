@@ -7,7 +7,7 @@ Written by the lead so parallel sessions fit together. If a rule here blocks you
 - **Logic is separate from visuals.** Logic classes are plain `RefCounted` (like `FighterPhysics`) with no scene dependency, so they run headless in tests. Scenes/nodes only present state.
 - **Fixed sim step.** The web game simulates at `SIM = 1/120`. Godot logic steps at the same fixed dt from a single accumulator in `World`; visuals interpolate/animate per frame.
 - 64-bit floats for logic (plain `float` fields, not `Vector3`) where parity matters.
-- Render tiers via one autoload (`Tier`): `PC` (Forward+), `MOBILE` (iOS), `WEB` (Compatibility). Heavy effects check `Tier`.
+- Render tiers via one autoload (`Tier`): `PC` (Forward+), `MOBILE` (iOS), `WEB` (Compatibility). Heavy effects check `Tier` (`Tier.quality()`: HIGH / MID / LOW; what each turns on is in `docs/GRAPHICS.md`).
 - Style: tabs, typed GDScript, `class_name` for shared classes. Run `godot --headless --path godot --import` after adding a `class_name`.
 
 ## Layout (`godot/`)
