@@ -1669,9 +1669,9 @@ MAPS.squeeze = {
 MAPS.tower = {
   name: 'Tiered Tower', cat: 'obstacle', tags: ['Height', 'Stairs', 'Tiers'], blurb: 'A wide stepped tower with a fighting floor on every level. Stairs on the sides, a ladder to the summit and bounce pads at the corners. King of the hill, no climbing puzzle.',
   sky: 0xc9e0ff, voidColor: 0xa4c4ee, hills: [0xa8c0f0, 0x93aee6, 0xb9cff6, 0x7f9bd8], shadow: 42, orbit: 56, orbitH: 40,
-  spawns: [[17, 17], [-17, -17], [17, -17], [-17, 17], [0, 10, 1.6], [0, -10, 1.6]],
-  player: [17, 17], bots: [[-17, -17], [17, -17], [-17, 17], [0, 10, 1.6], [0, -10, 1.6]], wander: 17,
-  drops: [[19, 0], [-19, 0], [0, 19], [0, -19], [11, 11, 1.6], [-11, -11, 1.6], [11, -11, 1.6], [-11, 11, 1.6], [0, 0, 4.8]],
+  spawns: [[17, 17], [-17, -17], [17, -17], [-17, 17], [0, 12.5, 1.6], [0, -12.5, 1.6]],
+  player: [17, 17], bots: [[-17, -17], [17, -17], [-17, 17], [0, 12.5, 1.6], [0, -12.5, 1.6]], wander: 17,
+  drops: [[19, 0], [-19, 0], [0, 19], [0, -19], [12.5, 12.5, 1.6], [-12.5, -12.5, 1.6], [12.5, -12.5, 1.6], [-12.5, 12.5, 1.6], [0, 0, 5.6]],
   build() {
     addBox(0, 0, 46, 46, 2, 0xdfe9f7, -2); addFloorPad(42, 0xf1f6ff);
     addBox(0, 0, 28, 28, 1.6, 0xf7e2b0);                                                                      // tier one (top 1.6)
@@ -2745,7 +2745,7 @@ MAPS.moonbase = {
   env: { stars: true, moonColor: 0x6fa8ff, moonSize: 1.7, speck: 'star', peaks: false }, hemi: 0.7, sunI: 0.95,
   sky: 0x0b1030, skyTop: 0x02030f, voidColor: 0x14182e, hills: [0x3a3f58, 0x2f3450, 0x454b66, 0x262b45], shadow: 40, orbit: 44, orbitH: 26,
   spawns: [[-20, 12], [20, -12], [-20, -12], [20, 12], [0, 17], [0, -17]], player: [0, 17], bots: [[-20, 12], [20, -12], [-20, -12], [20, 12], [0, -17]], wander: 17,
-  drops: [[-18, 0], [18, 0], [0, -9], [0, 9], [-12, -18], [12, 18], [-12, 18], [12, -18], [0, 0, 1.2]],
+  drops: [[-18, 0], [18, 0], [0, -9], [0, 9], [-12, -18], [12, 18], [-12, 18], [12, -18], [0, 0, 1.5]],
   build() {
     addBox(0, 0, 44, 44, 2, 0xa7abb8, -2); addFloorPad(40, 0xbfc3cf);
     for (const [x, z, r] of [[-12, -4, 4], [13, 6, 5], [4, -15, 3.5], [-7, 14, 3]]) { flatRing(r, r + 0.7, 0x7f8494, 18); flatRing(r - 1.2, r - 0.4, 0x939aaa, 18, 0.025); for (const o of [flatRing]) { /* crater rim only */ } }
@@ -2760,7 +2760,7 @@ MAPS.volcano = {
   name: 'Volcano Rim', cat: 'arena', tags: ['Lava', 'Islands', 'Bridges'], blurb: 'Four rock islands round a burning crater, joined by narrow bridges. Fall in the lava and you are out. Knock people in!',
   env: { speck: 'ember', stars: false, peaks: true }, hemi: 0.8, sunI: 1.1,
   sky: 0xe8643a, skyTop: 0x3a1020, voidColor: 0xff5a1f, hills: [0x4a2a2a, 0x3c2224, 0x5a3430, 0x2e1a1e], shadow: 42, orbit: 46, orbitH: 28, fog: [60, 190],
-  spawns: [[0, -5], [-20, 0], [20, 0], [0, 20], [0, -20], [-20, -4]], player: [0, 5], bots: [[-20, 0], [20, 0], [0, 20], [0, -20], [-20, 4]], wander: 17,
+  spawns: [[0, -5], [-20, 0], [20, 0], [0, 20], [0, -20], [5, 3]], player: [0, 5], bots: [[-20, 0], [20, 0], [0, 20], [0, -20], [-20, 4]], wander: 17,
   drops: [[-20, 3], [20, -3], [3, 20], [-3, -20], [0, -4], [0, 4], [-4, 0], [4, 0]],
   build() {
     addBox(0, 0, 14, 14, 2, 0x6b4a40, -2); addFloorPad(12, 0x8a6256);
@@ -2777,7 +2777,7 @@ MAPS.candy = {
   env: { speck: 'confetti', peaks: true }, sunColor: 0xfff0f6,
   sky: 0xffd6ec, skyTop: 0x9fd8ff, voidColor: 0xffb6dc, hills: [0xffa8d0, 0xff93c2, 0xc9a3ff, 0x9fe6d0], shadow: 38, orbit: 42, orbitH: 24,
   spawns: [[-15, 15], [15, -15], [-15, -15], [15, 15], [0, 14], [0, -14]], player: [0, 14], bots: [[-15, 15], [15, -15], [-15, -15], [15, 15], [0, -14]], wander: 16,
-  drops: [[-18, 3], [18, -3], [0, -10], [0, 10], [-9, -17], [9, 17], [-9, 17], [9, -17], [0, 0, 2]],
+  drops: [[-18, 3], [18, -3], [0, -10], [0, 10], [-9, -17], [9, 17], [-9, 17], [9, -17], [0, 0, 3]],
   build() {
     addBox(0, 0, 42, 42, 2, 0xffc2de, -2); addFloorPad(38, 0xffe0ee);
     addBox(0, 0, 13, 13, 1, 0xfff0d8); addBox(0, 0, 9, 9, 1, 0xff9ec8, 1); addBox(0, 0, 5, 5, 1, 0xfff6ee, 2); ball(0, 3.5, 0, 0.7, 0xff3a5a);   // the cake
@@ -2824,7 +2824,7 @@ MAPS.beach = {
   env: { speck: 'petal', speckColor: 0xffe0a8, sunColor: 0xffa860, peaks: true },
   sky: 0xffb48a, skyTop: 0x6a6ac8, voidColor: 0x2fb6c8, hills: [0xd9809a, 0xc46f8f, 0xe8987f, 0xa85a85], shadow: 40, orbit: 44, orbitH: 26,
   spawns: [[-14, 14], [14, -14], [-14, -14], [14, 14], [0, 16], [0, -16]], player: [0, 16], bots: [[-14, 14], [14, -14], [-14, -14], [14, 14], [0, -16]], wander: 16,
-  drops: [[-16, 0], [16, 0], [0, -9], [0, 9], [-8, -16], [8, 16], [-8, 16], [8, -16], [0, 0, 2.4]],
+  drops: [[-16, 0], [16, 0], [0, -9], [0, 9], [-8, -16], [8, 16], [-8, 16], [8, -16], [0, 0, 2.9]],
   build() {
     addBox(0, 0, 40, 40, 2, 0xf0d596, -2); addFloorPad(36, 0xf8e4b0); addBox(0, -20.4, 30, 1.2, 0.04, 0xfff6e0, 0); addBox(-20.4, 0, 1.2, 30, 0.04, 0xfff6e0, 0);
     addBox(0, 0, 9, 9, 1, 0xe2c284); addBox(0, 0, 5, 5, 1, 0xd9b574, 1); addBox(0, 0, 2, 2, 0.9, 0xcfa564, 2); ball(0, 3.4, 0, 0.45, 0xff5a5a);   // sandcastle
@@ -2837,8 +2837,8 @@ MAPS.dojo = {
   name: 'Moonlit Dojo', cat: 'obstacle', tags: ['Ninja', 'Night', 'Cover'], only: 'ninja', blurb: 'Built for ninjas. A raised dojo with a pagoda roof, stairs on every side, low garden walls and corner pavilions to dash between and hide behind. Lanterns and cherry blossom in the moonlight.',
   env: { stars: true, moonColor: 0xf6f0c8, moonSize: 1.5, speck: 'petal', speckColor: 0xffb6d0, peaks: true, aurora: [0xff8ec8, 0xa890ff] }, hemi: 0.72, sunI: 0.85,
   sky: 0x3a2a5e, skyTop: 0x120a2c, voidColor: 0x1d1236, hills: [0x2c2250, 0x382b62, 0x241b44, 0x45367a], shadow: 44, orbit: 50, orbitH: 30,
-  spawns: [[-18, 18], [18, -18], [-18, -18], [18, 18], [0, 19], [0, -19]], player: [0, 19], bots: [[-18, 18], [18, -18], [-18, -18], [18, 18], [0, -19]], wander: 18,
-  drops: [[-20, 0], [20, 0], [0, 12], [0, -12], [-11, -16], [11, 16], [-11, 16], [11, -16], [0, 0, 1.8]],
+  spawns: [[-18, 18], [18, -18], [-18, -18], [18, 18], [0, 19], [0, -19]], player: [0, 19], bots: [[-18, 18, 1.2], [18, -18, 1.2], [-18, -18, 1.2], [18, 18, 1.2], [0, -19]], wander: 18,
+  drops: [[-20, 0], [20, 0], [0, 12], [0, -12], [-7, -16], [7, 16], [-7, 16], [7, -16], [0, 0, 2]],
   build() {
     addBox(0, 0, 48, 48, 2, 0x4a3f5e, -2); addFloorPad(44, 0x8a7a5e);                                          // tatami floor
     for (let i = -4; i <= 4; i++) addBox(i * 4.4, 0, 0.1, 40, 0.04, 0x6c5c44, 0);                              // mat lines
@@ -2907,7 +2907,7 @@ MAPS.brawlpit = {
   sky: 0x3a2a3e, skyTop: 0x120c20, voidColor: 0x1c1124, hills: [0x2e2038, 0x3a2a46, 0x261a30, 0x48345a], shadow: 40, orbit: 46, orbitH: 28,
   spawns: [[-8, -18], [8, 18], [-18, 8], [18, -8], [0, -19], [0, 19], [-19, -4], [19, 4]], player: [0, 19],
   bots: [[-8, -18], [8, 18], [-18, 8], [18, -8], [0, -19], [-19, -4], [19, 4]], wander: 19,
-  drops: [[-12, 0], [12, 0], [0, -13], [0, 13], [-6, -15], [6, 15], [-15, 10], [15, -10], [0, 0, 1.6], [-17.5, -17.5, 2.0], [17.5, 17.5, 2.0]],
+  drops: [[-12, 0], [12, 0], [0, -13], [0, 13], [-6, -15], [6, 15], [-15, 10], [15, -10], [0, 0, 1.6], [-17.5, -17.5, 2.85], [17.5, 17.5, 2.85]],
   build() {
     addBox(0, 0, 46, 46, 2, 0x5a4a44, -2); addFloorPad(42, 0x8a6a50);                                               // a scuffed fight-night floor
     addBox(0, 0, 13, 13, 1.4, 0x2f4a96); addBox(0, 0, 11.6, 11.6, 0.15, 0xe9e2d0, 1.4); addBox(0, 0, 3.2, 3.2, 0.04, 0xc0392b, 1.55);   // the boxing ring: apron, canvas, a red mark in the middle
@@ -3179,7 +3179,69 @@ MAPS.farm = {
     addBouncePad(-13, -3);
   },
 };
-const NEW_ARENAS = ['moonbase', 'volcano', 'candy', 'pirate', 'haunted', 'beach', 'farm'];
+/* ============================== arena pass: four phone-sized rounds (small, fast, ring-outs) ============================== */
+MAPS.crossroads = {
+  name: 'Neon Crossroads', cat: 'arena', tags: ['Night', 'Ring-out', 'Chokepoints'], blurb: 'A plus-shaped street high above the city. Four arms, a raised hub and nothing but sky in the corners, so every shove can be the last. Bounce pads fling you back toward the middle.',
+  env: { stars: true, speck: 'star', moonColor: 0xff7bd5, moonSize: 1.3, aurora: [0x4fe0ff, 0xff7bd5] }, hemi: 0.75, sunI: 0.9,
+  sky: 0x1c1648, skyTop: 0x080520, voidColor: 0x120c30, hills: [0x2a2260, 0x342a70, 0x221a50, 0x40347e], shadow: 36, orbit: 40, orbitH: 24,
+  spawns: [[-18, -2.5], [18, 2.5], [2.5, -18], [-2.5, 18], [-6, 6], [6, -6]], player: [-2.5, 18], bots: [[-18, -2.5], [18, 2.5], [2.5, -18], [-6, 6], [6, -6]], wander: 12,
+  drops: [[-19, 0], [19, 0], [0, -19], [0, 19], [-9, 4.5], [9, -4.5], [4.5, 9], [-4.5, -9], [0, 0, 1.6]],
+  build() {
+    addBox(0, 0, 44, 14, 2, 0x3a3470, -2); addBox(0, 0, 14, 44, 2, 0x3a3470, -2);               // two bars crossing: the corners are open sky
+    addBox(0, 0, 5, 5, 1.4, 0x5a4ea8); addBox(0, 0, 2, 2, 0.2, 0xff7bd5, 1.4);                  // the hub (top 1.6)
+    for (const [x, z] of [[-12, -4.5], [12, 4.5], [4.5, -12], [-4.5, 12], [12, -4.5], [-12, 4.5]]) addBox(x, z, 2, 2, 1.1, 0x7a6cd0);   // crates to duck behind
+    for (const [x, z] of [[-14.5, 0], [14.5, 0], [0, -14.5], [0, 14.5]]) addBouncePad(x, z, 15);
+    for (const [x, z, w, d] of [[-21.7, 0, 0.5, 14], [21.7, 0, 0.5, 14], [0, -21.7, 14, 0.5], [0, 21.7, 14, 0.5]]) addBox(x, z, w, d, 0.5, 0xff7bd5);   // glowing end curbs
+  },
+};
+MAPS.donut = {
+  name: 'Donut Drop', cat: 'arena', tags: ['Ring', 'Bounce', 'Sweet'], blurb: 'A giant frosted donut with a hole in the middle. Run the ring, or take a bounce pad over the hole to the sprinkle island. Fall through the hole and you are out.',
+  env: { speck: 'confetti', peaks: true }, sunColor: 0xfff0f6,
+  sky: 0xffe0ee, skyTop: 0x9fd8ff, voidColor: 0x5a2f3e, hills: [0xffa8d0, 0xff93c2, 0xc9a3ff, 0x9fe6d0], shadow: 38, orbit: 42, orbitH: 24,
+  spawns: [[0, -16], [0, 16], [-16, 0], [16, 0], [-13, -13], [13, 13]], player: [0, 16], bots: [[0, -16], [-16, 0], [16, 0], [-13, -13], [13, 13]], wander: 14,
+  drops: [[0, -17], [0, 17], [-17, 0], [17, 0], [-12, -12], [12, 12], [-12, 12], [12, -12], [0, 0, 1.3]],
+  build() {
+    const fr = 0xff8fc0;
+    addBox(0, -14, 38, 10, 2, fr, -2); addBox(0, 14, 38, 10, 2, fr, -2); addBox(-14, 0, 10, 18, 2, fr, -2); addBox(14, 0, 10, 18, 2, fr, -2);   // the ring
+    addBox(0, 0, 7, 7, 3.2, 0xf6d9a8, -2); addBox(0, 0, 4, 4, 0.1, 0xffffff, 1.2);                // the island in the hole (top 1.2, a white pad on top 1.3)
+    for (const sz of [-1, 1]) addStairs(0, sz * 9, 0, -sz, 4, 0.3, 1.4, 3, 0xffb0d0, 0xff8fc0);   // stairs up from north and south
+    for (const sx of [-1, 1]) addBouncePad(sx * 10.4, 0, 16);                                       // bounce pads over the hole from east and west
+    for (const [x, z] of [[-16, -16], [16, 16], [-16, 16], [16, -16]]) addBox(x, z, 2.4, 2.4, 1.2, 0x7ad7ff);   // gumdrops
+    const cols = [0xffffff, 0xffe35a, 0x7ad7ff, 0xb48cff, 0x6af0b0];
+    for (let i = 0; i < 40; i++) { const a = i * 2.4, r = 10 + (i * 7 % 9), x = Math.cos(a) * r, z = Math.sin(a) * r; if (Math.abs(x) < 8 && Math.abs(z) < 8) continue; const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 0.2), lm(cols[i % 5])); m.position.set(x, 0.07, z); m.rotation.y = i; addDecor(m); }   // sprinkles
+  },
+};
+MAPS.chasm = {
+  name: 'Chasm Bridge', cat: 'arena', tags: ['Long', 'Bridges', 'Ring-out'], blurb: 'Two cliffs, two narrow bridges and a small island in the chasm between them. A long, thin level that fits a phone screen. Hold the bridges, or bounce across.',
+  env: { speck: 'ember', peaks: true }, hemi: 0.8, sunI: 1.1,
+  sky: 0xf2b27a, skyTop: 0x6a3a7a, voidColor: 0x7a3a3a, hills: [0xa8604a, 0x93523f, 0xc27a58, 0x7d4636], shadow: 42, orbit: 46, orbitH: 26,
+  spawns: [[-22, -6], [22, 6], [-22, 6], [22, -6], [-13, 0], [13, 0]], player: [-22, 6], bots: [[22, 6], [-22, -6], [22, -6], [-13, 0], [13, 0]], wander: 11,
+  drops: [[-20, 0], [20, 0], [-14, -8], [14, 8], [-14, 8], [14, -8], [0, -6.5], [0, 6.5], [0, 0, 1.2]],
+  build() {
+    addBox(-17, 0, 20, 22, 2, 0xc89a6a, -2); addBox(17, 0, 20, 22, 2, 0xc89a6a, -2);          // the two cliffs
+    addBox(0, -6.5, 14, 3, 2, 0x8a6240, -2); addBox(0, 6.5, 14, 3, 2, 0x8a6240, -2);           // the two bridges
+    addBox(0, 0, 6, 6, 3, 0xe0b27a, -2); addBox(0, 0, 2.4, 2.4, 0.2, 0xe3566b, 1);            // the island (top 1, a red mark on top 1.2)
+    for (const sx of [-1, 1]) addBouncePad(sx * 9, 0, 16);                                     // pads fling you across to the island
+    for (const [x, z] of [[-17, -5], [17, 5], [-17, 5], [17, -5]]) addBox(x, z, 2.6, 2.6, 1.2, 0x9a6a48);
+    for (const sx of [-1, 1]) addBox(sx * 26.7, 0, 0.6, 22, 1.2, 0x6a4a34);                    // back walls
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { addBox(sx * 3.6, sz * 8.2, 0.3, 0.3, 1.2, 0x5a3a24); addBox(sx * 3.6, sz * 4.8, 0.3, 0.3, 1.2, 0x5a3a24); }   // bridge posts
+  },
+};
+MAPS.summit = {
+  name: 'Summit Rush', cat: 'arena', tags: ['Climb', 'Terraces', 'Long'], blurb: 'A long ridge in seven steps, low at both ends and high in the middle. Fight uphill, shove people downhill, hold the peak. Bounce pads at the foot hop you up the first step.',
+  env: { speck: 'petal', speckColor: 0xffe0a8, peaks: true }, sunColor: 0xfff0b0,
+  sky: 0xbfe6f8, skyTop: 0x4fa0e0, voidColor: 0x7fb8d9, hills: [0x7fb8d9, 0x6aa6cb, 0x93c8e3, 0x5a95bd], shadow: 38, orbit: 42, orbitH: 24,
+  spawns: [[-18, 5], [18, -5], [-12, -5, 1.2], [12, 5, 1.2], [-6, 5, 2.4], [6, -5, 2.4]], player: [-18, 5], bots: [[18, -5], [-12, -5, 1.2], [12, 5, 1.2], [-6, 5, 2.4], [6, -5, 2.4]], wander: 12,
+  drops: [[-19, -5], [19, 5], [-12, 5, 1.2], [12, -5, 1.2], [-6, -5, 2.4], [6, 5, 2.4], [0, 4, 3.6], [0, -4, 3.6], [0, 0, 4]],
+  build() {
+    const H = [0, 1.2, 2.4, 3.6, 2.4, 1.2, 0], C = [0xe8d9a8, 0xd9c98a, 0xc9b86e, 0xb9a85a, 0xc9b86e, 0xd9c98a, 0xe8d9a8];
+    for (let i = 0; i < 7; i++) { const x = (i - 3) * 6; if (H[i] === 0) addBox(x, 0, 6, 22, 2, C[i], -2); else addBox(x, 0, 6, 22, H[i], C[i]); }
+    addBox(0, 0, 2.4, 2.4, 0.4, 0xe3566b, 3.6);                                                // the summit marker (top 4)
+    for (const sx of [-1, 1]) addBouncePad(sx * 18, 0, 15);
+    for (const [x, z] of [[-9, -6], [9, 6], [-3, 6], [3, -6]]) addBox(x, z, 1.8, 1.8, 0.9, 0x8a7a4a, H[Math.round(x / 6) + 3]);   // rocks on the steps
+  },
+};
+const NEW_ARENAS = ['moonbase', 'volcano', 'candy', 'pirate', 'haunted', 'beach', 'farm', 'crossroads', 'donut', 'chasm', 'summit'];
 const BIG_ARENAS = ['arenaxl', 'rinkxl', 'colosseum', 'fortress'];
 MODES.t3.maps = MODES.t4.maps = BIG_ARENAS;                       // 3v3 and 4v4 only play on the big arenas
 MODES.duel.maps = MODES.t2.maps = TEAM_MAPS.concat(['colosseum', 'fortress'], NEW_ARENAS);
@@ -3190,7 +3252,7 @@ MODES.explosive.maps = ['blast', 'arena', 'park', 'ice'].concat(BIG_ARENAS);   /
 for (const m in MODES) if (m !== 'explosive') { const old = MODES[m].allow; MODES[m].allow = k => k !== 'meteor' && old(k); }   // the Meteor Launcher belongs to Explosive only
 MODES.melee.maps = MODES.melee.maps.filter(k => k !== 'cloud').concat(BIG_ARENAS); MODES.guns.maps = MODES.guns.maps.concat(BIG_ARENAS);
 MODES.ninja.maps = ['dojo', 'arenaxl', 'fortress', 'temple', 'rooftops', 'tower'];      // Ninja: its own map first, then the Grand Arena and Fortress Yard, then Temple Ruins, then the rest
-const MAP_ORDER = ['test', 'practice', 'dojo', 'blast', 'gunrange', 'brawlpit', 'craterdome', 'capsule', 'playroom', 'arena', 'park', 'ice', 'arenaxl', 'rinkxl', 'colosseum', 'fortress', 'temple', 'farm', 'rooftops', 'tower', 'shrink', 'squeeze', 'moonbase', 'candy', 'haunted', 'beach', 'volcano', 'pirate', 'pillars', 'pillars2', 'custom'];   // big open arenas first, then rooms and sky levels, the odd one-offs last
+const MAP_ORDER = ['test', 'practice', 'dojo', 'blast', 'gunrange', 'brawlpit', 'craterdome', 'capsule', 'playroom', 'arena', 'park', 'ice', 'arenaxl', 'rinkxl', 'colosseum', 'fortress', 'temple', 'farm', 'rooftops', 'tower', 'shrink', 'squeeze', 'crossroads', 'donut', 'chasm', 'summit', 'moonbase', 'candy', 'haunted', 'beach', 'volcano', 'pirate', 'pillars', 'pillars2', 'custom'];   // big open arenas first, then rooms and sky levels, the odd one-offs last
 { const old = Object.assign({}, MAPS); for (const k of Object.keys(MAPS)) delete MAPS[k]; for (const k of MAP_ORDER) if (old[k]) MAPS[k] = old[k]; for (const k in old) if (!MAPS[k]) MAPS[k] = old[k]; }
 for (const m in MODES) if (MODES[m].maps) MODES[m].maps = MODES[m].maps.filter(k => MAPS[k]).sort((a, b) => MAP_ORDER.indexOf(a) - MAP_ORDER.indexOf(b));
 MODES.classic.icon = 'Everything drops'; MODES.sandbox.icon = 'Your level';
