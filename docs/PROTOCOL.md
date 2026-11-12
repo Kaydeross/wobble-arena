@@ -262,18 +262,25 @@ Names: `name` is truncated to **12 chars** by guests' hosts (`cleanInfo`).
 
 ---
 
-## 7. Known weaknesses (to fix before a second client ships)
+## 7. Known weaknesses
 
-These are on the roadmap in `docs/IOS_PLAN.md` (PR B). A second client doubles the attack surface, so they matter more now.
+Items 1–5 were fixed in PR B (`netGuard` and `netCleanHit` in `public/index.html`). The rest are open and on the roadmap in `docs/IOS_PLAN.md`.
 
-| # | Weakness | Where | Fix |
-|---|---|---|---|
-| 1 | The host relays guest messages to everyone **without checking the sender**. A guest can send an `S`, `sw`, `ko` or `chat` with someone else's `id`. | `hostRecv` → `netHandle(m); netAllConns(m, c)` | The host overwrites `id` with the connection's real slot before relaying (for all message types that carry `id`). |
-| 2 | `h.d` is trusted. A guest can send any damage or force to any victim. | `case 'h'` | The receiver clamps `d` to the weapon's max and `f` to a sane range; the host checks `from` equals the sender's slot. |
-| 3 | `pend` can be sent by a guest and relayed. | `case 'pend'` | Only the host may send it; the host drops it from guests, and guests ignore it unless it came from the host. |
-| 4 | `ko` and `take` can be forged. | `case 'ko'`/`'take'` | `ko` sender must own the victim's slot; `take` must name an existing `cid`. |
-| 5 | The roster colour is rendered unescaped in the lobby HTML. | `netShowLobby` | Validate as an integer on receipt; escape on render. |
-| 6 | Economy is client-side: coins, unlocks and `coins_####` redeem codes live in the save blob. | `redeem()`, `/api/save` | Server-side wallet and grants (Phase 3), remove codes from release builds. |
-| 7 | Hosting is authoritative for bots and match end, so a malicious host can ruin a room. | Design | Accept for friends-and-rooms launch; consider server-side checks on rewards. |
-| 8 | Free-text `chat` has no report or block, only a local `/mute`. | `chatSend` | iOS ships with chat off (quick-chat and emotes only); add report and block before enabling text. |
-| 9 | Public relay credentials (STUN/TURN, PeerJS cloud) are used for peer mode. | `NET_ICE` | The iOS client uses only the WebSocket relay; peer mode stays web-only. |
+**Host rules for guest messages (implemented):**
+- A guest may only send `s`, `S`, `sw`, `f`, `k`, `h`, `ko`, `take`, `chat`, `rv`, `ping`, `hello`, `info`. Anything else (`start`, `roster`, `slot`, `crate`, `crates`, `pend`, `rvs`, `kick`, …) is dropped.
+- The host overwrites `id` with the guest's real slot on `s`, `sw`, `f`, `k`, `chat`, and keeps only the guest's own entry in `S` (stamped with its slot).
+- `h` is dropped unless `from` equals the sender's slot. `d` is clamped to 0–250, `f` to 0–120 and the direction to ±2. Receivers clamp again.
+- `ko` is dropped unless `to` is the sender's own slot. `take` is dropped unless the crate `cid` exists.
+- Guests rebuild every `roster` entry through `cleanInfo`, so a hostile host cannot send odd colours or extra fields.
+
+| # | Weakness | Status |
+|---|---|---|
+| 1 | Sender not checked on relayed messages | **Fixed** |
+| 2 | `h.d` trusted | **Fixed** (clamped; per-weapon limits still to do) |
+| 3 | Guest can send `pend` | **Fixed** |
+| 4 | `ko` and `take` forgeable | **Fixed** |
+| 5 | Roster colour rendered unescaped | **Fixed** |
+| 6 | Economy is client-side: coins, unlocks and `coins_####` redeem codes live in the save blob (`redeem()`) | Open. The web game has no dev/release split yet, so the codes stay until the server-side wallet (Phase 4) |
+| 7 | A malicious host can ruin a room (it runs bots and decides the winner) | Accepted for the friends-and-rooms launch |
+| 8 | Free-text `chat` has no report or block, only a local `/mute` | Open. iOS ships with chat off |
+| 9 | Public relay credentials (STUN/TURN, PeerJS cloud) in peer mode | Open. iOS uses only the WebSocket relay |
