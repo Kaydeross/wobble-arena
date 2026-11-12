@@ -213,6 +213,8 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 		check(ok_seq, "%s: no event twice in a row %s" % [tag, chaos_seq])
 		check(chaos_bad == 0, "%s: rules restored between events (%d bad)" % [tag, chaos_bad])
 		check(int(world.counts.get("chaos_warn", 0)) >= chaos_seq.size(), "%s: every event was announced" % tag)
-	if shrinks: check(min_size < float(ModeRules.SHRINK[map]["S0"]) - 10.0, "%s: the floor shrank (min %.1f)" % [tag, min_size])
+	if shrinks:                          # a short match (a quick Sudden Death) only has to have started shrinking
+		var need := 10.0 if (over_at < 0.0 or over_at > 20.0) else 0.0
+		check(min_size < float(ModeRules.SHRINK[map]["S0"]) - need, "%s: the floor shrank (min %.1f)" % [tag, min_size])
 	world.queue_free()
 	await process_frame

@@ -16,7 +16,7 @@ extends RefCounted
 ## Players page, team limit 30), Death Match (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
 ## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events).
 ## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there), Pillars (needs the
-## pillar-hopping bot AI and pillarGive), Explosive / Moon Drift (their weapons are not ported yet).
+## pillar-hopping bot AI and pillarGive), Explosive / Moon Drift (their weapons are ported now; not listed in PLAYABLE yet).
 
 const TEAM_COL := [0x3b82f6, 0xef4444]                  ## TEAM_COL
 const GG := ["smg", "ak", "uzi", "shotgun", "revolver", "sniper", "bow", "shuriken", "knife", "glauncher", "bat", "spatula"]   ## the Weapon Ladder

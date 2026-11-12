@@ -9,15 +9,20 @@ extends RefCounted
 ##   glauncher / cluster (launchGrenade, updateGrenades)                     -> launch_grenade, step_grenades
 ##   bow (shootArrow with draw charge, updateArrows; playerControl draw)      -> shoot_arrow, bow_tick, step_arrows
 ##   net (shootNet, landNet, updateNets: trap_t + trap nets)                 -> shoot_net, step_nets
-## step_all(dt) runs every projectile list in simStep's order (rockets, grenades, knives, arrows, nets).
+##   shuriken (two homing stars), typhoon (three blades that come back)      -> throw_/release_shuriken, _typhoon (flight: step_projectiles)
+##   trident throw (throwTrident/releaseTrident, playerControl charge)       -> trident_tick, throw_trident, release_trident
+##   boomerang (throwBoomerang, releaseBoomerang, updateBoomerangs)          -> throw_/release_boomerang, step_boomerangs
+##   snake (shootSnake, updateSnakes), snowball cannon (shootBall, updateBalls) -> shoot_snake, step_snakes, shoot_ball, step_balls
+## step_all(dt) runs every projectile list in simStep's order (rockets, grenades, knives, boomerangs, arrows, snakes, balls, nets).
 ##   blower (Air Blower: held cone push, no damage)                          -> blower_tick
 ## Effects go to combat.events; randomness comes from combat.rng in the web game's Math.random order.
 
 ## Thrown weapons: wind-up starters (PROJ in the web game) and the release that runs when the wind-up ends.
-const LAUNCH := {"knife": "throw_knife", "rocket": "launch_rocket", "glauncher": "launch_grenade", "net": "shoot_net", "bow": "shoot_arrow"}
-const RELEASE := {"knife": "release_knife"}
+const LAUNCH := {"knife": "throw_knife", "rocket": "launch_rocket", "glauncher": "launch_grenade", "net": "shoot_net", "bow": "shoot_arrow",
+	"shuriken": "throw_shuriken", "typhoon": "throw_typhoon", "boomerang": "throw_boomerang", "snake": "shoot_snake", "ball": "shoot_ball"}
+const RELEASE := {"knife": "release_knife", "shuriken": "release_shuriken", "typhoon": "release_typhoon", "boomerang": "release_boomerang"}
 
-## One flying projectile (an entry of `knives` in the web game; boomerang `ty` fields are kept for later).
+## One flying projectile (an entry of `knives` in the web game: knives, shuriken stars, typhoon blades, thrown tridents).
 class Proj:
 	extends RefCounted
 	var key := ""
@@ -39,6 +44,10 @@ class Proj:
 	var turn := 0.0
 	var pierce := false
 	var hit_set := {}
+	var ty := false                ## typhoon blade: turns back (`back`) and is caught by the thrower
+	var back := false
+	var caught := false
+	var spin := 25.0               ## visual spin rate (k.spin || 25)
 	var gone := false
 
 ## A rocket, grenade, arrow or flying net (entries of rockets / grenades / arrows / nets in the web game).
@@ -61,6 +70,38 @@ class Shot:
 	var landed := false
 	var ch := 0.0                  ## arrows: how far the bow was drawn
 	var gone := false
+
+## A boomerang (boomers): phase 0 out and curving left, 1 coming back to the hand, 2 the last one dropping (no return).
+class Boom:
+	extends Shot
+	var h := 0.0                   ## heading
+	var sp := 0.0
+	var lift := 0.0                ## b.vy (vertical speed, separate from v.y)
+	var phase := 0
+	var hit_set := {}
+	var no_return := false
+	var sw_t := 0.0
+	var ended := false
+
+## A snake from the Snake Shooter (snakes): slithers after the nearest fighter and bites.
+class Snake:
+	extends Shot
+	var bites := 3
+	var kills := 0
+	var bite_cd := 0.0
+	var back_t := 0.0
+	var ignore: FighterState = null
+	var heading := 0.0
+	var grounded := false
+
+## A snowball (balls): lobbed, then rolls on, growing, and bowls people over.
+class Ball:
+	extends Shot
+	var rolling := false
+	var roll_t := 0.0
+	var r := 0.35
+	var heading := 0.0
+	var hit_set := {}
 
 ## A net lying on the ground (trapNets): holds its victims down until `life` runs out or they all got free.
 class TrapNet:
@@ -85,6 +126,9 @@ var grenades: Array = []
 var arrows: Array = []
 var nets: Array = []
 var trap_nets: Array = []
+var boomers: Array = []
+var snakes: Array = []
+var balls: Array = []
 var delayed_booms: Array = []     ## {t, x, y, z, owner} (delayedBooms)
 
 func _init(c: Combat) -> void:
@@ -106,19 +150,27 @@ func try_fire(f: FighterState, aim_point: Array = []) -> bool:
 		if f.cool > 0.0 or f.swing >= 0.0 or f.reloading: return false
 		f.cool = float(w["cooldown"]); fire_gun(f, f.weapon, aim_point); combat.use_ammo(f)
 		return true
+	if t == "boomerang":              # playerControl: no ammo spent here (releaseBoomerang counts the throw)
+		if f.cool > 0.0 or f.swing >= 0.0 or f.boom != null or f.throw_key != "": return false
+		f.cool = float(w["cooldown"]); throw_boomerang(f, f.weapon, aim_point)
+		return true
 	if LAUNCH.has(t):
-		if f.cool > 0.0 or f.swing >= 0.0: return false
+		if f.cool > 0.0 or f.swing >= 0.0 or (t == "typhoon" and ty_in_flight(f)): return false
 		f.cool = float(w["cooldown"]); call(LAUNCH[t], f, f.weapon, aim_point); combat.use_ammo(f)
 		return true
 	push_warning("Weapons.try_fire: type '%s' not ported yet" % t)
 	return false
 
-## Every projectile list, in simStep's order (updateRockets, updateGrenades, updateKnives, updateArrows, updateNets).
+## Every projectile list, in simStep's order (updateRockets, updateGrenades, updateKnives, updateBoomerangs, updateArrows,
+## updateSnakes, updateBalls, updateNets).
 func step_all(dt: float) -> void:
 	step_rockets(dt)
 	step_grenades(dt)
 	step_projectiles(dt)
+	step_boomerangs(dt)
 	step_arrows(dt)
+	step_snakes(dt)
+	step_balls(dt)
 	step_nets(dt)
 
 ## Everything in flight or lying about goes (clearProjectiles / match end).
@@ -127,7 +179,10 @@ func clear() -> void:
 		for f: FighterState in t.victims:
 			if f.trap_net == t: f.trap_t = 0.0; f.trap_net = null
 		t.victims.clear()
+	for b: Boom in boomers:
+		if b.owner != null and b.owner.boom == b: b.owner.boom = null
 	projectiles.clear(); rockets.clear(); grenades.clear(); arrows.clear(); nets.clear(); trap_nets.clear(); delayed_booms.clear()
+	boomers.clear(); snakes.clear(); balls.clear()
 ## Air Blower (type `blower`), the blower branch of playerControl (public/index.html ~9827). Runs every sim step
 ## while the fire button is held: drains `drain` ammo per second, pushes everyone in a 0.86 cone within `range`
 ## along the arm (stronger up close), lifts and stuns them a little, blames the blower for a ring-out, pushes the
@@ -171,9 +226,11 @@ func blower_tick(p: FighterState, held: bool, dt: float) -> bool:
 	if float(s["ammo"]) <= 0.0: combat.drop_slot(p)
 	return true
 
-## Called by Combat.timers when a thrown weapon's wind-up ends.
+## Called by Combat.timers when a thrown weapon's wind-up ends (the throwFn closure in the web game).
 func release(f: FighterState, key: String) -> void:
-	var t: String = combat.wdata(key).get("type", "")
+	var w := combat.wdata(key)
+	if w.get("throwable", false): release_trident(f, key); return
+	var t: String = w.get("type", "")
 	if RELEASE.has(t): call(RELEASE[t], f, key)
 
 # ============================== geometry ==============================
@@ -596,8 +653,9 @@ func release_knife(f: FighterState, key: String) -> void:
 	f.knife_t = 0.0; f.twirl_len = 1.4
 	combat.ev({"type": "projectile", "p": k})
 
-## updateKnives: 4 sub-steps per call so a fast knife can't skip through a head. Boomerang-style return (`ty`) is
-## not ported yet. Removed projectiles get gone = true and a "projectile_end" event.
+## updateKnives: 4 sub-steps per call so a fast knife can't skip through a head. Homing throws (shuriken, typhoon) steer
+## toward their target point; typhoon blades (`ty`) then turn round and fly back into the thrower's hands. Removed
+## projectiles get gone = true and a "projectile_end" event.
 func step_projectiles(dt: float) -> void:
 	var i := projectiles.size() - 1
 	while i >= 0:
@@ -613,7 +671,21 @@ func step_projectiles(dt: float) -> void:
 		var h := dt / N
 		for sub in N:
 			if gone or k.stuck > 0.0: break
-			if k.homing:               # curving throw: steer toward the target point
+			if k.ty and not k.back and (not k.homing or k.age > 0.75):    # reached the target (or flown far enough): turn round
+				k.back = true; k.homing = false
+			if k.ty and k.back:            # boomerang home: curve fast back into the thrower's hands
+				var o := k.owner
+				if o == null or o.dead: gone = true; break
+				var bx := o.chest_x - k.px
+				var by := o.chest_y - k.py
+				var bz := o.chest_z - k.pz
+				var bd := sqrt(bx * bx + by * by + bz * bz)
+				if bd < 1.1: gone = true; k.caught = true; break
+				var binv := 1.0 / bd
+				bx = bx * binv * 48.0; by = by * binv * 48.0; bz = bz * binv * 48.0
+				var ba := minf(1.0, 10.0 * h)
+				k.vx += (bx - k.vx) * ba; k.vy += (by - k.vy) * ba; k.vz += (bz - k.vz) * ba
+			elif k.homing:               # curving throw: steer toward the target point
 				var ex := k.hx - k.px
 				var ey := k.hy - k.py
 				var ez := k.hz - k.pz
@@ -632,10 +704,12 @@ func step_projectiles(dt: float) -> void:
 					k.vx = nv[0] * spd; k.vy = nv[1] * spd; k.vz = nv[2] * spd
 			k.vy -= k.grav * h
 			k.px += k.vx * h; k.py += k.vy * h; k.pz += k.vz * h
-			if _in_solid(k.px, k.py, k.pz, 0.05):
-				k.stuck = 1.6
+			if not (k.ty and k.back) and _in_solid(k.px, k.py, k.pz, 0.05):
 				combat.ev({"type": "sfx", "name": "clink", "x": k.px, "y": k.py, "z": k.pz})
-				break
+				if k.ty: k.back = true; k.homing = false     # a typhoon blade bounces off and heads home
+				else:
+					k.stuck = 1.6
+					break
 			for f: FighterState in combat.fighters:
 				if f.dead or (f == k.owner and k.age < 0.25) or k.hit_set.has(f): continue
 				for s: Array in f.spheres(combat.giant):
@@ -657,6 +731,15 @@ func step_projectiles(dt: float) -> void:
 				if gone: break
 		if gone or k.py < -30.0 or k.age > 4.0:
 			_remove(k)
+			if k.ty and k.caught and k.owner != null and not ty_in_flight(k.owner):   # last blade home: a fresh set spins into the hand
+				k.owner.knife_t = 0.0; k.owner.twirl_len = 0.5
+				combat.ev({"type": "sfx", "name": "swing", "f": k.owner})
+
+## tyInFlight: a typhoon blade of this fighter is still out.
+func ty_in_flight(p: FighterState) -> bool:
+	for k: Proj in projectiles:
+		if k.ty and k.owner == p: return true
+	return false
 
 func _remove(k: Proj) -> void:
 	k.gone = true
@@ -1024,3 +1107,443 @@ func step_nets(dt: float) -> void:
 			t.victims.clear()
 			trap_nets.erase(t)
 			combat.ev({"type": "net_end", "net": t})
+
+# ============================== shuriken + typhoon (homing throws, flight in step_projectiles) ==============================
+
+## The point a homing throw curves to: the crosshair point for the player (aim_pt, written by PlayerControl), 20 m down
+## the aim for bots; a gentle lock-on swaps in the chest of whoever is within `cone` radians of the aim.
+func _home_target(p: FighterState, d: Array, cone: float) -> Array:
+	var target: Array
+	if p.is_player and p.aim_pt.size() == 3: target = [float(p.aim_pt[0]), float(p.aim_pt[1]), float(p.aim_pt[2])]
+	else: target = [p.shoulder_x + d[0] * 20.0, p.shoulder_y + d[1] * 20.0, p.shoulder_z + d[2] * 20.0]
+	var best := cone
+	var bt: FighterState = null
+	for e: FighterState in combat.fighters:
+		if e == p or e.dead: continue
+		var ex := e.chest_x - p.shoulder_x
+		var ey := e.chest_y - p.shoulder_y
+		var ez := e.chest_z - p.shoulder_z
+		var dd := sqrt(ex * ex + ey * ey + ez * ez)
+		if dd > 70.0 or dd < 2.0: continue
+		var inv := 1.0 / dd
+		var ang := acos(Combat.clampf_js((ex * inv) * d[0] + (ey * inv) * d[1] + (ez * inv) * d[2], -1.0, 1.0))
+		if ang < best: best = ang; bt = e
+	if bt != null: target = [bt.chest_x, bt.chest_y, bt.chest_z]
+	return target
+
+## throwShuriken: wind both arms back; release_shuriken throws a star from each hand.
+func throw_shuriken(f: FighterState, key: String, _aim_point: Array = []) -> void:
+	if f.throw_key != "": return
+	f.throw_t = 0.0; f.thrown = false; f.throw_key = key
+	combat.kick_lean(f, 0.6, 0.0); combat.push_arm(f, 0.0, 2.0, 0.0)
+	combat.ev({"type": "sfx", "name": "swing", "f": f})
+
+## releaseShuriken: two stars flung out wide to either side, each curving in to the target.
+func release_shuriken(p: FighterState, key: String) -> void:
+	var w := combat.wdata(key)
+	var d := Combat.norm3(p.aim_x, p.aim_y, p.aim_z)
+	var target := _home_target(p, d, 0.16)
+	var side := Combat.norm3(-d[2], 0.0, d[0])      # the thrower's right-hand side
+	for hand: float in [1.0, -1.0]:
+		var o: Array
+		if hand == 1.0: o = [p.hand_x, p.hand_y, p.hand_z]
+		elif p.hand2_ok: o = [p.hand2_x, p.hand2_y, p.hand2_z]     # armL.localToWorld(0, -0.8, 0)
+		else: o = [p.shoulder_x + side[0] * -1.0, p.shoulder_y + side[1] * -1.0, p.shoulder_z + side[2] * -1.0]
+		o[0] += d[0] * 0.4; o[1] += d[1] * 0.4; o[2] += d[2] * 0.4
+		o = clamp_to_walls(p, o)
+		var tx: float = target[0] - o[0]
+		var ty_: float = target[1] - o[1]
+		var tz: float = target[2] - o[2]
+		var D := sqrt(tx * tx + ty_ * ty_ + tz * tz)
+		if D == 0.0: D = 1.0
+		var inv := 1.0 / D
+		tx *= inv; ty_ *= inv; tz *= inv
+		var ang := Combat.clampf_js(D * 0.03, 0.1, 0.45)   # the closer the target, the less it swings out
+		var c := cos(ang)
+		var sn := hand * sin(ang)
+		var out := Combat.norm3(tx * c + side[0] * sn, ty_ * c + side[1] * sn, tz * c + side[2] * sn)
+		var k := _proj(key, w, p, o, out, float(w["speed"]))
+		k.homing = true; k.hx = target[0]; k.hy = target[1]; k.hz = target[2]; k.turn = 5.5; k.grav = 0.0
+	combat.push_arm(p, d[0] * 3.0, d[1] * 3.0, d[2] * 3.0); combat.kick_lean(p, -1.2, combat.rng.range_f(-0.2, 0.2))
+	p.knife_t = 0.0; p.twirl_len = 0.8
+	combat.ev({"type": "sfx", "name": "slap", "f": p})
+
+func _proj(key: String, w: Dictionary, owner: FighterState, o: Array, d: Array, spd: float) -> Proj:
+	var k := Proj.new()
+	k.key = key; k.w = w; k.owner = owner
+	k.px = o[0]; k.py = o[1]; k.pz = o[2]
+	k.vx = d[0] * spd; k.vy = d[1] * spd; k.vz = d[2] * spd
+	projectiles.append(k)
+	combat.ev({"type": "projectile", "p": k})
+	return k
+
+## throwTyphoon: the shuriken wind-up; not while a blade of yours is still out.
+func throw_typhoon(f: FighterState, key: String, _aim_point: Array = []) -> void:
+	if f.throw_key != "" or ty_in_flight(f): return
+	f.throw_t = 0.0; f.thrown = false; f.throw_key = key
+	combat.kick_lean(f, 0.7, 0.0); combat.push_arm(f, 0.0, 2.0, 0.0)
+	combat.ev({"type": "sfx", "name": "swing", "f": f})
+
+## releaseTyphoon: three blades fan out, curve in, slice through people (pierce) and come back to your hand.
+func release_typhoon(p: FighterState, key: String) -> void:
+	var w := combat.wdata(key)
+	var d := Combat.norm3(p.aim_x, p.aim_y, p.aim_z)
+	var target := _home_target(p, d, 0.18)
+	var side := Combat.norm3(-d[2], 0.0, d[0])
+	for kk: float in [-1.0, 0.0, 1.0]:
+		var o := clamp_to_walls(p, [p.hand_x + d[0] * 0.5, p.hand_y + d[1] * 0.5, p.hand_z + d[2] * 0.5])
+		var to := Combat.norm3(target[0] - o[0], target[1] - o[1], target[2] - o[2])
+		var ang := kk * 0.3
+		var c := cos(ang)
+		var sn := sin(ang)
+		var out := Combat.norm3(to[0] * c + side[0] * sn, to[1] * c + side[1] * sn, to[2] * c + side[2] * sn)
+		var k := _proj(key, w, p, o, out, float(w["speed"]))
+		k.homing = true; k.hx = target[0]; k.hy = target[1]; k.hz = target[2]; k.turn = 3.6; k.grav = 0.0
+		k.pierce = true; k.spin = 38.0; k.ty = true
+	combat.push_arm(p, d[0] * 3.0, d[1] * 3.0, d[2] * 3.0); combat.kick_lean(p, -1.4, combat.rng.range_f(-0.2, 0.2))
+	p.knife_t = 0.0; p.twirl_len = 1.0
+	combat.ev({"type": "sfx", "name": "slap", "f": p})
+
+# ============================== trident throw ==============================
+
+## playerControl's trident lines (w.throwable): a tap with someone close jabs (melee), holding charges an overarm throw
+## (0..1 over 0.9 s), letting go throws it. `yaw` = the camera yaw. Returns true when a jab swing began (the caller
+## then ticks it like any melee swing).
+func trident_tick(p: FighterState, held: bool, dt: float, yaw: float) -> bool:
+	var w := combat.wdata(p.weapon)
+	var began := false
+	if p.t_charge >= 0.0:                    # charging: hold to build power, release whenever
+		if p.throw_key == "" or not p.throw_hold: p.t_charge = -1.0
+		elif held: p.t_charge = minf(1.0, p.t_charge + dt / 0.9); p.t_chg = p.t_charge
+		else: trident_let(p, p.t_charge); p.t_charge = -1.0
+	elif p.t_charge == -3.0:
+		p.t_pend += dt
+		if not held:
+			p.t_charge = -2.0
+			if p.cool <= 0.0 and p.swing < 0.0 and p.throw_key == "":
+				combat.melee_begin(p, p.weapon, yaw); began = true
+				if p.slot >= 0: p.set_ammo(p.get_ammo() - 1)
+		elif p.t_pend > 0.16:
+			p.cool = float(w["cooldown"]); throw_trident(p, p.weapon, true); combat.use_ammo(p); p.t_charge = 0.15
+	elif not held:
+		if p.t_charge == -2.0: p.t_charge = -1.0
+	elif p.t_charge == -1.0 and p.cool <= 0.0 and p.swing < 0.0 and p.throw_key == "" and p.knife_t < 0.3:
+		if enemy_in_reach(p, 6.5, 0.45, yaw): p.t_charge = -3.0; p.t_pend = 0.0   # someone close: a tap jabs, holding throws
+		else: p.cool = float(w["cooldown"]); throw_trident(p, p.weapon, true); combat.use_ammo(p); p.t_charge = 0.0
+	return began
+
+## enemyInReach: a foe within this horizontal reach, roughly in front of the camera (yaw).
+func enemy_in_reach(p: FighterState, reach: float, cos_min: float, yaw: float, max_dy: float = 2.2) -> bool:
+	var fx := sin(yaw)
+	var fz := cos(yaw)
+	for e: FighterState in combat.fighters:
+		if e == p or e.dead or combat.is_friend(p, e): continue
+		var dx := e.phys.px - p.phys.px
+		var dz := e.phys.pz - p.phys.pz
+		var d := sqrt(dx * dx + dz * dz)
+		if d > reach or absf(e.phys.py - p.phys.py) > max_dy: continue
+		if d < 0.8 or (dx * fx + dz * fz) / d > cos_min: return true
+	return false
+
+## tridentLet: let go of a charged throw.
+func trident_let(p: FighterState, pw: float) -> void:
+	p.throw_pow = pw; p.throw_hold = false
+	if p.throw_t < 0.15: p.throw_t = 0.15
+
+## throwTrident: lean back with the trident raised; hold = keep it raised until trident_let.
+func throw_trident(p: FighterState, key: String, hold: bool) -> void:
+	if p.throw_key != "": return
+	p.throw_hold = hold; p.throw_pow = 0.3
+	p.throw_t = 0.0; p.thrown = false; p.throw_key = key
+	combat.kick_lean(p, 1.6, 0.0)
+	combat.ev({"type": "sfx", "name": "swing", "f": p})
+
+## releaseTrident: thrown like a javelin; more charge = more damage, speed and a flatter flight.
+func release_trident(p: FighterState, key: String) -> void:
+	var pw := Combat.clampf_js(p.throw_pow, 0.0, 1.0)
+	var tw := {"dmg": 22.0 + 20.0 * pw, "force": 7.0 + 4.0 * pw, "speed": 44.0 + 30.0 * pw, "tri": true}
+	var d := Combat.norm3(p.aim_x, p.aim_y, p.aim_z)
+	var o := [p.shoulder_x + d[0] * 0.9, p.shoulder_y + d[1] * 0.9, p.shoulder_z + d[2] * 0.9]
+	o[1] += 0.25
+	o = clamp_to_walls(p, o)
+	var k := _proj(key, tw, p, o, d, tw["speed"])
+	k.spin = 0.0001; k.grav = 5.0 - 4.0 * pw
+	combat.push_arm(p, d[0] * 5.0, d[1] * 5.0, d[2] * 5.0); combat.kick_lean(p, -3.0, 0.0)
+	p.knife_t = 0.0; p.twirl_len = 1.2
+	combat.ev({"type": "sfx", "name": "slap", "f": p})
+
+# ============================== boomerang ==============================
+
+## throwBoomerang: wind-up (not while your boomerang is still out).
+func throw_boomerang(f: FighterState, key: String, _aim_point: Array = []) -> void:
+	if f.throw_key != "" or f.boom != null: return
+	f.throw_t = 0.0; f.thrown = false; f.throw_key = key
+	combat.kick_lean(f, 0.9, 0.0); combat.push_arm(f, 0.0, 2.5, 0.0)
+	combat.ev({"type": "sfx", "name": "swing", "f": f})
+
+## releaseBoomerang: it flies out, curves round to the left and comes back. Aimed off to the right by how far it drifts
+## by the time it gets to the crosshair (a pretend flight). Every throw costs ammo; the last one never comes back.
+func release_boomerang(p: FighterState, key: String) -> void:
+	var w := combat.wdata(key)
+	var d := Combat.norm3(p.aim_x, p.aim_y, p.aim_z)
+	var o := [p.shoulder_x + d[0] * 0.9, p.shoulder_y + d[1] * 0.9, p.shoulder_z + d[2] * 0.9]
+	o[1] += 0.25
+	o = clamp_to_walls(p, o)
+	var D := 16.0
+	if p.is_player and p.aim_pt.size() == 3:
+		var ax: float = float(p.aim_pt[0]) - o[0]
+		var az: float = float(p.aim_pt[2]) - o[2]
+		D = sqrt(ax * ax + az * az)
+	D = Combat.clampf_js(D, 5.0, 24.0)
+	var curve := float(w["curve"])
+	var speed := float(w["speed"])
+	var dh := 0.0
+	var fwd := 0.0
+	var lat := 0.0
+	var t := 0.0
+	while t < 0.75 and fwd < D:
+		dh += curve * pow(t / 0.75, 2.0) / 60.0
+		var sp := speed * maxf(0.5, 1.0 - t / 1.3) / 60.0
+		fwd += cos(dh) * sp; lat += sin(dh) * sp
+		t += 1.0 / 60.0
+	var lead := atan2(lat, maxf(fwd, 1.0)) * 0.6
+	var b := Boom.new()
+	b.kind = "boomerang"; b.key = key; b.w = w; b.owner = p
+	b.px = o[0]; b.py = o[1]; b.pz = o[2]
+	b.vx = d[0] * speed; b.vy = d[1] * speed; b.vz = d[2] * speed
+	b.h = atan2(d[0], d[2]) - lead; b.sp = speed; b.lift = d[1] * speed * 0.5
+	boomers.append(b); p.boom = b
+	combat.ev({"type": "projectile", "p": b})
+	if p.slot >= 0 and p.weapon == "boomerang" and not combat.inf:
+		p.set_ammo(p.get_ammo() - 1)                 # every throw counts, even a miss
+		if p.get_ammo() <= 0: b.no_return = true; combat.drop_slot(p)
+	combat.push_arm(p, d[0] * 4.0, d[1] * 4.0, d[2] * 4.0); combat.kick_lean(p, -2.0, combat.rng.range_f(-0.3, 0.3))
+	combat.ev({"type": "sfx", "name": "slap", "f": p})
+
+## endBoomerang: gone (caught = back in the thrower's hand).
+func _end_boomerang(b: Boom, caught: bool) -> void:
+	_end_shot(boomers, b)
+	var o := b.owner
+	if o != null:
+		if o.boom == b: o.boom = null
+		if caught:
+			combat.push_arm(o, 0.0, 2.5, 0.0)
+			combat.ev({"type": "boomerang_catch", "f": o})
+			combat.ev({"type": "sfx", "name": "pickup", "f": o})
+		if o.slot >= 0 and o.weapon == "boomerang" and o.get_ammo() <= 0 and not combat.inf: combat.drop_slot(o)
+
+## updateBoomerangs.
+func step_boomerangs(dt: float) -> void:
+	var i := boomers.size() - 1
+	while i >= 0:
+		var b: Boom = boomers[i]
+		i -= 1
+		var o := b.owner
+		var w := b.w
+		b.age += dt
+		if o == null or o.dead or b.age > 4.5 or b.py < -30.0: _end_boomerang(b, false); continue
+		if b.phase == 0:
+			b.h += float(w["curve"]) * pow(minf(1.0, b.age / 0.75), 2.0) * dt     # fairly straight, then swings round to the left
+			b.sp = float(w["speed"]) * maxf(0.5, 1.0 - b.age / 1.3)
+			b.lift *= exp(-1.5 * dt)
+			b.vx = sin(b.h) * b.sp; b.vy = b.lift; b.vz = cos(b.h) * b.sp
+			if b.age > 0.75:
+				b.hit_set.clear(); combat.ev({"type": "sfx", "name": "swing", "x": b.px, "y": b.py, "z": b.pz})
+				if b.no_return: b.phase = 2; b.lift = b.vy
+				else: b.phase = 1
+		elif b.phase == 2:                   # last throw: loses speed and drops, never turns back
+			b.lift -= 24.0 * dt; b.sp = maxf(4.0, b.sp * exp(-1.6 * dt))
+			b.vx = sin(b.h) * b.sp; b.vy = b.lift; b.vz = cos(b.h) * b.sp
+		else:
+			var ex := o.hand_x - b.px
+			var ey := o.hand_y - b.py
+			var ez := o.hand_z - b.pz
+			var d := sqrt(ex * ex + ey * ey + ez * ez)
+			if d < 1.9 and b.age > 0.3: _end_boomerang(b, true); continue
+			var inv := 1.0 / d
+			ex *= inv; ey *= inv; ez *= inv
+			var want := Combat.clampf_js(d * 3.2 + 10.0, 12.0, float(w["speed"]) * 1.3)   # slows near the hand so it can't overshoot
+			b.sp += (want - b.sp) * minf(1.0, 8.0 * dt)
+			var away := b.vx * ex + b.vy * ey + b.vz * ez < 0.0      # still flying away from you: turn hard
+			var k := 1.0 - exp(-(16.0 if away else 11.0) * dt)
+			b.vx += (ex * b.sp - b.vx) * k; b.vy += (ey * b.sp - b.vy) * k; b.vz += (ez * b.sp - b.vz) * k
+		var N := 3
+		var h := dt / N
+		for sub in N:
+			var qx := b.px
+			var qy := b.py
+			var qz := b.pz
+			b.px += b.vx * h; b.py += b.vy * h; b.pz += b.vz * h
+			if b.phase == 2 and (b.py < 0.15 or _in_solid(b.px, b.py, b.pz, 0.2)):
+				combat.ev({"type": "sfx", "name": "clink", "x": b.px, "y": b.py, "z": b.pz})
+				_end_boomerang(b, false); b.ended = true; break
+			if b.phase == 0 and _in_solid(b.px, b.py, b.pz, 0.2):
+				b.px = qx; b.py = qy; b.pz = qz; b.phase = 1; b.hit_set.clear()
+				combat.ev({"type": "sfx", "name": "clink", "x": b.px, "y": b.py, "z": b.pz})
+				break
+			for f: FighterState in combat.fighters:
+				if f == o or f.dead or b.hit_set.has(f): continue
+				for s: Array in f.spheres(combat.giant):
+					var dx: float = b.px - s[0]
+					var dy: float = b.py - s[1]
+					var dz: float = b.pz - s[2]
+					var rr: float = s[3] + (0.7 if b.phase == 1 else 0.5)   # on the way back it clips anyone it brushes past
+					if dx * dx + dy * dy + dz * dz < rr * rr:
+						var hd: bool = s[4]
+						var vd := Combat.norm3(b.vx, b.vy, b.vz)
+						var part := combat.body_part(f, b.px, b.py, b.pz, hd)
+						var pm := combat.part_mul(part, 1.5)          # classic: 1.5 on the head
+						combat.hit(f, float(w["dmg"]) * o.dmg_scale * pm, vd[0], vd[1], vd[2], float(w["force"]), hd, o,
+							Combat.zone_info(part, pm, b.px, b.py, b.pz))
+						b.hit_set[f] = true
+						combat.ev({"type": "sfx", "name": "whack", "x": b.px, "y": b.py, "z": b.pz})
+						break
+		if b.ended: continue
+		b.sw_t -= dt
+		if b.sw_t <= 0.0:
+			b.sw_t = 0.28; combat.ev({"type": "sfx", "name": "swing", "x": b.px, "y": b.py, "z": b.pz})
+
+# ============================== snake shooter ==============================
+
+## shootSnake: a snake hops out, lands, and slithers after the nearest fighter.
+func shoot_snake(p: FighterState, key: String, aim_point: Array = []) -> void:
+	var w := combat.wdata(key)
+	var d := assist_dir(p, float(w.get("assist", 0.0)), aim_point)
+	var mz := float(w["muzzle"])
+	var o := clamp_to_walls(p, [p.hand_x + d[0] * mz, p.hand_y + d[1] * mz, p.hand_z + d[2] * mz])
+	var s := Snake.new()
+	s.kind = "snake"; s.key = key; s.w = w; s.owner = p
+	s.px = o[0]; s.py = o[1]; s.pz = o[2]
+	s.vx = d[0] * 9.0; s.vy = d[1] * 9.0; s.vz = d[2] * 9.0
+	s.vy += 2.0
+	s.heading = atan2(d[0], d[2])
+	snakes.append(s)
+	combat.push_arm(p, 0.0, 1.5, 0.0); combat.kick_lean(p, -0.9, combat.rng.range_f(-0.3, 0.3))
+	combat.ev({"type": "projectile", "p": s})
+	combat.ev({"type": "sfx", "name": "boing", "f": p})
+
+static func wrap_pi(a: float) -> float:
+	return atan2(sin(a), cos(a))
+
+## updateSnakes: gravity, slither (or back off after a bite), hop over things, bite whoever it reaches.
+## Three bites, or off after someone else once it got a K.O. (a second K.O. finishes it).
+func step_snakes(dt: float) -> void:
+	var i := snakes.size() - 1
+	while i >= 0:
+		var s: Snake = snakes[i]
+		i -= 1
+		s.age += dt
+		s.vy -= 24.0 * dt
+		if s.grounded:
+			var best: FighterState = null
+			var bd := 14.0
+			for f: FighterState in combat.fighters:
+				if f.dead or f == s.owner or f == s.ignore: continue
+				var hx := f.phys.px - s.px
+				var hz := f.phys.pz - s.pz
+				var dd := sqrt(hx * hx + hz * hz)
+				if dd < bd: bd = dd; best = f
+			s.bite_cd -= dt
+			if s.back_t > 0.0:              # bounce off after a bump
+				s.back_t -= dt; s.vx = -sin(s.heading) * 7.0; s.vz = -cos(s.heading) * 7.0
+			else:
+				if best != null:
+					s.heading += Combat.clampf_js(wrap_pi(atan2(best.phys.px - s.px, best.phys.pz - s.pz) - s.heading), -3.2 * dt, 3.2 * dt)
+				s.heading += sin(s.age * 10.0) * 2.4 * dt
+				s.vx = sin(s.heading) * 8.5; s.vz = cos(s.heading) * 8.5
+		var px := s.px
+		var pz := s.pz
+		_move_axis(s, 0, dt); _move_axis(s, 2, dt); _move_axis(s, 1, dt)
+		if not s.grounded and s.age > 0.15 and absf(s.vy) < 0.01: s.grounded = true
+		var mx := s.px - px
+		var mzz := s.pz - pz
+		if s.grounded and sqrt(mx * mx + mzz * mzz) < 8.5 * dt * 0.3 and s.vy == 0.0: s.vy = 6.5; s.heading += 0.9   # hop over / around things
+		if s.py < -30.0 or s.age > 14.0: _end_shot(snakes, s); continue
+		if s.age > 0.2 and s.bite_cd <= 0.0:
+			var done := false
+			for f: FighterState in combat.fighters:
+				if f.dead or f == s.ignore or f == s.owner: continue
+				var dx := f.phys.px - s.px
+				var dz := f.phys.pz - s.pz
+				if dx * dx + dz * dz < 0.9 * 0.9 and absf(f.phys.py - s.py) < 1.3:
+					var dn := Combat.norm3(sin(s.heading), 0.5, cos(s.heading))
+					var ds := s.owner.dmg_scale if s.owner != null else 1.0
+					combat.hit(f, float(s.w["dmg"]) * ds, dn[0], dn[1], dn[2], float(s.w["force"]), false, s.owner)
+					if combat.rng.next() < float(s.w["topple"]): combat.topple(f, 1.0)
+					combat.ev({"type": "sfx", "name": "slap", "x": s.px, "y": s.py, "z": s.pz})
+					s.bites -= 1; s.bite_cd = 0.55; s.back_t = 0.28; s.vy = 5.0
+					if f.dead:                 # a snake K.O.: off after someone else
+						combat.ev({"type": "snake_ko", "f": f, "by": s.owner})
+						s.kills += 1; s.ignore = f
+						s.bites = 3 if s.kills == 1 else 0
+					if s.bites <= 0: done = true
+					break
+			if done: _end_shot(snakes, s)
+
+# ============================== snowball cannon ==============================
+
+## shootBall: lobbed straight off the arm; it lands, grows and rolls.
+func shoot_ball(p: FighterState, key: String, _aim_point: Array = []) -> void:
+	var w := combat.wdata(key)
+	var d := [p.arm_x, p.arm_y, p.arm_z]
+	var mz := float(w["muzzle"])
+	var o := clamp_to_walls(p, [p.hand_x + d[0] * mz, p.hand_y + d[1] * mz, p.hand_z + d[2] * mz])
+	var ts := float(w["throwSpeed"])
+	var b := Ball.new()
+	b.kind = "ball"; b.key = key; b.w = w; b.owner = p
+	b.px = o[0]; b.py = o[1]; b.pz = o[2]
+	b.vx = d[0] * ts; b.vy = d[1] * ts; b.vz = d[2] * ts
+	b.vy += 2.5
+	b.heading = atan2(d[0], d[2])
+	balls.append(b)
+	combat.push_arm(p, 0.0, 3.0, 0.0); combat.push_arm(p, d[0] * -2.5, d[1] * -2.5, d[2] * -2.5)
+	combat.kick_lean(p, -2.0, combat.rng.range_f(-0.4, 0.4))
+	combat.ev({"type": "projectile", "p": b})
+	combat.ev({"type": "sfx", "name": "drop", "f": p})
+
+## Height of a snowball's centre (mesh.position.y: the ball sits on the floor 0.2 below pos).
+static func ball_y(b: Ball) -> float:
+	return b.py - 0.2 + b.r
+
+## updateBalls: falls (projG), starts rolling when it lands, grows and speeds up, smashes on a wall, bowls people over.
+func step_balls(dt: float) -> void:
+	var pg := 0.35 if combat.grav_setting < 0.3 else 1.0
+	var i := balls.size() - 1
+	while i >= 0:
+		var b: Ball = balls[i]
+		i -= 1
+		b.age += dt
+		b.vy -= 24.0 * pg * dt
+		if b.rolling:
+			b.roll_t += dt
+			b.r = minf(1.7, 0.35 + b.roll_t * 0.6)
+			var sp := minf(10.5, 5.0 + b.roll_t * 3.2)
+			b.vx = sin(b.heading) * sp; b.vz = cos(b.heading) * sp
+		var px := b.px
+		var pz := b.pz
+		_move_axis(b, 0, dt); _move_axis(b, 2, dt); _move_axis(b, 1, dt)
+		if not b.rolling and b.age > 0.12 and absf(b.vy) < 0.01:
+			b.rolling = true
+			combat.ev({"type": "sfx", "name": "bounce", "x": b.px, "y": b.py, "z": b.pz})
+			if sqrt(b.vx * b.vx + b.vz * b.vz) > 0.5: b.heading = atan2(b.vx, b.vz)
+		var my := ball_y(b)
+		if b.py < -30.0 or b.age > 8.0 or b.roll_t > 5.5:
+			_end_shot(balls, b); continue
+		var mx := b.px - px
+		var mzz := b.pz - pz
+		if b.rolling and b.roll_t > 0.2 and sqrt(mx * mx + mzz * mzz) < 4.0 * dt and b.vy == 0.0:   # ran into a wall: smash
+			combat.ev({"type": "ball_smash", "x": b.px, "y": my, "z": b.pz, "r": b.r})
+			combat.ev({"type": "sfx", "name": "whack", "x": b.px, "y": b.py, "z": b.pz})
+			_end_shot(balls, b); continue
+		if b.rolling:
+			for f: FighterState in combat.fighters:
+				if f.dead or b.hit_set.has(f) or (f == b.owner and b.roll_t < 0.8): continue
+				var dx := f.phys.px - b.px
+				var dz := f.phys.pz - b.pz
+				if dx * dx + dz * dz < (b.r + 0.5) * (b.r + 0.5) and absf(f.phys.py + 0.8 - my) < b.r + 1.3:
+					b.hit_set[f] = true
+					var dn := Combat.norm3(sin(b.heading) + dx * 0.15, 0.38, cos(b.heading) + dz * 0.15)
+					var ds := b.owner.dmg_scale if b.owner != null else 1.0
+					combat.hit(f, float(b.w["dmg"]) * ds * (0.7 + b.r * 0.3), dn[0], dn[1], dn[2], float(b.w["force"]) * (0.8 + b.r * 0.25), false, b.owner)
+					combat.topple(f, 1.5)
+					combat.ev({"type": "sfx", "name": "whack", "x": b.px, "y": b.py, "z": b.pz})

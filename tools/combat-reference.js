@@ -87,13 +87,22 @@ const FUNCS = ['function raySphere\\(', 'function aimFromHand\\(', 'function cla
   'function addKo\\(', 'function useAmmo\\(', 'function shove\\(', 'function doKick\\(', 'function throwKnife\\(', 'function releaseKnife\\(', 'function updateKnives\\(',
   'function netNum\\(', 'function netCleanHit\\(', 'function assistDir\\(', 'function launchRocket\\(', 'function groundBelow\\(', 'function explode\\(',
   'function updateRockets\\(', 'function moveGrenadeAxis\\(', 'function launchGrenade\\(', 'function updateGrenades\\(', 'function shootArrow\\(', 'function updateArrows\\(',
-  'function netGround\\(', 'function shootNet\\(', 'function landNet\\(', 'function updateNets\\('];
+  'function netGround\\(', 'function shootNet\\(', 'function landNet\\(', 'function updateNets\\(',
+  'function tyInFlight\\(', 'function throwTyphoon\\(', 'function releaseTyphoon\\(', 'function throwShuriken\\(', 'function releaseShuriken\\(',
+  'function throwBoomerang\\(', 'function releaseBoomerang\\(', 'function endBoomerang\\(', 'function updateBoomerangs\\(', 'function shootSnake\\(', 'function updateSnakes\\(',
+  'function shootBall\\(', 'function updateBalls\\(', 'function tridentLet\\(', 'function throwTrident\\(', 'function releaseTrident\\(', 'function enemyInReach\\('];
 const LINES = [/^const DOWN = .*/m, /^const GUN_KEYS = .*/m, /^const UZI_SIDE = .*/m, /^const shotSpread = .*/m, /^const BAT_BASE = .*/m, /^const newSt = .*/m, /^const hpOf = .*/m, /^const HIT_MAX = .*/m, /^const BOT_RESPAWN = .*/m, /^const ladderOn = .*/m,
-  /^const projG = .*/m, /^const rockets = \[\], grenades = .*/m, /^const delayedBooms = .*/m, /^const nets = \[\], trapNets = .*/m];
+  /^const projG = .*/m, /^const wrapPi = .*/m, /^const rockets = \[\], grenades = .*/m, /^const delayedBooms = .*/m, /^const nets = \[\], trapNets = .*/m];
 
 /* stands in for any three.js object the projectile code builds (meshes, geometries, materials): every property, call and `new`
    gives the stub back, and it reads as 0 in arithmetic. Never calls Math.random. */
 const ANY = new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitive ? () => 0 : ANY), apply: () => ANY, construct: () => ANY, set: () => true });
+/* THREE.Mesh keeps a real position: the snowball's hit test reads mesh.position.y back */
+class FakeMesh {
+  constructor() { this.position = new Vector3(); this.rotation = new Vector3(); this.scale = { x: 1, y: 1, z: 1, set() {}, setScalar() {} }; this.material = ANY; this.geometry = ANY; this.inner = ANY; }
+  add() {} lookAt() {}
+}
+const THREE_STUB = new Proxy({}, { get: (t, k) => (k === 'Mesh' ? FakeMesh : ANY) });
 
 function makeContext() {
   const noop = () => {};
@@ -108,10 +117,11 @@ function makeContext() {
     clamp: (v, a, b) => Math.max(a, Math.min(b, v)), lerp: (a, b, t) => a + (b - a) * t,
     puff: noop, koBurst: noop, koPop: noop, feedAdd: noop, dmgNumber: noop, toast: noop, sfx: noop, hitMarker: noop, tracer: noop, bulletTracer: noop, bulletHole: noop,
     ejectShell: noop, flameFx: noop, updateCoins: noop, updateKoText: noop, endMatch: noop, ggAdvance: noop, ggGive: noop, eliminate: (f) => { f.elim = true; }, passPotato: noop,
-    dashTick: noop, el: () => null, landDust: noop, ringFx: noop, tyInFlight: () => false,
+    dashTick: noop, el: () => null, landDust: noop, ringFx: noop, feedItems: [], snakes: [], balls: [], boomers: [],
+    makeShurikenMesh: () => ANY, makeTyphoonMesh: () => ANY, makeBoomerangMesh: () => ANY, makeWeaponMesh: () => ANY,
     makeKnifeMesh: () => ({ position: { copy() {} }, lookAt() {}, inner: { rotation: { y: 0 } } }), scene: { add() {}, remove() {} },
     netSend: m => ctx.NETLOG.push(JSON.parse(JSON.stringify(m))),
-    THREE: ANY, rocketGeo: ANY, grenGeo: ANY, boomGeo: ANY, fx: ANY, camera: ANY, flashV: 0, lm: () => ANY, makeArrowMesh: () => ANY, arrows: [], player: null,
+    THREE: THREE_STUB, rocketGeo: ANY, grenGeo: ANY, boomGeo: ANY, fx: ANY, camera: ANY, flashV: 0, lm: () => ANY, makeArrowMesh: () => ANY, arrows: [], player: null,
     predictLanding: () => ANY, nameOf: () => '',
   };
   ctx.giantOn = () => ctx.GIANT;
@@ -135,10 +145,12 @@ function makeContext() {
   code += '  setWeapon(key) { this.weapon = key; this.swing = -1; this.batValid = false; this.nocked = false; this.grabT = -1; this.draw = 0; }\n';
   code += '  reloadCleanup() {}\n}\n';
   { const b = block(/^  \} else if \(w\.type === 'blower'\) \{/m); code += 'function blowerTick(p, w, dt, mouse) ' + b.slice(b.indexOf('{')) + '\nglobalThis.blowerTick = blowerTick;\n'; }   // playerControl's blower branch
+  { const b = block(/^    if \(w\.throwable\) \{/m); code += 'function tridentTick(p, w, dt, mouse) ' + b.slice(b.indexOf('{')) + '\nglobalThis.tridentTick = tridentTick;\n'; }   // playerControl's trident branch
   code += 'globalThis.armQuat = function() { this.arm.quaternion.setFromUnitVectors(DOWN, this.armDir);\n' + block(/^    if \(this\.slot >= 0 && GUN_KEYS\.includes\(this\.weapon\) && !this\.dead\)/m) + '\n};\n';
   code += 'globalThis.FighterBase = FighterBase; globalThis.useAmmo = useAmmo; globalThis.shove = shove; globalThis.doKick = doKick; globalThis.throwKnife = throwKnife;' +
     'globalThis.updateKnives = updateKnives; globalThis.netCleanHit = netCleanHit; globalThis.newSt = newSt; globalThis.hpOf = hpOf; globalThis.BAT_N = BAT_N;' +
-    'globalThis.PROJ = { knife: throwKnife, net: shootNet, glauncher: launchGrenade, bow: shootArrow }; globalThis.launchRocket = launchRocket; globalThis.shootArrow = shootArrow;' +
+    'globalThis.PROJ = { knife: throwKnife, net: shootNet, glauncher: launchGrenade, bow: shootArrow, boomerang: throwBoomerang, shuriken: throwShuriken, typhoon: throwTyphoon, snake: shootSnake, ball: shootBall };' +
+    'globalThis.throwBoomerang = throwBoomerang; globalThis.tyInFlight = tyInFlight; globalThis.updateBoomerangs = updateBoomerangs; globalThis.updateSnakes = updateSnakes; globalThis.updateBalls = updateBalls; globalThis.launchRocket = launchRocket; globalThis.shootArrow = shootArrow;' +
     'globalThis.updateRockets = updateRockets; globalThis.updateGrenades = updateGrenades; globalThis.updateArrows = updateArrows; globalThis.updateNets = updateNets;' +
     'globalThis.rockets = rockets; globalThis.grenades = grenades; globalThis.delayedBooms = delayedBooms; globalThis.nets = nets; globalThis.trapNets = trapNets;';
   vm.createContext(ctx);
@@ -164,7 +176,7 @@ function mkFighter(ctx, d, i) {
     handPos: new Vector3(), armDir: new Vector3(0, 0, 1), aimTarget: new Vector3(0, 0, 1), shoulderPos: new Vector3(), headPos: new Vector3(), chestPos: new Vector3(), legPos: new Vector3(),
     armVel: new Vector3(), LEAN: [0, 0], HEAD: [0, 0], off: { head: [0, 1.95, 0], chest: [0, 1.22, 0], hand: [0.3, 1.3, 0.4], shoulder: [0.3, 1.55, 0] }, follow: true,
   });
-  f.arm = { quaternion: new Quaternion() }; f.armQuat = ctx.armQuat;
+  f.arm = { quaternion: new Quaternion() }; f.armQuat = ctx.armQuat; f.armL = {};
   f.lean = kick(f.LEAN); f.head = kick(f.HEAD);
   for (let k = 0; k < ctx.BAT_N; k++) { f.batNow.push(new Vector3()); f.batPrev.push(new Vector3()); }
   f.hp = ctx.hpOf(f);
@@ -190,12 +202,15 @@ function dump(ctx) {
       f.cool, f.swing, f.kickT, f.weapon || '', f.slot, JSON.stringify(sl), f.reloading ? 1 : 0, f.rlT, f.ko, f.st.hits, f.st.dmg, f.st.taken, f.st.deaths, f.st.heads, f.st.shots,
       f.st.streak, f.st.multi, f.LEAN[0], f.LEAN[1], f.HEAD[0], f.HEAD[1], f.armVel.x, f.armVel.y, f.armVel.z, f.aimTarget.x, f.aimTarget.y, f.aimTarget.z, f.climb, f.fallSide,
       f.throwT, f.knifeT, f.returnSlot === null ? -1 : f.returnSlot, f.lives, f.elim ? 1 : 0, f.melee || 0, f.lastHitTime, f.spin || 0, f.uziSide,
-      f.trapT, f.burn, f.draw || 0, f.nocked ? 1 : 0, f.grabT, f.lieSide];
+      f.trapT, f.burn, f.draw || 0, f.nocked ? 1 : 0, f.grabT, f.lieSide, f.tCharge == null ? -1 : f.tCharge, f.throwHold ? 1 : 0, f.boom ? 1 : 0, f.twirlLen];
   });
-  const K = ctx.knives.map(k => [k.pos.x, k.pos.y, k.pos.z, k.vel.x, k.vel.y, k.vel.z, k.age, k.stuck]);
+  const K = ctx.knives.map(k => [k.pos.x, k.pos.y, k.pos.z, k.vel.x, k.vel.y, k.vel.z, k.age, k.stuck, k.home ? 1 : 0, k.back ? 1 : 0]);
   const P = (k, ...x) => [k.pos.x, k.pos.y, k.pos.z, k.vel.x, k.vel.y, k.vel.z, k.age, ...x];
   const out = { f: F, k: K, net: ctx.NETLOG.slice(),
     r: ctx.rockets.map(r => P(r)), g: ctx.grenades.map(g => P(g, g.fuse, g.landed ? 1 : 0)), a: ctx.arrows.map(a => P(a, a.stuck, a.ch)), n: ctx.nets.map(n => P(n)),
+    bm: ctx.boomers.map(b => [b.pos.x, b.pos.y, b.pos.z, b.v.x, b.v.y, b.v.z, b.age, b.phase, b.sp, b.vy, b.h, b.hit.size]),
+    sn: ctx.snakes.map(k => P(k, k.bites, k.kills, k.biteCd, k.backT, k.heading, k.grounded ? 1 : 0)),
+    bl: ctx.balls.map(b => P(b, b.r, b.rollT, b.rolling ? 1 : 0, b.heading, b.hit.size)),
     tn: ctx.trapNets.map(t => [t.t, t.life, t.victims.length]), db: ctx.delayedBooms.map(d => [d.t, d.pos.x, d.pos.y, d.pos.z]) };
   ctx.NETLOG.length = 0;
   return out;
@@ -236,8 +251,10 @@ function apply(ctx, op) {
         if (p.cool <= 0 && p.swing < 0 && !p.reloading) { p.cool = w.cooldown; p.fireGun(w); ctx.useAmmo(p); }
       } else if (w.type === 'rocket') {
         if (p.cool <= 0 && p.swing < 0) { p.cool = w.cooldown; ctx.launchRocket(p, w); ctx.useAmmo(p); }
+      } else if (w.type === 'boomerang') {
+        if (p.cool <= 0 && p.swing < 0 && !p.boom && !p.throwFn) { p.cool = w.cooldown; ctx.throwBoomerang(p, w); }
       } else if (ctx.PROJ[w.type]) {
-        if (p.cool <= 0 && p.swing < 0) { p.cool = w.cooldown; ctx.PROJ[w.type](p, w); ctx.useAmmo(p); }
+        if (p.cool <= 0 && p.swing < 0 && !(w.type === 'typhoon' && ctx.tyInFlight(p))) { p.cool = w.cooldown; ctx.PROJ[w.type](p, w); ctx.useAmmo(p); }
       }
       break;
     }
@@ -273,6 +290,16 @@ function apply(ctx, op) {
       ctx.blowerTick(f, w, op.dt, { l: !!op.held });
       break;
     }
+    case 'trident': {                                       // playerControl's throwable-melee lines (trident: tap jabs, hold charges a throw)
+      F.forEach(pose); ctx.cam.yaw = op.yaw;
+      const w = ctx.WEAPONS[f.weapon] || ctx.WEAPONS.spatula, p = f, incap = p.dead || p.downT > 0;
+      if (!w.throwable || incap) { p.tCharge = -1; p.tPend = -1; if (p.throwHold) { p.throwHold = false; p.throwFn = null; } }
+      if (incap || w.type !== 'melee' || !w.throwable) break;
+      const was = p.swing;
+      ctx.tridentTick(p, w, op.dt, { l: !!op.held });
+      if (was < 0 && p.swing >= 0) p.melee = op.yaw;
+      break;
+    }
     case 'melee': {                                         // playerControl's melee line
       const w = ctx.WEAPONS[f.weapon] || ctx.WEAPONS.spatula, p = f;
       if (w.type !== 'melee' || p.dead || p.downT > 0) break;
@@ -289,7 +316,7 @@ function apply(ctx, op) {
           const w = ctx.WEAPONS[g.weapon] && ctx.WEAPONS[g.weapon].swingTime ? ctx.WEAPONS[g.weapon] : ctx.WEAPONS.spatula;
           if (g.swing >= 0 && !g.dead && g.meleeTick(w, op.dt, g.melee || 0)) g.afterSwing();
         }
-        ctx.updateRockets(op.dt); ctx.updateGrenades(op.dt); ctx.updateKnives(op.dt); ctx.updateArrows(op.dt); ctx.updateNets(op.dt);
+        ctx.updateRockets(op.dt); ctx.updateGrenades(op.dt); ctx.updateKnives(op.dt); ctx.updateBoomerangs(op.dt); ctx.updateArrows(op.dt); ctx.updateSnakes(op.dt); ctx.updateBalls(op.dt); ctx.updateNets(op.dt);
         ctx.simTime += op.dt;
         F.forEach(pose);
         for (const g of F) g.meleeSweep();
@@ -313,6 +340,7 @@ function scenario() {
   ];
   const ops = [];
   const step = (n, dt = 1 / 120) => ops.push({ op: 'step', n, dt });
+  const fine = (n, dt = 1 / 120) => { while (n > 0) { const m = Math.min(10, n); step(m, dt); n -= m; } };   // batch 2: compare mid-flight too
   ops.push({ op: 'cfg', key: 'spawns', val: [[0, 0], [5, 5], [-6, 2], [3, -7]], y: 0.01 });
   ops.push({ op: 'cfg', key: 'solids', val: [{ minX: -20, maxX: 20, minZ: -20, maxZ: 20, top: 0, bottom: -1 }, { minX: -3, maxX: 3, minZ: 12, maxZ: 13, top: 4, bottom: 0 }] });
   for (let i = 0; i < fighters.length; i++) ops.push({ op: 'placeAt', f: i, x: fighters[i].pos[0], z: fighters[i].pos[2], y: 0.01 });
@@ -618,6 +646,84 @@ function scenario() {
       ops.push({ op: 'pickup', f: 3, key: 'blower' }, { op: 'pose', f: 3, aim: [0.1, -0.05, -1] });   // someone else blows f0..f2 the other way
       for (let k = 0; k < 60; k++) { ops.push({ op: 'blow', f: 3, held: true, dt: 1 / 120 }); step(1); }
       ops.push({ op: 'cfg', key: 'mode', val: 'classic' });
+    },
+    /* ---- batch 2: shuriken, typhoon, boomerang, snake, snowball, trident throw ---- */
+    shuriken() {                                    // two stars from both hands, lock-on, homing (turn 5.5, no gravity), wall stick, a bot thrower
+      const pts = [[0, 0], [0.3, -12], [3.5, -15], [-1, 9], [6, -5]];
+      const reset = (first) => { for (const i of [0, 1, 2, 3, 4]) ops.push(first || (i !== 0 && i !== 3) ? { op: 'placeAt', f: i, x: pts[i][0], z: pts[i][1], y: 0.01 } : { op: 'place', f: i, p: [pts[i][0], 0.01, pts[i][1]] }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 }); };
+      ops.push({ op: 'cfg', key: 'kb', val: 1 }, { op: 'cfg', key: 'giant', val: 0 }, { op: 'cfg', key: 'mode', val: 'classic' });
+      reset(true);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.4, 1.3, -12] }, { op: 'pose', f: 0, aim: [0.03, 0.0, -1] }, { op: 'pickup', f: 0, key: 'shuriken' });
+      for (let k = 0; k < 4; k++) { ops.push({ op: 'fire', f: 0 }); fine(90); }                                   // locked on to f1
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [-8, 1, -10] }, { op: 'pose', f: 0, aim: [-0.6, 0.0, -0.8] }); // nobody near the crosshair: curves to the point
+      ops.push({ op: 'fire', f: 0 }); fine(200); reset();
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [3.5, 1.2, -15] }, { op: 'pose', f: 0, aim: [0.22, 0.0, -1] }, { op: 'fire', f: 0 }); fine(150); reset();
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0, 2, 12] }, { op: 'pose', f: 0, aim: [0, 0.05, 1] }, { op: 'fire', f: 0 }); fine(300); reset();   // into the wall
+      ops.push({ op: 'pickup', f: 3, key: 'shuriken' }, { op: 'pose', f: 3, aim: [0.05, 0.0, -1] });
+      for (let k = 0; k < 3; k++) { ops.push({ op: 'fire', f: 3 }); fine(100); }
+      reset();
+    },
+    typhoon() {                                     // three blades fan out, home in, pierce, turn back (target / 0.75 s / wall) and are caught; no second throw while out
+      const pts = [[0, 0], [0.3, -9], [1.8, -10], [-1, 9], [6, -5]];
+      const reset = (first) => { for (const i of [0, 1, 2, 3, 4]) ops.push(first || (i !== 0 && i !== 3) ? { op: 'placeAt', f: i, x: pts[i][0], z: pts[i][1], y: 0.01 } : { op: 'place', f: i, p: [pts[i][0], 0.01, pts[i][1]] }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 }); };
+      reset(true);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.3, -9] }, { op: 'pose', f: 0, aim: [0.03, 0.0, -1] }, { op: 'pickup', f: 0, key: 'typhoon' });
+      ops.push({ op: 'fire', f: 0 }); fine(40); ops.push({ op: 'set', f: 0, key: 'cool', val: 0 }, { op: 'fire', f: 0 }); fine(200); reset();   // second press while the blades are out: nothing
+      ops.push({ op: 'fire', f: 0 }); fine(30); ops.push({ op: 'place', f: 0, p: [3, 0.01, 2] }); fine(250); reset();                          // the thrower moved: they find him
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0, 2, 12] }, { op: 'pose', f: 0, aim: [0, 0.05, 1] }, { op: 'fire', f: 0 }); fine(250); reset();   // off the wall and home
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.3, -9] }, { op: 'pose', f: 0, aim: [0.03, 0.0, -1] }, { op: 'fire', f: 0 }); fine(20);
+      ops.push({ op: 'hit', f: 0, a: 1, dmg: 999, dir: [0, 0, 1], force: 5 }); fine(200);                                                      // the thrower is K.O.: the blades are lost
+      reset(true);
+      ops.push({ op: 'pickup', f: 3, key: 'typhoon' }, { op: 'pose', f: 3, aim: [0.05, 0.0, -1] });
+      for (let k = 0; k < 2; k++) { ops.push({ op: 'fire', f: 3 }); fine(200); }
+      reset();
+    },
+    boomerang() {                                   // pre-aimed lead, curve, return + catch, wall bounce, ammo per throw, last one never comes back, a bot
+      const pts = [[0, 0], [0.3, -12], [-2.5, -14], [-1, 9], [6, -5]];
+      const reset = (first) => { for (const i of [0, 1, 2, 3, 4]) ops.push(first || (i !== 0 && i !== 3) ? { op: 'placeAt', f: i, x: pts[i][0], z: pts[i][1], y: 0.01 } : { op: 'place', f: i, p: [pts[i][0], 0.01, pts[i][1]] }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 }); };
+      reset(true);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.3, -12] }, { op: 'pose', f: 0, aim: [0.03, 0.0, -1] }, { op: 'pickup', f: 0, key: 'boomerang' });
+      ops.push({ op: 'fire', f: 0 }); fine(40); ops.push({ op: 'fire', f: 0 }); fine(300); reset();          // a second press while it is out: nothing
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.3, -3] }, { op: 'fire', f: 0 }); fine(300); reset();  // close: D clamps to 5
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0, 2, 12] }, { op: 'pose', f: 0, aim: [0, 0.05, 1] }, { op: 'fire', f: 0 }); fine(300); reset();   // the wall turns it back early
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.3, -12] }, { op: 'pose', f: 0, aim: [0.03, 0.0, -1] });
+      for (let k = 0; k < 3; k++) { ops.push({ op: 'fire', f: 0 }); fine(400); reset(); }                     // runs out: the last one drops
+      ops.push({ op: 'pickup', f: 0, key: 'boomerang' }, { op: 'fire', f: 0 }); fine(20); ops.push({ op: 'place', f: 0, p: [4, 0.01, 4] }); fine(400); reset();   // has to chase you
+      ops.push({ op: 'pickup', f: 3, key: 'boomerang' }, { op: 'pose', f: 3, aim: [0.05, 0.0, -1] });
+      for (let k = 0; k < 2; k++) { ops.push({ op: 'fire', f: 3 }); fine(400); reset(); }
+    },
+    snake() {                                       // hops out, lands, slithers after the nearest, bites (topple chance), backs off, hops over walls, K.O. -> next target
+      const pts = [[0, 0], [0.3, -6], [3, -9], [-1, 9], [6, -5]];
+      const reset = (first) => { for (const i of [0, 1, 2, 3, 4]) ops.push(first || (i !== 0 && i !== 3) ? { op: 'placeAt', f: i, x: pts[i][0], z: pts[i][1], y: 0.01 } : { op: 'place', f: i, p: [pts[i][0], 0.01, pts[i][1]] }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 }); };
+      reset(true);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 0.5, -6] }, { op: 'pose', f: 0, aim: [0.03, -0.1, -1] }, { op: 'pickup', f: 0, key: 'snake' });
+      ops.push({ op: 'fire', f: 0 }); fine(700, 1 / 60); reset();
+      ops.push({ op: 'set', f: 1, key: 'hp', val: 20 }, { op: 'set', f: 2, key: 'hp', val: 20 }, { op: 'fire', f: 0 }); fine(900, 1 / 60); reset();   // K.O.s: it goes after someone else
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0, 1, 12] }, { op: 'pose', f: 0, aim: [0, 0, 1] }, { op: 'fire', f: 0 }); fine(500, 1 / 60); reset();   // toward the wall
+      ops.push({ op: 'pickup', f: 3, key: 'snake' }, { op: 'pose', f: 3, aim: [0.05, -0.1, -1] }, { op: 'fire', f: 3 }); fine(700, 1 / 60); reset();
+    },
+    snow() {                                        // lobbed off the arm, lands, rolls, grows, bowls people over (topple), smashes on walls, Moon Drift float
+      const pts = [[0, 0], [0.3, -10], [-0.5, -14], [-1, 9], [6, -5]];
+      const reset = (first) => { for (const i of [0, 1, 2, 3, 4]) ops.push(first || (i !== 0 && i !== 3) ? { op: 'placeAt', f: i, x: pts[i][0], z: pts[i][1], y: 0.01 } : { op: 'place', f: i, p: [pts[i][0], 0.01, pts[i][1]] }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 }, { op: 'set', f: i, key: 'getupImmune', val: 0 }); };
+      reset(true);
+      ops.push({ op: 'pose', f: 0, aim: [0.03, 0.2, -1] }, { op: 'pickup', f: 0, key: 'snow' }, { op: 'pickup', f: 0, key: 'snow' });
+      ops.push({ op: 'fire', f: 0 }); fine(500, 1 / 60); reset();
+      ops.push({ op: 'pose', f: 0, aim: [0, 0.2, 1] }, { op: 'fire', f: 0 }); fine(400, 1 / 60); reset();               // rolls into the wall: smash
+      ops.push({ op: 'cfg', key: 'grav', val: 0.2 }, { op: 'pose', f: 0, aim: [0.03, 0.3, -1] }, { op: 'fire', f: 0 }); fine(500, 1 / 60); ops.push({ op: 'cfg', key: 'grav', val: 1 }); reset();
+      ops.push({ op: 'pickup', f: 3, key: 'snow' }, { op: 'pose', f: 3, aim: [0.05, 0.2, -1] }, { op: 'fire', f: 3 }); fine(500, 1 / 60); reset();
+    },
+    tridentThrow() {                                // hold to charge (0.9 s), let go to throw; a tap with someone close jabs, holding turns into a throw
+      const pts = [[0, 0], [0.3, -12], [-2, -16], [-1, 9], [6, -5]];
+      const reset = (first) => { for (const i of [0, 1, 2, 3, 4]) ops.push(first || (i !== 0 && i !== 3) ? { op: 'placeAt', f: i, x: pts[i][0], z: pts[i][1], y: 0.01 } : { op: 'place', f: i, p: [pts[i][0], 0.01, pts[i][1]] }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 }, { op: 'set', f: i, key: 'cool', val: 0 }); };
+      const tri = (held, n) => { for (let k = 0; k < n; k++) { ops.push({ op: 'trident', f: 0, held, dt: 1 / 120, yaw: Math.PI }); step(1); } };
+      reset(true);
+      ops.push({ op: 'pose', f: 0, aim: [0.025, 0.04, -1] }, { op: 'pickup', f: 0, key: 'trident' });
+      for (const n of [130, 40, 2]) { tri(1, n); tri(0, 1); step(200); reset(); }                               // full, part and no charge
+      ops.push({ op: 'pose', f: 0, aim: [0, 0.05, 1] }); tri(1, 60); tri(0, 1); step(300); reset();             // into the wall
+      ops.push({ op: 'pose', f: 0, aim: [0.025, 0.04, -1] }, { op: 'place', f: 2, p: [0.4, 0.01, -2] });
+      tri(1, 1); tri(0, 1); step(150);                                                                              // someone close: a tap jabs
+      ops.push({ op: 'place', f: 2, p: [0.4, 0.01, -2] }); tri(1, 40); tri(0, 1); step(200);                       // holding it turns into a throw
+      ops.push({ op: 'pickup', f: 0, key: 'bat' }); tri(1, 5); step(30); reset();                                // not throwable: charge state resets
     },
   };
   for (const b of Object.keys(blocks)) blocks[b]();
