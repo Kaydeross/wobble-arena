@@ -8419,8 +8419,29 @@ function hostRecv(c, m) {
   if (c._nid === undefined) return;
   if (m.t === 'rv') { netVote(c._nid); return; }
   if (m.t === 'ping') { try { c.send({ t: 'pong', ts: m.ts }); } catch (e) { /* ignore */ } return; }
+  m = netGuard(m, c._nid); if (!m) return;                         // a guest may only speak for its own wobbler: the host stamps who sent it and drops anything a guest is not allowed to say
   if (m.t === 'h') { if (m.to === 0) netHandle(m); else { const t = net.conns[m.to]; if (t && t.open) t.send(m); } return; }
   netHandle(m); netAllConns(m, c);
+}
+const GUEST_MSGS = new Set(['s', 'S', 'sw', 'f', 'k', 'h', 'ko', 'take', 'chat']);       // everything else (start, roster, slot, crate(s), pend, rvs, kick, ...) only the host may send
+const HIT_MAX = { d: 250, f: 120 };
+function netNum(v, lo, hi, def) { v = +v; return Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def; }
+function netCleanHit(m) {                                          // damage and push of a hit that came over the network: numbers only, sane sizes
+  m.d = netNum(m.d, 0, HIT_MAX.d, 0); m.f = netNum(m.f, 0, HIT_MAX.f, 0);
+  m.x = netNum(m.x, -2, 2, 0); m.y = netNum(m.y, -2, 2, 0); m.z = netNum(m.z, -2, 2, 0);
+  return m;
+}
+function netGuard(m, slot) {                                       // host: check and fix a message from the guest in `slot`; null = drop it
+  if (typeof m.t !== 'string' || !GUEST_MSGS.has(m.t)) return null;
+  switch (m.t) {
+    case 's': m.id = slot; break;
+    case 'S': { if (!Array.isArray(m.l)) return null; const mine = m.l.filter(it => it && typeof it === 'object').slice(0, 1); if (!mine.length) return null; mine[0].id = slot; m.l = mine; break; }
+    case 'sw': case 'f': case 'k': case 'chat': m.id = slot; break;
+    case 'h': if ((m.from | 0) !== slot) return null; m.from = slot; netCleanHit(m); break;
+    case 'ko': if ((m.to | 0) !== slot) return null; break;
+    case 'take': if (!pickups.some(p => p.cid === m.cid)) return null; break;
+  }
+  return m;
 }
 function hostDrop(c) {
   const id = c._nid; if (id === undefined || !net || net.conns[id] !== c) return;
@@ -8469,7 +8490,7 @@ function clientRecv(m) {
   if (!net) return;
   if (net.id < 0 && !['welcome', 'full', 'badver', 'kick'].includes(m.t)) return;          // nothing counts until the host has welcomed me
   if (m.t === 'welcome') { net.id = m.id; if (m.name) net.roomName = String(m.name).slice(0, 24); net.pub = !!m.pub; netShowLobby(); return; }
-  if (m.t === 'roster') { net.roster = m.roster; if (net.migrated && m.roster[0]) { toast(m.roster[0].name + ' is now the host.'); netStatus(m.roster[0].name + ' is now the host.'); net.migrated = null; } if (m.max) { net.optMax = m.max | 0; net.optBots = !!m.bots; net.optLim = m.lim | 0; net.bhv = m.bhv === 'dummy' ? 'dummy' : 'brawl'; net.hdiff = DIFFS[m.diff] ? m.diff : 'normal'; net.hinfo = { modeName: String(m.modeName || '').slice(0, 24), map: String(m.map || '').slice(0, 24) }; } netShowLobby(); return; }
+  if (m.t === 'roster') { if (!Array.isArray(m.roster)) return; net.roster = m.roster.slice(0, NET_MAX).map(r => Object.assign({ id: r && r.id | 0 }, cleanInfo(r || {}, r && r.id | 0))); if (net.migrated && m.roster[0]) { toast(m.roster[0].name + ' is now the host.'); netStatus(m.roster[0].name + ' is now the host.'); net.migrated = null; } if (m.max) { net.optMax = m.max | 0; net.optBots = !!m.bots; net.optLim = m.lim | 0; net.bhv = m.bhv === 'dummy' ? 'dummy' : 'brawl'; net.hdiff = DIFFS[m.diff] ? m.diff : 'normal'; net.hinfo = { modeName: String(m.modeName || '').slice(0, 24), map: String(m.map || '').slice(0, 24) }; } netShowLobby(); return; }
   if (m.t === 'full') { const q = net.quick, tr = net.tries + 1, pre = net.prevCfg; netLeave('That room is full.'); if (q && tr < 3) setTimeout(() => netQuickPlay(q, tr, pre), 400); return; }
   if (m.t === 'badver') { netLeave('That room is running a different version of the game. Refresh the page to get the newest one.'); return; }
   if (m.t === 'kick') { netLeave(m.msg || 'You were removed from the room.'); showPage('online'); return; }
@@ -8620,7 +8641,7 @@ function netHandle(m) {
     case 'k': if (g && !g.dead) { g.faceYaw = m.yaw; g.startKick(m.yaw); } break;
     case 'h': {
       const victim = slotFighter(m.vs); if (!victim || victim.isGhost || victim.dead) break;
-      netApply = true; try { victim.hit(m.d, V(m.x, m.y, m.z), m.f, !!m.hd, slotFighter(m.from)); } finally { netApply = false; }
+      netCleanHit(m); netApply = true; try { victim.hit(m.d, V(m.x, m.y, m.z), m.f, !!m.hd, slotFighter(m.from)); } finally { netApply = false; }
       break;
     }
     case 'crate': if (!net.host && m.key && Array.isArray(m.spot)) { const p = spawnDrop(m.key, null, m.spot); if (p) p.cid = m.cid; } break;
