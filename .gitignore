@@ -6,6 +6,9 @@ data/
 # Godot
 godot/.godot/
 godot/export/
+godot/android/
 *.translation
 godot/build_info.cfg
 build/
+*.keystore
+*.jks
