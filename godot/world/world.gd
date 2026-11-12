@@ -8,8 +8,9 @@ extends Node3D
 ## limit from Settings "limit" (-1 = the mode's preset); this node adds team colours, the mode line, the dash puff,
 ## the shrinking floor mesh, the end-of-match banner and the offline results panel.
 ## Dynamic arenas: MatchSim.dyn moves the collision; this node moves the tile / block meshes to match (_dyn_views).
-## Online (guest): set `session` (a GuestSession that got `start`) and `start_msg` before adding the world; the map,
-## rules and slots then come from the host, the other players are ghosts driven by a NetMatch (net/net_match.gd).
+## Online: set `session` (GuestSession or HostSession that got / sent `start`) and `start_msg` before adding the
+## world; the map, rules and slots come from that start message. Guests see ghosts for every other seat; the host
+## runs bots and ghosts only the human seats (NetMatch.is_host).
 
 const SIM := 1.0 / 120.0
 const FEED_TIME := 5.0
@@ -36,9 +37,10 @@ const FX_DMG_LIFE := 0.9
 @onready var pause_menu: Control = $UI/Pause
 
 var sim: MatchSim
-var session: GuestSession = null   ## online guest session (null = offline)
+var session = null                 ## GuestSession or HostSession (null = offline)
 var start_msg := {}                ## the cleaned `start` this match was built from
 var net_match: NetMatch = null
+var hosting := false               ## true when session is a HostSession
 var _results: Control = null
 var control: PlayerControl
 var map_node: MapBuilder.MapNode
@@ -95,12 +97,17 @@ func _ready() -> void:
 	proj_views = ProjectileViews.new(); proj_views.name = "Projectiles"; add_child(proj_views)
 	_build_mode_ui()
 	if session != null:
+		hosting = session is HostSession
 		map_id = start_msg.get("map", map_id)
 		session.match_started.connect(_on_net_start)
 		session.match_message.connect(_on_net_message)
 		session.votes_changed.connect(_on_net_votes)
 		session.ended.connect(_on_net_ended)
-		session.rehosted.connect(_on_net_rehosted)
+		if session.has_signal("rehosted"):
+			session.rehosted.connect(_on_net_rehosted)
+		if hosting:
+			session.guest_joined.connect(_on_host_guest_joined)
+			session.guest_left.connect(_on_host_guest_left)
 		$UI/Pause/Panel/Box/Title.text = "Leave room"
 	load_map(map_id)
 
@@ -135,7 +142,7 @@ func load_map(id: String) -> void:
 	if rng_seed > 0: sim.combat.rng = CombatRng.new(rng_seed)
 	sim.combat.hp_setting = hp_setting
 	if session != null:
-		NetMatch.apply_rules(sim.combat, start_msg.get("rules", {}))
+		NetMatch.apply_rules(sim.combat, start_msg.get("rules", {}), hosting)
 		var rd := NetMatch.rule_dyn(start_msg.get("rules", {}))
 		sim.dyn_choice = rd["choice"]; sim.dyn_seed = rd["seed"]; sim.dyn_t0 = rd["t0"]
 	else:
@@ -147,18 +154,32 @@ func load_map(id: String) -> void:
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
 	var bots := bot_count
+	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
+	if not Content.difficulties.has(skill): skill = "normal"
 	if session == null:                    # offline game mode (pickMode / setBotCfg)
 		var mid := mode_id if mode_id != "" else str(Settings.get_value("mode", "classic"))
 		if not sim.combat.modes.has(mid): mid = "classic"
 		sim.configure(mid, ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1)))
 		bots = ModeRules.bot_count(mid, sim.combat.modes, bot_count)
-	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
-	if not Content.difficulties.has(skill): skill = "normal"
-	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bots, skill)
+	elif hosting:
+		var rules: Dictionary = start_msg.get("rules", {})
+		var mid2: String = str(rules.get("mode", "classic"))
+		if not sim.combat.modes.has(mid2): mid2 = "classic"
+		sim.configure(mid2, int(start_msg.get("limit", 0)))
+		bots = maxi(0, start_msg.get("slots", []).size() - 1)
+		if session is HostSession:
+			skill = str(session.diff)
+			if not Content.difficulties.has(skill): skill = "normal"
+	else:
+		bots = 0
+	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, bots if session == null or hosting else 0, skill)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
 	_build_dyn_views()
 	if session != null:
-		net_match = NetMatch.new(sim, session.send, session.slot)
+		net_match = NetMatch.new(sim, session.send, session.slot, hosting)
+		if hosting and session is HostSession:
+			net_match.host_session = session
+			session.set_crate_check(func(c: int) -> bool: return sim.pickups.find_cid(c) >= 0 or _host_crate_id_exists(c))
 		net_match.setup(start_msg)
 		sim.player.name = str(Settings.get_value("name", "Player"))
 	var scene: PackedScene = load("res://actors/fighter.tscn")
@@ -649,7 +670,7 @@ func _on_setting(key: String, v: Variant) -> void:
 	if key == "show_fps":
 		($UI/Pause/Panel/Box/Fps as CheckButton).set_pressed_no_signal(bool(v))
 
-# ============================== online (guest) ==============================
+# ============================== online (guest / host) ==============================
 
 func _on_net_message(m: Dictionary) -> void:
 	if net_match != null: net_match.handle(m)
@@ -665,6 +686,23 @@ func _on_net_ended(reason: String) -> void:
 func _on_net_rehosted() -> void:
 	_to_title("The host left. Waiting for the new host to start…")
 
+func _on_host_guest_joined(s: int, info: Dictionary) -> void:
+	if net_match == null: return
+	var f := net_match.slot_changed(s, "human", info)
+	if f != null: _relook(f)
+
+func _on_host_guest_left(s: int, kind: String) -> void:
+	if net_match == null: return
+	var info: Dictionary = start_msg.get("slots", [])[s] if s < start_msg.get("slots", []).size() else {"name": "Bot", "skin": "none", "hat": "none", "color": 0xf08a3c, "cls": "wobbler"}
+	if net_match.slots.size() > s: info = net_match.slots[s]
+	var f := net_match.slot_changed(s, kind, info)
+	if f != null: _relook(f)
+
+func _host_crate_id_exists(cid: int) -> bool:
+	for p: Dictionary in sim.pickups.list:
+		if int(p.get("cid", p.get("id", -1))) == cid: return true
+	return false
+
 func _on_title_pressed() -> void:
 	if session != null:
 		session.leave("You left the room.")     # _on_net_ended goes to the title
@@ -675,7 +713,12 @@ func _on_title_pressed() -> void:
 func _to_title(msg: String) -> void:
 	if not is_inside_tree(): return
 	if session != null:
-		for sig: Array in [[session.match_started, _on_net_start], [session.match_message, _on_net_message], [session.votes_changed, _on_net_votes], [session.ended, _on_net_ended], [session.rehosted, _on_net_rehosted]]:
+		var pairs: Array = [[session.match_started, _on_net_start], [session.match_message, _on_net_message], [session.votes_changed, _on_net_votes], [session.ended, _on_net_ended]]
+		if session.has_signal("rehosted"): pairs.append([session.rehosted, _on_net_rehosted])
+		if hosting:
+			pairs.append([session.guest_joined, _on_host_guest_joined])
+			pairs.append([session.guest_left, _on_host_guest_left])
+		for sig: Array in pairs:
 			if (sig[0] as Signal).is_connected(sig[1]): (sig[0] as Signal).disconnect(sig[1])
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	main.set("session", session if session != null and session.is_active() else null)

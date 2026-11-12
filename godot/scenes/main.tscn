@@ -208,16 +208,30 @@ theme_override_font_sizes/font_size = 18
 placeholder_text = "Your name"
 
 [node name="Join" type="Button" parent="Safe/Col/Body/Online/Box/RoomRow"]
-custom_minimum_size = Vector2(128, 48)
+custom_minimum_size = Vector2(110, 48)
 layout_mode = 2
 theme_type_variation = &"PrimaryButton"
-theme_override_font_sizes/font_size = 19
-text = "Join room"
+theme_override_font_sizes/font_size = 18
+text = "Join"
+
+[node name="Create" type="Button" parent="Safe/Col/Body/Online/Box/RoomRow"]
+custom_minimum_size = Vector2(110, 48)
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Create"
+
+[node name="Start" type="Button" parent="Safe/Col/Body/Online/Box/RoomRow"]
+custom_minimum_size = Vector2(110, 48)
+layout_mode = 2
+theme_type_variation = &"PrimaryButton"
+theme_override_font_sizes/font_size = 18
+visible = false
+text = "Start"
 
 [node name="Leave" type="Button" parent="Safe/Col/Body/Online/Box/RoomRow"]
-custom_minimum_size = Vector2(96, 48)
+custom_minimum_size = Vector2(90, 48)
 layout_mode = 2
-theme_override_font_sizes/font_size = 19
+theme_override_font_sizes/font_size = 18
 visible = false
 text = "Leave"
 

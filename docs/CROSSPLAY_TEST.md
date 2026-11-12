@@ -1,7 +1,12 @@
-# Cross-play test: web host, Godot guest
+# Cross-play test: web ↔ Godot
 
-How to play a match between the browser game (host) and the Godot client (guest) on one Mac. The Godot side is the
-Phase 1 guest role (`godot/net/guest_session.gd`, `godot/net/net_match.gd`); hosting from Godot is Phase 2.
+How to play a match between the browser game and the Godot client on one machine. Multiplayer uses the existing
+WebSocket relay (`server.js`) as a post office — one player hosts, the others join. There is no dedicated game
+simulation server; that stays a later Phase 6 concern.
+
+Godot can be either role now:
+- **Guest** — `godot/net/guest_session.gd` + `NetMatch` (Phase 1)
+- **Host** — `godot/net/host_session.gd` + `NetMatch.is_host` (Phase 2 first cut: lobby, start, bots, relay, rematch)
 
 ## 1. Start the server without logins
 
@@ -58,19 +63,32 @@ the `auth` op on every connect. **Log out** clears it.
 - K.O.s show in both kill feeds; crates the host drops appear in Godot and disappear for everyone when taken.
 - If something is off, the Godot console prints script errors; the browser's console shows the web side.
 
-## Known limits (Phase 1)
+## 5. Host from Godot (no browser needed)
 
-- Godot can only be a guest. If the host leaves and the server picks Godot as the new host, Godot leaves the room
-  with a message; if another player becomes host, Godot re-joins them (back to the title screen until they start).
-- Weapons not ported to Godot yet (rockets, bows, shotguns, flame, ...) can be picked up but do not fire in Godot;
-  when the browser player fires them Godot only shows the weapon (their hits still arrive and count).
-- Modes other than the free-for-all basics (lives, Pillars clock, teams, Weapon Ladder) are not handled on the Godot
-  side yet. Chat is off (nothing is sent or shown).
+1. Start the server (`REQUIRE_LOGIN=0 npm start`).
+2. In Godot: **Play online** → fill server + name → **Create room**. The status line shows the 5-letter code.
+3. A friend (browser or another Godot) joins with that code.
+4. Press **Start match** on the host. Classic on the map from the offline setup wizard is the default.
+
+Or from the command line:
+
+```sh
+$GODOT --path godot -- --host --server=ws://127.0.0.1:3000/ws --name=Host
+# other machine / second client:
+$GODOT --path godot -- --join=K7QMP --server=ws://127.0.0.1:3000/ws --name=Guest
+```
+
+## Known limits
+
+- If a browser host leaves and the server promotes a Godot guest, that Godot still leaves (host *migration* into an
+  already-running Godot guest is not wired yet). Creating a room from Godot works.
+- Weapons not ported to Godot yet can be picked up but do not fire there; hits from the other client still count.
+- Chat is off on Godot. Team / Sandbox / Construction rooms are not hosted online yet (same as the web `netMode` gate).
 
 ## Automated version
 
-`npm run test:godot-netguest` runs the same flow with a Node host bot instead of the browser (see
-`tools/test-net-guest.js`), plus a parity check of the ghost interpolation against the web game's `netStep`.
+`npm run test:godot-netguest` — Node host bot + Godot guest (plus interpolation parity).
+`npm run test:godot-nethost` — Godot host + Node guest (create, welcome, start, `S` + bots, hit, `pend`).
 
 Real browser host: `npm run test:crossplay-web` (Playwright; needs network for three.js) hosts in headless Chromium with
 `netHost({auto: true})`, joins from the Godot title screen with `--join`, and checks that the web host sees the Godot

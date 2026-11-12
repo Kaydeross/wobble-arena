@@ -1,11 +1,12 @@
 extends Control
 ## Title scene: the logo, one big PLAY (opens the offline setup wizard, ui/setup_wizard.gd: Arena -> Game type ->
-## Players -> Your fighter -> START), a smaller "Play online" (the online panel: server address, room code, name, Join
-## as a guest with GuestSession, and a minimal login: POST /api/login, token kept in Settings), the guest/status chip,
-## a gear for the settings sheet (Show FPS) and a tip line. Laid out with containers inside a safe-area
-## MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks 852x393, 1170x540,
-## 1280x720 and 390x844: the title, the online panel, every wizard page and the settings sheet).
-## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
+## Players -> Your fighter -> START), a smaller "Play online" (the online panel: server address, room code, name,
+## Join as a guest or Create room as host over the WebSocket relay — no dedicated game server — plus a minimal
+## login: POST /api/login, token kept in Settings), the guest/status chip, a gear for the settings sheet (Show FPS)
+## and a tip line. Laid out with containers inside a safe-area MarginContainer so nothing overlaps at any aspect
+## ratio (tests/ui_layout_test.gd checks 852x393, 1170x540, 1280x720 and 390x844: the title, the online panel,
+## every wizard page and the settings sheet).
+## Command line (after `--`): --join=ROOM or --host [--server=ws://host:3000/ws] [--name=NAME];
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
 const WORLD := "res://world/world.tscn"
@@ -19,7 +20,8 @@ const TIPS := [
 ]
 
 ## Set by the world when it hands an active session back (host migration) and/or a message to show.
-var session: GuestSession = null
+## GuestSession or HostSession (same signals / poll / leave / send).
+var session = null
 var notice := ""
 
 const O := "Safe/Col/Body/Online/Box/"
@@ -58,20 +60,24 @@ func _ready() -> void:
 	add_child(_api)
 	_api.finished.connect(func(_ok: bool, msg: String) -> void: _status(msg); _refresh_login())
 	_build_online()
-	_status(notice if notice != "" else "Join a friend's room.")
+	_status(notice if notice != "" else "Join a friend's room, or create one to host.")
 	if session != null:
 		_bind_session()
 		_status((notice + "  " if notice != "" else "") + session.status)
 	var join := ""
+	var do_host := false
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--join="): join = a.substr(7)
+		elif a == "--host" or a.begins_with("--host="): do_host = true
 		elif a.begins_with("--server="): _ui["server"].text = a.substr(9)
 		elif a.begins_with("--name="): _ui["name"].text = a.substr(7)
 		elif a.begins_with("--mode=") and SetupWizard.modes().has(a.substr(7)): wizard.set_mode(a.substr(7))
 		elif a.begins_with("--map=") and Content.maps.has(a.substr(6)): wizard.set_map(a.substr(6))
 	_play_sub()
-	show_tab(notice != "" or session != null or join != "")
-	if join != "" and session == null:
+	show_tab(notice != "" or session != null or join != "" or do_host)
+	if do_host and session == null:
+		create_room()
+	elif join != "" and session == null:
 		_ui["room"].text = join
 		join_room()
 	JuicyButton.attach_all(self)
@@ -195,7 +201,7 @@ func _on_setting(key: String, v: Variant) -> void:
 func _status(t: String) -> void:
 	status.text = t
 	status.tooltip_text = t
-	var on := session != null and session.is_active()
+	var on: bool = session != null and session.is_active()
 	chip.text = t if on else "Offline"
 	_dot(UiTheme.GOOD if on else UiTheme.MUTED)
 
@@ -222,6 +228,8 @@ func _build_online() -> void:
 	_ui["name"] = get_node(n + "RoomRow/Name")
 	_ui["join"] = get_node(n + "RoomRow/Join")
 	_ui["leave"] = get_node(n + "RoomRow/Leave")
+	_ui["create"] = get_node(n + "RoomRow/Create")
+	_ui["start"] = get_node(n + "RoomRow/Start")
 	_ui["user"] = get_node(n + "AcctRow/User")
 	_ui["pass"] = get_node(n + "AcctRow/Pass")
 	_ui["login"] = get_node(n + "AcctRow/Login")
@@ -233,6 +241,8 @@ func _build_online() -> void:
 	_ui["name"].text = str(Settings.get_value("name", "Player"))
 	_ui["user"].text = str(Settings.get_value("user", ""))
 	_ui["join"].pressed.connect(join_room)
+	_ui["create"].pressed.connect(create_room)
+	_ui["start"].pressed.connect(start_hosted_match)
 	_ui["leave"].pressed.connect(func() -> void: if session: session.leave("You left the room."))
 	_ui["login"].pressed.connect(func() -> void:
 		_status("Logging in…")
@@ -252,29 +262,61 @@ func _refresh_login() -> void:
 	who.text = u.to_upper().substr(0, 12) if logged and u != "" else "GUEST"
 
 func _refresh_buttons() -> void:
-	var on := session != null and session.is_active()
+	var on: bool = session != null and session.is_active()
+	var hosting: bool = session is HostSession and on and not bool(session.started)
 	_ui["join"].disabled = on
+	_ui["create"].disabled = on
 	_ui["leave"].visible = on
+	_ui["start"].visible = hosting
 	if not on: _ui["roster"].text = ""
+
+func _player_info() -> Dictionary:
+	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
+	if nm == "": nm = "Player"
+	Settings.set_value("name", nm)
+	return {"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
+		"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}
 
 func join_room() -> void:
 	if session != null and session.is_active(): return
 	var url := str(_ui["server"].text).strip_edges()
 	var room := str(_ui["room"].text).strip_edges()      # the server matches codes case-insensitively
-	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
-	if nm == "": nm = "Player"
-	Settings.set_value("server_url", url); Settings.set_value("room_code", room); Settings.set_value("name", nm)
+	Settings.set_value("server_url", url); Settings.set_value("room_code", room)
 	session = GuestSession.new()
 	_bind_session()
-	session.begin(url, room, {"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
-		"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}, str(Settings.get_value("token", "")))
+	session.begin(url, room, _player_info(), str(Settings.get_value("token", "")))
 	_refresh_buttons()
+
+## Host a private room on the relay (HostSession). Friends join with the code; Start match begins.
+func create_room() -> void:
+	if session != null and session.is_active(): return
+	var url := str(_ui["server"].text).strip_edges()
+	Settings.set_value("server_url", url)
+	wizard.save()
+	var info := _player_info()
+	session = HostSession.new()
+	_bind_session()
+	session.begin(url, info, str(Settings.get_value("token", "")), {
+		"pub": false, "room_name": info["name"] + "'s room", "max": 4, "bots": true, "lim": 0,
+		"map": wizard.map_id, "mode": wizard.mode_id, "diff": wizard.diff,
+		"dyn": str(Settings.get_value("dyn", "off")), "hp": 200.0,
+	})
+	_refresh_buttons()
+
+func start_hosted_match() -> void:
+	if session is HostSession and session.phase == HostSession.Phase.LOBBY:
+		session.start_match()
 
 func _bind_session() -> void:
 	session.status_changed.connect(_on_status)
 	session.ended.connect(_on_ended)
 	session.roster_changed.connect(_on_roster)
 	session.match_started.connect(_enter_match)
+	if session is HostSession:
+		session.welcomed.connect(func(_s: int, _n: String) -> void:
+			_ui["room"].text = session.room_code
+			Settings.set_value("room_code", session.room_code)
+			_refresh_buttons())
 	_refresh_buttons()
 
 func _unbind_session() -> void:
@@ -285,6 +327,7 @@ func _unbind_session() -> void:
 
 func _on_status(t: String) -> void:
 	_status(t)
+	_refresh_buttons()
 
 func _on_ended(_reason: String) -> void:
 	_unbind_session()
@@ -295,9 +338,12 @@ func _on_ended(_reason: String) -> void:
 func _on_roster(r: Array) -> void:
 	var names: Array = []
 	for e: Dictionary in r: names.append(e["name"])
-	_ui["roster"].text = "In the room: " + ", ".join(names)
+	var code := ""
+	if session is HostSession and session.room_code != "":
+		code = "  ·  code %s" % session.room_code
+	_ui["roster"].text = "In the room: " + ", ".join(names) + code
 
-## `start` from the host: into the match (the world takes the session over).
+## `start` from the host (or this client when hosting): into the match (the world takes the session over).
 func _enter_match(s: Dictionary) -> void:
 	if not is_inside_tree(): return
 	_unbind_session()

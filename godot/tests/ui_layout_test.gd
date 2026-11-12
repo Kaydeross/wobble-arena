@@ -23,7 +23,7 @@ const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online"]
 const OB := "Safe/Col/Body/Online/Box/"
 ## the online panel (back, server, room, name, join, login fields, status, roster): also must not overlap each other
 const ONLINE := [OB + "Head/Back", OB + "ServerRow/Server", OB + "RoomRow/Room", OB + "RoomRow/Name", OB + "RoomRow/Join",
-	OB + "AcctRow/User", OB + "AcctRow/Pass", OB + "AcctRow/Login", OB + "Status", OB + "Roster"]
+	OB + "RoomRow/Create", OB + "AcctRow/User", OB + "AcctRow/Pass", OB + "AcctRow/Login", OB + "Status", OB + "Roster"]
 const SHEET := ["Sheet/Center/Card/Box/Fps", "Sheet/Center/Card/Box/Done"]
 const W := "Safe/Wizard/"
 ## wizard frame: header, page, footer buttons (must not overlap each other)

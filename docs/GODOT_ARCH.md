@@ -56,12 +56,15 @@ How the pieces fit since the integration track (`npm run test:godot-integration`
 
 Each track merges to `main` behind its own tests. The lead integrates `Fighter` (physics + combat + wobbler) in a second round once all three exist. Do not edit another track's files; if you need a change, describe it in your report.
 
-## Online guest (Phase 1)
+## Online (guest + host)
 
-- **`scripts/net_client.gd` `NetClient`**: layer 1 + hello (`cls` from Settings). `BUILD` = the web game's `NET_BUILD`.
-- **`net/guest_session.gd` `GuestSession`** (RefCounted, lives across scenes): connect -> `auth` (Settings `token`) -> join (retries once without `build` on `nojoin build`: proto decides) -> hello -> welcome -> roster/start/slot/crates/rvs, ping every 1.5 s, kick/full/badver/kicked, `rehost` (hello again, back to the title) and `promoted` (leave with a message: hosting is Phase 2). Room messages carrying `from` (only a host ever gets those) and everything before `welcome` except welcome/full/badver/kick are dropped. `clean_info`/`clean_start` = the web `cleanInfo`.
-- **`net/net_match.gd` `NetMatch`**: the guest half of netStartMatch/netHandle/netSnap/netStep over a MatchSim (`sim.net`; MatchSim calls `pre_step`/`post_controls` around the controllers). Ghost fighters (`is_ghost`) for every other slot, interpolated like `netStep` (`NetMatch.interp`, parity-tested against the sliced JS); `sw`/`f`/`k` replayed for looks; `h` applied with `Combat.net_apply`; my `S` at 30 Hz and `sw/f/k/h/ko/take`. `Pickups.remote` + `spawn_at`/`remove_cid` for host crates.
-- **`net/account_api.gd` `AccountApi`**: POST `/api/login` (token to Settings). World: `session` + `start_msg` switch it to online (no bots, ghosts, results/rematch panel). Title: server/room/name/login fields, `-- --join=ROOM --server=URL --name=N`. Manual steps: `docs/CROSSPLAY_TEST.md`.
+Multiplayer does **not** need a dedicated game server: `server.js` is a WebSocket room relay (post office). One client hosts; guests join. See `docs/PROTOCOL.md`.
+
+- **`scripts/net_client.gd` `NetClient`**: layer 1 (join/create/`to`/`tohost`/`all`) + hello (`cls` from Settings). `BUILD` = the web game's `NET_BUILD`.
+- **`net/guest_session.gd` `GuestSession`**: connect → join → hello → welcome → roster/start/…; `promoted` still leaves (migration into an existing guest is later).
+- **`net/host_session.gd` `HostSession`**: create room → peer open/close → hello/welcome/roster → `start_match` → `netGuard` relay, rematch votes, mid-match join/leave. Title **Create room** / **Start match**; `-- --host`.
+- **`net/net_match.gd` `NetMatch`**: guest ghosts every other seat; host (`is_host`) keeps bots in `ai`, ghosts only humans, owns crates, broadcasts `pend` on `match_over`. Interpolation parity: `npm run test:godot-netguest`. Host cross-play: `npm run test:godot-nethost`.
+- **`net/account_api.gd` `AccountApi`**: POST `/api/login`. Manual steps: `docs/CROSSPLAY_TEST.md`.
 
 ## UI (first UI pass)
 

@@ -1,13 +1,11 @@
 class_name NetMatch
 extends RefCounted
-## An online match seen from a guest (pure logic, no nodes). Ported from the web game's netStartMatch (guest side),
-## makeGhost/ghostEquip/ghostFire, netHandle, netSnap and netStep (public/index.html ~8931-9120):
-## - the local player simulates itself (MatchSim/PlayerControl as offline);
-## - every other slot is a ghost FighterState (`is_ghost`), moved by the `S` snapshots its owner sends
-##   (predict by the snapshot's age <= 0.2 s, ease with k = 1 - exp(-dt*22), snap beyond 6 m), with swings,
-##   shots and kicks replayed for the look only;
-## - hits on a ghost become `h` messages (Combat emits them), `h` aimed at me is applied through Combat.hit;
-## - my own state goes out as `S` at 30 Hz, plus `sw`/`f`/`k`/`ko`/`take` when they happen.
+## An online match (pure logic, no nodes). Ported from the web game's netStartMatch / makeGhost / ghostEquip /
+## ghostFire / netHandle / netSnap / netStep (public/index.html ~8931-9120).
+## Guest: local player simulates itself; every other slot is a ghost driven by `S` snapshots.
+## Host (`is_host`): local player + bots simulate; human seats are ghosts; crates are owned here and broadcast.
+## Hits on a ghost become `h` messages; `h` aimed at a fighter this side owns is applied through Combat.hit.
+## Owned state goes out as `S` at 30 Hz, plus `sw`/`f`/`k`/`ko`/`take`/`crate` when they happen.
 ## MatchSim.step calls pre_step() / post_controls(); the world feeds handle() and on_event().
 
 const HZ := 30.0
@@ -24,10 +22,12 @@ class GhostControl:
 
 var sim: MatchSim
 var combat: Combat
-var send: Callable               ## func(m: Dictionary): a room message to the host
+var send: Callable               ## func(m: Dictionary): room out (guest→host, or host→all / hit routing)
 var my_slot := -1
+var is_host := false
 var slots: Array = []            ## cleaned start.slots
-var ghosts := {}                 ## slot -> FighterState
+var ghosts := {}                 ## slot -> FighterState (remote humans; host also uses empty seats)
+var ai := {}                     ## host only: slot -> bot FighterState this side simulates
 var ns := {}                     ## slot -> last decoded `S` entry (+ "rt": clock when it arrived)
 var clock := 0.0
 var send_t := 0.0
@@ -36,23 +36,26 @@ var over := false
 var winner := -1
 var sent_counts := {}            ## t -> how many sent (tests)
 var recv_counts := {}            ## t -> how many handled (tests)
+var host_session: HostSession = null   ## optional: crate cid bookkeeping + mid-match slot swaps
 
-func _init(p_sim: MatchSim, p_send: Callable, p_slot: int) -> void:
+func _init(p_sim: MatchSim, p_send: Callable, p_slot: int, p_host: bool = false) -> void:
 	sim = p_sim
 	combat = p_sim.combat
 	send = p_send
 	my_slot = p_slot
+	is_host = p_host
 
 ## Break the reference cycles with the sim.
 func dispose() -> void:
 	if sim: sim.net = null
-	ghosts.clear(); ns.clear()
+	ghosts.clear(); ns.clear(); ai.clear()
+	host_session = null
 	sim = null; combat = null
 
-# ============================== match setup (netStartMatch, guest side) ==============================
+# ============================== match setup (netStartMatch) ==============================
 
 ## Rules from `start.rules` onto Combat/physics before MatchSim.setup (setBotCfg with the host's values).
-static func apply_rules(c: Combat, rules: Dictionary) -> void:
+static func apply_rules(c: Combat, rules: Dictionary, host: bool = false) -> void:
 	var mode: Variant = rules.get("mode")
 	var md: Dictionary = c.modes.get(mode, {}) if mode is String else {}
 	if md.is_empty() or md.get("teams") or mode == "sandbox" or mode == "construction": mode = "classic"   # netMode
@@ -65,7 +68,7 @@ static func apply_rules(c: Combat, rules: Dictionary) -> void:
 	c.lives_mode = int(c.mode.get("lives", 0)) if c.mode.get("lives") else 0
 	c.ffa = true
 	c.net_started = true
-	c.net_host = false
+	c.net_host = host
 
 ## Gravity setting from the rules (0.5 / 1 / 1.5, Low-G 0.15).
 static func rule_grav(rules: Dictionary) -> float:
@@ -85,16 +88,18 @@ static func rule_dyn(rules: Dictionary) -> Dictionary:
 	return {"choice": k if k is String and Dynamics.KINDS.has(k) else "off", "seed": seed,
 		"t0": clampf(float(t0), 0.0, 36000.0) if (t0 is float or t0 is int) and is_finite(float(t0)) else 0.0}
 
-## After MatchSim.setup(.., bot_count = 0): my slot on the player, a ghost for every other slot (human, bot or empty).
-## Returns {FighterState: look} for the world to draw.
+## After MatchSim.setup: guest uses bot_count = 0 then ghosts; host uses bot_count = slots-1 then converts
+## human/empty seats to ghosts (netStartMatch). Returns {FighterState: look} for the world to draw.
 func setup(start: Dictionary) -> Dictionary:
 	slots = start["slots"]
 	limit = int(start.get("limit", 0))
 	sim.net = self
-	sim.pickups.remote = true
+	sim.pickups.remote = not is_host
 	var grav := rule_grav(start.get("rules", {}))
 	sim.player.net_slot = my_slot
 	sim.player.phys.grav_scale = grav
+	if is_host:
+		return _setup_host(start, grav)
 	var looks := {}
 	var spawns: Array = sim.map.get("spawns", [])
 	var n := 0
@@ -118,6 +123,48 @@ func setup(start: Dictionary) -> Dictionary:
 		if info["kind"] == "empty": remove_ghost(s)
 	return looks
 
+## Host: MatchSim already built player + (slots-1) bots. Human seats become ghosts; bot seats stay in `ai`.
+func _setup_host(start: Dictionary, grav: float) -> Dictionary:
+	var looks := {}
+	var bots: Array = []
+	for f: FighterState in sim.fighters:
+		if f != sim.player: bots.append(f)
+	for s in range(1, slots.size()):
+		var info: Dictionary = slots[s]
+		var b: FighterState = bots[s - 1] if s - 1 < bots.size() else null
+		if b == null:
+			b = sim.add_fighter(info["cls"] if info["kind"] != "empty" else "wobbler")
+			sim.controllers[b] = BotBrain.new(sim.difficulty, sim.diff)
+		b.net_slot = s
+		b.phys.grav_scale = grav
+		if info["kind"] == "human":
+			_make_ghost(b, s, info)
+			looks[b] = sim.looks[b]
+		elif info["kind"] == "empty":
+			_make_ghost(b, s, {"name": "", "skin": "none", "hat": "none", "color": 0, "cls": "wobbler", "kind": "empty"})
+			remove_ghost(s)
+			looks[b] = sim.looks.get(b, {})
+		else:
+			b.is_ghost = false; b.net_human = false; b.left = false
+			b.name = info["name"] if info["name"] != "" else "Bot"
+			b.set_class(info["cls"], combat.classes.get(info["cls"], {}))
+			var lk := look_of(info)
+			sim.looks[b] = lk; looks[b] = lk
+			ai[s] = b
+	return looks
+
+func _make_ghost(b: FighterState, s: int, info: Dictionary) -> void:
+	b.is_ghost = true; b.left = false; b.net_slot = s; b.net_human = info.get("kind") == "human"
+	b.name = info["name"] if info.get("name", "") != "" else "Player %d" % s
+	b.set_class(str(info.get("cls", "wobbler")), combat.classes.get(str(info.get("cls", "wobbler")), {}))
+	b.dead = false; b.hp = combat.max_hp(b); b.invuln = 0.0
+	b.phys.can_climb = false
+	sim.controllers[b] = GhostControl.new()
+	b.weapon = ""; ghost_equip(b, "spatula")
+	ghosts[s] = b
+	ai.erase(s)
+	sim.looks[b] = look_of(info)
+
 static func look_of(info: Dictionary) -> Dictionary:
 	var col: int = info["color"]
 	var sk: Dictionary = GuestSession.data("cosmetics").get("skins", {}).get(info["skin"], {})
@@ -126,6 +173,7 @@ static func look_of(info: Dictionary) -> Dictionary:
 
 func slot_fighter(s: int) -> FighterState:
 	if s == my_slot: return sim.player
+	if ai.has(s): return ai[s]
 	return ghosts.get(s)
 
 ## netRemoveGhost: the slot is empty now.
@@ -136,11 +184,13 @@ func remove_ghost(s: int) -> void:
 	g.phys.place(0.0, -300.0, 0.0)
 	ns.erase(s)
 
-## netSlotChanged: a friend replaced a bot, or left. Returns the ghost whose look changed (or null).
+## netSlotChanged: a friend replaced a bot, or left. Returns the fighter whose look changed (or null).
 func slot_changed(s: int, kind: String, info: Dictionary) -> FighterState:
 	if s < 0 or s >= slots.size() or s == my_slot: return null
 	info["kind"] = kind
 	slots[s] = info
+	if is_host:
+		return _host_slot_changed(s, kind, info)
 	var g: FighterState = ghosts.get(s)
 	if g == null: return null
 	g.net_human = kind == "human"
@@ -152,6 +202,32 @@ func slot_changed(s: int, kind: String, info: Dictionary) -> FighterState:
 	g.name = info["name"]
 	sim.looks[g] = look_of(info)
 	combat.ev({"type": "toast", "text": info["name"] + (" joined!" if kind == "human" else " (bot) is back")})
+	return g
+
+## Host: friend takes a bot (netBotToHuman) or leaves (netHumanToBot / empty).
+func _host_slot_changed(s: int, kind: String, info: Dictionary) -> FighterState:
+	if kind == "human":
+		var b: FighterState = ai.get(s, ghosts.get(s))
+		if b == null: return null
+		_make_ghost(b, s, info)
+		combat.ev({"type": "toast", "text": info["name"] + " joined, a bot made room!"})
+		return b
+	var g: FighterState = ghosts.get(s)
+	if g == null: return null
+	if kind == "empty":
+		remove_ghost(s); return g
+	# bot returns: drop ghost, restore AI
+	ghosts.erase(s); ns.erase(s)
+	g.is_ghost = false; g.left = false; g.net_human = false
+	g.set_class(info["cls"], combat.classes.get(info["cls"], {}))
+	g.name = info["name"] if info["name"] != "" else "Bot"
+	g.dead = false; g.hp = combat.max_hp(g)
+	combat.clear_inventory(g); combat.set_weapon(g, "spatula")
+	var brain := BotBrain.new(sim.difficulty, sim.diff)
+	sim.controllers[g] = brain
+	sim.looks[g] = look_of(info)
+	ai[s] = g
+	combat.ev({"type": "toast", "text": info["name"] + " (bot) is back"})
 	return g
 
 # ============================== ghosts (ghostEquip / ghostFire) ==============================
@@ -192,29 +268,49 @@ static func interp(g: Array, s: Dictionary, clock_now: float, rt: float, dt: flo
 
 # ============================== per step (netSnap / netStep) ==============================
 
-## netSnap: what my fighter was doing before this step's input.
-func pre_step() -> Dictionary:
+## netSnap: what each fighter this side runs was doing before this step's input.
+## Guest: one Dictionary for the player. Host: Array of {f, pc, ps, pk, pd} (player + bots).
+func pre_step() -> Variant:
+	if is_host:
+		var owned: Array = [{"f": sim.player, "pc": sim.player.cool, "ps": sim.player.swing, "pk": sim.player.kick_t, "pd": sim.player.draw}]
+		for s: int in ai:
+			var b: FighterState = ai[s]
+			owned.append({"f": b, "pc": b.cool, "ps": b.swing, "pk": b.kick_t, "pd": b.draw})
+		return owned
 	var p := sim.player
 	return {"pc": p.cool, "ps": p.swing, "pk": p.kick_t, "pd": p.draw}
 
 ## netStep: tell everyone what I just did, my `S` at 30 Hz, then move the ghosts toward their snapshots.
 func post_controls(dt: float, pre: Variant) -> void:
 	clock += dt
-	var p := sim.player
-	if pre is Dictionary and not p.dead:
-		if pre["ps"] < 0.0 and p.swing >= 0.0:
-			_send({"t": "sw", "id": my_slot, "yaw": NetSnapshot.fixed(p.swing_yaw, 2), "w": p.weapon})
-		elif pre["pc"] <= 0.0 and p.cool > 0.0:
-			_send({"t": "f", "id": my_slot, "w": p.weapon, "dr": NetSnapshot.fixed(pre["pd"], 2)})
-		if pre["pk"] < 0.0 and p.kick_t >= 0.0:
-			_send({"t": "k", "id": my_slot, "yaw": NetSnapshot.fixed(p.yaw, 2)})
+	if is_host and pre is Array:
+		_host_actions(pre)
+	else:
+		var p := sim.player
+		if pre is Dictionary and not p.dead:
+			if pre["ps"] < 0.0 and p.swing >= 0.0:
+				_send({"t": "sw", "id": my_slot, "yaw": NetSnapshot.fixed(p.swing_yaw, 2), "w": p.weapon})
+			elif pre["pc"] <= 0.0 and p.cool > 0.0:
+				_send({"t": "f", "id": my_slot, "w": p.weapon, "dr": NetSnapshot.fixed(pre["pd"], 2)})
+			if pre["pk"] < 0.0 and p.kick_t >= 0.0:
+				_send({"t": "k", "id": my_slot, "yaw": NetSnapshot.fixed(p.yaw, 2)})
 	send_t -= dt
 	if send_t <= 0.0:
 		send_t += 1.0 / HZ
 		if send_t < 0.0: send_t = 0.0
-		var c: Variant = sim.controllers.get(p)
-		var sq := 1 if c != null and c.get("squat") else 0
-		_send(NetSnapshot.encode_state([NetSnapshot.encode_entry(p, {"sq": sq})]))
+		if is_host and pre is Array:
+			var list: Array = []
+			for o: Dictionary in pre:
+				var f: FighterState = o["f"]
+				if f.net_slot < 0: continue
+				var c: Variant = sim.controllers.get(f)
+				var sq := 1 if c != null and c.get("squat") else 0
+				list.append(NetSnapshot.encode_entry(f, {"sq": sq}))
+			if list.size() > 0: _send(NetSnapshot.encode_state(list))
+		else:
+			var c2: Variant = sim.controllers.get(sim.player)
+			var sq2 := 1 if c2 != null and c2.get("squat") else 0
+			_send(NetSnapshot.encode_state([NetSnapshot.encode_entry(sim.player, {"sq": sq2})]))
 	for s: int in ghosts:
 		var g: FighterState = ghosts[s]
 		if g.left: continue
@@ -244,9 +340,28 @@ func post_controls(dt: float, pre: Variant) -> void:
 			g.dead = false; g.weapon = ""; ghost_equip(g, e["w"])
 		if not g.dead: ghost_equip(g, e["w"])
 
+func _host_actions(pre: Array) -> void:
+	for o: Dictionary in pre:
+		var f: FighterState = o["f"]
+		var id := f.net_slot
+		if f.dead or id < 0: continue
+		if o["ps"] < 0.0 and f.swing >= 0.0:
+			_send({"t": "sw", "id": id, "yaw": NetSnapshot.fixed(f.swing_yaw, 2), "w": f.weapon})
+		elif o["pc"] <= 0.0 and f.cool > 0.0:
+			_send({"t": "f", "id": id, "w": f.weapon, "dr": NetSnapshot.fixed(o["pd"], 2)})
+		if o["pk"] < 0.0 and f.kick_t >= 0.0:
+			_send({"t": "k", "id": id, "yaw": NetSnapshot.fixed(f.yaw, 2)})
+
 func _send(m: Dictionary) -> void:
 	sent_counts[m["t"]] = int(sent_counts.get(m["t"], 0)) + 1
 	if send.is_valid(): send.call(m)
+
+func _crate_spot(c: Dictionary) -> Array:
+	var si = c.get("spot", -1)
+	if si is int and si >= 0 and si < sim.pickups.spots.size():
+		var sp: Array = sim.pickups.spots[si]
+		return [sp[0], sp[1]]
+	return [c["x"], c["z"]]
 
 # ============================== incoming (netHandle) ==============================
 
@@ -280,18 +395,27 @@ func handle(m: Dictionary) -> void:
 			combat.hit(victim, h["d"], h["x"], h["y"], h["z"], h["f"], h["hd"], slot_fighter(h["from"]))
 			combat.net_apply = false
 		"crate":
-			sim.pickups.spawn_at(str(m.get("key", "")), m.get("spot"), NetSnapshot.to_int32(m.get("cid")))
+			if not is_host:
+				sim.pickups.spawn_at(str(m.get("key", "")), m.get("spot"), NetSnapshot.to_int32(m.get("cid")))
 		"crates":
-			if m.get("list") is Array:
+			if not is_host and m.get("list") is Array:
 				for c: Variant in m["list"]:
 					if c is Dictionary: sim.pickups.spawn_at(str(c.get("key", "")), c.get("spot"), NetSnapshot.to_int32(c.get("cid")))
 		"take":
-			sim.pickups.remove_cid(NetSnapshot.to_int32(m.get("cid")))
+			if is_host:
+				# Guest already took it on their side; remove locally and the host broadcast already happened in host_recv.
+				var cid := NetSnapshot.to_int32(m.get("cid"))
+				if host_session: host_session.note_crate_gone(cid)
+				sim.pickups.remove_cid(cid) if sim.pickups.find_cid(cid) >= 0 else _host_take_by_id(cid)
+			else:
+				sim.pickups.remove_cid(NetSnapshot.to_int32(m.get("cid")))
 		"ko":
 			var k := NetSnapshot.decode_ko(m)
 			if k.is_empty(): return
 			var vic := slot_fighter(k["to"])
-			if vic == null or vic == sim.player or not vic.is_ghost: return
+			if vic == null or vic == sim.player: return
+			if is_host and ai.has(k["to"]) and ai[k["to"]] == vic: return   # own bots already counted
+			if not vic.is_ghost and not (is_host and ai.has(k["to"])): return
 			var kil := slot_fighter(k["from"]) if k["from"] >= 0 else null
 			if kil != null: combat.add_ko(kil, vic)
 			else: combat.ev({"type": "ko", "killer": null, "victim": vic, "weapon": ""})
@@ -309,6 +433,15 @@ func handle(m: Dictionary) -> void:
 				var g2 := slot_changed(s, kind, GuestSession.clean_info(info, s))
 				if g2 != null: combat.ev({"type": "relook", "f": g2})
 
+func _host_take_by_id(cid: int) -> void:
+	# Host crates use `id` as the wire `cid` (see on_event); remove by id when `cid` field was never set.
+	for i in range(sim.pickups.list.size() - 1, -1, -1):
+		var p: Dictionary = sim.pickups.list[i]
+		if int(p.get("cid", p.get("id", -1))) == cid:
+			sim.pickups.list.remove_at(i)
+			combat.ev({"type": "crate_gone", "crate": p})
+			return
+
 func _snapshot(e: Dictionary) -> void:
 	if e.is_empty(): return
 	var g: FighterState = ghosts.get(int(e["id"]))
@@ -321,6 +454,34 @@ func on_event(e: Dictionary) -> void:
 	match String(e["type"]):
 		"net":
 			_send(e["msg"])
+		"crate":
+			if is_host:
+				var c: Dictionary = e["crate"]
+				if not c.has("cid"): c["cid"] = int(c["id"])
+				if host_session: host_session.note_crate(int(c["cid"]))
+				_send({"t": "crate", "cid": c["cid"], "key": c["key"], "spot": _crate_spot(c)})
 		"crate_take":
-			var c: Dictionary = e["crate"]
-			if c.has("cid") and e.get("f") == sim.player: _send({"t": "take", "cid": c["cid"]})
+			var c2: Dictionary = e["crate"]
+			if is_host:
+				var cid := int(c2.get("cid", c2.get("id", 0)))
+				if cid > 0:
+					if host_session: host_session.note_crate_gone(cid)
+					_send({"t": "take", "cid": cid})
+			elif c2.has("cid") and e.get("f") == sim.player:
+				_send({"t": "take", "cid": c2["cid"]})
+		"crate_gone":
+			if is_host:
+				var c3: Dictionary = e["crate"]
+				var cid3 := int(c3.get("cid", c3.get("id", 0)))
+				if host_session and cid3 > 0: host_session.note_crate_gone(cid3)
+		"match_over":
+			if is_host and not over:
+				var w: Variant = e.get("winner")
+				var wslot := my_slot
+				var wname := "?"
+				if w is FighterState:
+					wslot = w.net_slot if w.net_slot >= 0 else my_slot
+					wname = "You" if w == sim.player else w.name
+				over = true; winner = wslot
+				_send({"t": "pend", "w": wslot})
+				combat.ev({"type": "match_end", "w": wslot, "name": wname})
