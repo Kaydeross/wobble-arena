@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/img/banner.svg" alt="Wobble Arena: a wobbly-physics party brawler" width="100%">
+  <img src="docs/img/banner.jpg" alt="Wobble Arena: a wobbly-physics party brawler" width="100%">
 </p>
 
 <p align="center">
@@ -15,9 +15,26 @@ Wobble Arena is a 3D, physics-driven arena brawler. You play a floppy, spring-li
 
 It plays in any modern browser on desktop and phone (touch controls and safe-area fixes are built in). You can play solo against bots, practise, or jump into online rooms with friends.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td><img src="docs/img/shot-sunny-arena.jpg" alt="Sunny Arena"><br><sub><b>Sunny Arena</b>: open edges, knock people off</sub></td>
+    <td><img src="docs/img/shot-volcano-rim.jpg" alt="Volcano Rim"><br><sub><b>Volcano Rim</b>: fall in the lava and you are out</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/shot-pirate-ship.jpg" alt="Pirate Ship"><br><sub><b>Pirate Ship</b>: do not fall in the sea</sub></td>
+    <td><img src="docs/img/shot-temple-ruins.jpg" alt="Temple Ruins"><br><sub><b>Temple Ruins</b>: climb the giant pyramid</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/shot-moon-base.jpg" alt="Moon Base"><br><sub><b>Moon Base</b>: fight under the Earth</sub></td>
+    <td><img src="docs/img/shot-haunted-hollow.jpg" alt="Haunted Hollow"><br><sub><b>Haunted Hollow</b>: hide behind the tombstones</sub></td>
+  </tr>
+</table>
+
 <p align="center">
-  <img src="docs/img/iphone-menu.jpg" alt="Main menu" width="48%">
-  <img src="docs/img/iphone-match.jpg" alt="In a match" width="48%">
+  <img src="docs/img/iphone-menu.jpg" alt="Main menu on a phone" width="48%">
+  <img src="docs/img/iphone-match.jpg" alt="A match on a phone" width="48%">
 </p>
 
 ## Features
