@@ -92,6 +92,18 @@ var _time: float = 0.0
 var _state_flash := false
 var _stiff_override := -1.0
 
+# --- ragdoll overlay (docs/RAGDOLL.md): "classic" | "ragdoll". Presentation only: Fighter reads the gameplay points
+# from the classic pose, then overlay() re-poses the visible nodes; the next animate() restores the classic pose first.
+var rig_mode: String = "classic"
+var rig_scale := Vector3.ONE          ## classic rig scale this frame (squash, crouch, class size)
+var foot_meshes: Array[MeshInstance3D] = []
+var arm_sleeve: MeshInstance3D
+var arm_hand_mesh: MeshInstance3D
+var rag := RagdollRig.new()
+var _overlaid := false
+var _xf_nodes: Array[Node3D] = []
+var _xf_saved: Array[Transform3D] = []
+
 
 func _init() -> void:
 	_build()
@@ -178,16 +190,17 @@ func _build() -> void:
 		_leg_mats.append(lm)
 		_foot_mats.append(fm)
 		_mesh(g, LowPoly.cyl(0.15, 0.12, 0.8, 5), lm, Vector3(0, -0.4, 0), "Thigh")
-		_mesh(g, LowPoly.box(0.26, 0.12, 0.4), fm, Vector3(0, -0.74, 0.07), "Foot")
+		foot_meshes.append(_mesh(g, LowPoly.box(0.26, 0.12, 0.4), fm, Vector3(0, -0.74, 0.07), "Foot"))
 		legs.append(g)
 	arm_l = _group(body, Vector3(0.52, 0.75, 0), "ArmL")             # local +X is the character's left
 	_mesh(arm_l, LowPoly.cyl(0.11, 0.09, 0.75, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.375, 0), "Sleeve")
 	hand_l = _mesh(arm_l, LowPoly.ico(0.13, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.78, 0), "HandL")
 	shoulder = _group(body, Vector3(-0.52, 0.75, 0), "Shoulder")        # right shoulder
 	arm = _group(self, Vector3.ZERO, "Arm")                              # aiming arm: free in world space
-	_mesh(arm, LowPoly.cyl(0.11, 0.09, 0.85, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.425, 0), "Sleeve")
-	_mesh(arm, LowPoly.ico(0.14, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.85, 0), "Hand")
+	arm_sleeve = _mesh(arm, LowPoly.cyl(0.11, 0.09, 0.85, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.425, 0), "Sleeve")
+	arm_hand_mesh = _mesh(arm, LowPoly.ico(0.14, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.85, 0), "Hand")
 	hand = _group(arm, Vector3(0, -0.85, 0), "Grip")
+	_xf_nodes = [rig, body, neck, legs[0], legs[1], foot_meshes[0], foot_meshes[1], arm_l, arm, arm_sleeve, arm_hand_mesh, hand]
 
 
 ## Builds a list of look parts (see WobblerLooks) under this rig. Returns the created nodes.
@@ -422,6 +435,8 @@ func apply_state(s: Dictionary) -> void:
 		lean.kick(-3.2, 0.0)
 		head.kick(-2.5, 0.0)
 	kick_t = nk
+	if s.has("hp"):
+		rag.note_hp(float(s["hp"]))
 	if s.has("flash"):
 		_state_flash = true
 		flash = clampf(float(s["flash"]) / FLASH_FULL, 0.0, 1.0)
@@ -436,12 +451,15 @@ func hit_kick(dir: Vector3, force: float) -> void:
 	lean.kick(-d_f * force * 0.22, -d_r * force * 0.22)
 	head.kick(-d_f * force * 0.5, -d_r * force * 0.5)
 	arm_vel += dir * force * 0.3
+	rag.hit(-d_f * force * 0.22, -d_r * force * 0.22, yaw, float(cls.get("size", 1.0)))
 	if not _state_flash:
 		flash = 1.0
 
 
 # ================================================================ animate (Fighter.animate ~5619 + applyPose ~5882)
 func animate(dt: float) -> void:
+	if _overlaid:                                           # undo the ragdoll overlay: nodes back to the classic pose
+		_restore_classic()
 	if dt <= 0.0:
 		return
 	_time += dt
@@ -552,7 +570,8 @@ func animate(dt: float) -> void:
 	var stv := 0.0 if grounded else clampf(vel.y * 0.012, -0.08, 0.1)
 	var sy := (1.0 - 0.3 * crouch_k * (1.0 - lie_k)) * (1.0 - squash + stv)
 	var sxz := 1.0 + squash * 0.6 - stv * 0.5
-	rig.basis = _euler_yxz(Vector3(rx, yaw, fall_a)).scaled_local(Vector3(sxz, sy, sxz) * size_k)
+	rig_scale = Vector3(sxz, sy, sxz) * size_k
+	rig.basis = _euler_yxz(Vector3(rx, yaw, fall_a)).scaled_local(rig_scale)
 	body.position.y = body_y
 	body.basis = _euler_xyz(Vector3(lean.x, 0, lean.y))
 	var neck_x := head.x
@@ -572,6 +591,29 @@ func animate(dt: float) -> void:
 	arm.position = sh
 	arm.basis = Basis(_arc(SIM_DOWN, arm_dir)).scaled(Vector3.ONE * size_k)
 	_apply_flash()
+
+
+## Ragdoll overlay (rig_mode "ragdoll"): call AFTER the gameplay points were read from the classic pose.
+func overlay(dt: float) -> void:
+	if not _overlaid:
+		_xf_saved.resize(_xf_nodes.size())
+		for i in _xf_nodes.size():
+			_xf_saved[i] = _xf_nodes[i].transform
+	var grip := arm.transform * hand.transform              # the classic (= sim) grip, wobbler-local
+	rag.update(self, dt)
+	rag.render(self, dt, grip)
+	_overlaid = true
+
+
+## A Combat `lean` kick, for the ragdoll's hit reaction (the classic springs get theirs from Fighter.on_event).
+func ragdoll_hit(a: float, b: float) -> void:
+	rag.hit(a, b, yaw, float(cls.get("size", 1.0)))
+
+
+func _restore_classic() -> void:
+	for i in _xf_saved.size():
+		_xf_nodes[i].transform = _xf_saved[i]
+	_overlaid = false
 
 
 static func _arc(from: Vector3, to: Vector3) -> Quaternion:   # three.js Quaternion.setFromUnitVectors

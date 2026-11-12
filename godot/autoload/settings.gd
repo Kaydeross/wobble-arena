@@ -32,6 +32,7 @@ const DEFAULTS := {
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
 	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE + construction)
 	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
+	"wobble_rig": "ragdoll",   # character animation: ragdoll (leg-driven floppy overlay, docs/RAGDOLL.md) | classic (web pose)
 	"offline_map": "arena", # offline arena (setup wizard page 1)
 	"bots": 3,              # offline bots 1..7 (team modes fix the count: ModeRules.bot_count)
 	"difficulty": "normal", # offline bot skill: easy | normal | hard | insane (data/difficulties.json)
