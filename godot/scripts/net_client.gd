@@ -1,6 +1,6 @@
 class_name NetClient
 extends RefCounted
-## Wobble Arena protocol client, layers 1 and 2 of docs/PROTOCOL.md (server ops + room messages).
+## Wobblers Arena protocol client, layers 1 and 2 of docs/PROTOCOL.md (server ops + room messages).
 ## Call poll() every frame. Connect to the signals, then connect_to_server(), join_room().
 ## GuestSession (net/guest_session.gd) drives this for the guest role.
 

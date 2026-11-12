@@ -158,6 +158,18 @@ static func _add_boxes(root: Node3D, boxes: Array) -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if key.y == 1 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		root.add_child(mi)
 
+## Dynamic arenas: rebuild the merged box meshes without the boxes in `exclude` (index -> true); the world draws
+## those itself (floor tiles, drifting blocks). Collision is not touched here.
+static func rebuild_boxes(root: Node3D, boxes: Array, exclude: Dictionary) -> void:
+	for c in root.get_children():
+		var n := str(c.name)
+		if n.begins_with("Boxes_") or n.begins_with("Roof_"):
+			root.remove_child(c); c.queue_free()
+	var keep: Array = []
+	for i in boxes.size():
+		if not exclude.has(i): keep.append(boxes[i])
+	_add_boxes(root, keep)
+
 static func _is_roof(b: Dictionary) -> bool:
 	return float(b["y"]) >= 6.0 and float(b["w"]) * float(b["d"]) >= 1500.0
 

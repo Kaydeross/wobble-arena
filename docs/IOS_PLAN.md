@@ -1,4 +1,4 @@
-# Wobble Arena → iOS: Review, Plan & Design
+# Wobblers Arena → iOS: Review, Plan & Design
 
 _Status: superseded by docs/ROADMAP.md (one Godot codebase for iOS, PC and web). The review in sections 2-3 is still accurate for build b76._
 
@@ -6,7 +6,7 @@ _Status: superseded by docs/ROADMAP.md (one Godot codebase for iOS, PC and web).
 
 ## 1. Executive summary
 
-Wobble Arena already has the hard part done: a fun, content-rich wobbly-physics brawler. It has about 12 modes, about 31 maps, about 29 weapons, bots with 4 difficulties, cosmetics, accounts, cloud save, online rooms and a kill-cam. The market also has a gap: **no major wobbly-physics party brawler is native on iOS yet**. Party Animals mobile is announced but has no date.
+Wobblers Arena already has the hard part done: a fun, content-rich wobbly-physics brawler. It has about 12 modes, about 31 maps, about 29 weapons, bots with 4 difficulties, cosmetics, accounts, cloud save, online rooms and a kill-cam. The market also has a gap: **no major wobbly-physics party brawler is native on iOS yet**. Party Animals mobile is announced but has no date.
 
 **It cannot ship to iOS as it is today.** Five blockers:
 
@@ -68,7 +68,7 @@ What these show:
 
 What the leaders do (sources are in the research brief, summarized here):
 
-| Pattern | Who | What it means for Wobble Arena |
+| Pattern | Who | What it means for Wobblers Arena |
 |---|---|---|
 | 2–5 minute sessions, rotating modes | Stumble Guys, Brawl Stars | Matchmaking straight from Play, a **mode-of-the-hour rotation**, rounds of 3 minutes or less |
 | Cosmetics-only, no pay-to-win | All leaders | Keep weapons free. Sell outfits, hats, emotes, KO effects, trails |

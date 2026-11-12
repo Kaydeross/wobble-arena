@@ -1,6 +1,6 @@
 'use strict';
 /*
-  Wobble Arena accounts: sign up, log in, log out and cloud saves.
+  Wobblers Arena accounts: sign up, log in, log out and cloud saves.
 
   Where the data lives:
     - if UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are set (a free Upstash database): there. It survives restarts and redeploys.

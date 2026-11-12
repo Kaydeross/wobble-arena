@@ -73,6 +73,18 @@ static func rule_grav(rules: Dictionary) -> float:
 	if [0.5, 1.0, 1.5].has(g) or (rules.get("mode") == "lowg" and is_equal_approx(g, 0.15)): return g
 	return 1.0
 
+## Dynamic arena from the rules (netStartMatch, guest side): {choice, seed, t0}. Unknown kind => steady.
+## Set them on the MatchSim (dyn_choice / dyn_seed / dyn_t0) before setup().
+static func rule_dyn(rules: Dictionary) -> Dictionary:
+	var k: Variant = rules.get("dyn")
+	var sd: Variant = rules.get("dseed")
+	var t0: Variant = rules.get("dt0")
+	var seed := 0
+	if (sd is float or sd is int) and is_finite(float(sd)):
+		seed = int(fposmod(signf(float(sd)) * floor(absf(float(sd))), 4294967296.0))   # `>>> 0` (ToUint32)
+	return {"choice": k if k is String and Dynamics.KINDS.has(k) else "off", "seed": seed,
+		"t0": clampf(float(t0), 0.0, 36000.0) if (t0 is float or t0 is int) and is_finite(float(t0)) else 0.0}
+
 ## After MatchSim.setup(.., bot_count = 0): my slot on the player, a ghost for every other slot (human, bot or empty).
 ## Returns {FighterState: look} for the world to draw.
 func setup(start: Dictionary) -> Dictionary:

@@ -3,7 +3,8 @@ extends Node3D
 ## game's fixed step (SIM = 1/120, one accumulator, like `frame`/`simStep` in public/index.html ~10077 / ~9630),
 ## presents every fighter with a Wobbler, drains Combat events into effects, and draws a minimal HUD.
 ## Per frame (like `frame`): camera -> sim steps -> animate/applyPose (Fighter.present) -> melee sweep -> effects/HUD.
-## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n>.
+## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n> --dyn=<off|random|wobble|tilt|quake|drift>.
+## Dynamic arenas: MatchSim.dyn moves the collision; this node moves the tile / block meshes to match (_dyn_views).
 ## Online (guest): set `session` (a GuestSession that got `start`) and `start_msg` before adding the world; the map,
 ## rules and slots then come from the host, the other players are ghosts driven by a NetMatch (net/net_match.gd).
 
@@ -18,6 +19,7 @@ const FX_DMG_LIFE := 0.9
 @export var player_class := ""     ## "" = Settings "class"
 @export var rng_seed := 0          ## 0 = random
 @export var hp_setting := 200.0    ## cfg.hp (the web menu offers 100 / 150 / 200 / 300 / 500)
+@export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
 
 @onready var env_node: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $Sun
@@ -51,6 +53,9 @@ var _fps_t := 0.0
 var _touch_was := false
 var _ui := {}
 var _mats := {}
+var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
+var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
+var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
 
 ## The player's physics (tests and the camera read it).
 var phys: FighterPhysics:
@@ -62,6 +67,7 @@ func _ready() -> void:
 		elif a.begins_with("--class="): player_class = a.substr(8)
 		elif a.begins_with("--bots="): bot_count = int(a.substr(7))
 		elif a.begins_with("--seed="): rng_seed = int(a.substr(7))
+		elif a.begins_with("--dyn="): dyn_choice = a.substr(6)
 	Tier.configure_viewport(get_viewport())
 	touch.state = input.state
 	touch.pause_pressed.connect(_toggle_pause)
@@ -109,11 +115,19 @@ func load_map(id: String) -> void:
 	sim = MatchSim.new()
 	if rng_seed > 0: sim.combat.rng = CombatRng.new(rng_seed)
 	sim.combat.hp_setting = hp_setting
-	if session != null: NetMatch.apply_rules(sim.combat, start_msg.get("rules", {}))
+	if session != null:
+		NetMatch.apply_rules(sim.combat, start_msg.get("rules", {}))
+		var rd := NetMatch.rule_dyn(start_msg.get("rules", {}))
+		sim.dyn_choice = rd["choice"]; sim.dyn_seed = rd["seed"]; sim.dyn_t0 = rd["t0"]
+	else:
+		sim.dyn_choice = dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random"))
+		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
 	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bot_count)
+	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
+	_build_dyn_views()
 	if session != null:
 		net_match = NetMatch.new(sim, session.send, session.slot)
 		net_match.setup(start_msg)
@@ -181,6 +195,7 @@ func present(dt: float) -> void:
 	sim.sweep()
 	_drain_events()
 	_update_crates(dt)
+	_update_dyn_views()
 	_update_fx(dt)
 
 # ============================== combat events -> visuals ==============================
@@ -301,6 +316,105 @@ func _update_fx(dt: float) -> void:
 			(n as Label3D).modulate.a = clampf(x["life"] / x["max"] * 1.5, 0.0, 1.0)
 		n.position += x["vel"] * dt
 
+# ============================== dynamic arenas (dynBuildTiles / dynBuildDrift, visual half) ==============================
+
+## Tile / block meshes for the moving parts MatchSim.dyn set up. The static merged boxes are rebuilt without them.
+func _build_dyn_views() -> void:
+	_dyn_tiles = []; _dyn_blocks = []; _dyn_riders = []
+	var d := sim.dyn
+	if d.kind == "off": return
+	var boxes: Array = map_node.map.get("geometry", {}).get("boxes", [])
+	var exclude := {}
+	if d.kind == "drift":
+		for e: Dictionary in d.drift: exclude[e["i"]] = true
+	else:
+		exclude[d.plan["floor"]] = true
+	MapBuilder.rebuild_boxes(map_node, boxes, exclude)
+	if d.kind == "drift":
+		for e: Dictionary in d.drift:
+			var b: Dictionary = boxes[e["i"]]
+			var mi := MeshInstance3D.new()
+			var bm := BoxMesh.new(); bm.size = Vector3(float(b["w"]), float(b["h"]), float(b["d"]))
+			mi.mesh = bm; mi.material_override = MapBuilder.material(int(b["color"])); mi.name = "Drift_%d" % e["i"]
+			map_node.add_child(mi)
+			_dyn_blocks.append(mi)
+		_update_dyn_views()
+		return
+	var P := d.plan
+	var nx: int = P["nx"]
+	var nz: int = P["nz"]
+	var tw: float = P["tw"]
+	var td: float = P["td"]
+	var base := int(boxes[P["floor"]]["color"])
+	# flat paint on the floor (floor pads) cannot follow the tiles: small pieces ride the tile under them, big ones are
+	# hidden and their colour goes onto the tiles they cover
+	var tint: Array = []; tint.resize(nx * nz); tint.fill(-1)
+	var pads: Array = map_node.map.get("geometry", {}).get("floorPads", [])
+	var pad_nodes: Array = []
+	for c in map_node.get_children():
+		if str(c.name).begins_with("FloorPad"): pad_nodes.append(c)
+	for k in mini(pads.size(), pad_nodes.size()):
+		var sz := float(pads[k]["size"])
+		var node: Node3D = pad_nodes[k]
+		var ix := int(floor((0.0 - float(P["x0"])) / tw))
+		var iz := int(floor((0.0 - float(P["z0"])) / td))
+		if ix < 0 or ix >= nx or iz < 0 or iz >= nz: continue
+		if sz <= tw * 1.2 and sz <= td * 1.2:
+			_dyn_riders.append({"node": node, "y0": node.position.y, "ti": iz * nx + ix}); continue
+		node.visible = false
+		for t in nx * nz:
+			var x := float(P["x0"]) + (t % nx + 0.5) * tw
+			var z := float(P["z0"]) + (t / nx + 0.5) * td
+			if x > -sz / 2.0 and x < sz / 2.0 and z > -sz / 2.0 and z < sz / 2.0: tint[t] = int(pads[k]["color"])
+	var h: float = P["top"] - P["bottom"]
+	var bm := BoxMesh.new(); bm.size = Vector3(tw, h, td)
+	var mats := {}
+	for e: Dictionary in d.tiles:
+		var k: int = e["iz"] * nx + e["ix"]
+		var hexc: int = tint[k] if tint[k] >= 0 else base
+		var odd: int = (e["ix"] + e["iz"]) & 1
+		var key := "%d_%d" % [hexc, odd]
+		if not mats.has(key):
+			var m: StandardMaterial3D = MapBuilder.material(hexc).duplicate()
+			m.albedo_color = _offset_l(MapBuilder.hex(hexc), 0.035 if odd else -0.01)
+			mats[key] = m
+		var mi := MeshInstance3D.new()
+		mi.mesh = bm; mi.material_override = mats[key]; mi.name = "Tile_%d_%d" % [e["ix"], e["iz"]]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		map_node.add_child(mi)
+		_dyn_tiles.append(mi)
+	_update_dyn_views()
+
+## three.js Color.offsetHSL(0, 0, dl) on an sRGB colour.
+static func _offset_l(c: Color, dl: float) -> Color:
+	var mx := maxf(c.r, maxf(c.g, c.b)); var mn := minf(c.r, minf(c.g, c.b))
+	var l := (mx + mn) / 2.0
+	var s := 0.0
+	if mx != mn: s = (mx - mn) / (2.0 - mx - mn) if l > 0.5 else (mx - mn) / (mx + mn)
+	var l2 := clampf(l + dl, 0.0, 1.0)
+	if s == 0.0: return Color(l2, l2, l2)
+	var k := (1.0 - absf(2.0 * l2 - 1.0)) * s / maxf(1e-9, (1.0 - absf(2.0 * l - 1.0)))
+	return Color(clampf(l2 + (c.r - l) * k, 0, 1), clampf(l2 + (c.g - l) * k, 0, 1), clampf(l2 + (c.b - l) * k, 0, 1))
+
+## Meshes follow the live solids; quake drops/rises puff a little dust.
+func _update_dyn_views() -> void:
+	var d := sim.dyn
+	if d.kind == "off": return
+	if d.kind == "drift":
+		for i in _dyn_blocks.size():
+			var s: Dictionary = d.drift[i]["s"]
+			_dyn_blocks[i].position = Vector3((s.minX + s.maxX) * 0.5, (s.top + s.bottom) * 0.5, (s.minZ + s.maxZ) * 0.5)
+		return
+	for i in _dyn_tiles.size():
+		var s: Dictionary = d.tiles[i]["s"]
+		_dyn_tiles[i].position = Vector3((s.minX + s.maxX) * 0.5, (s.top + s.bottom) * 0.5, (s.minZ + s.maxZ) * 0.5)
+	for r: Dictionary in _dyn_riders:
+		r["node"].position.y = r["y0"] + maxf(d.tiles[r["ti"]]["off"], -1.0)
+	for q: Dictionary in d.fx:
+		if q["type"] == "drop": _puff(Vector3(q["x"], q["y"], q["z"]), Color.hex(0xb9a88cff), 8, 3.0)
+		else: _puff(Vector3(q["x"], q["y"] + 0.1, q["z"]), Color.hex(0xd8cdb8ff), 6, 2.5)
+	d.fx.clear()
+
 # ============================== crates ==============================
 
 func _crate_view(c: Dictionary) -> void:
@@ -342,6 +456,8 @@ func _update_crates(_dt: float) -> void:
 		var g: Node3D = _crates.get(c["id"])
 		if g == null: continue
 		g.position = Vector3(c["x"], c["y"] - 0.4, c["z"])
+		if c["grounded"] and absf(float(c["gy"])) < 0.05:          # crates ride the moving floor tiles
+			g.position.y += maxf(sim.dyn.floor_dy(c["x"], c["z"]), -1.0)
 		var box: Node3D = g.get_node("Box")
 		box.position.y = 0.4 + (sin(float(c["t"]) * 3.0) * 0.08 + float(c["open"]) * 0.3 if c["grounded"] else 0.0)
 		box.rotation.y = float(c["t"]) * (2.0 if c["grounded"] else 1.2)

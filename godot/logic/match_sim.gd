@@ -32,6 +32,12 @@ var match_start := 0.0
 ## Online: the NetMatch (net/net_match.gd) of this match, or null offline. step() calls its pre_step() before the
 ## controllers (netSnap) and post_controls() after them (netStep), like simStep.
 var net: RefCounted = null
+## Dynamic arenas (logic/arena_dyn.gd). Set dyn_choice / dyn_seed / dyn_t0 before setup(); online they come from
+## start.rules (dyn, dseed, dt0) so every client moves the same tiles at the same match time.
+var dyn := ArenaDyn.new()
+var dyn_choice := "off"
+var dyn_seed := 0
+var dyn_t0 := 0.0
 
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
@@ -58,6 +64,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	pads = map_pads
 	diff = p_diff
 	difficulty = (Combat.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
+	dyn.setup(map_id, map, solids, ladders, pads, dyn_choice, dyn_seed)   # dynSetup: may split the floor into tiles in `solids`
 	combat.solids = solids
 	combat.spawns = map.get("spawns", [])
 	combat.spawn_y = float(map["spawnY"]) if map.has("spawnY") else 4.0
@@ -131,6 +138,7 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 ## One fixed simulation step (simStep).
 func step(dt: float) -> void:
 	combat.time += dt
+	dyn.update(dyn_clock(), fighters)       # updateDyn: first thing in simStep
 	var net_pre: Variant = net.call("pre_step") if net != null else null
 	for f: FighterState in fighters:
 		var c: Variant = controllers.get(f)
@@ -219,6 +227,10 @@ func has_los(b: FighterState, tg: FighterState) -> bool:
 	if d < 0.1: return true
 	var t := combat.weapons.ray_walls(b.shoulder_x, b.shoulder_y, b.shoulder_z, dx / d, dy / d, dz / d, d)
 	return t < 0.0
+
+## The dynamic arena clock (dynClock): match time plus the host's offset.
+func dyn_clock() -> float:
+	return combat.time - match_start + dyn_t0
 
 ## Match clock in seconds.
 func elapsed() -> float:

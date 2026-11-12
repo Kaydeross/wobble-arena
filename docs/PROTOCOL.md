@@ -1,4 +1,4 @@
-# Wobble Arena network protocol
+# Wobblers Arena network protocol
 
 _Describes build b76 (`NET_BUILD = 'b76.0'`). Source of truth: `server.js` (layer 1) and `public/index.html` lines ~8158–8800 (layers 2–3). Written so that a second client (the Godot iOS app) can join the same rooms as the web client._
 

@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Wobble Arena</title>
+<title>Wobblers Arena</title>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Wobble Arena: wobbly low-poly brawls with bots and friends. Free, plays in your browser.">
+<meta name="description" content="Wobblers Arena: wobbly low-poly brawls with bots and friends. Free, plays in your browser.">
 <meta name="theme-color" content="#102b35">
-<meta property="og:title" content="Wobble Arena">
+<meta property="og:title" content="Wobblers Arena">
 <meta property="og:description" content="Wobbly low-poly brawls. Bring your friends (and a bat).">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23102b35'/%3E%3Ccircle cx='32' cy='24' r='11' fill='%23ffcf5a'/%3E%3Crect x='20' y='36' width='24' height='18' rx='9' fill='%2339b5a8'/%3E%3Ccircle cx='28' cy='23' r='2' fill='%23102b35'/%3E%3Ccircle cx='36' cy='23' r='2' fill='%23102b35'/%3E%3C/svg%3E">
 <style>
@@ -930,7 +930,7 @@ body.tplay #chat{display:none}
 <div id="menu">
   <div id="hbg"></div>
   <div class="card">
-    <div class="mhead"><h1>Wobble Arena</h1><p>Build 76</p><span id="coinchip" title="Your coins. Earn them from K.O.s and finished matches">&#129689; <b id="coinn">0</b></span></div>
+    <div class="mhead"><h1>Wobblers Arena</h1><p>Build 76</p><span id="coinchip" title="Your coins. Earn them from K.O.s and finished matches">&#129689; <b id="coinn">0</b></span></div>
     <div id="netbanner"><span>ONLINE ROOM &middot; code</span><b id="nb-code"></b><span id="nb-info"></span><button class="opt" id="nb-copy">Copy code</button><button class="opt" id="nb-leave">Leave room</button></div>
     <div id="winner"></div>
     <div id="crumbs-top"></div>
@@ -8599,8 +8599,8 @@ async function verifyLogin() {                                       // at start
   if (r.data && (r.t | 0) > (acct.t | 0)) { try { localStorage.setItem('wobbleArena', JSON.stringify(r.data)); acct.t = r.t; acct.dirty = false; authKeep(); sessionStorage.setItem('waSkip', '1'); } catch (e) { /* x */ } location.reload(); return; }
   if (acct.dirty) cloudPush();
 }
-el('bootlogo').innerHTML = 'WOBBLE ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
-el('logo').innerHTML = 'WOBBLE ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
+el('bootlogo').innerHTML = 'WOBBLERS ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
+el('logo').innerHTML = 'WOBBLERS ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
 el('bn').oninput = () => { setBotCfg({ count: +el('bn').value }); loadMap(currentMap); };
 el('behav-dummy').onclick = () => { setBotCfg({ behav: 'dummy' }); loadMap(currentMap); };
 el('behav-brawl').onclick = () => { setBotCfg({ behav: 'brawl' }); loadMap(currentMap); };
@@ -10560,7 +10560,7 @@ SFX.thunder = () => { noise(1.4, 0.55, 420); noise(0.5, 0.35, 900, 0.1); tone(70
 /* ---- bug report: what a tester pastes to the maker (no passwords, emails or names) ---- */
 function bugReport() {
   const s = Object.assign({}, settings); delete s.name; delete s.binds; delete s.binds2;
-  const o = { game: 'Wobble Arena', build: NET_BUILD, when: new Date().toISOString(), browser: typeof navigator !== 'undefined' ? navigator.userAgent : '', screen: window.innerWidth + 'x' + window.innerHeight + ' @' + (window.devicePixelRatio || 1),
+  const o = { game: 'Wobblers Arena', build: NET_BUILD, when: new Date().toISOString(), browser: typeof navigator !== 'undefined' ? navigator.userAgent : '', screen: window.innerWidth + 'x' + window.innerHeight + ' @' + (window.devicePixelRatio || 1),
     signedIn: !!acct.user, mode: cfg.mode, map: currentMap, online: net ? { host: !!net.host, started: !!net.started, ping: net.ping } : null, server: srvOk,
     perf: { fps: Math.round(PERF.fps), avgMs: +PERF.avg.toFixed(1), worstMs: +PERF.max.toFixed(1), resolution: Math.round(PERF.scale * 100) + '%', errors: PERF.errs }, settings: s, log: DEVLOG.slice(-40).map(l => new Date(l.t).toISOString().slice(11, 19) + ' ' + l.k + ' ' + l.m) };
   return JSON.stringify(o, null, 1);

@@ -92,6 +92,7 @@ Porting note: `MAPS[id].build` is imperative three.js code, not data. Spawn/bot 
 | `Fighter.ladderStep` | ~5544 | ladder climbing |
 | `separate()` | ~9486 | pushes fighters apart |
 | `groundBelow, netGround` | ~6932, ~6808 | floor raycast helpers |
+| `DYN-PURE` block, `dynSetup`, `updateDyn` | ~2603-2834 | dynamic arenas (wobble / tilt / quake / drift); Godot port `godot/logic/dynamics.gd` + `arena_dyn.gd`, see `docs/DYNAMICS.md` |
 
 ## 6. Weapons
 

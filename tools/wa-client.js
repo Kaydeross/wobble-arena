@@ -1,5 +1,5 @@
 'use strict';
-/* Minimal Wobble Arena protocol client (layer 1 server ops + layer 2 room messages, see docs/PROTOCOL.md). Used by the tests; the Godot client mirrors it. */
+/* Minimal Wobblers Arena protocol client (layer 1 server ops + layer 2 room messages, see docs/PROTOCOL.md). Used by the tests; the Godot client mirrors it. */
 const { WebSocket } = require('ws');
 const PROTO = 1, BUILD = 'b77.0';   // the web game's NET_BUILD (public/index.html)
 class Client {

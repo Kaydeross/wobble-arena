@@ -1,5 +1,5 @@
 extends Control
-## Title scene: offline play (map + class pickers) and a placeholder online panel: server address, room code, name,
+## Title scene: offline play (map + class + dynamic arena pickers) and a placeholder online panel: server address, room code, name,
 ## Join (as a guest, GuestSession) and a minimal login (POST /api/login, token kept in Settings). Real menus come in
 ## Phase 3. Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away.
 
@@ -14,6 +14,7 @@ var notice := ""
 @onready var map_pick: OptionButton = $Play/Map
 @onready var class_pick: OptionButton = $Play/Class
 var class_ids: Array = []
+var dyn_pick: OptionButton         ## dynamic arena (Settings "dyn"): Steady / Random / Wobble / Tilt / Quake / Drift
 var _ui := {}
 var _api: AccountApi
 
@@ -27,6 +28,7 @@ func _ready() -> void:
 		class_pick.add_item(str(Content.get_class_data(cid).get("name", cid)))
 	class_pick.select(maxi(class_ids.find(str(Settings.get_value("class", "wobbler"))), 0))
 	$Play/PlayOffline.pressed.connect(play_offline)
+	_build_dyn_pick()
 	_api = AccountApi.new()
 	add_child(_api)
 	_api.finished.connect(func(_ok: bool, msg: String) -> void: status.text = msg; _refresh_login())
@@ -43,6 +45,20 @@ func _ready() -> void:
 	if join != "" and session == null:
 		_ui["room"].text = join
 		join_room()
+
+## The arena picker next to map and class (the web game's "Arena" row; online the host's choice wins).
+func _build_dyn_pick() -> void:
+	dyn_pick = OptionButton.new()
+	dyn_pick.name = "Dyn"
+	dyn_pick.custom_minimum_size = Vector2(200, 64)
+	dyn_pick.add_theme_font_size_override("font_size", 22)
+	dyn_pick.get_popup().add_theme_font_size_override("font_size", 26)   # finger-sized rows
+	dyn_pick.tooltip_text = "Arena: does the floor move? Random = a different moving arena every match"
+	for k: String in Dynamics.KINDS:
+		dyn_pick.add_item("Arena: " + Dynamics.NAMES[k])
+	dyn_pick.select(maxi(Dynamics.KINDS.find(str(Settings.get_value("dyn", "random"))), 0))
+	dyn_pick.item_selected.connect(func(i: int) -> void: Settings.set_value("dyn", Dynamics.KINDS[i]))
+	$Play.add_child(dyn_pick)
 
 func _process(dt: float) -> void:
 	if session != null:
