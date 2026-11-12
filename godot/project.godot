@@ -13,6 +13,7 @@ config/icon="res://icon.png"
 Tier="*res://autoload/tier.gd"
 Content="*res://autoload/content.gd"
 Settings="*res://autoload/settings.gd"
+FpsOverlay="*res://ui/fps_overlay.gd"
 
 [display]
 window/size/viewport_width=1170
@@ -21,6 +22,10 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 ; 4 = sensor landscape (1 was portrait, which iOS then locked the app to).
 window/handheld/orientation=4
+
+[gui]
+
+theme/custom="res://ui/theme.tres"
 
 [rendering]
 ; Render tiers (autoload Tier): PC = Forward+, iOS/Android = Mobile, web = Compatibility.

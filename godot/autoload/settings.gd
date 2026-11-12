@@ -16,6 +16,7 @@ const DEFAULTS := {
 	"touch_scale": 1.0,
 	"touch_opacity": 0.85,
 	"touch_assist": true,
+	"show_fps": false,      # FPS / frame-time overlay (F3 or a three-finger tap toggles it)
 	"class": "wobbler",     # character class (shared/classes.json id)
 	"color": 0x39b5a8,      # body colour (the web player's default)
 }
