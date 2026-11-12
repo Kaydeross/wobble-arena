@@ -71,7 +71,7 @@ const MOCK_ROOMS := [
 ]
 const HB := "HostSheet/Center/Card/Box/"
 ## host a room: tabs (Room / Mode / Rules), the arena hint, Cancel / Create room
-const HOST_FRAME := [HB + "Title", HB + "Tabs/Room", HB + "Tabs/Mode", HB + "Tabs/Rules", HB + "Hint", HB + "Buttons/Cancel", HB + "Buttons/Create"]
+const HOST_FRAME := [HB + "Head/Title", HB + "Head/Tabs/Room", HB + "Head/Tabs/Mode", HB + "Head/Tabs/Rules", HB + "Hint", HB + "Buttons/Cancel", HB + "Buttons/Create"]
 ## the three tabs: Room (name, who can join, seats, bots), Mode (game type, K.O. limit, floor), Rules (health, gravity,
 ## ammo, knockback, crates)
 const HOST_TABS := {
@@ -482,7 +482,7 @@ func _logic() -> void:
 	main.show_host(true)
 	var hb := "HostSheet/Center/Card/Box/"
 	check(main.get_node(hb + "Room").visible and not main.get_node(hb + "Rules").visible, "the Host sheet opens on Room")
-	main.get_node(hb + "Tabs/Rules").pressed.emit()
+	main.get_node(hb + "Head/Tabs/Rules").pressed.emit()
 	check(main.get_node(hb + "Rules").visible and not main.get_node(hb + "Room").visible, "the Rules tab shows the rules")
 	main.set_host_mode("classic")
 	var seen := {}

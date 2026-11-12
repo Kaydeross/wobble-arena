@@ -545,10 +545,18 @@ func _build_host_sheet() -> void:
 	if not HostSession.KBS.has(float(_host["kb"])): _host["kb"] = 1.0
 	if not HostSession.CRATES.has(str(_host["crate"])): _host["crate"] = "normal"
 	if not Dynamics.KINDS.has(str(_host["dyn"])): _host["dyn"] = "off"
+	var head := HBoxContainer.new()               # the title and the tabs share one row (fits 375 pt tall phones)
+	head.name = "Head"
+	head.add_theme_constant_override("separation", 16)
+	box.add_child(head)
+	var title: Label = box.get_node("Title")
+	title.size_flags_vertical = SIZE_SHRINK_CENTER
+	title.reparent(head)
 	var tabs := HBoxContainer.new()
 	tabs.name = "Tabs"
+	tabs.size_flags_horizontal = SIZE_EXPAND_FILL
 	tabs.add_theme_constant_override("separation", 6)
-	box.add_child(tabs)
+	head.add_child(tabs)
 	var tg := ButtonGroup.new()
 	for t: String in HOST_TABS:
 		var b := Button.new()
@@ -665,7 +673,7 @@ func show_host_tab(t: String) -> void:
 	var box := host_sheet.get_node("Center/Card/Box")
 	for n: String in HOST_TABS:
 		(box.get_node(n) as Control).visible = n == t
-		(box.get_node("Tabs/" + n) as Button).set_pressed_no_signal(n == t)
+		(box.get_node("Head/Tabs/" + n) as Button).set_pressed_no_signal(n == t)
 	_host_hint()
 
 ## ‹ / ›: the previous / next online game type.
