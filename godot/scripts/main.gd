@@ -9,6 +9,8 @@ const OFFLINE_MAPS := ["arena", "practice"]
 var net := NetClient.new()
 @onready var status: Label = $Status
 @onready var map_pick: OptionButton = $Play/Map
+@onready var class_pick: OptionButton = $Play/Class
+var class_ids: Array = []
 
 func _ready() -> void:
 	net.connected.connect(func(): status.text = "Connected. Enter a room code.")
@@ -21,11 +23,17 @@ func _ready() -> void:
 		map_pick.add_item(str(Content.get_map(id).get("name", id)))
 	var last := OFFLINE_MAPS.find(str(Settings.get_value("offline_map", "arena")))
 	map_pick.select(maxi(last, 0))
+	class_ids = Content.classes.keys()
+	for cid in class_ids:
+		class_pick.add_item(str(Content.get_class_data(cid).get("name", cid)))
+	class_pick.select(maxi(class_ids.find(str(Settings.get_value("class", "wobbler"))), 0))
 	$Play/PlayOffline.pressed.connect(play_offline)
 
 func play_offline() -> void:
 	var id: String = OFFLINE_MAPS[maxi(map_pick.selected, 0)]
 	Settings.set_value("offline_map", id)
+	if class_ids.size() > 0:
+		Settings.set_value("class", class_ids[maxi(class_pick.selected, 0)])
 	net.close()
 	var world: Node = load(WORLD).instantiate()
 	world.map_id = id

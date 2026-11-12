@@ -28,7 +28,7 @@ How the combat logic in `godot/logic/` maps to the web game (`public/index.html`
 1. input: `Combat.try_melee`, `Weapons.try_fire`, `Combat.do_kick`, `Combat.shove`, `Combat.pickup` ...
 2. `Combat.timers(f, dt)` for every fighter (cooldowns, reload, burn, trap, down/getup, death timer -> `respawn`, kick, thrown-weapon release)
 3. `Combat.melee_tick` for swinging fighters (then `after_swing` when it returns true)
-4. `FighterPhysics.step` (owned by the foundation track)
+4. `FighterPhysics.step(dt, solids, f)` (in the web game `timers` and `physics` run per fighter in one loop; `MatchSim.step` does the same, after the input/bot step that holds the melee ticks)
 5. `Weapons.step_projectiles(dt)`; `Combat.time += dt`
 6. after the animation wrote the points: `Combat.melee_sweep(f)` for every fighter
 
@@ -53,7 +53,7 @@ Gotcha: Godot's `JSON.parse_string` (and `String.to_float`) are **not exact** fo
 
 Not ported yet (TODO in code): emotes in `timers`, ninja dash (`dashTick`, `doDash`), hot potato in `hit`, dev god mode, kill cam, gun styles `flame` and `punch`, `adsMul` pellet circle (`shotSpread`, shotgun), dual Uzi second muzzle, minigun spin-up, all other projectile types, shrinking-arena respawn, Weapon Ladder (`ggGive/ggAdvance`), crates/drops (`pickCrateKey`, `spawnDrop`, `updatePickups`), match end on KO limit (the world reads the `ko` event).
 
-Note for the physics owner: `FighterPhysics.step` does not yet apply `stun` (`acc *= 0.12; stun -= dt`), `downT` (acc 18), `spdT` (x1.4) or `dashAirT`; `Combat` sets those fields and expects physics to read them.
+`FighterPhysics.step(dt, solids, st)` (now `logic/fighter_physics.gd`) applies `stun`, `down_t`, `trap_t`, `spd_t` and `dash_air_t` from the FighterState, parity tested; `MatchSim` (`logic/match_sim.gd`) runs the whole step order below for an offline match.
 
 ## Where each remaining weapon type lives (JS)
 

@@ -1,0 +1,9 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://actors/fighter.gd" id="1"]
+[ext_resource type="PackedScene" path="res://actors/wobbler.tscn" id="2"]
+
+[node name="Fighter" type="Node3D"]
+script = ExtResource("1")
+
+[node name="Wobbler" parent="." instance=ExtResource("2")]

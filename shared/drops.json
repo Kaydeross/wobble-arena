@@ -27,6 +27,8 @@
   "katana": 2,
   "typhoon": 2,
   "trident": 1,
+  "hammer": 2,
+  "wirewhip": 2,
   "speed": 0.9,
   "rage": 0.7,
   "shield": 0.8,
@@ -88,8 +90,7 @@
    "trident",
    "speed",
    "rage",
-   "shield",
-   "meteor"
+   "shield"
   ],
   "melee": [
    "heal",
@@ -158,8 +159,7 @@
    "trident",
    "speed",
    "rage",
-   "shield",
-   "meteor"
+   "shield"
   ],
   "t2": [
    "net",
@@ -189,8 +189,7 @@
    "trident",
    "speed",
    "rage",
-   "shield",
-   "meteor"
+   "shield"
   ],
   "t3": [
    "net",
@@ -220,8 +219,7 @@
    "trident",
    "speed",
    "rage",
-   "shield",
-   "meteor"
+   "shield"
   ],
   "t4": [
    "net",
@@ -251,8 +249,7 @@
    "trident",
    "speed",
    "rage",
-   "shield",
-   "meteor"
+   "shield"
   ],
   "explosive": [
    "heal",
@@ -318,8 +315,7 @@
    "trident",
    "speed",
    "rage",
-   "shield",
-   "meteor"
+   "shield"
   ],
   "sandbox": [
    "net",
@@ -349,8 +345,16 @@
    "trident",
    "speed",
    "rage",
-   "shield",
-   "meteor"
+   "shield"
+  ],
+  "construction": [
+   "heal",
+   "blower",
+   "hammer",
+   "wirewhip",
+   "speed",
+   "rage",
+   "shield"
   ]
  }
 }
