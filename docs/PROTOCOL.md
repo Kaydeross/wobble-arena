@@ -260,7 +260,7 @@ Names: `name` is truncated to **12 chars** by guests' hosts (`cleanInfo`).
 
 1. **Layer 1:** connect, `auth`, `list`, `join`, `create`, `tohost`/`to`/`all`, `peer`, `promoted`/`rehost`, `leave`.
 2. **Guest role:** `hello` → `welcome` → `roster`/`start`/`slot`/`crates`, then in-match `S`, `sw`, `f`, `k`, `h`, `ko`, `take`, `pend`, `ping`.
-3. **Host role (Phase 2):** everything above plus: assigning slots, running bots, relaying guest messages, `pend`, rematch voting, host migration. This is the largest piece of work, because bots and match rules run on the host.
+3. **Host role (Phase 2, Godot: see 6.2):** everything above plus: assigning slots, running bots, relaying guest messages, `pend`, rematch voting, host migration. This is the largest piece of work, because bots and match rules run on the host.
 4. **Simulation parity:** the web game uses a hand-rolled controller (AABB collision and spring limbs). A native client must reproduce movement speeds, jump, dash, hit force and damage tables, otherwise players will see each other glide, rubber-band or take wrong damage. The numbers must come from shared data, not be re-guessed.
 5. **Version handshake:** today the room refuses guests whose `build` differs from the host's. Two clients on different release schedules cannot do that. See `proto` below.
 
@@ -270,6 +270,37 @@ Names: `name` is truncated to **12 chars** by guests' hosts (`cleanInfo`).
 - `hello` and `welcome` carry an integer `proto`. A missing `proto` means 1 (old builds).
 - The room refuses a guest only when `proto` differs. `build` stays informational; the server's room-list `build` filter is relaxed in a later PR.
 - Bump `PROTO` only for incompatible changes to layer 2.
+
+### 6.2 Godot host notes (Phase 2, `godot/net/host_session.gd` + `godot/net/host_match.gd`)
+
+A Godot client can host a room that web and Godot guests join. It speaks exactly the web host's layer 2:
+
+- **Room:** `create {pub, info}` with the same `info` as `srvInfo` (`build` = `NetClient.BUILD`), `update` when the
+  roster, the started flag or the room size changes. `info` requests are answered with `roomInfo`.
+- **Lobby:** `hello` -> `badver` if `proto` differs, else the lowest free slot (a running match also skips human
+  slots), `full` past the seat count (`max` players in the lobby, the slot count in a match), `welcome {id, name, pub,
+  proto}`, then `roster` to everybody (`max`, `bots`, `lim`, `bhv`, `diff`, `modeName`, `map`). Refused guests are
+  removed with `close` 0.4 s later.
+- **Start:** slots = the roster (human) plus, for the free seats, as many `bot` seats as the host picked and `empty`
+  for the rest (the web host fills every seat with a bot or none; an `empty` seat is just a seat a late joiner can
+  take). The `start` goes out after the host's match is set up, so bot seats carry the bots' real name / look / class.
+  `rules` = `{mode, hp, crate, wstate, grav, kb, inf, dyn, dseed, dt0?}`; `mode` through `HostSession.net_mode`
+  (= `netMode`, plus Pillars -> Classic until `pp`/`pt` are hosted); a fresh `dseed` every match and rematch;
+  `limit` 0 in lives / ladder modes.
+- **In match:** the host's own fighter and every bot in one `S` at 30 Hz (`sw`/`f`/`k` when they start an action);
+  crates spawned only by the host, announced with `crate {cid, key, spot}`; every take (host, bot or guest) as
+  `take`. Guests' messages go through `HostSession.guard` (= `netGuard`: allowed types only, `id` stamped, first `S`
+  entry only, `h.from` must be the sender and numbers clamped, `ko.to` must be the sender, `take` only for a live
+  crate) and are then handled and relayed to the other guests; `h` with `to` 0 is applied by the host, any other `h`
+  goes only to that guest. A guest joining a running match takes a bot's (or an empty) seat: `welcome`, `start` with
+  the current `dt0`, `crates`, and `slot {kind: human}` to the others; a guest leaving turns the seat back into a bot
+  (`slot {kind: bot}`) when the room has bots, else empties it.
+- **Match end:** the host's K.O. limit / last-one-standing decides and sends `pend {w}` (the web host leaves that to
+  every client except in Pillars; sending it is harmless for web guests and is what Godot guests rely on).
+- **Rematch:** `rv` votes -> `rvs {list, total}`; all humans voted, or 20 s after the first vote (once the host's
+  match is over): non-voters get `kick` and their seat becomes a bot, and a new `start` goes out.
+- **Not yet:** host migration to a Godot guest (`promoted` still leaves the room), Pillars, team modes, chat display.
+- **Tests:** `npm run test:godot-host` (web-protocol guest + Godot guest against a Godot host on the real server).
 
 ---
 

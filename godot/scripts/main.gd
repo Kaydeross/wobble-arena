@@ -3,7 +3,8 @@ extends Control
 ## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), one secondary "Play online with
 ## friends" (its sub line says it needs internet, or the room state while connected; it opens the online panel: server
 ## address, room code, name, Join as a guest with GuestSession, and a minimal login: POST /api/login, token kept in
-## Settings), a chip saying who you are ("Guest" or "Signed in as NAME"), a gear for the settings sheet (Show FPS) and
+## Settings; "Host a room" opens the host sheet: room name, public / private, seats, bots -> HostSession, and both
+## roles wait in the lobby sheet: the players, Start (host only), Leave), a chip saying who you are ("Guest" or "Signed in as NAME"), a gear for the settings sheet (Show FPS) and
 ## a small tip line. Laid out with containers inside a safe-area
 ## MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks 852x393, 1170x540,
 ## 1280x720 and 390x844: the title, the online panel, every wizard page and the settings sheet).
@@ -39,6 +40,10 @@ var sheet: Control                  ## settings sheet (gear): Show FPS
 var fps_toggle: CheckButton
 var _ui := {}
 var _api: AccountApi
+var host_sheet: Control             ## "Host a room": name, public / private, seats, bots
+var lobby: Control                  ## the room's lobby: players, Start (host only), Leave
+var _host := {"pub": false, "max": 4, "bots": 2}
+var _host_bs := {}                  ## "pub_0/1", "max_N", "bots_N" -> Button
 
 func _ready() -> void:
 	wizard = SetupWizard.new()
@@ -52,6 +57,8 @@ func _ready() -> void:
 	gear.icon = _gear_icon()
 	gear.pressed.connect(show_settings.bind(true))
 	_build_sheet()
+	_build_host_sheet()
+	_build_lobby()
 	Settings.changed.connect(_on_setting)
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
 	_api = AccountApi.new()
@@ -62,6 +69,7 @@ func _ready() -> void:
 	if session != null:
 		_bind_session()
 		_status((notice + "  " if notice != "" else "") + session.status)
+		_on_roster(session.roster)
 	var join := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--join="): join = a.substr(7)
@@ -239,6 +247,14 @@ func _build_online() -> void:
 	_ui["name"].text = str(Settings.get_value("name", "Player"))
 	_ui["user"].text = str(Settings.get_value("user", ""))
 	_ui["join"].pressed.connect(join_room)
+	var hb := Button.new()
+	hb.name = "Host"
+	hb.text = "Host a room"
+	hb.custom_minimum_size = Vector2(150, 48)
+	hb.add_theme_font_size_override("font_size", 19)
+	hb.pressed.connect(show_host.bind(true))
+	_ui["join"].add_sibling(hb)
+	_ui["host"] = hb
 	_ui["leave"].pressed.connect(func() -> void: if session: session.leave("You left the room."))
 	_ui["login"].pressed.connect(func() -> void:
 		_status("Logging in…")
@@ -261,8 +277,11 @@ func _refresh_login() -> void:
 func _refresh_buttons() -> void:
 	var on := session != null and session.is_active()
 	_ui["join"].disabled = on
+	_ui["host"].disabled = on
 	_ui["leave"].visible = on
-	if not on: _ui["roster"].text = ""
+	if not on:
+		_ui["roster"].text = ""
+		show_lobby(false)
 
 func join_room() -> void:
 	if session != null and session.is_active(): return
@@ -282,6 +301,7 @@ func _bind_session() -> void:
 	session.ended.connect(_on_ended)
 	session.roster_changed.connect(_on_roster)
 	session.match_started.connect(_enter_match)
+	if session is HostSession: (session as HostSession).hosted.connect(_on_hosted)
 	_refresh_buttons()
 
 func _unbind_session() -> void:
@@ -289,6 +309,7 @@ func _unbind_session() -> void:
 	session.ended.disconnect(_on_ended)
 	session.roster_changed.disconnect(_on_roster)
 	session.match_started.disconnect(_enter_match)
+	if session is HostSession and (session as HostSession).hosted.is_connected(_on_hosted): (session as HostSession).hosted.disconnect(_on_hosted)
 
 func _on_status(t: String) -> void:
 	_status(t)
@@ -303,11 +324,15 @@ func _on_roster(r: Array) -> void:
 	var names: Array = []
 	for e: Dictionary in r: names.append(e["name"])
 	_ui["roster"].text = "In the room: " + ", ".join(names)
+	if session != null and session.is_active() and (session.slot >= 0 or session.is_host()) and not session.started:
+		_fill_lobby()
+		show_lobby(true)
 
 ## `start` from the host: into the match (the world takes the session over).
 func _enter_match(s: Dictionary) -> void:
 	if not is_inside_tree(): return
 	_unbind_session()
+	show_lobby(false)
 	var world: Node = load(WORLD).instantiate()
 	world.session = session
 	world.start_msg = s
@@ -324,3 +349,212 @@ func play_offline() -> void:
 	world.bot_count = wizard.bots
 	world.difficulty = wizard.diff
 	get_tree().change_scene_to_node(world)
+
+# ---------------- hosting and the lobby ----------------
+
+func _sheet_frame(sheet_name: String, title: String, min_w: float) -> VBoxContainer:
+	var sh := Control.new()
+	sh.name = sheet_name
+	sh.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sh.visible = false
+	add_child(sh)
+	var dim := ColorRect.new()
+	dim.name = "Dim"
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sh.add_child(dim)
+	var cc := CenterContainer.new()
+	cc.name = "Center"
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sh.add_child(cc)
+	var card := PanelContainer.new()
+	card.name = "Card"
+	card.custom_minimum_size = Vector2(min_w, 0)
+	cc.add_child(card)
+	var box := VBoxContainer.new()
+	box.name = "Box"
+	box.add_theme_constant_override("separation", 10)
+	card.add_child(box)
+	var t := Label.new()
+	t.name = "Title"
+	t.text = title
+	t.theme_type_variation = &"TitleLabel"
+	t.add_theme_font_size_override("font_size", 30)
+	box.add_child(t)
+	return box
+
+## One labelled row of toggle pills (the setup wizard's style).
+func _pill_row(box: Control, row_name: String, label: String, keys: Array, names: Array, prefix: String, on_pick: Callable) -> void:
+	var row := HBoxContainer.new()
+	row.name = row_name
+	row.add_theme_constant_override("separation", 6)
+	box.add_child(row)
+	var l := Label.new()
+	l.text = label
+	l.theme_type_variation = &"MutedLabel"
+	l.add_theme_font_size_override("font_size", 18)
+	l.custom_minimum_size = Vector2(110, 0)
+	l.size_flags_vertical = SIZE_SHRINK_CENTER
+	row.add_child(l)
+	var g := ButtonGroup.new()
+	for i in keys.size():
+		var b := Button.new()
+		b.name = "P" + str(keys[i])
+		b.text = str(names[i])
+		b.theme_type_variation = &"TabButton"
+		b.toggle_mode = true
+		b.button_group = g
+		b.custom_minimum_size = Vector2(0, 48)
+		b.size_flags_horizontal = SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 19)
+		b.pressed.connect(on_pick.bind(keys[i]))
+		row.add_child(b)
+		_host_bs[prefix + str(keys[i])] = b
+
+func _build_host_sheet() -> void:
+	var box := _sheet_frame("HostSheet", "Host a room", 620)
+	host_sheet = get_node("HostSheet")
+	var nm := LineEdit.new()
+	nm.name = "RoomName"
+	nm.placeholder_text = "Room name"
+	nm.max_length = 24
+	nm.custom_minimum_size = Vector2(0, 48)
+	nm.add_theme_font_size_override("font_size", 18)
+	box.add_child(nm)
+	_ui["rname"] = nm
+	_pill_row(box, "Vis", "Who can join", [0, 1], ["Private (code)", "Public"], "pub_", func(k: int) -> void: _host["pub"] = k == 1)
+	_pill_row(box, "Max", "Seats", [2, 3, 4, 5, 6, 7, 8], ["2", "3", "4", "5", "6", "7", "8"], "max_", func(k: int) -> void: _host["max"] = k)
+	_pill_row(box, "Bots", "Bots", [0, 1, 2, 3, 4, 5, 6, 7], ["0", "1", "2", "3", "4", "5", "6", "7"], "bots_", func(k: int) -> void: _host["bots"] = k)
+	var hint := Label.new()
+	hint.name = "Hint"
+	hint.theme_type_variation = &"MutedLabel"
+	hint.add_theme_font_size_override("font_size", 16)
+	hint.text = "Game type and arena: your last Play setup (online plays Classic-style games)."
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(0, 20)
+	box.add_child(hint)
+	var row := HBoxContainer.new()
+	row.name = "Buttons"
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	var cancel := Button.new()
+	cancel.name = "Cancel"; cancel.text = "Cancel"
+	cancel.custom_minimum_size = Vector2(140, 54)
+	cancel.add_theme_font_size_override("font_size", 20)
+	cancel.pressed.connect(show_host.bind(false))
+	row.add_child(cancel)
+	var go := Button.new()
+	go.name = "Create"; go.text = "Create room"
+	go.theme_type_variation = &"PrimaryButton"
+	go.size_flags_horizontal = SIZE_EXPAND_FILL
+	go.custom_minimum_size = Vector2(0, 54)
+	go.add_theme_font_size_override("font_size", 22)
+	go.pressed.connect(func() -> void: host_room())
+	row.add_child(go)
+	var h: Variant = Settings.get_value("host_opts", {})
+	if h is Dictionary:
+		for k in ["pub", "max", "bots"]:
+			if h.has(k): _host[k] = h[k]
+	_host["max"] = clampi(int(_host["max"]), 2, 8); _host["bots"] = clampi(int(_host["bots"]), 0, 7)
+	_host_bs["pub_" + str(1 if _host["pub"] else 0)].button_pressed = true
+	_host_bs["max_" + str(_host["max"])].button_pressed = true
+	_host_bs["bots_" + str(_host["bots"])].button_pressed = true
+
+func show_host(on: bool) -> void:
+	host_sheet.visible = on
+	if on:
+		if str(_ui["rname"].text) == "": _ui["rname"].text = (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player") + "'s room"
+		if Tier.is_pc(): (_ui["rname"] as LineEdit).grab_focus.call_deferred()
+
+## Create room: a HostSession with the sheet's options; the game type, arena, floor and bot skill come from the
+## last Play setup (Settings), the mode through HostSession.net_mode.
+func host_room() -> void:
+	if session != null and session.is_active(): return
+	var url := str(_ui["server"].text).strip_edges()
+	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
+	if nm == "": nm = "Player"
+	Settings.set_value("server_url", url); Settings.set_value("name", nm)
+	Settings.set_value("host_opts", _host.duplicate())
+	var mode := HostSession.net_mode(str(Settings.get_value("mode", "classic")))
+	var mp := str(Settings.get_value("offline_map", "arena"))
+	var allowed := SetupWizard.maps_for(mode)
+	if not allowed.has(mp): mp = "arena" if allowed.has("arena") or allowed.is_empty() else str(allowed[0])
+	show_host(false)
+	session = HostSession.new()
+	_bind_session()
+	(session as HostSession).begin_host(url, {"name": str(_ui["rname"].text), "pub": _host["pub"], "max": _host["max"], "bots": int(_host["bots"]),
+		"mode": mode, "map": mp, "dyn": str(Settings.get_value("dyn", "off")), "diff": str(Settings.get_value("difficulty", "normal"))},
+		{"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
+		"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}, str(Settings.get_value("token", "")))
+	_refresh_buttons()
+
+func _on_hosted(_code: String) -> void:
+	_fill_lobby()
+	show_lobby(true)
+
+func _build_lobby() -> void:
+	var box := _sheet_frame("Lobby", "Lobby", 620)
+	lobby = get_node("Lobby")
+	var code := Label.new()
+	code.name = "Code"
+	code.add_theme_font_size_override("font_size", 22)
+	code.theme_type_variation = &"MutedLabel"
+	box.add_child(code)
+	var grid := GridContainer.new()
+	grid.name = "Players"
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 4)
+	box.add_child(grid)
+	var info := Label.new()
+	info.name = "Info"
+	info.theme_type_variation = &"MutedLabel"
+	info.add_theme_font_size_override("font_size", 16)
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info.custom_minimum_size = Vector2(0, 20)
+	box.add_child(info)
+	var row := HBoxContainer.new()
+	row.name = "Buttons"
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	var lv := Button.new()
+	lv.name = "Leave"; lv.text = "Leave"
+	lv.custom_minimum_size = Vector2(140, 54)
+	lv.add_theme_font_size_override("font_size", 20)
+	lv.pressed.connect(func() -> void: if session: session.leave("You left the room."))
+	row.add_child(lv)
+	var st := Button.new()
+	st.name = "Start"; st.text = "Start"
+	st.theme_type_variation = &"PrimaryButton"
+	st.size_flags_horizontal = SIZE_EXPAND_FILL
+	st.custom_minimum_size = Vector2(0, 54)
+	st.add_theme_font_size_override("font_size", 22)
+	st.pressed.connect(func() -> void: if session is HostSession: (session as HostSession).start_match())
+	row.add_child(st)
+
+func show_lobby(on: bool) -> void:
+	if lobby: lobby.visible = on
+
+## The lobby card from the session: room name / code, a line per player (the host first), Start for the host.
+func _fill_lobby() -> void:
+	var box := lobby.get_node("Center/Card/Box")
+	var hs: HostSession = session as HostSession if session is HostSession else null
+	var roster: Array = session.roster if session != null else []
+	(box.get_node("Title") as Label).text = (session.room_name if session != null and session.room_name != "" else "Lobby").substr(0, 24)
+	var code: Label = box.get_node("Code")
+	if session == null: code.text = ""
+	elif hs != null: code.text = ("Public room · " if hs.pub else "Room code ") + hs.room_code
+	else: code.text = "Room code " + session.room_code.to_upper()
+	var grid: GridContainer = box.get_node("Players")
+	for c in grid.get_children(): c.queue_free()
+	for r: Dictionary in roster:
+		var l := Label.new()
+		l.add_theme_font_size_override("font_size", 20)
+		l.text = "%s%s" % [r.get("name", "?"), "  (host)" if int(r.get("id", -1)) == 0 else ""]
+		grid.add_child(l)
+	var seats := hs.opt_max if hs != null else int(session.lobby.get("max", 0)) if session != null else 0
+	var info: Label = box.get_node("Info")
+	info.text = "%d / %d players" % [roster.size(), seats] + (" · empty seats get bots" if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
+		+ ("" if hs != null else " · waiting for the host to start")
+	(box.get_node("Buttons/Start") as Button).visible = hs != null
