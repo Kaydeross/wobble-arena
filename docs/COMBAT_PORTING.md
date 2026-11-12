@@ -43,6 +43,10 @@ Visual-only randomness that sits in the middle of gameplay code is drawn and thr
 
 Gotcha: Godot's `JSON.parse_string` (and `String.to_float`) are **not exact** for doubles (up to hundreds of ulps). The reference therefore writes non-integer numbers as `"#<hex bits>"` and the test revives them. Content loaded from `shared/*.json` goes through the inexact parser; the error is ~1e-16 relative and the parity test tolerance is 1e-9.
 
+## Body-part damage (Godot only)
+
+`Combat.hit()` takes an optional `zone` (`Combat.zone_info(part, mul, x, y, z)`) after the attacker. Hitscan guns, knives, arrows and melee sweeps decide the part from the struck point (`Combat.body_part`) and multiply the damage by `Combat.part_mul(part, weapon_head)` before calling `hit()`; the `dmg_number` event gains `part` and `pct`, the `hit` event `part` and the struck point. The rule is `Combat.damage_rule`: a bare `Combat` (the parity tests) and any online match use `classic`, which is the web game's head-only bonus bit for bit; `MatchSim` sets `zones` for offline play. Table, zone rules and net compatibility: `docs/DAMAGE.md`; tests: `npm run test:godot-damage`.
+
 ## What is ported
 
 | Area | Status |
@@ -96,6 +100,7 @@ Already done and removed from this table: plain guns, shotgun, dual Uzi, minigun
 ## Running the tests
 
 - `npm run test:godot-combat`: the parity test (JS reference vs Godot, worst_error must stay <= 1e-9) and the NetSnapshot test.
+- `npm run test:godot-damage`: body-part zones and multipliers on every hit path, classic vs zones, net fallback (`godot/tests/damage_test.gd`).
 - `godot --headless --path godot --script res://tests/weapons_shots.gd -- --no-save --smoke`: a 40 s offline match with bots armed with the batch-1 weapons (explosions, nets, flames, views in sync, no script errors).
 - The rest of the Godot suites a weapons change can touch: `npm run test:godot-physics`, `test:godot-world`, `test:godot-integration`, `test:godot-netguest`, `test:godot-weapons`, `test:godot-ui`, `test:godot-dynamics`, and `npm test`.
 - Screenshots (window needed): `godot --path godot --resolution 1280x720 --script res://tests/weapons_shots.gd -- --no-save --shot rocket --out docs/style/godot-weapons-batch1-rocket.png` (and `--shot net`).

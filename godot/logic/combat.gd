@@ -33,6 +33,18 @@ var spawn_y := 4.0               ## MAPS[map].spawnY || 4
 var solids: Array = []           ## FighterPhysics.solids_from_map()
 var grav_setting := 1.0          ## cfg.grav (Moon Drift < 0.3: lobbed things float too, projG)
 
+# --- body-part damage (shared/damage.json, docs/DAMAGE.md) ---
+const DEFAULT_DAMAGE := {"tables": {
+		"classic": {"head": 1.0, "torso": 1.0, "arms": 1.0, "legs": 1.0, "meleeHead": false},
+		"zones": {"head": 1.5, "torso": 1.0, "arms": 0.85, "legs": 0.75, "meleeHead": true}},
+	"weaponHead": {"gun": 2.0, "thrown": 1.8, "arrow": 1.8}, "geometry": {"armSide": 0.34, "legsBelow": 0.45}}
+var damage: Dictionary = DEFAULT_DAMAGE
+## "classic" = the web game (only headshots get a bonus: bit-identical to the JS); "zones" = the per-part table.
+## A bare Combat is classic (the parity tests); MatchSim switches offline matches to "zones".
+var damage_rule := "classic"
+## Online matches stay classic (web clients compute their own shots that way) unless every client knows the table.
+var net_zones := false
+
 # --- net (filled by the net layer) ---
 var net_started := false
 var net_host := false
@@ -68,6 +80,9 @@ func load_content(dir: String = "res://data") -> void:
 	weapons_data = read_json(dir.path_join("weapons.json"))
 	classes = read_json(dir.path_join("classes.json"))
 	modes = read_json(dir.path_join("modes.json"))
+	var dp := dir.path_join("damage.json")
+	var dd: Variant = read_json(dp) if FileAccess.file_exists(dp) else null
+	damage = dd if dd is Dictionary and dd.has("tables") else DEFAULT_DAMAGE
 	set_mode(mode_id)
 
 func set_mode(id: String) -> void:
@@ -101,14 +116,57 @@ func push_arm(f: FighterState, x: float, y: float, z: float) -> void:
 
 # ============================== damage ==============================
 
+## True when the per-part table applies: the rule asks for it and we are offline (or every client knows the table).
+func zones_active() -> bool:
+	return damage_rule != "classic" and (not net_started or net_zones)
+
+## The multiplier row in use: {head, torso, arms, legs, meleeHead}.
+func zone_table() -> Dictionary:
+	var t: Dictionary = damage.get("tables", DEFAULT_DAMAGE["tables"])
+	var key := damage_rule if zones_active() else "classic"
+	return t.get(key, DEFAULT_DAMAGE["tables"][key] if DEFAULT_DAMAGE["tables"].has(key) else DEFAULT_DAMAGE["tables"]["classic"])
+
+## A weapon family's own headshot multiplier ("gun" -> weapon headMul or 2.0, "thrown"/"arrow" -> 1.8), or -1 = use the table.
+func weapon_head(kind: String, w: Dictionary = {}) -> float:
+	if kind == "gun" and w.get("headMul", 0): return float(w["headMul"])
+	var wh: Dictionary = damage.get("weaponHead", DEFAULT_DAMAGE["weaponHead"])
+	return float(wh[kind]) if wh.has(kind) else -1.0
+
+## Which body part of `v` the point (x, y, z) is on. `on_head` = the head hit sphere was the one touched (that decides
+## "head", exactly like the old head flag). Otherwise: below the chest by more than legsBelow -> legs; further than
+## armSide from the chest centre sideways (along the victim's right axis) -> arms; else torso. Scaled for giants.
+func body_part(v: FighterState, x: float, y: float, z: float, on_head: bool) -> String:
+	if on_head: return "head"
+	var g: Dictionary = damage.get("geometry", DEFAULT_DAMAGE["geometry"])
+	var k := 1.5 if giant else 1.0
+	if y < v.chest_y - float(g.get("legsBelow", 0.45)) * k: return "legs"
+	var side := absf(-(x - v.chest_x) * cos(v.yaw) + (z - v.chest_z) * sin(v.yaw))
+	if side > float(g.get("armSide", 0.34)) * k: return "arms"
+	return "torso"
+
+## Damage multiplier for a part. `own_head` (> 0) is the weapon's own headshot value, which wins over the table's head.
+## Classic: every non-head part is 1.0, so the damage is bit-identical to the web game.
+func part_mul(part: String, own_head: float = -1.0) -> float:
+	if part == "head" and own_head > 0.0: return own_head
+	return float(zone_table().get(part, 1.0))
+
+## The `zone` argument of hit(): which part, its multiplier and where it was struck (for the damage number and flash).
+static func zone_info(part: String, mul: float, x: float, y: float, z: float) -> Dictionary:
+	return {"part": part, "mul": mul, "x": x, "y": y, "z": z}
+
 ## Fighter.hit: damage, knockback, stun, K.O. Returns {applied, dmg, ko, light, ...}; false-y `applied` = no effect.
-func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: float, head: bool, attacker: FighterState) -> Dictionary:
+## `dmg` already includes the body-part multiplier; `zone` (zone_info(), optional) only labels the damage number /
+## hit flash with the part, its bonus % and the struck point. Splash, flame and the glove pass none (whole body).
+func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: float, head: bool, attacker: FighterState,
+		zone: Dictionary = {}) -> Dictionary:
 	var r := {"applied": false, "ko": false}
+	var part: String = zone.get("part", "head" if head else "")
+	var pct := js_round((float(zone.get("mul", 1.0)) - 1.0) * 100.0) if zone.has("mul") else 0
 	if v.is_ghost:                     # another player's wobbler: the shooter's game decides the hit and tells theirs
 		if attacker == null or attacker.is_ghost or attacker.net_slot < 0 or v.dead or v.left or v.invuln > 0.0 or not net_started:
 			return r
 		if attacker.is_player:
-			ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head}); attacker.st["hits"] += 1
+			ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head, "part": part, "pct": pct}); attacker.st["hits"] += 1
 		v.flash = 0.12
 		var msg := NetSnapshot.encode_hit(v.net_slot if v.net_human else 0, v.net_slot, attacker.net_slot, dmg, dx, dy, dz, force, head)
 		ev({"type": "net", "msg": msg})
@@ -133,7 +191,7 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 	if v.down_t > 0.0 and not (v.trap_t > 0.0):
 		dmg *= 0.5
 	if attacker != null and attacker.is_player and attacker != v:
-		ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head})
+		ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head, "part": part, "pct": pct})
 	v.last_attacker = attacker; v.last_hit_time = time
 	if attacker != null and attacker != v:
 		var real := maxf(0.0, minf(dmg, v.hp))
@@ -162,7 +220,9 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 	var sa := force * 0.3
 	push_arm(v, dx * sa, dy * sa, dz * sa)
 	r["applied"] = true; r["dmg"] = dmg; r["light"] = light
-	ev({"type": "hit", "f": v, "attacker": attacker, "dmg": dmg, "head": head, "force": force})
+	var he := {"type": "hit", "f": v, "attacker": attacker, "dmg": dmg, "head": head, "force": force, "part": part}
+	if zone.has("x"): he["x"] = zone["x"]; he["y"] = zone["y"]; he["z"] = zone["z"]
+	ev(he)
 	if v.hp <= 0.0:
 		v.st["streak"] = 0; v.st["multi"] = 0; v.st["deaths"] += 1
 		v.dead = true
@@ -655,6 +715,8 @@ func melee_sweep(f: FighterState) -> void:
 			var edz := e.phys.pz - f.phys.pz
 			var touched := f.cyclone and f.swing > 0.4 and sqrt(edx * edx + edz * edz) < 3.2 and absf(e.phys.py - f.phys.py) < 2.2
 			var sph := e.spheres(giant)
+			var tp_at := [e.chest_x, e.chest_y, e.chest_z]   # where the bat touched (cyclone body contact: the chest)
+			var tp_head := false
 			for i in n:
 				if touched: break
 				for k in 3:
@@ -668,7 +730,8 @@ func melee_sweep(f: FighterState) -> void:
 						var dy: float = ay - sp[1]
 						var dz: float = az - sp[2]
 						var rr: float = sp[3] + thick
-						if dx * dx + dy * dy + dz * dz < rr * rr: touched = true; break
+						if dx * dx + dy * dy + dz * dz < rr * rr:
+							touched = true; tp_at = [ax, ay, az]; tp_head = sp[4]; break
 			if not touched: continue
 			f.swing_hit[e] = true
 			# knock them the way the weapon was moving, mixed with "away from the swinger"
@@ -686,7 +749,11 @@ func melee_sweep(f: FighterState) -> void:
 			var slam_mul := float(w.get("slamMul", 1.3)) if w.get("slamMul", 0) else 1.3
 			var dmg := float(w["dmg"]) * f.dmg_scale * (slam_mul if f.slam else (1.6 if f.cyclone else 1.0))
 			var force := float(w["force"]) * (1.1 if f.slam else (1.5 if f.cyclone else 1.0))
-			if hit(e, dmg, d[0], d[1], d[2], force, false, f)["applied"]:
+			# body part: a bat on the head only counts as a headshot when the table allows melee heads (classic: never)
+			var part := body_part(e, tp_at[0], tp_at[1], tp_at[2], tp_head and bool(zone_table().get("meleeHead", false)))
+			var pm := part_mul(part)
+			dmg *= pm
+			if hit(e, dmg, d[0], d[1], d[2], force, part == "head", f, zone_info(part, pm, tp_at[0], tp_at[1], tp_at[2]))["applied"]:
 				var tp := float(w.get("topple", 0.0))
 				if tp and rng.next() < tp: topple(e, 1.1)
 				ev({"type": "sfx", "name": w.get("hitSfx", "clink"), "f": e})

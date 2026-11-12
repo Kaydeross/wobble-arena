@@ -42,6 +42,7 @@ var dyn_t0 := 0.0
 
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
+	combat.damage_rule = "zones"      # per-body-part damage offline; Combat.zones_active() falls back to classic online
 	pickups = Pickups.new(combat, Combat.read_json(content_dir.path_join("drops.json")), Combat.read_json(content_dir.path_join("crate-rates.json")))
 
 ## The game mode (pickMode + setBotCfg): rules, teams, lives, K.O. limit (`limit` < 0 = the mode's preset). Call before

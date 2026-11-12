@@ -1,0 +1,9 @@
+{
+ "_doc": "Body-part damage multipliers (docs/DAMAGE.md). Hand-written, not exported from index.html. 'classic' = the web game today (only headshots get a bonus); 'zones' = the per-part table used offline in the Godot app.",
+ "tables": {
+  "classic": { "head": 1, "torso": 1, "arms": 1, "legs": 1, "meleeHead": false },
+  "zones": { "head": 1.5, "torso": 1, "arms": 0.85, "legs": 0.75, "meleeHead": true }
+ },
+ "weaponHead": { "gun": 2, "thrown": 1.8, "arrow": 1.8 },
+ "geometry": { "armSide": 0.34, "legsBelow": 0.45 }
+}
