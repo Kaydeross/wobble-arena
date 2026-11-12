@@ -13,6 +13,13 @@ config/icon="res://icon.png"
 Tier="*res://autoload/tier.gd"
 Content="*res://autoload/content.gd"
 Settings="*res://autoload/settings.gd"
+Sfx="*res://autoload/audio.gd"
+
+[audio]
+
+; iOS: Solo Ambient = honours the silent switch and does not mix with other apps' audio.
+general/ios/session_category=5
+general/ios/mix_with_others=false
 
 [display]
 window/size/viewport_width=1170

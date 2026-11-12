@@ -18,6 +18,8 @@ const DEFAULTS := {
 	"touch_assist": true,
 	"class": "wobbler",     # character class (shared/classes.json id)
 	"color": 0x39b5a8,      # body colour (the web player's default)
+	"volume": 0.5,          # sound volume 0..1 (web settings.vol; autoload Sfx)
+	"muted": false,         # no sound effects
 	"skin": "none",         # outfit (cosmetics.json skins)
 	"hat": "none",          # hat (cosmetics.json hats)
 	"name": "Player",       # name shown to other players (12 chars on the wire)
