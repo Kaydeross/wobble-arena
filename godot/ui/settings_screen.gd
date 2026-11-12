@@ -135,6 +135,8 @@ func show_section(s: String) -> void:
 			var auto_n: String = ["Low", "Medium", "High"][MapBuilder.gfx_q()]
 			_choice("effects", "Effects", "Particles, trails and flashes in a match. Auto follows this device (%s)." % auto_n,
 				["auto", "low", "medium", "high"], ["Auto", "Low", "Medium", "High"])
+			_choice("ui_scale", "Text and button size", "Menus, HUD and touch buttons. Auto keeps buttons finger-sized on this screen.",
+				UiScale.MODES, ["Auto", "Small", "Normal", "Large"])
 			_toggle("screen_shake", "Screen shake", "The camera shakes on big hits and explosions")
 			_toggle("show_fps", "Show frame rate (FPS)", "F3 or a three-finger tap also toggles it")
 		"audio":

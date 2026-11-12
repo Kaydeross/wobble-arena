@@ -300,6 +300,8 @@ func update(delta: float) -> void:
 			lo = bx + 10.0; hi = _health.position.x - 10.0
 		else:
 			lo = _health.position.x + _health.size.x + 10.0; hi = bx - 10.0
+	# touch: narrower slots first, so the slots stay finger-sized (44 pt at the UI scale) before the bar scales down
+	_hotbar.set_slot_w((hi - lo - _hotbar.GAP * 3.0) / 4.0 if touch_on else 104.0)
 	var hw: float = _hotbar.custom_minimum_size.x
 	var sc := clampf((hi - lo) / hw, 0.55, 1.0) if touch_on else 1.0
 	_hotbar.scale = Vector2(sc, sc)

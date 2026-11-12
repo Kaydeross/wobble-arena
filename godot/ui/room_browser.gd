@@ -104,7 +104,7 @@ func show_rooms(r: Array, err: String = "") -> void:
 	rooms = r
 	if r.is_empty():
 		state = "empty"
-		count_l.text = "Nobody has opened a room yet"
+		count_l.text = "None open yet"
 		_show_message("No rooms yet: host one, or join a friend with a code.", "Host a room")
 		return
 	state = "rooms"
@@ -190,6 +190,7 @@ func _row(r: Dictionary) -> Button:
 	n.add_theme_font_override("font", UiTheme.font(700))
 	n.clip_text = true
 	n.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	n.set_meta("user_text", true)   # a player's room name: "…" when it is too long (the tooltip has it all)
 	v.add_child(n)
 	var parts: Array = []
 	if str(r["host"]) != "": parts.append("Host: " + str(r["host"]))

@@ -74,6 +74,10 @@ static func build_from(map_id: String, map: Dictionary) -> MapNode:
 	if map.has("lavaY"): add_lava_lake(root, float(map["lavaY"]))     # Lava Pillars: the lake that kills (PillarsMap)
 	return root
 
+## True on the Compatibility renderer (web; also a PC forced to it), whatever the effects level says.
+static func compat() -> bool:
+	return RenderingServer.get_current_rendering_method() == "gl_compatibility"
+
 ## Graphics quality from the Tier autoload: 0 LOW (web), 1 MID (phones), 2 HIGH (PC); 2 without the autoload.
 ## See docs/GRAPHICS.md for what each level turns on.
 static func gfx_q() -> int:
@@ -124,16 +128,10 @@ static func make_environment(map: Dictionary, id := "") -> Environment:
 		sky.process_mode = Sky.PROCESS_MODE_QUALITY if lk.is_empty() else Sky.PROCESS_MODE_INCREMENTAL
 		env.background_mode = Environment.BG_SKY
 		env.sky = sky
-	# HemisphereLight stand-in: a flat ambient between the hemisphere's sky and ground colours
-	var hemi := float(map.get("hemi", 0.95))
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = hex(0xffffff).lerp(hex(0x9bb7c4), 0.5)
-	if lk.has("hemi"):
-		var h: Array = lk["hemi"]
-		env.ambient_light_color = hex(int(h[1])).lerp(hex(int(h[0])), 0.8)   # mostly the sky colour: floors face up
-		hemi = float(h[2])
-	# three.js r160 (physically based lights) divides by PI where Godot does not: energy = intensity / PI keeps the same look
-	env.ambient_light_energy = hemi / PI
+	var amb := _ambient(map, lk)
+	env.ambient_light_color = amb[0]
+	env.ambient_light_energy = amb[1] * (COMPAT_LIFT if compat() else 1.0)
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
 	env.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var fog: Array = map.get("fog", [50, 160])
@@ -150,6 +148,37 @@ static func make_environment(map: Dictionary, id := "") -> Environment:
 	env.fog_sky_affect = 0.0
 	_grade(env, lk)
 	return env
+
+## HemisphereLight stand-in: a flat ambient between the hemisphere's sky and ground colours. [colour, energy]
+static func _ambient(map: Dictionary, lk: Dictionary) -> Array:
+	var hemi := float(map.get("hemi", 0.95))
+	var c := hex(0xffffff).lerp(hex(0x9bb7c4), 0.5)
+	if lk.has("hemi"):
+		var h: Array = lk["hemi"]
+		c = hex(int(h[1])).lerp(hex(int(h[0])), 0.8)   # mostly the sky colour: floors face up
+		hemi = float(h[2])
+	# three.js r160 (physically based lights) divides by PI where Godot does not: energy = intensity / PI keeps the same look
+	return [c, hemi / PI]
+
+## Compatibility (web / LOW) draws a shadow-casting directional light in its own additive pass, and that pass blends
+## the already sRGB-encoded colours: a sunlit floor shows enc(ambient) + enc(sun) instead of enc(ambient + sun), about
+## a third brighter than the same scene on Mobile / Forward+ (tests/gfx_parity.gd measured farm floor 165 vs 122). The
+## sun is scaled so the sum lands where the linear sum would on an up-facing surface: with enc(x) ~ x^g (g = 1/2.2)
+## and r = ambient / sun, enc(A) + enc(k L) = enc(A + L) gives k = ((1 + r)^g - r^g)^(1/g), the same for every
+## albedo. Shadowed pixels get no sun pass and are already right. Costs nothing at run time.
+static func compat_sun_scale(amb: Color, amb_e: float, sun: Color, sun_e: float, sun_dir_y: float) -> float:
+	var a := amb.srgb_to_linear().get_luminance() * amb_e
+	var l := sun.srgb_to_linear().get_luminance() * sun_e * clampf(sun_dir_y, 0.2, 1.0)
+	if l <= 1e-4: return 1.0
+	var g := 1.0 / 2.2
+	var r := a / l
+	return clampf(pow(pow(1.0 + r, g) - pow(r, g), 1.0 / g), 0.05, 1.0)
+
+## LOW has no tone curve (the same filmic settings on Compatibility measured brighter, not darker, with its sRGB passes):
+## MID / HIGH's filmic curve lifts the mid-tones about a fifth. Lit surfaces on Compatibility get that lift from the
+## lights instead (ambient and sun x COMPAT_LIFT); the sky and the unlit scenery keep their colours, as the filmic
+## shoulder keeps those bright ones. tests/gfx_parity.gd checks the result against MID.
+const COMPAT_LIFT := 1.2
 
 ## Post and colour grade by tier (docs/GRAPHICS.md). LOW keeps the web game's look (linear tonemap, depth fog only).
 ## MID / HIGH: filmic tonemap with the exposure lifted back to the web brightness, a gentle per-map grade from
@@ -226,6 +255,9 @@ static func setup_sun(sun: DirectionalLight3D, map: Dictionary, id := "") -> voi
 	if lk.get("sun") is Array:
 		sun.light_color = hex(int(lk["sun"][0]))
 		sun.light_energy = float(lk["sun"][1]) / PI
+	if compat():      # the shadowed sun's own pass blends in sRGB there (compat_sun_scale); COMPAT_LIFT: the grade
+		var amb := _ambient(map, lk)
+		sun.light_energy *= compat_sun_scale(amb[0], amb[1], sun.light_color, sun.light_energy, sun.transform.basis.z.y) * COMPAT_LIFT
 
 # ---------------------------------------------------------------- the web look (sky, fog, lights)
 
@@ -246,8 +278,11 @@ static func look(id: String) -> Dictionary:
 			_look = v
 	return _look.get(id, {})
 
+## A colour for a shader value without a source_color hint (sky bands, haze): linear on Mobile / Forward+. The
+## Compatibility renderer shades in sRGB and writes the result as it is (tests/gfx_parity.gd: ALBEDO = 0.2 shows as
+## 50 there, 123 on Mobile), so there it is the plain sRGB colour; linear values made its sky and far scenery too dark.
 static func _lin(c: int) -> Vector3:
-	var k := hex(c).srgb_to_linear()
+	var k := hex(c) if compat() else hex(c).srgb_to_linear()
 	return Vector3(k.r, k.g, k.b)
 
 ## The web sky dome as a sky shader: 12 colour bands by angle from the zenith (blended), the sun disc with two soft
@@ -703,7 +738,8 @@ static func decor_material(kind: int, fog: bool, em: float, receive := true, ani
 		code += DECOR_ANIM_VERTEX
 	else:
 		code += "void vertex() {\n\twpos = VERTEX;\n}\n"
-	code += "void fragment() {\n\tvec3 c = pow(COLOR.rgb, vec3(2.2));\n"
+	# vertex colours are sRGB: linear for Mobile / Forward+, as they are on Compatibility (it shades in sRGB, see _lin)
+	code += "void fragment() {\n\tvec3 c = %s;\n" % ("COLOR.rgb" if compat() else "pow(COLOR.rgb, vec3(2.2))")
 	if lit and not fog:      # web farPatch: darker at the foot, lighter at the top
 		code += "\tc *= mix(0.84, 1.07, smoothstep(-30.0, 65.0, wpos.y));\n"
 		if q >= 1:
@@ -722,7 +758,7 @@ static func decor_material(kind: int, fog: bool, em: float, receive := true, ani
 		code += SOFT_CEL_LIGHT
 	var m := ShaderMaterial.new()
 	m.shader = _shader("decor_%d_%d_%d_%d_%d" % [kind, int(fog), int(receive), int(anim), q], code)
-	m.set_shader_parameter("emission", em)
+	m.set_shader_parameter("emission", pow(em, 1.0 / 2.2) if compat() else em)   # the same glow on sRGB colours
 	m.render_priority = -1 if kind == 3 else 0
 	_materials[key] = m
 	return m

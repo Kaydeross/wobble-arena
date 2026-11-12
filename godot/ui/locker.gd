@@ -248,7 +248,7 @@ func _build_head() -> void:
 	row.add_child(coins_l)
 	switch_b = Button.new()
 	switch_b.name = "Switch"
-	switch_b.custom_minimum_size = Vector2(120, 52)
+	switch_b.custom_minimum_size = Vector2(120, 60)
 	switch_b.add_theme_font_size_override("font_size", 20)
 	switch_b.pressed.connect(func() -> void: open(not shop))
 	head.add_child(switch_b)
@@ -349,7 +349,7 @@ func _build_tabs() -> void:
 		b.theme_type_variation = &"TabButton"
 		b.toggle_mode = true
 		b.button_group = g
-		b.custom_minimum_size = Vector2(0, 48)
+		b.custom_minimum_size = Vector2(0, 60)
 		b.size_flags_horizontal = SIZE_EXPAND_FILL
 		b.add_theme_font_size_override("font_size", 20)
 		b.pressed.connect(_show_tab.bind(t))
@@ -401,7 +401,7 @@ func _build_confirm() -> void:
 	var no := Button.new()
 	no.name = "Cancel"
 	no.text = "Cancel"
-	no.custom_minimum_size = Vector2(0, 58)
+	no.custom_minimum_size = Vector2(0, 60)
 	no.size_flags_horizontal = SIZE_EXPAND_FILL
 	no.pressed.connect(show_confirm.bind(false))
 	row.add_child(no)
@@ -410,7 +410,7 @@ func _build_confirm() -> void:
 	confirm_buy.text = "Buy"
 	confirm_buy.theme_type_variation = &"PrimaryButton"
 	confirm_buy.add_theme_font_size_override("font_size", 26)
-	confirm_buy.custom_minimum_size = Vector2(0, 58)
+	confirm_buy.custom_minimum_size = Vector2(0, 60)
 	confirm_buy.size_flags_horizontal = SIZE_EXPAND_FILL
 	confirm_buy.pressed.connect(buy_confirmed)
 	row.add_child(confirm_buy)

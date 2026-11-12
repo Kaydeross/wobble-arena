@@ -18,6 +18,7 @@ extends Control
 
 const WORLD := "res://world/world.tscn"
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
+const COMPACT_H := 530.0                  ## safe height (canvas px) below which the title tightens up
 const TIPS := [
 	"Tip: push the stick to the edge to sprint.",
 	"Tip: knock other players off the edge to score.",
@@ -174,7 +175,7 @@ func _build_more() -> void:
 func _small_button(big: String, sub: String) -> Button:
 	var b := Button.new()
 	b.name = big
-	b.custom_minimum_size = Vector2(252, 54)
+	b.custom_minimum_size = Vector2(252, 60)
 	var st := VBoxContainer.new()
 	st.name = "Stack"
 	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -280,10 +281,15 @@ func _status(t: String) -> void:
 ## Safe-area insets (notch, home indicator) plus our own padding.
 func apply_safe_area() -> void:
 	var i := SafeArea.insets(get_viewport())
-	safe.add_theme_constant_override("margin_left", int(MARGIN.x + i[0]))
-	safe.add_theme_constant_override("margin_top", int(MARGIN.y + i[1]))
-	safe.add_theme_constant_override("margin_right", int(MARGIN.z + i[2]))
-	safe.add_theme_constant_override("margin_bottom", int(MARGIN.w + i[3]))
+	# short canvas (small phones at the 44 pt UI scale, UiScale): tighter padding and a lower Play button
+	var short: bool = get_viewport_rect().size.y - float(i[1]) - float(i[3]) < COMPACT_H
+	var m: Vector4 = MARGIN * (Vector4(1, 0.45, 1, 0.45) if short else Vector4.ONE)
+	safe.add_theme_constant_override("margin_left", int(m.x + i[0]))
+	safe.add_theme_constant_override("margin_top", int(m.y + i[1]))
+	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
+	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
+	play.custom_minimum_size.y = 140.0 if short else 176.0
+	col.add_theme_constant_override("separation", 8 if short else 14)
 
 # ---------------- online ----------------
 
@@ -335,7 +341,7 @@ func _build_chip() -> void:
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	chip.focus_mode = Control.FOCUS_ALL
 	chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	chip.custom_minimum_size = Vector2(0, 56)
+	chip.custom_minimum_size = Vector2(0, 60)
 	(chip.get_node("Row") as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
 	who.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	chip.gui_input.connect(func(e: InputEvent) -> void:
@@ -500,7 +506,7 @@ func _pill_row(box: Control, row_name: String, label: String, keys: Array, names
 		b.theme_type_variation = &"TabButton"
 		b.toggle_mode = true
 		b.button_group = g
-		b.custom_minimum_size = Vector2(0, 48)
+		b.custom_minimum_size = Vector2(60, 60)   # 44 pt square at the UI scale (UiScale)
 		b.size_flags_horizontal = SIZE_EXPAND_FILL
 		b.add_theme_font_size_override("font_size", 19)
 		b.pressed.connect(on_pick.bind(keys[i]))
@@ -514,7 +520,7 @@ func _build_host_sheet() -> void:
 	nm.name = "RoomName"
 	nm.placeholder_text = "Room name"
 	nm.max_length = 24
-	nm.custom_minimum_size = Vector2(0, 48)
+	nm.custom_minimum_size = Vector2(0, 60)
 	nm.add_theme_font_size_override("font_size", 18)
 	box.add_child(nm)
 	_ui["rname"] = nm
@@ -535,7 +541,7 @@ func _build_host_sheet() -> void:
 	box.add_child(row)
 	var cancel := Button.new()
 	cancel.name = "Cancel"; cancel.text = "Cancel"
-	cancel.custom_minimum_size = Vector2(140, 54)
+	cancel.custom_minimum_size = Vector2(140, 60)
 	cancel.add_theme_font_size_override("font_size", 20)
 	cancel.pressed.connect(show_host.bind(false))
 	row.add_child(cancel)
@@ -543,7 +549,7 @@ func _build_host_sheet() -> void:
 	go.name = "Create"; go.text = "Create room"
 	go.theme_type_variation = &"PrimaryButton"
 	go.size_flags_horizontal = SIZE_EXPAND_FILL
-	go.custom_minimum_size = Vector2(0, 54)
+	go.custom_minimum_size = Vector2(0, 60)
 	go.add_theme_font_size_override("font_size", 22)
 	go.pressed.connect(func() -> void: host_room())
 	row.add_child(go)
@@ -615,7 +621,7 @@ func _build_lobby() -> void:
 	box.add_child(row)
 	var lv := Button.new()
 	lv.name = "Leave"; lv.text = "Leave"
-	lv.custom_minimum_size = Vector2(140, 54)
+	lv.custom_minimum_size = Vector2(140, 60)
 	lv.add_theme_font_size_override("font_size", 20)
 	lv.pressed.connect(func() -> void: if session: session.leave("You left the room."))
 	row.add_child(lv)
@@ -623,7 +629,7 @@ func _build_lobby() -> void:
 	st.name = "Start"; st.text = "Start"
 	st.theme_type_variation = &"PrimaryButton"
 	st.size_flags_horizontal = SIZE_EXPAND_FILL
-	st.custom_minimum_size = Vector2(0, 54)
+	st.custom_minimum_size = Vector2(0, 60)
 	st.add_theme_font_size_override("font_size", 22)
 	st.pressed.connect(func() -> void: if session is HostSession: (session as HostSession).start_match())
 	row.add_child(st)

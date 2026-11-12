@@ -11,7 +11,7 @@ extends Control
 
 signal played(id: String)
 
-const BTN := 54.0              ## button size, canvas units
+const BTN := 62.0              ## button size, canvas units (45 pt at the UI scale, ui/ui_scale.gd)
 const GAP := 12.0              ## under the pause button
 const RING_R := 160.0
 const ITEM_R := 44.0
