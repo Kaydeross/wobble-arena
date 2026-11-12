@@ -80,7 +80,7 @@ static func maps_for(mode: String) -> Array:
 		for id: String in fixed:
 			if Content.maps.has(id): out.append(id)
 		return out
-	for id: String in Content.maps:
+	for id: String in ModeRules.sort_maps(Content.maps.keys()):
 		var m := Content.get_map(id)
 		var only := str(m.get("only", ""))
 		if id == "test" or id == "practice" or id == "custom" or str(m.get("cat", "")) == "sandbox": continue
@@ -516,7 +516,7 @@ func _rebuild_maps() -> void:
 	for id: String in maps_for(mode_id):
 		var m := Content.get_map(id)
 		var tags: Array = m.get("tags", [])
-		var b := _card(map_name(id), " · ".join(tags.slice(0, 3)), MAP_CARD, MapThumb.new(m))
+		var b := _card(map_name(id), " · ".join(tags.slice(0, 3)), MAP_CARD, MapThumb.new(m, id))
 		b.name = id
 		b.button_group = grp
 		b.tooltip_text = str(m.get("blurb", ""))
@@ -671,19 +671,25 @@ class EdgeFade extends Control:
 
 # ---------------- card art ----------------
 
-## Map card art: the map's sky (skyTop -> sky), its hill colours as low-poly hills, a floor slab.
+## Map card art: a picture of the level (res://ui/map_thumbs/<id>.jpg, rendered once from the real map by
+## `tools/shoot-godot-maps.sh thumbs`); without one, the map's sky (skyTop -> sky), its hill colours as low-poly hills
+## and a floor slab.
 class MapThumb extends Control:
 	var sky_top: Color
 	var sky: Color
 	var hills: Array = []
 	var floor_c: Color
+	var tex: Texture2D
 
-	func _init(m: Dictionary) -> void:
+	func _init(m: Dictionary, id := "") -> void:
 		sky = _c(m.get("sky", 0x9ad0f0))
 		sky_top = _c(m.get("skyTop", null)) if m.get("skyTop") != null else sky.lightened(0.25)
 		for h in m.get("hills", []): hills.append(_c(h))
 		if hills.is_empty(): hills = [sky.darkened(0.3)]
 		floor_c = _c(m.get("voidColor", 0x7a8a90)).lerp(Color(0.85, 0.85, 0.8), 0.35)
+		var p := "res://ui/map_thumbs/%s.jpg" % id
+		if id != "" and ResourceLoader.exists(p):
+			tex = load(p)
 		custom_minimum_size = Vector2(0, 56)
 		clip_contents = true
 
@@ -695,6 +701,13 @@ class MapThumb extends Control:
 	func _draw() -> void:
 		var w := size.x
 		var h := size.y
+		if tex:
+			var ts := tex.get_size()
+			var sc := maxf(w / ts.x, h / ts.y)
+			var src := Rect2((ts - Vector2(w, h) / sc) / 2.0, Vector2(w, h) / sc)
+			draw_texture_rect_region(tex, Rect2(Vector2.ZERO, size), src)
+			draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, 0.12), false, 2.0)
+			return
 		var cols := PackedColorArray([sky_top, sky_top, sky, sky])
 		draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, h), Vector2(0, h)]), cols)
 		var n := hills.size()
