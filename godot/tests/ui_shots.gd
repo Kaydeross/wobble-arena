@@ -152,7 +152,6 @@ func _frame() -> void:
 	if shot == "spectate":
 		_spectate_frame(sim, p)
 		return
-<<<<<<< HEAD
 	if shot == "killcam" and i == 100:
 		for f: FighterState in sim.fighters:
 			if f != p: f.hp = 1.0                       # the next hit is a fast K.O.
@@ -162,10 +161,9 @@ func _frame() -> void:
 		if world.kill_cam.shown > 1.5:
 			process_frame.disconnect(_frame)
 			_save()
-=======
+		return
 	if shot.begins_with("modes2-"):
 		_modes2_frame(sim, p, st)
->>>>>>> origin/main
 		return
 	if i == 2:
 		sim.combat.pickup(p, "katana")
