@@ -344,7 +344,8 @@ func _fill_hotbar(p: FighterState) -> void:
 			continue
 		var w := sim.combat.wdata(str(s["key"]))
 		var ammo := ""
-		if int(s["mag"]) >= 0: ammo = "%d/%d" % [int(s["mag"]), int(s["ammo"])]
+		if str(s["key"]) == "blower": ammo = "%d%%" % maxi(0, ceili(float(s["ammo"])))   # the web hotbar shows the blower in %
+		elif int(s["mag"]) >= 0: ammo = "%d/%d" % [int(s["mag"]), int(s["ammo"])]
 		elif int(s["ammo"]) > 1: ammo = "x%d" % int(s["ammo"])
 		var active := p.slot == i and not p.dead
 		var rl := -1.0
