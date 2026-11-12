@@ -4,7 +4,7 @@
   "description": "Room list and message relay for Wobble Arena",
   "main": "server.js",
   "private": true,
-  "scripts": { "start": "node server.js", "content": "node tools/export-content.js", "content:check": "node tools/export-content.js --check", "test": "node tools/export-content.js --check" },
+  "scripts": { "start": "node server.js", "content": "node tools/export-content.js", "content:check": "node tools/export-content.js --check", "test": "node tools/export-content.js --check && node tools/test-server.js" },
   "engines": { "node": ">=18" },
   "dependencies": { "ws": "^8.18.0" }
 }
