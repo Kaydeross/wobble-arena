@@ -1,15 +1,14 @@
 extends Control
-## Title scene: offline play (class, mode, floor and map pickers) and the online panel: server address, room code, name, Join
-## (as a guest, GuestSession) and a minimal login (POST /api/login, token kept in Settings). Laid out with containers
-## inside a safe-area MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks
-## 852x393, 1170x540, 1280x720 and 390x844 with both the Offline and the Play online tab open).
-## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away.
+## Title scene: the logo, one big PLAY (opens the offline setup wizard, ui/setup_wizard.gd: Arena -> Game type ->
+## Players -> Your fighter -> START), a smaller "Play online" (the online panel: server address, room code, name, Join
+## as a guest with GuestSession, and a minimal login: POST /api/login, token kept in Settings), the guest/status chip,
+## a gear for the settings sheet (Show FPS) and a tip line. Laid out with containers inside a safe-area
+## MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks 852x393, 1170x540,
+## 1280x720 and 390x844: the title, the online panel, every wizard page and the settings sheet).
+## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
+## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
 const WORLD := "res://world/world.tscn"
-const OFFLINE_MAPS := ["arena", "practice"]
-## Offline modes on the title screen (Settings "mode"). A mode with its own maps (MODES[id].maps in the web game,
-## i.e. maps whose `only` is the mode) plays only those: Construction -> Site Yard. The others use OFFLINE_MAPS.
-const OFFLINE_MODES := ["classic", "construction"]
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
 const TIPS := [
 	"Tip: push the stick to the edge to sprint.",
@@ -23,49 +22,38 @@ const TIPS := [
 var session: GuestSession = null
 var notice := ""
 
-const P := "Safe/Col/Body/Picks/Box/"
+const O := "Safe/Col/Body/Online/Box/"
 @onready var safe: MarginContainer = $Safe
+@onready var col: VBoxContainer = $Safe/Col
 @onready var chip: Label = $Safe/Col/Top/GuestChip/Row/Status
 @onready var who: Label = $Safe/Col/Top/GuestChip/Row/Who
 @onready var dot: Panel = $Safe/Col/Top/GuestChip/Row/Dot
-@onready var map_pick: OptionButton = get_node(P + "Offline/MapRow/Map")
-@onready var mode_pick: OptionButton = get_node(P + "Offline/ModeRow/Mode")
-@onready var class_pick: OptionButton = get_node(P + "Offline/ClassRow/Class")
-@onready var dyn_pick: OptionButton = get_node(P + "Offline/ModeRow/Dyn")   ## dynamic floor (Settings "dyn"): Steady / Random / Wobble / Tilt / Quake / Drift
-@onready var fps_toggle: CheckButton = get_node(P + "Offline/FpsRow/Fps")
-@onready var status: Label = get_node(P + "Online/Status")
-@onready var play: Button = $Safe/Col/Body/Play
-var class_ids: Array = []
-var map_ids: Array = []          ## the maps map_pick lists for the picked mode
+@onready var gear: Button = $Safe/Col/Top/Gear
+@onready var home: Control = $Safe/Col/Body/Home
+@onready var online_panel: Control = $Safe/Col/Body/Online
+@onready var play: Button = $Safe/Col/Body/Home/Play
+@onready var online_b: Button = $Safe/Col/Body/Home/Online
+@onready var status: Label = get_node(O + "Status")
+var wizard: SetupWizard
+var sheet: Control                  ## settings sheet (gear): Show FPS
+var fps_toggle: CheckButton
 var _ui := {}
 var _api: AccountApi
 
 func _ready() -> void:
-	for m: String in OFFLINE_MODES:
-		mode_pick.add_item(str(Content.modes.get(m, {}).get("name", m.capitalize())))
-	mode_pick.select(maxi(OFFLINE_MODES.find(str(Settings.get_value("mode", "classic"))), 0))
-	mode_pick.item_selected.connect(func(i: int) -> void:
-		Settings.set_value("mode", OFFLINE_MODES[i])
-		_fill_maps())
-	_fill_maps()
-	class_ids = Content.classes.keys()
-	for cid in class_ids:
-		class_pick.add_item(str(Content.get_class_data(cid).get("name", cid)))
-	class_pick.select(maxi(class_ids.find(str(Settings.get_value("class", "wobbler"))), 0))
-	for k: String in Dynamics.KINDS:
-		dyn_pick.add_item(str(Dynamics.NAMES[k]))
-	dyn_pick.select(maxi(Dynamics.KINDS.find(str(Settings.get_value("dyn", "random"))), 0))
-	dyn_pick.item_selected.connect(func(i: int) -> void: Settings.set_value("dyn", Dynamics.KINDS[i]))
-	play.pressed.connect(play_offline)
-	fps_toggle.button_pressed = bool(Settings.get_value("show_fps", false))
-	fps_toggle.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))
+	wizard = SetupWizard.new()
+	wizard.visible = false
+	safe.add_child(wizard)
+	wizard.start_requested.connect(play_offline)
+	wizard.closed.connect(close_wizard)
+	play.pressed.connect(open_wizard)
+	online_b.pressed.connect(show_tab.bind(true))
+	(get_node(O + "Head/Back") as Button).pressed.connect(show_tab.bind(false))
+	gear.icon = _gear_icon()
+	gear.pressed.connect(show_settings.bind(true))
+	_build_sheet()
 	Settings.changed.connect(_on_setting)
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
-	var group := ButtonGroup.new()
-	for t in ["OfflineTab", "OnlineTab"]:
-		var b: Button = get_node(P + "Tabs/" + t)
-		b.button_group = group
-		b.toggled.connect(func(on: bool): if on: show_tab(t == "OnlineTab"))
 	_api = AccountApi.new()
 	add_child(_api)
 	_api.finished.connect(func(_ok: bool, msg: String) -> void: _status(msg); _refresh_login())
@@ -79,8 +67,10 @@ func _ready() -> void:
 		if a.begins_with("--join="): join = a.substr(7)
 		elif a.begins_with("--server="): _ui["server"].text = a.substr(9)
 		elif a.begins_with("--name="): _ui["name"].text = a.substr(7)
-	if notice != "" or session != null or join != "":
-		show_tab(true)
+		elif a.begins_with("--mode=") and SetupWizard.modes().has(a.substr(7)): wizard.set_mode(a.substr(7))
+		elif a.begins_with("--map=") and Content.maps.has(a.substr(6)): wizard.set_map(a.substr(6))
+	_play_sub()
+	show_tab(notice != "" or session != null or join != "")
 	if join != "" and session == null:
 		_ui["room"].text = join
 		join_room()
@@ -94,27 +84,100 @@ func _process(dt: float) -> void:
 	if session != null:
 		session.poll(dt)
 
-## The offline maps for a mode: the maps only that mode plays (`only` == mode, e.g. Site Yard for Construction),
-## else the usual OFFLINE_MAPS.
+## The offline arenas for a mode (SetupWizard.maps_for).
 func maps_for(mode: String) -> Array:
-	var own: Array = []
-	for id: String in Content.maps:
-		if str(Content.get_map(id).get("only", "")) == mode: own.append(id)
-	return own if own.size() > 0 else OFFLINE_MAPS.duplicate()
+	return SetupWizard.maps_for(mode)
 
-func _fill_maps() -> void:
-	map_ids = maps_for(OFFLINE_MODES[maxi(mode_pick.selected, 0)])
-	map_pick.clear()
-	for id: String in map_ids:
-		map_pick.add_item(str(Content.get_map(id).get("name", id)))
-	map_pick.select(maxi(map_ids.find(str(Settings.get_value("offline_map", "arena"))), 0))
-
-## Offline pickers or the online panel in the right-hand card.
+## The title (PLAY / Play online) or the online panel.
 func show_tab(online: bool) -> void:
-	get_node(P + "Offline").visible = not online
-	get_node(P + "Online").visible = online
-	(get_node(P + "Tabs/OnlineTab") as Button).set_pressed_no_signal(online)
-	(get_node(P + "Tabs/OfflineTab") as Button).set_pressed_no_signal(not online)
+	home.visible = not online
+	online_panel.visible = online
+	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
+
+## The setup wizard (page 0 = Arena) instead of the title column.
+func open_wizard(p: int = 0) -> void:
+	col.visible = false
+	wizard.visible = true
+	wizard.go(p)
+
+func close_wizard() -> void:
+	wizard.visible = false
+	col.visible = true
+	_play_sub()
+	if Tier.is_pc(): play.grab_focus.call_deferred()
+
+func _play_sub() -> void:
+	($Safe/Col/Body/Home/Play/Stack/Sub as Label).text = wizard.summary_line()
+
+func show_settings(on: bool) -> void:
+	sheet.visible = on
+	if on and Tier.is_pc(): fps_toggle.grab_focus.call_deferred()
+
+## Settings sheet: a dimmed backdrop (tap to close) and a small card.
+func _build_sheet() -> void:
+	sheet = Control.new()
+	sheet.name = "Sheet"
+	sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sheet.visible = false
+	add_child(sheet)
+	var dim := ColorRect.new()
+	dim.name = "Dim"
+	dim.color = Color(0, 0, 0, 0.5)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed: show_settings(false))
+	sheet.add_child(dim)
+	var cc := CenterContainer.new()
+	cc.name = "Center"
+	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sheet.add_child(cc)
+	var card := PanelContainer.new()
+	card.name = "Card"
+	card.custom_minimum_size = Vector2(440, 0)
+	cc.add_child(card)
+	var box := VBoxContainer.new()
+	box.name = "Box"
+	box.add_theme_constant_override("separation", 14)
+	card.add_child(box)
+	var t := Label.new()
+	t.text = "Settings"
+	t.theme_type_variation = &"TitleLabel"
+	t.add_theme_font_size_override("font_size", 32)
+	box.add_child(t)
+	fps_toggle = CheckButton.new()
+	fps_toggle.name = "Fps"
+	fps_toggle.text = "Show FPS"
+	fps_toggle.custom_minimum_size = Vector2(0, 56)
+	fps_toggle.add_theme_font_size_override("font_size", 22)
+	fps_toggle.button_pressed = bool(Settings.get_value("show_fps", false))
+	fps_toggle.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))
+	box.add_child(fps_toggle)
+	var done := Button.new()
+	done.name = "Done"
+	done.text = "Done"
+	done.theme_type_variation = &"PrimaryButton"
+	done.add_theme_font_size_override("font_size", 26)
+	done.custom_minimum_size = Vector2(0, 60)
+	done.pressed.connect(show_settings.bind(false))
+	box.add_child(done)
+
+## A small white gear (no image files): a disc with eight teeth and a hole.
+static func _gear_icon() -> ImageTexture:
+	var n := 34
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var c := Vector2(n, n) / 2.0
+	for y in n:
+		for x in n:
+			var p := Vector2(x + 0.5, y + 0.5) - c
+			var r := p.length()
+			var a := atan2(p.y, p.x)
+			var tooth := clampf(cos(a * 8.0) * 3.0, -1.0, 1.0) * 0.5 + 0.5   # 0 between teeth, 1 on a tooth
+			var outer := lerpf(11.5, 15.5, tooth)
+			var cov := clampf(outer - r + 0.5, 0.0, 1.0) * clampf(r - 5.0 + 0.5, 0.0, 1.0)
+			if cov > 0.0: img.set_pixel(x, y, Color(1, 1, 1, cov))
+	return ImageTexture.create_from_image(img)
 
 func _on_setting(key: String, v: Variant) -> void:
 	if key == "show_fps" and fps_toggle.button_pressed != bool(v):
@@ -145,7 +208,7 @@ func apply_safe_area() -> void:
 # ---------------- online ----------------
 
 func _build_online() -> void:
-	var n := P + "Online/"
+	var n := O
 	_ui["server"] = get_node(n + "ServerRow/Server")
 	_ui["room"] = get_node(n + "RoomRow/Room")
 	_ui["name"] = get_node(n + "RoomRow/Name")
@@ -193,7 +256,6 @@ func join_room() -> void:
 	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
 	if nm == "": nm = "Player"
 	Settings.set_value("server_url", url); Settings.set_value("room_code", room); Settings.set_value("name", nm)
-	if class_ids.size() > 0: Settings.set_value("class", class_ids[maxi(class_pick.selected, 0)])
 	session = GuestSession.new()
 	_bind_session()
 	session.begin(url, room, {"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
@@ -237,15 +299,13 @@ func _enter_match(s: Dictionary) -> void:
 	session = null
 	get_tree().change_scene_to_node.call_deferred(world)
 
+## Starts the offline match the wizard describes (map, mode, bots, bot skill; class and floor via Settings).
 func play_offline() -> void:
 	if session != null: session.leave("")
-	var id: String = map_ids[maxi(map_pick.selected, 0)]
-	var mode: String = OFFLINE_MODES[maxi(mode_pick.selected, 0)]
-	Settings.set_value("offline_map", id)
-	Settings.set_value("mode", mode)
-	if class_ids.size() > 0:
-		Settings.set_value("class", class_ids[maxi(class_pick.selected, 0)])
+	wizard.save()
 	var world: Node = load(WORLD).instantiate()
-	world.map_id = id
-	world.mode_id = mode
+	world.map_id = wizard.map_id
+	world.mode_id = wizard.mode_id
+	world.bot_count = wizard.bots
+	world.difficulty = wizard.diff
 	get_tree().change_scene_to_node(world)

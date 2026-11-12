@@ -30,8 +30,11 @@ const DEFAULTS := {
 	"user": "",             # logged-in username
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
-	"mode": "classic",      # offline game mode (shared/modes.json id; ModeRules.PLAYABLE lists the ported ones; title screen picker: classic | construction)
+	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE + construction)
 	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
+	"offline_map": "arena", # offline arena (setup wizard page 1)
+	"bots": 3,              # offline bots 1..7 (team modes fix the count: ModeRules.bot_count)
+	"difficulty": "normal", # offline bot skill: easy | normal | hard | insane (data/difficulties.json)
 }
 
 var _cfg := ConfigFile.new()

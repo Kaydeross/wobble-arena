@@ -47,18 +47,18 @@ func _title() -> void:
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	vp.add_child(main)
 	await process_frame
-	var mode_pick: OptionButton = main.mode_pick
-	var map_pick: OptionButton = main.map_pick
+	var w = main.wizard   # the setup wizard (ui/setup_wizard.gd): game type page lists the modes
 	var names: Array = []
-	for i in mode_pick.item_count: names.append(mode_pick.get_item_text(i))
-	check(names == ["Classic", "Construction"], "mode picker items %s" % [names])
-	check(main.maps_for("classic") == ["arena", "practice"], "classic maps %s" % [main.maps_for("classic")])
-	check(main.maps_for("construction") == ["siteyard"], "construction maps %s" % [main.maps_for("construction")])
-	mode_pick.select(1); mode_pick.item_selected.emit(1)
-	check(map_pick.item_count == 1 and map_pick.get_item_text(0) == "Site Yard", "Construction lists only Site Yard")
+	for m: String in w.modes(): names.append(w.mode_name(m))
+	check(names.has("Classic") and names.has("Construction"), "wizard modes %s" % [names])
+	check(w.maps_for("classic").has("arena") and w.maps_for("classic").has("practice") and not w.maps_for("classic").has("siteyard"), "classic maps %s" % [w.maps_for("classic")])
+	check(w.maps_for("construction") == ["siteyard"], "construction maps %s" % [w.maps_for("construction")])
+	w.set_map("arena")
+	w.set_mode("construction")
+	check(w._map_bs.size() == 1 and w._map_bs.has("siteyard") and w.map_id == "siteyard", "Construction lists only Site Yard")
 	check(str(root.get_node("Settings").get_value("mode")) == "construction", "mode saved in Settings")
-	mode_pick.select(0); mode_pick.item_selected.emit(0)
-	check(map_pick.item_count == 2 and map_pick.get_item_text(0) == "Sunny Arena", "Classic lists arena + practice again")
+	w.set_mode("classic")
+	check(w._map_bs.has("arena") and w._map_bs.has("practice") and w.map_id == "arena", "Classic lists arena + practice again")
 	print("TITLE modes=%s" % [names])
 	vp.queue_free()
 	await process_frame
