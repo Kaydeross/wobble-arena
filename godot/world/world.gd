@@ -156,6 +156,7 @@ func _drain_events() -> void:
 	var evs: Array = sim.combat.events
 	for e: Dictionary in evs:
 		counts[e["type"]] = int(counts.get(e["type"], 0)) + 1
+		Sfx.on_event(e, sim)
 		var f: FighterState = e.get("f") if e.get("f") is FighterState else null
 		match String(e["type"]):
 			"lean", "head", "arm":
