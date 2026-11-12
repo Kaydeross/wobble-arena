@@ -49,11 +49,21 @@ const CHAOS_GAP := [15.0, 25.0]
 const CHAOS_GRAV := 0.4
 const CHAOS_KB := 2.5
 const CHAOS_CRATES := 5
-## MODES[k].maps (index.html ~3093; not in shared/modes.json). [] = every level.
+## MODES[k].maps (index.html ~3093 and ~3713-3727; not in shared/modes.json). [] = every level.
 const TEAM_MAPS := ["arena", "park", "ice", "temple", "rooftops"]
-const MODE_MAPS := {"melee": ["arena", "park", "ice", "rooftops", "cloud", "tower", "brawlpit"], "guns": ["arena", "temple", "rooftops", "gunrange"],
-	"ninja": ["temple", "cloud", "rooftops", "tower"], "sandbox": ["custom"], "construction": ["siteyard"], "mega": ["shrink", "squeeze"],
-	"pillars": ["pillars", "pillars2"], "duel": TEAM_MAPS, "t2": TEAM_MAPS, "t3": TEAM_MAPS, "t4": TEAM_MAPS, "chaos": CHAOS_MAPS}
+const NEW_ARENAS := ["moonbase", "volcano", "candy", "pirate", "haunted", "beach", "farm", "crossroads", "donut", "chasm", "summit"]
+const BIG_ARENAS := ["arenaxl", "rinkxl", "colosseum", "fortress"]
+const MODE_MAPS := {"melee": ["arena", "park", "ice", "rooftops", "cloud", "tower", "brawlpit"] + NEW_ARENAS + BIG_ARENAS,
+	"guns": ["arena", "temple", "rooftops", "gunrange"] + NEW_ARENAS + BIG_ARENAS,
+	"ninja": ["dojo", "temple", "cloud", "rooftops", "tower", "arenaxl", "fortress"], "sandbox": ["custom"], "construction": ["siteyard"],
+	"mega": ["shrink", "squeeze"], "pillars": ["pillars", "pillars2"], "lowg": ["craterdome", "capsule"],
+	"giant": ["playroom"] + BIG_ARENAS, "explosive": ["blast", "arena", "park", "ice"] + BIG_ARENAS,
+	"duel": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS, "t2": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS,
+	"t3": TEAM_MAPS + BIG_ARENAS, "t4": TEAM_MAPS + BIG_ARENAS, "chaos": CHAOS_MAPS}
+## MAP_ORDER (index.html ~3725): big open arenas first, then rooms and sky levels, the odd one-offs last. Arena lists follow it.
+const MAP_ORDER := ["test", "practice", "dojo", "blast", "gunrange", "brawlpit", "siteyard", "craterdome", "capsule", "playroom",
+	"arena", "park", "ice", "arenaxl", "rinkxl", "colosseum", "fortress", "temple", "farm", "rooftops", "tower", "shrink", "squeeze",
+	"crossroads", "donut", "chasm", "summit", "moonbase", "candy", "haunted", "beach", "volcano", "pirate", "pillars", "pillars2", "custom"]
 ## The shrinking floors (MAPS.shrink / MAPS.squeeze build(): `shrink = {...}`); the floor is the map's first box.
 const SHRINK := {
 	"shrink": {"S0": 64.0, "min": 16.0, "max": 40.0, "both": true, "D": 64.0, "rate": 55.0},
@@ -101,7 +111,17 @@ static func team_size(mode_id: String, modes: Dictionary, bots: int) -> int:
 	return t
 
 static func maps_for(mode_id: String) -> Array:
-	return MODE_MAPS.get(mode_id, [])
+	return sort_maps(MODE_MAPS.get(mode_id, []))
+
+## `ids` in MAP_ORDER (unknown ids last, in their own order).
+static func sort_maps(ids: Array) -> Array:
+	var out := ids.duplicate()
+	out.sort_custom(func(a: String, b: String) -> bool:
+		var ia := MAP_ORDER.find(a); var ib := MAP_ORDER.find(b)
+		if ia < 0: ia = 1000 + ids.find(a)
+		if ib < 0: ib = 1000 + ids.find(b)
+		return ia < ib)
+	return out
 
 ## Adds the Godot-only modes (EXTRA_PATH) to `modes` (shared/modes.json) in place: keys already there win, allowFrom
 ## copies another mode's allowWeapons. Returns `modes`.
