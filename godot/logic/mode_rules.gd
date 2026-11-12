@@ -105,6 +105,9 @@ var shrink := {}
 var chaos := {}
 ## Pillars (`pil`): t (clock left), next (s to the next weapon), first, timeout (the clock ended it). Empty = not Pillars.
 var pil := {}
+## Online guest of a Godot host (net/net_match.gd sets it): the host decides the match end (`pend`) and runs the Chaos
+## events (`gm` messages); this side only counts down and applies what the host says.
+var remote := false
 
 func _init(c: Combat) -> void:
 	_combat = weakref(c)
@@ -235,6 +238,7 @@ func team_ko(t: int) -> int:
 
 ## The tail of addKo: the K.O. limit (team K.O.s in team modes).
 func check_limit(killer: FighterState) -> void:
+	if remote: return
 	if limit and (team_ko(killer.team) if combat.teams else killer.ko) >= limit and not match_over:
 		end_match(killer)
 
@@ -275,7 +279,7 @@ func eliminate(f: FighterState, counted: bool) -> void:
 	var online := c.net_started
 	var spect := c.mode_id == "pillars" or online or bool(c.mode.get("spectate", false))    # the player watches the rest play on
 	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": "You're out! Spectating."})
-	if not match_over and c.lives_mode and (alive.size() <= 1 or (f.is_player and not spect)):
+	if not match_over and not remote and c.lives_mode and (alive.size() <= 1 or (f.is_player and not spect)):
 		var best: FighterState = null                          # alive.sort((a, b) => b.lives - a.lives || b.ko - a.ko)[0] (stable)
 		for x: FighterState in alive:
 			if best == null or x.lives > best.lives or (x.lives == best.lives and x.ko > best.ko): best = x
@@ -335,7 +339,7 @@ func update_pillars(dt: float) -> void:
 	if pil["t"] <= 0.0 and not (c.net_started and not c.net_host):
 		var w: FighterState = null                 # most K.O.s, then fewest deaths, first in fighter order
 		for f: FighterState in c.fighters:
-			if f.left or f.is_ghost: continue
+			if f.left or (f.is_ghost and not (c.net_host and f.net_human)): continue     # online: the guests count too
 			if w == null or f.ko > w.ko or (f.ko == w.ko and int(f.st["deaths"]) < int(w.st["deaths"])): w = f
 		if w != null:
 			pil["timeout"] = true
@@ -466,6 +470,12 @@ func update_chaos(dt: float, pickups: Pickups, dyn: ArenaDyn) -> void:
 	if match_over:
 		if s["id"] != "" and s["left"] > 0.0: _chaos_end(dyn)
 		return
+	if remote:                                            # the host picks and starts the events (chaos_remote)
+		if s["warn"] > 0.0: s["warn"] = maxf(0.0, s["warn"] - dt)
+		if s["left"] > 0.0:
+			s["left"] -= dt
+			if s["left"] <= 0.0: _chaos_end(dyn)
+		return
 	if s["left"] > 0.0:
 		s["left"] -= dt
 		if s["id"] == "speed":                            # newcomers (respawns) get the surge too; it runs out with the event
@@ -494,13 +504,31 @@ func chaos_name(id: String) -> String:
 	if id == "floor": return "Floor " + (str(chaos.get("floor", "")) if str(chaos.get("floor", "")) != "" else "quake")
 	return str(CHAOS_EVENTS.get(id, {}).get("name", id))
 
-func _chaos_start(id: String, pickups: Pickups, dyn: ArenaDyn) -> void:
+## Online guest: the host's Chaos message. `k` = "cw" (warning: id, floor), "cs" (started: id, giant), "ce" (ended).
+func chaos_remote(k: String, id: String, fl: String, giant: FighterState, dyn: ArenaDyn) -> void:
+	var s := chaos
+	if s.is_empty() or match_over or not CHAOS_EVENTS.has(id): return
+	match k:
+		"cw":
+			if s["left"] > 0.0: _chaos_end(dyn)
+			s["id"] = id; s["floor"] = fl; s["warn"] = CHAOS_WARN
+			combat.ev({"type": "chaos_warn", "id": id, "name": chaos_name(id), "in": CHAOS_WARN})
+		"cs":
+			if s["left"] > 0.0 and s["id"] != id: _chaos_end(dyn)
+			if s["left"] > 0.0: return
+			s["id"] = id; s["floor"] = fl; s["warn"] = 0.0
+			_chaos_start(id, null, dyn, giant)
+		"ce":
+			if s["left"] > 0.0 and s["id"] == id: _chaos_end(dyn)
+	if remote: s["next"] = INF
+
+func _chaos_start(id: String, pickups: Pickups, dyn: ArenaDyn, forced_giant: FighterState = null) -> void:
 	var c := combat
 	var s := chaos
 	var dur: float = CHAOS_EVENTS[id]["dur"]
 	match id:
 		"crates":                                          # several random-weapon crates at once (free spots only)
-			if pickups != null and not pickups.no_crates:
+			if pickups != null and not pickups.no_crates and not remote:
 				for i in CHAOS_CRATES:
 					var k := pickups.pick_crate_key()
 					if k != "": pickups.spawn_drop(k)
@@ -512,7 +540,8 @@ func _chaos_start(id: String, pickups: Pickups, dyn: ArenaDyn) -> void:
 		"giant":
 			var pool: Array = []
 			for f: FighterState in c.fighters:
-				if not f.dead and not f.elim and not f.is_ghost: pool.append(f)
+				if not f.dead and not f.elim and (not f.is_ghost or (c.net_host and f.net_human)): pool.append(f)
+			if remote: pool = [forced_giant] if forced_giant != null else []
 			if pool.is_empty(): dur = 0.0
 			else:
 				var g: FighterState = pool[int(floor(c.rng.next() * pool.size()))]
@@ -547,7 +576,7 @@ func _chaos_end(dyn: ArenaDyn) -> void:
 		"floor":
 			if dyn != null: dyn.force("", 0.0)
 	s["left"] = 0.0; s["last"] = id; s["id"] = ""; s["floor"] = ""
-	s["next"] = _chaos_gap() - CHAOS_WARN
+	s["next"] = INF if remote else _chaos_gap() - CHAOS_WARN
 	c.ev({"type": "chaos_end", "id": id})
 
 ## The Chaos HUD bit: "Crate rain in 3" / "Low gravity 6s" ("" = nothing pending).

@@ -31,7 +31,7 @@ const CASES := [
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
 const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
 	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
-	"pause-settings", "pause-help", "host", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1",
+	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1",
 	"a-guest", "a-signup", "a-login", "a-reset", "a-code", "a-signed", "a-password", "a-delete", "a-conflict"]
 const SIGNED := ["a-signed", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
@@ -56,12 +56,20 @@ const MOCK_ROOMS := [
 	{"id": "r6", "name": "Casual", "host": "Finn", "mode": "classic", "modeName": "Classic", "map": "Dojo", "n": 1, "max": 8, "started": false, "build": "b77.0"},
 ]
 const HB := "HostSheet/Center/Card/Box/"
-## host a room: name, who can join, seats, bots, Cancel / Create room
-const HOSTS := [HB + "Title", HB + "RoomName", HB + "Vis/P0", HB + "Vis/P1", HB + "Max/P2", HB + "Max/P8", HB + "Bots/P0", HB + "Bots/P7",
-	HB + "Hint", HB + "Buttons/Cancel", HB + "Buttons/Create"]
+## host a room: tabs (Room / Mode / Rules), the arena hint, Cancel / Create room
+const HOST_FRAME := [HB + "Title", HB + "Tabs/Room", HB + "Tabs/Mode", HB + "Tabs/Rules", HB + "Hint", HB + "Buttons/Cancel", HB + "Buttons/Create"]
+## the three tabs: Room (name, who can join, seats, bots), Mode (game type, K.O. limit, floor), Rules (health, gravity,
+## ammo, knockback, crates)
+const HOST_TABS := {
+	"host": [HB + "Room/RoomName", HB + "Room/Vis/P0", HB + "Room/Vis/P1", HB + "Room/Max/P2", HB + "Room/Max/P8", HB + "Room/Bots/P0", HB + "Room/Bots/P7"],
+	"host-mode": [HB + "Mode/Game/Prev", HB + "Mode/Game/Name", HB + "Mode/Game/Next", HB + "Mode/ModeHint", HB + "Mode/Lim/P0", HB + "Mode/Lim/P5",
+		HB + "Mode/Floor/Poff", HB + "Mode/Floor/Pdrift"],
+	"host-rules": [HB + "Rules/Hp/P100", HB + "Rules/Hp/P500", HB + "Rules/Pair/Grav/P0", HB + "Rules/Pair/Grav/P2", HB + "Rules/Pair/Inf/P0",
+		HB + "Rules/Pair/Inf/P1", HB + "Rules/Kb/P0", HB + "Rules/Kb/P4", HB + "Rules/Crate/Pslow", HB + "Rules/Crate/Pchaos"],
+}
 const LB := "Lobby/Center/Card/Box/"
 ## the lobby: room, code, players, info, Leave / Start
-const LOBBY := [LB + "Title", LB + "Code", LB + "Players", LB + "Info", LB + "Buttons/Leave", LB + "Buttons/Start"]
+const LOBBY := [LB + "Title", LB + "Code", LB + "Players", LB + "Info", LB + "Rules", LB + "Buttons/Leave", LB + "Buttons/Start"]
 const W := "Safe/Wizard/"
 ## wizard frame: header, page, footer buttons (must not overlap each other)
 const WFRAME := [W + "Head/Title", W + "Head/Step", W + "Pages", W + "Foot/Back", W + "Foot/Steps", W + "Foot/Next"]
@@ -166,14 +174,22 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		elif scr == "rooms-empty": main.browser.show_rooms([])
 		elif scr == "rooms-error": main.browser.show_rooms([], load("res://net/room_list.gd").ERR_REACH)
 		over_scroll = main.browser.scroll
-	elif scr == "host":
+	elif scr.begins_with("host"):
 		main.show_tab(true)
 		main.show_host(true)
+		if scr == "host-mode":
+			main.set_host_mode("chaos")            # the longest blurb, app-only
+			main.show_host_tab("Mode")
+		elif scr == "host-rules": main.show_host_tab("Rules")
 	elif scr == "lobby":
 		main.show_tab(true)
 		main.show_lobby(true)
 		main.get_node(LB + "Code").text = "Room code ABCDE"
 		main.get_node(LB + "Info").text = "8 / 8 players · empty seats get bots"
+		var rl: Label = main.get_node(LB + "Rules")
+		rl.text = HostSession.rules_text({"want": "tdm", "mode": "classic", "lim": 30, "hp": 500, "grav": 1.5, "kb": 0.5, "crate": "chaos",
+			"inf": true, "dyn": "random", "map": "Bouncy Rooftop"})
+		rl.visible = true
 		for i in 8:
 			var pl := Label.new()
 			pl.text = "Wobbly name %d%s" % [i, "  (host)" if i == 0 else ""]
@@ -219,7 +235,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		groups.append(WFRAME)
 		groups.append(inside.slice(WFRAME.size()))
 	else:
-		var on_panel := scr in ["online", "host", "lobby"] or scr.begins_with("rooms")
+		var on_panel := scr in ["online", "lobby"] or scr.begins_with("rooms") or scr.begins_with("host")
 		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not (on_panel and b.ends_with("/Tip")))
 		inside = blocks + (ONLINE if on_panel else HOME)
 		groups.append(blocks)
@@ -229,7 +245,12 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 			_scroll_rows(main, over_scroll, safe, tag, win.x > win.y)
 			_rooms_state(main.browser, scr, tag)
 		elif not on_panel: groups.append(HOME)
-		if scr == "host": inside = inside + HOSTS; groups.append(HOSTS)
+		if scr.begins_with("host"):
+			var hs: Array = HOST_FRAME + HOST_TABS[scr]
+			inside = inside + hs; groups.append(hs)
+			if win.x > win.y: _touch_sizes(main, hs, tag)
+			var card: Control = main.get_node("HostSheet/Center/Card")
+			check(card.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s host sheet min height %.0f fits %.0f" % [tag, card.get_combined_minimum_size().y, safe.size.y])
 		if scr == "lobby": inside = inside + LOBBY; groups.append(LOBBY)
 	var rects := {}
 	for p: String in inside:
@@ -431,6 +452,30 @@ func _logic() -> void:
 	st.set_value("touch_lefty", false)
 	main.go_back()
 	check(not main.settings.visible, "Back closes the Settings screen")
+	# the Host sheet: tabs, the game type stepper (every online mode, app-only ones marked), the rules summary
+	main.show_tab(true)
+	main.show_host(true)
+	var hb := "HostSheet/Center/Card/Box/"
+	check(main.get_node(hb + "Room").visible and not main.get_node(hb + "Rules").visible, "the Host sheet opens on Room")
+	main.get_node(hb + "Tabs/Rules").pressed.emit()
+	check(main.get_node(hb + "Rules").visible and not main.get_node(hb + "Room").visible, "the Rules tab shows the rules")
+	main.set_host_mode("classic")
+	var seen := {}
+	for i in HostSession.online_modes().size():
+		main.get_node(hb + "Mode/Game/Next").pressed.emit()
+		seen[str(main._host["mode"])] = str(main.get_node(hb + "Mode/Game/Name").text)
+	check(seen.size() == HostSession.online_modes().size() and not seen.has("practice"), "› walks every online mode (%d)" % seen.size())
+	check(seen.get("tdm", "").ends_with("(app)") and not seen.get("classic", "").ends_with("(app)"), "app-only modes are marked: %s" % seen.get("tdm"))
+	main.set_host_mode("tdm")
+	main._host_bs["lim_2"].pressed.emit(); main._host_bs["hp_300"].pressed.emit(); main._host_bs["grav_0"].pressed.emit()
+	main._host_bs["kb_3"].pressed.emit(); main._host_bs["crate_chaos"].pressed.emit(); main._host_bs["inf_1"].pressed.emit(); main._host_bs["dyn_quake"].pressed.emit()
+	var hh: Dictionary = main._host
+	check(hh["mode"] == "tdm" and hh["lim"] == 5 and hh["hp"] == 300 and is_equal_approx(hh["grav"], 0.5) and is_equal_approx(hh["kb"], 2.0) \
+		and hh["crate"] == "chaos" and hh["inf"] and hh["dyn"] == "quake", "the sheet's picks: %s" % hh)
+	main.show_host(false)
+	var sum := HostSession.rules_text({"want": "tdm", "mode": "classic", "lim": 5, "hp": 300, "grav": 0.5, "kb": 2.0, "crate": "chaos", "inf": true, "dyn": "quake", "map": "Arena"})
+	check(sum.begins_with("Classic · Arena · first to 5 · 300 HP · gravity 0.5x · knockback 2x · chaos crates · infinite ammo · floor Quake") \
+		and sum.contains("Team Deathmatch is app-only"), "lobby rules line: %s" % sum)
 	# the title chip opens the Account sheet; Delete waits for the typed word
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = true

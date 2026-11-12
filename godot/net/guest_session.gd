@@ -5,7 +5,10 @@ extends RefCounted
 ## netJoinSrv / srvRecv / clientRecv / netMigrate (public/index.html ~8701-9000).
 ## Lives across scenes (the title screen starts it, the world takes it over on `start`). Call poll(dt) every frame.
 ## In-match messages go out through `match_message`; the world's NetMatch handles them (netHandle).
-## Becoming host (`promoted`) is Phase 2: we leave the room with a message.
+## Host migration: `promoted` -> this client becomes the room's host (HostSession.take_over, `promoted` signal: the
+## world / title swap their session) and carries the running match on from its last state; `rehost` -> say hello again
+## with my old slot (`pslot`); a Godot new host that resumes the match says so in `welcome` (`rsm`), the world keeps
+## showing the arena until the resumed `start` arrives, otherwise the old behaviour (back to the lobby).
 
 signal status_changed(text: String)
 signal welcomed(slot: int, room_name: String)
@@ -14,6 +17,8 @@ signal match_started(start: Dictionary)      ## cleaned `start` (also on rematch
 signal match_message(m: Dictionary)          ## S, sw, f, k, h, ko, crate, crates, take, pend, slot (only while started)
 signal votes_changed(list: Array, total: int)
 signal rehosted                              ## the host left, re-joining the new one: any running match is over
+signal host_changing(old_host: String)       ## the host left; a new host may carry the match on (wait for `start`)
+signal promoted(host: GuestSession)          ## I am the new host: `host` (a HostSession) replaces this session
 signal ended(reason: String)                 ## the session is over (left, kicked, refused, connection lost)
 
 enum Phase { IDLE, CONNECTING, JOINING, WAITING, LOBBY, MATCH, CLOSED }
@@ -37,7 +42,10 @@ var room_code := ""
 var slot := -1
 var room_name := ""
 var roster: Array = []
-var lobby := {}                  ## roster options: max, bots, lim, bhv, diff, modeName, map
+var lobby := {}                  ## roster options: max, bots, lim, bhv, diff, modeName, map (+ rl: a Godot host's rules)
+var host_gd := false             ## the host is a Godot client (`gd` in welcome)
+## The world sets this while a match runs: returns NetMatch.capture_resume() (the state a promoted guest carries on).
+var resume_provider: Callable
 var started := false
 var start_msg := {}              ## the last cleaned `start`
 var status := ""
@@ -52,6 +60,9 @@ var record := false
 var _ping_t := 0.0
 var _build_retry := false
 var _clock := 0.0
+var _rehosting := false
+var _rehost_t := 0.0
+const REHOST_WAIT := 10.0
 
 func _init() -> void:
 	net.connected.connect(_on_connected)
@@ -92,6 +103,11 @@ func poll(dt: float) -> void:
 		if _ping_t <= 0.0:
 			_ping_t = PING_EVERY
 			if slot >= 0: send({"t": "ping", "ts": snappedf(_clock * 1000.0, 0.01)})
+	if _rehosting:
+		_rehost_t -= dt
+		if _rehost_t <= 0.0:
+			_rehosting = false; net.pslot = -1
+			rehosted.emit()
 
 ## One room message to the host (tohost).
 func send(m: Dictionary) -> void:
@@ -180,21 +196,47 @@ func _on_server(m: Dictionary) -> void:
 		"hostgone":
 			_finish("The host left the room.")
 		"promoted":
-			_finish("The host left and you were picked as the new host, but this app can't host rooms yet. You left the room.")
+			_promote(bool(m.get("pub", false)))
 		"rehost":
 			_rehost()
 		"noauth":
 			if net.token != "": _set_status("Your login expired. Log in again.")
 
-## netMigrate(false): the host left, another guest hosts now. Drop the match and say hello to the new host.
+## netMigrate(false): the host left, another guest hosts now. Say hello to the new host (with my old slot); the
+## running match waits for its `welcome` (a resuming Godot host) or ends (`rehosted`).
 func _rehost() -> void:
 	if phase < Phase.WAITING or phase == Phase.CLOSED:
 		return
-	slot = -1; net.slot = -1; started = false; start_msg = {}; roster = []; voted = false; rv_list = []; rv_total = 0
+	var old := old_host_name()
+	net.pslot = slot if started else -1
+	slot = -1; net.slot = -1; started = false; roster = []; voted = false; rv_list = []; rv_total = 0; host_gd = false
 	phase = Phase.WAITING
 	net.send_hello()
-	_set_status("The host left. Joining the new host…")
-	rehosted.emit()
+	_set_status("%s left. Joining the new host…" % old)
+	_rehosting = true; _rehost_t = REHOST_WAIT
+	host_changing.emit(old)
+
+func old_host_name() -> String:
+	for r: Dictionary in roster:
+		if int(r.get("id", -1)) == 0: return str(r["name"])
+	var sl: Array = start_msg.get("slots", [])
+	if sl.size() > 0: return str(sl[0].get("name", "The host"))
+	return "The host"
+
+## netMigrate(true): the relay made me the host. A HostSession takes the connection (and the running match's state)
+## over; this session closes without leaving the room.
+func _promote(pub_flag: bool) -> void:
+	if phase < Phase.WAITING or phase == Phase.CLOSED:
+		return
+	var rs: Dictionary = {}
+	if started and resume_provider.is_valid():
+		var v: Variant = resume_provider.call()
+		if v is Dictionary: rs = v
+	var hs: GuestSession = load("res://net/host_session.gd").new()
+	hs.call("take_over", self, pub_flag, rs)
+	phase = Phase.CLOSED
+	started = false
+	promoted.emit(hs)
 
 # ============================== layer 2 (clientRecv) ==============================
 
@@ -214,9 +256,17 @@ func _on_room(m: Dictionary) -> void:
 				dropped += 1; return
 			slot = id; net.slot = id
 			room_name = str(m.get("name", "")).substr(0, 24)
+			host_gd = NetSnapshot.to_int32(m.get("gd")) > 0
 			phase = Phase.LOBBY
 			_set_status("In room \"%s\" as player %d. Waiting for the host to start…" % [room_name, slot])
 			welcomed.emit(slot, room_name)
+			if _rehosting:
+				_rehosting = false; net.pslot = -1
+				if host_gd and NetSnapshot.to_int32(m.get("rsm")) > 0:
+					_set_status("The new host is carrying the match on…")
+				else:
+					start_msg = {}
+					rehosted.emit()
 		"roster":
 			if not (m.get("roster") is Array): return
 			roster = []
@@ -227,6 +277,7 @@ func _on_room(m: Dictionary) -> void:
 				lobby = {"max": NetSnapshot.to_int32(m["max"]), "bots": bool(m.get("bots")), "lim": NetSnapshot.to_int32(m.get("lim")),
 					"bhv": "dummy" if m.get("bhv") == "dummy" else "brawl", "diff": str(m.get("diff", "normal")),
 					"modeName": str(m.get("modeName", "")).substr(0, 24), "map": str(m.get("map", "")).substr(0, 24)}
+				if m.get("rl") is Dictionary: lobby["rl"] = m["rl"]
 			roster_changed.emit(roster)
 		"full":
 			_finish("That room is full.")
@@ -242,6 +293,7 @@ func _on_room(m: Dictionary) -> void:
 			var s := clean_start(m, slot)
 			if s.is_empty():
 				dropped += 1; return
+			_rehosting = false
 			started = true; start_msg = s; voted = false; rv_list = []; rv_total = 0
 			phase = Phase.MATCH
 			_set_status("Match started")
@@ -267,7 +319,7 @@ static func clean_info(m: Dictionary, id: int) -> Dictionary:
 		"skin": skin if skin is String and cos.get("skins", {}).has(skin) else "none",
 		"hat": hat if hat is String and cos.get("hats", []).has(hat) else "none",
 		"color": col if cos.get("swatch", []).has(float(col)) or cos.get("swatch", []).has(col) else 0x39b5a8,
-		"cls": cls if cls is String and data("classes").has(cls) else "wobbler"}
+		"cls": cls if cls is String and data("classes").has(cls) else "wobbler"}.merged({"gd": 1} if NetSnapshot.to_int32(m.get("gd")) > 0 else {})
 
 ## A `start` checked and cleaned: {slots[{kind, id, name, skin, hat, color, cls}], map, custom, limit, rules}.
 ## {} = unusable (no slots, or my slot is not in it).
@@ -286,7 +338,8 @@ static func clean_start(m: Dictionary, my_slot: int) -> Dictionary:
 	var map_id: Variant = m.get("map")
 	return {"slots": slots, "map": map_id if map_id is String and data("maps").has(map_id) else "arena",
 		"custom": m.get("custom") if m.get("custom") is Dictionary else {}, "limit": maxi(0, NetSnapshot.to_int32(m.get("limit"))),
-		"rules": m.get("rules") if m.get("rules") is Dictionary else {}}
+		"rules": m.get("rules") if m.get("rules") is Dictionary else {}, "rs": m.get("rs") if m.get("rs") is Array else null,
+		"rsx": m.get("rsx") if m.get("rsx") is Dictionary else {}}
 
 ## res://data/<name>.json, read once (static: the net code also runs in headless tests before autoloads exist).
 static var _data := {}

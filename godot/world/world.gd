@@ -115,14 +115,11 @@ func _ready() -> void:
 	_build_mode_ui()
 	emote_wheel = EmoteWheel.new()
 	emote_wheel.world = self
+	emote_wheel.played.connect(func(id: String) -> void: if net_match != null: net_match.send_emote(id))   # online: everyone sees it
 	$UI.add_child(emote_wheel)               # last in UI: its _input runs before the touch layer's
 	if session != null:
 		map_id = start_msg.get("map", map_id)
-		session.match_started.connect(_on_net_start)
-		session.match_message.connect(_on_net_message)
-		session.votes_changed.connect(_on_net_votes)
-		session.ended.connect(_on_net_ended)
-		session.rehosted.connect(_on_net_rehosted)
+		_bind_net()
 		pause_menu.online = true
 	load_map(map_id)
 
@@ -353,6 +350,8 @@ func _drain_events() -> void:
 					_toast("You're out!" if f == sim.player else "%s is out!" % f.name)
 			"relook":
 				_relook(f)
+			"emote":                         # another player's emote (online)
+				if views.has(f): views[f].wobbler.play_emote(str(e["id"]))
 			"chaos_warn":
 				_show_banner(str(e["name"]).to_upper() + "!", "in %d…" % ceili(float(e["in"])), true, float(e["in"]))
 			"chaos":
@@ -787,6 +786,41 @@ func _update_shrink_view() -> void:
 
 # ============================== online (guest) ==============================
 
+## The session's signals (also after a host migration swapped the session).
+func _net_signals() -> Array:
+	return [[session.match_started, _on_net_start], [session.match_message, _on_net_message], [session.votes_changed, _on_net_votes],
+		[session.ended, _on_net_ended], [session.rehosted, _on_net_rehosted], [session.host_changing, _on_net_host_changing],
+		[session.promoted, _on_net_promoted]]
+
+func _bind_net() -> void:
+	for sig: Array in _net_signals():
+		if not (sig[0] as Signal).is_connected(sig[1]): (sig[0] as Signal).connect(sig[1])
+	session.resume_provider = _resume_state
+
+func _unbind_net() -> void:
+	for sig: Array in _net_signals():
+		if (sig[0] as Signal).is_connected(sig[1]): (sig[0] as Signal).disconnect(sig[1])
+	session.resume_provider = Callable()
+
+## Host migration: the running match as this client sees it (NetMatch.capture_resume).
+func _resume_state() -> Dictionary:
+	return net_match.capture_resume() if net_match != null and _results == null else {}
+
+## The host left and another player hosts now: the arena stays until their `start` (or `rehosted` ends it).
+func _on_net_host_changing(old_host: String) -> void:
+	_show_banner("HOST CHANGED", "%s left. Waiting for the new host…" % old_host, true, 4.0)
+
+## The relay made me the host: the HostSession carries the match on (its `start` rebuilds the arena) or, with no
+## match running, the lobby takes over.
+func _on_net_promoted(hs: GuestSession) -> void:
+	_unbind_net()
+	session = hs
+	_bind_net()
+	if (hs as HostSession).resuming():
+		_show_banner("HOST CHANGED", "%s left. You are the host now!" % str(hs.get("migrated")), true, 4.0)
+	elif not hs.started:
+		_to_title(hs.status)
+
 func _on_net_message(m: Dictionary) -> void:
 	if net_match != null: net_match.handle(m)
 
@@ -811,8 +845,7 @@ func _on_title_pressed() -> void:
 func _to_title(msg: String) -> void:
 	if not is_inside_tree(): return
 	if session != null:
-		for sig: Array in [[session.match_started, _on_net_start], [session.match_message, _on_net_message], [session.votes_changed, _on_net_votes], [session.ended, _on_net_ended], [session.rehosted, _on_net_rehosted]]:
-			if (sig[0] as Signal).is_connected(sig[1]): (sig[0] as Signal).disconnect(sig[1])
+		_unbind_net()
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	main.set("session", session if session != null and session.is_active() else null)
 	main.set("notice", msg)
