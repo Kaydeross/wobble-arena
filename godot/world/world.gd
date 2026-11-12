@@ -40,6 +40,8 @@ var session: GuestSession = null   ## online guest session (null = offline)
 var start_msg := {}                ## the cleaned `start` this match was built from
 var net_match: NetMatch = null
 var _results: Control = null
+var _reward := {}                  ## Save.finish_match() summary for the results panel (ui/results_rewards.gd)
+var emote_wheel: EmoteWheel        ## the in-match emote button + wheel (ui/emote_wheel.gd)
 var control: PlayerControl
 var map_node: MapBuilder.MapNode
 var solids: Array = []
@@ -100,6 +102,9 @@ func _ready() -> void:
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
 	proj_views = ProjectileViews.new(); proj_views.name = "Projectiles"; add_child(proj_views)
 	_build_mode_ui()
+	emote_wheel = EmoteWheel.new()
+	emote_wheel.world = self
+	$UI.add_child(emote_wheel)               # last in UI: its _input runs before the touch layer's
 	if session != null:
 		map_id = start_msg.get("map", map_id)
 		session.match_started.connect(_on_net_start)
@@ -131,6 +136,8 @@ func load_map(id: String) -> void:
 	if _shrink_mesh: _shrink_mesh.queue_free(); _shrink_mesh = null
 	_banner_t = 0.0
 	spectating = null; touch.spectate_mode = false
+	_reward = {}
+	Save.begin_match()
 	map_id = id
 	map_node = MapBuilder.build(id)
 	add_child(map_node)
@@ -221,6 +228,7 @@ func tick(delta: float) -> void:
 				cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
 		cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
 		acc += minf(dt, 0.1)
+		if not paused: Save.add_play_time(dt)
 		while acc >= SIM:
 			sim_step(SIM)
 			acc -= SIM
@@ -269,6 +277,7 @@ func _drain_events() -> void:
 			"dmg_number":
 				if f: _dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), float(e["dmg"]), String(e.get("part", "head" if e["head"] else "")), int(e.get("pct", 0)))
 			"hit":
+				if e.get("attacker") == sim.player and f != sim.player: Save.on_hit()
 				if f:
 					_puff(Vector3(f.chest_x, f.chest_y, f.chest_z), Color(1, 0.95, 0.8), 4, 3.0)
 					if e.has("x") and PART_COL.has(String(e.get("part", ""))):   # body-part flash where it struck
@@ -298,9 +307,12 @@ func _drain_events() -> void:
 			"toast":
 				_toast(str(e["text"]))
 			"match_end":
+				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true)
 				_show_results(str(e["name"]))
 			"match_over":
 				_show_banner(str(e["title"]), str(e["sub"]), bool(e["won"]))
+				if session == null:
+					_reward = Save.finish_match(bool(e["won"]), str(sim.combat.mode.get("name", sim.combat.mode_id)), str(map_node.map.get("name", map_id)))
 			"match_finished":
 				if session == null: _show_offline_results(bool(e["won"]), str(e["winner"].name) if e.get("winner") else "")
 				elif session.is_host(): _show_results("You" if e["won"] else (str(e["winner"].name) if e.get("winner") else "?"))
@@ -325,6 +337,7 @@ func _on_ko(e: Dictionary) -> void:
 	var k: FighterState = e.get("killer")
 	var v: FighterState = e.get("victim")
 	if v == null: return
+	Save.on_ko(k == sim.player and v != sim.player, v == sim.player)
 	var txt := ""
 	if k == null: txt = "%s fell off" % v.name if e.get("fall", false) else "%s was K.O.'d" % v.name
 	else: txt = "%s  [%s]  %s" % [k.name, e.get("weapon", ""), v.name]
@@ -705,6 +718,7 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.text = "%s  ·  %d K.O.s  ·  %d deaths" % [str(sim.combat.mode.get("name", sim.combat.mode_id)), sim.player.ko, int(sim.player.st["deaths"])]
 	box.add_child(info)
+	box.add_child(ResultsRewards.make(_reward))
 	var again := Button.new(); again.text = "Play again"; again.custom_minimum_size = Vector2(0, 58)
 	again.theme_type_variation = &"PrimaryButton"
 	again.add_theme_font_size_override("font_size", 26)
@@ -817,6 +831,7 @@ func _show_results(winner: String) -> void:
 	rm.pressed.connect(func() -> void:
 		if session: session.vote_rematch()
 		rm.disabled = true; rm.text = "Waiting for the others…")
+	box.add_child(ResultsRewards.make(_reward))
 	box.add_child(rm)
 	var lv := Button.new(); lv.text = "Leave room"; lv.custom_minimum_size = Vector2(0, 54)
 	lv.pressed.connect(_on_title_pressed)

@@ -105,6 +105,19 @@ func _layout(world: Node, hud: Control, tag: String) -> void:
 	for i in 4:
 		var sr: Rect2 = touch.hotbar_slot_rect(i)
 		check(sr.size.x >= 40.0 and sr.size.y >= 40.0, "%s hotbar slot %d tappable (%s)" % [tag, i, sr])
+	# the emote button (ui/emote_wheel.gd): under the pause button, inside the safe area, clear of everything else
+	var er: Rect2 = world.emote_wheel.button_rect()
+	check(world.emote_wheel.shown(), "%s emote button shown" % tag)
+	check(safe.grow(0.5).encloses(er), "%s emote button %s inside safe %s" % [tag, er, safe])
+	check(not er.intersects(touch.pause_rect()), "%s emote button clear of pause" % tag)
+	for n: String in names:
+		check(not er.intersects(rects[n]), "%s emote button %s overlaps %s %s" % [tag, er, n, rects[n]])
+	var fd: Control = hud.get_node("Feed")
+	check(not er.intersects(Rect2(fd.position, fd.size)), "%s emote button clear of the kill feed" % tag)
+	for b: Array in touch.BUTTONS:
+		var r2: Array = touch.button_rect(b)
+		check(er.get_center().distance_to(r2[0]) >= er.size.x / 2.0 + r2[1] + 6.0, "%s emote button apart from %s" % [tag, b[0]])
+	check(touch.visible_buttons().size() <= 4, "%s still at most 4 action buttons" % tag)
 	var hb: Control = hud.get_node("Hotbar")
 	check(hb.scale.x >= 0.6, "%s hotbar readable (scale %.2f)" % [tag, hb.scale.x])
 	print("HUD layout %s checked" % tag)
@@ -159,9 +172,10 @@ func _team_layout() -> void:
 		var ml: Control = world.get_node("UI/ModeLine")
 		if ml.visible: rects["ModeLine"] = Rect2(ml.position, ml.size)
 		rects["Pause"] = world.touch.pause_rect()
+		rects["Emote"] = world.emote_wheel.button_rect()
 		var keys := rects.keys()
 		for k: String in keys:
-			if k != "Pause" and k != "Toast":
+			if k != "Pause" and k != "Toast" or k == "Emote":
 				check(safe.grow(0.5).encloses(rects[k]), "%s %s %s inside safe %s" % [mode, k, rects[k], safe])
 		for i in keys.size():
 			for j in range(i + 1, keys.size()):

@@ -1,0 +1,60 @@
+class_name ResultsRewards
+extends RefCounted
+## The rewards block of the end-of-match results panel (world/world.gd): coins earned this match (K.O.s +5 each, +40
+## for finishing, +60 more for a win: Save.finish_match), your K.O.s and hits, and the unlock progress towards the
+## cheapest outfit or emote you do not own yet (a bar, or "You can buy it now!").
+
+## `r` = Save.finish_match()'s summary ({} = nothing earned, e.g. the match was left early: shows nothing).
+static func make(r: Dictionary) -> Control:
+	var box := VBoxContainer.new()
+	box.name = "Rewards"
+	box.add_theme_constant_override("separation", 6)
+	if r.is_empty(): return box
+	var row := HBoxContainer.new()
+	row.name = "Coins"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	box.add_child(row)
+	row.add_child(LockerScreen.LockerIcon.new("coin", 26))
+	var c := Label.new()
+	c.name = "Earned"
+	c.text = "+%d coins" % int(r.get("coins", 0))
+	c.add_theme_font_override("font", UiTheme.font(700))
+	c.add_theme_font_size_override("font_size", 26)
+	c.add_theme_color_override("font_color", UiTheme.ACCENT)
+	row.add_child(c)
+	var k := Label.new()
+	k.name = "Kos"
+	k.theme_type_variation = &"MutedLabel"
+	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	var kos := int(r.get("kos", 0))
+	k.text = "%d K.O.%s × 5  ·  finished +40%s  ·  %d coins in all" % [kos, "" if kos == 1 else "s", "  ·  win +60" if r.get("won", false) else "", int(r.get("total", 0))]
+	box.add_child(k)
+	var nx: Dictionary = r.get("next", {})
+	var p := Label.new()
+	p.name = "Next"
+	p.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p.add_theme_font_size_override("font_size", 18)
+	box.add_child(p)
+	if nx.is_empty():
+		p.text = "You own every outfit and emote!"
+		return box
+	var price := int(nx["price"])
+	var have := int(r.get("total", 0))
+	if have >= price:
+		p.text = "You can buy %s now (%d coins)!" % [nx["name"], price]
+		p.add_theme_color_override("font_color", UiTheme.GOOD)
+	else:
+		p.text = "Next unlock: %s · %d / %d coins" % [nx["name"], have, price]
+	var bar := ProgressBar.new()
+	bar.name = "Bar"
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 12)
+	bar.max_value = price
+	bar.value = mini(have, price)
+	var bg := UiTheme.box(Color(0, 0, 0, 0.35), 6, Color(1, 1, 1, 0.12), 1, 0)
+	var fg := UiTheme.box(UiTheme.GOOD if have >= price else UiTheme.ACCENT, 6, Color.TRANSPARENT, 0, 0)
+	bar.add_theme_stylebox_override("background", bg)
+	bar.add_theme_stylebox_override("fill", fg)
+	box.add_child(bar)
+	return box
