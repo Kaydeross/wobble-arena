@@ -60,7 +60,7 @@ func _state(k: int, cid: String) -> Dictionary:
 		s["trap"] = true
 	elif ph >= 400:
 		s["invuln"] = true
-		s["weapon"] = "ak" if ph < 420 else "spatula"   # unported weapon: generic placeholder
+		s["weapon"] = "ak" if ph < 420 else "spatula"   # a gun built on first equip
 	return s
 
 
@@ -124,8 +124,11 @@ func _initialize() -> void:
 			if not ok:
 				_check(false, "%s non-finite pose at frame %d" % [cid, k])
 				break
-		# the placeholder gun (holder + 2 parts) is built once on first equip, then nothing else may appear
-		_check(nodes_mid == nodes1 + 3 and _count_nodes(w) == nodes_mid, "%s nodes during animation %d -> %d -> %d" % [cid, nodes1, nodes_mid, _count_nodes(w)])
+		# the AK (holder + its WeaponModels tree) is built once on first equip, then nothing else may appear
+		var ak := WeaponModels.build("ak")
+		var ak_nodes := 1 + _count_nodes(ak)
+		ak.free()
+		_check(nodes_mid == nodes1 + ak_nodes and _count_nodes(w) == nodes_mid, "%s nodes during animation %d -> %d -> %d" % [cid, nodes1, nodes_mid, _count_nodes(w)])
 		_check(absf(w.arm_dir.length() - 1.0) < 1e-6, "%s arm_dir not unit" % cid)
 		_check(max_lean > 0.05 and max_lean < 5.0, "%s lean range %f" % [cid, max_lean])
 		_check(saw_flash, "%s hit flash never lit" % cid)

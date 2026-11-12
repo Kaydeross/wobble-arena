@@ -356,8 +356,7 @@ func set_weapon(key: Variant) -> void:
 	weapon = k
 	if k != "" and not _weapon_nodes.has(k):
 		var holder := _group(hand, Vector3.ZERO, "W_" + k)
-		var parts: Array = WobblerLooks.WEAPON_PARTS.get(k, WobblerLooks.WEAPON_PARTS["_generic"])
-		_add_parts(parts, false, {"w": holder})
+		holder.add_child(WeaponModels.build(k, _make_mat))
 		_weapon_nodes[k] = holder
 	for wk in _weapon_nodes:
 		_weapon_nodes[wk].visible = wk == k
