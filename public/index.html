@@ -820,6 +820,24 @@ body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-ri
   .cbar{display:flex;align-items:center;gap:6px;font-size:10px;margin:2px 0;width:100%}.cbar span{width:46px;text-align:left;opacity:.85}.cbar i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden}.cbar u{display:block;height:100%;background:#7fe8ff;border-radius:3px}
   .cimg{display:block;width:100%;max-width:120px;aspect-ratio:4/5;object-fit:cover;object-position:50% 20%;border-radius:12px;margin:0 auto 4px}.seat .av.avc{width:46px;height:46px;object-fit:cover;object-position:50% 25%;border-radius:12px}
   @media(max-height:500px){#menu.storefx #pg-locker.on #lockcv{max-height:30vh;width:auto;margin:0 auto}#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{padding-bottom:calc(13vh + 56px)}#menu.storefx .mfoot{left:0;right:0;bottom:0;padding:8px 5vw 10px;background:linear-gradient(to top,rgba(8,20,28,.97) 72%,rgba(8,20,28,0))}#menu.storefx .mfoot #back{padding:9px 24px;font-size:16px}}
+  /* ---- short phone screens: the Locker fits one screen. Title not clipped, tabs always visible, the open shelf scrolls inside the space above the Back bar, class cards in one sideways row ---- */
+  @media(max-height:500px){
+    #menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{padding-bottom:calc(66px + var(--sab))}
+    #menu.storefx h2.step{line-height:1.25;padding-top:3px;overflow:visible}
+    #menu.storefx #pg-locker.on .vmain{display:flex;flex-direction:column;min-height:0}
+    #menu.storefx #pg-locker.on .vmain>.row{flex:0 0 auto}
+    #menu.storefx #pg-locker.on .vmain>[id^="lock-"][style*="block"]{display:flex !important;flex-direction:column;flex:1 1 0;min-height:0;overflow:auto}
+    #menu.storefx #pg-locker.on .vmain .eshelf{flex:1 1 0;min-height:0;margin-top:4px}
+    #menu.storefx #pg-locker.on .vmain .help{font-size:11px;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 0 auto}
+    #menu.storefx #lclass{display:flex;overflow-x:auto;overflow-y:hidden;gap:10px;padding:4px 2px 8px;scroll-snap-type:x proximity;align-items:stretch}
+    #menu.storefx #lclass .ecard{flex:0 0 244px;display:grid;grid-template-columns:72px minmax(0,1fr);grid-auto-rows:auto;column-gap:10px;align-content:start;text-align:left;padding:10px;scroll-snap-align:start}
+    #menu.storefx #lclass .cimg,#menu.storefx #lclass .ei{grid-column:1;grid-row:1 / span 8;width:72px;max-width:none;height:118px;aspect-ratio:auto;margin:0;align-self:start}
+    #menu.storefx #lclass .ecard>b{grid-column:2;font-size:15px;line-height:1.15}
+    #menu.storefx #lclass .ecard>small{grid-column:2;font-size:11px;line-height:1.2;margin:1px 0 3px}
+    #menu.storefx #lclass .cbar{grid-column:2;margin:1px 0;font-size:9px}
+    #menu.storefx #lclass .cbar span{width:42px}
+    #menu.storefx #lclass .clspick{grid-column:1 / -1;min-height:40px;margin-top:8px}
+  }
 /* ---- build 77: touch controls overlay and the small-screen HUD ---- */
 #touch{position:fixed;inset:0;z-index:30;display:none;pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;--to:.85;--ts:1}
 body.tplay #touch{display:block}
