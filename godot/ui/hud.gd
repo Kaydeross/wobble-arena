@@ -154,9 +154,9 @@ func _build_toast() -> void:
 	_toast.name = "Toast"
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sb := UiTheme.box(Color(UiTheme.PANEL.r, UiTheme.PANEL.g, UiTheme.PANEL.b, 0.88), 99, UiTheme.ACCENT, 2, 8)
-	sb.content_margin_left = 26; sb.content_margin_right = 26; sb.content_margin_top = 6; sb.content_margin_bottom = 8
+	sb.content_margin_left = 18; sb.content_margin_right = 18; sb.content_margin_top = 3; sb.content_margin_bottom = 5
 	_toast.add_theme_stylebox_override("panel", sb)
-	_toast_l = _lbl(_toast, 28, UiTheme.ACCENT)
+	_toast_l = _lbl(_toast, 21, UiTheme.ACCENT)
 	_toast_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.visible = false
 	add_child(_toast)
@@ -321,7 +321,7 @@ func update(delta: float) -> void:
 	_plates.tick(delta)
 	if _toast.visible:
 		_toast_t -= delta
-		_toast.position = Vector2(vs.x / 2.0 - _toast.size.x / 2.0, safe.position.y + vs.y * 0.16)
+		_toast.position = Vector2(vs.x / 2.0 - _toast.size.x / 2.0, safe.position.y + 6.0)      # top edge: never over the action
 		if _toast_t < 0.3: _toast.modulate.a = maxf(_toast_t / 0.3, 0.0)
 		if _toast_t <= 0.0: _toast.visible = false
 
@@ -340,19 +340,28 @@ func _fill_hotbar(p: FighterState) -> void:
 	for i in 3:
 		var s: Variant = p.slots[i] if i < p.slots.size() else null
 		if s == null:
-			out.append({"name": "empty", "ammo": "", "empty": true, "active": false, "reload": -1.0})
+			out.append({"name": "empty", "ammo": "", "sub": "", "low": false, "empty": true, "active": false, "reload": -1.0})
 			continue
 		var w := sim.combat.wdata(str(s["key"]))
-		var ammo := ""
-		if str(s["key"]) == "blower": ammo = "%d%%" % maxi(0, ceili(float(s["ammo"])))   # the web hotbar shows the blower in %
-		elif int(s["mag"]) >= 0: ammo = "%d/%d" % [int(s["mag"]), int(s["ammo"])]
-		elif int(s["ammo"]) > 1: ammo = "x%d" % int(s["ammo"])
+		var ammo := ""        # the big number: bullets in the magazine (or uses left)
+		var sub := ""         # the small number after it: spare ammo
+		var low := false
+		if str(s["key"]) == "blower":
+			ammo = "%d%%" % maxi(0, ceili(float(s["ammo"])))      # the web hotbar shows the blower in %
+			low = float(s["ammo"]) <= 20.0
+		elif int(s["mag"]) >= 0:
+			ammo = str(int(s["mag"]))
+			sub = "/" + str(int(s["ammo"]))
+			low = int(s["mag"]) <= maxi(1, int(ceil(float(w.get("mag", 0)) * 0.25)))
+		elif int(s["ammo"]) > 1:
+			ammo = "x%d" % int(s["ammo"])
+			low = int(s["ammo"]) <= 2
 		var active := p.slot == i and not p.dead
 		var rl := -1.0
 		if active and p.reloading and p.rl_dur > 0.0: rl = p.rl_t / p.rl_dur
-		out.append({"name": str(w.get("name", s["key"])), "ammo": ammo, "empty": false, "active": active, "reload": rl})
+		out.append({"name": str(w.get("name", s["key"])), "ammo": ammo, "sub": sub, "low": low, "empty": false, "active": active, "reload": rl})
 	var sp := sim.combat.wdata("spatula")
-	out.append({"name": str(sp.get("name", "Spatula")), "ammo": "", "empty": false, "active": p.slot < 0 and not p.dead, "reload": -1.0})
+	out.append({"name": str(sp.get("name", "Spatula")), "ammo": "", "sub": "", "low": false, "empty": false, "active": p.slot < 0 and not p.dead, "reload": -1.0})
 	_hotbar.slots = out
 
 func _draw_cross() -> void:
