@@ -26,6 +26,7 @@ const { Client } = require('./wa-client');
   assert.equal((await g2.wait(m => m.op === 'msg')).m.t, 'roster');
   assert.ok(!g1.inbox.some(m => m.op === 'msg'), 'except was honoured');
 
+  { const odd = await new Client(url, 'Odd').open(); odd.tx({ op: 'join', id, build: 'b999.0' }); const j = await odd.wait(m => m.op === 'joined' || m.op === 'nojoin'); assert.equal(j.op, 'joined', 'a different build number can still join (the host checks proto)'); odd.tx({ op: 'leave' }); await odd.op('left'); odd.close(); await h.wait(m => m.op === 'peer' && m.ev === 'open'); await h.wait(m => m.op === 'peer' && m.ev === 'close'); }
   g1.toAll({ t: 'pend', w: 1 });                                    // guests can not broadcast
   g2.toHost({ t: 's', id: 2, x: 1 });
   assert.equal((await h.wait(m => m.op === 'msg')).from, g2.cid, 'server stamps the guest cid');

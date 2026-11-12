@@ -29,6 +29,9 @@ var looks := {}                   ## FighterState -> {skin, hat, color}
 var diff := "normal"
 var difficulty: Dictionary = {}
 var match_start := 0.0
+## Online: the NetMatch (net/net_match.gd) of this match, or null offline. step() calls its pre_step() before the
+## controllers (netSnap) and post_controls() after them (netStep), like simStep.
+var net: RefCounted = null
 
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
@@ -110,6 +113,10 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		combat.place_at(b, x, z, y)
 		b.yaw = combat.rng.range_f(0, PI * 2.0); b.face_yaw = b.yaw
 
+## One more (non-player) fighter, e.g. an online ghost: class stats, map, full health. The caller places it.
+func add_fighter(cid: String) -> FighterState:
+	return _new_fighter(cid, false)
+
 func _new_fighter(cid: String, is_player: bool) -> FighterState:
 	var f := FighterState.new()
 	f.id = fighters.size()
@@ -124,9 +131,11 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 ## One fixed simulation step (simStep).
 func step(dt: float) -> void:
 	combat.time += dt
+	var net_pre: Variant = net.call("pre_step") if net != null else null
 	for f: FighterState in fighters:
 		var c: Variant = controllers.get(f)
 		if c != null: c.think(f, self, dt)
+	if net != null: net.call("post_controls", dt, net_pre)
 	for f: FighterState in fighters:
 		combat.timers(f, dt)
 		if not f.is_ghost: f.phys.step(dt, solids, f)
@@ -161,6 +170,8 @@ func _ring_out() -> void:
 		d.st["streak"] = 0; d.st["multi"] = 0; d.st["deaths"] += 1; d.st["falls"] += 1
 		if knocked: combat.add_ko(a, d)
 		else: combat.ev({"type": "ko", "killer": null, "victim": d, "weapon": "", "fall": true})
+		if combat.net_started and d.net_slot >= 0 and (d.is_player or combat.net_host):     # tell the others about the fall too
+			combat.ev({"type": "net", "msg": NetSnapshot.encode_ko(a.net_slot if knocked and a.net_slot >= 0 else -1, d.net_slot)})
 		d.last_attacker = null
 		var last_life := combat.lives_mode != 0 and d.lives <= 1
 		if not last_life and not d.is_player and d.home == null:      # bots don't pop straight back
