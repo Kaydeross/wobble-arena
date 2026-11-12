@@ -12,3 +12,25 @@ jobs:
         with: { node-version: 20 }
       - run: npm ci || npm install
       - run: npm test
+  godot:
+    runs-on: ubuntu-latest
+    env:
+      GODOT: /opt/godot/godot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install Godot 4.7.2 (headless tests, no export templates needed)
+        run: |
+          mkdir -p /opt/godot && cd /opt/godot
+          curl -fsSL -o g.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q g.zip && mv Godot_v4.7.2-stable_linux.x86_64 godot && chmod +x godot
+      - run: npm ci || npm install
+      - run: timeout 180 $GODOT --headless --path godot --import || true
+      - run: npm run test:godot-physics
+      - run: npm run test:godot-combat
+      - run: npm run test:godot-spring
+      - run: npm run test:godot-world
+      - run: npm run test:godot-wobbler
+      - run: npm run test:godot-weapons
+      - run: npm run test:godot

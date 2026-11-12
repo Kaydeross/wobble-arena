@@ -9,7 +9,7 @@ extends RefCounted
 
 const KEYS: Array[String] = ["katana", "spatula", "bat", "shotgun", "sniper", "typhoon", "mammoth", "glove", "meteor",
 	"rocket", "trident", "mallet", "snow", "glauncher", "cluster", "knife", "net", "snake", "ak", "smg", "uzi",
-	"minigun", "revolver", "bow", "shuriken", "flame", "boomerang", "blower"]
+	"minigun", "revolver", "bow", "shuriken", "flame", "boomerang", "blower", "hammer", "wirewhip"]
 
 
 static func make_mat(c: int) -> Material:
@@ -82,6 +82,8 @@ static func build(key: String, mat_fn: Callable = Callable()) -> Node3D:
 		"trident": _trident(b)
 		"mallet": _mallet(b)
 		"blower": _blower(b)
+		"hammer": _hammer(b)
+		"wirewhip": _wirewhip(b)
 		_:
 			b.bx(0.14, 0.7, 0.18, 0x5a6270, 0, -0.3, -0.05)
 			b.bx(0.1, 0.12, 0.22, 0x3a3f4a, 0, -0.02, 0.12)
@@ -176,6 +178,24 @@ static func _mallet(b: _B) -> void:
 	b.mi(null, LowPoly.cyl(0.34, 0.34, 0.95, 8), 0xe3566b, Vector3(0, -1.4, 0), Vector3(0, 0, PI / 2))
 	for sx in [-0.5, 0.5]:
 		b.mi(null, LowPoly.cyl(0.37, 0.37, 0.08, 8), 0xffd24a, Vector3(sx, -1.4, 0), Vector3(0, 0, PI / 2))
+
+
+static func _hammer(b: _B) -> void:       # carpenter claw hammer: wood handle, steel head with claw (JS makeWeaponMesh 'hammer')
+	b.cy(0.055, 0.07, 1.15, 0x8a5a2b, 0, -0.45, 0, 6)
+	b.bx(0.14, 0.55, 0.22, 0xc4ccd4, 0, -1.15, 0)
+	b.bx(0.18, 0.12, 0.24, 0x8a949c, 0, -0.92, 0)
+	b.bx(0.08, 0.22, 0.1, 0xc4ccd4, -0.08, -1.32, 0, 0, 0, 0.35)
+	b.bx(0.08, 0.22, 0.1, 0xc4ccd4, 0.08, -1.32, 0, 0, 0, -0.35)
+	b.cy(0.08, 0.08, 0.08, 0xffd24a, 0, 0.12, 0, 6)
+
+
+static func _wirewhip(b: _B) -> void:      # sparky live wire: coil grip and a long yellow whip tip (JS 'wirewhip')
+	b.cy(0.1, 0.1, 0.35, 0x2a3640, 0, -0.05, 0, 8)
+	for y in [-0.12, 0.0, 0.12]:
+		b.cy(0.12, 0.12, 0.04, 0xffd24a, 0, y, 0, 8)
+	b.cy(0.035, 0.035, 2.2, 0xffd24a, 0, -1.25, 0, 5)
+	b.cy(0.05, 0.02, 0.18, 0xe3566b, 0, -2.4, 0, 5)
+	b.bx(0.06, 0.1, 0.06, 0x4aa3d8, 0, -0.28, -0.12)
 
 
 static func _blower(b: _B) -> void:
