@@ -39,6 +39,7 @@ var coins := START_COINS
 var owned: Array = ["wobble"]        ## emotes (web wallet.owned)
 var slots: Array = ["wobble", null, null]
 var skins: Array = []                ## outfits (web wallet.skins: "none" + the free ones + bought)
+var classes: Array = []              ## Godot-only classes bought with coins (wallet.classes; ExtraClasses)
 var codes: Array = []
 var daily := {"d": 0, "s": 0}
 var look := DEFAULT_LOOK.duplicate()
@@ -56,6 +57,7 @@ var match_kos := 0
 var match_hits := 0
 var match_deaths := 0
 var _streak := 0
+var _seen_classes: Array = []        ## secret classes already announced on a results panel (this session)
 var _bak_t := -1.0e9
 var _syncing := false
 
@@ -88,6 +90,7 @@ func reset() -> void:
 	owned = ["wobble"]
 	slots = ["wobble", null, null]
 	skins = ["none"] + LockerData.free_skins()
+	classes = []
 	codes = []
 	daily = {"d": 0, "s": 0}
 	look = DEFAULT_LOOK.duplicate()
@@ -97,6 +100,7 @@ func reset() -> void:
 	hist = []
 	extra = {}; extra_wallet = {}; extra_stats = {}
 	match_kos = 0; match_hits = 0; match_deaths = 0; _streak = 0
+	_seen_classes = []
 
 # ============================== the blob (web snapshot shape) ==============================
 
@@ -114,6 +118,7 @@ func get_blob() -> Dictionary:
 	w["owned"] = owned.duplicate()
 	w["slots"] = slots.duplicate()
 	w["skins"] = skins.duplicate()
+	w["classes"] = classes.duplicate()
 	w["codes"] = codes.duplicate()
 	w["daily"] = daily.duplicate()
 	d["wallet"] = w
@@ -129,7 +134,7 @@ func apply_blob(d: Variant) -> bool:
 	var w: Variant = d.get("wallet")
 	if w is Dictionary:
 		for k: String in w:
-			if not k in ["coins", "owned", "slots", "skins", "codes", "daily"]: extra_wallet[k] = w[k]
+			if not k in ["coins", "owned", "slots", "skins", "classes", "codes", "daily"]: extra_wallet[k] = w[k]
 		if _num(w.get("coins")): coins = maxi(0, floori(float(w["coins"])))
 		if w.get("owned") is Array:
 			for k in w["owned"]:
@@ -139,6 +144,9 @@ func apply_blob(d: Variant) -> bool:
 				if k is String and WobblerLooks.skin_def(k).size() > 0 and not skins.has(k): skins.append(k)
 		for k: String in LockerData.free_skins():
 			if not skins.has(k): skins.append(k)
+		if w.get("classes") is Array:
+			for k in w["classes"]:
+				if k is String and ExtraClasses.price(k) > 0 and not classes.has(k): classes.append(k)
 		for k: String in skins:
 			for id: String in LockerData.skin_emotes(k):
 				if not owned.has(id): owned.append(id)
@@ -155,7 +163,6 @@ func apply_blob(d: Variant) -> bool:
 		if _num(lk.get("color")) and LockerData.swatch().has(int(lk["color"])): look["color"] = int(lk["color"])
 		if lk.get("hat") is String and LockerData.hats().has(lk["hat"]): look["hat"] = lk["hat"]
 		if lk.get("skin") is String and skins.has(lk["skin"]): look["skin"] = lk["skin"]
-		if lk.get("cls") is String and WobblerLooks.data("classes").has(lk["cls"]): look["cls"] = lk["cls"]
 	var s: Variant = d.get("stats")
 	if s is Dictionary:
 		for k: String in s:
@@ -167,6 +174,7 @@ func apply_blob(d: Variant) -> bool:
 				if h is Dictionary:
 					hist.append({"m": str(h.get("m", "")).substr(0, 24), "map": str(h.get("map", "")).substr(0, 24),
 						"ko": int(h.get("ko", 0)), "d": int(h.get("d", 0)), "w": 1 if h.get("w") else 0, "o": 1 if h.get("o") else 0})
+	if lk is Dictionary and lk.get("cls") is String and owns_class(lk["cls"]): look["cls"] = lk["cls"]   # after the stats (unlocks)
 	changed.emit()
 	return true
 
@@ -266,12 +274,12 @@ func _adopt_settings(st: Node) -> void:
 	var s := str(st.get_value("skin", "none"))
 	if skins.has(s): look["skin"] = s
 	var cl := str(st.get_value("class", "wobbler"))
-	if WobblerLooks.data("classes").has(cl): look["cls"] = cl
+	if owns_class(cl): look["cls"] = cl
 
 func _on_setting(key: String, v: Variant) -> void:
 	if _syncing: return
 	match key:
-		"class": if str(v) != look["cls"]: set_class(str(v))
+		"class": if str(v) != look["cls"] and not set_class(str(v)): _push_settings()
 		"skin": if str(v) != look["skin"] and not wear_skin(str(v)): _push_settings()
 		"hat": if str(v) != look["hat"]: set_hat(str(v))
 		"color": if int(v) != look["color"]: set_color(int(v))
@@ -281,8 +289,9 @@ func _set_look(k: String, v: Variant) -> void:
 	_push_settings()
 	_commit()
 
+## Pick a class you own (the shared ones are free; ExtraClasses need coins or an unlock). false otherwise.
 func set_class(id: String) -> bool:
-	if not WobblerLooks.data("classes").has(id): return false
+	if not owns_class(id): return false
 	_set_look("cls", id)
 	return true
 
@@ -310,8 +319,29 @@ func owns_skin(k: String) -> bool:
 func owns_emote(id: String) -> bool:
 	return owned.has(id)
 
+## The shared classes are free; a Godot-only one is owned once bought or once its unlock stat is reached.
+func owns_class(id: String) -> bool:
+	if not WobblerLooks.data("classes").has(id): return false
+	if not ExtraClasses.is_extra(id): return true
+	if classes.has(id): return true
+	var u := ExtraClasses.unlock(id)
+	return not u.is_empty() and class_progress(id) >= int(u.get("n", 1))
+
+## The stat that unlocks a secret class, so far (0 when it has no unlock).
+func class_progress(id: String) -> int:
+	var u := ExtraClasses.unlock(id)
+	return 0 if u.is_empty() else int(stats.get(str(u.get("stat", "")), 0))
+
+## Every class you can pick, in the classes.json order.
+func owned_classes() -> Array:
+	return WobblerLooks.data("classes").keys().filter(owns_class)
+
 ## Why an item can or cannot be bought: "ok", "owned", "coins" (not enough), "not_for_sale".
 func buy_check(kind: String, k: String) -> String:
+	if kind == "class":
+		if owns_class(k): return "owned"
+		if ExtraClasses.price(k) <= 0: return "not_for_sale"
+		return "ok" if coins >= ExtraClasses.price(k) else "coins"
 	if kind == "skin":
 		if skins.has(k): return "owned"
 		if not LockerData.is_shop_skin(k) or WobblerLooks.skin_def(k).is_empty(): return "not_for_sale"
@@ -321,6 +351,7 @@ func buy_check(kind: String, k: String) -> String:
 	return "ok" if coins >= LockerData.emote_price(k) else "coins"
 
 func price_of(kind: String, k: String) -> int:
+	if kind == "class": return ExtraClasses.price(k)
 	return LockerData.skin_price(k) if kind == "skin" else LockerData.emote_price(k)
 
 ## Coins still missing for an item (0 when you can afford it).
@@ -338,6 +369,10 @@ func buy(kind: String, k: String) -> String:
 		for id: String in LockerData.skin_emotes(k):
 			if not owned.has(id): _own_emote(id)
 		look["skin"] = k
+		_push_settings()
+	elif kind == "class":
+		classes.append(k)
+		look["cls"] = k
 		_push_settings()
 	else:
 		_own_emote(k)
@@ -391,6 +426,7 @@ static func match_coins(kos: int, won: bool) -> int:
 	return KO_COINS * kos + MATCH_COINS + (WIN_COINS if won else 0)
 
 func begin_match() -> void:
+	for id: String in owned_classes(): if not _seen_classes.has(id): _seen_classes.append(id)   # only new ones get announced
 	match_kos = 0
 	match_hits = 0
 	match_deaths = 0
@@ -430,5 +466,10 @@ func finish_match(won: bool, mode_name: String = "", map_name: String = "", onli
 	var bonus := MATCH_COINS + (WIN_COINS if won else 0)
 	coins += bonus
 	var out := {"coins": bonus + KO_COINS * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "next": next_unlock()}
+	var fresh: Array = []                               # secret classes this match unlocked (K.O.s count too)
+	for id: String in owned_classes():
+		if ExtraClasses.is_hidden(id) and not _seen_classes.has(id): fresh.append(id)
+	for id: String in fresh: _seen_classes.append(id)
+	if fresh.size() > 0: out["classes"] = fresh
 	_commit()
 	return out

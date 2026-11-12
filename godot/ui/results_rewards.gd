@@ -30,6 +30,16 @@ static func make(r: Dictionary) -> Control:
 	var kos := int(r.get("kos", 0))
 	k.text = "%d K.O.%s × 5  ·  finished +40%s  ·  %d coins in all" % [kos, "" if kos == 1 else "s", "  ·  win +60" if r.get("won", false) else "", int(r.get("total", 0))]
 	box.add_child(k)
+	var cls: Array = r.get("classes", [])
+	if cls.size() > 0:                                   # a secret class unlocked by this match (ExtraClasses)
+		var u := Label.new()
+		u.name = "Unlocked"
+		u.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		u.add_theme_font_size_override("font_size", 20)
+		u.add_theme_color_override("font_color", UiTheme.GOOD)
+		var names: Array = cls.map(func(id: String) -> String: return str(WobblerLooks.class_def(id).get("name", id)))
+		u.text = "Secret class unlocked: %s! Pick it in the Locker." % ", ".join(names)
+		box.add_child(u)
 	var nx: Dictionary = r.get("next", {})
 	var p := Label.new()
 	p.name = "Next"

@@ -378,6 +378,14 @@ func _skin_flags() -> void:
 		e.visible = not sk.get("noEyes", false)
 	if hat:
 		hat.visible = not sk.get("noHat", false)
+	for n in _cls_nodes:                        # class bits on the head (hair, antennae) would float around a cup / log
+		(n as Node3D).visible = not (sk.get("noHead", false) and n.get_parent() == neck)
+	var th := float(sk.get("thin", 1.0))        # web skinFlags `thin`: slim arms and legs (Ballerina)
+	for l in legs:
+		(l.get_node("Thigh") as Node3D).scale = Vector3(th, 1, th)
+		foot_meshes[legs.find(l)].scale = Vector3(minf(1.0, th * 1.2), 1, 1)
+	(arm_l.get_node("Sleeve") as Node3D).scale = Vector3(th, 1, th)
+	arm_sleeve.scale = Vector3(th, 1, th)
 
 
 func _free_part(n: Node) -> void:

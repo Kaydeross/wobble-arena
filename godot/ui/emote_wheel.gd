@@ -151,10 +151,7 @@ func _draw() -> void:
 		var rc := LockerData.rarity_color(LockerData.emote_rarity(id))
 		draw_circle(p, ITEM_R + 3.0, rc)
 		draw_circle(p, ITEM_R, Color(UiTheme.PANEL_SOLID, 0.95))
-		var ico := str(LockerData.emote(id).get("ico", "?"))
-		var fs := 38
-		var w := _font.get_string_size(ico, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
-		draw_string(_font, p + Vector2(-w / 2.0, fs * 0.35), ico, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		EmoteIcon.paint(self, id, p, ITEM_R * 0.55, Color.WHITE)   # vector glyph (emoji fonts are not bundled)
 		var nm := LockerData.emote_name(id)
 		var nw := _font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
 		var np := p + Vector2(-nw / 2.0, ITEM_R + 20.0)

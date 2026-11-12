@@ -4,8 +4,11 @@ extends VBoxContainer
 ## like ui/setup_wizard.gd. Matches the web game's build 75 store pages: your wobbler big on the left (a live 3D
 ## render, ui/locker_stage.gd, turning; it wears whatever card you tap: try before you buy), a card grid on the right
 ## (DragScroll: drag + fling, a tap picks), the coins top right, Back and one action button at the bottom.
-##   Locker tabs: Outfits, Hats, Colours, Emotes, Class. Owned items first; locked outfits / emotes show a padlock and
-##            their price and can be bought from here too. Colours, hats and classes are free (web).
+##   Locker tabs: Outfits, Hats, Colour, Emotes, Class. Owned items first; locked outfits / emotes show a padlock and
+##            their price and can be bought from here too. Colours, hats and the 5 shared classes are free (web). The
+##            Colour tab is the body colour under no outfit, so its preview takes the outfit off. Godot-only classes
+##            (ExtraClasses): some cost coins (padlock + price), secret ones show as a ??? silhouette with their unlock
+##            goal ("Win 5 matches · 2/5") until a lifetime stat unlocks them.
 ##   Shop tabs:   Outfits, Emotes (only what is for sale, cheapest first).
 ## The action button says what a tap would do: Wear / Equip / Pick, Wearing, Buy (opens a confirm card), or
 ## "Need N more coins" (says how to earn them). Everything goes through the Save autoload (autoload/save.gd), which
@@ -15,7 +18,8 @@ signal closed
 
 const LOCKER_TABS := ["skin", "hat", "color", "emote", "class"]
 const SHOP_TABS := ["skin", "emote"]
-const TAB_NAMES := {"skin": "Outfits", "hat": "Hats", "color": "Colours", "emote": "Emotes", "class": "Class"}
+const TAB_NAMES := {"skin": "Outfits", "hat": "Hats", "color": "Colour", "emote": "Emotes", "class": "Class"}
+const SILHOUETTE := Color(0.02, 0.05, 0.07, 0.92)   ## a secret class you have not unlocked: a dark shape
 const CARD := Vector2(150, 156)
 const GAP := 12
 const PREVIEW_W := 250.0
@@ -96,6 +100,7 @@ func items(t: String) -> Array:
 static func is_owned(t: String, k: String) -> bool:
 	if t == "skin": return save().owns_skin(k)
 	if t == "emote": return save().owns_emote(k)
+	if t == "class": return save().owns_class(k)
 	return true
 
 static func is_worn(t: String, k: String) -> bool:
@@ -114,13 +119,25 @@ static func item_name(t: String, k: String) -> String:
 		"hat": return LockerData.hat_name(k)
 		"color": return LockerData.color_name(int(k))
 		"emote": return LockerData.emote_name(k)
-		"class": return str(WobblerLooks.data("classes").get(k, {}).get("name", k))
+		"class": return "???" if is_secret(k) else str(WobblerLooks.data("classes").get(k, {}).get("name", k))
 	return k
 
 static func rarity(t: String, k: String) -> String:
 	if t == "skin": return LockerData.skin_rarity(k)
 	if t == "emote": return LockerData.emote_rarity(k)
+	if t == "class": return ExtraClasses.rarity(k)
 	return "common"
+
+## A secret class (ExtraClasses hidden) not unlocked yet: shown as a ??? silhouette.
+static func is_secret(k: String) -> bool:
+	return ExtraClasses.is_hidden(k) and not save().owns_class(k)
+
+## "Win 5 matches · 2/5" for a class with an unlock goal ("" otherwise).
+static func unlock_text(k: String) -> String:
+	var u := ExtraClasses.unlock(k)
+	if u.is_empty(): return ""
+	var n := int(u.get("n", 1))
+	return "%s · %d/%d" % [str(u.get("text", "")), mini(save().class_progress(k), n), n]
 
 ## The worn look with this card tried on.
 static func try_look(t: String, k: String) -> Dictionary:
@@ -128,7 +145,7 @@ static func try_look(t: String, k: String) -> Dictionary:
 	match t:
 		"skin": lk["skin"] = k
 		"hat": lk["hat"] = k
-		"color": lk["color"] = int(k)
+		"color": lk["color"] = int(k); lk["skin"] = "none"     # the colour only shows with no outfit on
 		"class": lk["cls"] = k
 	return lk
 
@@ -468,9 +485,9 @@ func _tab_hint() -> String:
 	match tab:
 		"skin": return "Tap an outfit to try it on."
 		"hat": return "Hats are free to wear."
-		"color": return "Shows when you wear no outfit."
+		"color": return "Your body colour with no outfit on. Outfits bring their own."
 		"emote": return "Tap to see it. Equip puts it on T."
-		"class": return "Size and moves. All free."
+		"class": return "Size and stats. Some cost coins, some are secret."
 	return ""
 
 func _reveal() -> void:
@@ -537,11 +554,15 @@ func _card(t: String, k: String) -> Button:
 		st.text = "Equipped" if t == "emote" else "Wearing" if t != "class" else "Picked"
 		st.add_theme_color_override("font_color", UiTheme.GOOD)
 	elif own:
-		st.text = LockerData.rarity_label(rarity(t, k)) if t == "skin" or t == "emote" else "Free"
+		st.text = LockerData.rarity_label(rarity(t, k)) if t == "skin" or t == "emote" or (t == "class" and ExtraClasses.is_extra(k)) else "Free"
 		st.add_theme_color_override("font_color", rc.lightened(0.25))
 	elif t == "emote" and not LockerData.is_shop_emote(k):
 		row.add_child(LockerIcon.new("lock", 16))
 		st.text = "With an outfit"
+	elif t == "class" and ExtraClasses.price(k) <= 0:       # a secret class: its goal, e.g. "2/5 wins"
+		row.add_child(LockerIcon.new("lock", 16))
+		var u := ExtraClasses.unlock(k)
+		st.text = "%d/%d %s" % [mini(save().class_progress(k), int(u.get("n", 1))), int(u.get("n", 1)), {"wins": "wins", "matches": "played", "kos": "K.O.s"}.get(str(u.get("stat", "")), "")]
 	else:
 		row.add_child(LockerIcon.new("coin", 16))
 		st.text = str(save().price_of(t, k))
@@ -562,10 +583,9 @@ func _art(t: String, k: String) -> Control:
 			sw.color = Color.hex((int(k) << 8) | 0xff)
 			return sw
 		"emote":
-			var l := _label(str(LockerData.emote(k).get("ico", "?")), 46)
-			l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			return l
+			var ic := EmoteIcon.new(k, 72)
+			ic.size_flags_vertical = SIZE_EXPAND_FILL
+			return ic
 	var tr := TextureRect.new()
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -574,6 +594,7 @@ func _art(t: String, k: String) -> Control:
 	if be.size() == 2:
 		tr.texture = stage.baked.get(be[0])
 		arts[be[0]] = tr
+	if t == "class" and is_secret(k): tr.modulate = SILHOUETTE
 	return tr
 
 # ============================== picking + the action ==============================
@@ -584,6 +605,7 @@ func _select_card(k: String, play := true) -> void:
 	for ck: String in cards: (cards[ck] as Button).set_pressed_no_signal(ck == k)
 	var lk := try_look(tab, k)
 	stage.preview(lk)
+	preview_tr.modulate = SILHOUETTE if tab == "class" and is_secret(k) else Color.WHITE
 	if tab == "emote" and play and k != "": stage.emote(k)
 	_refresh()
 
@@ -591,7 +613,7 @@ func picked() -> String:
 	return sel.get(tab, "")
 
 func kind() -> String:
-	return tab if tab == "skin" or tab == "emote" else ""
+	return tab if tab == "skin" or tab == "emote" or tab == "class" else ""
 
 ## What the action button does for the picked card: "wear" | "worn" | "buy" | "coins" | "locked".
 func action_state() -> String:
@@ -609,7 +631,7 @@ func _refresh() -> void:
 	var st := action_state()
 	var verb: String = {"skin": "Wear", "hat": "Wear", "color": "Use colour", "emote": "Equip", "class": "Pick"}[tab]
 	var done: String = {"skin": "Wearing", "hat": "Wearing", "color": "Using it", "emote": "Equipped", "class": "Picked"}[tab]
-	action_b.disabled = st == "worn" or st == "locked"
+	action_b.disabled = st == "worn" or (st == "locked" and not (tab == "class" and is_secret(k)))   # Secret: a tap says how
 	action_b.theme_type_variation = &"PrimaryButton" if st == "wear" or st == "buy" else &""
 	action_b.add_theme_font_size_override("font_size", 24)
 	match st:
@@ -617,7 +639,7 @@ func _refresh() -> void:
 		"worn": action_b.text = done
 		"buy": action_b.text = "Buy for %d" % save().price_of(tab, k)
 		"coins": action_b.text = "Need %d more" % save().missing(tab, k)
-		"locked": action_b.text = "Not for sale"
+		"locked": action_b.text = "Secret" if tab == "class" and is_secret(k) else "Locked" if tab == "class" else "Not for sale"
 	name_l.text = item_name(tab, k) if k != "" else ""
 	info_l.text = _info(tab, k)
 	info_l.tooltip_text = info_l.text
@@ -635,7 +657,12 @@ func _info(t: String, k: String) -> String:
 		if ems.size() > 0: parts.append("Comes with " + LockerData.emote_name(ems[0]))
 		elif not is_owned(t, k): parts.append("%d coins" % LockerData.skin_price(k))
 	elif t == "class":
+		if is_secret(k): return unlock_text(k)            # the goal, short enough for the panel: "Win 5 matches · 2/5"
+		if ExtraClasses.is_extra(k): parts.append(LockerData.rarity_label(rarity(t, k)))
 		parts.append(str(WobblerLooks.data("classes").get(k, {}).get("tag", "")))
+		if not is_owned(t, k) and ExtraClasses.price(k) > 0: parts.append("%d coins" % ExtraClasses.price(k))
+	elif t == "color" and save().look["skin"] != "none":
+		parts.append("Hidden under %s. Shows with no outfit" % LockerData.skin_name(str(save().look["skin"])))
 	return " · ".join(parts)
 
 func _refresh_coins() -> void:
@@ -655,6 +682,10 @@ func act() -> void:
 		"coins":
 			_set_msg("You need %d more coins. Score K.O.s and finish matches to earn them." % save().missing(tab, k), UiTheme.WARN)
 			_shake(action_b)
+		"locked":
+			if tab == "class" and not ExtraClasses.unlock(k).is_empty():
+				_set_msg("Secret class. %s to unlock it." % unlock_text(k), UiTheme.WARN)
+				_shake(action_b)
 
 func wear(k: String) -> bool:
 	var sv := save()
@@ -666,7 +697,10 @@ func wear(k: String) -> bool:
 		"class": ok = sv.set_class(k); stage.forget("skin:"); stage.forget("hat:")
 		"emote": ok = sv.equip_emote(k, 0)
 	if ok:
-		_set_msg(("%s is on T and first in the emote button." if tab == "emote" else "Now wearing %s." if tab != "class" else "You play as %s.") % item_name(tab, k), UiTheme.GOOD)
+		var m: String = ("%s is on T and first in the emote button." if tab == "emote" else "Now wearing %s." if tab != "class" else "You play as %s.") % item_name(tab, k)
+		if tab == "color":
+			m = "Body colour: %s." % item_name(tab, k) + (" Take your outfit off to see it." if sv.look["skin"] != "none" else "")
+		_set_msg(m, UiTheme.GOOD)
 		Sfx.play("click")
 		_redraw_keep()
 	return ok
@@ -688,6 +722,9 @@ func buy_confirmed() -> String:
 				var ems := LockerData.skin_emotes(k)
 				if ems.size() > 0: extra += " You also got " + LockerData.emote_name(ems[0]) + "."
 				stage.forget("cls:")
+			if t == "class":
+				extra = " You play as it now."
+				stage.forget("skin:"); stage.forget("hat:")
 			_set_msg("Bought %s!%s" % [item_name(t, k), extra], UiTheme.GOOD)
 			Sfx.play("pickup")
 		"coins": _set_msg("You need %d more coins." % save().missing(t, k), UiTheme.WARN)
