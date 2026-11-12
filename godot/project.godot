@@ -7,12 +7,20 @@ run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/version="0.1.0"
 config/icon="res://icon.png"
+; Launch: the two-line logo (ui/brand/launch_logo.png, rendered by tools/shoot-godot-brand.sh) on the panel teal,
+; matching the iOS launch storyboard (export_presets.cfg storyboard/*).
+boot_splash/bg_color=Color(0.0627, 0.1686, 0.2078, 1)
+boot_splash/show_image=true
+boot_splash/image="res://ui/brand/launch_logo.png"
+boot_splash/stretch_mode=1
+boot_splash/use_filter=true
 
 [autoload]
 
 Tier="*res://autoload/tier.gd"
 Content="*res://autoload/content.gd"
 Settings="*res://autoload/settings.gd"
+FpsOverlay="*res://ui/fps_overlay.gd"
 Sfx="*res://autoload/audio.gd"
 
 [audio]
@@ -28,6 +36,10 @@ window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 ; 4 = sensor landscape (1 was portrait, which iOS then locked the app to).
 window/handheld/orientation=4
+
+[gui]
+
+theme/custom="res://ui/theme.tres"
 
 [rendering]
 ; Render tiers (autoload Tier): PC = Forward+, iOS/Android = Mobile, web = Compatibility.

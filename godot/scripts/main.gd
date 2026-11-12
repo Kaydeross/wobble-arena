@@ -1,18 +1,35 @@
 extends Control
-## Title scene: offline play (map + class pickers) and a placeholder online panel: server address, room code, name,
-## Join (as a guest, GuestSession) and a minimal login (POST /api/login, token kept in Settings). Real menus come in
-## Phase 3. Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away.
+## Title scene: offline play (map + class pickers) and the online panel: server address, room code, name, Join
+## (as a guest, GuestSession) and a minimal login (POST /api/login, token kept in Settings). Laid out with containers
+## inside a safe-area MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks
+## 852x393, 1170x540, 1280x720 and 390x844 with both the Offline and the Play online tab open).
+## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away.
 
 const WORLD := "res://world/world.tscn"
 const OFFLINE_MAPS := ["arena", "practice"]
+const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
+const TIPS := [
+	"Tip: push the stick to the edge to sprint.",
+	"Tip: knock fighters off the edge for a K.O.",
+	"Tip: crates drop weapons, heals and power-ups.",
+	"Tip: kick and shove work even without a weapon.",
+	"Tip: press F3 (or tap with three fingers) to show the FPS meter.",
+]
 
 ## Set by the world when it hands an active session back (host migration) and/or a message to show.
 var session: GuestSession = null
 var notice := ""
 
-@onready var status: Label = $Status
-@onready var map_pick: OptionButton = $Play/Map
-@onready var class_pick: OptionButton = $Play/Class
+const P := "Safe/Col/Body/Picks/Box/"
+@onready var safe: MarginContainer = $Safe
+@onready var chip: Label = $Safe/Col/Top/GuestChip/Row/Status
+@onready var who: Label = $Safe/Col/Top/GuestChip/Row/Who
+@onready var dot: Panel = $Safe/Col/Top/GuestChip/Row/Dot
+@onready var map_pick: OptionButton = get_node(P + "Offline/MapRow/Map")
+@onready var class_pick: OptionButton = get_node(P + "Offline/ClassRow/Class")
+@onready var fps_toggle: CheckButton = get_node(P + "Offline/FpsRow/Fps")
+@onready var status: Label = get_node(P + "Online/Status")
+@onready var play: Button = $Safe/Col/Body/Play
 var class_ids: Array = []
 var _ui := {}
 var _api: AccountApi
@@ -26,73 +43,102 @@ func _ready() -> void:
 	for cid in class_ids:
 		class_pick.add_item(str(Content.get_class_data(cid).get("name", cid)))
 	class_pick.select(maxi(class_ids.find(str(Settings.get_value("class", "wobbler"))), 0))
-	$Play/PlayOffline.pressed.connect(play_offline)
+	play.pressed.connect(play_offline)
+	fps_toggle.button_pressed = bool(Settings.get_value("show_fps", false))
+	fps_toggle.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))
+	Settings.changed.connect(_on_setting)
+	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
+	var group := ButtonGroup.new()
+	for t in ["OfflineTab", "OnlineTab"]:
+		var b: Button = get_node(P + "Tabs/" + t)
+		b.button_group = group
+		b.toggled.connect(func(on: bool): if on: show_tab(t == "OnlineTab"))
 	_api = AccountApi.new()
 	add_child(_api)
-	_api.finished.connect(func(_ok: bool, msg: String) -> void: status.text = msg; _refresh_login())
+	_api.finished.connect(func(_ok: bool, msg: String) -> void: _status(msg); _refresh_login())
 	_build_online()
-	status.text = notice if notice != "" else "Play offline, or join a friend's room."
+	_status(notice if notice != "" else "Join a friend's room.")
 	if session != null:
 		_bind_session()
-		status.text = (notice + "  " if notice != "" else "") + session.status
+		_status((notice + "  " if notice != "" else "") + session.status)
 	var join := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--join="): join = a.substr(7)
 		elif a.begins_with("--server="): _ui["server"].text = a.substr(9)
 		elif a.begins_with("--name="): _ui["name"].text = a.substr(7)
+	if notice != "" or session != null or join != "":
+		show_tab(true)
 	if join != "" and session == null:
 		_ui["room"].text = join
 		join_room()
+	JuicyButton.attach_all(self)
+	get_viewport().size_changed.connect(apply_safe_area)
+	apply_safe_area()
+	if Tier.is_pc():
+		play.grab_focus.call_deferred()   # keyboard / gamepad start on PLAY
 
 func _process(dt: float) -> void:
 	if session != null:
 		session.poll(dt)
 
-func _line(parent: Node, placeholder: String, text: String, w: float) -> LineEdit:
-	var l := LineEdit.new()
-	l.placeholder_text = placeholder
-	l.text = text
-	l.custom_minimum_size = Vector2(w, 44)
-	l.add_theme_font_size_override("font_size", 18)
-	parent.add_child(l)
-	return l
+## Offline pickers or the online panel in the right-hand card.
+func show_tab(online: bool) -> void:
+	get_node(P + "Offline").visible = not online
+	get_node(P + "Online").visible = online
+	(get_node(P + "Tabs/OnlineTab") as Button).set_pressed_no_signal(online)
+	(get_node(P + "Tabs/OfflineTab") as Button).set_pressed_no_signal(not online)
 
-func _button(parent: Node, text: String, cb: Callable) -> Button:
-	var b := Button.new()
-	b.text = text
-	b.custom_minimum_size = Vector2(110, 44)
-	b.add_theme_font_size_override("font_size", 18)
-	b.pressed.connect(cb)
-	parent.add_child(b)
-	return b
+func _on_setting(key: String, v: Variant) -> void:
+	if key == "show_fps" and fps_toggle.button_pressed != bool(v):
+		fps_toggle.set_pressed_no_signal(bool(v))
+
+## Status line in the online panel; the chip at the top shows it short, with a coloured dot.
+func _status(t: String) -> void:
+	status.text = t
+	status.tooltip_text = t
+	var on := session != null and session.is_active()
+	chip.text = t if on else "Offline"
+	_dot(UiTheme.GOOD if on else UiTheme.MUTED)
+
+func _dot(c: Color) -> void:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = c
+	sb.set_corner_radius_all(5)
+	dot.add_theme_stylebox_override("panel", sb)
+
+## Safe-area insets (notch, home indicator) plus our own padding.
+func apply_safe_area() -> void:
+	var i := SafeArea.insets(get_viewport())
+	safe.add_theme_constant_override("margin_left", int(MARGIN.x + i[0]))
+	safe.add_theme_constant_override("margin_top", int(MARGIN.y + i[1]))
+	safe.add_theme_constant_override("margin_right", int(MARGIN.z + i[2]))
+	safe.add_theme_constant_override("margin_bottom", int(MARGIN.w + i[3]))
+
+# ---------------- online ----------------
 
 func _build_online() -> void:
-	var box := VBoxContainer.new()
-	box.name = "Online"
-	box.anchor_left = 0.5; box.anchor_right = 0.5; box.anchor_top = 0.5; box.anchor_bottom = 0.5
-	box.offset_left = -470; box.offset_right = 470; box.offset_top = 120; box.offset_bottom = 250
-	add_child(box)
-	var r1 := HBoxContainer.new(); r1.alignment = BoxContainer.ALIGNMENT_CENTER; box.add_child(r1)
-	_ui["server"] = _line(r1, "ws://server:3000/ws", str(Settings.get_value("server_url")), 300)
-	_ui["room"] = _line(r1, "Room code", str(Settings.get_value("room_code", "")), 130)
-	_ui["name"] = _line(r1, "Your name", str(Settings.get_value("name", "Player")), 150)
-	_ui["join"] = _button(r1, "Join room", join_room)
-	_ui["leave"] = _button(r1, "Leave", func() -> void: if session: session.leave("You left the room."))
-	var r2 := HBoxContainer.new(); r2.alignment = BoxContainer.ALIGNMENT_CENTER; box.add_child(r2)
-	_ui["user"] = _line(r2, "Username or email", str(Settings.get_value("user", "")), 220)
-	_ui["pass"] = _line(r2, "Password", "", 180)
-	(_ui["pass"] as LineEdit).secret = true
-	_ui["login"] = _button(r2, "Log in", func() -> void:
-		status.text = "Logging in…"
+	var n := P + "Online/"
+	_ui["server"] = get_node(n + "ServerRow/Server")
+	_ui["room"] = get_node(n + "RoomRow/Room")
+	_ui["name"] = get_node(n + "RoomRow/Name")
+	_ui["join"] = get_node(n + "RoomRow/Join")
+	_ui["leave"] = get_node(n + "RoomRow/Leave")
+	_ui["user"] = get_node(n + "AcctRow/User")
+	_ui["pass"] = get_node(n + "AcctRow/Pass")
+	_ui["login"] = get_node(n + "AcctRow/Login")
+	_ui["logout"] = get_node(n + "AcctRow/Logout")
+	_ui["acct"] = get_node(n + "AcctRow/Acct")
+	_ui["roster"] = get_node(n + "Roster")
+	_ui["server"].text = str(Settings.get_value("server_url"))
+	_ui["room"].text = str(Settings.get_value("room_code", ""))
+	_ui["name"].text = str(Settings.get_value("name", "Player"))
+	_ui["user"].text = str(Settings.get_value("user", ""))
+	_ui["join"].pressed.connect(join_room)
+	_ui["leave"].pressed.connect(func() -> void: if session: session.leave("You left the room."))
+	_ui["login"].pressed.connect(func() -> void:
+		_status("Logging in…")
 		_api.login(_ui["server"].text, _ui["user"].text, _ui["pass"].text))
-	_ui["logout"] = _button(r2, "Log out", func() -> void: _api.logout(); status.text = "Logged out."; _refresh_login())
-	_ui["acct"] = Label.new()
-	_ui["acct"].add_theme_font_size_override("font_size", 16)
-	r2.add_child(_ui["acct"])
-	_ui["roster"] = Label.new()
-	_ui["roster"].horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_ui["roster"].add_theme_font_size_override("font_size", 16)
-	box.add_child(_ui["roster"])
+	_ui["logout"].pressed.connect(func() -> void: _api.logout(); _status("Logged out."); _refresh_login())
 	_refresh_login()
 	_refresh_buttons()
 
@@ -100,7 +146,11 @@ func _refresh_login() -> void:
 	var u := str(Settings.get_value("user", ""))
 	var logged := str(Settings.get_value("token", "")) != ""
 	_ui["acct"].text = ("Logged in: " + u) if logged else "Not logged in"
+	_ui["acct"].visible = logged
 	_ui["logout"].visible = logged
+	for k in ["user", "pass", "login"]:
+		_ui[k].visible = not logged
+	who.text = u.to_upper().substr(0, 12) if logged and u != "" else "GUEST"
 
 func _refresh_buttons() -> void:
 	var on := session != null and session.is_active()
@@ -136,12 +186,13 @@ func _unbind_session() -> void:
 	session.match_started.disconnect(_enter_match)
 
 func _on_status(t: String) -> void:
-	status.text = t
+	_status(t)
 
 func _on_ended(_reason: String) -> void:
 	_unbind_session()
 	session = null
 	_refresh_buttons()
+	_status(status.text)
 
 func _on_roster(r: Array) -> void:
 	var names: Array = []
