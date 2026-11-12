@@ -60,7 +60,8 @@ var _mats := {}
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
-var _mode_l: Label                 ## the mode line (lives, team score, ladder rung, arena size, dashes)
+var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event)
+var _team_board: TeamBoard         ## team modes: coloured chips with each team's score and a YOU tag on yours
 var _banner: Label                 ## "YOU WIN!" at the end of a match
 var _banner_t := 0.0
 var _shrink_mesh: MeshInstance3D   ## the shrinking floor (shrink / squeeze maps)
@@ -572,6 +573,11 @@ func _build_mode_ui() -> void:
 	_mode_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$UI.add_child(_mode_l)
 	$UI.move_child(_mode_l, hud.get_index() + 1)
+	_team_board = TeamBoard.new()
+	_team_board.name = "TeamBoard"
+	_team_board.visible = false
+	$UI.add_child(_team_board)
+	$UI.move_child(_team_board, hud.get_index() + 1)
 	_banner = Label.new()
 	_banner.name = "Banner"
 	_banner.theme_type_variation = &"TitleLabel"
@@ -585,11 +591,19 @@ func _update_mode_ui(delta: float) -> void:
 	if sim == null or _mode_l == null: return
 	var vs := get_viewport().get_visible_rect().size
 	var ins := SafeArea.insets(get_viewport())
-	var t := sim.combat.rules.hud_text(sim.player) if session == null else ""
+	var board := session == null and sim.combat.teams > 0 and spectating == null
+	var t := sim.combat.rules.hud_text(sim.player, not board) if session == null else ""
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
-	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)      # under the crate toast (hud.gd keeps that at the very top)
+	var top := float(ins[1]) + 44.0                  # under the crate toast (hud.gd keeps that at the very top)
+	_team_board.visible = board
+	if board:
+		var rules := sim.combat.rules
+		_team_board.set_data(rules.team_ko(0), rules.team_ko(1), maxi(sim.player.team, 0), rules.limit)
+		_team_board.position = Vector2(vs.x / 2.0 - _team_board.size.x / 2.0, top + 4.0)
+		top += _team_board.size.y + 4.0
+	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
 	if spectating != null:                      # spectator line: who, how many left, how to switch
 		_mode_l.text = "Spectating %s  ·  %d left  ·  tap to switch" % [spectating.name, sim.combat.rules.survivors().size()]
 		_mode_l.visible = true

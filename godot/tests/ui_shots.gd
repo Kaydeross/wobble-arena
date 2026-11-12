@@ -7,7 +7,7 @@ extends SceneTree
 ## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
 ## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
 ## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
-## spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
+## teams (Team Deathmatch with the team scoreboard), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
 
 const FRAME := 1.0 / 60.0
 
@@ -60,6 +60,9 @@ func _start() -> void:
 		world.dyn_choice = "off"
 	if shot == "spectate":
 		world.mode_id = "sudden"
+		world.dyn_choice = "off"
+	if shot == "teams":                                  # Team Deathmatch: the TeamBoard (colour chips, YOU tag)
+		world.mode_id = "tdm"
 		world.dyn_choice = "off"
 	world.auto_run = false
 	world.bot_count = 3

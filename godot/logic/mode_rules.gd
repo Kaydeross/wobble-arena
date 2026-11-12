@@ -466,7 +466,7 @@ func update(dt: float, pickups: Pickups = null, dyn: ArenaDyn = null) -> void:
 			combat.ev({"type": "match_finished", "winner": winner, "won": player_won(winner)})
 
 ## The mode line under the K.O. counter (updateModeHud + updateKoText), "" = nothing to show.
-func hud_text(player: FighterState) -> String:
+func hud_text(player: FighterState, with_teams := true) -> String:
 	var c := combat
 	if player == null: return ""
 	var t := ""
@@ -475,8 +475,9 @@ func hud_text(player: FighterState) -> String:
 	elif c.lives_mode and c.mode_id != "pillars":
 		t = "♥".repeat(player.lives) if player.lives > 0 else "OUT"
 	elif c.teams:
-		var mine := player.team
-		t = "Team %d v %d" % [team_ko(mine), team_ko(1 - mine)] + (" / %d" % limit if limit else "")
+		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
+			var mine := player.team
+			t = "Team %d v %d" % [team_ko(mine), team_ko(1 - mine)] + (" / %d" % limit if limit else "")
 	elif limit:
 		t = "%d / %d K.O.s" % [player.ko, limit]
 	var extra := ""
