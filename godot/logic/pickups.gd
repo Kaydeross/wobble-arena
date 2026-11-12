@@ -125,12 +125,13 @@ func remove_cid(cid: int) -> bool:
 	combat.ev({"type": "crate_gone", "crate": p})
 	return true
 
-## Heal, power-ups and the weapons whose behaviour is ported (melee, hitscan guns incl. shotgun/Uzi/minigun, thrown knives).
+## Heal, power-ups and the weapons whose behaviour is ported (melee, hitscan guns incl. shotgun/Uzi/minigun, thrown knives,
+## the Air Blower).
 func usable(key: String) -> bool:
 	if key == "heal" or PU_TIMERS.has(key): return true
 	var w := combat.wdata(key)
 	match String(w.get("type", "")):
-		"melee": return true
+		"melee", "blower": return true
 		"gun": return w.get("style", "") != "flame"      # TODO(next batch): flame
 	return Weapons.LAUNCH.has(String(w.get("type", "")))
 

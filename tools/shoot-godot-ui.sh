@@ -1,6 +1,6 @@
 #!/bin/sh
 # Renders the Godot UI for visual review (needs a real renderer: opens a window for a moment).
-#   sh tools/shoot-godot-ui.sh [suffix] [shot ...]     shots: title title-online match touch fps pause (default: all)
+#   sh tools/shoot-godot-ui.sh [suffix] [shot ...]     shots: title title-online match touch fps pause (default: these), title-construction construction
 # Writes docs/style/godot-ui-<shot>[-suffix].png at the iPhone landscape size (852x393 pt; RES=WxH overrides).
 set -e
 cd "$(dirname "$0")/.."
