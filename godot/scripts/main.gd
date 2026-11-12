@@ -154,14 +154,24 @@ func _build_sheet() -> void:
 	fps_toggle.button_pressed = bool(Settings.get_value("show_fps", false))
 	fps_toggle.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))
 	box.add_child(fps_toggle)
-	var cam_tg := CheckButton.new()
+	var cam_row := HBoxContainer.new()
+	cam_row.name = "CamRow"
+	cam_row.add_theme_constant_override("separation", 12)
+	var cam_l := Label.new()
+	cam_l.text = "Camera"
+	cam_l.add_theme_font_size_override("font_size", 22)
+	cam_row.add_child(cam_l)
+	var cam_tg := OptionButton.new()
 	cam_tg.name = "CamCenter"
-	cam_tg.text = "Camera recentres behind"
 	cam_tg.custom_minimum_size = Vector2(0, 56)
+	cam_tg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	cam_tg.add_theme_font_size_override("font_size", 22)
-	cam_tg.button_pressed = bool(Settings.get_value("cam_auto_center", true))
-	cam_tg.toggled.connect(func(on: bool): Settings.set_value("cam_auto_center", on))
-	box.add_child(cam_tg)
+	cam_tg.add_item("Manual (classic)")
+	cam_tg.add_item("Auto-centre (slow)")
+	cam_tg.select(1 if bool(Settings.get_value("cam_auto_center", true)) else 0)
+	cam_tg.item_selected.connect(func(i: int): Settings.set_value("cam_auto_center", i == 1))
+	cam_row.add_child(cam_tg)
+	box.add_child(cam_row)
 	var done := Button.new()
 	done.name = "Done"
 	done.text = "Done"
