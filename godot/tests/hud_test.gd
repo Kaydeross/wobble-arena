@@ -2,7 +2,9 @@ extends SceneTree
 ## HUD / touch-layer / FPS-overlay test (headless). Runs an offline match with the touch layer on and phone safe-area
 ## insets, and checks: the HUD panels stay inside the safe area and apart from each other, the hotbar stays clear of
 ## the touch buttons (both hands), the keybind badges hide after a touch, nameplates show at most 3, the kill feed
-## and toasts appear, and the FPS overlay follows Settings `show_fps`, F3 and a three-finger tap.
+## and toasts appear, and the FPS overlay follows Settings `show_fps`, F3 and a three-finger tap. Then the same layout
+## checks at phone / tablet sizes with the UI scale applied (root window resized, Tier.apply_ui_scale) and every touch
+## target (action buttons, pause, emote, hotbar slots) at least 44 pt.
 ##   godot --headless --path godot --script res://tests/hud_test.gd -- --no-save   (npm run test:godot-ui)
 
 const FRAME := 1.0 / 60.0
@@ -62,6 +64,7 @@ func _run() -> void:
 	hud._toast_t = 0.01
 	world.tick(FRAME)
 	check(not hud.get_node("Toast").visible, "toast hides when its time is up")
+	await _sizes(world, hud)
 	_fps()
 	world.free()
 	await process_frame
@@ -142,6 +145,65 @@ func _fps() -> void:
 	_settings().set_value("show_fps", false)
 	var st: Vector2 = ov.stats(PackedFloat64Array([1.0 / 60.0, 1.0 / 60.0, 1.0 / 20.0, 1.0 / 60.0]))
 	check(absf(st.y - 20.0) < 0.01 and st.x > 30.0 and st.x < 60.0, "avg / 1%% low stats (%s)" % st)
+
+## Phone and tablet sizes (points, safe-area insets in points) at the Auto UI scale of a touch screen: the root window
+## is resized and Tier applies UiScale like on a device; the layout checks above run on the scaled canvas, and every
+## touch target (action buttons, pause, emote, hotbar slots) must be at least 44 pt.
+const SIZES := [
+	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]], [Vector2(736, 414), [0.0, 0.0, 0.0, 0.0]],
+	[Vector2(812, 375), [44.0, 0.0, 44.0, 21.0]], [Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
+	[Vector2(926, 428), [47.0, 0.0, 47.0, 21.0]], [Vector2(1194, 834), [0.0, 24.0, 0.0, 20.0]],
+	[Vector2(1024, 768), [0.0, 20.0, 0.0, 0.0]],
+]
+
+func _sizes(world: Node, hud: Control) -> void:
+	var tier: Node = root.get_node("Tier")
+	tier.force_ui_scale = true
+	var size0 := root.size
+	var ins0: Array = SafeArea.override
+	for c: Array in SIZES:
+		var win: Vector2 = c[0]
+		root.size = Vector2i(win)
+		tier.apply_ui_scale()
+		await process_frame
+		var vs := root.get_visible_rect().size
+		var k := vs.x / win.x          # canvas px per pt
+		check(absf(vs.x - UiScale.canvas_size(win).x) <= 1.5, "%s canvas %s matches UiScale %s" % [win, vs, UiScale.canvas_size(win)])
+		SafeArea.override = (c[1] as Array).map(func(v: float) -> float: return v * k)
+		world.touch._update_insets()
+		hud._update_insets()
+		var low := INF
+		for lefty in [false, true]:
+			_settings().set_value("touch_lefty", lefty)
+			for i in 3: world.tick(FRAME)
+			var tag := "%dx%d %s" % [win.x, win.y, "lefty" if lefty else "right"]
+			_layout(world, hud, tag)
+			low = minf(low, _taps(world, 1.0 / k, tag))
+		print("HUD tap targets %dx%d (canvas %dx%d, scale %.2f): min %.1f pt" % [win.x, win.y, vs.x, vs.y, root.content_scale_factor, low])
+	_settings().set_value("touch_lefty", false)
+	root.size = size0
+	tier.force_ui_scale = false
+	root.content_scale_factor = 1.0
+	SafeArea.override = ins0
+	await process_frame
+	world.touch._update_insets()
+	hud._update_insets()
+
+## Every touch target in pt (`pt` = pt per canvas px); returns the smallest.
+func _taps(world: Node, pt: float, tag: String) -> float:
+	var touch: Control = world.touch
+	var low := INF
+	var sizes := {}
+	for id: String in touch.visible_buttons():
+		sizes[id] = Vector2.ONE * touch.button_rect(touch.button(id))[1] * 2.0
+	sizes["pause"] = touch.pause_rect().size
+	sizes["emote"] = world.emote_wheel.button_rect().size
+	for i in 4: sizes["slot%d" % i] = touch.hotbar_slot_rect(i).size
+	for id: String in sizes:
+		var m: float = minf(sizes[id].x, sizes[id].y) * pt
+		low = minf(low, m)
+		check(m >= 44.0 - 0.05, "%s %s touch target %.1f pt (%s px)" % [tag, id, m, sizes[id]])
+	return low
 
 ## Team modes: the TeamBoard, the mode line (chaos event / dash), the crate toast and every HUD panel stay inside the
 ## safe area and never overlap each other or the pause button, with the toast showing (worst case).

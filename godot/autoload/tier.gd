@@ -15,6 +15,32 @@ func _init() -> void:
 			if Kind.has(n):
 				kind = Kind[n]
 
+## Headless runs have no real window (64x64): the UI scale stays 1 unless a test turns this on (tests/hud_test.gd).
+var force_ui_scale := false
+
+func _ready() -> void:
+	# Settings is the next autoload: hook the UI scale up once every autoload is in the tree
+	_hook_ui_scale.call_deferred()
+
+func _hook_ui_scale() -> void:
+	var root := get_tree().root
+	root.size_changed.connect(apply_ui_scale)
+	var st := root.get_node_or_null("Settings")
+	if st: st.changed.connect(func(k: String, _v: Variant) -> void: if k == "ui_scale" or k == "touch_mode": apply_ui_scale())
+	apply_ui_scale()
+
+## The global UI size (Settings `ui_scale`, UiScale): the root window's content scale factor, so every menu, the HUD
+## and the touch layer keep 44 pt touch targets on small phones. Called on start, on a resize and when it changes.
+func apply_ui_scale() -> void:
+	var root := get_tree().root if is_inside_tree() else null
+	if root == null or (DisplayServer.get_name() == "headless" and not force_ui_scale): return
+	var st := root.get_node_or_null("Settings")
+	var mode := str(st.get_value("ui_scale", "auto")) if st else "auto"
+	var touch := touch_default() or (st != null and str(st.get_value("touch_mode", "auto")) == "on")
+	var f := UiScale.factor(Vector2(root.size) / UiScale.px_per_pt(), mode, touch)
+	if not is_equal_approx(root.content_scale_factor, f):
+		root.content_scale_factor = f
+
 static func detect() -> Kind:
 	if OS.has_feature("web"):
 		return Kind.WEB

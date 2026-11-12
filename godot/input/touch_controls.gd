@@ -41,7 +41,7 @@ const BUTTONS := [
 	["melee", "MELEE", "shove", 58, 34, 134, false],
 	["context", "", "", 52, 124, 104, false],
 ]
-const PAUSE_SIZE := 44.0
+const PAUSE_SIZE := 46.0     ## x UNIT = 62 canvas px: 45 pt at the UI scale (ui/ui_scale.gd)
 
 var state: InputState
 var sim: MatchSim

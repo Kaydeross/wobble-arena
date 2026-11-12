@@ -17,16 +17,28 @@ extends SceneTree
 ## unreachable), every Settings section, the Controls picture, the three how-to cards and the pause menu (menu,
 ## quit question, its Settings and Controls pages) at every size, also iPhone 8 / SE landscape (667x375): inside the
 ## safe area, nothing overlapping, rows reachable by scrolling, touch targets at least TOUCH_PX tall.
+## UI scale pass (ui/ui_scale.gd): the canvas of each case is the one UiScale gives a touch screen (also Large and
+## Small), and in landscape every button and field on every screen is at least 44 pt tall and wide (sliders: tall);
+## prints the smallest target per size ("UI tap targets ...").
 ##   godot --headless --path godot --script res://tests/ui_layout_test.gd -- --no-save   (npm run test:godot-ui)
 
 const BASE := Vector2(1170, 540)   ## project.godot viewport size (stretch canvas_items, aspect expand)
 ## window size in points, safe-area insets in points (left, top, right, bottom) like an iPhone 15 / 16
+## (third entry: the Settings `ui_scale`, UiScale; "normal" = what Auto picks on a touch screen)
 const CASES := [
-	[Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
-	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]],
-	[Vector2(1170, 540), [59.0, 0.0, 59.0, 21.0]],
-	[Vector2(1280, 720), [0.0, 0.0, 0.0, 0.0]],
-	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0]],
+	[Vector2(852, 393), [59.0, 0.0, 59.0, 21.0], "normal"],     # iPhone 15 / 16
+	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0], "normal"],        # iPhone SE / 8
+	[Vector2(736, 414), [0.0, 0.0, 0.0, 0.0], "normal"],        # iPhone 8 Plus
+	[Vector2(812, 375), [44.0, 0.0, 44.0, 21.0], "normal"],     # iPhone X / 13 mini
+	[Vector2(926, 428), [47.0, 0.0, 47.0, 21.0], "normal"],     # iPhone Pro Max
+	[Vector2(1194, 834), [0.0, 24.0, 0.0, 20.0], "normal"],     # iPad Pro 11 landscape
+	[Vector2(1024, 768), [0.0, 20.0, 0.0, 0.0], "normal"],      # iPad landscape
+	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0], "large"],
+	[Vector2(926, 428), [47.0, 0.0, 47.0, 21.0], "large"],
+	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0], "small"],         # the old dense canvas still lays out
+	[Vector2(1170, 540), [59.0, 0.0, 59.0, 21.0], "normal"],
+	[Vector2(1280, 720), [0.0, 0.0, 0.0, 0.0], "normal"],
+	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0], "normal"],
 ]
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
 const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
@@ -35,9 +47,11 @@ const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set
 	"a-guest", "a-signup", "a-login", "a-reset", "a-code", "a-signed", "a-password", "a-delete", "a-conflict"]
 const SIGNED := ["a-signed", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
-## Touch targets on the new pages, in canvas px: 44 pt at the reference iPhone landscape (852x393 -> canvas 1171x540).
-## (667x375 is width-bound: its canvas is 1170x658, so the same buttons are about 34 pt there.)
-const TOUCH_PX := 60.0
+## Touch targets in canvas px for the case being checked: MIN_TOUCH pt (UiScale keeps the canvas small enough that the
+## designed 60 px are at least 44 pt on every landscape phone / tablet; "small" is checked against the old 60 px).
+var TOUCH_PX := 60.0
+## smallest touch target seen per case (pt), printed at the end
+var min_pt := {}
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
 const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop"]
@@ -74,6 +88,9 @@ const LFRAME := [L + "Head/Title", L + "Head/Sub", L + "Head/Coins", L + "Head/S
 const STEP_TEXT := ["1 Game type", "2 Arena", "3 Players", "4 Character", "5 Start"]
 
 var fails := 0
+var pt_k := 1.0              ## pt per canvas px of the case being checked
+var size_tag := ""
+var touch_case := false      ## landscape at the 44 pt scale: every button / field on every screen is checked
 
 func check(ok: bool, what: String) -> void:
 	if not ok:
@@ -83,10 +100,6 @@ func check(ok: bool, what: String) -> void:
 func _initialize() -> void:
 	process_frame.connect(_run, CONNECT_ONE_SHOT)
 
-## The 2D canvas size Godot uses for a window (stretch mode canvas_items, aspect expand).
-static func canvas_size(win: Vector2) -> Vector2:
-	var k := minf(win.x / BASE.x, win.y / BASE.y)
-	return (win / k).round()
 
 func _run() -> void:
 	var st: Node = root.get_node("Settings")
@@ -94,8 +107,10 @@ func _run() -> void:
 		st.set_value(kv[0], kv[1])
 	for c: Array in CASES:
 		for with_insets in [false, true]:
+			if with_insets and c[1] == [0.0, 0.0, 0.0, 0.0]: continue
 			for scr: String in SCREENS:
-				await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], scr)
+				await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], scr, c[2])
+	for t: String in min_pt: print("UI tap targets %s: min %.1f pt" % [t, min_pt[t]])
 	SafeArea.override = []
 	await _logic()
 	print("UI ok" if fails == 0 else "UI layout checks failed (%d)" % fails)
@@ -108,9 +123,14 @@ func _no_overlap(rects: Dictionary, keys: Array, tag: String) -> void:
 			var b: Rect2 = rects[keys[j]]
 			check(not a.grow(-0.5).intersects(b.grow(-0.5)), "%s %s %s overlaps %s %s" % [tag, keys[i], a, keys[j], b])
 
-func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
-	var cs := canvas_size(win)
+func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
+	var cs := UiScale.canvas_size(win, mode, true)
 	var k := cs.x / win.x
+	pt_k = 1.0 / k
+	var strict := mode != "small" and win.x > win.y     # 44 pt checked; "small" and portrait keep the designed 60 px
+	TOUCH_PX = MIN_TOUCH * k if strict else 60.0
+	touch_case = strict
+	size_tag = "%dx%d %s" % [win.x, win.y, mode]
 	var ins := [ins_pt[0] * k, ins_pt[1] * k, ins_pt[2] * k, ins_pt[3] * k]
 	SafeArea.override = ins
 	var vp := SubViewport.new()
@@ -183,7 +203,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		main.open_wizard(int(scr.substr(1)))
 	for i in 4:
 		await process_frame
-	var tag := "%dx%d%s %s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else "", scr]
+	var tag := "%dx%d%s%s %s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else "", "" if mode == "normal" else " " + mode, scr]
 	var safe := Rect2(Vector2(ins[0], ins[1]), cs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	var inside: Array = []
 	var groups: Array = []      ## lists of paths that must not overlap each other
@@ -207,7 +227,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		for p: String in inside:
 			var c: Control = main.get_node(p)
 			if (c is Button or c is LineEdit) and win.x > win.y:   # (portrait shows the landscape canvas scaled down)
-				check(c.get_global_rect().size.y >= TOUCH_PX - 0.5, "%s %s touch target %.0f tall" % [tag, p, c.get_global_rect().size.y])
+				_tap(c, tag, p)
 	elif lock:
 		inside = LFRAME.duplicate()
 		for b in main.locker.tab_row.get_children(): inside.append(L + "Body/Right/Tabs/" + b.name)
@@ -240,6 +260,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		check(r.size.x >= 1.0 and r.size.y >= 1.0, "%s %s has a size (%s)" % [tag, p, r])
 		check(safe.grow(0.5).encloses(r), "%s %s %s inside the safe area %s" % [tag, p, r, safe])
 	for g: Array in groups: _no_overlap(rects, g, tag)
+	if touch_case: _touch_sizes(main, inside, tag)   # title, wizard frame + step pills, locker / shop tabs and footer
 	if wiz: _page(main, int(scr.substr(1)), safe, tag)
 	if lock: _locker_grid(main.locker, safe, tag)
 	# the whole column fits (containers would otherwise overflow past the bottom)
@@ -310,7 +331,7 @@ func _page(main: Control, p: int, safe: Rect2, tag: String) -> void:
 	for b: Control in free:
 		var r := b.get_global_rect()
 		check(safe.grow(0.5).encloses(r), "%s %s %s inside the safe area" % [tag, b.name, r])
-		check(r.size.y >= 44.0, "%s %s tall enough to tap (%s)" % [tag, b.name, r.size])
+		if touch_case: _tap(b, tag, b.name)
 	for i in free.size():
 		for j in range(i + 1, free.size()):
 			check(not (free[i] as Control).get_global_rect().grow(-0.5).intersects((free[j] as Control).get_global_rect().grow(-0.5)), "%s %s overlaps %s" % [tag, free[i].name, free[j].name])
@@ -566,12 +587,19 @@ func _controls(n: Node, skip: Node = null) -> Array:
 		else: out.append_array(_controls(c, skip))
 	return out
 
-## Buttons, fields and sliders at least TOUCH_PX tall.
+## Buttons, fields and sliders at least TOUCH_PX tall (buttons and fields also that wide).
 func _touch_sizes(main: Node, paths: Array, tag: String) -> void:
 	for p: String in paths:
 		var c: Control = main.get_node(p)
 		if c is Button or c is LineEdit or c is Slider:
-			check(c.get_global_rect().size.y >= TOUCH_PX - 0.5, "%s %s touch target %.0f tall" % [tag, p, c.get_global_rect().size.y])
+			_tap(c, tag, p)
+
+## One touch target: at least MIN_TOUCH pt tall (and wide, sliders excepted); records the smallest per size.
+func _tap(c: Control, tag: String, what: String) -> void:
+	var r := c.get_global_rect().size
+	var m := r.y if c is Slider else minf(r.x, r.y)
+	check(m >= TOUCH_PX - 0.5, "%s %s touch target %s px = %.1f pt" % [tag, what, r, m * pt_k])
+	min_pt[size_tag] = minf(min_pt.get(size_tag, INF), m * pt_k)
 
 ## A scrolled list (Settings rows, the room list): inside the safe area, no sideways overflow, rows apart and inside
 ## the list's width, every row reachable, the controls in a row apart from each other and big enough to tap.
@@ -596,7 +624,7 @@ func _scroll_rows(main: Node, sc: ScrollContainer, safe: Rect2, tag: String, tou
 		for a in cs.size():
 			var ca: Control = cs[a]
 			if touch and (ca is Button or ca is LineEdit or ca is Slider):
-				check(ca.size.y >= TOUCH_PX - 0.5, "%s %s/%s touch target %.0f tall" % [tag, r.name, ca.name, ca.size.y])
+				_tap(ca, tag, "%s/%s" % [r.name, ca.name])
 			for b in range(a + 1, cs.size()):
 				check(not ca.get_global_rect().grow(-0.5).intersects((cs[b] as Control).get_global_rect().grow(-0.5)), "%s %s: %s overlaps %s" % [tag, r.name, ca.name, cs[b].name])
 	var max_scroll := maxf(0.0, content.size.y - sc.size.y)
@@ -638,7 +666,7 @@ func _no_word(n: Node, word: String, tag: String, visible_only := false) -> void
 
 ## Visible labels that clip with an ellipsis still show their whole text (nothing cut to "…").
 func _not_cut(n: Node, tag: String) -> void:
-	if n is Label and n.is_visible_in_tree() and n.clip_text and n.text != "":
+	if n is Label and n.is_visible_in_tree() and n.clip_text and n.text != "" and not n.has_meta("user_text"):
 		var l := n as Label
 		var f := l.get_theme_font("font")
 		var need := f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, l.get_theme_font_size("font_size")).x

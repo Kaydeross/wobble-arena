@@ -368,7 +368,7 @@ func _build_foot() -> void:
 		b.theme_type_variation = &"TabButton"
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(0, 44)
+		b.custom_minimum_size = Vector2(0, 60)
 		b.add_theme_font_size_override("font_size", 16)
 		b.pressed.connect(go.bind(k))
 		steps.add_child(b)
@@ -480,7 +480,7 @@ func _pills(parent: Control, row_name: String, label: String, keys: Array, names
 		b.theme_type_variation = &"TabButton"
 		b.toggle_mode = true
 		b.button_group = g
-		b.custom_minimum_size = Vector2(min_w, 54)
+		b.custom_minimum_size = Vector2(min_w, 60)
 		b.size_flags_horizontal = SIZE_EXPAND_FILL
 		b.add_theme_font_size_override("font_size", 20)
 		b.pressed.connect(on_pick.bind(keys[i]))
@@ -575,7 +575,7 @@ func _build_start(p: Control) -> void:
 	for k in keys.size():
 		var b := Button.new()
 		b.name = keys[k].replace(" ", "")
-		b.custom_minimum_size = Vector2(0, 56)
+		b.custom_minimum_size = Vector2(0, 60)
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(go.bind(k))
 		var h := HBoxContainer.new()
@@ -694,7 +694,7 @@ class MapThumb extends Control:
 		var p := "res://ui/map_thumbs/%s.jpg" % id
 		if id != "" and ResourceLoader.exists(p):
 			tex = load(p)
-		custom_minimum_size = Vector2(0, 56)
+		custom_minimum_size = Vector2(0, 60)
 		clip_contents = true
 
 	static func _c(v: Variant) -> Color:
