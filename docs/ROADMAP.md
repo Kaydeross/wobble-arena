@@ -1,4 +1,4 @@
-# Wobble Arena roadmap
+# Wobblers Arena roadmap
 
 _Approved 2026-11-12. Supersedes the plan and decisions in docs/IOS_PLAN.md (sections 1-4 of that file remain a useful review of build b76)._
 

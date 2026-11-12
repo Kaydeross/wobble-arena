@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/img/banner.jpg" alt="Wobble Arena" width="100%">
+  <img src="docs/img/banner.jpg" alt="Wobblers Arena" width="100%">
 </p>
 
 <p align="center">

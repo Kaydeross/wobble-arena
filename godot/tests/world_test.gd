@@ -62,6 +62,7 @@ func _sim_map(id: String) -> void:
 	world.map_id = id
 	world.auto_run = false
 	world.bot_count = 0   # movement only: no bots in the way
+	world.dyn_choice = "off"   # steady floor: this checks the player stays at y = 0 (moving floors: tests/dynamics_test.gd)
 	root.add_child(world)
 	var sim: float = world.SIM
 	var floor_y := 0.0

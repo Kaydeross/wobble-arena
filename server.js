@@ -1,6 +1,6 @@
 'use strict';
 /*
-  Wobble Arena server
+  Wobblers Arena server
   - serves the game page (put the game file in ./public as index.html)
   - keeps the list of rooms and passes messages between the players of a room
   - the game itself still runs in the players' browsers: the room's host runs the bots, this server is the post office
@@ -222,7 +222,7 @@ const beat = setInterval(() => {                                      // drop co
 const sweep = setInterval(() => { for (const [id, r] of rooms) if (r.host.readyState > 1) leaveRoom(r.host); }, 30000);
 
 function start(port) {
-  return new Promise(res => server.listen(port === undefined ? PORT : port, () => { console.log('Wobble Arena server on port ' + server.address().port + ' (game files: ' + PUBLIC_DIR + ')'); res(server); }));
+  return new Promise(res => server.listen(port === undefined ? PORT : port, () => { console.log('Wobblers Arena server on port ' + server.address().port + ' (game files: ' + PUBLIC_DIR + ')'); res(server); }));
 }
 function stop() { clearInterval(beat); clearInterval(sweep); if (accounts.store.flush) accounts.store.flush(); for (const ws of wss.clients) ws.terminate(); return new Promise(res => server.close(() => res())); }
 if (require.main === module) { start(); process.on('SIGTERM', () => stop().then(() => process.exit(0))); }

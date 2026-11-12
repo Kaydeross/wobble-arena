@@ -29,6 +29,7 @@ const DEFAULTS := {
 	"token": "",            # account token from /api/login (sent with the `auth` op)
 	"user": "",             # logged-in username
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
+	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
 }
 
 var _cfg := ConfigFile.new()

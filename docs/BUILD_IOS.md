@@ -1,4 +1,4 @@
-# Building Wobble Arena for iOS
+# Building Wobblers Arena for iOS
 
 `tools/build-ios.sh` does everything from the command line: Godot export → Xcode project → signed archive → App Store `.ipa`. It does **not** upload.
 
@@ -41,7 +41,7 @@ xcrun altool --upload-app -f build/ios/ipa/WobbleArena.ipa -t ios --apiKey <KEY_
 
 Already done on this Mac: Xcode is signed in to the team, and the first run registered the App ID `com.kedrosng.wobblearena` and created the profiles automatically. Still to do before TestFlight:
 
-1. **App Store Connect app record.** Go to appstoreconnect.apple.com → Apps → "+" → New App: platform iOS, name "Wobble Arena", bundle ID `com.kedrosng.wobblearena` (it should already be in the list), and a SKU of your choice.
+1. **App Store Connect app record.** Go to appstoreconnect.apple.com → Apps → "+" → New App: platform iOS, name "Wobblers Arena", bundle ID `com.kedrosng.wobblearena` (it should already be in the list), and a SKU of your choice.
 2. **App Store Connect API key** (for uploads, and for CI signing without an Xcode login). Go to Users and Access → Integrations → App Store Connect API → generate a key with the **App Manager** role (Admin if CI should also create profiles). Save `AuthKey_<KEY_ID>.p8` to `~/.appstoreconnect/private_keys/` and note the Key ID and Issuer ID. To sign with it instead of the Xcode account:
    `ASC_KEY_PATH=~/.appstoreconnect/private_keys/AuthKey_XXX.p8 ASC_KEY_ID=XXX ASC_ISSUER_ID=YYY tools/build-ios.sh`
 3. **Export compliance** is pre-answered: Godot's Info.plist sets `ITSAppUsesNonExemptEncryption = false`. Revisit this if we add custom encryption. Standard HTTPS/WSS is exempt.

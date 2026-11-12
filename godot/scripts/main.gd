@@ -27,6 +27,7 @@ const P := "Safe/Col/Body/Picks/Box/"
 @onready var dot: Panel = $Safe/Col/Top/GuestChip/Row/Dot
 @onready var map_pick: OptionButton = get_node(P + "Offline/MapRow/Map")
 @onready var class_pick: OptionButton = get_node(P + "Offline/ClassRow/Class")
+@onready var dyn_pick: OptionButton = get_node(P + "Offline/DynRow/Dyn")   ## dynamic floor (Settings "dyn"): Steady / Random / Wobble / Tilt / Quake / Drift
 @onready var fps_toggle: CheckButton = get_node(P + "Offline/FpsRow/Fps")
 @onready var status: Label = get_node(P + "Online/Status")
 @onready var play: Button = $Safe/Col/Body/Play
@@ -43,6 +44,10 @@ func _ready() -> void:
 	for cid in class_ids:
 		class_pick.add_item(str(Content.get_class_data(cid).get("name", cid)))
 	class_pick.select(maxi(class_ids.find(str(Settings.get_value("class", "wobbler"))), 0))
+	for k: String in Dynamics.KINDS:
+		dyn_pick.add_item(str(Dynamics.NAMES[k]))
+	dyn_pick.select(maxi(Dynamics.KINDS.find(str(Settings.get_value("dyn", "random"))), 0))
+	dyn_pick.item_selected.connect(func(i: int) -> void: Settings.set_value("dyn", Dynamics.KINDS[i]))
 	play.pressed.connect(play_offline)
 	fps_toggle.button_pressed = bool(Settings.get_value("show_fps", false))
 	fps_toggle.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))

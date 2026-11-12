@@ -7,7 +7,7 @@ Phase 1 guest role (`godot/net/guest_session.gd`, `godot/net/net_match.gd`); hos
 
 ```sh
 npm install
-REQUIRE_LOGIN=0 npm start          # Wobble Arena server on port 3000
+REQUIRE_LOGIN=0 npm start          # Wobblers Arena server on port 3000
 ```
 
 `REQUIRE_LOGIN=0` lets anyone create and join rooms. With logins on, both sides must log in (see section 4).
