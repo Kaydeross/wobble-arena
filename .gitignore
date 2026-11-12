@@ -5,3 +5,5 @@ data/
 godot/.godot/
 godot/export/
 *.translation
+godot/build_info.cfg
+build/

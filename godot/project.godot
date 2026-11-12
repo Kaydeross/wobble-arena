@@ -5,13 +5,18 @@ config_version=5
 config/name="Wobble Arena"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
+config/version="0.1.0"
+config/icon="res://icon.png"
 
 [display]
 window/size/viewport_width=1170
 window/size/viewport_height=540
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
-window/handheld/orientation=1
+; 4 = sensor landscape (1 was portrait, which iOS then locked the app to).
+window/handheld/orientation=4
 
 [rendering]
 renderer/rendering_method="mobile"
+; iOS export refuses to run (with an empty error list) unless ETC2/ASTC textures are imported.
+textures/vram_compression/import_etc2_astc=true
