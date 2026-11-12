@@ -39,6 +39,8 @@ var dyn := ArenaDyn.new()
 var dyn_choice := "off"
 var dyn_seed := 0
 var dyn_t0 := 0.0
+## Microseconds spent in the controllers (player input + BotBrain.think) so far: the bot AI's cost (tests/bots_smoke_test.gd).
+var think_us := 0
 
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
@@ -113,6 +115,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		looks[b] = {"skin": "none", "hat": hats[i % hats.size()] if hats.size() > 0 else "none", "color": BOT_COLORS[i % BOT_COLORS.size()]}
 		var brain := BotBrain.new(difficulty, diff)
 		brain.ai_t = combat.rng.range_f(0.5, 3); b.kick_cool = combat.rng.range_f(1, 4)
+		brain.strafe = 1.0 if combat.rng.next() < 0.5 else -1.0      # d.strafe: which way it circles
 		controllers[b] = brain
 		var x := 0.0
 		var z := 0.0
@@ -155,9 +158,11 @@ func step(dt: float) -> void:
 	combat.rules.update(dt, pickups, dyn)   # updatePotato / updatePillars / updateShrink (+ the end-of-match countdown)
 	dyn.update(dyn_clock(), fighters)       # updateDyn
 	var net_pre: Variant = net.call("pre_step") if net != null else null
+	var t0 := Time.get_ticks_usec()
 	for f: FighterState in fighters:
 		var c: Variant = controllers.get(f)
 		if c != null: c.think(f, self, dt)
+	think_us += Time.get_ticks_usec() - t0
 	if net != null: net.call("post_controls", dt, net_pre)
 	for f: FighterState in fighters:
 		combat.timers(f, dt)
