@@ -1,2 +1,7 @@
 node_modules
 data/
+
+# Godot
+godot/.godot/
+godot/export/
+*.translation

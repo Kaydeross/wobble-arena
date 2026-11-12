@@ -1,0 +1,17 @@
+; Wobble Arena (Godot 4) - native iOS client. Cross-plays with the web game through the room protocol in docs/PROTOCOL.md.
+config_version=5
+
+[application]
+config/name="Wobble Arena"
+run/main_scene="res://scenes/main.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+
+[display]
+window/size/viewport_width=1170
+window/size/viewport_height=540
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[rendering]
+renderer/rendering_method="mobile"

@@ -7,7 +7,7 @@
   "scripts": {
     "start": "node server.js",
     "content": "node tools/export-content.js",
-    "test:browser": "node tools/test-browser.js", "content:check": "node tools/export-content.js --check",
+    "test:browser": "node tools/test-browser.js", "test:godot": "node tools/test-godot.js", "content:check": "node tools/export-content.js --check",
     "test": "node tools/export-content.js --check && node tools/test-server.js"
   },
   "engines": {
