@@ -10,6 +10,10 @@ var state: FighterState
 var wobbler: Wobbler
 var look := {"skin": "none", "hat": "none", "color": 0x39b5a8}
 var tag: Label3D                  ## name over bots (null for the player)
+## Squash / stretch, hit squeeze and the hitstop pose freeze (actors/fighter_juice.gd); null = off (the world sets it
+## when effects are on). `frozen` = hold the visible pose this frame (World hitstop).
+var juice: FighterJuice = null
+var frozen := false
 
 func _ready() -> void:
 	wobbler = $Wobbler
@@ -67,6 +71,7 @@ func visual_state() -> Dictionary:
 
 ## Feed + animate the wobbler, then read the animation points back into the state (before the melee sweep).
 func present(dt: float) -> void:
+	if juice: juice.restore()             # back to the pose animate() left: the gameplay points never see the juice
 	wobbler.apply_state(visual_state())
 	wobbler.animate(dt)
 	var f := state
@@ -86,6 +91,7 @@ func present(dt: float) -> void:
 	f.update_leg()
 	if wobbler.rig_mode == "ragdoll":       # visible pose only, after the gameplay points above were read
 		wobbler.overlay(dt)
+	if juice: juice.apply(wobbler, dt, frozen)
 	if tag:
 		tag.visible = not f.dead
 		tag.position = Vector3(f.phys.px, f.phys.py + 3.0 * float(wobbler.cls.get("size", 1.0)), f.phys.pz)
@@ -96,5 +102,6 @@ func on_event(e: Dictionary) -> void:
 		"lean":
 			wobbler.lean.kick(e["a"], e["b"])
 			wobbler.ragdoll_hit(e["a"], e["b"])
+			if juice: juice.kick(e["a"], e["b"])
 		"head": wobbler.head.kick(e["a"], e["b"])
 		"arm": wobbler.arm_vel += Vector3(e["x"], e["y"], e["z"])

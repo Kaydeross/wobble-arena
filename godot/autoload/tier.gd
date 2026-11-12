@@ -47,6 +47,15 @@ func touch_default() -> bool:
 enum Quality { LOW, MID, HIGH }
 
 func quality() -> Quality:
+	var q := max_quality()
+	var st := get_node_or_null("/root/Settings") if is_inside_tree() else null
+	if st:   # Settings > Graphics > Effects: lower than the device can do saves battery; never higher than its renderer
+		var want: int = {"low": Quality.LOW, "medium": Quality.MID, "high": Quality.HIGH}.get(str(st.get_value("fx_quality", "auto")), q)
+		return mini(want, q) as Quality
+	return q
+
+## What this device's renderer can do (the "Auto" effects level).
+func max_quality() -> Quality:
 	match kind:
 		Kind.PC: return Quality.HIGH
 		Kind.MOBILE: return Quality.MID

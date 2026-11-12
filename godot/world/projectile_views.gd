@@ -6,6 +6,8 @@ extends Node3D
 ## (on_event) and calls update() every rendered frame; the views read the positions straight from the logic objects.
 ## Kept cheap for iPhone: shared low-poly meshes and materials, effects fade by scale only (no per-effect
 ## materials), and a cap on live effects (flames are dropped first).
+## With `fx` set (the World does, effects on), blasts, flames, bursts and rocket smoke go to the pooled FxSystem
+## (world/fx.gd) instead of nodes here; trails behind the flying things are drawn by world/trails.gd.
 
 const MAX_FX := 150
 
@@ -13,6 +15,7 @@ var _views := {}                   ## Shot / Proj -> Node3D
 var _nets := {}                    ## TrapNet -> Node3D
 var _fx: Array = []                ## {node, life, max, vel, kind, s0, s1}
 var _trail_t := 0.0
+var fx: FxSystem = null            ## pooled effects (null: the node effects below)
 static var _mats := {}
 
 static func mat(c: int, alpha := 1.0) -> StandardMaterial3D:
@@ -183,7 +186,9 @@ func update(dt: float) -> void:
 		elif float(p.get("stuck")) <= 0.0 and vel.length_squared() > 0.01:
 			var up := Vector3.UP if absf(vel.normalized().y) < 0.99 else Vector3.RIGHT
 			g.look_at_from_position(pos, pos + vel, up)
-		if kind == "rocket" and trail:
+		if kind == "rocket" and trail and fx:
+			fx.smoke_puff(pos)
+		elif kind == "rocket" and trail:
 			_add_fx(_mi_fx(LowPoly.ico(0.18, 0), mat(0x8a939c, 0.6), pos), randf_range(0.35, 0.6), Vector3(0, 0.8, 0), "smoke", 0.8, 2.2)
 	for t: Object in _nets:                  # the last 0.4 s the net shrinks away
 		var tn := t as Weapons.TrapNet
@@ -226,6 +231,12 @@ func _net_land(t: Weapons.TrapNet) -> void:
 
 ## explode(): white core, orange middle, red outside, a shockwave ring on the ground, smoke and debris.
 func explode(pos: Vector3, gy: float, rad: float) -> void:
+	if fx:
+		fx.explosion(pos, gy, rad)
+		if fx.world != null:                     # camera shake by distance (the web's 0.34 - d * 0.011)
+			var d := pos.distance_to(fx.world.cam.global_position)
+			fx.world.add_shake(clampf(0.34 - d * 0.011, 0.02, 0.34))
+		return
 	for b: Array in [[0xfff6c8, 0.95, 0.18, 0.55], [0xffb13b, 0.8, 0.38, 0.9], [0xff5a1f, 0.5, 0.55, 1.05]]:
 		_add_fx(_mi_fx(LowPoly.ico(1.0, 1), mat(b[0], b[1]), pos), b[2], Vector3.ZERO, "boom", rad * b[3] * 0.2, rad * b[3], true)
 	var ring := _mi_fx(LowPoly.torus(1.0, 0.06, 3, 24), mat(0xffe9b0, 0.8), Vector3(pos.x, gy + 0.08, pos.z))
@@ -240,11 +251,17 @@ func explode(pos: Vector3, gy: float, rad: float) -> void:
 
 ## A flame puff (flameFx): yellow, then orange, then dark red, swelling and drifting up as it burns out.
 func flame(pos: Vector3, vel: Vector3, life: float) -> void:
+	if fx:
+		fx.flame(pos, vel, life)
+		return
 	if _fx.size() >= MAX_FX: return
 	_add_fx(_mi_fx(LowPoly.ico(0.16, 0), mat(0xffe27a, 0.85), pos), life, vel, "flame", 0.6, 2.4)
 
 ## Little cubes thrown out (puff in the web game).
 func _burst(at: Vector3, col: int, n: int, spd: float) -> void:
+	if fx:
+		fx.puff(at, Color.hex((col << 8) | 0xff), n, spd)
+		return
 	if _fx.size() >= MAX_FX: return
 	for i in n:
 		var d := Vector3(randf_range(-1, 1), randf_range(0.2, 1.2), randf_range(-1, 1)).normalized() * spd * randf_range(0.4, 1.0)

@@ -3,7 +3,9 @@ extends Camera3D
 ## Third-person follow camera, ported from updateCamera (public/index.html ~9674): yaw/pitch orbit around a pivot above
 ## the player, over-the-shoulder offset, aim zoom (distance, shoulder, height and FOV blend with `aim`), pulled in when a
 ## solid is between the pivot and the camera. Orbit mode (menus / fell out) circles the map like the web game.
-## Kill cam: world/kill_cam.gd drives this camera while it replays. Not ported yet: scoped weapon FOV per weapon, giant scale, screen shake.
+## Kill cam: world/kill_cam.gd drives this camera while it replays. Not ported yet: scoped weapon FOV per weapon, giant scale.
+## Screen shake (web cam.shake): add_shake() / apply_shake(), presentation only (after aim_point is computed; the
+## next follow() starts from a clean transform). Settings `screen_shake` (default on) gates it, `shake_scale` scales it.
 ##
 ## Auto-centre (Godot only, Settings `cam_auto_center` / `cam_center_dist`): after the player has walked `cam_center_dist`
 ## metres (default 5) since the last manual look input (mouse, look drag, right stick), aim or fire, the yaw eases to the
@@ -41,6 +43,26 @@ var _latched := false           ## stick basis held apart from `yaw` (see move_b
 var _basis := PI
 var _stick := Vector2.ZERO      ## stick direction when the basis was latched
 var _own_yaw := PI              ## yaw as this script last left it: a different value = set from outside (tests, kill cam)
+var shake := 0.0                ## current shake amplitude (m), decays exp(-9 t) like the web game
+var shake_scale := 1.0
+var _shake_off := Vector3.ZERO  ## the offset applied this frame (removed before the next one)
+var _shake_rng := RandomNumberGenerator.new()
+
+## A shake pulse (the web game's `cam.shake = max(cam.shake, a)`).
+func add_shake(a: float) -> void:
+	shake = maxf(shake, a)
+
+## Presentation only: nudge the camera after follow(); never feeds aim_point or the move basis.
+func apply_shake(dt: float) -> void:
+	position -= _shake_off
+	_shake_off = Vector3.ZERO
+	if shake <= 0.002:
+		shake = 0.0
+		return
+	var k := shake * shake_scale * (1.0 if bool(Settings.get_value("screen_shake", true)) else 0.0)
+	_shake_off = Vector3(_shake_rng.randf_range(-1, 1), _shake_rng.randf_range(-1, 1), _shake_rng.randf_range(-1, 1)) * k
+	position += _shake_off
+	shake *= exp(-9.0 * dt)
 
 func add_look(d: Vector2) -> void:
 	yaw += d.x
@@ -134,12 +156,14 @@ func follow(dt: float, target: Vector3, aiming: bool, solids: Array, zoom_fov :=
 	if absf(fov - want_fov) > 0.01:
 		fov = want_fov
 	aim_point = cam_pos + fwd * ray_solids(cam_pos, fwd, 150.0, solids)
+	_shake_off = Vector3.ZERO          # a fresh transform: nothing to take back
 
 ## Menus / spectating: slowly circle the map (`orbit`, `orbitH` from maps.json).
 func orbit(dt: float, map: Dictionary) -> void:
 	orbit_t += dt * 0.15
 	var r := float(map.get("orbit", 40)); var h := float(map.get("orbitH", 22))
 	look_at_from_position(Vector3(cos(orbit_t) * r, h, sin(orbit_t) * r), Vector3(0, 2, 0), Vector3.UP)
+	_shake_off = Vector3.ZERO
 	fov = 55.0
 
 ## Distance along a ray to the first solid box (slab test), or `far` when nothing is hit.

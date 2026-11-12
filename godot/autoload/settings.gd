@@ -19,6 +19,8 @@ const DEFAULTS := {
 	"touch_opacity": 0.85,
 	"touch_assist": true,
 	"show_fps": false,      # FPS / frame-time overlay (F3 or a three-finger tap toggles it)
+	"effects": "auto",      # combat effects level: auto (= graphics tier) | low | medium | high (world/fx.gd)
+	"screen_shake": true,   # camera shake on big hits, explosions and K.O.s (world/follow_camera.gd)
 	"class": "wobbler",     # character class (shared/classes.json id)
 	"color": 0x39b5a8,      # body colour (the web player's default)
 	"volume": 0.5,          # sound volume 0..1 (web settings.vol; autoload Sfx)
@@ -44,6 +46,12 @@ const DEFAULTS := {
 	"offline_map": "arena", # offline arena (setup wizard page 1)
 	"bots": 3,              # offline bots 1..7 (team modes fix the count: ModeRules.bot_count)
 	"difficulty": "normal", # offline bot skill: easy | normal | hard | insane (data/difficulties.json)
+	# --- the Settings screen (ui/settings_screen.gd) ---
+	"mouse_sens": 1.0,      # look sensitivity for the mouse and a controller's right stick (input/player_input.gd); touch uses `sens`
+	"aim_mode": "hold",     # keyboard / mouse / controller aim: hold | toggle (touch always double-taps to toggle)
+	"damage_numbers": true, # floating damage numbers over the fighter you hit (read by the world's effects)
+	"sfx_volume": 1.0,      # sound effects bus 0..1 (autoload Sfx); `volume` stays the master volume
+	"seen_intro": false,    # the 3-card how-to (ui/intro_cards.gd) was shown or skipped once
 }
 
 var _cfg := ConfigFile.new()

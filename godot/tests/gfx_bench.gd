@@ -6,11 +6,16 @@ extends SceneTree
 ## and objects of a frame. Headless runs have no renderer: then only the CPU numbers are measured and checked.
 ##   godot --path godot [--headless] [--rendering-method mobile] --script res://tests/gfx_bench.gd -- --tier=mobile
 ## Prints `GFX <tier> <map> ...` per map, `FAIL ...` for every number over its budget, then `GFX ok` / `GFX FAILED`.
+## The fourth scene, `fx`, is the effects stress test (docs/GRAPHICS.md "Effects"): Farm with 10 fighters, bots armed
+## with melee weapons (swing trails) and, every frame, synthetic Combat events on top of the real fight: hits with
+## sparks, explosions, flames, muzzle flashes, dashes and K.O. confetti, so every pool runs at or near its cap on the
+## tier's effects level. Same budgets; also fails if a pool or the ribbons go over their caps.
 
 const FRAME := 1.0 / 60.0
 const WARM := 90           # frames before measuring (shader compiles, first shadow renders)
 const FRAMES := 240
-const MAPS := ["farm", "candy", "craterdome"]
+const MAPS := ["farm", "candy", "craterdome", "fx"]
+const FX_MAP := "farm"
 
 ## Budgets per tier (docs/GRAPHICS.md has the measured numbers and the reasoning). cpu = mean ms of World.tick on
 ## the dev machine (sim + 10 fighters' animation + camera; a phone CPU is ~3x slower, so 4 ms here is ~12 ms on an
@@ -35,6 +40,8 @@ var objs: Array = []
 var t_last := 0
 var failed := false
 var headless := false
+var rng := RandomNumberGenerator.new()
+var fx_peak := {}
 
 func _initialize() -> void:
 	headless = DisplayServer.get_name() == "headless"
@@ -53,7 +60,7 @@ func _next() -> void:
 		quit(0 if not failed else 1)
 		return
 	world = load("res://world/world.tscn").instantiate()
-	world.map_id = MAPS[k]
+	world.map_id = FX_MAP if MAPS[k] == "fx" else MAPS[k]
 	world.auto_run = false
 	world.bot_count = 9
 	world.rng_seed = 4242
@@ -63,11 +70,14 @@ func _next() -> void:
 	world.touch.visible = false
 	n = 0
 	cpu.clear(); wall.clear(); draws.clear(); prims.clear(); objs.clear()
+	fx_peak.clear()
+	rng.seed = 99
 	t_last = Time.get_ticks_usec()
 	process_frame.connect(_frame)
 
 func _frame() -> void:
 	var now := Time.get_ticks_usec()
+	if MAPS[k] == "fx": _stress()
 	var t0 := Time.get_ticks_usec()
 	world.tick(FRAME)
 	var t1 := Time.get_ticks_usec()
@@ -79,6 +89,7 @@ func _frame() -> void:
 			prims.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME))
 			objs.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME))
 	t_last = now
+	if MAPS[k] == "fx": _fx_check()
 	n += 1
 	if n < WARM + FRAMES:
 		return
@@ -87,10 +98,44 @@ func _frame() -> void:
 	k += 1
 	_next.call_deferred()
 
+## Effects stress: synthetic visual events on top of the fight (they only feed the effects; the bench never compares
+## sim state). Bots get melee weapons now and then so swing trails run too.
+func _stress() -> void:
+	var sim: MatchSim = world.sim
+	var fs: Array = sim.fighters
+	var pick := func() -> FighterState: return fs[rng.randi_range(1, fs.size() - 1)]
+	if n % 90 == 0:
+		for f: FighterState in fs:
+			if not f.is_player and not f.dead: sim.combat.pickup(f, ["katana", "bat", "trident", "mallet"][rng.randi() % 4])
+	for j in 2:
+		var v: FighterState = pick.call()
+		sim.combat.ev({"type": "hit", "f": v, "attacker": pick.call(), "dmg": rng.randf_range(10, 60), "head": false,
+			"force": rng.randf_range(4, 16), "part": ["head", "torso", "arms", "legs"][rng.randi() % 4],
+			"x": v.chest_x, "y": v.chest_y, "z": v.chest_z})
+	var a: FighterState = pick.call()
+	if n % 6 == 0:
+		sim.combat.ev({"type": "explode", "x": a.phys.px, "y": a.phys.py + 1.0, "z": a.phys.pz, "gy": a.phys.py, "rad": 4.0})
+	if n % 3 == 0: sim.combat.ev({"type": "shot", "f": a, "key": "ak"})
+	if n % 10 == 0: sim.combat.ev({"type": "puff", "kind": "dash", "x": a.phys.px, "y": a.phys.py + 0.9, "z": a.phys.pz, "dx": 1.0, "dz": 0.0})
+	if n % 20 == 0: sim.combat.ev({"type": "ko", "killer": pick.call(), "victim": a, "weapon": "Katana"})
+	for j in 3:
+		sim.combat.ev({"type": "flame", "x": a.phys.px, "y": a.phys.py + 1.2, "z": a.phys.pz, "vx": rng.randf_range(-3, 3), "vy": 2.0, "vz": rng.randf_range(-3, 3), "life": 0.5})
+
+func _fx_check() -> void:
+	if world.fx == null: return
+	var s: Dictionary = world.fx.stats()
+	for key: String in s:
+		fx_peak[key] = maxi(int(fx_peak.get(key, 0)), int(s[key]["n"]))
+		_check(int(s[key]["n"]) <= int(s[key]["cap"]), "fx %s %d > cap %d" % [key, s[key]["n"], s[key]["cap"]])
+	fx_peak["ribbons"] = maxi(int(fx_peak.get("ribbons", 0)), world.trails.live.size())
+	_check(world.trails.live.size() <= world.trails.cap(), "ribbons %d > cap %d" % [world.trails.live.size(), world.trails.cap()])
+
 func _report(id: String) -> void:
 	var b: Dictionary = BUDGET[tier_name]
 	var c := _mean(cpu)
 	var line := "GFX %s %-10s fighters %d | cpu %.2f ms (p95 %.2f)" % [tier_name, id, world.sim.fighters.size(), c, _p95(cpu)]
+	if id == "fx":
+		line += " | fx lv %d peaks %s" % [world.fx.lv, str(fx_peak).replace(" ", "")]
 	_check(c <= b["cpu"], "%s %s cpu %.2f ms > %.1f" % [tier_name, id, c, b["cpu"]])
 	if headless:
 		print(line)

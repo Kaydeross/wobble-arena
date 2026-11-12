@@ -11,6 +11,7 @@ const PAD_LOOK_RATE := 3.2      ## rad/s at full stick deflection (sens 1)
 const PAD_DEADZONE := 0.15
 
 var state := InputState.new()
+var _aim_was := false            ## aim held last frame (toggle mode flips on the press)
 var enabled := true:
 	set(v):
 		enabled = v
@@ -70,8 +71,13 @@ func release_mouse() -> void:
 func mouse_captured() -> bool:
 	return Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 
+## Mouse and controller look speed (Settings `mouse_sens`; touch has its own `sens`).
 func _sens() -> float:
-	return float(Settings.get_value("sens", 1.0))
+	return float(Settings.get_value("mouse_sens", 1.0))
+
+## Settings `aim_mode` "toggle": a press of the aim key / button / trigger turns the scope on or off.
+func _aim_toggles() -> bool:
+	return str(Settings.get_value("aim_mode", "hold")) == "toggle"
 
 func _inv() -> float:
 	return -1.0 if bool(Settings.get_value("invert_y", false)) else 1.0
@@ -109,6 +115,10 @@ func _process(dt: float) -> void:
 		var on := Input.is_action_pressed(a)
 		if a == "fire" or a == "aim":   # mouse buttons only count while the mouse is captured
 			on = on and (mouse_ok or _pad_action(a) or (a == "aim" and Input.is_physical_key_pressed(KEY_Z)))
+		if a == "aim" and _aim_toggles():
+			if on and not _aim_was: state.aim_toggle = not state.aim_toggle
+			_aim_was = on
+			on = false
 		state.hold("key", a, on)
 	# right stick look
 	var pads := Input.get_connected_joypads()

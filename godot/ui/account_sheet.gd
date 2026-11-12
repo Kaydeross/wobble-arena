@@ -256,6 +256,21 @@ func close() -> void:
 	page = ""
 	closed.emit()
 
+## One step back (Escape, controller B, Android back): a form returns to the page it came from, the two home pages
+## close the sheet. The recovery code and the conflict question wait for an answer (true = handled anyway).
+func back() -> bool:
+	match page:
+		"guest", "signed": close()
+		"signup", "login": open("guest")
+		"reset": open("login")
+		"password", "delete": open("signed")
+	return true
+
+func _unhandled_input(e: InputEvent) -> void:
+	if visible and e.is_action_pressed("ui_cancel") and not e.is_echo():
+		back()
+		get_viewport().set_input_as_handled()
+
 func _first_field(n: Node) -> Control:
 	for c in n.get_children():
 		if c is LineEdit: return c

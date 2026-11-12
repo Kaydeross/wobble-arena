@@ -82,7 +82,7 @@ func _run() -> void:
 		st.hold("script", "fire", fire)
 		st.hold("script", "jump", i % 173 < 3)
 		world.tick(FRAME)
-		max_fx = maxi(max_fx, world._fx.size())
+		max_fx = maxi(max_fx, world.fx.live_count() if world.fx else 0)
 		for f: FighterState in sim.fighters:
 			var ph := f.phys
 			for v in [ph.px, ph.py, ph.pz, ph.vx, ph.vy, ph.vz, f.hp]:

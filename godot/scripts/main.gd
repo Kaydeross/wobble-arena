@@ -1,15 +1,17 @@
 extends Control
 ## Title scene, readable in two seconds: the logo, one big "Play" (offline, against computer players: opens the setup
 ## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), one secondary "Play online with
-## friends" (its sub line says it needs internet, or the room state while connected; it opens the online panel: server
-## address, room code, name, Join as a guest with GuestSession, and a minimal login: POST /api/login, token kept in
-## Settings; "Host a room" opens the host sheet: room name, public / private, seats, bots -> HostSession, and both
-## roles wait in the lobby sheet: the players, Start (host only), Leave), a chip saying who you are ("Guest" or "Signed in as NAME";
-## tap it for the Account sheet, ui/account_sheet.gd: sign up, log in, log out, change password, delete the account, the
-## cloud sync line; the online panel's login fields go through the same Save.cloud), a gear for the settings sheet (Show FPS) and
-## a small tip line. Laid out with containers inside a safe-area
-## MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks 852x393, 1170x540,
-## 1280x720 and 390x844: the title, the online panel, every wizard page and the settings sheet).
+## friends" (its sub line says it needs internet, or the room state while connected). The online panel: your name,
+## the public room list (ui/room_browser.gd: tap a room to join, Refresh, empty / error states), "Join with a code"
+## for private rooms (GuestSession), "Host a room" (the host sheet: room name, public / private, seats, bots ->
+## HostSession) and an account button; both roles wait in the lobby sheet (the players, Start for the host, Leave).
+## A chip saying who you are ("Guest" or "Signed in as NAME"; tap it for the Account sheet, ui/account_sheet.gd),
+## a gear for the Settings screen (ui/settings_screen.gd: Controls, Camera, Graphics, Audio, Gameplay, Account,
+## About) and a small tip line. On the very first launch the how-to cards (ui/intro_cards.gd) show once.
+## Back everywhere: the Back buttons, Escape / controller B (ui_cancel) and Android's back gesture (go_back(): the top
+## sheet or page closes; on the title itself nothing happens, the app never quits on back).
+## Laid out with containers inside a safe-area MarginContainer so nothing overlaps at any aspect ratio
+## (tests/ui_layout_test.gd checks 852x393, 667x375, 1170x540, 1280x720 and 390x844 on every page and sheet).
 ## Under the two Play buttons: Locker and Shop (ui/locker.gd, one screen in two modes; the Shop button shows your coins).
 ## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
@@ -22,7 +24,7 @@ const TIPS := [
 	"Tip: crates drop weapons, heals and power-ups.",
 	"Tip: kick and shove work even without a weapon.",
 ]
-const ONLINE_SUB := "Needs internet · join a room code"
+const ONLINE_SUB := "Needs internet · public rooms or a code"
 
 ## Set by the world when it hands an active session back (host migration) and/or a message to show.
 var session: GuestSession = null
@@ -37,13 +39,16 @@ const O := "Safe/Col/Body/Online/Box/"
 @onready var online_panel: Control = $Safe/Col/Body/Online
 @onready var play: Button = $Safe/Col/Body/Home/Play
 @onready var online_b: Button = $Safe/Col/Body/Home/Online
-@onready var status: Label = get_node(O + "Status")
+@onready var status: Label = get_node(O + "Foot/Status")
 var wizard: SetupWizard
 var locker: LockerScreen            ## the Locker / Shop screen (hidden until opened)
 var locker_b: Button
 var shop_b: Button
-var sheet: Control                  ## settings sheet (gear): Show FPS
-var fps_toggle: CheckButton
+var settings: SettingsScreen        ## the Settings screen (gear)
+var intro: IntroCards               ## the first-run how-to (also Settings > Controls)
+var browser: RoomBrowser            ## public rooms in the online panel
+## true / false: show the how-to on start or not; null = when it was never seen (not in tests: they run with --no-save)
+var auto_intro: Variant = null
 var _ui := {}
 var account: AccountSheet           ## the Account sheet (title chip)
 var chip: PanelContainer
@@ -68,21 +73,23 @@ func _ready() -> void:
 	(get_node(O + "Head/Back") as Button).pressed.connect(show_tab.bind(false))
 	gear.icon = _gear_icon()
 	gear.pressed.connect(show_settings.bind(true))
-	_build_sheet()
+	settings = SettingsScreen.new()
+	add_child(settings)
+	settings.closed.connect(func() -> void: if Tier.is_pc(): gear.grab_focus.call_deferred())
+	settings.account_requested.connect(func() -> void: open_account())
 	_build_host_sheet()
 	_build_lobby()
-	Settings.changed.connect(_on_setting)
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
 	account = AccountSheet.new()
 	add_child(account)
-	account.closed.connect(func() -> void: if Tier.is_pc(): gear.grab_focus.call_deferred())
-	Save.cloud.done.connect(func(op: String, _ok: bool, msg: String) -> void:
-		if op in ["login", "logout"]: _status(msg)
-		_refresh_login())
+	account.closed.connect(func() -> void:
+		if settings.visible: settings.show_section(settings.section)   # the Account section shows who you are now
+		elif Tier.is_pc(): gear.grab_focus.call_deferred())
+	Save.cloud.done.connect(func(_op: String, _ok: bool, _msg: String) -> void: _refresh_login())
 	Save.cloud.changed.connect(_refresh_login)
 	_build_chip()
 	_build_online()
-	_status(notice if notice != "" else "Join a friend's room.")
+	_status(notice if notice != "" else "Pick a room, or join a friend with their code.")
 	if session != null:
 		_bind_session()
 		_status((notice + "  " if notice != "" else "") + session.status)
@@ -90,7 +97,7 @@ func _ready() -> void:
 	var join := ""
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--join="): join = a.substr(7)
-		elif a.begins_with("--server="): _ui["server"].text = a.substr(9)
+		elif a.begins_with("--server="): Settings.set_value("server_url", a.substr(9))
 		elif a.begins_with("--name="): _ui["name"].text = a.substr(7)
 		elif a.begins_with("--mode=") and SetupWizard.modes().has(a.substr(7)): wizard.set_mode(a.substr(7))
 		elif a.begins_with("--map=") and Content.maps.has(a.substr(6)): wizard.set_map(a.substr(6))
@@ -105,6 +112,39 @@ func _ready() -> void:
 	apply_safe_area()
 	if Tier.is_pc():
 		play.grab_focus.call_deferred()   # keyboard / gamepad start on Play
+	get_tree().set_quit_on_go_back(false)  # Android back never quits from a menu: go_back() handles it
+	intro = IntroCards.new()
+	add_child(intro)
+	intro.closed.connect(func() -> void: if Tier.is_pc(): play.grab_focus.call_deferred())
+	var first: bool = auto_intro if auto_intro is bool else (Settings.persist and not bool(Settings.get_value("seen_intro", false)))
+	if first and session == null and join == "" and notice == "": intro.open()
+
+## Back (Escape / controller B via ui_cancel, Android's back gesture): close the top thing. The wizard and the Locker
+## handle ui_cancel themselves; the back gesture reaches them through here. On the bare title nothing happens.
+func go_back() -> bool:
+	if intro.visible: return intro.back()
+	if account.visible: return account.back()
+	if settings.visible: return settings.back()
+	if lobby.visible:
+		if session: session.leave("You left the room.")
+		show_lobby(false)
+		return true
+	if host_sheet.visible: show_host(false); return true
+	if locker.visible:
+		if locker.confirm.visible: locker.show_confirm(false)
+		else: locker.close()
+		return true
+	if wizard.visible: wizard.back(); return true
+	if online_panel.visible: show_tab(false); return true
+	return false
+
+func _unhandled_input(e: InputEvent) -> void:
+	if e.is_action_pressed("ui_cancel") and not e.is_echo() and go_back():
+		get_viewport().set_input_as_handled()
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST and is_inside_tree():
+		go_back()
 
 func _process(dt: float) -> void:
 	if session != null:
@@ -182,9 +222,12 @@ func close_locker() -> void:
 
 ## The title (Play / Play online with friends) or the online panel.
 func show_tab(online: bool) -> void:
+	browser.url = str(Settings.get_value("server_url"))
 	home.visible = not online
 	online_panel.visible = online
+	$Safe/Col/Tip.visible = not online    # the room list needs the height
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
+	elif not online and Tier.is_pc(): online_b.grab_focus.call_deferred()
 
 ## The setup wizard (page 0 = Game type) instead of the title column.
 func open_wizard(p: int = 0) -> void:
@@ -202,76 +245,11 @@ func close_wizard() -> void:
 func _play_sub() -> void:
 	play.tooltip_text = "Last time: " + wizard.summary_line()
 
-func show_settings(on: bool) -> void:
-	sheet.visible = on
-	if on and Tier.is_pc(): fps_toggle.grab_focus.call_deferred()
-
-## Settings sheet: a dimmed backdrop (tap to close) and a small card.
-func _build_sheet() -> void:
-	sheet = Control.new()
-	sheet.name = "Sheet"
-	sheet.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	sheet.visible = false
-	add_child(sheet)
-	var dim := ColorRect.new()
-	dim.name = "Dim"
-	dim.color = Color(0, 0, 0, 0.5)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.gui_input.connect(func(e: InputEvent) -> void:
-		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed: show_settings(false))
-	sheet.add_child(dim)
-	var cc := CenterContainer.new()
-	cc.name = "Center"
-	cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	sheet.add_child(cc)
-	var card := PanelContainer.new()
-	card.name = "Card"
-	card.custom_minimum_size = Vector2(440, 0)
-	cc.add_child(card)
-	var box := VBoxContainer.new()
-	box.name = "Box"
-	box.add_theme_constant_override("separation", 14)
-	card.add_child(box)
-	var t := Label.new()
-	t.text = "Settings"
-	t.theme_type_variation = &"TitleLabel"
-	t.add_theme_font_size_override("font_size", 32)
-	box.add_child(t)
-	fps_toggle = CheckButton.new()
-	fps_toggle.name = "Fps"
-	fps_toggle.text = "Show FPS"
-	fps_toggle.custom_minimum_size = Vector2(0, 56)
-	fps_toggle.add_theme_font_size_override("font_size", 22)
-	fps_toggle.button_pressed = bool(Settings.get_value("show_fps", false))
-	fps_toggle.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))
-	box.add_child(fps_toggle)
-	var cam_row := HBoxContainer.new()
-	cam_row.name = "CamRow"
-	cam_row.add_theme_constant_override("separation", 12)
-	var cam_l := Label.new()
-	cam_l.text = "Camera"
-	cam_l.add_theme_font_size_override("font_size", 22)
-	cam_row.add_child(cam_l)
-	var cam_tg := OptionButton.new()
-	cam_tg.name = "CamCenter"
-	cam_tg.custom_minimum_size = Vector2(0, 56)
-	cam_tg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cam_tg.add_theme_font_size_override("font_size", 22)
-	cam_tg.add_item("Manual (classic)")
-	cam_tg.add_item("Auto-centre (slow)")
-	cam_tg.select(1 if bool(Settings.get_value("cam_auto_center", true)) else 0)
-	cam_tg.item_selected.connect(func(i: int): Settings.set_value("cam_auto_center", i == 1))
-	cam_row.add_child(cam_tg)
-	box.add_child(cam_row)
-	var done := Button.new()
-	done.name = "Done"
-	done.text = "Done"
-	done.theme_type_variation = &"PrimaryButton"
-	done.add_theme_font_size_override("font_size", 26)
-	done.custom_minimum_size = Vector2(0, 60)
-	done.pressed.connect(show_settings.bind(false))
-	box.add_child(done)
+func show_settings(on: bool, section := "") -> void:
+	if on:
+		settings.open()
+		if section != "": settings.show_section(section)
+	else: settings.close()
 
 ## A small white gear (no image files): a disc with eight teeth and a hole.
 static func _gear_icon() -> ImageTexture:
@@ -289,10 +267,6 @@ static func _gear_icon() -> ImageTexture:
 			var cov := clampf(outer - r + 0.5, 0.0, 1.0) * clampf(r - 5.0 + 0.5, 0.0, 1.0)
 			if cov > 0.0: img.set_pixel(x, y, Color(1, 1, 1, cov))
 	return ImageTexture.create_from_image(img)
-
-func _on_setting(key: String, v: Variant) -> void:
-	if key == "show_fps" and fps_toggle.button_pressed != bool(v):
-		fps_toggle.set_pressed_no_signal(bool(v))
 
 ## Status line in the online panel; while connected the Play online button's sub line shows it too.
 func _status(t: String) -> void:
@@ -314,37 +288,44 @@ func apply_safe_area() -> void:
 # ---------------- online ----------------
 
 func _build_online() -> void:
-	var n := O
-	_ui["server"] = get_node(n + "ServerRow/Server")
-	_ui["room"] = get_node(n + "RoomRow/Room")
-	_ui["name"] = get_node(n + "RoomRow/Name")
-	_ui["join"] = get_node(n + "RoomRow/Join")
-	_ui["leave"] = get_node(n + "RoomRow/Leave")
-	_ui["user"] = get_node(n + "AcctRow/User")
-	_ui["pass"] = get_node(n + "AcctRow/Pass")
-	_ui["login"] = get_node(n + "AcctRow/Login")
-	_ui["logout"] = get_node(n + "AcctRow/Logout")
-	_ui["acct"] = get_node(n + "AcctRow/Acct")
-	_ui["roster"] = get_node(n + "Roster")
-	_ui["server"].text = str(Settings.get_value("server_url"))
+	var n := O + "Main/Side/"
+	_ui["room"] = get_node(n + "CodeRow/Room")
+	_ui["name"] = get_node(O + "Head/Name")
+	_ui["join"] = get_node(n + "CodeRow/Join")
+	_ui["leave"] = get_node(n + "CodeRow/Leave")
+	_ui["roster"] = get_node(O + "Foot/Roster")
 	_ui["room"].text = str(Settings.get_value("room_code", ""))
 	_ui["name"].text = str(Settings.get_value("name", "Player"))
-	_ui["user"].text = str(Settings.get_value("user", ""))
+	_ui["name"].text_changed.connect(func(t: String) -> void: if t.strip_edges() != "": Settings.set_value("name", t.strip_edges().substr(0, 12)))
 	_ui["join"].pressed.connect(join_room)
+	_ui["room"].text_submitted.connect(func(_t: String) -> void: join_room())
+	var side: VBoxContainer = get_node(O + "Main/Side")
 	var hb := Button.new()
 	hb.name = "Host"
 	hb.text = "Host a room"
-	hb.custom_minimum_size = Vector2(150, 48)
-	hb.add_theme_font_size_override("font_size", 19)
+	hb.theme_type_variation = &"PrimaryButton"
+	hb.custom_minimum_size = Vector2(0, 62)
+	hb.add_theme_font_size_override("font_size", 24)
 	hb.pressed.connect(show_host.bind(true))
-	_ui["join"].add_sibling(hb)
+	side.add_child(hb)
 	_ui["host"] = hb
+	var ab := Button.new()
+	ab.name = "Account"
+	ab.custom_minimum_size = Vector2(0, 62)
+	ab.add_theme_font_size_override("font_size", 18)
+	ab.clip_text = true
+	ab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	ab.pressed.connect(func() -> void: open_account("" if Save.cloud.signed_in() else "login"))
+	side.add_child(ab)
+	_ui["acct"] = ab
+	browser = RoomBrowser.new()
+	browser.url = str(Settings.get_value("server_url"))
+	var mainrow: HBoxContainer = get_node(O + "Main")
+	mainrow.add_child(browser)
+	mainrow.move_child(browser, 0)
+	browser.join_requested.connect(join_room_id)
+	browser.host_requested.connect(show_host.bind(true))
 	_ui["leave"].pressed.connect(func() -> void: if session: session.leave("You left the room."))
-	_ui["login"].pressed.connect(func() -> void:
-		_status("Logging in…")
-		Save.cloud.login(_ui["user"].text, _ui["pass"].text, _ui["server"].text)
-		_ui["pass"].text = "")
-	_ui["logout"].pressed.connect(func() -> void: Save.cloud.logout())
 	_refresh_login()
 	_refresh_buttons()
 
@@ -370,11 +351,8 @@ func open_account(pg := "") -> void:
 func _refresh_login() -> void:
 	var u := Save.cloud.user()
 	var logged := Save.cloud.signed_in()
-	_ui["acct"].text = ("Logged in: " + u) if logged else "Not logged in"
-	_ui["acct"].visible = logged
-	_ui["logout"].visible = logged
-	for k in ["user", "pass", "login"]:
-		_ui[k].visible = not logged
+	_ui["acct"].text = ("Signed in as " + u) if logged else "Log in to host"
+	_ui["acct"].tooltip_text = "Your account" if logged else "Hosting a room needs an account. Joining works as a guest."
 	who.text = ("Signed in as " + u.substr(0, 12)) if logged and u != "" else "Guest"
 	var sync := Save.cloud.sync_text()
 	who.tooltip_text = ("Account: sign up or log in to save to the cloud" if not logged else "Signed in: " + u) + ("\n" + sync if sync != "" else "")
@@ -385,17 +363,27 @@ func _refresh_buttons() -> void:
 	_ui["join"].disabled = on
 	_ui["host"].disabled = on
 	_ui["leave"].visible = on
+	_ui["join"].visible = not on
 	if not on:
 		_ui["roster"].text = ""
 		show_lobby(false)
 
+## A room from the public list.
+func join_room_id(id: String) -> void:
+	if session != null and session.is_active(): return
+	_ui["room"].text = id
+	join_room()
+
 func join_room() -> void:
 	if session != null and session.is_active(): return
-	var url := str(_ui["server"].text).strip_edges()
+	var url := str(Settings.get_value("server_url")).strip_edges()
 	var room := str(_ui["room"].text).strip_edges()      # the server matches codes case-insensitively
 	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
 	if nm == "": nm = "Player"
-	Settings.set_value("server_url", url); Settings.set_value("room_code", room); Settings.set_value("name", nm)
+	if room == "":
+		_status("Type the room code your friend gave you, or pick a room from the list.")
+		return
+	Settings.set_value("room_code", room); Settings.set_value("name", nm)
 	session = GuestSession.new()
 	_bind_session()
 	session.begin(url, room, {"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
@@ -577,10 +565,10 @@ func show_host(on: bool) -> void:
 ## last Play setup (Settings), the mode through HostSession.net_mode.
 func host_room() -> void:
 	if session != null and session.is_active(): return
-	var url := str(_ui["server"].text).strip_edges()
+	var url := str(Settings.get_value("server_url")).strip_edges()
 	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
 	if nm == "": nm = "Player"
-	Settings.set_value("server_url", url); Settings.set_value("name", nm)
+	Settings.set_value("name", nm)
 	Settings.set_value("host_opts", _host.duplicate())
 	var mode := HostSession.net_mode(str(Settings.get_value("mode", "classic")))
 	var mp := str(Settings.get_value("offline_map", "arena"))
