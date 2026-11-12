@@ -1,6 +1,6 @@
 # Wobble Arena → iOS: Review, Plan & Design
 
-_Status: decisions made 2026-11-12 (see §6): **native Godot 4 rewrite with web cross-play**. Sections 1–4 are the original review of build b76 (`public/index.html`); §4.6, §5 and §7 are revised for the Godot path._
+_Status: superseded by docs/ROADMAP.md (one Godot codebase for iOS, PC and web). The review in sections 2-3 is still accurate for build b76._
 
 ---
 
