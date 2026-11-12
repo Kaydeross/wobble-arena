@@ -38,8 +38,8 @@ static var _materials: Dictionary = {}
 
 ## Build a map by id from the Content autoload.
 static func build(map_id: String) -> MapNode:
-	if map_id == "custom":
-		return build_from("custom", custom_map({}))
+	if map_id == "custom":                                          # the Sandbox arena saved in the profile (cfg.custom + cfg.blocks)
+		return build_from("custom", custom_map(saved_custom()))
 	var content := _content()
 	var map: Dictionary = content.get_map(map_id) if content else _load_maps_file().get(map_id, {})
 	if map.is_empty():
@@ -71,6 +71,7 @@ static func build_from(map_id: String, map: Dictionary) -> MapNode:
 		_add_backdrop(root, map)
 	if gfx_q() >= 1:
 		_add_cloud_layer(root, look(map_id) if map_id != "custom" else {})
+	if map.has("lavaY"): add_lava_lake(root, float(map["lavaY"]))     # Lava Pillars: the lake that kills (PillarsMap)
 	return root
 
 ## Graphics quality from the Tier autoload: 0 LOW (web), 1 MID (phones), 2 HIGH (PC); 2 without the autoload.
@@ -807,6 +808,46 @@ static func _add_cloud_layer(root: Node3D, lk: Dictionary) -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
 
+# ---------------------------------------------------------------- Lava Pillars' lake
+
+const LAVA_SHADER := """
+shader_type spatial;
+render_mode unshaded, cull_disabled;
+uniform vec3 hot : source_color = vec3(1.0, 0.78, 0.3);
+uniform vec3 mid : source_color = vec3(0.98, 0.36, 0.08);
+uniform vec3 cool : source_color = vec3(0.42, 0.06, 0.03);
+varying vec3 wp;
+float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y);
+}
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	vec2 p = wp.xz * 0.09;
+	float t = TIME * 0.12;
+	float a = n2(p + vec2(t, -t * 0.7)) * 0.6 + n2(p * 2.3 - vec2(t * 1.3, t)) * 0.3 + n2(p * 5.1 + t) * 0.1;
+	float crust = smoothstep(0.38, 0.62, a);
+	vec3 c = mix(mix(hot, mid, smoothstep(0.15, 0.45, a)), cool, crust);
+	ALBEDO = c;
+	EMISSION = c * (1.0 - crust) * 0.6;
+}
+"""
+
+## A wide lava lake at `y` (Lava Pillars): one animated plane, unlit and glowing, under the pillars.
+static func add_lava_lake(root: Node3D, y: float) -> void:
+	var pm := PlaneMesh.new()
+	pm.size = Vector2(260, 260)
+	var m := ShaderMaterial.new()
+	m.shader = _shader("lava", LAVA_SHADER)
+	var mi := MeshInstance3D.new()
+	mi.name = "LavaLake"
+	mi.mesh = pm
+	mi.material_override = m
+	mi.position.y = y
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+
 # ---------------------------------------------------------------- the custom level (MAPS.custom, index.html ~1907)
 
 const CUSTOM_THEMES := {
@@ -880,8 +921,12 @@ static func custom_map(cfg: Dictionary) -> Dictionary:
 	place.call(int(c["pads"]), func(x: float, z: float) -> bool:
 		pads.append({"x": x, "z": z, "r": 1.2, "power": 17})
 		return true, 4.2, 3.5)
-	for r in c.get("blocks", []):
-		add_box.call(float(r[0]), float(r[2]), 2.0, 2.0, 2.0, 0xffe08a, float(r[1]))
+	var bcols: Array = c.get("blockCols", []) if c.get("blockCols") is Array else []
+	var blks: Array = SandboxLayout.clean_blocks(c.get("blocks", []))
+	for i in blks.size():                                           # addPlayerBlock (Godot: the colour from cfg.blockCols)
+		var r: Array = blks[i]
+		var col := int(bcols[i]) if i < bcols.size() and SandboxLayout._num(bcols[i]) else SandboxLayout.WEB_YELLOW
+		add_box.call(float(r[0]), float(r[2]), 2.0, 2.0, 2.0, col, float(r[1]))
 	var night := theme == "night"
 	var m := {"name": "Build Your Own", "only": "sandbox", "cat": "sandbox", "tags": ["Custom", "Random"], "theme": theme,
 		"blurb": "Pick the size, theme, seed and how much stuff goes in.",
@@ -892,6 +937,14 @@ static func custom_map(cfg: Dictionary) -> Dictionary:
 	if bool(c["ice"]):
 		m["grip"] = 0.2
 	return m
+
+## The Sandbox arena in the Save profile (Save.sandbox_cfg(): cfg.custom + cfg.blocks + cfg.blockCols), as
+## custom_map() settings; {} (the defaults, no blocks) without the Save autoload.
+static func saved_custom() -> Dictionary:
+	var tree := Engine.get_main_loop() as SceneTree
+	var sv: Node = tree.root.get_node_or_null("Save") if tree and tree.root else null
+	if sv == null or not sv.has_method("sandbox_cfg"): return {}
+	return SandboxLayout.new(sv.sandbox_cfg()).map_cfg()
 
 ## ringPts: n points on a circle, rounded to 0.1 like the web game (Math.round, 6.2832).
 static func _ring_pts(n: int, r: float, a0 := 0.0) -> Array:
