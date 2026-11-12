@@ -53,6 +53,10 @@ var rage_t := 0.0
 var spd_t := 0.0                 ## speed boost: x1.4 run speed (FighterPhysics)
 var dash_air_t := 0.0            ## Pillars dash: air steering stays at 3 while > 0 (FighterPhysics counts it down)
 var trap_t := 0.0
+var trap_net: RefCounted = null  ## the Weapons.TrapNet holding this fighter down (trapNet), null = none
+var trap_x := 0.0                ## pinned here while trapped (trapX / trapZ)
+var trap_z := 0.0
+var lie_side := 1                ## which side they lie on under a net (lieSide, visual)
 var struggle := 0.0
 var burn := 0.0
 var burn_acc := 0.0
@@ -86,7 +90,8 @@ var uzi_k: Array = [0.0, 0.0]    ## per-gun kick (visual)
 var ads := 0.0                   ## scoped-in amount (cam.aim for the player)
 var nocked := false
 var grab_t := -1.0
-var draw := 0.0
+var draw := 0.0                  ## bow draw 0..1
+var flame_n := 0                 ## flamethrower shots (every third one makes the sound)
 
 # --- melee swing ---
 var swing := -1.0                ## -1 idle, 0..1.3 while swinging

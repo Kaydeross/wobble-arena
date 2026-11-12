@@ -3,7 +3,8 @@ extends RefCounted
 ## One offline match, pure logic (no nodes): the fighters, their controllers (PlayerControl / BotBrain), Combat,
 ## crates, and the fixed-step update in the web game's simStep order (public/index.html ~9630):
 ##   simTime -> input + bots (melee ticks inside) -> per fighter timers + physics -> bounce pads -> crates ->
-##   projectiles -> ring-out -> separate -> animate tick (yaw, crouch, recoil climb).
+##   projectiles (Weapons.step_all) -> ring-out -> separate -> net pinning -> animate tick (yaw, crouch, recoil climb,
+##   bow arrow grab).
 ## The melee sweep runs once per rendered frame after the animation wrote the hand/arm points: call sweep().
 ## Match setup follows loadMap (~7598) and setBotCfg (~7333).
 
@@ -153,9 +154,12 @@ func step(dt: float) -> void:
 			combat.kick_lean(f, -2.0, combat.rng.range_f(-1, 1)); combat.kick_head(f, -3.0, combat.rng.range_f(-2, 2))
 			combat.ev({"type": "pad", "f": f, "pad": pi})
 	pickups.update(dt)
-	combat.weapons.step_projectiles(dt)
+	combat.weapons.step_all(dt)           # updateRockets, updateGrenades, updateKnives, updateArrows, updateNets
 	_ring_out()
 	separate()
+	for f: FighterState in fighters:          # pinned under a net: nothing pushes them out
+		if f.trap_t > 0.0:
+			f.phys.px = f.trap_x; f.phys.pz = f.trap_z; f.phys.vx = 0.0; f.phys.vz = 0.0
 	for f: FighterState in fighters:          # the gameplay half of Fighter.animate
 		f.yaw += wrapf(f.face_yaw - f.yaw, -PI, PI) * minf(1.0, 12.0 * dt)
 		var c: Variant = controllers.get(f)
@@ -163,6 +167,7 @@ func step(dt: float) -> void:
 		var want := 1.0 if ((squat or f.trap_t > 0.0) and not f.dead and f.down_t <= 0.0) else 0.0
 		f.phys.crouch_k += (want - f.phys.crouch_k) * minf(1.0, dt * 14.0)
 		combat.weapons.climb_tick(f, dt)
+		combat.weapons.grab_tick(f, dt)
 
 ## meleeSweep for everyone (once per rendered frame, after the hand/arm points were written).
 func sweep() -> void:

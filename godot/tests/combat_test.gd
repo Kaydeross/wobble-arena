@@ -19,7 +19,7 @@ var aim_point := [0.0, 1.5, -20.0]
 const SET_FIELDS := {"shieldT": "shield_t", "rageT": "rage_t", "downT": "down_t", "trapT": "trap_t", "invuln": "invuln", "yaw": "yaw",
 	"hp": "hp", "stun": "stun", "burn": "burn", "getupImmune": "getup_immune", "cool": "cool", "kickCool": "kick_cool",
 	"shoveCool": "shove_cool", "climb": "climb", "hipD": "hip_d", "dmgScale": "dmg_scale", "lastHitTime": "last_hit_time",
-	"team": "team", "isGhost": "is_ghost"}
+	"team": "team", "isGhost": "is_ghost", "draw": "draw"}
 
 ## "#<16 hex>" strings back to the exact doubles (see exactJson in tools/combat-reference.js).
 static func revive(v: Variant) -> Variant:
@@ -149,6 +149,13 @@ func apply(op: Dictionary) -> void:
 		"fire":
 			pose_all()
 			c.weapons.try_fire(f, aim_point if f.is_player else [])
+		"bow":                            # playerControl's bow lines
+			pose_all()
+			var incap := f.dead or f.down_t > 0.0
+			var is_bow: bool = c.wdata(f.weapon).get("type", "") == "bow"
+			if not is_bow or incap: f.draw = 0.0
+			if not incap and is_bow:
+				c.weapons.bow_tick(f, bool(op["held"]), float(op["dt"]), aim_point if f.is_player else [])
 		"hold":
 			pose_all()
 			if not c.wdata(f.weapon).get("spinup", 0): f.spin = 0.0
@@ -167,10 +174,11 @@ func apply(op: Dictionary) -> void:
 					var g: FighterState = F[j]
 					var wk := g.weapon if c.wdata(g.weapon).get("swingTime", 0) else "spatula"
 					if g.swing >= 0.0 and not g.dead and c.melee_tick(g, wk, dt, melee_yaw[j]): c.after_swing(g)
-				c.weapons.step_projectiles(dt)
+				c.weapons.step_all(dt)
 				c.time += dt
 				pose_all()
 				for g: FighterState in F: c.melee_sweep(g)
+				for g: FighterState in F: c.weapons.grab_tick(g, dt)
 				drain()
 		_: push_error("unknown op " + str(op["op"]))
 
@@ -192,11 +200,13 @@ func dump_fighter(i: int) -> Array:
 	return [p.px, p.py, p.pz, p.vx, p.vy, p.vz, int(p.grounded), f.hp, int(f.dead), f.death_t, f.down_t, f.getup_immune, f.stun, f.invuln, f.flash,
 		f.cool, f.swing, f.kick_t, f.weapon, f.slot, sl, int(f.reloading), f.rl_t, f.ko, f.st["hits"], f.st["dmg"], f.st["taken"], f.st["deaths"], f.st["heads"], f.st["shots"],
 		f.st["streak"], f.st["multi"], lean[i][0], lean[i][1], head[i][0], head[i][1], arm[i][0], arm[i][1], arm[i][2], f.aim_x, f.aim_y, f.aim_z, f.climb, f.fall_side,
-		f.throw_t, f.knife_t, f.return_slot, f.lives, int(f.elim), melee_yaw[i], f.last_hit_time, f.spin, f.uzi_side]
+		f.throw_t, f.knife_t, f.return_slot, f.lives, int(f.elim), melee_yaw[i], f.last_hit_time, f.spin, f.uzi_side,
+		f.trap_t, f.burn, f.draw, int(f.nocked), f.grab_t, f.lie_side]
 
 const NAMES := ["px", "py", "pz", "vx", "vy", "vz", "grounded", "hp", "dead", "deathT", "downT", "getupImmune", "stun", "invuln", "flash", "cool", "swing", "kickT",
 	"weapon", "slot", "slots", "reloading", "rlT", "ko", "hits", "dmg", "taken", "deaths", "heads", "shots", "streak", "multi", "leanA", "leanB", "headA", "headB",
-	"armX", "armY", "armZ", "aimX", "aimY", "aimZ", "climb", "fallSide", "throwT", "knifeT", "returnSlot", "lives", "elim", "meleeYaw", "lastHitTime", "spin", "uziSide"]
+	"armX", "armY", "armZ", "aimX", "aimY", "aimZ", "climb", "fallSide", "throwT", "knifeT", "returnSlot", "lives", "elim", "meleeYaw", "lastHitTime", "spin", "uziSide",
+	"trapT", "burn", "draw", "nocked", "grabT", "lieSide"]
 
 ## Worst difference between two JSON-like values ([error, description]).
 func diff(a: Variant, b: Variant, what: String) -> Array:
@@ -239,6 +249,23 @@ func compare(st: Dictionary) -> Array:
 		pk.append([k.px, k.py, k.pz, k.vx, k.vy, k.vz, k.age, k.stuck])
 	var dk := diff(pk, st["k"], "projectiles")
 	if dk[0] > w[0]: w = dk
+	var wp: Weapons = c.weapons
+	for pair: Array in [["r", wp.rockets, []], ["g", wp.grenades, ["fuse", "landed"]], ["a", wp.arrows, ["stuck", "ch"]], ["n", wp.nets, []]]:
+		var rows := []
+		for s: Weapons.Shot in pair[1]:
+			var row := [s.px, s.py, s.pz, s.vx, s.vy, s.vz, s.age]
+			for x: String in pair[2]: row.append(float(s.get(x)))
+			rows.append(row)
+		var dl := diff(rows, st[pair[0]], "shots." + pair[0])
+		if dl[0] > w[0]: w = dl
+	var tn := []
+	for t: Weapons.TrapNet in wp.trap_nets: tn.append([t.t, t.life, t.victims.size()])
+	var dt_ := diff(tn, st["tn"], "trapNets")
+	if dt_[0] > w[0]: w = dt_
+	var db := []
+	for b: Dictionary in wp.delayed_booms: db.append([b["t"], b["x"], b["y"], b["z"]])
+	var dd := diff(db, st["db"], "delayedBooms")
+	if dd[0] > w[0]: w = dd
 	var dn := diff(netlog, st["net"], "net")
 	if dn[0] > w[0]: w = dn
 	netlog.clear()

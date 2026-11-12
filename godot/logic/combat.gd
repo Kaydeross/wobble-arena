@@ -31,6 +31,7 @@ var auto_switch := false         ## settings.autoSwitch
 var spawns: Array = []           ## MAPS[map].spawns ([x, z] pairs)
 var spawn_y := 4.0               ## MAPS[map].spawnY || 4
 var solids: Array = []           ## FighterPhysics.solids_from_map()
+var grav_setting := 1.0          ## cfg.grav (Moon Drift < 0.3: lobbed things float too, projG)
 
 # --- net (filled by the net layer) ---
 var net_started := false
@@ -51,8 +52,8 @@ func _init() -> void:
 ## when a match ends. Call before throwing the Combat away.
 func dispose() -> void:
 	for f: FighterState in fighters:
-		f.last_attacker = null; f.burner = null; f.swing_hit = {}
-	weapons.projectiles.clear()
+		f.last_attacker = null; f.burner = null; f.swing_hit = {}; f.trap_net = null
+	weapons.clear()
 	fighters.clear()
 	events.clear()
 
@@ -235,7 +236,7 @@ func timers(f: FighterState, dt: float) -> void:
 			var b := rng.range_f(-1.4, 1.4)
 			kick_lean(f, a, b)
 		if f.trap_t <= 0.0:
-			f.trap_t = 0.0
+			f.trap_t = 0.0; f.trap_net = null
 	if f.burn > 0.0 and not f.dead:    # on fire
 		f.burn -= dt; f.burn_acc += dt
 		if f.burn_acc >= 0.4:
@@ -293,7 +294,7 @@ func respawn(f: FighterState) -> void:
 func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
-	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0
+	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null
 	clear_inventory(f); set_weapon(f, "spatula")
 	var start: Variant = mode.get("start")
 	if start is String and start != "": pickup(f, start)

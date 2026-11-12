@@ -51,6 +51,7 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 		var a := Combat.norm3(aim_point[0] - p.shoulder_x, aim_point[1] - p.shoulder_y, aim_point[2] - p.shoulder_z)
 		p.aim_x = a[0]; p.aim_y = a[1]; p.aim_z = a[2]
 	if not w.get("spinup", 0): p.spin = 0.0
+	if w.get("type", "") != "bow" or incap: p.draw = 0.0
 	if incap:
 		_drain_taps()
 		return
@@ -74,6 +75,9 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 		if p.swing >= 0.0 and combat.melee_tick(p, key, dt, cam_yaw): combat.after_swing(p)
 	elif t == "gun":
 		combat.weapons.gun_tick(p, fire, dt, aim_point)
+	elif t == "bow":                   # hold to draw, let go to shoot
+		combat.weapons.bow_tick(p, fire, dt, aim_point)
+		if fire and p.cool <= 0.0 and p.swing < 0.0 and p.get_ammo() > 0: ph.speed *= 0.75
 	elif fire:
 		combat.weapons.try_fire(p, aim_point)
 

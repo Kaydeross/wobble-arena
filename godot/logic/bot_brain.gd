@@ -3,7 +3,8 @@ extends RefCounted
 ## A reduced port of the web game's bot AI (botThink, public/index.html ~7441) for the Phase 1 slice: re-pick the
 ## nearest enemy a few times a second, walk to it (or to a crate it wants), circle-strafe and shoot with a gun once
 ## the wobbly arm is lined up, kick and swing up close, hop when stuck. Not ported yet (full AI task): edge
-## awareness, the stuck watchdog's escape, pillars hops, hot potato, ninja dashes, bows and launchers.
+## awareness, the stuck watchdog's escape, pillars hops, hot potato, ninja dashes. Launchers, nets and the bow
+## (draw to 85% before letting go) use the web game's aim and range rules.
 ## Random numbers come from combat.rng, so a seeded match is repeatable.
 
 const AIM_ERR := {"easy": 2.2, "normal": 1.1, "hard": 0.45, "insane": 0.12}       ## BOT_AIM_ERR
@@ -49,6 +50,7 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 	var w := combat.wdata(b.weapon if b.weapon != "" else "spatula")
 	var wt: String = w.get("type", "")
 	var ranged := brawl and b.slot >= 0 and (wt == "gun" or Weapons.LAUNCH.has(wt))
+	if not ranged or wt != "bow": b.draw = 0.0; b.nocked = false
 	jump_t -= dt
 	think_t -= dt
 	if think_t <= 0.0 or (target != null and target.dead):
@@ -123,20 +125,35 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 
 	var aiming := false
 	if ranged and tg and not tg.dead and not busy and dist < float(d.get("sight", 20)) and crate.is_empty():
-		var ax := tg.chest_x + aim_off.x - b.shoulder_x
-		var ay := tg.chest_y + aim_off.y - b.shoulder_y
-		var az := tg.chest_z + aim_off.z - b.shoulder_z
+		var tx := tg.chest_x + aim_off.x
+		var ty := tg.chest_y + aim_off.y
+		var tz := tg.chest_z + aim_off.z
+		if wt == "glauncher" or wt == "net":           # aim at the feet, allowing for the drop
+			var tt := dist / float(w["speed"])
+			if wt == "glauncher": ty = tg.phys.py + 0.15 + maxf(0.0, 4.5 * tt * tt - 1.8 * tt)
+			else: ty = tg.phys.py + 0.45 + maxf(0.0, 3.5 * tt * tt - 1.5 * tt)
+		var ax := tx - b.shoulder_x
+		var ay := ty - b.shoulder_y
+		var az := tz - b.shoulder_z
 		var al := sqrt(ax * ax + ay * ay + az * az)
 		if al > 1e-6:
 			b.aim_x = ax / al; b.aim_y = ay / al; b.aim_z = az / al
 		aiming = true
 		var rng_max := minf(float(w.get("range", 40)) if w.get("range", 0) else 40.0, float(d.get("sight", 20)))
-		var hx := tg.chest_x + aim_off.x - b.hand_x
-		var hy := tg.chest_y + aim_off.y - b.hand_y
-		var hz := tg.chest_z + aim_off.z - b.hand_z
+		var hx := tx - b.hand_x
+		var hy := ty - b.hand_y
+		var hz := tz - b.hand_z
 		var hl := sqrt(hx * hx + hy * hy + hz * hz)
 		var lined := hl > 1e-6 and (b.arm_x * hx + b.arm_y * hy + b.arm_z * hz) / hl > (0.95 if diff == "easy" else 0.975)
-		if b.swing < 0.0 and b.kick_t < 0.0 and b.cool <= 0.0 and b.stun <= 0.0 and lined and los and dist < rng_max * 0.92:
+		var min_d := 5.0 if (wt == "rocket" or wt == "glauncher") else 0.0
+		if wt == "bow":
+			if b.cool <= 0.0 and los:
+				if not b.nocked:
+					if b.grab_t < 0.0: b.grab_t = 0.0
+				else: b.draw = minf(1.0, b.draw + dt / 0.55)
+			else: b.draw = 0.0
+		if b.swing < 0.0 and b.kick_t < 0.0 and b.cool <= 0.0 and b.stun <= 0.0 and lined and los and dist > min_d and dist < rng_max * 0.92 \
+				and (wt != "bow" or b.draw >= 0.85):
 			b.face_yaw = to_yaw
 			if wt == "gun":
 				if b.reloading: b.cool = 0.05
@@ -149,8 +166,9 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 					else: b.cool += rng.range_f(0, 0.5) / float(d.get("atk", 1))
 					combat.use_ammo(b)
 			else:
-				b.cool = float(w["cooldown"]) + rng.range_f(0.1, 0.6) / float(d.get("atk", 1))
-				combat.weapons.call(Weapons.LAUNCH[wt], b, b.weapon)
+				var cr := rng.range_f(0.2, 0.8) if wt == "rocket" else rng.range_f(0.1, 0.6)
+				b.cool = float(w["cooldown"]) + cr / float(d.get("atk", 1))
+				combat.weapons.call(Weapons.LAUNCH[wt], b, b.weapon, [])
 				combat.use_ammo(b)
 	var bs: Variant = b.current_slot()
 	if bs != null and w.get("mag", 0) and not combat.inf and not b.reloading:      # top up the gun

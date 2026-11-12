@@ -48,6 +48,7 @@ var _crates := {}                  ## crate id -> Node3D
 var _fx: Array = []                ## {node, life, max, vel, kind}
 var _fx_root: Node3D
 var _fighters_root: Node3D
+var proj_views: ProjectileViews     ## rockets, grenades, arrows, nets, knives, explosions, flames
 var _touch_was := false
 var _mats := {}
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
@@ -79,6 +80,7 @@ func _ready() -> void:
 	pause_menu.visible = false
 	_fx_root = Node3D.new(); _fx_root.name = "Fx"; add_child(_fx_root)
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
+	proj_views = ProjectileViews.new(); proj_views.name = "Projectiles"; add_child(proj_views)
 	if session != null:
 		map_id = start_msg.get("map", map_id)
 		session.match_started.connect(_on_net_start)
@@ -103,6 +105,7 @@ func load_map(id: String) -> void:
 	views.clear()
 	for c in _crates.values(): c.queue_free()
 	_crates.clear()
+	if proj_views: proj_views.clear()
 	if net_match: net_match.dispose(); net_match = null
 	if sim: sim.dispose()
 	if _results: _results.queue_free(); _results = null
@@ -201,6 +204,7 @@ func present(dt: float) -> void:
 	_update_crates(dt)
 	_update_dyn_views()
 	_update_fx(dt)
+	proj_views.update(dt)
 
 # ============================== combat events -> visuals ==============================
 
@@ -211,6 +215,7 @@ func _drain_events() -> void:
 		Sfx.on_event(e, sim)
 		if net_match != null: net_match.on_event(e)
 		var f: FighterState = e.get("f") if e.get("f") is FighterState else null
+		proj_views.on_event(e)
 		match String(e["type"]):
 			"lean", "head", "arm":
 				if views.has(f): views[f].on_event(e)

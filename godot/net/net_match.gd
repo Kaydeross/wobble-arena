@@ -173,7 +173,9 @@ func ghost_fire(g: FighterState, m: Dictionary) -> void:
 	if not sim.pickups.usable(key): return     # weapon types not ported yet: no replay (the hit still arrives as `h`)
 	var t: String = w.get("type", "")
 	if t == "gun": combat.weapons.fire_gun(g, key)
-	elif Weapons.LAUNCH.has(t): combat.weapons.call(Weapons.LAUNCH[t], g, key)
+	elif Weapons.LAUNCH.has(t):
+		if t == "bow": g.draw = maxf(0.5, g.draw if g.draw != 0.0 else 0.8)
+		combat.weapons.call(Weapons.LAUNCH[t], g, key, [])
 
 ## The interpolation of netStep for one ghost: where it is drawn after this step.
 ## g = [x, y, z] now, s = the snapshot (x, y, z, vx, vy, vz, g), rt = clock when it arrived. Returns [x, y, z].

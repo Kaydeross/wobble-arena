@@ -131,7 +131,7 @@ func usable(key: String) -> bool:
 	var w := combat.wdata(key)
 	match String(w.get("type", "")):
 		"melee": return true
-		"gun": return w.get("style", "") != "flame"      # TODO(next batch): flame
+		"gun": return true
 	return Weapons.LAUNCH.has(String(w.get("type", "")))
 
 ## Display name of a drop key (weapon, heal or power-up).
