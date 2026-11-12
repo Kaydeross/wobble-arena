@@ -751,6 +751,72 @@
 @media(max-width:900px){#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);overflow:auto;padding:3vh 4vw 13vh}#menu.storefx .vcol{grid-column:1;grid-row:2;flex-direction:row;flex-wrap:wrap;justify-content:center;overflow:visible}#menu.storefx #shopcv,#menu.storefx #lockcv{max-width:200px;max-height:none}#menu.storefx .vmain{grid-column:1;grid-row:3;overflow:visible}#menu.storefx .eshelf{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
 @media(prefers-reduced-motion:reduce){#menu.storefx h2.step .ptitle>span,#menu.storefx .ecard.r-mythic::before{animation:none !important}}
 body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+/* ---- build 77: phones in landscape (short screens). Menus fit 852x393, respect the notch, and keep every tap target at 44px or more ---- */
+:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
+@media (max-height:520px){
+  #menu .card{width:100vw;max-width:none;height:100vh;height:100dvh;max-height:none;border-radius:0;box-sizing:border-box;padding:calc(4px + var(--sat)) max(12px,calc(var(--sar) + 4px)) calc(4px + var(--sab)) max(12px,calc(var(--sal) + 4px))}
+  #menu .mbody{min-height:0}
+  #menu .mhead{position:absolute;top:calc(6px + var(--sat));right:max(12px,calc(var(--sar) + 4px));z-index:4;margin:0}
+  #menu .mhead h1,#menu .mhead p{display:none}
+  #menu #coinchip{font-size:15px;padding:4px 12px}
+  #menu h2.step{font-size:20px;margin:2px 0 6px;min-height:36px;align-items:center}
+  #menu .mfoot{margin-top:4px;gap:8px}
+  #menu .mfoot #back,#menu .mfoot #next,#menu .mfoot #play{min-height:44px;padding:6px 14px;font-size:17px}
+  #menu .mfoot #back{flex:0 0 96px !important}
+  #menu .opt,#menu .tabs button,#menu .chip{min-height:44px}
+  #menu .mfoot small{display:none}
+  #maphero{height:120px}
+  #menu button.big{font-size:24px;padding:10px;margin:6px 0;border-radius:14px}
+  #logo,#bootlogo{font-size:min(9vw,15vh,76px)}#title p{font-size:15px;margin:2px 0 12px}#title small{margin-top:10px}#start{padding:10px 56px;min-height:56px}
+  #title #tt-auth button,#title .tlink{min-height:44px}
+  /* home */
+  #menu.homefx #pg-home{grid-template-columns:minmax(0,40%) minmax(0,1fr);grid-template-rows:1fr auto auto;column-gap:18px;row-gap:6px;height:100vh;height:100dvh;overflow:hidden;padding:calc(6px + var(--sat)) max(16px,calc(var(--sar) + 6px)) calc(6px + var(--sab)) max(16px,calc(var(--sal) + 6px))}
+  #menu.homefx #hleft{display:contents}
+  #menu.homefx #hlogo{grid-column:1;grid-row:1;align-self:end;font-size:clamp(34px,12vh,54px);margin:0 0 4px;text-align:left}
+  #menu.homefx #hsub,#menu.homefx #tip,#menu.homefx #hlive,#menu.homefx #hplate{display:none}
+  #menu.homefx #homemain{grid-column:2;grid-row:1/4;align-self:center;gap:8px;margin-top:44px}
+  #menu.homefx .hrow{gap:8px}
+  #menu.homefx .hbtn{min-height:48px;padding-top:5px;padding-bottom:5px;border-radius:14px}
+  #menu.homefx .hbtn.hero{padding:6px 16px 6px 12px;min-height:60px}
+  #menu.homefx .hbtn.hero b{font-size:clamp(22px,6vh,30px)}
+  #menu.homefx .hbtn.green{padding:5px 16px 5px 12px;min-height:52px}
+  #menu.homefx .hbtn.green b{font-size:clamp(19px,5vh,24px)}
+  #menu.homefx .hbtn svg{width:24px;height:24px}
+  #menu.homefx .hbtn.hero svg{width:34px;height:34px}
+  #menu.homefx .hbtn small{font-size:11px}
+  #menu.homefx .hrow .hbtn b{font-size:clamp(15px,4vh,18px)}
+  #menu.homefx #guestbar{position:static;grid-column:1;grid-row:2;max-width:none;margin:0;padding:3px 6px 3px 12px;gap:8px;flex-wrap:nowrap;font-size:13px;border-radius:99px;align-items:center}
+  #menu.homefx #guestbar span{display:none}
+  #menu.homefx #guestbar b{white-space:nowrap;margin-right:auto}
+  #menu.homefx #guestbar button{min-height:44px;padding:4px 12px;white-space:nowrap}
+  #menu.homefx #hright{display:flex;grid-column:1;grid-row:3;align-items:stretch;justify-content:flex-start;min-height:0}
+  #menu.homefx #hcards{display:flex;flex-direction:row;gap:8px;width:100%;margin:0}
+  #menu.homefx .hcard{padding:2px 6px;gap:6px;min-height:48px}
+  #menu.homefx .hcard .hci{font-size:20px}
+  #menu.homefx .hcard img{width:34px;height:28px}
+  #menu.homefx .hct b{font-size:9.5px;letter-spacing:0;white-space:nowrap}#menu.homefx #hc-lotd img{display:none}#menu.homefx .hct small{display:none}
+  #menu.homefx .hcard button{min-height:44px;padding:4px 8px;font-size:12px}
+  #menu.homefx #homesmall{display:flex;top:calc(6px + var(--sat));right:calc(max(12px,calc(var(--sar) + 4px)) + 128px);gap:6px}
+  #menu.homefx #homesmall .opt{padding:4px 12px;font-size:13px;min-height:44px}
+  #menu.homefx #hbuild{right:max(16px,calc(var(--sar) + 6px));bottom:calc(2px + var(--sab));font-size:10px}
+  #menu.homefx .mhead{top:calc(10px + var(--sat))}
+  /* shop and locker */
+  #menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{grid-template-columns:minmax(120px,27%) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:14px;overflow:hidden;height:100vh;height:100dvh;padding:calc(6px + var(--sat)) max(16px,calc(var(--sar) + 6px)) calc(6px + var(--sab)) max(16px,calc(var(--sal) + 6px))}
+  #menu.storefx h2.step{font-size:30px;margin:0 0 4px;min-height:0}
+  #menu.storefx .vcol{grid-column:1;grid-row:2;flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;overflow:hidden;padding:0 0 56px;gap:4px}
+  #menu.storefx #shopcv,#menu.storefx #lockcv{max-width:100%;width:auto;max-height:calc(100dvh - 160px);max-height:calc(100vh - 160px);border-radius:16px}
+  #menu.storefx .vcol .help{font-size:11px;line-height:1.25}
+  #menu.storefx .vmain{grid-column:2;grid-row:2;overflow:hidden}
+  #menu.storefx .vmain>.row{margin:0 0 6px;padding-right:96px}
+  #menu.storefx .vmain>.row .opt{padding:6px 18px;font-size:15px;min-height:44px}
+  #menu.storefx .eshelf{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding-bottom:10px}
+  #menu.storefx .ecard{padding:14px 8px 8px}
+  #menu.storefx .ecard .ei{font-size:36px;margin:12px 0 2px}
+  #menu.storefx .ecard button{min-height:44px;padding:6px 4px}
+  #menu.storefx .mfoot{left:max(16px,calc(var(--sal) + 6px));bottom:calc(6px + var(--sab))}
+  #menu.storefx .mfoot #back{padding:6px 20px;font-size:16px;min-height:44px;flex:0 0 auto !important}
+  #menu.storefx .mhead{top:calc(10px + var(--sat))}
+}
 </style>
 </head>
 <body>
@@ -8876,6 +8942,7 @@ const _play = el('play').onclick; el('play').onclick = () => { if (editFlow && p
 el('pz-new').onclick = () => { inMatch = false; loadMap(currentMap); setUi('lobby'); el('play').onclick(); };
 el('pz-menu').onclick = () => { if (net && net.started) netLeave('You left the match.'); inMatch = false; leaveTest(); loadMap(currentMap); setUi('lobby'); showPage('home'); };
 
+window.__wa = { get player() { return player; }, get locked() { return locked; }, get ui() { return ui; }, showPage, cam, keys };   // read-only handle for the Playwright tests
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   PERF.grace = performance.now() + 3500; PERF.lowN = 0; PERF.hiN = 0; try { perfAcc = 0; perfN = 0; perfT0 = 0; prevNow = 0; } catch (e) { /* x */ }
