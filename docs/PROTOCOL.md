@@ -108,7 +108,7 @@ All are objects with a `t` field, sent inside `tohost`/`to`/`all` (layer 1). The
 
 | `t` | Dir | Fields | Meaning |
 |---|---|---|---|
-| `hello` | guest → host | `build`, `name`, `skin`, `hat`, `color` | First message. `build` must equal the host's `NET_BUILD` or the host answers `badver`. Info fields are validated against the host's tables (see §5). |
+| `hello` | guest → host | `build`, `name`, `skin`, `hat`, `color`, `cls?` | First message. `build` must equal the host's `NET_BUILD` or the host answers `badver`. Info fields are validated against the host's tables (see §5). |
 | `welcome` | host → guest | `id` (slot, ≥1), `name` (room name), `pub` | `id` is the game slot, the lowest free one. Until `welcome`, a guest ignores everything except `welcome`, `full`, `badver`, `kick`. |
 | `full` | host → guest | – | No free slot. |
 | `badver` | host → guest | – | Build mismatch. |
@@ -120,14 +120,14 @@ All are objects with a `t` field, sent inside `tohost`/`to`/`all` (layer 1). The
 
 | `t` | Dir | Fields | Meaning |
 |---|---|---|---|
-| `roster` | host → all | `roster[]`, `max`, `bots`, `lim`, `bhv`, `diff`, `modeName`, `map` | Players in the lobby. Each roster entry is `{id, name, skin, hat, color}`. `bots`: fill empty seats with bots. `lim`: KO limit. `bhv`: `brawl` or `dummy`. `diff`: bot difficulty id. |
+| `roster` | host → all | `roster[]`, `max`, `bots`, `lim`, `bhv`, `diff`, `modeName`, `map` | Players in the lobby. Each roster entry is `{id, name, skin, hat, color, cls?}`. `bots`: fill empty seats with bots. `lim`: KO limit. `bhv`: `brawl` or `dummy`. `diff`: bot difficulty id. |
 | `start` | host → all | `slots[]`, `map`, `custom`, `limit`, `rules` | Begins a match (also re-sent on rematch and to a guest who joins mid-match). |
 | `slot` | host → all | `slot`, `kind`, `info` | Slot owner changed: a friend replaced a bot (`human`), left (`bot`/`empty`). |
 | `crates` | host → joiner | `list[] {cid,key,spot}` | Pickups currently on the map, sent to a mid-match joiner. |
 | `rv` | guest → host | – | "Rematch" vote. |
 | `rvs` | host → all | `list[]`, `total` | Rematch votes so far (slot ids) and the number of humans. When all humans vote, or after **20 s**, the host restarts and kicks anyone who did not vote. |
 
-`slots[]` entries: `{kind: 'human'|'bot'|'empty', id, name, skin, hat, color}`. Index = slot. Slot 0 is always the host.
+`slots[]` entries: `{kind: 'human'|'bot'|'empty', id, name, skin, hat, color, cls?}`. Index = slot. Slot 0 is always the host.
 
 `rules` (`ruleSnap`): `{mode, hp, crate, wstate, grav, kb, inf, pp?, pt?}`
 
@@ -237,7 +237,18 @@ The room messages refer to content by string/number ids. Both clients must agree
 | Mode ids (`MODES`, about 12) | `rules.mode`, `info.mode` | via `netMode()` |
 | Weapon keys (`WEAPONS`, about 29) | `S.w`, `sw.w`, `f.w`, `crate.key` | Unknown weapon ignored |
 | Skins (`SKINS`), hats (`HATS`), colours (`SWATCH`) | `hello`, `roster`, `slots` | Invalid → `none` / default colour `0x39b5a8` |
+| Character classes (`CLASSES`, `shared/classes.json`) | `hello`, `roster`, `slots`, `slot` (`cls`) | Missing/unknown → `wobbler`. Optional, additive: proto stays 1; old clients ignore it |
 | Crate rates (`CRATE_RATE`), difficulties (`DIFFS`) | `rules.crate`, `roster.diff` | Invalid → default |
+
+**Character classes (`cls`).** Each player's class id is an optional string in the info fields (`wobbler` default, `bruiser`, `kid`, `elder`, `alien`). It is cosmetic-plus-stats: every client applies the multipliers in `shared/classes.json` to the fighters it simulates (its own and, for display, ghosts). Nothing else on the wire changes: `S.hp` stays absolute, so a receiver must draw a remote HP bar against that fighter's own max (`cfg.hp * (giant ? 2 : 1) * CLASSES[cls].hp`). Hit damage `d` on `h` is the raw weapon damage; the victim side multiplies by the attacker's `dmg` and by the victim's own `kb` (knockback taken). Multipliers (1 = Wobbler): `hp` max health, `spd` run speed, `acc`/`air` ground/air steering, `jump`, `kb` knockback taken, `dmg` damage dealt, `rate` fire rate, `reload`, `ammo` pickup ammo, `wob` wobbliness and `size` body scale (looks only: hitboxes and collision never change). Movement uses `spd`, `acc`, `air`, `jump` exactly as `Fighter.physics` (see `godot/scripts/fighter_physics.gd`, parity-tested for every class).
+
+| id | Name | Idea | hp | spd | acc | air | jump | kb | dmg | rate | reload | ammo |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `wobbler` | Wobbler | balanced | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
+| `bruiser` | Bruiser | strong but slow | 1.3 | 0.88 | 0.85 | 0.8 | 0.92 | 0.65 | 1.12 | 0.95 | 1 | 1 |
+| `kid` | Scamp | fast but light | 0.75 | 1.22 | 1.2 | 1.3 | 1.12 | 1.3 | 0.92 | 1.05 | 1 | 1 |
+| `elder` | Gramps | control | 1.05 | 0.95 | 1.55 | 2.1 | 1 | 0.9 | 1 | 1 | 0.75 | 1.1 |
+| `alien` | Zorp | low HP, great tech | 0.7 | 1.02 | 1 | 1.25 | 1.18 | 1.1 | 1 | 1.2 | 0.8 | 1.5 |
 
 Plan (PR C): move these tables to `shared/*.json` so web and Godot load the same data.
 

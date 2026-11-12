@@ -8,6 +8,9 @@ func _initialize() -> void:
 	var trace = JSON.parse_string(FileAccess.get_file_as_string(a[2]))
 	var solids := FighterPhysics.solids_from_map(maps[a[1]])
 	var f := FighterPhysics.new()
+	if a.size() > 3:
+		var c: Dictionary = JSON.parse_string(a[3])
+		f.speed_mul = c["spd"]; f.accel_mul = c["acc"]; f.air_mul = c["air"]; f.jump_mul = c["jump"]
 	f.place(0.0, 0.01, 0.0)
 	var worst := 0.0
 	var worst_k := -1
