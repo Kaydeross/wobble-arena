@@ -22,7 +22,6 @@ const FX_DMG_LIFE := 0.9
 @export var player_class := ""     ## "" = Settings "class"
 @export var rng_seed := 0          ## 0 = random
 @export var hp_setting := 200.0    ## cfg.hp (the web menu offers 100 / 150 / 200 / 300 / 500)
-@export var mode_id := ""         ## offline mode (modes.json id): "" = Settings "mode" (classic / construction)
 @export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
 @export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none

@@ -29,9 +29,8 @@ const DEFAULTS := {
 	"token": "",            # account token from /api/login (sent with the `auth` op)
 	"user": "",             # logged-in username
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
-	"mode": "classic",      # offline mode on the title screen: classic | construction (docs/CONSTRUCTION.md)
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
-	"mode": "classic",      # offline game mode (shared/modes.json id; ModeRules.PLAYABLE lists the ported ones)
+	"mode": "classic",      # offline game mode (shared/modes.json id; ModeRules.PLAYABLE lists the ported ones; title screen picker: classic | construction)
 	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
 }
 
