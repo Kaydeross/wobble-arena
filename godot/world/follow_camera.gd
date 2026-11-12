@@ -3,7 +3,7 @@ extends Camera3D
 ## Third-person follow camera, ported from updateCamera (public/index.html ~9674): yaw/pitch orbit around a pivot above
 ## the player, over-the-shoulder offset, aim zoom (distance, shoulder, height and FOV blend with `aim`), pulled in when a
 ## solid is between the pivot and the camera. Orbit mode (menus / fell out) circles the map like the web game.
-## Not ported yet: kill cam, scoped weapon FOV per weapon, giant scale.
+## Kill cam: world/kill_cam.gd drives this camera while it replays. Not ported yet: scoped weapon FOV per weapon, giant scale.
 ## Screen shake (web cam.shake): add_shake() / apply_shake(), presentation only (after aim_point is computed; the
 ## next follow() starts from a clean transform). Settings `screen_shake` (default on) gates it, `shake_scale` scales it.
 ##

@@ -4,7 +4,9 @@ extends Control
 ## friends" (its sub line says it needs internet, or the room state while connected; it opens the online panel: server
 ## address, room code, name, Join as a guest with GuestSession, and a minimal login: POST /api/login, token kept in
 ## Settings; "Host a room" opens the host sheet: room name, public / private, seats, bots -> HostSession, and both
-## roles wait in the lobby sheet: the players, Start (host only), Leave), a chip saying who you are ("Guest" or "Signed in as NAME"), a gear for the settings sheet (Show FPS) and
+## roles wait in the lobby sheet: the players, Start (host only), Leave), a chip saying who you are ("Guest" or "Signed in as NAME";
+## tap it for the Account sheet, ui/account_sheet.gd: sign up, log in, log out, change password, delete the account, the
+## cloud sync line; the online panel's login fields go through the same Save.cloud), a gear for the settings sheet (Show FPS) and
 ## a small tip line. Laid out with containers inside a safe-area
 ## MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks 852x393, 1170x540,
 ## 1280x720 and 390x844: the title, the online panel, every wizard page and the settings sheet).
@@ -43,7 +45,8 @@ var shop_b: Button
 var sheet: Control                  ## settings sheet (gear): Show FPS
 var fps_toggle: CheckButton
 var _ui := {}
-var _api: AccountApi
+var account: AccountSheet           ## the Account sheet (title chip)
+var chip: PanelContainer
 var host_sheet: Control             ## "Host a room": name, public / private, seats, bots
 var lobby: Control                  ## the room's lobby: players, Start (host only), Leave
 var _host := {"pub": false, "max": 4, "bots": 2}
@@ -70,9 +73,14 @@ func _ready() -> void:
 	_build_lobby()
 	Settings.changed.connect(_on_setting)
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
-	_api = AccountApi.new()
-	add_child(_api)
-	_api.finished.connect(func(_ok: bool, msg: String) -> void: _status(msg); _refresh_login())
+	account = AccountSheet.new()
+	add_child(account)
+	account.closed.connect(func() -> void: if Tier.is_pc(): gear.grab_focus.call_deferred())
+	Save.cloud.done.connect(func(op: String, _ok: bool, msg: String) -> void:
+		if op in ["login", "logout"]: _status(msg)
+		_refresh_login())
+	Save.cloud.changed.connect(_refresh_login)
+	_build_chip()
 	_build_online()
 	_status(notice if notice != "" else "Join a friend's room.")
 	if session != null:
@@ -92,6 +100,7 @@ func _ready() -> void:
 		_ui["room"].text = join
 		join_room()
 	JuicyButton.attach_all(self)
+	if not Save.cloud.pending.is_empty(): account.open("conflict")   # a cloud conflict found during a match
 	get_viewport().size_changed.connect(apply_safe_area)
 	apply_safe_area()
 	if Tier.is_pc():
@@ -360,21 +369,43 @@ func _build_online() -> void:
 	_ui["leave"].pressed.connect(func() -> void: if session: session.leave("You left the room."))
 	_ui["login"].pressed.connect(func() -> void:
 		_status("Logging in…")
-		_api.login(_ui["server"].text, _ui["user"].text, _ui["pass"].text))
-	_ui["logout"].pressed.connect(func() -> void: _api.logout(); _status("Logged out."); _refresh_login())
+		Save.cloud.login(_ui["user"].text, _ui["pass"].text, _ui["server"].text)
+		_ui["pass"].text = "")
+	_ui["logout"].pressed.connect(func() -> void: Save.cloud.logout())
 	_refresh_login()
 	_refresh_buttons()
 
+## The title chip: tap (or click / Enter) opens the Account sheet. A big touch target like the gear.
+func _build_chip() -> void:
+	chip = $Safe/Col/Top/GuestChip
+	chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	chip.focus_mode = Control.FOCUS_ALL
+	chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	chip.custom_minimum_size = Vector2(0, 56)
+	(chip.get_node("Row") as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
+	who.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	chip.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed) \
+				or e.is_action_pressed("ui_accept"):
+			chip.accept_event()
+			open_account())
+
+## The Account sheet (guest: sign up / log in; signed in: the account page).
+func open_account(pg := "") -> void:
+	account.open(pg)
+
 func _refresh_login() -> void:
-	var u := str(Settings.get_value("user", ""))
-	var logged := str(Settings.get_value("token", "")) != ""
+	var u := Save.cloud.user()
+	var logged := Save.cloud.signed_in()
 	_ui["acct"].text = ("Logged in: " + u) if logged else "Not logged in"
 	_ui["acct"].visible = logged
 	_ui["logout"].visible = logged
 	for k in ["user", "pass", "login"]:
 		_ui[k].visible = not logged
 	who.text = ("Signed in as " + u.substr(0, 12)) if logged and u != "" else "Guest"
-	who.tooltip_text = "Sign in from Play online with friends" if not logged else "Signed in: " + u
+	var sync := Save.cloud.sync_text()
+	who.tooltip_text = ("Account: sign up or log in to save to the cloud" if not logged else "Signed in: " + u) + ("\n" + sync if sync != "" else "")
+	chip.tooltip_text = who.tooltip_text
 
 func _refresh_buttons() -> void:
 	var on := session != null and session.is_active()

@@ -32,6 +32,12 @@ const DEFAULTS := {
 	"room_code": "",        # last room joined
 	"token": "",            # account token from /api/login (sent with the `auth` op)
 	"user": "",             # logged-in username
+	"email": "",            # logged-in account's email (shown on the Account sheet)
+	# TODO(Phase 5): keep the token in the iOS Keychain instead of settings.cfg.
+	"cloud_t": 0,           # server time (ms) of the cloud save this device last matched (web acct.t)
+	"cloud_dirty": false,   # the profile changed since the last cloud save (pushed when online again)
+	"cloud_user": "",       # lower-case account the local profile was last synced with ("" = none / guest)
+	"kill_cam": true,       # short slow-mo replay after a fast K.O. you score (offline, world/kill_cam.gd)
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
 	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE + construction)
