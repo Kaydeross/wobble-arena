@@ -16,7 +16,11 @@ Every web level is playable in the Godot app and looks like the web one: collisi
   candy, ships, ...), plus the far scenery ring (`buildFar`: mountains, city, mesas, sea, toys, lunar, ...), the clouds,
   the far hills and the void plane, into world space at t = 0. Triangles are grouped by material kind (lit, unlit,
   see-through, additive glow, lit see-through; fogged or not; casts / receives shadows) with per-vertex colour, so a
-  level is **2 MeshInstances with 2-6 surfaces** (up to ~30 on the lunar levels, whose far scenery has many opacities).
+  level is **2-4 MeshInstances with 2-6 surfaces each** (up to ~30 on the lunar levels, whose far scenery has many
+  opacities): still and moving pieces, each split into shadow casters and the rest. Moving pieces carry their motion
+  per vertex (format `WAD2`, see the tool's header): the exporter runs the web game's backdrop anims for 8 s and fits
+  each moving mesh as a steady rotation round a pivot (orbiting balloons, ships, asteroids; spinning turbines) plus a
+  bob; leaves are flagged for wind and the void plane / sea for lava or water shimmer. The decor shader moves them.
   Flat shading comes from the shader (`dFdx`/`dFdy`), so no normals are stored. Positions are 16-bit in the group's
   box, 6 MB for all 35 levels. Static decor costs nothing per frame; loading a level's decor takes 1-6 ms.
 - **Look**: `godot/data/extra/map_look.json` (same export): the 12 sky bands after `setBackdrop`, fog colour / range,
@@ -98,12 +102,14 @@ them box for box against the web game's real `MAPS.pillars.build()` plus its spa
 
 ## Known gaps
 
-- Moving backdrop pieces stand still at their t = 0 spot (balloons, ships, smoke columns, wind turbines, aurora
-  sway; the "still" column). Clouds do not drift. Drifting specks (pollen, snow, embers, ...) and circling birds / bats
-  are not drawn. The web's tree sway and the far scenery's foot-to-top shading (`farPatch`) are not ported.
+- Moving backdrop pieces now move (vertex shader, `docs/GRAPHICS.md`), fitted as rotation + bob: smoke puffs bob
+  instead of rising and looping, and pieces that blink or rescale (searchlights, comets) keep their t = 0 look.
+  Drifting specks (pollen, snow, embers, ...) and circling birds / bats are still not drawn. The baked web clouds stay
+  put; MID / HIGH add a drifting flat cloud layer above them.
 - Lighting is close but not identical: Godot's ambient is one colour (80 % hemisphere sky, 20 % ground), the web's
   hemisphere light shades side faces darker. Depth fog in Godot tints far objects a little darker than three.js.
-- Textured materials are flattened to their colour: the prototype grid on floors (Practice Range), the glow blob is a
-  radial falloff in the shader. Lamp sprites and the sun rays / halo are not drawn.
+- Textured materials are flattened to their colour (the Practice Range's prototype grid is a shader on MID / HIGH),
+  the glow blob is a radial falloff in the shader. Lamp sprites and the sun rays / halo are not drawn.
+- Practice Range dummies and racks are ported (`logic/practice_range.gd`).
 - Lava Pillars (`pillars2`) is not exported at all (no collision, decor or look), so the Pillars mode only offers Pillars.
 - Custom levels in themes other than grass use the plain hills and void, not the meadow scenery.
