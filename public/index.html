@@ -752,6 +752,8 @@
 @media(prefers-reduced-motion:reduce){#menu.storefx h2.step .ptitle>span,#menu.storefx .ecard.r-mythic::before{animation:none !important}}
 body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
   .cbar{display:flex;align-items:center;gap:6px;font-size:10px;margin:2px 0;width:100%}.cbar span{width:46px;text-align:left;opacity:.85}.cbar i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden}.cbar u{display:block;height:100%;background:#7fe8ff;border-radius:3px}
+  .cimg{display:block;width:100%;max-width:120px;aspect-ratio:4/5;object-fit:cover;object-position:50% 20%;border-radius:12px;margin:0 auto 4px}.seat .av.avc{width:46px;height:46px;object-fit:cover;object-position:50% 25%;border-radius:12px}
+  @media(max-height:500px){#menu.storefx #pg-locker.on #lockcv{max-height:30vh;width:auto;margin:0 auto}#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{padding-bottom:calc(13vh + 56px)}#menu.storefx .mfoot{left:0;right:0;bottom:0;padding:8px 5vw 10px;background:linear-gradient(to top,rgba(8,20,28,.97) 72%,rgba(8,20,28,0))}#menu.storefx .mfoot #back{padding:9px 24px;font-size:16px}}
 </style>
 </head>
 <body>
@@ -4454,10 +4456,27 @@ function buyEmote(k) {
   sfx('pickup'); toast('Bought ' + E.name + '!'); shopEmote = k; save(); updateCoins(); renderShop(); return true;
 }
 const CLS_BARS = [['hp', 'Health'], ['spd', 'Speed'], ['acc', 'Control', c => (c.acc + c.air) / 2], ['kb', 'Weight', c => 2 - c.kb], ['dmg', 'Power'], ['rate', 'Tech', c => (c.rate + 1 / c.reload + c.ammo) / 3]];
+const CLS_THUMB = {};
+function classThumb(cls, skin, hat, color) {          // a rendered picture of a class wearing an outfit, drawn once by the same code as the Locker preview and then cached
+  const key = cls + '|' + skin + '|' + hat + '|' + color;
+  if (CLS_THUMB[key]) return CLS_THUMB[key];
+  if (ui !== 'lobby' || (page !== 'locker' && page !== 'onlobby')) return null;        // never touch the player's model in a match
+  let url = null;
+  try {
+    const cv = document.createElement('canvas'); cv.width = 168; cv.height = 210;
+    player.setClass(cls); player.setSkin(SKINS[skin] ? skin : 'none'); player.setHat(HATS.includes(hat) ? hat : 'none'); player.recolor(SKINS[skin] ? SKINS[skin].col : color, false);
+    pvPrep(); player.emote = null; pvSettle(14); const pa = pvAng; pvAng = 0.45; drawPreview(cv); pvAng = pa;
+    url = cv.toDataURL('image/png');
+  } catch (e) { /* the emoji stays */ }
+  try { applyLook(); pvSettle(2); } catch (e) { /* cosmetic */ }
+  if (url) CLS_THUMB[key] = url;
+  return url;
+}
 function classCard(k) {
   const c = CLASSES[k];
   const bars = CLS_BARS.map(([key, lab, fn]) => { const v = fn ? fn(c) : c[key], pc = Math.round(clamp((v - 0.4) / 1.2, 0.05, 1) * 100); return '<div class="cbar"><span>' + lab + '</span><i><u style="width:' + pc + '%"></u></i></div>'; }).join('');
-  return '<div class="ecard r-common' + (look.cls === k ? ' sel' : '') + '"><span class="ei">' + c.icon + '</span><b>' + c.name + '</b><small>' + c.tag + '</small>' + bars + '<button class="opt clspick" data-k="' + k + '">' + (look.cls === k ? 'Playing' : 'Play as') + '</button></div>';
+  const th = classThumb(k, look.skin, look.hat, look.color);
+  return '<div class="ecard r-common' + (look.cls === k ? ' sel' : '') + '">' + (th ? '<img class="cimg" alt="' + c.name + '" src="' + th + '">' : '<span class="ei">' + c.icon + '</span>') + '<b>' + c.name + '</b><small>' + c.tag + '</small>' + bars + '<button class="opt clspick" data-k="' + k + '">' + (look.cls === k ? 'Playing' : 'Play as') + '</button></div>';
 }
 function renderLocker() {
   updateCoins();                                                  // the coin counts must show on every page, not only after the Shop has been opened
@@ -4465,7 +4484,7 @@ function renderLocker() {
   el('locktab-skins').classList.toggle('on', lockTab === 'skins'); el('locktab-emotes').classList.toggle('on', lockTab === 'emotes');
   el('lock-skins').style.display = lockTab === 'skins' ? 'block' : 'none'; el('lock-emotes').style.display = lockTab === 'emotes' ? 'block' : 'none';
   el('locktab-class').classList.toggle('on', lockTab === 'class'); el('lock-class').style.display = lockTab === 'class' ? 'block' : 'none';
-  el('lclass').innerHTML = CLASS_IDS.map(k => classCard(k)).join('');
+  el('lclass').innerHTML = lockTab === 'class' ? CLASS_IDS.map(k => classCard(k)).join('') : '';
   for (const b of sub(el('lclass'), '.clspick')) b.onclick = () => { look.cls = b.dataset.k; applyLook(); save(); try { pvSettle(8); } catch (e) { /* cosmetic */ } renderLocker(); };
   el('locktab-hats').classList.toggle('on', lockTab === 'hats'); el('lock-hats').style.display = lockTab === 'hats' ? 'block' : 'none';
   el('lhats').innerHTML = HATS.map(h => '<div class="ecard r-common' + (look.hat === h ? ' sel' : '') + '"><span class="ei">' + (HAT_ICON[h] || '\u{1F3A9}') + '</span><b>' + HAT_LABEL[h] + '</b><small>Hat</small><button class="opt hatwear" data-h="' + h + '">' + (look.hat === h ? 'Wearing' : 'Wear') + '</button></div>').join('');
@@ -4597,13 +4616,13 @@ function makeSurron() {                                // a Sur-Ron style electr
   g.fork = rear; g.visible = false; return g;
 }
 /* ---- character classes (pure data, exported to shared/classes.json). Every value is a multiplier on the Wobbler (1 = unchanged). Hitboxes and collision never change; `size` and `wob` are looks only.
-   hp: max health. spd: run speed. acc / air: ground / air steering. jump: jump push. kb: knockback taken (weight: lower = heavier). dmg: damage dealt. rate: weapon fire-rate. reload: reload time. ammo: ammo from pickups. wob: wobbliness. size: body scale ---- */
+   head / wide / skin: looks only (head scale, torso width, alien skin tint). hp: max health. spd: run speed. acc / air: ground / air steering. jump: jump push. kb: knockback taken (weight: lower = heavier). dmg: damage dealt. rate: weapon fire-rate. reload: reload time. ammo: ammo from pickups. wob: wobbliness. size: body scale ---- */
 const CLASSES = {
-  wobbler: { name: 'Wobbler', icon: '\u{1F642}', tag: 'Balanced. No surprises',        hp: 1,    spd: 1,    acc: 1,    air: 1,    jump: 1,    kb: 1,    dmg: 1,    rate: 1,    reload: 1,    ammo: 1,   wob: 1,    size: 1 },
-  bruiser: { name: 'Bruiser', icon: '\u{1F4AA}', tag: 'Big, slow, hard to shove',                 hp: 1.3,  spd: 0.88, acc: 0.85, air: 0.8,  jump: 0.92, kb: 0.65, dmg: 1.12, rate: 0.95, reload: 1,    ammo: 1,   wob: 0.7,  size: 1.12 },
-  kid:     { name: 'Scamp',   icon: '\u{1F9D2}', tag: 'Tiny and zippy, easy to launch', hp: 0.75, spd: 1.22, acc: 1.2,  air: 1.3,  jump: 1.12, kb: 1.3,  dmg: 0.92, rate: 1.05, reload: 1,    ammo: 1,   wob: 1.45, size: 0.86 },
-  elder:   { name: 'Gramps',  icon: '\u{1F474}', tag: 'Sharp steering, quick reloads',      hp: 1.05, spd: 0.95, acc: 1.55, air: 2.1,  jump: 1,    kb: 0.9,  dmg: 1,    rate: 1,    reload: 0.75, ammo: 1.1, wob: 0.55, size: 0.98 },
-  alien:   { name: 'Zorp',    icon: '\u{1F47D}', tag: 'Fragile, floaty, great tech',   hp: 0.7,  spd: 1.02, acc: 1,    air: 1.25, jump: 1.18, kb: 1.1,  dmg: 1,    rate: 1.2,  reload: 0.8,  ammo: 1.5, wob: 1.2,  size: 0.95 },
+  wobbler: { name: 'Wobbler', icon: '\u{1F642}', tag: 'Balanced. No surprises',        hp: 1,    spd: 1,    acc: 1,    air: 1,    jump: 1,    kb: 1,    dmg: 1,    rate: 1,    reload: 1,    ammo: 1,   wob: 1,    size: 1, head: 1,    wide: 1 },
+  bruiser: { name: 'Bruiser', icon: '\u{1F4AA}', tag: 'Big, slow, hard to shove',                 hp: 1.3,  spd: 0.88, acc: 0.85, air: 0.8,  jump: 0.92, kb: 0.65, dmg: 1.12, rate: 0.95, reload: 1,    ammo: 1,   wob: 0.7,  size: 1.12, head: 0.92, wide: 1.3 },
+  kid:     { name: 'Scamp',   icon: '\u{1F9D2}', tag: 'Tiny and zippy, easy to launch', hp: 0.75, spd: 1.22, acc: 1.2,  air: 1.3,  jump: 1.12, kb: 1.3,  dmg: 0.92, rate: 1.05, reload: 1,    ammo: 1,   wob: 1.45, size: 0.86, head: 1.4,  wide: 0.95 },
+  elder:   { name: 'Gramps',  icon: '\u{1F474}', tag: 'Sharp steering, quick reloads',      hp: 1.05, spd: 0.95, acc: 1.55, air: 2.1,  jump: 1,    kb: 0.9,  dmg: 1,    rate: 1,    reload: 0.75, ammo: 1.1, wob: 0.55, size: 0.98, head: 1,    wide: 1 },
+  alien:   { name: 'Zorp',    icon: '\u{1F47D}', tag: 'Fragile, floaty, great tech',   hp: 0.7,  spd: 1.02, acc: 1,    air: 1.25, jump: 1.18, kb: 1.1,  dmg: 1,    rate: 1.2,  reload: 0.8,  ammo: 1.5, wob: 1.2,  size: 0.95, head: 1.3,  wide: 0.82, skin: 0x7fe07a },
 };
 const CLASS_IDS = Object.keys(CLASSES);
 const BOT_CLASS_ORDER = ['bruiser', 'kid', 'alien', 'elder', 'wobbler'];
@@ -4695,7 +4714,8 @@ class Fighter {
     fighters.push(this);
   }
 
-  recolor(c, team) {                                  // costumes keep their own colour, except in team matches where every suit turns the team's red or blue
+  recolor(c, team) { this.recolor0(c, team); if (this.cls && this.cls.skin) for (const mt of this.accentMats) mt.color.setHex(this.cls.skin); }
+  recolor0(c, team) {                                  // costumes keep their own colour, except in team matches where every suit turns the team's red or blue
     this.lastC = c; this.lastTeam = !!team;
     const sk = SKINS[this.skinKey], main = sk ? (team || this.tintSkin ? c : sk.col) : c;
     for (const mt of this.colorMats) mt.color.setHex(main);
@@ -4736,6 +4756,8 @@ class Fighter {
     const th = sk.thin || 1;                          // Triple T has thin stick arms and legs
     for (const l of this.legs) { l.children[0].scale.set(th, 1, th); l.children[1].scale.set(Math.min(1, th * 1.2), 1, 1); }
     for (const a of [this.armL, this.arm]) if (a && a.children[0]) a.children[0].scale.set(th, 1, th);
+    for (const e of this.eyes || []) { const k = e.userData.k || 1; e.scale.set(k, (this.prem ? 1.45 : 1) * k, this.prem ? 0.7 : 1); }
+    for (const g of this.clsAcc || []) g.visible = !(sk.noHead && g.parent === this.neck);
   }
   setHat(name) {
     if (this.hat) this.neck.remove(this.hat);
@@ -5071,7 +5093,43 @@ class Fighter {
     if (cfg.lives) updateKoText();
   }
 
-  setClass(id) { id = clsOf(id); this.clsId = id; this.cls = CLASSES[id]; }
+  setClass(id) {
+    id = clsOf(id); if (id === this.clsId && this.clsBuilt) return;
+    this.clsId = id; this.cls = CLASSES[id]; this.clsBuilt = true; this.classLook();
+    if (this.lastC !== undefined) this.recolor(this.lastC, this.lastTeam);
+  }
+  classLook() {                                        // the class silhouette: proportions plus a few cheap accessories on top of whatever outfit/hat is worn. Looks only: hitboxes never change
+    const c = this.cls, id = this.clsId;
+    for (const g of this.clsAcc || []) { g.parent.remove(g); g.traverse(o => { if (o.isMesh) { o.geometry.dispose(); const i = this.mats.indexOf(o.material); if (i >= 0) this.mats.splice(i, 1); o.material.dispose(); } }); }
+    this.clsAcc = [];
+    const wide = c.wide || 1, deep = 1 + (wide - 1) * 0.5, arm = 0.52 * wide;
+    this.neck.scale.setScalar(c.head || 1);
+    this.torsoMesh.scale.set(wide, 1, deep); if (this.belt) { this.belt.scale.set(wide, 1, deep); this.buckle.position.z = 0.37 * deep; }
+    this.armL.position.x = arm; this.shoulder.position.x = -arm;
+    for (const e of this.eyes || []) e.userData.k = id === 'alien' ? 1.5 : 1;
+    const mk = (geo, col, parent, x, y, z) => { const mt = lm(col); mt.emissive.setHex(0xff6644); mt.emissiveIntensity = 0; this.mats.push(mt); const me = new THREE.Mesh(geo, mt); me.position.set(x, y, z); me.castShadow = true; parent.add(me); this.clsAcc.push(me); return me; };
+    if (id === 'bruiser') {
+      for (const sx of [-1, 1]) mk(new THREE.IcosahedronGeometry(0.2, 0), 0x3a3f4a, this.body, sx * (arm + 0.04), 0.84, 0);
+      const band = mk(new THREE.TorusGeometry(0.36, 0.04, 4, 8), 0xe3403b, this.neck, 0, 0.5, 0); band.rotation.x = Math.PI / 2;
+    } else if (id === 'kid') {
+      mk(new THREE.BoxGeometry(0.46, 0.5, 0.22), 0xe3566b, this.body, 0, 0.45, -0.38 * deep);
+      mk(new THREE.ConeGeometry(0.07, 0.24, 4), 0x6b4423, this.neck, 0.06, 0.74, 0.02).rotation.z = -0.35;
+    } else if (id === 'elder') {
+      for (const sx of [-1, 1]) mk(new THREE.IcosahedronGeometry(0.13, 0), 0xf4f4f4, this.neck, sx * 0.34, 0.26, -0.04);
+      mk(new THREE.IcosahedronGeometry(0.16, 0), 0xf4f4f4, this.neck, 0, 0.28, -0.3);
+      mk(new THREE.BoxGeometry(0.3, 0.07, 0.09), 0xf4f4f4, this.neck, 0, 0.2, 0.34);
+      for (const sx of [-0.13, 0.13]) { const r = mk(new THREE.TorusGeometry(0.095, 0.02, 4, 8), 0x2a2a2a, this.neck, sx, 0.36, 0.345); r.scale.y = 1.1; }
+      mk(new THREE.BoxGeometry(0.1, 0.02, 0.02), 0x2a2a2a, this.neck, 0, 0.38, 0.345);
+      const cane = mk(new THREE.CylinderGeometry(0.03, 0.03, 0.95, 5), 0x7a4f2a, this.armL, 0, -0.95, 0.12);
+      const hook = mk(new THREE.TorusGeometry(0.09, 0.03, 4, 6, Math.PI), 0x7a4f2a, this.armL, 0.09, -0.47, 0.12);
+    } else if (id === 'alien') {
+      for (const sx of [-1, 1]) {
+        const st = mk(new THREE.CylinderGeometry(0.018, 0.018, 0.34, 4), 0x5fb760, this.neck, sx * 0.14, 0.75, 0); st.rotation.z = -sx * 0.3;
+        mk(new THREE.IcosahedronGeometry(0.075, 0), 0xffe14a, this.neck, sx * 0.2, 0.93, 0);
+      }
+    }
+    this.skinFlags();
+  }
 
   placeAt(x, z, y = 0.01) {
     this.pos.set(x, y, z); this.vel.set(0, 0, 0);
@@ -8265,7 +8323,7 @@ function netShowLobby() {
   el('on-chips').innerHTML = [modeName, mapName, pubr ? 'Public' : 'Private'].filter((t, i, a) => t && a.indexOf(t) === i).map(t => '<i>' + escH(t) + '</i>').join('');
   const list = st && net.slots ? net.slots.map((r, i) => Object.assign({}, r, { id: i, bot: net.slotKind[i] === 'bot', empty: net.slotKind[i] === 'empty' })).filter(r => !r.empty) : net.roster;
   const cap = st && net.slots ? net.slots.length : net.optMax, nHum = humanCount();
-  const seat = r => '<div class="seat' + (r.id === net.id ? ' me' : '') + '"><i class="av" style="background:#' + (SKINS[r.skin] ? SKINS[r.skin].col : r.color).toString(16).padStart(6, '0') + '"></i><span class="t"><b>' + escH(r.name) + '</b><small>' + (r.id === 0 ? 'Host' : r.bot ? 'Bot' : 'Player') + (r.id === net.id ? ' · you' : '') + ' · ' + CLASSES[clsOf(r.cls)].icon + ' ' + CLASSES[clsOf(r.cls)].name + '</small></span></div>';
+  const seat = r => { const th = classThumb(clsOf(r.cls), SKINS[r.skin] ? r.skin : 'none', r.hat, r.color); return '<div class="seat' + (r.id === net.id ? ' me' : '') + '">' + (th ? '<img class="av avc" alt="" src="' + th + '">' : '<i class="av" style="background:#' + (SKINS[r.skin] ? SKINS[r.skin].col : r.color).toString(16).padStart(6, '0') + '"></i>') + '<span class="t"><b>' + escH(r.name) + '</b><small>' + (r.id === 0 ? 'Host' : r.bot ? 'Bot' : 'Player') + (r.id === net.id ? ' · you' : '') + ' · ' + CLASSES[clsOf(r.cls)].name + '</small></span></div>'; };
   let html = list.map(seat).join('');
   if (!st) for (let i = list.length; i < cap; i++) html += '<div class="seat empty"><i class="av"></i><span class="t"><b>' + (net.optBots ? 'Bot' : 'Open seat') + '</b><small>' + (net.optBots ? 'a player replaces it' : 'waiting for a player') + '</small></span></div>';
   el('on-roster').innerHTML = html || '<div class="seat empty"><span class="t"><b>Waiting…</b></span></div>';
@@ -10187,7 +10245,7 @@ function bootStep(i) {
   if (i % 6 === 0) el('boottip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
   setTimeout(() => { try { BOOT[i][1](); } catch (e) { /* a thumbnail failing should never stop the game */ } setTimeout(() => bootStep(i + 1), BOOT[i][2] || 0); }, 120);
 }
-globalThis.__wobbleTest = { CLASSES, CLASS_IDS, hpOf, player, look, cfg, myInfo, cleanInfo, renderLocker, showPage, setLockTab: t => { lockTab = t; } };      // read-only handles for tools/test-browser.js
+globalThis.__wobbleTest = { CLASSES, CLASS_IDS, hpOf, player, look, cfg, myInfo, cleanInfo, renderLocker, showPage, setLockTab: t => { lockTab = t; }, loadMap, setBotCfg, getBots: () => bots, getNet: () => net, netHost, netShowLobby, setUi, play: () => el('play').onclick(), applyLook, SKINS, camera, renderer, scene };      // read-only handles for tools/test-browser.js
 setUi('boot');
 setTimeout(() => bootStep(0), 100);
 </script>
