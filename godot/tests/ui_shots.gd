@@ -8,7 +8,7 @@ extends SceneTree
 ## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
 ## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
 ## teams (Team Deathmatch with the team scoreboard), locker-skin / locker-hat / locker-color / locker-emote /
-## locker-class (the Locker tabs, ui/locker.gd, with 1500 coins and a card picked), shop (the Shop, an outfit tried on),
+## locker-class (the Locker tabs, ui/locker.gd, with 1500 coins and a card picked; --pick KEY picks another card), shop (the Shop, an outfit tried on),
 ## shop-confirm (its Buy card), emote-wheel (a match with the emote wheel open while the player dances), results (the
 ## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on),
 ## account-guest / account-signed (the Account sheet from the title chip; signed in, saved to the cloud 2 min ago),
@@ -21,6 +21,7 @@ const FRAME := 1.0 / 60.0
 
 var shot := "title"
 var out := "shot.png"
+var pick_arg := ""             ## --pick KEY: the Locker card to pick (locker-* shots), instead of the default one
 var frames := 0
 var world: Node
 var i := 0
@@ -30,6 +31,7 @@ func _initialize() -> void:
 	for k in a.size():
 		if a[k] == "--shot" and k + 1 < a.size(): shot = a[k + 1]
 		elif a[k] == "--out" and k + 1 < a.size(): out = a[k + 1]
+		elif a[k] == "--pick" and k + 1 < a.size(): pick_arg = a[k + 1]
 	process_frame.connect(_start, CONNECT_ONE_SHOT)
 
 func _settings() -> Node:
@@ -48,6 +50,7 @@ func _start() -> void:
 		m.open_locker(shop, tab)
 		var pick: String = {"skin": "cowboy", "hat": "crown", "color": "", "emote": "griddy", "class": "bruiser"}.get(tab, "")
 		if shop: pick = "pirate"
+		if pick_arg != "": pick = pick_arg
 		if pick != "" and m.locker.cards.has(pick): m.locker._select_card(pick)
 		if shot == "shop-confirm": m.locker.act()
 		frames = 150

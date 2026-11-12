@@ -330,7 +330,7 @@ func _page(main: Control, p: int, safe: Rect2, tag: String) -> void:
 		var sr := sc.get_global_rect()
 		check(safe.grow(0.5).encloses(sr), "%s scroll %s inside the safe area" % [tag, sr])
 		check(g.get_combined_minimum_size().x <= sr.size.x + 0.5, "%s grid min width %.0f fits %.0f" % [tag, g.get_combined_minimum_size().x, sr.size.x])
-		var cards: Array = g.get_children()
+		var cards: Array = g.get_children().filter(func(c: Control) -> bool: return c.visible)   # (classes you do not own are hidden)
 		check(cards.size() > 0, "%s page %d has cards" % [tag, p])
 		var bottom := 0.0
 		for i in cards.size():
@@ -620,6 +620,7 @@ func _stage(main: Control) -> void:
 	for id: String in root.get_node("Content").classes:
 		check(w._class_art.has(id) and w._class_bs[id].find_children("Render", "TextureRect", true, false).size() == 1, "card %s has a render" % id)
 	check(w._class_art[w.cls].texture == w.stage.get_texture(), "the selected card shows the live stage")
+	check(w._class_bs["wobbler"].visible and not w._class_bs["tank"].visible and not w._class_bs["ghost"].visible, "only classes you own get a card (Locker sells / unlocks the rest)")
 	w.set_class("kid")
 	check(w.stage.current == "kid" and w._class_art["kid"].texture == w.stage.get_texture(), "picking a character swaps the stage model")
 	w.go(4)

@@ -119,6 +119,12 @@ static func mode_name(m: String) -> String:
 static func map_name(id: String) -> String:
 	return str(Content.get_map(id).get("name", id))
 
+## Classes you own (Save autoload; the Godot-only ones need coins or an unlock, ExtraClasses). Headless helpers without
+## the autoload treat every class as owned.
+static func owns_class(id: String) -> bool:
+	var sv: Node = (Engine.get_main_loop() as SceneTree).root.get_node_or_null("Save")
+	return sv == null or sv.owns_class(id)
+
 static func class_name_of(id: String) -> String:
 	return str(Content.get_class_data(id).get("name", id))
 
@@ -142,7 +148,7 @@ func load_settings() -> void:
 	diff = str(Settings.get_value("difficulty", "normal"))
 	if not DIFFS.has(diff): diff = "normal"
 	cls = str(Settings.get_value("class", "wobbler"))
-	if not Content.classes.has(cls): cls = Content.classes.keys()[0] if Content.classes.size() > 0 else "wobbler"
+	if not Content.classes.has(cls) or not owns_class(cls): cls = "wobbler"
 	_want_map = str(Settings.get_value("offline_map", "arena"))
 	map_id = nearest_map(_want_map, maps_for(mode_id))
 	note = ""
@@ -204,6 +210,7 @@ func save() -> void:
 
 func go(i: int) -> void:
 	page = clampi(i, 0, pages.size() - 1)
+	_sync_classes()
 	for k in pages.size():
 		(pages[k] as Control).visible = k == page
 	_refresh()
@@ -212,6 +219,12 @@ func go(i: int) -> void:
 		if page == P_CHAR: _bake()
 	_reveal_selected.call_deferred()
 	if Tier.is_pc(): next_b.grab_focus.call_deferred()
+
+## Only the classes you own get a card (the Locker sells / unlocks the rest); follows a class picked in the Locker.
+func _sync_classes() -> void:
+	var want := str(Settings.get_value("class", cls))
+	if want != cls and Content.classes.has(want) and owns_class(want): cls = want
+	for id: String in _class_bs: (_class_bs[id] as Control).visible = owns_class(id)
 
 func next() -> void:
 	if page >= pages.size() - 1:
@@ -287,7 +300,7 @@ func _ready() -> void:
 	go(page)
 
 func _bake() -> void:
-	var ids: Array = Content.classes.keys()
+	var ids: Array = Content.classes.keys().filter(owns_class)
 	stage.live(cls)
 	stage.bake(ids)
 	_show_class_art()

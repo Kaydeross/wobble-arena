@@ -1,7 +1,7 @@
 extends Node
 ## Game data (autoload `Content`). Reads res://data/*.json, which tools/sync-shared.js copies from shared/ (the source of truth).
 ## Do not edit res://data by hand: change public/index.html, then `npm run content`. Exception: res://data/extra/
-## (Godot-only modes, not copied from shared/; ModeRules.merge_extra adds them to `modes`).
+## (Godot-only modes and classes, not copied from shared/; ModeRules.merge_extra / ExtraClasses.merge add them).
 
 const DATA_DIR := "res://data/"
 
@@ -20,7 +20,7 @@ func _init() -> void:
 func reload() -> void:
 	weapons = load_json("weapons")
 	modes = ModeRules.merge_extra(load_json("modes"))   # + Godot-only modes (res://data/extra/modes.json)
-	classes = load_json("classes")
+	classes = ExtraClasses.merge(load_json("classes"))   # + Godot-only classes (res://data/extra/classes.json)
 	cosmetics = load_json("cosmetics")
 	difficulties = load_json("difficulties")
 	crate_rates = load_json("crate-rates")
