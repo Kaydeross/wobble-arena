@@ -751,9 +751,112 @@
 @media(max-width:900px){#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr);overflow:auto;padding:3vh 4vw 13vh}#menu.storefx .vcol{grid-column:1;grid-row:2;flex-direction:row;flex-wrap:wrap;justify-content:center;overflow:visible}#menu.storefx #shopcv,#menu.storefx #lockcv{max-width:200px;max-height:none}#menu.storefx .vmain{grid-column:1;grid-row:3;overflow:visible}#menu.storefx .eshelf{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}}
 @media(prefers-reduced-motion:reduce){#menu.storefx h2.step .ptitle>span,#menu.storefx .ecard.r-mythic::before{animation:none !important}}
 body{padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+/* ---- build 77: phones in landscape (short screens). Menus fit 852x393, respect the notch, and keep every tap target at 44px or more ---- */
+:root{--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px);--sal:env(safe-area-inset-left,0px);--sar:env(safe-area-inset-right,0px)}
+@media (max-height:520px){
+  #menu .card{width:100vw;max-width:none;height:100vh;height:100dvh;max-height:none;border-radius:0;box-sizing:border-box;padding:calc(4px + var(--sat)) max(12px,calc(var(--sar) + 4px)) calc(4px + var(--sab)) max(12px,calc(var(--sal) + 4px))}
+  #menu .mbody{min-height:0}
+  #menu .mhead{position:absolute;top:calc(6px + var(--sat));right:max(12px,calc(var(--sar) + 4px));z-index:4;margin:0}
+  #menu .mhead h1,#menu .mhead p{display:none}
+  #menu #coinchip{font-size:15px;padding:4px 12px}
+  #menu h2.step{font-size:20px;margin:2px 0 6px;min-height:36px;align-items:center}
+  #menu .mfoot{margin-top:4px;gap:8px}
+  #menu .mfoot #back,#menu .mfoot #next,#menu .mfoot #play{min-height:44px;padding:6px 14px;font-size:17px}
+  #menu .mfoot #back{flex:0 0 96px !important}
+  #menu .opt,#menu .tabs button,#menu .chip{min-height:44px}
+  #menu .mfoot small{display:none}
+  #maphero{height:120px}
+  #menu button.big{font-size:24px;padding:10px;margin:6px 0;border-radius:14px}
+  #logo,#bootlogo{font-size:min(9vw,15vh,76px)}#title p{font-size:15px;margin:2px 0 12px}#title small{margin-top:10px}#start{padding:10px 56px;min-height:56px}
+  #title #tt-auth button,#title .tlink{min-height:44px}
+  /* home */
+  #menu.homefx #pg-home{grid-template-columns:minmax(0,40%) minmax(0,1fr);grid-template-rows:1fr auto auto;column-gap:18px;row-gap:6px;height:100vh;height:100dvh;overflow:hidden;padding:calc(6px + var(--sat)) max(16px,calc(var(--sar) + 6px)) calc(6px + var(--sab)) max(16px,calc(var(--sal) + 6px))}
+  #menu.homefx #hleft{display:contents}
+  #menu.homefx #hlogo{grid-column:1;grid-row:1;align-self:end;font-size:clamp(34px,12vh,54px);margin:0 0 4px;text-align:left}
+  #menu.homefx #hsub,#menu.homefx #tip,#menu.homefx #hlive,#menu.homefx #hplate{display:none}
+  #menu.homefx #homemain{grid-column:2;grid-row:1/4;align-self:center;gap:8px;margin-top:44px}
+  #menu.homefx .hrow{gap:8px}
+  #menu.homefx .hbtn{min-height:48px;padding-top:5px;padding-bottom:5px;border-radius:14px}
+  #menu.homefx .hbtn.hero{padding:6px 16px 6px 12px;min-height:60px}
+  #menu.homefx .hbtn.hero b{font-size:clamp(22px,6vh,30px)}
+  #menu.homefx .hbtn.green{padding:5px 16px 5px 12px;min-height:52px}
+  #menu.homefx .hbtn.green b{font-size:clamp(19px,5vh,24px)}
+  #menu.homefx .hbtn svg{width:24px;height:24px}
+  #menu.homefx .hbtn.hero svg{width:34px;height:34px}
+  #menu.homefx .hbtn small{font-size:11px}
+  #menu.homefx .hrow .hbtn b{font-size:clamp(15px,4vh,18px)}
+  #menu.homefx #guestbar{position:static;grid-column:1;grid-row:2;max-width:none;margin:0;padding:3px 6px 3px 12px;gap:8px;flex-wrap:nowrap;font-size:13px;border-radius:99px;align-items:center}
+  #menu.homefx #guestbar span{display:none}
+  #menu.homefx #guestbar b{white-space:nowrap;margin-right:auto}
+  #menu.homefx #guestbar button{min-height:44px;padding:4px 12px;white-space:nowrap}
+  #menu.homefx #hright{display:flex;grid-column:1;grid-row:3;align-items:stretch;justify-content:flex-start;min-height:0}
+  #menu.homefx #hcards{display:flex;flex-direction:row;gap:8px;width:100%;margin:0}
+  #menu.homefx .hcard{padding:2px 6px;gap:6px;min-height:48px}
+  #menu.homefx .hcard .hci{font-size:20px}
+  #menu.homefx .hcard img{width:34px;height:28px}
+  #menu.homefx .hct b{font-size:9.5px;letter-spacing:0;white-space:nowrap}#menu.homefx #hc-lotd img{display:none}#menu.homefx .hct small{display:none}
+  #menu.homefx .hcard button{min-height:44px;padding:4px 8px;font-size:12px}
+  #menu.homefx #homesmall{display:flex;top:calc(6px + var(--sat));right:calc(max(12px,calc(var(--sar) + 4px)) + 128px);gap:6px}
+  #menu.homefx #homesmall .opt{padding:4px 12px;font-size:13px;min-height:44px}
+  #menu.homefx #hbuild{right:max(16px,calc(var(--sar) + 6px));bottom:calc(2px + var(--sab));font-size:10px}
+  #menu.homefx .mhead{top:calc(10px + var(--sat))}
+  /* shop and locker */
+  #menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{grid-template-columns:minmax(120px,27%) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:14px;overflow:hidden;height:100vh;height:100dvh;padding:calc(6px + var(--sat)) max(16px,calc(var(--sar) + 6px)) calc(6px + var(--sab)) max(16px,calc(var(--sal) + 6px))}
+  #menu.storefx h2.step{font-size:30px;margin:0 0 4px;min-height:0}
+  #menu.storefx .vcol{grid-column:1;grid-row:2;flex-direction:column;flex-wrap:nowrap;justify-content:flex-start;overflow:hidden;padding:0 0 56px;gap:4px}
+  #menu.storefx #shopcv,#menu.storefx #lockcv{max-width:100%;width:auto;max-height:calc(100dvh - 160px);max-height:calc(100vh - 160px);border-radius:16px}
+  #menu.storefx .vcol .help{font-size:11px;line-height:1.25}
+  #menu.storefx .vmain{grid-column:2;grid-row:2;overflow:hidden}
+  #menu.storefx .vmain>.row{margin:0 0 6px;padding-right:96px}
+  #menu.storefx .vmain>.row .opt{padding:6px 18px;font-size:15px;min-height:44px}
+  #menu.storefx .eshelf{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;padding-bottom:10px}
+  #menu.storefx .ecard{padding:14px 8px 8px}
+  #menu.storefx .ecard .ei{font-size:36px;margin:12px 0 2px}
+  #menu.storefx .ecard button{min-height:44px;padding:6px 4px}
+  #menu.storefx .mfoot{left:max(16px,calc(var(--sal) + 6px));bottom:calc(6px + var(--sab))}
+  #menu.storefx .mfoot #back{padding:6px 20px;font-size:16px;min-height:44px;flex:0 0 auto !important}
+  #menu.storefx .mhead{top:calc(10px + var(--sat))}
+}
   .cbar{display:flex;align-items:center;gap:6px;font-size:10px;margin:2px 0;width:100%}.cbar span{width:46px;text-align:left;opacity:.85}.cbar i{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden}.cbar u{display:block;height:100%;background:#7fe8ff;border-radius:3px}
   .cimg{display:block;width:100%;max-width:120px;aspect-ratio:4/5;object-fit:cover;object-position:50% 20%;border-radius:12px;margin:0 auto 4px}.seat .av.avc{width:46px;height:46px;object-fit:cover;object-position:50% 25%;border-radius:12px}
   @media(max-height:500px){#menu.storefx #pg-locker.on #lockcv{max-height:30vh;width:auto;margin:0 auto}#menu.storefx #pg-shop.on,#menu.storefx #pg-locker.on{padding-bottom:calc(13vh + 56px)}#menu.storefx .mfoot{left:0;right:0;bottom:0;padding:8px 5vw 10px;background:linear-gradient(to top,rgba(8,20,28,.97) 72%,rgba(8,20,28,0))}#menu.storefx .mfoot #back{padding:9px 24px;font-size:16px}}
+/* ---- build 77: touch controls overlay and the small-screen HUD ---- */
+#touch{position:fixed;inset:0;z-index:30;display:none;pointer-events:none;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;--to:.85;--ts:1}
+body.tplay #touch{display:block}
+#touch *{touch-action:none;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+#tz-move,#tz-look{position:absolute;bottom:0;pointer-events:auto}
+#tz-move{left:0;width:45%;top:14%}#tz-look{left:45%;right:0;top:0}
+#touch.lefty #tz-move{left:auto;right:0}#touch.lefty #tz-look{left:0;right:45%}
+#tstick{position:absolute;display:none;width:calc(108px * var(--ts));height:calc(108px * var(--ts));margin:calc(-54px * var(--ts)) 0 0 calc(-54px * var(--ts));border-radius:50%;background:rgba(16,43,53,.35);border:2px solid rgba(255,255,255,.5);opacity:var(--to);pointer-events:none}
+#tstick b{position:absolute;left:50%;top:50%;width:calc(46px * var(--ts));height:calc(46px * var(--ts));margin:calc(-23px * var(--ts)) 0 0 calc(-23px * var(--ts));border-radius:50%;background:rgba(255,255,255,.75);box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.tb{position:absolute;pointer-events:auto;border-radius:50%;border:2px solid rgba(255,255,255,.6);background:rgba(16,43,53,.5);color:#fff;font-weight:900;font-size:10px;line-height:1;font-family:inherit;letter-spacing:.02em;padding:0;opacity:var(--to);box-shadow:0 3px 10px rgba(0,0,0,.35)}
+.tb span{pointer-events:none}
+#tb-fire{background:rgba(255,110,70,.62);font-size:17px}#tb-jump{background:rgba(255,207,90,.5);font-size:13px;color:#102b35}#tb-aim,#tb-swap,#tb-dash{font-size:11px}
+#tb-dash{display:none;background:rgba(126,232,255,.5);color:#102b35}
+.tb.down{transform:scale(.9);background:rgba(255,255,255,.65);color:#102b35}
+#tb-pause{position:absolute;pointer-events:auto;top:calc(6px + var(--sat));right:calc(8px + var(--sar));width:44px;height:44px;border-radius:12px;border:2px solid rgba(255,255,255,.5);background:rgba(16,43,53,.55);color:#fff;font-weight:900;font-size:16px;line-height:1;font-family:inherit;letter-spacing:.1em;padding:0 0 0 .1em;opacity:var(--to)}
+#tpill{display:none}
+body.ptouch .wslot .k,body.ptouch #titlesmall,body.ptouch #ctrl-ref{display:none}
+body.tplay #ko,body.tplay #board{display:none !important}
+body.tplay #tpill{display:block;background:rgba(16,43,53,.72);color:#fff;font-weight:700;font-size:13px;line-height:1;font-family:inherit;padding:7px 14px;border-radius:99px;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+body.tplay #tpill b{color:#ffcf5a}
+body.tplay #lcol{left:calc(10px + var(--sal));top:calc(8px + var(--sat))}
+body.tplay #rcol{right:calc(60px + var(--sar));top:calc(8px + var(--sat));max-width:180px}
+body.tplay #radar{width:84px;height:84px}
+body.tplay #feed{font-size:11px}
+body.tplay #hp{left:calc(10px + var(--sal));bottom:calc(8px + var(--sab));width:132px;height:16px}
+body.tplay #hptxt{font-size:11px}
+body.tplay.tlefty #hp{left:auto;right:calc(10px + var(--sar))}
+body.tplay #weapon{left:50%;right:auto;transform:translateX(-50%);bottom:calc(6px + var(--sab));gap:4px;pointer-events:auto}
+body.tplay .wslot{width:58px;height:46px}
+body.tplay .wslot .nm{font-size:7px;letter-spacing:0;overflow:visible}
+body.tplay .wslot .am{font-size:10px}body.tplay .wslot.empty::after{font-size:8px;top:19px}
+body.tplay .wslot.on{transform:translateY(-4px) scale(1.06)}
+body.tplay #dashbar{left:50%;transform:translateX(-50%);bottom:calc(60px + var(--sab))}
+body.tplay #modehud{top:calc(8px + var(--sat));font-size:16px}
+body.tplay #pilhud{top:calc(6px + var(--sat))}
+body.tplay #toast{top:48px;font-size:15px}
+body.tplay #chat{display:none}
 </style>
 </head>
 <body>
@@ -1417,8 +1520,9 @@ const SFX = {
 function sfx(name) { try { if (SFX[name]) SFX[name](); } catch (e) { /* ignore */ } }
 
 /* ============================== renderer / scene ============================== */
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const IS_TOUCH_DEV = (() => { try { return matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(any-pointer:fine)').matches); } catch (e) { return false; } })();      // phones and tablets get the touch controls and the lighter graphics tier
+const renderer = new THREE.WebGLRenderer({ antialias: !IS_TOUCH_DEV });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, IS_TOUCH_DEV ? 1.5 : 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
@@ -1673,9 +1777,9 @@ MAPS.squeeze = {
 MAPS.tower = {
   name: 'Tiered Tower', cat: 'obstacle', tags: ['Height', 'Stairs', 'Tiers'], blurb: 'A wide stepped tower with a fighting floor on every level. Stairs on the sides, a ladder to the summit and bounce pads at the corners. King of the hill, no climbing puzzle.',
   sky: 0xc9e0ff, voidColor: 0xa4c4ee, hills: [0xa8c0f0, 0x93aee6, 0xb9cff6, 0x7f9bd8], shadow: 42, orbit: 56, orbitH: 40,
-  spawns: [[17, 17], [-17, -17], [17, -17], [-17, 17], [0, 10, 1.6], [0, -10, 1.6]],
-  player: [17, 17], bots: [[-17, -17], [17, -17], [-17, 17], [0, 10, 1.6], [0, -10, 1.6]], wander: 17,
-  drops: [[19, 0], [-19, 0], [0, 19], [0, -19], [11, 11, 1.6], [-11, -11, 1.6], [11, -11, 1.6], [-11, 11, 1.6], [0, 0, 4.8]],
+  spawns: [[17, 17], [-17, -17], [17, -17], [-17, 17], [0, 12.5, 1.6], [0, -12.5, 1.6]],
+  player: [17, 17], bots: [[-17, -17], [17, -17], [-17, 17], [0, 12.5, 1.6], [0, -12.5, 1.6]], wander: 17,
+  drops: [[19, 0], [-19, 0], [0, 19], [0, -19], [12.5, 12.5, 1.6], [-12.5, -12.5, 1.6], [12.5, -12.5, 1.6], [-12.5, 12.5, 1.6], [0, 0, 5.6]],
   build() {
     addBox(0, 0, 46, 46, 2, 0xdfe9f7, -2); addFloorPad(42, 0xf1f6ff);
     addBox(0, 0, 28, 28, 1.6, 0xf7e2b0);                                                                      // tier one (top 1.6)
@@ -2749,7 +2853,7 @@ MAPS.moonbase = {
   env: { stars: true, moonColor: 0x6fa8ff, moonSize: 1.7, speck: 'star', peaks: false }, hemi: 0.7, sunI: 0.95,
   sky: 0x0b1030, skyTop: 0x02030f, voidColor: 0x14182e, hills: [0x3a3f58, 0x2f3450, 0x454b66, 0x262b45], shadow: 40, orbit: 44, orbitH: 26,
   spawns: [[-20, 12], [20, -12], [-20, -12], [20, 12], [0, 17], [0, -17]], player: [0, 17], bots: [[-20, 12], [20, -12], [-20, -12], [20, 12], [0, -17]], wander: 17,
-  drops: [[-18, 0], [18, 0], [0, -9], [0, 9], [-12, -18], [12, 18], [-12, 18], [12, -18], [0, 0, 1.2]],
+  drops: [[-18, 0], [18, 0], [0, -9], [0, 9], [-12, -18], [12, 18], [-12, 18], [12, -18], [0, 0, 1.5]],
   build() {
     addBox(0, 0, 44, 44, 2, 0xa7abb8, -2); addFloorPad(40, 0xbfc3cf);
     for (const [x, z, r] of [[-12, -4, 4], [13, 6, 5], [4, -15, 3.5], [-7, 14, 3]]) { flatRing(r, r + 0.7, 0x7f8494, 18); flatRing(r - 1.2, r - 0.4, 0x939aaa, 18, 0.025); for (const o of [flatRing]) { /* crater rim only */ } }
@@ -2764,7 +2868,7 @@ MAPS.volcano = {
   name: 'Volcano Rim', cat: 'arena', tags: ['Lava', 'Islands', 'Bridges'], blurb: 'Four rock islands round a burning crater, joined by narrow bridges. Fall in the lava and you are out. Knock people in!',
   env: { speck: 'ember', stars: false, peaks: true }, hemi: 0.8, sunI: 1.1,
   sky: 0xe8643a, skyTop: 0x3a1020, voidColor: 0xff5a1f, hills: [0x4a2a2a, 0x3c2224, 0x5a3430, 0x2e1a1e], shadow: 42, orbit: 46, orbitH: 28, fog: [60, 190],
-  spawns: [[0, -5], [-20, 0], [20, 0], [0, 20], [0, -20], [-20, -4]], player: [0, 5], bots: [[-20, 0], [20, 0], [0, 20], [0, -20], [-20, 4]], wander: 17,
+  spawns: [[0, -5], [-20, 0], [20, 0], [0, 20], [0, -20], [5, 3]], player: [0, 5], bots: [[-20, 0], [20, 0], [0, 20], [0, -20], [-20, 4]], wander: 17,
   drops: [[-20, 3], [20, -3], [3, 20], [-3, -20], [0, -4], [0, 4], [-4, 0], [4, 0]],
   build() {
     addBox(0, 0, 14, 14, 2, 0x6b4a40, -2); addFloorPad(12, 0x8a6256);
@@ -2781,7 +2885,7 @@ MAPS.candy = {
   env: { speck: 'confetti', peaks: true }, sunColor: 0xfff0f6,
   sky: 0xffd6ec, skyTop: 0x9fd8ff, voidColor: 0xffb6dc, hills: [0xffa8d0, 0xff93c2, 0xc9a3ff, 0x9fe6d0], shadow: 38, orbit: 42, orbitH: 24,
   spawns: [[-15, 15], [15, -15], [-15, -15], [15, 15], [0, 14], [0, -14]], player: [0, 14], bots: [[-15, 15], [15, -15], [-15, -15], [15, 15], [0, -14]], wander: 16,
-  drops: [[-18, 3], [18, -3], [0, -10], [0, 10], [-9, -17], [9, 17], [-9, 17], [9, -17], [0, 0, 2]],
+  drops: [[-18, 3], [18, -3], [0, -10], [0, 10], [-9, -17], [9, 17], [-9, 17], [9, -17], [0, 0, 3]],
   build() {
     addBox(0, 0, 42, 42, 2, 0xffc2de, -2); addFloorPad(38, 0xffe0ee);
     addBox(0, 0, 13, 13, 1, 0xfff0d8); addBox(0, 0, 9, 9, 1, 0xff9ec8, 1); addBox(0, 0, 5, 5, 1, 0xfff6ee, 2); ball(0, 3.5, 0, 0.7, 0xff3a5a);   // the cake
@@ -2828,7 +2932,7 @@ MAPS.beach = {
   env: { speck: 'petal', speckColor: 0xffe0a8, sunColor: 0xffa860, peaks: true },
   sky: 0xffb48a, skyTop: 0x6a6ac8, voidColor: 0x2fb6c8, hills: [0xd9809a, 0xc46f8f, 0xe8987f, 0xa85a85], shadow: 40, orbit: 44, orbitH: 26,
   spawns: [[-14, 14], [14, -14], [-14, -14], [14, 14], [0, 16], [0, -16]], player: [0, 16], bots: [[-14, 14], [14, -14], [-14, -14], [14, 14], [0, -16]], wander: 16,
-  drops: [[-16, 0], [16, 0], [0, -9], [0, 9], [-8, -16], [8, 16], [-8, 16], [8, -16], [0, 0, 2.4]],
+  drops: [[-16, 0], [16, 0], [0, -9], [0, 9], [-8, -16], [8, 16], [-8, 16], [8, -16], [0, 0, 2.9]],
   build() {
     addBox(0, 0, 40, 40, 2, 0xf0d596, -2); addFloorPad(36, 0xf8e4b0); addBox(0, -20.4, 30, 1.2, 0.04, 0xfff6e0, 0); addBox(-20.4, 0, 1.2, 30, 0.04, 0xfff6e0, 0);
     addBox(0, 0, 9, 9, 1, 0xe2c284); addBox(0, 0, 5, 5, 1, 0xd9b574, 1); addBox(0, 0, 2, 2, 0.9, 0xcfa564, 2); ball(0, 3.4, 0, 0.45, 0xff5a5a);   // sandcastle
@@ -2841,8 +2945,8 @@ MAPS.dojo = {
   name: 'Moonlit Dojo', cat: 'obstacle', tags: ['Ninja', 'Night', 'Cover'], only: 'ninja', blurb: 'Built for ninjas. A raised dojo with a pagoda roof, stairs on every side, low garden walls and corner pavilions to dash between and hide behind. Lanterns and cherry blossom in the moonlight.',
   env: { stars: true, moonColor: 0xf6f0c8, moonSize: 1.5, speck: 'petal', speckColor: 0xffb6d0, peaks: true, aurora: [0xff8ec8, 0xa890ff] }, hemi: 0.72, sunI: 0.85,
   sky: 0x3a2a5e, skyTop: 0x120a2c, voidColor: 0x1d1236, hills: [0x2c2250, 0x382b62, 0x241b44, 0x45367a], shadow: 44, orbit: 50, orbitH: 30,
-  spawns: [[-18, 18], [18, -18], [-18, -18], [18, 18], [0, 19], [0, -19]], player: [0, 19], bots: [[-18, 18], [18, -18], [-18, -18], [18, 18], [0, -19]], wander: 18,
-  drops: [[-20, 0], [20, 0], [0, 12], [0, -12], [-11, -16], [11, 16], [-11, 16], [11, -16], [0, 0, 1.8]],
+  spawns: [[-18, 18], [18, -18], [-18, -18], [18, 18], [0, 19], [0, -19]], player: [0, 19], bots: [[-18, 18, 1.2], [18, -18, 1.2], [-18, -18, 1.2], [18, 18, 1.2], [0, -19]], wander: 18,
+  drops: [[-20, 0], [20, 0], [0, 12], [0, -12], [-7, -16], [7, 16], [-7, 16], [7, -16], [0, 0, 2]],
   build() {
     addBox(0, 0, 48, 48, 2, 0x4a3f5e, -2); addFloorPad(44, 0x8a7a5e);                                          // tatami floor
     for (let i = -4; i <= 4; i++) addBox(i * 4.4, 0, 0.1, 40, 0.04, 0x6c5c44, 0);                              // mat lines
@@ -2911,7 +3015,7 @@ MAPS.brawlpit = {
   sky: 0x3a2a3e, skyTop: 0x120c20, voidColor: 0x1c1124, hills: [0x2e2038, 0x3a2a46, 0x261a30, 0x48345a], shadow: 40, orbit: 46, orbitH: 28,
   spawns: [[-8, -18], [8, 18], [-18, 8], [18, -8], [0, -19], [0, 19], [-19, -4], [19, 4]], player: [0, 19],
   bots: [[-8, -18], [8, 18], [-18, 8], [18, -8], [0, -19], [-19, -4], [19, 4]], wander: 19,
-  drops: [[-12, 0], [12, 0], [0, -13], [0, 13], [-6, -15], [6, 15], [-15, 10], [15, -10], [0, 0, 1.6], [-17.5, -17.5, 2.0], [17.5, 17.5, 2.0]],
+  drops: [[-12, 0], [12, 0], [0, -13], [0, 13], [-6, -15], [6, 15], [-15, 10], [15, -10], [0, 0, 1.6], [-17.5, -17.5, 2.85], [17.5, 17.5, 2.85]],
   build() {
     addBox(0, 0, 46, 46, 2, 0x5a4a44, -2); addFloorPad(42, 0x8a6a50);                                               // a scuffed fight-night floor
     addBox(0, 0, 13, 13, 1.4, 0x2f4a96); addBox(0, 0, 11.6, 11.6, 0.15, 0xe9e2d0, 1.4); addBox(0, 0, 3.2, 3.2, 0.04, 0xc0392b, 1.55);   // the boxing ring: apron, canvas, a red mark in the middle
@@ -3183,7 +3287,69 @@ MAPS.farm = {
     addBouncePad(-13, -3);
   },
 };
-const NEW_ARENAS = ['moonbase', 'volcano', 'candy', 'pirate', 'haunted', 'beach', 'farm'];
+/* ============================== arena pass: four phone-sized rounds (small, fast, ring-outs) ============================== */
+MAPS.crossroads = {
+  name: 'Neon Crossroads', cat: 'arena', tags: ['Night', 'Ring-out', 'Chokepoints'], blurb: 'A plus-shaped street high above the city. Four arms, a raised hub and nothing but sky in the corners, so every shove can be the last. Bounce pads fling you back toward the middle.',
+  env: { stars: true, speck: 'star', moonColor: 0xff7bd5, moonSize: 1.3, aurora: [0x4fe0ff, 0xff7bd5] }, hemi: 0.75, sunI: 0.9,
+  sky: 0x1c1648, skyTop: 0x080520, voidColor: 0x120c30, hills: [0x2a2260, 0x342a70, 0x221a50, 0x40347e], shadow: 36, orbit: 40, orbitH: 24,
+  spawns: [[-18, -2.5], [18, 2.5], [2.5, -18], [-2.5, 18], [-6, 6], [6, -6]], player: [-2.5, 18], bots: [[-18, -2.5], [18, 2.5], [2.5, -18], [-6, 6], [6, -6]], wander: 12,
+  drops: [[-19, 0], [19, 0], [0, -19], [0, 19], [-9, 4.5], [9, -4.5], [4.5, 9], [-4.5, -9], [0, 0, 1.6]],
+  build() {
+    addBox(0, 0, 44, 14, 2, 0x3a3470, -2); addBox(0, 0, 14, 44, 2, 0x3a3470, -2);               // two bars crossing: the corners are open sky
+    addBox(0, 0, 5, 5, 1.4, 0x5a4ea8); addBox(0, 0, 2, 2, 0.2, 0xff7bd5, 1.4);                  // the hub (top 1.6)
+    for (const [x, z] of [[-12, -4.5], [12, 4.5], [4.5, -12], [-4.5, 12], [12, -4.5], [-12, 4.5]]) addBox(x, z, 2, 2, 1.1, 0x7a6cd0);   // crates to duck behind
+    for (const [x, z] of [[-14.5, 0], [14.5, 0], [0, -14.5], [0, 14.5]]) addBouncePad(x, z, 15);
+    for (const [x, z, w, d] of [[-21.7, 0, 0.5, 14], [21.7, 0, 0.5, 14], [0, -21.7, 14, 0.5], [0, 21.7, 14, 0.5]]) addBox(x, z, w, d, 0.5, 0xff7bd5);   // glowing end curbs
+  },
+};
+MAPS.donut = {
+  name: 'Donut Drop', cat: 'arena', tags: ['Ring', 'Bounce', 'Sweet'], blurb: 'A giant frosted donut with a hole in the middle. Run the ring, or take a bounce pad over the hole to the sprinkle island. Fall through the hole and you are out.',
+  env: { speck: 'confetti', peaks: true }, sunColor: 0xfff0f6,
+  sky: 0xffe0ee, skyTop: 0x9fd8ff, voidColor: 0x5a2f3e, hills: [0xffa8d0, 0xff93c2, 0xc9a3ff, 0x9fe6d0], shadow: 38, orbit: 42, orbitH: 24,
+  spawns: [[0, -16], [0, 16], [-16, 0], [16, 0], [-13, -13], [13, 13]], player: [0, 16], bots: [[0, -16], [-16, 0], [16, 0], [-13, -13], [13, 13]], wander: 14,
+  drops: [[0, -17], [0, 17], [-17, 0], [17, 0], [-12, -12], [12, 12], [-12, 12], [12, -12], [0, 0, 1.3]],
+  build() {
+    const fr = 0xff8fc0;
+    addBox(0, -14, 38, 10, 2, fr, -2); addBox(0, 14, 38, 10, 2, fr, -2); addBox(-14, 0, 10, 18, 2, fr, -2); addBox(14, 0, 10, 18, 2, fr, -2);   // the ring
+    addBox(0, 0, 7, 7, 3.2, 0xf6d9a8, -2); addBox(0, 0, 4, 4, 0.1, 0xffffff, 1.2);                // the island in the hole (top 1.2, a white pad on top 1.3)
+    for (const sz of [-1, 1]) addStairs(0, sz * 9, 0, -sz, 4, 0.3, 1.4, 3, 0xffb0d0, 0xff8fc0);   // stairs up from north and south
+    for (const sx of [-1, 1]) addBouncePad(sx * 10.4, 0, 16);                                       // bounce pads over the hole from east and west
+    for (const [x, z] of [[-16, -16], [16, 16], [-16, 16], [16, -16]]) addBox(x, z, 2.4, 2.4, 1.2, 0x7ad7ff);   // gumdrops
+    const cols = [0xffffff, 0xffe35a, 0x7ad7ff, 0xb48cff, 0x6af0b0];
+    for (let i = 0; i < 40; i++) { const a = i * 2.4, r = 10 + (i * 7 % 9), x = Math.cos(a) * r, z = Math.sin(a) * r; if (Math.abs(x) < 8 && Math.abs(z) < 8) continue; const m = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.14, 0.2), lm(cols[i % 5])); m.position.set(x, 0.07, z); m.rotation.y = i; addDecor(m); }   // sprinkles
+  },
+};
+MAPS.chasm = {
+  name: 'Chasm Bridge', cat: 'arena', tags: ['Long', 'Bridges', 'Ring-out'], blurb: 'Two cliffs, two narrow bridges and a small island in the chasm between them. A long, thin level that fits a phone screen. Hold the bridges, or bounce across.',
+  env: { speck: 'ember', peaks: true }, hemi: 0.8, sunI: 1.1,
+  sky: 0xf2b27a, skyTop: 0x6a3a7a, voidColor: 0x7a3a3a, hills: [0xa8604a, 0x93523f, 0xc27a58, 0x7d4636], shadow: 42, orbit: 46, orbitH: 26,
+  spawns: [[-22, -6], [22, 6], [-22, 6], [22, -6], [-13, 0], [13, 0]], player: [-22, 6], bots: [[22, 6], [-22, -6], [22, -6], [-13, 0], [13, 0]], wander: 11,
+  drops: [[-20, 0], [20, 0], [-14, -8], [14, 8], [-14, 8], [14, -8], [0, -6.5], [0, 6.5], [0, 0, 1.2]],
+  build() {
+    addBox(-17, 0, 20, 22, 2, 0xc89a6a, -2); addBox(17, 0, 20, 22, 2, 0xc89a6a, -2);          // the two cliffs
+    addBox(0, -6.5, 14, 3, 2, 0x8a6240, -2); addBox(0, 6.5, 14, 3, 2, 0x8a6240, -2);           // the two bridges
+    addBox(0, 0, 6, 6, 3, 0xe0b27a, -2); addBox(0, 0, 2.4, 2.4, 0.2, 0xe3566b, 1);            // the island (top 1, a red mark on top 1.2)
+    for (const sx of [-1, 1]) addBouncePad(sx * 9, 0, 16);                                     // pads fling you across to the island
+    for (const [x, z] of [[-17, -5], [17, 5], [-17, 5], [17, -5]]) addBox(x, z, 2.6, 2.6, 1.2, 0x9a6a48);
+    for (const sx of [-1, 1]) addBox(sx * 26.7, 0, 0.6, 22, 1.2, 0x6a4a34);                    // back walls
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) { addBox(sx * 3.6, sz * 8.2, 0.3, 0.3, 1.2, 0x5a3a24); addBox(sx * 3.6, sz * 4.8, 0.3, 0.3, 1.2, 0x5a3a24); }   // bridge posts
+  },
+};
+MAPS.summit = {
+  name: 'Summit Rush', cat: 'arena', tags: ['Climb', 'Terraces', 'Long'], blurb: 'A long ridge in seven steps, low at both ends and high in the middle. Fight uphill, shove people downhill, hold the peak. Bounce pads at the foot hop you up the first step.',
+  env: { speck: 'petal', speckColor: 0xffe0a8, peaks: true }, sunColor: 0xfff0b0,
+  sky: 0xbfe6f8, skyTop: 0x4fa0e0, voidColor: 0x7fb8d9, hills: [0x7fb8d9, 0x6aa6cb, 0x93c8e3, 0x5a95bd], shadow: 38, orbit: 42, orbitH: 24,
+  spawns: [[-18, 5], [18, -5], [-12, -5, 1.2], [12, 5, 1.2], [-6, 5, 2.4], [6, -5, 2.4]], player: [-18, 5], bots: [[18, -5], [-12, -5, 1.2], [12, 5, 1.2], [-6, 5, 2.4], [6, -5, 2.4]], wander: 12,
+  drops: [[-19, -5], [19, 5], [-12, 5, 1.2], [12, -5, 1.2], [-6, -5, 2.4], [6, 5, 2.4], [0, 4, 3.6], [0, -4, 3.6], [0, 0, 4]],
+  build() {
+    const H = [0, 1.2, 2.4, 3.6, 2.4, 1.2, 0], C = [0xe8d9a8, 0xd9c98a, 0xc9b86e, 0xb9a85a, 0xc9b86e, 0xd9c98a, 0xe8d9a8];
+    for (let i = 0; i < 7; i++) { const x = (i - 3) * 6; if (H[i] === 0) addBox(x, 0, 6, 22, 2, C[i], -2); else addBox(x, 0, 6, 22, H[i], C[i]); }
+    addBox(0, 0, 2.4, 2.4, 0.4, 0xe3566b, 3.6);                                                // the summit marker (top 4)
+    for (const sx of [-1, 1]) addBouncePad(sx * 18, 0, 15);
+    for (const [x, z] of [[-9, -6], [9, 6], [-3, 6], [3, -6]]) addBox(x, z, 1.8, 1.8, 0.9, 0x8a7a4a, H[Math.round(x / 6) + 3]);   // rocks on the steps
+  },
+};
+const NEW_ARENAS = ['moonbase', 'volcano', 'candy', 'pirate', 'haunted', 'beach', 'farm', 'crossroads', 'donut', 'chasm', 'summit'];
 const BIG_ARENAS = ['arenaxl', 'rinkxl', 'colosseum', 'fortress'];
 MODES.t3.maps = MODES.t4.maps = BIG_ARENAS;                       // 3v3 and 4v4 only play on the big arenas
 MODES.duel.maps = MODES.t2.maps = TEAM_MAPS.concat(['colosseum', 'fortress'], NEW_ARENAS);
@@ -3194,7 +3360,7 @@ MODES.explosive.maps = ['blast', 'arena', 'park', 'ice'].concat(BIG_ARENAS);   /
 for (const m in MODES) if (m !== 'explosive') { const old = MODES[m].allow; MODES[m].allow = k => k !== 'meteor' && old(k); }   // the Meteor Launcher belongs to Explosive only
 MODES.melee.maps = MODES.melee.maps.filter(k => k !== 'cloud').concat(BIG_ARENAS); MODES.guns.maps = MODES.guns.maps.concat(BIG_ARENAS);
 MODES.ninja.maps = ['dojo', 'arenaxl', 'fortress', 'temple', 'rooftops', 'tower'];      // Ninja: its own map first, then the Grand Arena and Fortress Yard, then Temple Ruins, then the rest
-const MAP_ORDER = ['test', 'practice', 'dojo', 'blast', 'gunrange', 'brawlpit', 'craterdome', 'capsule', 'playroom', 'arena', 'park', 'ice', 'arenaxl', 'rinkxl', 'colosseum', 'fortress', 'temple', 'farm', 'rooftops', 'tower', 'shrink', 'squeeze', 'moonbase', 'candy', 'haunted', 'beach', 'volcano', 'pirate', 'pillars', 'pillars2', 'custom'];   // big open arenas first, then rooms and sky levels, the odd one-offs last
+const MAP_ORDER = ['test', 'practice', 'dojo', 'blast', 'gunrange', 'brawlpit', 'craterdome', 'capsule', 'playroom', 'arena', 'park', 'ice', 'arenaxl', 'rinkxl', 'colosseum', 'fortress', 'temple', 'farm', 'rooftops', 'tower', 'shrink', 'squeeze', 'crossroads', 'donut', 'chasm', 'summit', 'moonbase', 'candy', 'haunted', 'beach', 'volcano', 'pirate', 'pillars', 'pillars2', 'custom'];   // big open arenas first, then rooms and sky levels, the odd one-offs last
 { const old = Object.assign({}, MAPS); for (const k of Object.keys(MAPS)) delete MAPS[k]; for (const k of MAP_ORDER) if (old[k]) MAPS[k] = old[k]; for (const k in old) if (!MAPS[k]) MAPS[k] = old[k]; }
 for (const m in MODES) if (MODES[m].maps) MODES[m].maps = MODES[m].maps.filter(k => MAPS[k]).sort((a, b) => MAP_ORDER.indexOf(a) - MAP_ORDER.indexOf(b));
 MODES.classic.icon = 'Everything drops'; MODES.sandbox.icon = 'Your level';
@@ -7131,6 +7297,7 @@ function finishMatch() {
   endT = 0;
   mouse.l = mouse.r = false;
   try { if (document.exitPointerLock) document.exitPointerLock(); } catch (e) { /* ignore */ }
+  touchLeave(false);
   setUi('lobby'); showPage('result');
   el('fade').style.opacity = '0';
 }
@@ -7513,7 +7680,7 @@ const aimOn = () => mouse.r || scopeHeld || scopeToggled;           // the aim b
 let locked = false;
 const cam = { yaw: Math.PI, pitch: -0.2, aim: 0, shake: 0 };
 
-el('play').onclick = () => { initAudio(); if (matchOver) loadMap(currentMap); if (canvas.requestPointerLock) canvas.requestPointerLock(); };
+el('play').onclick = () => { initAudio(); if (matchOver) loadMap(currentMap); if (touchWanted()) touchEnter(); else if (canvas.requestPointerLock) canvas.requestPointerLock(); };
 function buildMapCards() {
   el('maps').innerHTML = Object.keys(MAPS).map(id => {
     const m = MAPS[id];
@@ -8213,8 +8380,8 @@ function load() {
   } catch (e) { /* ignore */ }
 }
 function applyQuality() {
-  const q = settings.quality, dpr = window.devicePixelRatio || 1, sh = q !== 'low', ms = q === 'high' ? 2048 : 1024;
-  basePR = q === 'low' ? 1 : q === 'medium' ? Math.min(dpr, 1.5) : Math.min(dpr, 2); PERF.scale = 1;
+  const q = settings.quality, dpr = window.devicePixelRatio || 1, sh = q !== 'low', ms = q === 'high' && !IS_TOUCH_DEV ? 2048 : 1024;
+  basePR = q === 'low' ? 1 : q === 'medium' || IS_TOUCH_DEV ? Math.min(dpr, 1.5) : Math.min(dpr, 2); PERF.scale = 1;
   renderer.setPixelRatio(basePR);
   renderer.setSize(window.innerWidth, window.innerHeight);
   const was = renderer.shadowMap.enabled; renderer.shadowMap.enabled = sh; sun.castShadow = sh;
@@ -8963,6 +9130,115 @@ const _play = el('play').onclick; el('play').onclick = () => { if (editFlow && p
 el('pz-new').onclick = () => { inMatch = false; loadMap(currentMap); setUi('lobby'); el('play').onclick(); };
 el('pz-menu').onclick = () => { if (net && net.started) netLeave('You left the match.'); inMatch = false; leaveTest(); loadMap(currentMap); setUi('lobby'); showPage('home'); };
 
+/* ============================== touch controls (build 77) ==============================
+   A floating move stick on one side, buttons and a look area on the other. Everything feeds the same keys table and camera the
+   keyboard and mouse use (through the player's own key binds), so gameplay is identical. No Pointer Lock needed. */
+const TC = Object.assign({ mode: 'auto', scale: 1, opacity: 0.85, lefty: false, assist: true }, (() => { try { return JSON.parse(localStorage.getItem('waTouch') || '{}'); } catch (e) { return {}; } })());
+const TOUCH = { on: false, mid: -1, lid: -1, mx: 0, my: 0, ox: 0, oy: 0, lx: 0, ly: 0, drag: 0, t0: 0 };
+const tcSave = () => { try { localStorage.setItem('waTouch', JSON.stringify(TC)); } catch (e) { /* private mode */ } };
+const touchWanted = () => TC.mode === 'on' || (TC.mode === 'auto' && (IS_TOUCH_DEV || !canvas.requestPointerLock));
+const codeOf = a => { const c = settings.binds[a]; return c && c !== 'None' ? c : null; };
+const tHold = (a, v) => { const c = codeOf(a); if (c) keys[c] = v; };                       // held actions: move keys and sprint
+function tPress(a, v) {                                                                        // press or release the bound key, so every key action (jump, reload, shove, slots...) runs its normal handler
+  const c = codeOf(a); if (!c) return;
+  if (v) { if (!keys[c]) fakeKey('keydown', c); keys[c] = true; } else { keys[c] = false; fakeKey('keyup', c); }
+}
+const TBTN = [   // id, label, bind (or 'scope'), size, distance from the thumb-side edge, distance from the bottom, held while touched (else a short tap)
+  ['fire', 'FIRE', 'attack', 92, 24, 20, 1], ['jump', 'JUMP', 'jump', 66, 134, 22, 1], ['aim', 'AIM', 'scope', 54, 30, 128, 0],
+  ['swap', 'SWAP', 'cycle', 50, 104, 112, 0], ['dash', 'DASH', 'dash', 54, 176, 92, 0], ['reload', 'RELOAD', 'reload', 54, 222, 18, 0],
+  ['shove', 'SHOVE', 'shove', 52, 168, 160, 0], ['kick', 'KICK', 'kick', 50, 238, 100, 0],
+];
+function tcLayout() {
+  const o = el('touch'); if (!o) return; const L = TC.lefty, s = TC.scale;
+  o.style.setProperty('--to', TC.opacity); o.style.setProperty('--ts', s); o.classList.toggle('lefty', L); document.body.classList.toggle('tlefty', L);
+  for (const [id, , , sz, x, y] of TBTN) { const b = el('tb-' + id); b.style.width = b.style.height = sz * s + 'px'; b.style.bottom = 'calc(' + y * s + 'px + var(--sab))'; b.style[L ? 'right' : 'left'] = 'auto'; b.style[L ? 'left' : 'right'] = 'calc(' + x * s + 'px + var(' + (L ? '--sal' : '--sar') + '))'; }
+}
+function touchBuild() {
+  const o = document.createElement('div'); o.id = 'touch';
+  o.innerHTML = '<div id="tz-move"></div><div id="tz-look"></div><div id="tstick"><b></b></div>' + TBTN.map(t => '<button class="tb" id="tb-' + t[0] + '"><span>' + t[1] + '</span></button>').join('') + '<button id="tb-pause" aria-label="Menu">II</button>';
+  document.body.appendChild(o);
+  const st = el('tstick'), mv = el('tz-move'), lk = el('tz-look'), R = () => 54 * TC.scale;
+  const moveKeys = () => { const f = -TOUCH.my, r = TOUCH.mx, m = Math.hypot(f, r), th = 0.3; tHold('forward', f > th); tHold('back', f < -th); tHold('right', r > th); tHold('left', r < -th); tHold('sprint', m > 0.93 && f > th); };
+  const moveEnd = () => { TOUCH.mid = -1; TOUCH.mx = TOUCH.my = 0; moveKeys(); st.style.display = 'none'; };
+  mv.addEventListener('pointerdown', e => { if (TOUCH.mid >= 0) return; TOUCH.mid = e.pointerId; mv.setPointerCapture(e.pointerId); TOUCH.ox = e.clientX; TOUCH.oy = e.clientY; st.style.display = 'block'; st.style.left = e.clientX + 'px'; st.style.top = e.clientY + 'px'; st.firstChild.style.transform = ''; e.preventDefault(); });
+  mv.addEventListener('pointermove', e => {
+    if (e.pointerId !== TOUCH.mid) return; let dx = e.clientX - TOUCH.ox, dy = e.clientY - TOUCH.oy; const d = Math.hypot(dx, dy), r = R();
+    if (d > r) { const k = (d - r) / d; TOUCH.ox += dx * k; TOUCH.oy += dy * k; dx = e.clientX - TOUCH.ox; dy = e.clientY - TOUCH.oy; st.style.left = TOUCH.ox + 'px'; st.style.top = TOUCH.oy + 'px'; }   // the base follows your thumb when you drag past its edge
+    TOUCH.mx = dx / r; TOUCH.my = dy / r; st.firstChild.style.transform = 'translate(' + dx + 'px,' + dy + 'px)'; moveKeys();
+  });
+  for (const t of ['pointerup', 'pointercancel']) mv.addEventListener(t, e => { if (e.pointerId === TOUCH.mid) moveEnd(); });
+  const look = (dx, dy) => { const k = 0.0052 * settings.sens * zoomScale(); cam.yaw -= dx * k; cam.pitch = clamp(cam.pitch - dy * k * (settings.invertY ? -1 : 1), -1.1, 0.8); TOUCH.drag = performance.now(); };
+  lk.addEventListener('pointerdown', e => { if (TOUCH.lid >= 0) return; TOUCH.lid = e.pointerId; lk.setPointerCapture(e.pointerId); TOUCH.lx = e.clientX; TOUCH.ly = e.clientY; e.preventDefault(); });
+  lk.addEventListener('pointermove', e => { if (e.pointerId !== TOUCH.lid) return; look(e.clientX - TOUCH.lx, e.clientY - TOUCH.ly); TOUCH.lx = e.clientX; TOUCH.ly = e.clientY; });
+  for (const t of ['pointerup', 'pointercancel']) lk.addEventListener(t, e => { if (e.pointerId === TOUCH.lid) TOUCH.lid = -1; });
+  for (const t of TBTN) {
+    const b = el('tb-' + t[0]), a = t[2], hold = t[6]; let pid = -1, lx = 0, ly = 0;
+    b.addEventListener('pointerdown', e => {
+      if (pid >= 0) return; pid = e.pointerId; b.setPointerCapture(pid); b.classList.add('down'); lx = e.clientX; ly = e.clientY; e.preventDefault();
+      if (a === 'scope') scopeToggled = !scopeToggled; else tPress(a, true);
+    });
+    b.addEventListener('pointermove', e => { if (e.pointerId !== pid || a !== 'attack') return; look(e.clientX - lx, e.clientY - ly); lx = e.clientX; ly = e.clientY; });   // hold FIRE and drag to aim
+    const up = e => { if (e.pointerId !== pid) return; pid = -1; b.classList.remove('down'); if (a === 'scope') return; if (hold) tPress(a, false); else setTimeout(() => tPress(a, false), 90); };
+    b.addEventListener('pointerup', up); b.addEventListener('pointercancel', up);
+  }
+  el('tb-pause').addEventListener('pointerdown', e => { e.preventDefault(); touchLeave(true); });
+  el('weapon').addEventListener('pointerdown', e => {                                          // tap a hotbar tile to equip it (the fourth is the quick spatula)
+    if (!TOUCH.on) return; const w = e.target.closest ? e.target.closest('.wslot') : null; if (!w) return;
+    const a = ['slot1', 'slot2', 'slot3', 'spatula'][Array.prototype.indexOf.call(el('weapon').children, w)]; if (!a) return;
+    e.preventDefault(); tPress(a, true); setTimeout(() => tPress(a, false), 90);
+  });
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  tcLayout();
+}
+function touchEnter() {
+  if (!inMatch) TOUCH.t0 = simTime;
+  TOUCH.on = true; locked = true; document.body.classList.add('tplay');
+  PERF.grace = performance.now() + 3500; PERF.lowN = 0; PERF.hiN = 0; try { perfAcc = 0; perfN = 0; perfT0 = 0; prevNow = 0; } catch (e) { /* x */ }
+  setUi('play');
+}
+function touchLeave(toMenu) {
+  if (!TOUCH.on) return; TOUCH.on = false; locked = false; document.body.classList.remove('tplay');
+  mouse.l = mouse.r = false; scopeHeld = scopeToggled = false; for (const k in keys) keys[k] = false; TOUCH.mid = TOUCH.lid = -1; TOUCH.mx = TOUCH.my = 0;
+  PERF.grace = performance.now() + 3500; PERF.lowN = 0; PERF.hiN = 0;
+  if (toMenu && ui === 'play') setUi('lobby');
+}
+setInterval(() => { if (TOUCH.on && ui !== 'play') touchLeave(false); }, 200);             // the match ended or you were kicked: let go of the controls
+function touchAssist() {                                                                    // aim assist: while firing, ease the camera toward the nearest enemy in front of you (never while you are dragging)
+  if (!TOUCH.on || !TC.assist || !down('attack') || performance.now() - TOUCH.drag < 250 || player.dead) return;
+  let best = null, bd = 1e9; const px = player.pos.x, pz = player.pos.z;
+  for (const e of fighters) {
+    if (e === player || e.dead || e.left || e.elim || e.isGhost || isFriend(player, e) || !e.root.visible) continue;
+    const dx = e.pos.x - px, dz = e.pos.z - pz, d = Math.hypot(dx, dz); if (d > 32 || d < 0.5) continue;
+    let da = Math.atan2(dx, dz) - cam.yaw; da = Math.atan2(Math.sin(da), Math.cos(da)); if (Math.abs(da) > 0.7) continue;
+    const sc = d * (1 + Math.abs(da) * 2); if (sc < bd) { bd = sc; best = { da, d, e }; }
+  }
+  if (!best) return;
+  const k = 0.07; cam.yaw += best.da * k;
+  const pit = Math.atan2(best.e.pos.y + 1.1 - (player.pos.y + 1.9), best.d); cam.pitch = clamp(cam.pitch + (pit - cam.pitch) * k * 0.6, -1.1, 0.8);
+}
+function touchPill(rows) {                                                                   // compact scoreboard for small screens: your K.O.s, who leads, and the clock
+  const p = el('tpill'); if (!p) return; const s = Math.max(0, Math.floor(simTime - TOUCH.t0)), top = rows[0];
+  const h = 'K.O. <b>' + (player.ko | 0) + '</b>' + (top && top.ko > 0 ? ' &middot; ' + (top === player ? 'You lead' : '👑 ' + top.botName + ' ' + top.ko) : '') + ' &middot; ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  if (p._h !== h) { p._h = h; p.innerHTML = h; }
+}
+touchBuild();
+{ const lc = el('lcol'); if (lc) { const p = document.createElement('div'); p.id = 'tpill'; lc.insertBefore(p, lc.firstChild); } }
+{ const grp = document.querySelector('#pg-controls .grp[data-tab="controls"]');                // settings: touch controls
+  if (grp) {
+    const d = document.createElement('div'); d.id = 'touchset';
+    d.innerHTML = '<h3>Touch controls</h3><label style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span>Touch controls (Auto = on phones and tablets)</span><button class="opt" id="tc-mode" style="flex:0 0 auto;min-width:120px">Auto</button></label><div class="tog"><span>Left-handed layout</span><button id="tc-lefty">Off</button></div><div class="tog"><span>Aim assist toward the nearest enemy</span><button id="tc-assist">On</button></div><label>Button size <input id="tc-scale" type="range" min="0.7" max="1.5" step="0.05"></label><label>Button opacity <input id="tc-op" type="range" min="0.3" max="1" step="0.05"></label><small class="help">Left thumb: move (push to the edge to sprint). Right side: hold FIRE and drag to aim, drag anywhere else to look, tap the weapon tiles to swap.</small>';
+    grp.insertBefore(d, grp.firstChild);
+    const sync = () => { el('tc-mode').textContent = { auto: 'Auto', on: 'Always on', off: 'Off' }[TC.mode]; tog('tc-lefty', TC.lefty); tog('tc-assist', TC.assist); el('tc-scale').value = TC.scale; el('tc-op').value = TC.opacity; tcLayout(); tcSave(); };
+    el('tc-mode').onclick = () => { TC.mode = { auto: 'on', on: 'off', off: 'auto' }[TC.mode]; sync(); };
+    el('tc-lefty').onclick = () => { TC.lefty = !TC.lefty; sync(); }; el('tc-assist').onclick = () => { TC.assist = !TC.assist; sync(); };
+    el('tc-scale').oninput = e => { TC.scale = +e.target.value; sync(); }; el('tc-op').oninput = e => { TC.opacity = +e.target.value; sync(); }; sync();
+  } }
+{ const setT = v => document.body.classList.toggle('ptouch', v);                                 // the last input decides whether keyboard hints show
+  setT(IS_TOUCH_DEV);
+  document.addEventListener('pointerdown', e => setT(e.pointerType === 'touch' || e.pointerType === 'pen'), true);
+  document.addEventListener('keydown', () => { if (!TOUCH.on) setT(false); }, true); }
+{ const lm = loadMap; loadMap = function (id) { try { TOUCH.t0 = simTime; } catch (e) { /* not ready yet */ } return lm.apply(this, arguments); }; }
+window.__wa = { get player() { return player; }, get locked() { return locked; }, get ui() { return ui; }, showPage, cam, keys, TOUCH, TC, tcLayout };   // read-only handle for the Playwright tests
 document.addEventListener('pointerlockchange', () => {
   locked = document.pointerLockElement === canvas;
   PERF.grace = performance.now() + 3500; PERF.lowN = 0; PERF.hiN = 0; try { perfAcc = 0; perfN = 0; perfT0 = 0; prevNow = 0; } catch (e) { /* x */ }
@@ -9339,7 +9615,7 @@ function simStep(dt) {
   updatePotato(dt); updatePillars(dt); updateShrink(dt);
   const netPre = net && net.started ? netSnap() : null;
   if (DEVS.ammo && !net) { const sl = player.slots[player.slot]; if (sl && sl.ammo < 60) sl.ammo = 60; }
-  playerControl(dt);
+  touchAssist(); playerControl(dt);
   for (const b of bots) if (!b.isGhost && !(DEVS.freeze && !net)) botThink(b, dt);
   if (netPre) netStep(dt, netPre);
   for (const f of fighters) { f.timers(dt); if (!f.isGhost) f.physics(dt); }
@@ -9532,17 +9808,20 @@ let boardT = 0, boardKey = '';
 { let h = ''; for (let i = 0; i < 12; i++) h += '<div class="tag" id="tag' + i + '"><span id="tagn' + i + '"></span><u><i id="tagh' + i + '"></i></u></div>'; el('tags').innerHTML = h; }
 function updateTags() {
   const can = typeof tmpA.project === 'function';
+  const cap = document.body.classList.contains('ptouch') || window.innerHeight < 520, near = [];          // small screens: only the 3 nearest name tags
+  if (cap && can && locked) for (const b of bots) if (!b.dead && !b.left) near.push([camera.position.distanceTo(b.pos), b]);
+  near.sort((x, y) => x[0] - y[0]); const nearSet = new Set(near.slice(0, 3).map(x => x[1]));
   allBots.forEach((b, i) => {
     const t = el('tag' + i);
     let show = false;
     if (can && bots.includes(b) && !b.dead && !b.left && locked) {
       tmpA.set(b.pos.x, b.pos.y + 2.5, b.pos.z).project(camera);
       const d = camera.position.distanceTo(b.pos);
-      if (tmpA.z < 1 && Math.abs(tmpA.x) < 1.1 && Math.abs(tmpA.y) < 1.1 && d < 45) {
+      if (tmpA.z < 1 && Math.abs(tmpA.x) < 1.1 && Math.abs(tmpA.y) < 1.1 && d < 45 && (!cap || nearSet.has(b))) {
         show = true;
         t.style.left = ((tmpA.x * 0.5 + 0.5) * window.innerWidth) + 'px';
         t.style.top = ((-tmpA.y * 0.5 + 0.5) * window.innerHeight) + 'px';
-        t.style.opacity = d > 30 ? 0.6 : 1;
+        t.style.opacity = cap ? Math.max(0.3, Math.min(1, 1.5 - d / 22)) : d > 30 ? 0.6 : 1;
         const n = el('tagn' + i); if (n.textContent !== b.botName) { n.textContent = b.botName; }
         n.style.color = cfg.teams ? (isFriend(player, b) ? '#8fd0ff' : '#ff9a9a') : '';
         const hh = el('tagh' + i), showBar = d < 16 || (b.lastAttacker === player && simTime - b.lastHitTime < 4); hh.parentNode.style.display = showBar ? 'block' : 'none';        // far away you only see the name, until you hit them
@@ -9606,10 +9885,11 @@ function updateHud(dt) {
     el('scopeov').style.display = sc ? 'block' : 'none'; el('cross').style.visibility = sc ? 'hidden' : 'visible'; }
   { const db = el('dashbar'), on = !player.dead && dashGear(player);      // ninja dashes (only shown while holding a ninja weapon): 3 charges, each refills on its own
     if (on) {
-      let h = '<span>DASH [' + keyName(settings.binds.dash).replace('Key', '') + ']</span>'; for (let i = 0; i < 3; i++) h += i < player.dashN ? '<i class="full"></i>' : '<i style="--f:' + (i === player.dashN ? (player.dashRegen / DASH_REGEN).toFixed(2) : 0) + '"></i>';
+      let h = '<span>DASH' + (TOUCH.on ? '' : ' [' + keyName(settings.binds.dash).replace('Key', '') + ']') + '</span>'; for (let i = 0; i < 3; i++) h += i < player.dashN ? '<i class="full"></i>' : '<i style="--f:' + (i === player.dashN ? (player.dashRegen / DASH_REGEN).toFixed(2) : 0) + '"></i>';
       if (db._h !== h) { db._h = h; db.innerHTML = h; }
       db.style.display = 'flex';
-    } else db.style.display = 'none'; }
+    } else db.style.display = 'none';
+    el('tb-dash').style.display = on ? '' : 'none'; }
   { const sw = WEAPONS[player.weapon], ring = el('sgring');       // shotgun: a ring showing where the pellets can land (bigger from the hip, smaller zoomed in)
     if (sw && sw.adsMul && !player.dead && player.slot >= 0) {
       const d = Math.max(24, Math.tan(shotSpread(sw, cam.aim)) / Math.tan(camera.fov * Math.PI / 360) * window.innerHeight);
@@ -9650,7 +9930,7 @@ function updateHud(dt) {
     boardT = 0.4;
     const rows = [player, ...bots.filter(f => !f.left)].sort((x, y) => y.ko - x.ko).slice(0, 6);
     leader = rows[0].ko > 0 && (!rows[1] || rows[0].ko > rows[1].ko) ? rows[0] : null;
-    el('ko').classList.toggle('lead', leader === player);
+    el('ko').classList.toggle('lead', leader === player); touchPill(rows);
     const h = rows.map(f => '<div class="' + (f.isPlayer ? 'me ' : '') + (f === leader ? 'lead' : '') + '">' + (f === leader ? '👑 ' : '') + '<i style="background:' + colOf(f) + '"></i>' + (f.isPlayer ? 'You' : f.botName) + (cfg.lives ? ' <small>' + (f.elim ? 'out' : (cfg.mode === 'pillars' ? '' : '\u2665' + f.lives)) + '</small>' : '') + '<b>' + f.ko + '</b></div>').join('');
     if (h !== boardKey) { boardKey = h; el('board').innerHTML = h; }
   }
