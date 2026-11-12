@@ -8155,7 +8155,7 @@ el('settings-reset').onclick = () => askConfirm('Reset ALL settings (keys, sensi
 });
 
 /* ============================== online play (test) ============================== */
-const NET_PREFIX = 'wobble-arena-', NET_HZ = 30, NET_MAX = 8, NET_BUILD = 'b76.0', PUB_SLOTS = 24;   // PUB_SLOTS: public rooms live at fixed spots (pub0, pub1, ...) so anybody can look them up
+const NET_PREFIX = 'wobble-arena-', NET_HZ = 30, NET_MAX = 8, NET_BUILD = 'b76.0', NET_PROTO = 1, PUB_SLOTS = 24;   // PUB_SLOTS: public rooms live at fixed spots (pub0, pub1, ...) so anybody can look them up
 const slotCap = () => net.started && net.slots ? net.slots.length : NET_MAX;
 function netStatus(t) {
   t = t || ''; const busy = /(\u2026|\.\.\.)$/.test(t); if (t && !busy) netUnlock();
@@ -8361,7 +8361,7 @@ function netJoinSrv(code, jo) {
     if (jo.pre) net.prevCfg = jo.pre;
     net.pingTimer = setInterval(() => net && net.conn && net.conn.open && netSend({ t: 'ping', ts: performance.now() }), 1500);
     net.out = x => c.send(x);
-    c.send(Object.assign({ t: 'hello', build: NET_BUILD }, myInfo())); netStatus('Connected! Waiting for the host to start…'); netShowLobby();
+    c.send(Object.assign({ t: 'hello', build: NET_BUILD, proto: NET_PROTO }, myInfo())); netStatus('Connected! Waiting for the host to start…'); netShowLobby();
   });
 }
 function netHostPeer(opts) {
@@ -8401,12 +8401,12 @@ function hostRecv(c, m) {
   if (!m || typeof m !== 'object') return;
   if (m.t === 'info') { try { c.send(roomInfo()); } catch (e) { /* gone */ } return; }                 // somebody is browsing the room list
   if (m.t === 'hello') {
-    if (m.build && m.build !== NET_BUILD) { try { c.send({ t: 'badver' }); } catch (e) { /* ignore */ } setTimeout(() => c.close(), 400); return; }
+    if (m.proto !== undefined ? (m.proto | 0) !== NET_PROTO : m.build && m.build !== NET_BUILD) { try { c.send({ t: 'badver' }); } catch (e) { /* ignore */ } setTimeout(() => c.close(), 400); return; }
     let id = 1; while ((net.conns[id] || (net.started && net.slotKind[id] === 'human')) && id < slotCap()) id++;
     if (id >= slotCap() || net.conns[id]) { try { c.send({ t: 'full' }); } catch (e) { /* ignore */ } setTimeout(() => c.close(), 400); return; }
     const info = cleanInfo(m, id);
     c._nid = id; net.conns[id] = c; net.roster.push(info);
-    c.send({ t: 'welcome', id, name: net.roomName, pub: !!net.pub });
+    c.send({ t: 'welcome', id, name: net.roomName, pub: !!net.pub, proto: NET_PROTO });
     if (net.started) {                                          // joining a running match: take over a bot's place (or an empty spot)
       netBotToHuman(id, info);
       c.send({ t: 'start', slots: net.slots, map: net.map, custom: cfg.custom, limit: net.limit, rules: Object.assign(ruleSnap(), pil && !matchOver ? { pt: Math.round(pil.t) } : {}) });
@@ -8458,7 +8458,7 @@ function netJoinPeer(code, jo) {
         if (jo.pre) net.prevCfg = jo.pre;
         net.pingTimer = setInterval(() => net && net.conn && net.conn.open && netSend({ t: 'ping', ts: performance.now() }), 1500);
         net.out = m => { try { c.send(m); } catch (e) { /* closed */ } };
-        c.send(Object.assign({ t: 'hello', build: NET_BUILD }, myInfo())); netStatus('Connected! Waiting for the host to start…'); netShowLobby();
+        c.send(Object.assign({ t: 'hello', build: NET_BUILD, proto: NET_PROTO }, myInfo())); netStatus('Connected! Waiting for the host to start…'); netShowLobby();
       });
       c.on('data', clientRecv); c.on('close', () => { if (net) netLeave('The host left the room.'); });
     });
@@ -8583,7 +8583,7 @@ function netMigrate(me) {                                            // the host
     net = Object.assign(nn, { host: false, id: -1, conn: c, roster: [] });
     net.pingTimer = setInterval(() => net && net.conn && net.conn.open && netSend({ t: 'ping', ts: performance.now() }), 1500);
     net.out = x => c.send(x);
-    c.send(Object.assign({ t: 'hello', build: NET_BUILD }, myInfo())); toast(oldHost + ' left. Finding the new host\u2026'); netStatus('The host left. Joining the new host\u2026');
+    c.send(Object.assign({ t: 'hello', build: NET_BUILD, proto: NET_PROTO }, myInfo())); toast(oldHost + ' left. Finding the new host\u2026'); netStatus('The host left. Joining the new host\u2026');
   }
   el('netinfo').style.display = 'none'; netShowLobby(); netPushInfo();
 }
