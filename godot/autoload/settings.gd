@@ -10,6 +10,8 @@ const DEFAULTS := {
 	"sens": 1.0,            # look sensitivity multiplier
 	"fov": 72.0,            # vertical field of view
 	"cam_dist": 1.0,        # camera distance multiplier
+	"cam_auto_center": true, # the camera eases back behind the player after a short walk (world/follow_camera.gd)
+	"cam_center_dist": 5.0, # metres walked since the last manual look before it does
 	"invert_y": false,
 	"touch_mode": "auto",   # auto | on | off
 	"touch_lefty": false,
@@ -32,6 +34,7 @@ const DEFAULTS := {
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
 	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE + construction)
 	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
+	"wobble_rig": "ragdoll",   # character animation: ragdoll (leg-driven floppy overlay, docs/RAGDOLL.md) | classic (web pose)
 	"offline_map": "arena", # offline arena (setup wizard page 1)
 	"bots": 3,              # offline bots 1..7 (team modes fix the count: ModeRules.bot_count)
 	"difficulty": "normal", # offline bot skill: easy | normal | hard | insane (data/difficulties.json)

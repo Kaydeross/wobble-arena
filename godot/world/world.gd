@@ -183,7 +183,7 @@ func load_map(id: String) -> void:
 		views[f] = v
 	player_view = views[sim.player]
 	_build_shrink_view()
-	cam.yaw = PI; cam.pitch = -0.2
+	cam.reset_view()
 	feed.clear()
 	acc = 0.0
 	hud.bind(self)
@@ -200,7 +200,7 @@ func player_pos() -> Vector3:
 
 ## One fixed simulation step.
 func sim_step(dt: float) -> void:
-	control.cam_yaw = cam.yaw
+	control.cam_yaw = cam.move_basis()   # the camera yaw, held while auto-centre turns it under a held stick
 	var ap := cam.aim_point
 	control.aim_point = [ap.x, ap.y, ap.z] if ap != Vector3.ZERO else []
 	var before: int = sim.player.st["falls"]
@@ -213,7 +213,13 @@ func tick(delta: float) -> void:
 	var dt := minf(delta, 0.05)
 	var finished := _results != null and session == null     # offline results panel up: finishMatch left the match
 	if (not paused or net_match != null) and not finished:      # online the match keeps running behind the menu
-		if not paused: cam.add_look(input.state.take_look())
+		if not paused:
+			var st := input.state
+			var look := st.take_look()
+			cam.add_look(look)
+			if spectating == null:          # the auto-recentre follows the player's own walk, not a spectated fighter's
+				var p := sim.player.phys
+				cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
 		cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
 		acc += minf(dt, 0.1)
 		while acc >= SIM:

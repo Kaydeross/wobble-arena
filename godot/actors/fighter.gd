@@ -23,6 +23,10 @@ func bind(p_state: FighterState, p_look: Dictionary) -> void:
 	name = "Fighter_%d" % state.id
 	wobbler.setup(state.class_id, look["skin"], look["hat"], look["color"])
 	wobbler.set_weapon(state.weapon)
+	wobbler.rig_mode = rig_setting()
+	var st := _settings()
+	if st and not st.changed.is_connected(_on_setting):
+		st.changed.connect(_on_setting)
 	if not state.is_player:
 		tag = Label3D.new()
 		tag.text = state.name
@@ -34,6 +38,20 @@ func bind(p_state: FighterState, p_look: Dictionary) -> void:
 		tag.no_depth_test = false
 		add_child(tag)
 	present(0.0)
+
+static func _settings() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("Settings") if tree else null
+
+## Settings `wobble_rig`: "ragdoll" (default) or "classic" (docs/RAGDOLL.md).
+static func rig_setting() -> String:
+	var st := _settings()
+	var v := String(st.get_value("wobble_rig", "ragdoll")) if st else "ragdoll"
+	return v if v == "classic" else "ragdoll"
+
+func _on_setting(key: String, _v: Variant) -> void:
+	if key == "wobble_rig" and wobbler:
+		wobbler.rig_mode = rig_setting()
 
 ## What the wobbler needs this frame (docs/GODOT_ARCH.md FighterState contract + wish, trap, fall_side, flash seconds).
 func visual_state() -> Dictionary:
@@ -63,6 +81,8 @@ func present(dt: float) -> void:
 	var ch := wobbler.torso.global_position
 	f.chest_x = ch.x; f.chest_y = ch.y; f.chest_z = ch.z
 	f.update_leg()
+	if wobbler.rig_mode == "ragdoll":       # visible pose only, after the gameplay points above were read
+		wobbler.overlay(dt)
 	if tag:
 		tag.visible = not f.dead
 		tag.position = Vector3(f.phys.px, f.phys.py + 3.0 * float(wobbler.cls.get("size", 1.0)), f.phys.pz)
@@ -70,6 +90,8 @@ func present(dt: float) -> void:
 ## A Combat event aimed at this fighter's body (lean/head spring kicks, arm shoves).
 func on_event(e: Dictionary) -> void:
 	match String(e["type"]):
-		"lean": wobbler.lean.kick(e["a"], e["b"])
+		"lean":
+			wobbler.lean.kick(e["a"], e["b"])
+			wobbler.ragdoll_hit(e["a"], e["b"])
 		"head": wobbler.head.kick(e["a"], e["b"])
 		"arm": wobbler.arm_vel += Vector3(e["x"], e["y"], e["z"])
