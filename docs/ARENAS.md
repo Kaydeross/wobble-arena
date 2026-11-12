@@ -49,3 +49,9 @@ Phone notes: the 36-46 m maps (arena, park, ice, moonbase, candy, haunted, beach
 | Summit Rush (`summit`) | 42 x 22 m | seven terraces rising to a central peak, symmetrical spawns, pads at the foot |
 
 They are in the Classic, Duel/2v2, Melee Only and Guns Only pools (the `NEW_ARENAS` list); 3v3/4v4 stay on the big arenas.
+
+## Construction scaffold
+
+| Map | Size | Idea |
+|---|---|---|
+| Site Yard (`siteyard`) | 48 m slab | Construction-only stub: scaffold towers, timber stacks, hazard barriers, site-office hub. See `docs/CONSTRUCTION.md`. |
