@@ -1,0 +1,377 @@
+{
+ "classic": {
+  "name": "Classic",
+  "desc": "Everything drops from the sky",
+  "start": null,
+  "allowWeapons": [
+   "spatula",
+   "bat",
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "glove",
+   "meteor",
+   "rocket",
+   "trident",
+   "mallet",
+   "snow",
+   "glauncher",
+   "cluster",
+   "knife",
+   "net",
+   "snake",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "bow",
+   "shuriken",
+   "flame",
+   "boomerang",
+   "blower"
+  ]
+ },
+ "melee": {
+  "name": "Melee Only",
+  "desc": "Bats, mallets and spring gloves",
+  "start": null,
+  "allowWeapons": [
+   "bat",
+   "glove",
+   "trident",
+   "mallet"
+  ]
+ },
+ "guns": {
+  "name": "Guns Only",
+  "desc": "SMGs, shotguns, snipers and launchers",
+  "start": "smg",
+  "allowWeapons": [
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "rocket",
+   "glauncher",
+   "cluster",
+   "net",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "flame"
+  ]
+ },
+ "ninja": {
+  "name": "Ninja",
+  "desc": "Shuriken, throwing knives, Typhoon Blades and the Ninja Katana, plus 3 dashes",
+  "start": "shuriken",
+  "allowWeapons": [
+   "katana",
+   "typhoon",
+   "knife",
+   "shuriken"
+  ]
+ },
+ "duel": {
+  "name": "1v1 Duel",
+  "desc": "You vs one bot. First to 5",
+  "teams": 1,
+  "preset": {
+   "limit": 5
+  },
+  "start": null,
+  "allowWeapons": [
+   "spatula",
+   "bat",
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "glove",
+   "meteor",
+   "rocket",
+   "trident",
+   "mallet",
+   "snow",
+   "glauncher",
+   "cluster",
+   "knife",
+   "net",
+   "snake",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "bow",
+   "shuriken",
+   "flame",
+   "boomerang",
+   "blower"
+  ]
+ },
+ "t2": {
+  "name": "2v2",
+  "desc": "You + 1 bot vs 2 bots. Team score, no friendly fire",
+  "teams": 2,
+  "preset": {
+   "limit": 10
+  },
+  "start": null,
+  "allowWeapons": [
+   "spatula",
+   "bat",
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "glove",
+   "meteor",
+   "rocket",
+   "trident",
+   "mallet",
+   "snow",
+   "glauncher",
+   "cluster",
+   "knife",
+   "net",
+   "snake",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "bow",
+   "shuriken",
+   "flame",
+   "boomerang",
+   "blower"
+  ]
+ },
+ "t3": {
+  "name": "3v3",
+  "desc": "Squads of 3. First team to 15",
+  "teams": 3,
+  "preset": {
+   "limit": 15
+  },
+  "start": null,
+  "allowWeapons": [
+   "spatula",
+   "bat",
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "glove",
+   "meteor",
+   "rocket",
+   "trident",
+   "mallet",
+   "snow",
+   "glauncher",
+   "cluster",
+   "knife",
+   "net",
+   "snake",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "bow",
+   "shuriken",
+   "flame",
+   "boomerang",
+   "blower"
+  ]
+ },
+ "t4": {
+  "name": "4v4",
+  "desc": "Big team fight. First team to 20",
+  "teams": 4,
+  "preset": {
+   "limit": 20
+  },
+  "start": null,
+  "allowWeapons": [
+   "spatula",
+   "bat",
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "glove",
+   "meteor",
+   "rocket",
+   "trident",
+   "mallet",
+   "snow",
+   "glauncher",
+   "cluster",
+   "knife",
+   "net",
+   "snake",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "bow",
+   "shuriken",
+   "flame",
+   "boomerang",
+   "blower"
+  ]
+ },
+ "explosive": {
+  "name": "Explosive",
+  "desc": "Rockets and grenade launchers. Boom",
+  "preset": {
+   "hp": 300,
+   "limit": 0,
+   "count": 3,
+   "behav": "brawl",
+   "ffa": true
+  },
+  "start": "rocket",
+  "allowWeapons": [
+   "meteor",
+   "rocket",
+   "glauncher",
+   "cluster"
+  ]
+ },
+ "pillars": {
+  "name": "Pillars",
+  "desc": "Start on tall pillars too far apart to jump (dash with any weapon!). Every 10 seconds a new weapon drops into your inventory. Fall or die and you are out. Most K.O.s when the 3 minutes end wins. No launchers, explosives or knockback guns",
+  "pillars": true,
+  "lives": 1,
+  "kbMul": 0.4,
+  "preset": {
+   "limit": 0,
+   "count": 7,
+   "behav": "brawl",
+   "ffa": true
+  },
+  "start": null,
+  "allowWeapons": []
+ },
+ "mega": {
+  "name": "Mega Damage",
+  "desc": "Double damage, heavy weapons, only 3 lives and a huge arena that keeps shrinking",
+  "lives": 3,
+  "dmgMul": 2,
+  "kbMul": 0.8,
+  "preset": {
+   "limit": 0,
+   "count": 3,
+   "behav": "brawl",
+   "ffa": true
+  },
+  "start": "mallet",
+  "allowWeapons": [
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "rocket",
+   "mallet",
+   "glauncher",
+   "revolver"
+  ]
+ },
+ "giant": {
+  "name": "Giant",
+  "desc": "Weapons are double size",
+  "dmgMul": 2,
+  "kbMul": 1.1,
+  "preset": {
+   "limit": 0,
+   "count": 3,
+   "behav": "brawl",
+   "ffa": true
+  },
+  "start": "bat",
+  "allowWeapons": [
+   "bat",
+   "shotgun",
+   "mammoth",
+   "glove",
+   "rocket",
+   "trident",
+   "mallet",
+   "bow"
+  ]
+ },
+ "gungame": {
+  "name": "Weapon Ladder",
+  "desc": "Every K.O. swaps you to the next weapon. Finish the whole ladder to win",
+  "ladder": true,
+  "preset": {
+   "limit": 0,
+   "count": 3,
+   "behav": "brawl",
+   "ffa": true
+  },
+  "start": null,
+  "allowWeapons": [
+   "spatula",
+   "bat",
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "glove",
+   "meteor",
+   "rocket",
+   "trident",
+   "mallet",
+   "snow",
+   "glauncher",
+   "cluster",
+   "knife",
+   "net",
+   "snake",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "bow",
+   "shuriken",
+   "flame",
+   "boomerang",
+   "blower"
+  ]
+ },
+ "sandbox": {
+  "name": "Sandbox",
+  "desc": "Build your own arena, place blocks and mess about",
+  "start": null,
+  "allowWeapons": [
+   "spatula",
+   "bat",
+   "shotgun",
+   "sniper",
+   "mammoth",
+   "glove",
+   "meteor",
+   "rocket",
+   "trident",
+   "mallet",
+   "snow",
+   "glauncher",
+   "cluster",
+   "knife",
+   "net",
+   "snake",
+   "ak",
+   "smg",
+   "uzi",
+   "minigun",
+   "revolver",
+   "bow",
+   "shuriken",
+   "flame",
+   "boomerang",
+   "blower"
+  ]
+ }
+}
