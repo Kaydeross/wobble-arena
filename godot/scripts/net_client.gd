@@ -16,6 +16,8 @@ const PROTO := 1
 ## The web game's NET_BUILD (public/index.html ~8551). The server refuses a join whose build differs from the room's;
 ## compatibility is really decided by `proto` in hello/welcome (PROTOCOL.md 6.1), see GuestSession's retry.
 const BUILD := "b77.0"
+## Godot capability level sent as `gd` in hello / welcome / roster entries (Godot-only additive field, PROTOCOL.md 6.3).
+const GD := 1
 
 var ws := WebSocketPeer.new()
 var state := WebSocketPeer.STATE_CLOSED
@@ -24,6 +26,7 @@ var cid := -1
 var room_id := ""
 var player_name := "Godot"
 var token := ""
+var pslot := -1                  ## my slot before a host migration (sent once as `pslot` in the next hello)
 ## hello info (PROTOCOL.md 2.1): skin, hat, color and the optional class id `cls` ("" = leave it out).
 var skin := "none"
 var hat := "none"
@@ -58,9 +61,12 @@ func hello_info() -> Dictionary:
 	if cls != "": m["cls"] = cls
 	return m
 
+## `gd: 1` says "a Godot client" (docs/PROTOCOL.md 6.3: the web host ignores it); `pslot` = my slot before a host
+## migration, so the new (Godot) host can give it back.
 func send_hello() -> void:
-	var m := {"t": "hello", "build": BUILD, "proto": PROTO}
+	var m := {"t": "hello", "build": BUILD, "proto": PROTO, "gd": GD}
 	m.merge(hello_info())
+	if pslot >= 0: m["pslot"] = pslot
 	to_host(m)
 
 func poll() -> void:

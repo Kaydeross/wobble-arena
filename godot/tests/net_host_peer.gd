@@ -34,7 +34,9 @@ func _begin(args: PackedStringArray) -> void:
 	session.welcomed.connect(func(slot: int, room: String) -> void: print("WELCOMED slot=%d room=%s" % [slot, room]))
 	session.ended.connect(func(r: String) -> void: print("ENDED ", r))
 	session.match_started.connect(_on_start)
-	session.match_message.connect(func(m: Dictionary) -> void: if m.get("t") == "slot": print("SLOTMSG %s" % JSON.stringify(m)))
+	session.match_message.connect(func(m: Dictionary) -> void:
+		if m.get("t") == "slot": print("SLOTMSG %s" % JSON.stringify(m))
+		if m.get("t") == "emote": print("EMOTE %d %s" % [int(m.get("id", -1)), m.get("e")]))
 	session.begin(args[0], args[1], {"name": "GodotPeer", "skin": "none", "hat": "cone", "color": 0x39b5a8, "cls": "kid"})
 
 func _on_start(s: Dictionary) -> void:

@@ -96,7 +96,7 @@ join   ─► joined ─┬─► (host gets peer open) ─► guest sends  toho
 host leaves ──────┴─► longest-standing guest gets promoted; the others get rehost; the new host gets peer{open} per guest
 ```
 
-Host migration: the room's `started` flag resets to false, guest cids are re-issued (the new host is cid 0, others keep their cids), and **every guest must send `hello` again**. The match in progress is not carried over. The web client handles this in `netMigrate()`.
+Host migration: the room's `started` flag resets to false, guest cids are re-issued (the new host is cid 0, others keep their cids), and **every guest must send `hello` again**. The web client does not carry the match over (`netMigrate()`); a promoted Godot client does (6.3).
 
 ---
 
@@ -299,8 +299,56 @@ A Godot client can host a room that web and Godot guests join. It speaks exactly
   every client except in Pillars; sending it is harmless for web guests and is what Godot guests rely on).
 - **Rematch:** `rv` votes -> `rvs {list, total}`; all humans voted, or 20 s after the first vote (once the host's
   match is over): non-voters get `kick` and their seat becomes a bot, and a new `start` goes out.
-- **Not yet:** host migration to a Godot guest (`promoted` still leaves the room), Pillars, team modes, chat display.
+- **Rules:** the Host sheet's mode, K.O. limit (`limit`; -1 = the mode's own), `hp`, `grav`, `kb`, `crate`, `inf` and
+  `dyn` go out in `rules` like the web host's ruleSnap; Explosive always sends `hp` 300.
+- **App-only modes, host migration, emotes:** see 6.3. **Not yet:** chat display, the web host's Pillars (`pp`/`pt`
+  for browsers), weapon toggles (`wstate` is always `{}`).
 - **Tests:** `npm run test:godot-host` (web-protocol guest + Godot guest against a Godot host on the real server).
+
+### 6.3 Godot-only additive fields (web clients ignore them)
+
+Everything here is optional and additive: the web client never sends it and drops or ignores it on receipt (unknown
+`t` values fall through its `netHandle`, unknown `rules` / `start` / roster fields are not read, its `netGuard` drops
+unknown guest messages). `PROTO` stays 1.
+
+| Where | Field | Meaning |
+|---|---|---|
+| `hello` (guest → host) | `gd: 1` | "I am a Godot client" (capability level 1). |
+| `hello` | `pslot` | After a host migration: my slot in the old match, so a Godot host gives it back. |
+| `welcome` (host → guest) | `gd: 1` | The host is a Godot client. |
+| `welcome` | `rsm: 1` | Host migration: this host carries the running match on; keep the arena and wait for `start`. |
+| `roster` entries, `slots` entries | `gd: 1` | That player is a Godot client (a Godot host marks web players in its lobby). |
+| `roster` | `rl` | The Godot host's rules for the lobby line: `{want, mode, lim, hp, grav, kb, crate, inf, dyn, map}` (`want` = the host's pick, `mode` = what plays). |
+| `start.rules` | `gmode` | An app-only mode the Godot clients play (`mode` stays the web fallback, Classic): `tdm`, `deathmatch`, `sudden`, `chaos`, `pillars`, `lowg`, `duel`, `t2`, `t3`, `t4` (`NetMatch.GODOT_MODES`). Sent only when every guest said `gd`. |
+| `start.rules` | `gteam` | Team modes: the side (0 blue / 1 red) of every slot, `slot % 2`. |
+| `start.rules` | `pp` | Pillars: the pillar (spawn index) of every slot, a permutation, shuffled every match by the host. |
+| `start.rules` | `grav: 0.15` | Moon Drift (`gmode: lowg`). |
+| `start` | `rs`, `rsx` | Host migration: the old match's state per (new) slot `[{id, x, y, z, yaw, hp, ko, dt, lv, el, d, gg}]` (`d` = was down: starts on its spawn; `el` = eliminated) and `{pt}` (Pillars clock). `rules.dseed` / `dt0` keep the arena seed and clock. |
+
+New room messages (host → all unless noted):
+
+| `t` | Fields | Meaning |
+|---|---|---|
+| `gm` | `k: "st"`, `ko[]`, `dt[]`, `gg[]`, `pt?` | 1 Hz mode state: every slot's K.O.s, deaths and Weapon Ladder rung, the Pillars clock. Godot guests take it over (team scores are the sums of `ko` by `gteam`). |
+| `gm` | `k: "cw"` / `"cs"` / `"ce"`, `id`, `fl?`, `g?` | Chaos: an event was announced (3 s countdown) / started / ended. `id` = `crates`, `gravity`, `knockback`, `giant`, `speed`, `floor`; `fl` = the floor it forces; `g` = the giant's slot. Guests apply it (gravity, knockback, speed, giant, floor) instead of rolling their own. |
+| `emote` | `id`, `e` | guest → host → others (and the host's own): player `id` plays emote `e` (an id of `godot/data/extra/locker.json` `emotes`). The host stamps `id`, drops unknown ids and more than one per 0.4 s. |
+
+Rules a Godot host follows:
+
+- **Mode choice:** the Host sheet's pick plays when it is web-compatible (`netMode`) or every guest is a Godot client;
+  otherwise the match plays Classic, the lobby line says why ("app-only: a web player is here") and the host's status
+  names the web player. A web guest who joins a running app-only match gets `kick {msg}` with the reason.
+- **Match end:** in an app-only mode the Godot guests never end the match themselves (`ModeRules.remote`): the host's
+  K.O. limit / last one standing / Pillars clock decides and sends `pend`. Team results name the side.
+- **Determinism:** the host's random source is seeded from the arena seed (`dseed`); Chaos events, Pillars shuffles and
+  bots run on the host only and reach the guests as `gm` / `pp` / snapshots.
+- **Host migration (a Godot guest promoted):** the guest's own view of the match (positions, health, K.O.s, deaths,
+  lives, ladder rungs, Pillars clock, arena clock) becomes `rs`. It becomes slot 0, the old host's seat becomes its old
+  slot (a bot, or empty without bots), every other seat keeps its number: Godot guests reclaim it with `pslot`, web
+  guests by name. After 3 s (or as soon as everybody is back) a `start` with `rs`, the same `dseed` and `dt0` resumes
+  the match; bots keep their names. Godot guests stay in the arena ("HOST CHANGED" banner) and continue in place; web
+  guests run their normal migration and start the round from their spawn. With no running match the new host opens the
+  lobby. If the relay promotes a web client, Godot guests re-join it as before.
 
 ---
 

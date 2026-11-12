@@ -65,7 +65,7 @@ func _start() -> void:
 		frames = 40
 		process_frame.connect(_wait)
 		return
-	if shot.begins_with("polish-") and not shot.begins_with("polish-pause"):
+	if (shot.begins_with("polish-") and not shot.begins_with("polish-pause")) or shot.begins_with("online-"):
 		_polish()
 		return
 	if shot == "title-construction": _settings().set_value("mode", "construction")
@@ -130,7 +130,27 @@ func _polish() -> void:
 	m.auto_intro = false
 	root.add_child(m)
 	m.browser.auto_refresh = false
-	if shot.begins_with("polish-rooms"):
+	if shot.begins_with("online-host"):                 # the Host sheet tabs (docs/style/godot-online-*.png)
+		m.show_tab(true)
+		m.show_host(true)
+		if shot == "online-host-mode":
+			m.set_host_mode("tdm"); m._host_bs["lim_4"].pressed.emit(); m._host_bs["dyn_wobble"].pressed.emit()
+			m.show_host_tab("Mode")
+		elif shot == "online-host-rules":
+			m._host_bs["hp_300"].pressed.emit(); m._host_bs["kb_3"].pressed.emit(); m._host_bs["inf_1"].pressed.emit()
+			m.show_host_tab("Rules")
+	elif shot == "online-lobby" or shot == "online-lobby-web":   # the lobby with its rules line (a web player: Classic)
+		m.show_tab(true)
+		var hs := HostSession.new()
+		hs.room_code = "K7QXP"; hs.room_name = "Friday Knockouts"; hs.opt_max = 6
+		hs.my_info = {"id": 0, "name": "Kedros", "gd": 1}
+		hs.roster = [hs.my_info, {"id": 1, "name": "Alice", "gd": 1}, {"id": 2, "name": "Bob", "gd": 1}]
+		if shot == "online-lobby-web": hs.roster.append({"id": 3, "name": "WebWendy"})
+		hs.set_rules({"mode": "tdm", "lim": 20, "hp": 300, "grav": 1.0, "kb": 1.5, "crate": "fast", "inf": false, "dyn": "wobble", "map": "rooftops"})
+		m.session = hs
+		m._fill_lobby()
+		m.show_lobby(true)
+	elif shot.begins_with("polish-rooms"):
 		m.show_tab(true)
 		if shot == "polish-rooms":
 			m.browser.show_rooms(load("res://net/room_list.gd").clean([

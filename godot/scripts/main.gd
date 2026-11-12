@@ -55,7 +55,7 @@ var account: AccountSheet           ## the Account sheet (title chip)
 var chip: PanelContainer
 var host_sheet: Control             ## "Host a room": name, public / private, seats, bots
 var lobby: Control                  ## the room's lobby: players, Start (host only), Leave
-var _host := {"pub": false, "max": 4, "bots": 2}
+var _host := {"pub": false, "max": 4, "bots": 2, "mode": "classic", "lim": -1, "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "dyn": "off"}
 var _host_bs := {}                  ## "pub_0/1", "max_N", "bots_N" -> Button
 
 func _ready() -> void:
@@ -401,6 +401,7 @@ func _bind_session() -> void:
 	session.ended.connect(_on_ended)
 	session.roster_changed.connect(_on_roster)
 	session.match_started.connect(_enter_match)
+	session.promoted.connect(_on_promoted)
 	if session is HostSession: (session as HostSession).hosted.connect(_on_hosted)
 	_refresh_buttons()
 
@@ -409,6 +410,7 @@ func _unbind_session() -> void:
 	session.ended.disconnect(_on_ended)
 	session.roster_changed.disconnect(_on_roster)
 	session.match_started.disconnect(_enter_match)
+	if session.promoted.is_connected(_on_promoted): session.promoted.disconnect(_on_promoted)
 	if session is HostSession and (session as HostSession).hosted.is_connected(_on_hosted): (session as HostSession).hosted.disconnect(_on_hosted)
 
 func _on_status(t: String) -> void:
@@ -485,17 +487,19 @@ func _sheet_frame(sheet_name: String, title: String, min_w: float) -> VBoxContai
 	box.add_child(t)
 	return box
 
-## One labelled row of toggle pills (the setup wizard's style).
-func _pill_row(box: Control, row_name: String, label: String, keys: Array, names: Array, prefix: String, on_pick: Callable) -> void:
+## One labelled row of toggle pills (the setup wizard's style). Returns the row.
+func _pill_row(box: Control, row_name: String, label: String, keys: Array, names: Array, prefix: String, on_pick: Callable, label_w := 110.0) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.name = row_name
 	row.add_theme_constant_override("separation", 6)
+	row.size_flags_horizontal = SIZE_EXPAND_FILL
 	box.add_child(row)
 	var l := Label.new()
+	l.name = "Label"
 	l.text = label
 	l.theme_type_variation = &"MutedLabel"
 	l.add_theme_font_size_override("font_size", 18)
-	l.custom_minimum_size = Vector2(110, 0)
+	l.custom_minimum_size = Vector2(label_w, 0)
 	l.size_flags_vertical = SIZE_SHRINK_CENTER
 	row.add_child(l)
 	var g := ButtonGroup.new()
@@ -506,32 +510,130 @@ func _pill_row(box: Control, row_name: String, label: String, keys: Array, names
 		b.theme_type_variation = &"TabButton"
 		b.toggle_mode = true
 		b.button_group = g
-		b.custom_minimum_size = Vector2(60, 60)   # 44 pt square at the UI scale (UiScale)
+		b.custom_minimum_size = Vector2(60, HOST_ROW_H)
 		b.size_flags_horizontal = SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 19)
+		b.add_theme_font_size_override("font_size", 18)
 		b.pressed.connect(on_pick.bind(keys[i]))
 		row.add_child(b)
 		_host_bs[prefix + str(keys[i])] = b
+	return row
 
+## Host sheet rules (index keys: node names cannot hold "0.5").
+const HOST_ROW_H := 60.0
+const HOST_LIMS := [-1, 0, 5, 10, 20, 30]
+const HOST_LIM_NAMES := ["Auto", "None", "5", "10", "20", "30"]
+const HOST_TABS := ["Room", "Mode", "Rules"]
+
+## "Host a room": three tabs so it fits a phone in landscape without scrolling. Room: name, who can join, seats,
+## bots. Mode: game type (‹ ›), K.O. limit, arena floor. Rules: health, gravity + ammo, knockback, crates. The
+## choices are remembered (Settings host_opts) and go out in the `start` rules (HostSession.set_rules).
 func _build_host_sheet() -> void:
-	var box := _sheet_frame("HostSheet", "Host a room", 620)
+	var box := _sheet_frame("HostSheet", "Host a room", 640)
 	host_sheet = get_node("HostSheet")
+	box.add_theme_constant_override("separation", 8)
+	var h: Variant = Settings.get_value("host_opts", {})
+	if h is Dictionary:
+		for k in _host.keys():
+			if h.has(k): _host[k] = h[k]
+	_host["max"] = clampi(int(_host["max"]), 2, 8); _host["bots"] = clampi(int(_host["bots"]), 0, 7)
+	if not h is Dictionary or not (h as Dictionary).has("mode"): _host["mode"] = str(Settings.get_value("mode", "classic"))
+	if not h is Dictionary or not (h as Dictionary).has("dyn"): _host["dyn"] = str(Settings.get_value("dyn", "off"))
+	_host["mode"] = HostSession.online_mode(str(_host["mode"]))
+	if not HOST_LIMS.has(int(_host["lim"])): _host["lim"] = -1
+	if not HostSession.HPS.has(int(_host["hp"])): _host["hp"] = 200
+	if not HostSession.GRAVS.has(float(_host["grav"])): _host["grav"] = 1.0
+	if not HostSession.KBS.has(float(_host["kb"])): _host["kb"] = 1.0
+	if not HostSession.CRATES.has(str(_host["crate"])): _host["crate"] = "normal"
+	if not Dynamics.KINDS.has(str(_host["dyn"])): _host["dyn"] = "off"
+	var head := HBoxContainer.new()               # the title and the tabs share one row (fits 375 pt tall phones)
+	head.name = "Head"
+	head.add_theme_constant_override("separation", 16)
+	box.add_child(head)
+	var title: Label = box.get_node("Title")
+	title.size_flags_vertical = SIZE_SHRINK_CENTER
+	title.reparent(head)
+	var tabs := HBoxContainer.new()
+	tabs.name = "Tabs"
+	tabs.size_flags_horizontal = SIZE_EXPAND_FILL
+	tabs.add_theme_constant_override("separation", 6)
+	head.add_child(tabs)
+	var tg := ButtonGroup.new()
+	for t: String in HOST_TABS:
+		var b := Button.new()
+		b.name = t; b.text = t
+		b.theme_type_variation = &"TabButton"
+		b.toggle_mode = true; b.button_group = tg
+		b.custom_minimum_size = Vector2(0, HOST_ROW_H)
+		b.size_flags_horizontal = SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 19)
+		b.pressed.connect(show_host_tab.bind(t))
+		tabs.add_child(b)
+	for t: String in HOST_TABS:
+		var pg := VBoxContainer.new()
+		pg.name = t
+		pg.add_theme_constant_override("separation", 8)
+		box.add_child(pg)
+	var room: VBoxContainer = box.get_node("Room")
 	var nm := LineEdit.new()
 	nm.name = "RoomName"
 	nm.placeholder_text = "Room name"
 	nm.max_length = 24
-	nm.custom_minimum_size = Vector2(0, 60)
+	nm.custom_minimum_size = Vector2(0, HOST_ROW_H)
 	nm.add_theme_font_size_override("font_size", 18)
-	box.add_child(nm)
+	room.add_child(nm)
 	_ui["rname"] = nm
-	_pill_row(box, "Vis", "Who can join", [0, 1], ["Private (code)", "Public"], "pub_", func(k: int) -> void: _host["pub"] = k == 1)
-	_pill_row(box, "Max", "Seats", [2, 3, 4, 5, 6, 7, 8], ["2", "3", "4", "5", "6", "7", "8"], "max_", func(k: int) -> void: _host["max"] = k)
-	_pill_row(box, "Bots", "Bots", [0, 1, 2, 3, 4, 5, 6, 7], ["0", "1", "2", "3", "4", "5", "6", "7"], "bots_", func(k: int) -> void: _host["bots"] = k)
+	_pill_row(room, "Vis", "Who can join", [0, 1], ["Private (code)", "Public"], "pub_", func(k: int) -> void: _host["pub"] = k == 1)
+	_pill_row(room, "Max", "Seats", [2, 3, 4, 5, 6, 7, 8], ["2", "3", "4", "5", "6", "7", "8"], "max_", func(k: int) -> void: _host["max"] = k)
+	_pill_row(room, "Bots", "Bots", [0, 1, 2, 3, 4, 5, 6, 7], ["0", "1", "2", "3", "4", "5", "6", "7"], "bots_", func(k: int) -> void: _host["bots"] = k)
+	var mode: VBoxContainer = box.get_node("Mode")
+	var mr := HBoxContainer.new()
+	mr.name = "Game"
+	mr.add_theme_constant_override("separation", 6)
+	mode.add_child(mr)
+	var ml := Label.new()
+	ml.name = "Label"; ml.text = "Game"
+	ml.theme_type_variation = &"MutedLabel"
+	ml.add_theme_font_size_override("font_size", 18)
+	ml.custom_minimum_size = Vector2(110, 0)
+	ml.size_flags_vertical = SIZE_SHRINK_CENTER
+	mr.add_child(ml)
+	for side: Array in [["Prev", "‹", -1], ["Name", "", 0], ["Next", "›", 1]]:
+		var b := Button.new()
+		b.name = side[0]; b.text = side[1]
+		b.custom_minimum_size = Vector2(64 if side[2] != 0 else 0, HOST_ROW_H)
+		b.add_theme_font_size_override("font_size", 26 if side[2] != 0 else 19)
+		if side[2] == 0:
+			b.size_flags_horizontal = SIZE_EXPAND_FILL
+			b.clip_text = true
+			b.pressed.connect(step_host_mode.bind(1))
+		else: b.pressed.connect(step_host_mode.bind(side[2]))
+		mr.add_child(b)
+	var mh := Label.new()
+	mh.name = "ModeHint"
+	mh.theme_type_variation = &"MutedLabel"
+	mh.add_theme_font_size_override("font_size", 15)
+	mh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	mh.custom_minimum_size = Vector2(0, 40)
+	mode.add_child(mh)
+	_pill_row(mode, "Lim", "K.O. limit", range(HOST_LIMS.size()), HOST_LIM_NAMES, "lim_", func(i: int) -> void: _host["lim"] = HOST_LIMS[i])
+	var dk: Array = Dynamics.KINDS.duplicate()
+	var dn: Array = []
+	for k: String in dk: dn.append(Dynamics.NAMES[k])
+	_pill_row(mode, "Floor", "Floor", dk, dn, "dyn_", func(k: String) -> void: _host["dyn"] = k)
+	var rules: VBoxContainer = box.get_node("Rules")
+	_pill_row(rules, "Hp", "Health", HostSession.HPS, HostSession.HPS, "hp_", func(k: int) -> void: _host["hp"] = k)
+	var pair := HBoxContainer.new()
+	pair.name = "Pair"
+	pair.add_theme_constant_override("separation", 14)
+	rules.add_child(pair)
+	_pill_row(pair, "Grav", "Gravity", [0, 1, 2], ["Low", "Normal", "High"], "grav_", func(i: int) -> void: _host["grav"] = HostSession.GRAVS[i])
+	_pill_row(pair, "Inf", "Ammo", [0, 1], ["Normal", "Infinite"], "inf_", func(i: int) -> void: _host["inf"] = i == 1, 64.0)
+	_pill_row(rules, "Kb", "Knockback", range(HostSession.KBS.size()), ["0.5x", "1x", "1.5x", "2x", "3x"], "kb_", func(i: int) -> void: _host["kb"] = HostSession.KBS[i])
+	_pill_row(rules, "Crate", "Crates", HostSession.CRATES, ["Few", "Normal", "Many", "Chaos"], "crate_", func(k: String) -> void: _host["crate"] = k)
 	var hint := Label.new()
 	hint.name = "Hint"
 	hint.theme_type_variation = &"MutedLabel"
-	hint.add_theme_font_size_override("font_size", 16)
-	hint.text = "Game type and arena: your last Play setup (online plays Classic-style games)."
+	hint.add_theme_font_size_override("font_size", 15)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 20)
 	box.add_child(hint)
@@ -541,7 +643,7 @@ func _build_host_sheet() -> void:
 	box.add_child(row)
 	var cancel := Button.new()
 	cancel.name = "Cancel"; cancel.text = "Cancel"
-	cancel.custom_minimum_size = Vector2(140, 60)
+	cancel.custom_minimum_size = Vector2(140, HOST_ROW_H)
 	cancel.add_theme_font_size_override("font_size", 20)
 	cancel.pressed.connect(show_host.bind(false))
 	row.add_child(cancel)
@@ -549,27 +651,75 @@ func _build_host_sheet() -> void:
 	go.name = "Create"; go.text = "Create room"
 	go.theme_type_variation = &"PrimaryButton"
 	go.size_flags_horizontal = SIZE_EXPAND_FILL
-	go.custom_minimum_size = Vector2(0, 60)
+	go.custom_minimum_size = Vector2(0, HOST_ROW_H)
 	go.add_theme_font_size_override("font_size", 22)
 	go.pressed.connect(func() -> void: host_room())
 	row.add_child(go)
-	var h: Variant = Settings.get_value("host_opts", {})
-	if h is Dictionary:
-		for k in ["pub", "max", "bots"]:
-			if h.has(k): _host[k] = h[k]
-	_host["max"] = clampi(int(_host["max"]), 2, 8); _host["bots"] = clampi(int(_host["bots"]), 0, 7)
 	_host_bs["pub_" + str(1 if _host["pub"] else 0)].button_pressed = true
 	_host_bs["max_" + str(_host["max"])].button_pressed = true
 	_host_bs["bots_" + str(_host["bots"])].button_pressed = true
+	_host_bs["lim_" + str(HOST_LIMS.find(int(_host["lim"])))].button_pressed = true
+	_host_bs["dyn_" + str(_host["dyn"])].button_pressed = true
+	_host_bs["hp_" + str(int(_host["hp"]))].button_pressed = true
+	_host_bs["grav_" + str(HostSession.GRAVS.find(float(_host["grav"])))].button_pressed = true
+	_host_bs["inf_" + str(1 if _host["inf"] else 0)].button_pressed = true
+	_host_bs["kb_" + str(HostSession.KBS.find(float(_host["kb"])))].button_pressed = true
+	_host_bs["crate_" + str(_host["crate"])].button_pressed = true
+	show_host_tab("Room")
+	_show_host_mode()
+
+## One tab of the Host sheet.
+func show_host_tab(t: String) -> void:
+	var box := host_sheet.get_node("Center/Card/Box")
+	for n: String in HOST_TABS:
+		(box.get_node(n) as Control).visible = n == t
+		(box.get_node("Head/Tabs/" + n) as Button).set_pressed_no_signal(n == t)
+	_host_hint()
+
+## ‹ / ›: the previous / next online game type.
+func step_host_mode(d: int) -> void:
+	var ms := HostSession.online_modes()
+	var i := ms.find(str(_host["mode"]))
+	_host["mode"] = ms[posmod(i + d, ms.size())]
+	_show_host_mode()
+
+func set_host_mode(m: String) -> void:
+	_host["mode"] = HostSession.online_mode(m)
+	_show_host_mode()
+
+func _show_host_mode() -> void:
+	var box := host_sheet.get_node("Center/Card/Box/Mode")
+	var m := str(_host["mode"])
+	(box.get_node("Game/Name") as Button).text = HostSession.mode_name(m) + ("  (app)" if HostSession.app_only(m) else "")
+	var blurb := ModeRules.blurb(m, HostSession.all_modes())
+	var t := blurb + ("." if blurb != "" and not blurb.ends_with(".") else "")
+	t += (" " if t != "" else "") + ("App only: a web player in the room makes it Classic." if HostSession.app_only(m) else "Web and app players.")
+	(box.get_node("ModeHint") as Label).text = t
+	_host_hint()
+
+## Under the tabs: the arena the room plays (the last Play setup's, if the game type allows it).
+func _host_hint() -> void:
+	if host_sheet == null: return
+	var hint: Label = host_sheet.get_node("Center/Card/Box/Hint")
+	var mp := _host_map(str(_host["mode"]))
+	hint.text = "Arena: %s (from your last Play setup)." % str(Content.get_map(mp).get("name", mp))
+
+## The arena for game type `mode`: the last Play setup's if allowed online, else the mode's first one.
+func _host_map(mode: String) -> String:
+	var mp := str(Settings.get_value("offline_map", "arena"))
+	var allowed: Array = SetupWizard.maps_for(mode).filter(func(id: String) -> bool: return GuestSession.data("maps").has(id))
+	if not allowed.has(mp): mp = "arena" if allowed.has("arena") or allowed.is_empty() else str(allowed[0])
+	return mp
 
 func show_host(on: bool) -> void:
 	host_sheet.visible = on
 	if on:
 		if str(_ui["rname"].text) == "": _ui["rname"].text = (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player") + "'s room"
+		show_host_tab("Room")
 		if Tier.is_pc(): (_ui["rname"] as LineEdit).grab_focus.call_deferred()
 
-## Create room: a HostSession with the sheet's options; the game type, arena, floor and bot skill come from the
-## last Play setup (Settings), the mode through HostSession.net_mode.
+## Create room: a HostSession with the sheet's room options and rules; the arena and bot skill come from the last Play
+## setup (Settings).
 func host_room() -> void:
 	if session != null and session.is_active(): return
 	var url := str(Settings.get_value("server_url")).strip_edges()
@@ -577,20 +727,28 @@ func host_room() -> void:
 	if nm == "": nm = "Player"
 	Settings.set_value("name", nm)
 	Settings.set_value("host_opts", _host.duplicate())
-	var mode := HostSession.net_mode(str(Settings.get_value("mode", "classic")))
-	var mp := str(Settings.get_value("offline_map", "arena"))
-	var allowed := SetupWizard.maps_for(mode)
-	if not allowed.has(mp): mp = "arena" if allowed.has("arena") or allowed.is_empty() else str(allowed[0])
+	var mode := HostSession.online_mode(str(_host["mode"]))
 	show_host(false)
 	session = HostSession.new()
 	_bind_session()
 	(session as HostSession).begin_host(url, {"name": str(_ui["rname"].text), "pub": _host["pub"], "max": _host["max"], "bots": int(_host["bots"]),
-		"mode": mode, "map": mp, "dyn": str(Settings.get_value("dyn", "off")), "diff": str(Settings.get_value("difficulty", "normal"))},
+		"mode": mode, "map": _host_map(mode), "dyn": str(_host["dyn"]), "diff": str(Settings.get_value("difficulty", "normal")),
+		"lim": int(_host["lim"]), "hp": int(_host["hp"]), "grav": float(_host["grav"]), "kb": float(_host["kb"]), "crate": str(_host["crate"]),
+		"inf": bool(_host["inf"])},
 		{"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
 		"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}, str(Settings.get_value("token", "")))
 	_refresh_buttons()
 
 func _on_hosted(_code: String) -> void:
+	_fill_lobby()
+	show_lobby(true)
+
+## Host migration while on the title / lobby: the new HostSession replaces the guest one.
+func _on_promoted(hs: GuestSession) -> void:
+	_unbind_session()
+	session = hs
+	_bind_session()
+	_status(hs.status)
 	_fill_lobby()
 	show_lobby(true)
 
@@ -615,6 +773,12 @@ func _build_lobby() -> void:
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(0, 20)
 	box.add_child(info)
+	var rl := Label.new()
+	rl.name = "Rules"
+	rl.add_theme_font_size_override("font_size", 16)
+	rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	rl.custom_minimum_size = Vector2(0, 20)
+	box.add_child(rl)
 	var row := HBoxContainer.new()
 	row.name = "Buttons"
 	row.add_theme_constant_override("separation", 10)
@@ -637,7 +801,8 @@ func _build_lobby() -> void:
 func show_lobby(on: bool) -> void:
 	if lobby: lobby.visible = on
 
-## The lobby card from the session: room name / code, a line per player (the host first), Start for the host.
+## The lobby card from the session: room name / code, a line per player (the host first), the rules (a Godot host's,
+## else the web host's mode and arena), Start for the host.
 func _fill_lobby() -> void:
 	var box := lobby.get_node("Center/Card/Box")
 	var hs: HostSession = session as HostSession if session is HostSession else null
@@ -652,10 +817,16 @@ func _fill_lobby() -> void:
 	for r: Dictionary in roster:
 		var l := Label.new()
 		l.add_theme_font_size_override("font_size", 20)
-		l.text = "%s%s" % [r.get("name", "?"), "  (host)" if int(r.get("id", -1)) == 0 else ""]
+		l.text = "%s%s%s" % [r.get("name", "?"), "  (host)" if int(r.get("id", -1)) == 0 else "", "  (web)" if hs != null and int(r.get("id", -1)) != 0 and not r.has("gd") else ""]
 		grid.add_child(l)
 	var seats := hs.opt_max if hs != null else int(session.lobby.get("max", 0)) if session != null else 0
 	var info: Label = box.get_node("Info")
 	info.text = "%d / %d players" % [roster.size(), seats] + (" · empty seats get bots" if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
 		+ ("" if hs != null else " · waiting for the host to start")
+	var rl: Label = box.get_node("Rules")
+	if hs != null: rl.text = HostSession.rules_text(hs.rules_list())
+	elif session != null and session.lobby.get("rl") is Dictionary: rl.text = HostSession.rules_text(session.lobby["rl"])
+	elif session != null and str(session.lobby.get("modeName", "")) != "": rl.text = "%s · %s" % [session.lobby["modeName"], session.lobby.get("map", "")]
+	else: rl.text = ""
+	rl.visible = rl.text != ""
 	(box.get_node("Buttons/Start") as Button).visible = hs != null

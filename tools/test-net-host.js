@@ -9,14 +9,22 @@
    with slots 0 and 3, the Godot guest's `S` relayed to the web guest stamped with its slot, guest input moves the
    ghosts on the host, the host's `h` reaches only its victim, the guest's hit on the host lowers its hp, forged
    pend/ko/h/start are dropped (netGuard), the bot K.O. arrives as `ko` and ends the match with `pend` (limit 1),
-   rematch votes (rvs) and a second `start`, the web guest leaving turns its seat back into a bot (`slot`), no errors. */
+   rematch votes (rvs) and a second `start`, the web guest leaving turns its seat back into a bot (`slot`), no errors.
+   The host picked Team Deathmatch (app-only) with Host-sheet rules: with a web guest in the room the `start` plays
+   Classic and carries the standard rules fields (hp 150, grav 1.5, kb 0.5, crate fast, inf), no `gmode`; emotes are
+   relayed (web guest -> Godot guest, stamped; the host's own -> web guest), a junk emote is dropped.
+   Then (godot/tests/net_modes_host.gd + net_modes_peer.gd):
+   B. a room whose guests are all Godot clients (`gd: 1`: the Godot peer and a protocol guest saying gd) plays every
+      app-only mode to its end in turn (rules.gmode, gteam, pp, grav 0.15, hp 300; gm Chaos events; pend);
+   C. host migration: the Godot host leaves mid-match, the relay promotes the Godot guest, which carries the match on
+      (`start` with `rs`: same seats, K.O.s, bot, arena seed and clock); the web guest re-joins it with a plain hello. */
 const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const os = require('os');
 const assert = require('assert');
 process.env.REQUIRE_LOGIN = '0'; process.env.DATA_DIR = os.tmpdir() + '/wa-nethost-' + process.pid;
 const srv = require('../server');
-const { Client } = require('./wa-client');
+const { Client, PROTO, BUILD } = require('./wa-client');
 const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 const ERR = /SCRIPT ERROR|^ERROR|Parse Error|leaked/i;
@@ -41,6 +49,181 @@ function runGodot(script, args, tag) {
 }
 
 let host = null, peer = null;
+const MODES = ['tdm', 'deathmatch', 'sudden', 'chaos', 'pillars', 'explosive', 'lowg', 'gungame'];
+const r2 = v => +v.toFixed(2);
+
+// a guest in Node that streams its own S (standing still) and records the room messages
+function guestStream(c, slotOf, extra) {
+  const st = { inbox: [], last: {}, start: null, starts: [], slot: -1 };
+  c.ws.on('message', d => {
+    let m; try { m = JSON.parse(d.toString()); } catch (e) { return; }
+    if (m.op !== 'msg') { st.inbox.push({ at: Date.now(), op: m.op }); return; }
+    const x = m.m; st.inbox.push({ at: Date.now(), m: x });
+    if (x.t === 'welcome') st.slot = x.id;
+    if (x.t === 'start') { st.start = x; st.starts.push({ at: Date.now(), m: x }); st.last = {}; }
+    if (x.t === 'S' && Array.isArray(x.l)) for (const e of x.l) st.last[e.id] = Object.assign({ at: Date.now() }, e);
+  });
+  st.timer = setInterval(() => { const s = slotOf(st); if (s < 0 || !st.start) return; c.toHost({ t: 'S', l: [Object.assign({ id: s, x: -3, y: 0, z: 3, vx: 0, vy: 0, vz: 0, yaw: 0, ax: 0, ay: 0, az: 1, w: 'spatula', hp: 100, d: 0, g: 1, sq: 0, iv: 0, lv: 1, el: 0 }, extra || {})] }); }, 100);
+  return st;
+}
+
+// B. every app-only mode in a room whose guests are all Godot clients
+async function modesRoom(url) {
+  host = runGodot('res://tests/net_modes_host.gd', [url, 'modes'], 'mhost');
+  const code = (await host.waitLine(/^HOSTED code=/, 30000)).split('=')[1];
+  const gd = await new Client(url, 'GdBot').open();
+  await gd.join(code);
+  gd.toHost({ t: 'hello', build: BUILD, proto: PROTO, name: 'GdBot', skin: 'none', hat: 'none', color: 0x39b5a8, gd: 1 });
+  const st = guestStream(gd, s => s.slot);
+  const w = await gd.wait(m => m.op === 'msg' && m.m.t === 'welcome', 5000);
+  assert.equal(w.m.gd, 1, 'a Godot host says gd in welcome');
+  peer = runGodot('res://tests/net_modes_peer.gd', [url, code, 'modes', String(MODES.length)], 'mpeer');
+  const results = [];
+  for (let i = 0; i < MODES.length; i++) {
+    const t0 = Date.now();
+    while (!(st.starts.length > i)) { if (Date.now() - t0 > 60000) throw new Error('no start for ' + MODES[i]); await sleep(50); }
+    const S = st.starts[i].m, R = S.rules;
+    const want = MODES[i];
+    const webMode = ['explosive', 'gungame'].includes(want);
+    console.log(`B ${want}: rules ${JSON.stringify(R)} limit ${S.limit}`);
+    if (webMode) assert.ok(R.mode === want && !R.gmode, want + ' is a web mode: rules.mode');
+    else assert.ok(R.mode === 'classic' && R.gmode === want, want + ': mode classic for the web, gmode for Godot');
+    if (want === 'tdm' || want === 'chaos') assert.deepEqual(R.gteam, [0, 1, 0, 1], want + ' sides by slot');
+    if (want === 'pillars') assert.ok(Array.isArray(R.pp) && R.pp.length >= 4 && new Set(R.pp).size === R.pp.length, 'pillars pp');
+    if (want === 'lowg') assert.equal(R.grav, 0.15, 'Moon Drift gravity');
+    if (want === 'explosive') assert.equal(R.hp, 300, 'Explosive health'); else assert.equal(R.hp, 150, 'host health');
+    assert.ok(R.kb === 1.5 && R.crate === 'fast', 'host rules kept');
+    const team = s => (R.gteam ? R.gteam[s] : -1);
+    if (i === 0) {                                     // a web player cannot join a running app-only match: told why
+      const late = await new Client(url, 'LateWeb').open();
+      await late.join(code); late.hello();
+      const k = await late.wait(m => m.op === 'msg' && (m.m.t === 'kick' || m.m.t === 'welcome'), 5000);
+      console.log('B late web guest: ' + JSON.stringify(k.m));
+      assert.ok(k.m.t === 'kick' && /Team Deathmatch.*app/.test(k.m.msg), 'a late web guest is refused with the reason');
+      late.close();
+    }
+    if (want === 'chaos') await gd.wait(m => m.op === 'msg' && m.m.t === 'gm' && m.m.k === 'cs', 20000);
+    await sleep(800);
+    // K.O. everybody else (not my side) until the host ends the match
+    const lastHit = {};
+    let pend = null;
+    const tk = Date.now();
+    while (!pend) {
+      if (Date.now() - tk > 90000) throw new Error('no pend in ' + want);
+      for (const k of [0, 2, 3]) {
+        if (R.gteam && team(k) === team(st.slot)) continue;
+        const e = st.last[k];
+        if (e && (e.d || e.el || e.hp <= 0)) continue;
+        if (Date.now() - (lastHit[k] || 0) < 350) continue;
+        lastHit[k] = Date.now();
+        gd.toHost({ t: 'h', to: k === 2 ? 2 : 0, vs: k, from: st.slot, d: 250, x: 0, y: 0.2, z: 1, f: 5, hd: 0 });
+      }
+      await sleep(60);
+      const p = st.inbox.find(x => x.m && x.m.t === 'pend' && x.at > st.starts[i].at);
+      if (p) pend = p.m;
+    }
+    results.push(want + ':w' + pend.w);
+    if (R.gteam) assert.equal(team(pend.w), team(st.slot), want + ': my side wins (' + pend.w + ')');
+    else assert.equal(pend.w, st.slot, want + ': I win');
+    if (i + 1 < MODES.length) gd.toHost({ t: 'rv' });
+  }
+  console.log('B results ' + results.join(' '));
+  const gmS = st.inbox.filter(x => x.m && x.m.t === 'gm' && x.m.k === 'st');
+  assert.ok(gmS.length > 10 && gmS.some(x => x.m.ko.some(v => v >= 3)), 'gm state messages with the K.O.s');
+  await peer.waitLine(/^DONE /, 30000);
+  clearInterval(st.timer);
+  gd.tx({ op: 'leave' }); gd.close();
+  const [ch, cp] = await Promise.all([Promise.race([host.exited, sleep(30000).then(() => 'hang')]), Promise.race([peer.exited, sleep(30000).then(() => 'hang')])]);
+  if (ch === 'hang') host.p.kill(); if (cp === 'hang') peer.p.kill();
+  const ht = host.lines.map(x => x.l), pt = peer.lines.map(x => x.l);
+  console.log(ht.filter(l => /^(MATCH_OVER|ALL_MODES|DONE|FAIL)/.test(l)).map(l => 'mhost: ' + l).join('\n'));
+  console.log(pt.filter(l => /^(MODE|GM|CHAOS_ON|MATCH_END|DONE|FAIL)/.test(l)).map(l => 'mpeer: ' + l).join('\n'));
+  const errs = [...ht, ...pt].filter(l => ERR.test(l));
+  for (const l of errs) console.log('godot:', l);
+  assert.equal(errs.length, 0, 'no Godot errors (modes)');
+  assert.ok(ht.some(l => /^ALL_MODES/.test(l)), 'the host played every mode');
+  const modeL = pt.filter(l => /^MODE /.test(l));
+  assert.equal(modeL.length, MODES.length, 'the Godot guest started every mode');
+  MODES.forEach((m, i) => {
+    const l = modeL[i];
+    assert.ok(new RegExp('mode=' + m + ' ').test(l), 'the Godot guest plays ' + m + ': ' + l);
+    if (!['explosive', 'gungame'].includes(m)) assert.ok(/remote=true/.test(l), m + ': the host decides the end: ' + l);
+    if (m === 'tdm' || m === 'chaos') assert.ok(/teams=[1-9]\d* team=0 /.test(l), m + ': the Godot guest (slot 2) is on side 0: ' + l);
+    if (m === 'lowg') assert.ok(/grav=0\.15/.test(l), 'Moon Drift gravity on the guest: ' + l);
+    if (m === 'explosive') assert.ok(/maxhp=225 /.test(l), 'Explosive health (300 x Scamp 0.75) on the guest: ' + l);
+    else assert.ok(/maxhp=112 /.test(l), 'host health (150 x Scamp 0.75) on the guest: ' + l);
+  });
+  assert.ok(pt.some(l => /^GM cw /.test(l)) && pt.some(l => /^GM cs /.test(l)), 'the Chaos event reached the Godot guest');
+  assert.ok(pt.some(l => /^CHAOS_ON /.test(l)), 'the Godot guest ran the host\'s Chaos event');
+  assert.equal(pt.filter(l => /^MATCH_END /.test(l)).length, MODES.length, 'the Godot guest saw every match end');
+  assert.equal(ch, 0, 'modes host exit code'); assert.equal(cp, 0, 'modes peer exit code');
+  console.log('B. app-only modes online pass');
+}
+
+// C. host migration: the Godot host leaves mid-match; the Godot guest (first in) carries the match on
+async function migration(url) {
+  host = runGodot('res://tests/net_modes_host.gd', [url, 'migrate'], 'xhost');
+  const code = (await host.waitLine(/^HOSTED code=/, 30000)).split('=')[1];
+  peer = runGodot('res://tests/net_modes_peer.gd', [url, code, 'migrate', '1'], 'xpeer');
+  await peer.waitLine(/^WELCOMED slot=1/, 30000);
+  const web = await new Client(url, 'WebGuest').open();
+  await web.join(code); web.hello();
+  const st = guestStream(web, s => s.slot);
+  const t0 = Date.now();
+  while (!st.start) { if (Date.now() - t0 > 40000) throw new Error('no start (migrate)'); await sleep(50); }
+  const S1 = st.start;
+  assert.deepEqual(S1.slots.map(s => s.kind), ['human', 'human', 'human', 'bot'], 'migrate room seats');
+  assert.equal(st.slot, 2);
+  const botName = S1.slots[3].name;
+  await sleep(1500);
+  let ko = null;
+  for (let i = 0; i < 20 && !ko; i++) {
+    web.toHost({ t: 'h', to: 0, vs: 3, from: 2, d: 250, x: 0, y: 0.2, z: 1, f: 5, hd: 0 });
+    await sleep(400);
+    ko = st.inbox.find(x => x.m && x.m.t === 'ko' && x.m.to === 3);
+  }
+  assert.ok(ko, 'the web guest K.O.d the bot before the host left');
+  const rh = await web.wait(m => m.op === 'rehost', 20000);
+  const tRe = Date.now();
+  st.start = null; st.slot = -1;
+  web.hello();                                         // the web game's netMigrate: a plain hello to the new host
+  while (!st.start) { if (Date.now() - tRe > 15000) throw new Error('no resumed start'); await sleep(50); }
+  const S2 = st.start;
+  console.log('C resumed start: ' + JSON.stringify({ slots: S2.slots.map(s => s.kind + ':' + s.name), rules: S2.rules, rs: (S2.rs || []).length, ms: Date.now() - tRe }));
+  assert.equal(st.slot, 2, 'the web guest keeps its seat');
+  assert.deepEqual(S2.slots.map(s => s.kind), ['human', 'bot', 'human', 'bot'], 'seats: new host 0, the old host seat a bot, web guest, the bot');
+  assert.equal(S2.slots[0].name, 'GodotPeer'); assert.equal(S2.slots[2].name, 'WebGuest'); assert.equal(S2.slots[3].name, botName, 'the same bot');
+  for (const k of ['mode', 'hp', 'crate', 'wstate', 'grav', 'kb', 'inf', 'dyn', 'dseed']) assert.ok(k in S2.rules, 'resumed start has rules.' + k);
+  assert.equal(S2.rules.dyn, 'wobble'); assert.equal(S2.rules.dseed, S1.rules.dseed, 'same arena seed');
+  assert.ok(S2.rules.dt0 > 2, 'the arena clock goes on (dt0 ' + S2.rules.dt0 + ')');
+  assert.ok(Array.isArray(S2.rs) && S2.rs.find(e => e.id === 2 && e.ko >= 1), 'rs carries my K.O.');
+  await sleep(2000);
+  clearInterval(st.timer);
+  web.tx({ op: 'leave' }); web.close();
+  const [ch, cp] = await Promise.all([Promise.race([host.exited, sleep(30000).then(() => 'hang')]), Promise.race([peer.exited, sleep(40000).then(() => 'hang')])]);
+  if (ch === 'hang') host.p.kill(); if (cp === 'hang') peer.p.kill();
+  const ht = host.lines.map(x => x.l), pt = peer.lines.map(x => x.l);
+  console.log(ht.filter(l => /^(LEAVING|DONE|FAIL)/.test(l)).map(l => 'xhost: ' + l).join('\n'));
+  console.log(pt.filter(l => /^(PROMOTED|RESUMED|START|MODE|DONE|FAIL)/.test(l)).map(l => 'xpeer: ' + l).join('\n'));
+  const errs = [...ht, ...pt].filter(l => ERR.test(l));
+  for (const l of errs) console.log('godot:', l);
+  assert.equal(errs.length, 0, 'no Godot errors (migration)');
+  assert.ok(pt.some(l => /^PROMOTED resuming=true/.test(l)), 'the Godot guest was promoted and resumes');
+  const res = pt.find(l => /^RESUMED /.test(l));
+  assert.ok(res && /^RESUMED human:GodotPeer:ko\d+ bot:[^:]+:ko\d+ human:WebGuest:ko[1-9]\d* bot:/.test(res), 'resumed seats and K.O.s: ' + res);
+  assert.ok(/kind=wobble/.test(res), 'same floor');
+  const pi = peer.lines.findIndex(x => /^PROMOTED/.test(x.l));
+  const before = peer.lines.slice(0, pi).filter(x => /^ME /.test(x.l)).slice(-1)[0];
+  const ri = peer.lines.findIndex(x => /^RESUMED/.test(x.l));
+  const after = peer.lines.slice(peer.lines.findIndex((x, i) => i > pi && /^START /.test(x.l))).find(x => /^ME /.test(x.l));
+  const pos = l => l.split(' ').slice(1, 4).map(Number);
+  const a = pos(before.l), b = pos(after.l);
+  const dist = Math.hypot(a[0] - b[0], a[2] - b[2]);
+  console.log(`C new host before ${a} after ${b} (moved ${dist.toFixed(2)} m), resumed line ${ri}`);
+  assert.ok(dist < 2.5 && Math.hypot(b[0], b[2] - 8) > 1.5, 'the new host carries on where it stood (not on its spawn)');
+  assert.equal(cp, 0, 'new host exit code');
+  console.log('C. host migration passes');
+}
 (async () => {
   spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
   await srv.start(0);
@@ -68,6 +251,8 @@ let host = null, peer = null;
   const roster1 = await web.wait(m => m.op === 'msg' && m.m.t === 'roster', 5000);
   assert.deepEqual(roster1.m.roster.map(r => r.name), ['GodotHost', 'WebGuest'], 'roster after the web guest');
   assert.equal(roster1.m.roster[0].cls, 'bruiser'); assert.equal(roster1.m.max, 4); assert.equal(roster1.m.lim, 1);
+  assert.ok(roster1.m.rl && roster1.m.rl.want === 'tdm' && roster1.m.rl.mode === 'classic', 'roster rl: TDM picked, Classic played with a web guest: ' + JSON.stringify(roster1.m.rl));
+  assert.equal(roster1.m.modeName, 'Classic');
   { const l = await new Client(url, 'Lister').open(); l.tx({ op: 'list' }); const r = await l.wait(m => m.op === 'rooms'); assert.ok(!r.rooms.some(x => x.id === code), 'private room is not listed'); l.close(); }
 
   // Godot guest
@@ -83,8 +268,11 @@ let host = null, peer = null;
   assert.ok(/^Bot /.test(S0.slots[3].name), 'the bot has its name');
   assert.equal(S0.slots[2].cls, 'kid', 'the Godot guest class');
   assert.equal(S0.map, 'arena'); assert.equal(S0.limit, 1);
-  assert.equal(S0.rules.mode, 'classic'); assert.equal(S0.rules.hp, 200); assert.ok(Number.isInteger(S0.rules.dseed), 'dseed');
+  assert.equal(S0.rules.mode, 'classic'); assert.equal(S0.rules.hp, 150); assert.ok(Number.isInteger(S0.rules.dseed), 'dseed');
   assert.equal(S0.rules.dyn, 'off');
+  assert.ok(S0.rules.grav === 1.5 && S0.rules.kb === 0.5 && S0.rules.crate === 'fast' && S0.rules.inf === true && typeof S0.rules.wstate === 'object', 'standard rules fields from the Host sheet');
+  assert.ok(!('gmode' in S0.rules) && !('gteam' in S0.rules), 'no app-only mode with a web guest');
+  web.toHost({ t: 'emote', e: 'wobble' }); web.toHost({ t: 'emote', e: 'no-such-emote' });
 
   // stream my own S: walking along x
   const r2 = v => +v.toFixed(2);
@@ -185,8 +373,14 @@ let host = null, peer = null;
   assert.ok(pt.some(l => /^MATCH_END w=1/.test(l)), 'Godot guest got pend');
   assert.ok(pt.some(l => /^START n=2 /.test(l)), 'Godot guest got the rematch');
   assert.ok(pt.some(l => /^SLOT1 kind=bot/.test(l)), 'the web guest seat went back to a bot');
+  assert.ok(pt.some(l => /^EMOTE 1 wobble$/.test(l)), 'the web guest emote reached the Godot guest (stamped slot 1)');
+  assert.ok(inbox.some(x => x.m.t === 'emote' && x.m.id === 0 && x.m.e === 'clap'), 'the host emote reached the web guest');
+  assert.ok(ht.some(l => /^STATUS .*app-only, so the match plays Classic/.test(l)), 'the host was told TDM plays Classic');
   assert.equal(errs.length, 0, 'no Godot errors');
   assert.equal(ch, 0, 'host exit code'); assert.equal(cp, 0, 'peer exit code');
+  console.log('godot net host test (mixed room) passes');
+  await modesRoom(url);
+  await migration(url);
   console.log('godot net host test passes');
   await srv.stop(); process.exit(0);
 })().catch(async e => {

@@ -8,6 +8,9 @@ extends NetMatch
 ## - crates are spawned here only and announced with a `cid` (`crate`), every take is told (`take`);
 ## - the K.O. limit / last one standing is decided here and sent as `pend`.
 ## HostSession (net/host_session.gd) guards and relays the guests' messages and feeds the allowed ones to handle().
+## Godot-only (docs/PROTOCOL.md 6.3): app-only modes (`rules.gmode`: sides by slot, Pillars spots), the mode state for
+## Godot guests in `gm` messages (K.O.s / deaths / ladder rungs / Pillars clock at 1 Hz, Chaos events as they happen),
+## and a match resumed after a host migration (`start.rs`: positions, health, K.O.s, lives of every slot).
 
 const EMPTY_INFO := {"name": "", "skin": "none", "hat": "none", "color": 0xcccccc, "cls": "wobbler"}
 
@@ -17,6 +20,7 @@ var brains := {}                 ## slot -> the bot's controller, kept while a g
 var orig := {}                   ## slot -> {cls, name, look, dmg, speed}: the bot as MatchSim made it
 var crate_id := 0
 var n_comp := 0                  ## fighters in the match when it started (last-one-standing check)
+var gm_t := 0.0                  ## seconds to the next `gm` state message
 
 func _init(p_sim: MatchSim, p_send: Callable, p_host: RefCounted) -> void:
 	super(p_sim, p_send, 0)
@@ -42,6 +46,8 @@ func slot_fighter(s: int) -> FighterState:
 func setup(start: Dictionary) -> Dictionary:
 	slots = (start["slots"] as Array).duplicate(true)
 	limit = int(start.get("limit", 0))
+	rules = start.get("rules", {})
+	var resuming: bool = start.get("rs") is Array
 	sim.net = self
 	sim.pickups.remote = false
 	var grav := rule_grav(start.get("rules", {}))
@@ -65,7 +71,18 @@ func setup(start: Dictionary) -> Dictionary:
 				slots[k] = {"kind": "empty", "id": k, "name": "", "skin": "none", "hat": "none", "color": 0, "cls": "wobbler"}
 			_:
 				ai[k] = b
+				if resuming and str(info.get("name", "Bot")) not in ["", "Bot"]:    # after a host migration: the same bot
+					var cls := str(info.get("cls", "wobbler"))
+					if combat.classes.has(cls): b.set_class(cls, combat.classes[cls]); b.hp = combat.max_hp(b)
+					b.name = str(info["name"])
+					sim.looks[b] = look_of(info)
 				slots[k] = bot_info(b, k)
+	gmode = str(rules["gmode"]) if is_gmode(combat.modes, rules) else ""
+	if gmode != "":
+		_assign_teams()
+		if combat.mode_id == "pillars": _shuffle_pillars()
+		_place_pillars()
+	if resuming: apply_resume(start["rs"], start.get("rsx", {}))
 	n_comp = 0
 	for f: FighterState in sim.fighters:
 		if not f.left: n_comp += 1
@@ -143,7 +160,11 @@ func _place(f: FighterState) -> void:
 	combat.place_at(f, float(p[0]), float(p[1]), float(sim.map.get("spawnY", 0.01)))
 
 ## netStep's host check: in a lives mode, when players left and only one is still in, that one wins.
-func _before_report(_dt: float) -> void:
+func _before_report(dt: float) -> void:
+	gm_t -= dt
+	if gm_t <= 0.0:
+		gm_t = 1.0
+		_send(mode_state())
 	var r := combat.rules
 	if combat.lives_mode == 0 or r.match_over or n_comp < 2: return
 	var alive: Array = []
@@ -151,6 +172,30 @@ func _before_report(_dt: float) -> void:
 		if not f.elim and not f.left: alive.append(f)
 	if alive.size() <= 1:
 		r.end_match(alive[0] if alive.size() > 0 else sim.player)
+
+## Pillars: who starts on which pillar, shuffled every match (`rules.pp`, the web host's net.pp).
+func _shuffle_pillars() -> void:
+	var n: int = (sim.map.get("spawns", []) as Array).size()
+	var order: Array = range(n)
+	for k in range(n - 1, 0, -1):
+		var j := int(floor(combat.rng.next() * (k + 1)))
+		var t: Variant = order[k]; order[k] = order[j]; order[j] = t
+	rules["pp"] = order
+	var h: RefCounted = host.get_ref()
+	if h != null: h.set("pp", order)
+
+## `gm` "st": every slot's K.O.s, deaths and ladder rung, and the Pillars clock (Godot guests apply it; web guests
+## ignore the message).
+func mode_state() -> Dictionary:
+	var ko: Array = []
+	var dt: Array = []
+	var gg: Array = []
+	for k in slots.size():
+		var f := slot_fighter(k)
+		ko.append(f.ko if f != null else 0); dt.append(int(f.st["deaths"]) if f != null else 0); gg.append(f.gg_rung if f != null else 0)
+	var m := {"t": "gm", "k": "st", "ko": ko, "dt": dt, "gg": gg}
+	if not combat.rules.pil.is_empty(): m["pt"] = NetSnapshot.fixed(float(combat.rules.pil["t"]), 1)
+	return m
 
 ## A guest's message, already guarded and stamped by HostSession (netHandle on the host).
 func handle(m: Dictionary) -> void:
@@ -173,6 +218,15 @@ func on_event(e: Dictionary) -> void:
 			var c2: Dictionary = e["crate"]
 			var f: FighterState = e.get("f")
 			if c2.has("cid") and f != null and not f.is_ghost: _send({"t": "take", "cid": c2["cid"]})
+		"chaos_warn":
+			_send({"t": "gm", "k": "cw", "id": e["id"], "fl": str(combat.rules.chaos.get("floor", ""))})
+		"chaos":
+			var cm := {"t": "gm", "k": "cs", "id": e["id"], "fl": str(combat.rules.chaos.get("floor", ""))}
+			var gf: FighterState = e.get("f")
+			if gf != null and gf.net_slot >= 0: cm["g"] = gf.net_slot
+			_send(cm)
+		"chaos_end":
+			_send({"t": "gm", "k": "ce", "id": e["id"]})
 		"match_over":
 			if not over:
 				over = true
