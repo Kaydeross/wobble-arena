@@ -10,6 +10,7 @@ var classes: Dictionary = {}
 var cosmetics: Dictionary = {}
 var difficulties: Dictionary = {}
 var crate_rates: Dictionary = {}
+var drops: Dictionary = {}
 var maps: Dictionary = {}
 
 func _init() -> void:
@@ -22,6 +23,7 @@ func reload() -> void:
 	cosmetics = load_json("cosmetics")
 	difficulties = load_json("difficulties")
 	crate_rates = load_json("crate-rates")
+	drops = load_json("drops")
 	maps = load_json("maps")
 
 ## One data file as a Dictionary ({} and an error if missing or invalid). Static so headless tests can use it without the autoload.
