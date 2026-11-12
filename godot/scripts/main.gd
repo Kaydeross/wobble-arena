@@ -7,6 +7,7 @@ extends Control
 ## a small tip line. Laid out with containers inside a safe-area
 ## MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks 852x393, 1170x540,
 ## 1280x720 and 390x844: the title, the online panel, every wizard page and the settings sheet).
+## Under the two Play buttons: Locker and Shop (ui/locker.gd, one screen in two modes; the Shop button shows your coins).
 ## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
@@ -35,6 +36,9 @@ const O := "Safe/Col/Body/Online/Box/"
 @onready var online_b: Button = $Safe/Col/Body/Home/Online
 @onready var status: Label = get_node(O + "Status")
 var wizard: SetupWizard
+var locker: LockerScreen            ## the Locker / Shop screen (hidden until opened)
+var locker_b: Button
+var shop_b: Button
 var sheet: Control                  ## settings sheet (gear): Show FPS
 var fps_toggle: CheckButton
 var _ui := {}
@@ -46,6 +50,11 @@ func _ready() -> void:
 	safe.add_child(wizard)
 	wizard.start_requested.connect(play_offline)
 	wizard.closed.connect(close_wizard)
+	locker = LockerScreen.new()
+	locker.visible = false
+	safe.add_child(locker)
+	locker.closed.connect(close_locker)
+	_build_more()
 	play.pressed.connect(open_wizard)
 	online_b.pressed.connect(show_tab.bind(true))
 	(get_node(O + "Head/Back") as Button).pressed.connect(show_tab.bind(false))
@@ -87,6 +96,72 @@ func _process(dt: float) -> void:
 ## The offline arenas for a mode (SetupWizard.maps_for).
 func maps_for(mode: String) -> Array:
 	return SetupWizard.maps_for(mode)
+
+## The Locker / Shop row under Play online: two clear buttons, each with a one-line sub (the Shop's shows your coins).
+func _build_more() -> void:
+	var more := HBoxContainer.new()
+	more.name = "More"
+	more.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	more.add_theme_constant_override("separation", 16)
+	home.add_child(more)
+	home.add_theme_constant_override("separation", 12)   # one more row: a little tighter, so the column still fits a phone
+	locker_b = _small_button("Locker", "Outfits, hats and emotes")
+	locker_b.pressed.connect(open_locker.bind(false))
+	more.add_child(locker_b)
+	shop_b = _small_button("Shop", "")
+	shop_b.pressed.connect(open_locker.bind(true))
+	more.add_child(shop_b)
+	Save.changed.connect(_coins_sub)
+	_coins_sub()
+
+func _small_button(big: String, sub: String) -> Button:
+	var b := Button.new()
+	b.name = big
+	b.custom_minimum_size = Vector2(252, 54)
+	var st := VBoxContainer.new()
+	st.name = "Stack"
+	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	st.offset_left = 14; st.offset_right = -14
+	st.alignment = BoxContainer.ALIGNMENT_CENTER
+	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	st.add_theme_constant_override("separation", -4)
+	b.add_child(st)
+	var bl := Label.new()
+	bl.name = "Big"
+	bl.text = big
+	bl.add_theme_font_size_override("font_size", 24)
+	bl.add_theme_font_override("font", UiTheme.font(700))
+	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	st.add_child(bl)
+	var sl := Label.new()
+	sl.name = "Sub"
+	sl.text = sub
+	sl.theme_type_variation = &"MutedLabel"
+	sl.add_theme_font_size_override("font_size", 15)
+	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sl.clip_text = true
+	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	st.add_child(sl)
+	return b
+
+func _coins_sub() -> void:
+	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = "You have %d coins" % Save.coins
+
+## The Locker (shop = false) or the Shop instead of the title column.
+func open_locker(shop_mode: bool = false, tab: String = "") -> void:
+	col.visible = false
+	wizard.visible = false
+	locker.visible = true
+	locker.open(shop_mode, tab)
+
+func close_locker() -> void:
+	locker.visible = false
+	col.visible = true
+	if wizard.stage:                    # the look may have changed: the Character page renders it again
+		wizard.stage.baked.clear()
+		wizard.stage.current = ""
+	_coins_sub()
+	if Tier.is_pc(): locker_b.grab_focus.call_deferred()
 
 ## The title (Play / Play online with friends) or the online panel.
 func show_tab(online: bool) -> void:
