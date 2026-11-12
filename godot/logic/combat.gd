@@ -42,9 +42,11 @@ var fighters: Array = []         ## every FighterState in the match
 var rng := CombatRng.new()
 var events: Array = []
 var weapons: Weapons
+var rules: ModeRules             ## game-mode rules: K.O. limit, lives, ladder, dash, shrink (logic/mode_rules.gd)
 
 func _init() -> void:
 	weapons = Weapons.new(self)
+	rules = ModeRules.new(self)
 	set_mode("classic")
 
 ## Drop the fighter-to-fighter references (last attacker, burner, swing targets, projectiles) so nothing leaks
@@ -53,6 +55,7 @@ func dispose() -> void:
 	for f: FighterState in fighters:
 		f.last_attacker = null; f.burner = null; f.swing_hit = {}
 	weapons.projectiles.clear()
+	rules.winner = null
 	fighters.clear()
 	events.clear()
 
@@ -180,11 +183,13 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		r["ko"] = true
 	return r
 
-## addKo: K.O. credit and streaks. Match-limit checks and the kill feed are the world's job (it reads the "ko" event).
+## addKo: K.O. credit and streaks, the Weapon Ladder step and the K.O. limit (ModeRules). The kill feed is the world's
+## job (it reads the "ko" event).
 func add_ko(killer: FighterState, victim: FighterState) -> void:
 	if victim != null and is_friend(killer, victim):
 		return
 	killer.ko += 1; killer.kill_t = time
+	if mode_id == "gungame": rules.gg_advance(killer)
 	var k := killer.st
 	k["streak"] += 1; k["bestStreak"] = maxi(k["bestStreak"], k["streak"])
 	k["multi"] = k["multi"] + 1 if time - float(k["lastKo"]) < 6.0 else 1
@@ -192,6 +197,7 @@ func add_ko(killer: FighterState, victim: FighterState) -> void:
 	var wn: String = wdata(killer.weapon).get("name", "Spatula") if killer.weapon != "" else "Spatula"
 	k["weps"][wn] = int(k["weps"].get(wn, 0)) + 1
 	ev({"type": "ko", "killer": killer, "victim": victim, "weapon": wn})
+	rules.check_limit(killer)
 
 ## Fall over (never longer than 1.6 s); a moment of "can't be tripped" follows getting up.
 func topple(f: FighterState, dur: float, msg: String = "") -> bool:
@@ -217,8 +223,9 @@ func topple(f: FighterState, dur: float, msg: String = "") -> bool:
 
 # ============================== timers / respawn ==============================
 
-## Fighter.timers: per-step countdowns. Not ported yet: emotes (visual), ninja dash charges (dashTick).
+## Fighter.timers: per-step countdowns. Not ported: emotes (visual only).
 func timers(f: FighterState, dt: float) -> void:
+	rules.dash_tick(f, dt)
 	tick_reload(f, dt)
 	if f.spd_t > 0.0: f.spd_t -= dt
 	if f.rage_t > 0.0: f.rage_t -= dt
@@ -279,11 +286,11 @@ func respawn(f: FighterState) -> void:
 	if lives_mode:
 		f.lives -= 1
 		if f.lives <= 0:
-			f.elim = true
-			ev({"type": "eliminated", "f": f})
+			rules.eliminate(f, true)
 			return
 	var s: Array = spawns[int(floor(rng.next() * spawns.size()))] if spawns.size() > 0 else [0.0, 0.0]
-	# TODO(shrinking arenas): MAPS[id].shrinks picks a spot inside the shrink zone instead.
+	var sz := rules.shrink_spot()                 # shrinking arenas: a spot inside the floor that is left
+	if sz.size() > 0: s = sz
 	if f.home != null: s = f.home
 	place_at(f, float(s[0]), float(s[1]), 0.01 if f.home != null else spawn_y)
 	f.invuln = 0.3 if f.home != null else 2.5     # spawn protection
@@ -297,7 +304,7 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	clear_inventory(f); set_weapon(f, "spatula")
 	var start: Variant = mode.get("start")
 	if start is String and start != "": pickup(f, start)
-	# TODO(weapon ladder): gungame gives the current rung (ggGive).
+	if mode_id == "gungame": rules.gg_give(f)
 
 # ============================== inventory ==============================
 

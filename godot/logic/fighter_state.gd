@@ -25,6 +25,10 @@ var lives := 0
 var elim := false
 var ko := 0
 var kill_t := -99.0
+var gg_rung := 0                 ## Weapon Ladder rung (ModeRules.GG index)
+var dash_n := 3                  ## ninja dash charges (ModeRules.DASH_MAX)
+var dash_regen := 0.0
+var dash_cd := 0.0
 
 # --- class (shared/classes.json) ---
 var class_id := "wobbler"

@@ -13,6 +13,7 @@ How the combat logic in `godot/logic/` maps to the web game (`public/index.html`
 | `logic/net_snapshot.gd` `NetSnapshot` | `netStep` `S` entry (~8984), `h`/`ko` sends, `netCleanHit`/`netGuard` (~8703) | protocol encode/decode (docs/PROTOCOL.md 3.1) |
 | `tests/combat_test.gd` + `tools/combat-reference.js` + `tools/test-combat.js` | | parity test (`npm run test:godot-combat`) |
 | `tests/net_snapshot_test.gd` | | NetSnapshot round trip and junk rejection |
+| `logic/mode_rules.gd` `ModeRules` (`Combat.rules`) | `addKo` limit, `endMatch`, `eliminate`, `teamKo`, `TEAM_COL`, `GG`/`ggGive`/`ggAdvance`/`initLadder`, `doDash`/`dashTick`, `updateShrink` + shrink spot in `respawn`, `setBotCfg` team split | game modes; parity `tools/modes-reference.js` + `tests/modes_parity_test.gd`, matches `tests/modes_test.gd` (`npm run test:godot-modes`) |
 
 ## Conventions
 
@@ -52,7 +53,9 @@ Gotcha: Godot's `JSON.parse_string` (and `String.to_float`) are **not exact** fo
 | Air Blower (`type: blower`): the blower branch of `playerControl` ~9827 (cone push along the arm, lift, stun 0.12, blame, head kicks, recoil, drain, drop when empty) | ported as `Weapons.blower_tick` (PlayerControl calls it while fire is held; bots never use it, like the JS), parity tested (block `blower`, op `blow`) |
 | net: `S` entry, `h`, `ko`, `netCleanHit`, `netGuard` rules | ported; rounding/cleaning parity tested against JS, round-trip test |
 
-Not ported yet (TODO in code): emotes in `timers`, ninja dash (`dashTick`, `doDash`), hot potato in `hit`, dev god mode, kill cam, gun style `flame`, the trident throw (`throwTrident`), all other projectile types (next batch), shrinking-arena respawn, Weapon Ladder (`ggGive/ggAdvance`), crates/drops (`pickCrateKey`, `spawnDrop`, `updatePickups`), match end on KO limit (the world reads the `ko` event).
+Game modes (`ModeRules`, called from `Combat.add_ko` / `respawn` / `place_at` / `timers` and `MatchSim.step`): K.O. limit and `endMatch` (events `match_over`, then `match_finished` after `END_TIME`), lives + `eliminate`, teams, Weapon Ladder, ninja dash, shrinking arenas: ported, parity tested (`npm run test:godot-modes`, worst error ~1e-16).
+
+Not ported yet (TODO in code): emotes in `timers`, hot potato in `hit` (dead code in the web game: no mode sets `potato`), Pillars (`updatePillars`, `pillarGive`, bot pillar hops), dev god mode, kill cam, gun style `flame`, the trident throw (`throwTrident`), all other projectile types (next batch). Crates/drops are in `logic/pickups.gd`.
 
 `FighterPhysics.step(dt, solids, st)` (now `logic/fighter_physics.gd`) applies `stun`, `down_t`, `trap_t`, `spd_t` and `dash_air_t` from the FighterState, parity tested; `MatchSim` (`logic/match_sim.gd`) runs the whole step order below for an offline match.
 

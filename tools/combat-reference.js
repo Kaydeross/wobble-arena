@@ -535,7 +535,7 @@ function exactJson(o) {
     const b = Buffer.alloc(8); b.writeDoubleBE(v); return '#' + b.toString('hex');
   });
 }
-module.exports = { run, scenario, exactJson };
+module.exports = { run, scenario, exactJson, makeContext, mkFighter, seedRandom, block, line };   // tools/modes-reference.js builds on the same context
 if (require.main === module) {
   const out = process.argv[2] || path.join(require('os').tmpdir(), 'wa-combat.json');
   const res = run(scenario());
