@@ -4,7 +4,7 @@ Reviewed with `node tools/check-maps.js` (also part of `npm test`, errors only) 
 
 What the checker verifies per map: spawns, bot starts, the player start and crate spots are on a surface and not inside a wall; every spawn can reach every other; no reachable pit/area a fighter cannot leave; crate heights match the surface (crates rest at the 3rd number of a drop spot, ignoring solids); standable platforms nobody can reach are listed (warnings).
 
-Engine facts worth knowing when making maps: bot starts and the player start use y 0.01 unless a 3rd number is given (a start inside a raised box gets shoved sideways); respawns always drop in from y 4 (spawn[2] is ignored there); bots never climb ladders and avoid walking off edges (so void-gap maps need bridges for them); bounce pads only trigger below y 0.7; Godot loads only addBox/addStairs/addLadder/addBouncePad geometry.
+Engine facts worth knowing when making maps: bot starts and the player start use y 0.01 unless a 3rd number is given (a start inside a raised box gets shoved sideways); respawns always drop in from y 4 (spawn[2] is ignored there); bots never climb ladders and avoid walking off edges (so void-gap maps need bridges for them); bounce pads only trigger below y 0.7; Godot takes its collision only from addBox/addStairs/addLadder/addBouncePad geometry; decor, far scenery and the sky / fog / light colours are exported from the running web game (`npm run map-decor`, see `docs/GODOT_MAPS.md`).
 
 ## Findings and fixes
 
