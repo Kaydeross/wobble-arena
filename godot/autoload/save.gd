@@ -15,6 +15,8 @@ extends Node
 ## The equipped look is mirrored into Settings (skin, hat, color, class), which the match, the online `join` info and
 ## the setup wizard's Character page already read; a class picked in the wizard comes back here.
 ## `--no-save` (tests) keeps everything in memory.
+## Cloud save: `cloud` (net/account_api.gd, a child node) pushes get_blob() to the signed-in account a little after each
+## change and pulls / merges the cloud blob after a sign-in; the game never waits for it.
 
 signal changed                       ## coins, owned items, the look or the emote slots changed
 
@@ -46,7 +48,8 @@ var extra := {}                      ## blob keys this client does not use, kept
 var extra_wallet := {}
 var extra_stats := {}
 var loaded_from := "new"             ## "file" | "backup" | "new" | "memory"
-var cloud_t := 0                     ## the server's save time (PUT /api/save base) for the cloud sync later
+var cloud_t := 0                     ## the server's save time (PUT /api/save base), mirrored by `cloud`
+var cloud: AccountApi                ## accounts + cloud sync (only on the autoload, not on test profiles)
 
 ## this match (begin_match .. finish_match)
 var match_kos := 0
@@ -64,6 +67,11 @@ func _init() -> void:
 func _ready() -> void:
 	if persist: load_file()
 	else: loaded_from = "memory"
+	if cloud == null:
+		cloud = AccountApi.new()
+		cloud.name = "Cloud"
+		cloud.profile = self
+		add_child(cloud)
 	var st := _settings()
 	if st:
 		if loaded_from == "new": _adopt_settings(st)
@@ -161,6 +169,11 @@ func apply_blob(d: Variant) -> bool:
 						"ko": int(h.get("ko", 0)), "d": int(h.get("d", 0)), "w": 1 if h.get("w") else 0, "o": 1 if h.get("o") else 0})
 	changed.emit()
 	return true
+
+## Nothing played or bought yet (a new device): a cloud save can replace it without asking.
+func is_fresh() -> bool:
+	return coins == START_COINS and owned == ["wobble"] and skins.size() == 1 + LockerData.free_skins().size() \
+		and int(stats["matches"]) == 0 and int(stats["kos"]) == 0 and hist.is_empty()
 
 static func _num(v: Variant) -> bool:
 	return (v is int or v is float) and is_finite(float(v))

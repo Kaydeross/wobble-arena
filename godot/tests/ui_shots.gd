@@ -10,7 +10,9 @@ extends SceneTree
 ## teams (Team Deathmatch with the team scoreboard), locker-skin / locker-hat / locker-color / locker-emote /
 ## locker-class (the Locker tabs, ui/locker.gd, with 1500 coins and a card picked), shop (the Shop, an outfit tried on),
 ## shop-confirm (its Buy card), emote-wheel (a match with the emote wheel open while the player dances), results (the
-## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
+## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on),
+## account-guest / account-signed (the Account sheet from the title chip; signed in, saved to the cloud 2 min ago),
+## killcam (a fast K.O. by the player, mid replay in slow-mo). Used by tools/shoot-godot-ui.sh.
 ## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
 ## after the first weapon handout), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
 ## modes2-practice (the Practice Range: the player with a rack AK shooting down the range at the dummies).
@@ -49,6 +51,18 @@ func _start() -> void:
 		if pick != "" and m.locker.cards.has(pick): m.locker._select_card(pick)
 		if shot == "shop-confirm": m.locker.act()
 		frames = 150
+		process_frame.connect(_wait)
+		return
+	if shot.begins_with("account"):
+		var m: Node = load("res://scenes/main.tscn").instantiate()
+		root.add_child(m)
+		if shot == "account-signed":
+			var c: Node = root.get_node("Save").cloud
+			c.setv("token", "ab".repeat(32)); c.setv("user", "WobbleQueen"); c.setv("email", "queen@example.com")
+			c.setv("cloud_t", int((Time.get_unix_time_from_system() - 130.0) * 1000.0))
+			m._refresh_login()
+		m.open_account()
+		frames = 40
 		process_frame.connect(_wait)
 		return
 	if shot == "title-construction": _settings().set_value("mode", "construction")
@@ -93,6 +107,7 @@ func _start() -> void:
 		world.mode_id = mm[0]; world.map_id = mm[1]
 		world.dyn_choice = "off"
 	world.auto_run = false
+	world.kill_cam_in_tests = shot == "killcam"
 	world.bot_count = 3
 	world.player_class = "wobbler"
 	world.rng_seed = 777
@@ -136,6 +151,16 @@ func _frame() -> void:
 		return
 	if shot == "spectate":
 		_spectate_frame(sim, p)
+		return
+	if shot == "killcam" and i == 100:
+		for f: FighterState in sim.fighters:
+			if f != p: f.hp = 1.0                       # the next hit is a fast K.O.
+	if shot == "killcam" and world.kill_cam.active:
+		world.tick(FRAME)
+		i += 1
+		if world.kill_cam.shown > 1.5:
+			process_frame.disconnect(_frame)
+			_save()
 		return
 	if shot.begins_with("modes2-"):
 		_modes2_frame(sim, p, st)
@@ -185,7 +210,7 @@ func _frame() -> void:
 		world._show_offline_results(true, "")
 	if shot == "pause" and i == 345:
 		world._toggle_pause()
-	if i == 352:
+	if i == 352 and shot != "killcam" or i == 900:
 		process_frame.disconnect(_frame)
 		_save()
 

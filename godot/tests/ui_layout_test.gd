@@ -10,6 +10,9 @@ extends SceneTree
 ## selected card is scrolled into view) and the character stage (one SubViewport, renders only on its page).
 ## The Locker (5 tabs) and the Shop (2 tabs) get the same layout checks (ui/locker.gd: header, preview, tabs, card
 ## grid, footer), and the title's Locker / Shop row.
+## The Account sheet (ui/account_sheet.gd, from the title chip): every page (guest, sign up, log in, forgot password,
+## recovery code, signed in, change password, delete, conflict) inside the safe area, nothing overlapping, touch
+## targets at least 44 pt tall; _logic checks the chip opens it and the delete button waits for the typed word.
 ##   godot --headless --path godot --script res://tests/ui_layout_test.gd -- --no-save   (npm run test:godot-ui)
 
 const BASE := Vector2(1170, 540)   ## project.godot viewport size (stretch canvas_items, aspect expand)
@@ -21,7 +24,10 @@ const CASES := [
 	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0]],
 ]
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
-const SCREENS := ["title", "online", "settings", "host", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1"]
+const SCREENS := ["title", "online", "settings", "host", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1",
+	"a-guest", "a-signup", "a-login", "a-reset", "a-code", "a-signed", "a-password", "a-delete", "a-conflict"]
+const SIGNED := ["a-signed", "a-password", "a-delete", "a-conflict"]
+const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
 const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop"]
@@ -96,7 +102,17 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	vp.add_child(main)
 	var wiz := scr.begins_with("w")
 	var lock := scr.begins_with("l") or scr.begins_with("s") and scr != "settings"
-	if lock:
+	var acct := scr.begins_with("a-")
+	var cloud: Node = root.get_node("Save").cloud
+	if acct:
+		if scr in SIGNED:
+			cloud.setv("token", "ab".repeat(32)); cloud.setv("user", "Wobbly_Champ16"); cloud.setv("email", "someone.with.a.long.name@example.com")
+		if scr == "a-conflict":
+			cloud.pending = {"data": {"wallet": {"coins": 12345, "skins": ["none", "cowboy"]}, "stats": {"matches": 321, "kos": 999}}, "t": 1}
+		if scr == "a-code": main.account._on_recovery("ABCD-EFGH-JKLM-NPQR")
+		main.open_account(scr.substr(2))
+		main.account.msg_l.text = "That username and recovery code do not match. Check the code (letters and numbers, no mix-ups between O and 0)."
+	elif lock:
 		var shop := scr.begins_with("s")
 		main.open_locker(shop)
 		main.locker._show_tab(main.locker.tabs()[int(scr.substr(1))])
@@ -126,7 +142,16 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	var safe := Rect2(Vector2(ins[0], ins[1]), cs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	var inside: Array = []
 	var groups: Array = []      ## lists of paths that must not overlap each other
-	if lock:
+	if acct:
+		var card: Control = main.account.card
+		for c: Control in _leaves(card): inside.append(str(main.get_path_to(c)))
+		groups.append(inside)
+		check(main.account.pages[scr.substr(2)].visible and main.account.visible, "%s account page shown" % tag)
+		for p: String in inside:
+			var c: Control = main.get_node(p)
+			if (c is Button or c is LineEdit) and win.x > win.y:   # (portrait shows the landscape canvas scaled down)
+				check(c.get_global_rect().size.y >= MIN_TOUCH * k - 0.5, "%s %s touch target %.0f tall" % [tag, p, c.get_global_rect().size.y])
+	elif lock:
 		inside = LFRAME.duplicate()
 		for b in main.locker.tab_row.get_children(): inside.append(L + "Body/Right/Tabs/" + b.name)
 		groups.append(LFRAME)
@@ -157,7 +182,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	if wiz: _page(main, int(scr.substr(1)), safe, tag)
 	if lock: _locker_grid(main.locker, safe, tag)
 	# the whole column fits (containers would otherwise overflow past the bottom)
-	var col: Control = main.wizard if wiz else main.locker if lock else main.get_node("Safe/Col")
+	var col: Control = main.wizard if wiz else main.locker if lock else main.account.card if acct else main.get_node("Safe/Col")
 	check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 	_labels_fit(main, tag)
 	if lock:
@@ -183,6 +208,8 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 			check(main.get_node("Safe/Col/Body/Home/Online/Stack/Big").text == "Play online with friends", "%s online button label" % tag)
 			check(main.who.text == "Guest", "%s chip says Guest (%s)" % [tag, main.who.text])
 			_no_word(main.get_node("Safe/Col/Top"), "offline", tag, true)   # no status pill saying "Offline"
+	if acct:
+		cloud.setv("token", ""); cloud.setv("user", ""); cloud.setv("email", ""); cloud.pending = {}
 	print("UI %s canvas %dx%d checked" % [tag, cs.x, cs.y])
 	vp.queue_free()
 	await process_frame
@@ -325,6 +352,22 @@ func _logic() -> void:
 	check(bool(st.get_value("show_fps")), "Show FPS saved")
 	main.fps_toggle.button_pressed = false
 	main.show_settings(false)
+	# the title chip opens the Account sheet; Delete waits for the typed word
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = true
+	main.chip.gui_input.emit(ev)
+	check(main.account.visible and main.account.page == "guest", "the chip opens the Account sheet (guest)")
+	main.account.ui["guest/Signup"].pressed.emit()
+	check(main.account.page == "signup", "Create account opens the sign-up page")
+	main.account.close()
+	main.account.open("delete")
+	main.account.ui["delete/Pass"].text = "pw"
+	main.account.ui["delete/Pass"].text_changed.emit("pw")
+	check(main.account.ui["delete/Go"].disabled, "Delete account disabled before typing DELETE")
+	main.account.ui["delete/Confirm"].text = "delete"
+	main.account.ui["delete/Confirm"].text_changed.emit("delete")
+	check(not main.account.ui["delete/Go"].disabled, "Delete account enabled after typing DELETE")
+	main.account.close()
 	await _scrolling(vp, main)
 	await _stage(main)
 	print("UI wizard logic checked")
@@ -434,6 +477,15 @@ func _stage(main: Control) -> void:
 	check(not w.stage.active and w.stage.render_target_update_mode == SubViewport.UPDATE_DISABLED, "stage stops off its page")
 	w.set_class("bruiser")
 	main.close_wizard()
+
+## Visible buttons, fields and labels under `n` (the Account card's controls).
+func _leaves(n: Node) -> Array:
+	var out: Array = []
+	for c in n.get_children():
+		if not (c is Control) or not (c as Control).is_visible_in_tree(): continue
+		if c is Button or c is LineEdit or (c is Label and (c as Label).text != ""): out.append(c)
+		else: out.append_array(_leaves(c))
+	return out
 
 ## No word `word` (any case) in the labels / buttons under `n`.
 func _no_word(n: Node, word: String, tag: String, visible_only := false) -> void:
