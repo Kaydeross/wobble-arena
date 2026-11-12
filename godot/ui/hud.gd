@@ -346,7 +346,10 @@ func _fill_hotbar(p: FighterState) -> void:
 		var ammo := ""        # the big number: bullets in the magazine (or uses left)
 		var sub := ""         # the small number after it: spare ammo
 		var low := false
-		if int(s["mag"]) >= 0:
+		if str(s["key"]) == "blower":
+			ammo = "%d%%" % maxi(0, ceili(float(s["ammo"])))      # the web hotbar shows the blower in %
+			low = float(s["ammo"]) <= 20.0
+		elif int(s["mag"]) >= 0:
 			ammo = str(int(s["mag"]))
 			sub = "/" + str(int(s["ammo"]))
 			low = int(s["mag"]) <= maxi(1, int(ceil(float(w.get("mag", 0)) * 0.25)))

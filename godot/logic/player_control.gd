@@ -74,6 +74,8 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 		if p.swing >= 0.0 and combat.melee_tick(p, key, dt, cam_yaw): combat.after_swing(p)
 	elif t == "gun":
 		combat.weapons.gun_tick(p, fire, dt, aim_point)
+	elif t == "blower":
+		combat.weapons.blower_tick(p, fire, dt)
 	elif fire:
 		combat.weapons.try_fire(p, aim_point)
 

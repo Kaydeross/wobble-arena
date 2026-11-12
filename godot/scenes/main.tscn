@@ -173,6 +173,33 @@ custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
 
+[node name="ModeRow" type="HBoxContainer" parent="Safe/Col/Body/Picks/Box/Offline"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="L" type="Label" parent="Safe/Col/Body/Picks/Box/Offline/ModeRow"]
+custom_minimum_size = Vector2(96, 0)
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "Mode"
+
+[node name="Mode" type="OptionButton" parent="Safe/Col/Body/Picks/Box/Offline/ModeRow"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Classic: every weapon. Construction: hammers, live wire and air blowers on the Site Yard"
+
+[node name="FloorL" type="Label" parent="Safe/Col/Body/Picks/Box/Offline/ModeRow"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+text = "Floor"
+
+[node name="Dyn" type="OptionButton" parent="Safe/Col/Body/Picks/Box/Offline/ModeRow"]
+custom_minimum_size = Vector2(0, 56)
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Does the floor move? Random = a different moving arena every match (online the host's choice wins)"
+
 [node name="MapRow" type="HBoxContainer" parent="Safe/Col/Body/Picks/Box/Offline"]
 layout_mode = 2
 theme_override_constants/separation = 12
@@ -187,22 +214,6 @@ text = "Arena"
 custom_minimum_size = Vector2(0, 56)
 layout_mode = 2
 size_flags_horizontal = 3
-
-[node name="DynRow" type="HBoxContainer" parent="Safe/Col/Body/Picks/Box/Offline"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="L" type="Label" parent="Safe/Col/Body/Picks/Box/Offline/DynRow"]
-custom_minimum_size = Vector2(96, 0)
-layout_mode = 2
-theme_type_variation = &"MutedLabel"
-text = "Floor"
-
-[node name="Dyn" type="OptionButton" parent="Safe/Col/Body/Picks/Box/Offline/DynRow"]
-custom_minimum_size = Vector2(0, 56)
-layout_mode = 2
-size_flags_horizontal = 3
-tooltip_text = "Does the floor move? Random = a different moving arena every match (online the host's choice wins)"
 
 [node name="FpsRow" type="HBoxContainer" parent="Safe/Col/Body/Picks/Box/Offline"]
 layout_mode = 2
