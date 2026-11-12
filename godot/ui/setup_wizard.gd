@@ -103,6 +103,10 @@ func bot_total() -> int:
 func is_team_mode() -> bool:
 	return int(Content.modes.get(mode_id, {}).get("teams", 0)) > 0
 
+## Team Deathmatch: the Players page sizes the two teams (odd bot counts only, so the sides stay even).
+func is_flex_teams() -> bool:
+	return is_team_mode() and bool(Content.modes.get(mode_id, {}).get("flexTeams", false))
+
 static func mode_name(m: String) -> String:
 	return str(Content.modes.get(m, {}).get("name", m.capitalize()))
 
@@ -532,16 +536,18 @@ func _refresh() -> void:
 	_select(_class_bs, cls)
 	_select(_diff_bs, diff)
 	var team := is_team_mode()
+	var flex := is_flex_teams()
 	var total := bot_total()
 	for n2 in _bot_bs:
 		var b: Button = _bot_bs[n2]
-		b.disabled = team and n2 != total
+		b.disabled = (team and not flex and n2 != total) or (flex and n2 % 2 == 0)
 		b.set_pressed_no_signal(n2 == (total if team else bots))
 	if players_l:
 		players_l.text = "You + %d bot%s" % [total, "" if total == 1 else "s"]
-		var t := int(Content.modes.get(mode_id, {}).get("teams", 0))
-		players_hint.text = ("%s fixes the teams: %d vs %d." % [mode_name(mode_id), t, t]) if team \
-			else "Free for all. Bots fight you and each other."
+		var t := ModeRules.team_size(mode_id, Content.modes, total)
+		if flex: players_hint.text = "Two teams: %d vs %d. Odd bot counts keep the sides even." % [t, t]
+		elif team: players_hint.text = "%s fixes the teams: %d vs %d." % [mode_name(mode_id), t, t]
+		else: players_hint.text = "Free for all. Bots fight you and each other."
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = map_name(map_id)
 		_sum_vals[1].text = "%s · Floor: %s" % [mode_name(mode_id), Dynamics.NAMES.get(dyn, dyn)]

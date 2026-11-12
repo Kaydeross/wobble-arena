@@ -14,10 +14,13 @@ extends Control
 ##   weapons tap a hotbar slot to equip it (the Spatula slot is the quick melee, like Q); tap the slot already in hand to
 ##           swap back to the last weapon; swipe sideways across the hotbar to cycle.
 ##   pause   the button at the top corner.
+##   spectate `spectate_mode` (the player is out, World spectates): only the pause button; any other tap emits
+##           spectate_tap (World follows the next fighter).
 ## Drawn with vector icons (_draw, no fonts). Layout respects left-handed mode, button scale, opacity and safe areas.
 ## World wires `state`; the HUD calls attach(sim, hotbar) so the context button and hotbar taps can read the match.
 
 signal pause_pressed
+signal spectate_tap
 
 ## CSS px of the web layout -> canvas units. The web layout is sized for ~390pt-tall phone screens, our canvas is 540 tall.
 const UNIT := 1.35
@@ -46,6 +49,13 @@ var hotbar: Control            ## ui/hud_hotbar.gd (slot taps)
 var lefty := false
 var scale_k := 1.0
 var opacity := 0.85
+## Spectator mode: no controls, a tap anywhere but pause = spectate_tap. Set by World.spectate().
+var spectate_mode := false:
+	set(v):
+		if v == spectate_mode: return
+		spectate_mode = v
+		if v: release_all()
+		queue_redraw()
 
 var _touch := {}               ## touch index -> "move" | "look" | "pause" | "hotbar" | button id
 var _last := {}                ## touch index -> last position (look / fire drag)
@@ -148,6 +158,12 @@ func _input(e: InputEvent) -> void:
 		if not visible or state == null:
 			return
 		var p: Vector2 = (make_input_local(e) as InputEventScreenTouch).position
+		if spectate_mode:
+			if e.pressed:
+				if pause_rect().grow(6).has_point(p): _touch_down(e.index, p)
+				else: spectate_tap.emit()
+			get_viewport().set_input_as_handled()
+			return
 		if e.pressed:
 			_touch_down(e.index, p)
 		else:
@@ -401,7 +417,7 @@ func _draw() -> void:
 	var ink := UiTheme.INK
 	var yel := UiTheme.ACCENT
 	var aiming := state != null and state.aim_toggle
-	for b in BUTTONS:
+	for b in ([] if spectate_mode else BUTTONS):
 		var id: String = b[0]
 		var vis := 1.0
 		if id == "context":
@@ -484,6 +500,7 @@ func _draw() -> void:
 	sb.anti_aliasing = true
 	draw_style_box(sb, pr.grow(-3.0 * pa))
 	_icon("pause", pr.get_center(), pr.size.x * 0.24, Color(1, 1, 1, opacity))
+	if spectate_mode: return
 	# floating stick: a faint ghost where the thumb usually rests, the real ring + knob while held
 	var sr := STICK_R * UNIT * scale_k
 	var kr := 23.0 * UNIT * scale_k
