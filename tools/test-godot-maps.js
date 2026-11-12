@@ -39,7 +39,11 @@ function pillarsRef() {
   const ctx = vm.createContext({ Math, Object, Array, addBox: (x, z, w, d, h, color, y = 0) => { boxes.push({ x, z, w, d, h, y, color }); return {}; } });
   const m = vm.runInContext(SRC.slice(a, b).replace(/^MAPS\.pillars = /m, 'var PIL = ') + '\nPIL;', ctx);
   m.build();
-  return { boxes, spawns: m.spawns, player: m.player, bots: m.bots };
+  // MAPS.pillars2 (Lava Pillars): the Object.assign overrides, which Godot's PillarsMap.LAVA copies (the export lacks it)
+  const c = SRC.indexOf('MAPS.playroom = ');
+  const lv = vm.runInContext(SRC.slice(a, c).replace(/^MAPS\.pillars = /m, 'MAPS.pillars = ') + '\nMAPS.pillars2;', vm.createContext({ Math, Object, Array, MAPS: {} }));
+  const lava = {}; for (const k of ['name', 'tags', 'blurb', 'env', 'peaks', 'sky', 'skyTop', 'voidColor', 'hills', 'fog']) lava[k] = lv[k];
+  return { boxes, spawns: m.spawns, player: m.player, bots: m.bots, lava };
 }
 const pref = path.join(os.tmpdir(), 'wa-pillars-ref-' + process.pid + '.json');
 fs.writeFileSync(pref, JSON.stringify(pillarsRef()));

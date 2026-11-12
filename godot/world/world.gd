@@ -29,6 +29,10 @@ const FEED_TIME := 5.0
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
 @export var difficulty := ""       ## bot skill offline: "" = Settings "difficulty" (easy / normal / hard / insane, default normal)
 @export var fx_enabled := true     ## false = no particles, trails, squash / stretch, hitstop or shake (tests: sim hash)
+## Sandbox build mode (ui/build_hud.gd): the 'custom' arena without bots, crates or a moving floor, the block palette
+## instead of the score / radar / health / hotbar. Its Play saves and reloads the arena as a Sandbox match with bots.
+@export var build_mode := false
+var build_hud: BuildHud = null
 
 @onready var env_node: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $Sun
@@ -153,7 +157,13 @@ func load_map(id: String) -> void:
 	_reward = {}
 	Save.begin_match()
 	map_id = id
-	map_node = MapBuilder.build(id)
+	if build_mode:                       # the blocks are BuildHud's (meshes + solids it can change); no crates
+		id = "custom"; map_id = id
+		var bm := MapBuilder.custom_map(MapBuilder.saved_custom().merged({"blocks": [], "blockCols": []}, true))
+		bm["noCrates"] = true
+		map_node = MapBuilder.build_from(id, bm)
+	else:
+		map_node = MapBuilder.build(id)
 	add_child(map_node)
 	solids = map_node.solids
 	env_node.environment = MapBuilder.make_environment(map_node.map, id)
@@ -166,9 +176,9 @@ func load_map(id: String) -> void:
 	if session != null:
 		session.prepare_sim(sim, start_msg)   # rules + dynamic arena from `start` (the host also sets its mode / K.O. limit)
 	else:
-		var mode := mode_id if mode_id != "" else str(Settings.get_value("mode", "classic"))
+		var mode := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
 		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
-		sim.dyn_choice = dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random"))
+		sim.dyn_choice = "off" if build_mode else (dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random")))
 		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
 			sim.dyn_choice = "random"            # Chaos: a random floor unless the player picked a moving one
 		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
@@ -177,10 +187,10 @@ func load_map(id: String) -> void:
 	if not sim.combat.classes.has(cid): cid = "wobbler"
 	var bots := bot_count
 	if session == null:                    # offline game mode (pickMode / setBotCfg)
-		var mid := mode_id if mode_id != "" else str(Settings.get_value("mode", "classic"))
+		var mid := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
 		if not sim.combat.modes.has(mid): mid = "classic"
-		sim.configure(mid, ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1)))
-		bots = ModeRules.bot_count(mid, sim.combat.modes, bot_count)
+		sim.configure(mid, 0 if build_mode else (ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1))))
+		bots = 0 if build_mode else ModeRules.bot_count(mid, sim.combat.modes, bot_count)
 	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
 	if not Content.difficulties.has(skill): skill = "normal"
 	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, session.sim_bots(start_msg) if session != null else bots, skill)
@@ -213,6 +223,32 @@ func load_map(id: String) -> void:
 	feed.clear()
 	acc = 0.0
 	hud.bind(self)
+	_setup_build()
+
+## Build mode on: the palette (BuildHud, last in UI so it sees touches first). Off: back to the normal HUD panels.
+func _setup_build() -> void:
+	if build_mode:
+		if build_hud == null:
+			build_hud = BuildHud.new()
+			build_hud.play_requested.connect(play_built)
+			$UI.add_child(build_hud)
+		build_hud.bind(self)
+	elif build_hud != null:
+		build_hud.queue_free(); build_hud = null
+		for n: String in ["Score", "Radar", "Health", "Hotbar", "Feed"]:
+			var c: Node = hud.get_node_or_null(n)
+			if c: c.visible = true
+
+## Build mode's Play: a Sandbox match with bots on the arena just built (saved first by BuildHud).
+func play_built() -> void:
+	build_mode = false
+	mode_id = "sandbox"
+	load_map.call_deferred("custom")
+
+## Back from a Sandbox match to building the same arena.
+func edit_arena() -> void:
+	build_mode = true
+	load_map.call_deferred("custom")
 
 func _my_look() -> Dictionary:
 	var col := int(Settings.get_value("color", 0x39b5a8))
@@ -754,6 +790,10 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	again.add_theme_font_size_override("font_size", 26)
 	again.pressed.connect(func() -> void: load_map.call_deferred(map_id))
 	box.add_child(again)
+	if sim.combat.mode_id == "sandbox":   # the arena you built: back to the build palette
+		var ed := Button.new(); ed.name = "EditArena"; ed.text = "Edit arena"; ed.custom_minimum_size = Vector2(0, 54)
+		ed.pressed.connect(edit_arena)
+		box.add_child(ed)
 	var lv := Button.new(); lv.text = "Title"; lv.custom_minimum_size = Vector2(0, 54)
 	lv.pressed.connect(_on_title_pressed)
 	box.add_child(lv)

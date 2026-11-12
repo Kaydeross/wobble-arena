@@ -274,7 +274,7 @@ function weld(g) {
   await page.waitForFunction(() => { const b = document.getElementById('boottxt'); return b && b.textContent === 'Ready!'; }, null, { timeout: 180000 });
   await page.evaluate(src => { window.__measureAnims = (0, eval)('(' + src + ')'); }, measureAnims.toString());
   const maps = JSON.parse(fs.readFileSync(path.join(ROOT, 'godot', 'data', 'maps.json'), 'utf8'));
-  const ids = Object.keys(maps).concat(['custom']).filter(id => !only.length || only.includes(id));
+  const ids = Object.keys(maps).concat(['custom', 'pillars2']).filter(id => !only.length || only.includes(id));
   if (!stats) fs.mkdirSync(OUT, { recursive: true });
   let look = {}; try { look = JSON.parse(fs.readFileSync(LOOK, 'utf8')); } catch (e) { /* new */ }
   let total = 0;
