@@ -19,6 +19,8 @@ const DEFAULTS := {
 	"touch_opacity": 0.85,
 	"touch_assist": true,
 	"show_fps": false,      # FPS / frame-time overlay (F3 or a three-finger tap toggles it)
+	"effects": "auto",      # combat effects level: auto (= graphics tier) | low | medium | high (world/fx.gd)
+	"screen_shake": true,   # camera shake on big hits, explosions and K.O.s (world/follow_camera.gd)
 	"class": "wobbler",     # character class (shared/classes.json id)
 	"color": 0x39b5a8,      # body colour (the web player's default)
 	"volume": 0.5,          # sound volume 0..1 (web settings.vol; autoload Sfx)

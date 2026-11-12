@@ -83,9 +83,100 @@ What is not measured here: GPU time on a phone and thermals (ROADMAP: 15 min on 
 needs a TestFlight build. Fill rate is the MID risk: the vignette and the cloud layer are two blended layers (the
 clouds cover the sky only), MSAA 2x.
 
+## Effects (Phase 4 part 2: motion polish and particles)
+
+Screenshots (HIGH): `docs/style/godot-fx-explosion.png` (mid-explosion), `-confetti.png` (K.O. confetti + ring),
+`-dash.png` (dash streaks + ring), `-melee.png` (katana swing trail), `-dust.png` (landing dust, ring and squash);
+`tools/shoot-godot-fx.sh` re-renders them (`godot/tests/fx_shots.gd`).
+
+Everything here is presentation only: it reads Combat events and fighter states, never writes sim state and never
+draws from the global RNG. `npm run test:godot-fx` plays a seeded 40 s match with effects on and off and compares
+the sim hash every second (identical), and floods every pool on every level.
+
+| | LOW | MID | HIGH |
+|---|---|---|---|
+| Particle density (puff / dust / spark counts) | x0.4 | x0.75 | x1 |
+| `bits` (puffs, dust, sparks, footsteps) cap | 96 | 320 | 720 |
+| `chips` (confetti, debris, shells) cap | 24 | 120 | 240 |
+| `blobs` (fireball, smoke, flames, muzzle flash) cap | 16 | 56 | 112 |
+| `rings` (shockwaves) cap | 6 | 16 | 32 |
+| `streaks` (dash, spark streaks, tracers) cap | 16 | 64 | 128 |
+| Damage-number labels (pooled Label3D) | 10 | 20 | 28 |
+| Ribbons (live trails) / samples per ribbon | 4 / 8, melee only | 12 / 12 | 24 / 18 |
+| Ambient specks | off | 36 | 72 |
+| Explosion | 2 fireballs, ring, 2 smoke, 4 debris | 3 fireballs, 2 rings, 5 smoke, 8 debris, 6 spark streaks | + 4 offset fireballs, 9 smoke, 14 debris, 10 streaks |
+| Shell casings, spark streaks, head-hit ring, take-off dust, sprint footsteps | off | on | on |
+| Squash / stretch, hitstop, camera shake | on | on | on |
+
+Level: Settings `effects` (gear sheet "Effects": Auto / Low / Medium / High; Auto = the graphics tier). Screen shake:
+Settings `screen_shake` (gear sheet toggle, default on).
+
+What triggers what:
+- **Dust** on hard landings (> 7 m/s down: a radial ring of bits, a ground ring and a small player shake over 11 m/s, as
+  the web's `landDust`), skid dust on sudden stops (> 3 m/s speed lost in a frame from > 7 m/s), take-off dust and
+  footstep puffs while sprinting (> 9 m/s), crate landings, quake tiles.
+- **Dash**: streaks along the dash (Ninja dash `dx/dz`, or the dashing fighter's velocity for the katana lunge), a ring at
+  the feet and a puff. **Slam** landing (an air swing that lands): a shockwave ring, dust ring, shake.
+- **Hits** (`hit` event, damage zones from its `part`): sparks in the part colour (the damage-number colours: head red,
+  torso yellow, arms blue, legs grey, so the struck spot and the number read the same) at the struck point, count by
+  damage, speed by force, spark streaks above LOW, a small ring on head hits; the wobbler's own hit flash stays.
+- **K.O.**: the death pop (`ko_burst`: puffs + `koBurst` ring + sparkles) and confetti in the killer's colour (with a
+  ring), a 0.18 shake and, when the player scored it, a 4-frame hitstop.
+- **Explosions** (rockets, grenades, meteor): fireball layers, ground ring(s), rising smoke, tumbling debris, sparks,
+  shake by camera distance (the web's `0.34 - d x 0.011`). Flames and rocket exhaust smoke are blobs too.
+- **Guns** (`shot`): a muzzle flash blob and three sparks; a brass (red for the shotgun) shell flicked out above LOW.
+- **Bounce pads**: a cyan ring (+ white inner ring) and a puff.
+- **Trails** (`world/trails.gd`): melee swing ribbon from the shoulder along the sim's swing target (`aim_*`, the arm
+  itself lags on a spring) to the weapon tip, in the weapon colour, 0.2 s; projectile ribbons (arrow, rocket,
+  shuriken, typhoon, boomerang, knife, trident), camera facing, 0.16-0.4 s. One ImmediateMesh for all of them.
+- **Squash / stretch** (`actors/fighter_juice.gd`): a spring kicked by the landing speed (squash, overshooting into a
+  stretch), a stretch kick on take-off, vertical stretch with speed in the air, a squeeze on hits. It scales the rig on
+  top of the classic pose or the ragdoll overlay; `Fighter.present` restores the nodes before `animate()`, so the
+  gameplay points (hand, head, chest) never see it.
+- **Hitstop**: 2-4 rendered frames (hits >= 6 damage the player deals or takes, by damage; K.O.s by the player) where
+  the presentation holds: fighters' visible pose, particles, trails, projectile views. The sim, `animate()` (whose
+  points feed melee) and the camera's aim keep running, so gameplay timing never changes.
+- **Camera shake** (`FollowCamera.add_shake / apply_shake`): the web's `cam.shake` (max of pulses, random offset,
+  decays `exp(-9 t)`), applied after `aim_point` is computed and removed before the next frame.
+- **Specks** (MID / HIGH): the web's drifting specks around the camera, kind from `map_look.json` `specks`, colour
+  from `maps.json` `env.speckColor` (confetti: five colours).
+
+Where it lives: `godot/world/fx.gd` (`FxSystem`: pools, builders, event handling, fighter motion watch, specks),
+`godot/world/trails.gd`, `godot/actors/fighter_juice.gd`, `godot/shaders/fx_ring.gdshader`, `world.gd`
+(`present`: hitstop, order), `projectile_views.gd` (blasts / flames / bursts / smoke go to `fx` when set),
+`follow_camera.gd` (shake).
+
+Pools: each is one `MultiMeshInstance3D` (one draw call), particles simulated in GDScript into one packed buffer per
+frame (`MultiMesh.buffer`), live ones packed at the front (swap-remove), `visible_instance_count = n`; a full pool
+overwrites its oldest slots (recycles), never grows. Nothing allocates per event except the trail sample arrays at
+creation (ribbon objects are reused).
+
+### Effects budget (`npm run test:godot-gfx`, scene `fx`)
+
+`gfx_bench.gd` has a fourth scene, `fx`: Farm, 10 fighters, bots handed melee weapons (trails) and, every frame on top
+of the real fight, synthetic events: 2 hits with sparks, an explosion every 6 frames, 3 flames, a muzzle flash every 3,
+a dash every 10, a K.O. confetti burst every 20. Pools run at their caps. Same budgets as the maps, plus a check that
+no pool or the ribbons ever go over their cap.
+
+Measured (dev Mac, 1170x540 window, this branch):
+
+| Tier | Farm (no stress) | `fx` stress (Farm) | fx peaks |
+|---|---|---|---|
+| HIGH | cpu 1.76 ms, 894 draws, 114k prims | cpu 2.79 ms (p95 3.35), 912 draws, 143k prims | bits 697 / chips 240 / blobs 112 / rings 24 / streaks 84, 5 ribbons |
+| MID | cpu 1.74 ms, 464 draws, 83k prims | cpu 2.41 ms (p95 2.96), 512 draws, 99k prims | 320 / 120 / 56 / 16 / 58, 5 ribbons |
+| LOW | cpu 1.62 ms, 349 draws, 67k prims | cpu 1.94 ms (p95 2.39), 431 draws, 74k prims | 96 / 24 / 16 / 6 / 6, 4 ribbons |
+
+All under the 4 ms CPU / 1400-800-650 draw / 200k-130k-110k primitive budgets; frames stayed at the display's
+8.33 ms (LOW p95 10.6 ms). The effects add at most ~7 draw calls (five pools, trails, specks) plus the labels; the
+cost is CPU (~1 ms at HIGH caps, ~0.3 ms at LOW), i.e. ~3 ms of an iPhone 12 frame at MID worst case. A normal match
+stays far below the caps (40 s, 8 fighters, HIGH: bits peak ~110, blobs 24, streaks 23).
+
 ## Still off
 
 - LOW (Compatibility) renders noticeably brighter than Forward+ / Mobile with the same materials (before this pass
   too); its linear look is not tuned to match.
-- Smoke columns bob instead of rising; specks and birds are not drawn; the baked web clouds do not drift.
+- Smoke columns bob instead of rising; birds are not drawn; the baked web clouds do not drift.
+- Effects: alpha blobs inside one pool are not depth sorted (spawn order: smoke is spawned before the fire so the
+  fire draws on top); the melee ribbon follows the sim's swing target, so with the ragdoll's lagging arm the trail can
+  lead the visible blade a little; trails are pooled and capped but rebuilt every frame on the CPU (ImmediateMesh).
 - Shadow edges keep a little PCF noise on HIGH.

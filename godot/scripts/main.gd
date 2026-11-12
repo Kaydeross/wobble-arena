@@ -264,6 +264,33 @@ func _build_sheet() -> void:
 	cam_tg.item_selected.connect(func(i: int): Settings.set_value("cam_auto_center", i == 1))
 	cam_row.add_child(cam_tg)
 	box.add_child(cam_row)
+	var fx_row := HBoxContainer.new()             # combat effects level (world/fx.gd): Auto follows the graphics tier
+	fx_row.name = "FxRow"
+	fx_row.add_theme_constant_override("separation", 12)
+	var fx_l := Label.new()
+	fx_l.text = "Effects"
+	fx_l.add_theme_font_size_override("font_size", 22)
+	fx_row.add_child(fx_l)
+	var fx_opt := OptionButton.new()
+	fx_opt.name = "Effects"
+	fx_opt.custom_minimum_size = Vector2(0, 56)
+	fx_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fx_opt.add_theme_font_size_override("font_size", 22)
+	var fx_keys := ["auto", "low", "medium", "high"]
+	for k: String in fx_keys:
+		fx_opt.add_item(("Auto (%s)" % ["Low", "Medium", "High"][MapBuilder.gfx_q()]) if k == "auto" else k.capitalize())
+	fx_opt.select(maxi(0, fx_keys.find(str(Settings.get_value("effects", "auto")))))
+	fx_opt.item_selected.connect(func(i: int): Settings.set_value("effects", fx_keys[i]))
+	fx_row.add_child(fx_opt)
+	box.add_child(fx_row)
+	var shake := CheckButton.new()
+	shake.name = "Shake"
+	shake.text = "Screen shake"
+	shake.custom_minimum_size = Vector2(0, 56)
+	shake.add_theme_font_size_override("font_size", 22)
+	shake.button_pressed = bool(Settings.get_value("screen_shake", true))
+	shake.toggled.connect(func(on: bool): Settings.set_value("screen_shake", on))
+	box.add_child(shake)
 	var done := Button.new()
 	done.name = "Done"
 	done.text = "Done"

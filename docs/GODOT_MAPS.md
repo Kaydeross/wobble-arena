@@ -104,7 +104,8 @@ them box for box against the web game's real `MAPS.pillars.build()` plus its spa
 
 - Moving backdrop pieces now move (vertex shader, `docs/GRAPHICS.md`), fitted as rotation + bob: smoke puffs bob
   instead of rising and looping, and pieces that blink or rescale (searchlights, comets) keep their t = 0 look.
-  Drifting specks (pollen, snow, embers, ...) and circling birds / bats are still not drawn. The baked web clouds stay
+  Drifting specks (pollen, snow, embers, ...) are drawn on MID / HIGH by `FxSystem` (world/fx.gd, docs/GRAPHICS.md
+  "Effects"); circling birds / bats are still not drawn. The baked web clouds stay
   put; MID / HIGH add a drifting flat cloud layer above them.
 - Lighting is close but not identical: Godot's ambient is one colour (80 % hemisphere sky, 20 % ground), the web's
   hemisphere light shades side faces darker. Depth fog in Godot tints far objects a little darker than three.js.

@@ -8,12 +8,14 @@ extends Node3D
 ## limit from Settings "limit" (-1 = the mode's preset); this node adds team colours, the mode line, the dash puff,
 ## the shrinking floor mesh, the end-of-match banner and the offline results panel.
 ## Dynamic arenas: MatchSim.dyn moves the collision; this node moves the tile / block meshes to match (_dyn_views).
+## Effects (docs/GRAPHICS.md "Effects"): FxSystem (world/fx.gd: pooled particles, rings, streaks, damage numbers,
+## specks), Trails (world/trails.gd: melee / projectile ribbons), FighterJuice per fighter (squash / stretch, hitstop
+## pose freeze), camera shake. All presentation only: `fx_enabled = false` drops them and the sim plays the same.
 ## Online: set `session` (a GuestSession that got `start`, or a HostSession that started the match) and `start_msg` before adding the world; the map,
 ## rules and slots then come from the host, the other players are ghosts driven by a NetMatch (net/net_match.gd).
 
 const SIM := 1.0 / 120.0
 const FEED_TIME := 5.0
-const FX_DMG_LIFE := 0.9
 
 @export var map_id := "arena"
 ## false = the sim only advances when tick()/sim_step() is called (headless tests)
@@ -26,6 +28,7 @@ const FX_DMG_LIFE := 0.9
 @export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
 @export var difficulty := ""       ## bot skill offline: "" = Settings "difficulty" (easy / normal / hard / insane, default normal)
+@export var fx_enabled := true     ## false = no particles, trails, squash / stretch, hitstop or shake (tests: sim hash)
 
 @onready var env_node: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $Sun
@@ -53,8 +56,9 @@ var falls := 0                     ## times the player fell out of the map
 var feed: Array = []               ## [text, time left]
 var counts := {}                   ## Combat event type -> how many (tests and debugging)
 var _crates := {}                  ## crate id -> Node3D
-var _fx: Array = []                ## {node, life, max, vel, kind}
-var _fx_root: Node3D
+var fx: FxSystem = null            ## pooled combat effects (world/fx.gd); null when fx_enabled is false
+var trails: Trails = null          ## melee / projectile ribbons (world/trails.gd)
+var _hitstop := 0                  ## rendered frames the presentation stays frozen (hitstop)
 var _fighters_root: Node3D
 var proj_views: ProjectileViews     ## rockets, grenades, arrows, nets, knives, explosions, flames
 var _touch_was := false
@@ -105,9 +109,12 @@ func _ready() -> void:
 	Settings.changed.connect(_on_setting)
 	JuicyButton.attach_all(pause_menu)
 	pause_menu.visible = false
-	_fx_root = Node3D.new(); _fx_root.name = "Fx"; add_child(_fx_root)
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
 	proj_views = ProjectileViews.new(); proj_views.name = "Projectiles"; add_child(proj_views)
+	if fx_enabled:
+		fx = FxSystem.new(); fx.world = self; add_child(fx)
+		trails = Trails.new(fx.lv); add_child(trails)
+		proj_views.fx = fx
 	_build_mode_ui()
 	emote_wheel = EmoteWheel.new()
 	emote_wheel.world = self
@@ -137,6 +144,9 @@ func load_map(id: String) -> void:
 	for c in _crates.values(): c.queue_free()
 	_crates.clear()
 	if proj_views: proj_views.clear()
+	if fx: fx.clear()
+	if trails: trails.clear()
+	_hitstop = 0
 	if net_match: net_match.dispose(); net_match = null
 	if sim: sim.dispose()
 	if _results: _results.queue_free(); _results = null
@@ -150,6 +160,7 @@ func load_map(id: String) -> void:
 	add_child(map_node)
 	solids = map_node.solids
 	env_node.environment = MapBuilder.make_environment(map_node.map, id)
+	if fx: fx.setup_map(id, map_node.map)
 	MapBuilder.setup_sun(sun, map_node.map, id)
 	Tier.configure_sun(sun, map_node.shadow_area)
 	sim = MatchSim.new()
@@ -194,6 +205,7 @@ func load_map(id: String) -> void:
 		if tc >= 0:                      # team modes: everyone wears the team colour (recolor(TEAM_COL[team], true))
 			v.look["color"] = tc; v.wobbler.recolor(tc, true)
 		Gfx.dress_fighter(v)             # LOW tier: blob shadow (docs/GRAPHICS.md)
+		if fx: v.juice = FighterJuice.new()
 		views[f] = v
 	player_view = views[sim.player]
 	kill_cam.stop()
@@ -266,19 +278,36 @@ func _process(delta: float) -> void:
 		_update_hud(delta)
 
 ## applyPose + meleeSweep + effects (also used by tests that step the sim by hand).
+## Hitstop freezes the presentation only (fighters' visible pose, particles, trails, projectile views); the fighters
+## still animate underneath (the gameplay points come from that) and the sim keeps its own clock.
 func present(dt: float) -> void:
+	var frozen := _hitstop > 0 and dt > 0.0
 	for v: Fighter in views.values():
 		v.visible = not v.state.left
 		var k := 1.5 if v.state.big_t > 0.0 else 1.0           # Chaos giant
 		if v.scale.x != k: v.scale = Vector3.ONE * k
+		v.frozen = frozen
 		v.present(dt)
 	sim.sweep()
 	_drain_events()
 	_update_crates(dt)
 	_update_dyn_views()
 	_update_shrink_view()
-	_update_fx(dt)
-	proj_views.update(dt)
+	if not frozen: proj_views.update(dt)
+	if fx:
+		fx.watch(views, dt)
+		fx.update(0.0 if frozen else dt, cam.global_position)
+		trails.update(dt, self, cam.global_position, frozen)
+		cam.apply_shake(dt)
+	if frozen: _hitstop -= 1
+
+## Freeze the presentation for `frames` rendered frames (2-4: a hit that lands, a K.O.).
+func hitstop(frames: int) -> void:
+	if fx: _hitstop = maxi(_hitstop, frames)
+
+## A camera shake pulse (Settings "screen_shake" gates it in FollowCamera).
+func add_shake(a: float) -> void:
+	if fx: cam.add_shake(a)
 
 # ============================== combat events -> visuals ==============================
 
@@ -290,41 +319,24 @@ func _drain_events() -> void:
 		if net_match != null: net_match.on_event(e)
 		var f: FighterState = e.get("f") if e.get("f") is FighterState else null
 		proj_views.on_event(e)
+		if fx: fx.on_event(e)          # hits, damage numbers, K.O.s, tracers, puffs, pads, muzzle flashes
 		match String(e["type"]):
 			"lean", "head", "arm":
 				if views.has(f): views[f].on_event(e)
-			"dmg_number":
-				if f: _dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), float(e["dmg"]), String(e.get("part", "head" if e["head"] else "")), int(e.get("pct", 0)))
 			"hit":
 				if e.get("attacker") == sim.player and f != sim.player:
 					Save.on_hit()
-					if f: kill_cam.note_hit(f)
-				if f:
-					_puff(Vector3(f.chest_x, f.chest_y, f.chest_z), Color(1, 0.95, 0.8), 4, 3.0)
-					if e.has("x") and PART_COL.has(String(e.get("part", ""))):   # body-part flash where it struck
-						_puff(Vector3(e["x"], e["y"], e["z"]), PART_COL[e["part"]], 3, 1.5)
+					if f: kill_cam.note_hit(f)         # (hit puffs and flashes are drawn by FxSystem)
 			"ko":
 				_on_ko(e)
-			"ko_burst":
-				if f: _puff(Vector3(f.phys.px, f.phys.py + 1.0, f.phys.pz), Color(1, 0.85, 0.3), 14, 7.0)
-			"tracer":
-				_tracer(Vector3(e["ox"], e["oy"], e["oz"]), Vector3(e["ex"], e["ey"], e["ez"]))
 			"crate":
 				_crate_view(e["crate"])
-			"crate_land":
-				var c: Dictionary = e["crate"]
-				_puff(Vector3(c["x"], c["gy"] + 0.3, c["z"]), Color(1, 0.82, 0.29), 10, 5.0)
 			"crate_take", "crate_gone":
 				var c2: Dictionary = e["crate"]
 				if _crates.has(c2["id"]):
 					_crates[c2["id"]].queue_free(); _crates.erase(c2["id"])
 				if e["type"] == "crate_take" and e["f"] == sim.player:
 					_toast("Got " + sim.pickups.label(c2["key"]))
-			"puff":                       # Combat/Weapons puffs (dash, Air Blower gusts along `dir`)
-				_puff(Vector3(e["x"], e["y"], e["z"]), Color.hex((int(e.get("color", 0xffffff)) << 8) | 0xff), int(e.get("n", 4)),
-					float(e.get("spd", 3.0)), e.get("dir", []))
-			"pad":
-				if f: _puff(Vector3(f.phys.px, 0.15, f.phys.pz), Color(0.62, 0.96, 0.92), 6, 3.0)
 			"toast":
 				_toast(str(e["text"]))
 			"match_end":
@@ -341,8 +353,6 @@ func _drain_events() -> void:
 				if f:
 					hud.add_feed(null, f, "", false)
 					_toast("You're out!" if f == sim.player else "%s is out!" % f.name)
-			"puff":
-				if str(e.get("kind", "")) == "dash": _puff(Vector3(e["x"], e["y"], e["z"]), Color(0.85, 0.92, 1.0), 6, 3.5)
 			"relook":
 				_relook(f)
 			"chaos_warn":
@@ -368,7 +378,10 @@ func _on_ko(e: Dictionary) -> void:
 	if k == sim.player: _toast("K.O.!")
 	if k == sim.player and v != sim.player and kill_cam_enabled(): kill_cam.on_ko(k, v)
 
-# ============================== effects (minimal: the art pass replaces them) ==============================
+# ============================== materials (crates) ==============================
+
+## Damage-number / impact colours per body part (moved to FxSystem; kept here for older callers).
+const PART_COL := FxSystem.PART_COL
 
 func _mat(c: Color, unshaded := true) -> StandardMaterial3D:
 	var key := c.to_html()
@@ -379,64 +392,6 @@ func _mat(c: Color, unshaded := true) -> StandardMaterial3D:
 	if c.a < 1.0: m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	_mats[key] = m
 	return m
-
-func _add_fx(n: Node3D, life: float, vel := Vector3.ZERO, kind := "") -> void:
-	_fx_root.add_child(n)
-	_fx.append({"node": n, "life": life, "max": life, "vel": vel, "kind": kind})
-
-func _puff(at: Vector3, col: Color, n: int, spd: float, dir: Array = []) -> void:
-	if Tier.is_web() and _fx.size() > 80: return
-	for i in n:
-		var m := MeshInstance3D.new()
-		var bm := BoxMesh.new(); bm.size = Vector3.ONE * 0.16
-		m.mesh = bm
-		m.material_override = _mat(col)
-		m.position = at
-		var d := Vector3(randf_range(-1, 1), randf_range(0.2, 1.2), randf_range(-1, 1)).normalized() * spd * randf_range(0.4, 1.0)
-		if dir.size() == 3: d = (Vector3(dir[0], dir[1], dir[2]) * 1.6 + d.normalized() * 0.35).normalized() * spd * randf_range(0.6, 1.0)
-		_add_fx(m, randf_range(0.3, 0.6), d, "puff")
-
-## Damage-number colour and size per body part (Combat.body_part; docs/DAMAGE.md). "" = whole body (splash, flame).
-const PART_COL := {"head": Color(1, 0.35, 0.25), "torso": Color(1, 0.95, 0.4), "arms": Color(0.55, 0.85, 1), "legs": Color(0.75, 0.8, 0.9)}
-const PART_SIZE := {"head": 56, "torso": 44, "arms": 40, "legs": 38}
-
-## The number floats up from the head; a non-zero part bonus adds a second line ("+50%", "-25%").
-func _dmg_number(at: Vector3, dmg: float, part: String, pct: int = 0) -> void:
-	var l := Label3D.new()
-	l.text = str(int(round(dmg))) + ("\n%+d%%" % pct if pct != 0 else "")
-	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	l.no_depth_test = true
-	l.font_size = PART_SIZE.get(part, 44)
-	l.pixel_size = 0.006
-	l.outline_size = 12
-	l.modulate = PART_COL.get(part, Color(1, 0.95, 0.4))
-	l.position = at
-	_add_fx(l, FX_DMG_LIFE, Vector3(0, 1.6, 0), "text")
-
-func _tracer(o: Vector3, e: Vector3) -> void:
-	var len := o.distance_to(e)
-	if len < 0.05: return
-	var m := MeshInstance3D.new()
-	var bm := BoxMesh.new(); bm.size = Vector3(0.035, 0.035, len)
-	m.mesh = bm
-	m.material_override = _mat(Color(1, 0.93, 0.6))
-	var mid := (o + e) * 0.5
-	m.look_at_from_position(mid, e, Vector3.UP if absf((e - o).normalized().y) < 0.99 else Vector3.RIGHT)
-	_add_fx(m, 0.06, Vector3.ZERO, "tracer")
-
-func _update_fx(dt: float) -> void:
-	for i in range(_fx.size() - 1, -1, -1):
-		var x: Dictionary = _fx[i]
-		x["life"] -= dt
-		var n: Node3D = x["node"]
-		if x["life"] <= 0.0:
-			n.queue_free(); _fx.remove_at(i); continue
-		if x["kind"] == "puff":
-			x["vel"] += Vector3(0, -9.0, 0) * dt
-			n.scale = Vector3.ONE * clampf(x["life"] / x["max"], 0.05, 1.0)
-		elif x["kind"] == "text":
-			(n as Label3D).modulate.a = clampf(x["life"] / x["max"] * 1.5, 0.0, 1.0)
-		n.position += x["vel"] * dt
 
 # ============================== dynamic arenas (dynBuildTiles / dynBuildDrift, visual half) ==============================
 
@@ -533,8 +488,9 @@ func _update_dyn_views() -> void:
 	for r: Dictionary in _dyn_riders:
 		r["node"].position.y = r["y0"] + maxf(d.tiles[r["ti"]]["off"], -1.0)
 	for q: Dictionary in d.fx:
-		if q["type"] == "drop": _puff(Vector3(q["x"], q["y"], q["z"]), Color.hex(0xb9a88cff), 8, 3.0)
-		else: _puff(Vector3(q["x"], q["y"] + 0.1, q["z"]), Color.hex(0xd8cdb8ff), 6, 2.5)
+		if fx == null: continue
+		if q["type"] == "drop": fx.puff(Vector3(q["x"], q["y"], q["z"]), Color.hex(0xb9a88cff), 8, 3.0)
+		else: fx.puff(Vector3(q["x"], q["y"] + 0.1, q["z"]), Color.hex(0xd8cdb8ff), 6, 2.5)
 	d.fx.clear()
 
 # ============================== crates ==============================
@@ -877,6 +833,7 @@ func _relook(f: FighterState) -> void:
 	_fighters_root.add_child(v)
 	v.bind(f, sim.looks.get(f, {}))
 	Gfx.dress_fighter(v)
+	if fx: v.juice = FighterJuice.new()
 	views[f] = v
 
 ## pend: the host ended the match. Results + rematch vote (themed panel, centred, over the HUD).
