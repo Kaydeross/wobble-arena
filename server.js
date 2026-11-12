@@ -129,7 +129,7 @@ function leaveRoom(ws) {
   ws.room = null; ws.role = null; ws.cid = 0;
 }
 function joinRoom(ws, r, build) {
-  if (build && r.info.build && build !== r.info.build) { send(ws, { op: 'nojoin', reason: 'build' }); return false; }
+  // no build-number gate here: web and native clients release on different schedules. The room host compares the protocol version (`proto`) in `hello` and answers `badver` when it differs (docs/PROTOCOL.md 6.1).
   if (humans(r) >= r.info.max) { send(ws, { op: 'nojoin', reason: 'full' }); return false; }
   const cid = r.nextCid++; ws.room = r; ws.role = 'client'; ws.cid = cid; r.clients.set(cid, ws);
   send(ws, { op: 'joined', cid, id: r.id, pub: r.pub });
@@ -165,7 +165,7 @@ const handlers = {
     if (config.requireAuth && !ws.user) { send(ws, { op: 'nomatch', reason: 'auth' }); return; }
     if (ws.room) { send(ws, { op: 'nomatch' }); return; }
     const mode = str(m.mode, 16), build = str(m.build, 16);
-    const best = [...rooms.values()].filter(r => r.pub && r.info.mode === mode && (!build || !r.info.build || r.info.build === build) && humans(r) < r.info.max).sort((a, b) => humans(b) - humans(a))[0];
+    const best = [...rooms.values()].filter(r => r.pub && r.info.mode === mode && humans(r) < r.info.max).sort((a, b) => humans(b) - humans(a))[0];
     if (!best) { send(ws, { op: 'nomatch' }); return; }
     joinRoom(ws, best, build);
   },
