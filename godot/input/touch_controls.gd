@@ -3,7 +3,9 @@ extends Control
 ## On-screen touch controls, ported from the web game's touch layer (public/index.html ~9154-9247, CSS ~845-855):
 ## floating move stick on the left 45% (from 14% down), drag on the right side to look, buttons on the right
 ## (FIRE and JUMP held, the others taps, AIM toggles), pause at the top corner, left-handed mirror, scale/opacity.
-## Writes into the shared InputState (source "touch"). Placeholder drawing; the UI pass (Phase 3) restyles it.
+## Writes into the shared InputState (source "touch"). Drawn with vector icons (_draw, no fonts): FIRE and JUMP
+## biggest and strongest, then aim/swap/reload, then the rest; buttons dip and brighten while pressed; the stick is
+## a ring + knob (a faint ghost marks it at rest). Layout respects left-handed mode, button scale, opacity, safe areas.
 
 signal pause_pressed
 
@@ -32,6 +34,7 @@ var _stick_origin := Vector2.ZERO
 var _stick_pos := Vector2.ZERO
 var _down := {}                ## button id -> true while pressed
 var _insets := [0.0, 0.0, 0.0, 0.0]   ## left, top, right, bottom safe-area insets in canvas units
+var _anim := {}                ## button id -> press animation 0..1 (visual only)
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -56,17 +59,7 @@ func _load_settings() -> void:
 ## Safe-area insets (notch, home indicator) from DisplayServer, converted to canvas units. Phones only:
 ## on desktop the "safe area" is the screen minus the dock, which says nothing about our window.
 func _update_insets() -> void:
-	_insets = [0.0, 0.0, 0.0, 0.0]
-	if not Tier.is_mobile() or DisplayServer.get_name() == "headless":
-		queue_redraw(); return
-	var sa := DisplayServer.get_display_safe_area()
-	var ws := DisplayServer.window_get_size()
-	var wp := DisplayServer.window_get_position()
-	if ws.x <= 0 or ws.y <= 0 or sa.size.x <= 0:
-		return
-	var k := get_viewport_rect().size / Vector2(ws)
-	_insets = [maxf(0, sa.position.x - wp.x) * k.x, maxf(0, sa.position.y - wp.y) * k.y,
-		maxf(0, (wp.x + ws.x) - sa.end.x) * k.x, maxf(0, (wp.y + ws.y) - sa.end.y) * k.y]
+	_insets = SafeArea.insets(get_viewport())
 	queue_redraw()
 
 func safe_insets() -> Array:
@@ -115,6 +108,8 @@ func _input(e: InputEvent) -> void:
 func _touch_down(i: int, p: Vector2) -> void:
 	if pause_rect().grow(6).has_point(p):
 		_touch[i] = "pause"
+		_anim["pause"] = 1.0
+		queue_redraw()
 		pause_pressed.emit()
 		return
 	for b in BUTTONS:
@@ -190,36 +185,174 @@ func release_all() -> void:
 	if state:
 		state.aim_toggle = false
 
+func _process(dt: float) -> void:
+	# press animation: each button eases toward 1 while held (fast in, slower springy out)
+	var busy := false
+	for b in BUTTONS:
+		var id: String = b[0]
+		var on: bool = _down.has(id)
+		var a: float = _anim.get(id, 0.0)
+		var t := 1.0 if on else 0.0
+		if absf(a - t) > 0.001:
+			a = move_toward(a, t, dt * (16.0 if on else 7.0))
+			_anim[id] = a
+			busy = true
+	var pa: float = _anim.get("pause", 0.0)
+	if pa > 0.0:
+		_anim["pause"] = move_toward(pa, 0.0, dt * 5.0)
+		busy = true
+	if busy:
+		queue_redraw()
+
+## Opacity tier: FIRE and JUMP strongest, aim/swap/reload next, the rest lightest.
+static func tier_alpha(id: String) -> float:
+	match id:
+		"fire", "jump": return 1.0
+		"aim", "swap", "reload": return 0.86
+	return 0.74
+
 func _draw() -> void:
-	var font := ThemeDB.fallback_font
-	var base := Color(16 / 255.0, 43 / 255.0, 53 / 255.0, 0.5 * opacity)
-	var edge := Color(1, 1, 1, 0.6 * opacity)
+	var ink := Color(0.0627, 0.1686, 0.2078)
+	var yel := Color(1.0, 0.812, 0.353)
 	for b in BUTTONS:
 		var r := button_rect(b)
-		var down: bool = _down.has(b[0]) or (b[0] == "aim" and state != null and state.aim_toggle)
-		var rad: float = r[1] * (0.9 if _down.has(b[0]) else 1.0)
-		draw_circle(r[0], rad, Color(1, 1, 1, 0.65 * opacity) if down else base)
-		draw_arc(r[0], rad, 0, TAU, 32, edge, 2.0, true)
-		var fs := int(13 * UNIT * scale_k * (1.2 if b[0] == "fire" else 1.0))
-		var txt: String = b[1]
-		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_CENTER, -1, fs).x
-		draw_string(font, r[0] + Vector2(-w / 2.0, fs * 0.35), txt, HORIZONTAL_ALIGNMENT_CENTER, -1, fs,
-			Color(16 / 255.0, 43 / 255.0, 53 / 255.0, opacity) if down else Color(1, 1, 1, opacity))
+		var id: String = b[0]
+		var a: float = _anim.get(id, 0.0)
+		var toggled: bool = id == "aim" and state != null and state.aim_toggle
+		var op := opacity * tier_alpha(id)
+		var c: Vector2 = r[0]
+		var rad: float = r[1] * (1.0 - 0.1 * a)
+		var fill: Color
+		var icon_c: Color
+		if id == "fire":
+			fill = Color(yel.r, yel.g, yel.b, 0.88 * op); icon_c = Color(ink.r, ink.g, ink.b, op)
+		elif id == "jump":
+			fill = Color(0.16, 0.42, 0.47, 0.8 * op); icon_c = Color(1, 1, 1, op)
+		else:
+			fill = Color(ink.r, ink.g, ink.b, 0.62 * op); icon_c = Color(1, 1, 1, op)
+		if toggled:
+			icon_c = Color(yel.r, yel.g, yel.b, op)
+		fill = fill.lerp(Color(1, 1, 1, fill.a), 0.3 * a)        # brighter while pressed
+		draw_circle(c + Vector2(0, 3.0 * (1.0 - a)), rad, Color(0, 0, 0, 0.22 * op))   # soft drop shadow
+		if a > 0.01:
+			draw_circle(c, rad + 6.0 * a, Color(yel.r, yel.g, yel.b, 0.25 * a * op))  # press glow
+		draw_circle(c, rad, fill)
+		draw_arc(c + Vector2(0, -rad * 0.08), rad * 0.82, PI * 1.15, PI * 1.85, 24, Color(1, 1, 1, 0.16 * op), rad * 0.12, true)   # top sheen
+		var edge := Color(yel.r, yel.g, yel.b, 0.95 * op) if toggled else (Color(ink.r, ink.g, ink.b, 0.5 * op) if id == "fire" else Color(1, 1, 1, 0.55 * op))
+		draw_arc(c, rad - 1.0, 0, TAU, 48, edge, 2.5 if not toggled else 3.5, true)
+		_icon(id, c, rad * 0.5, icon_c)
+	# pause
 	var pr := pause_rect()
-	draw_style_box(_pause_box(), pr)
-	var pw := font.get_string_size("II", HORIZONTAL_ALIGNMENT_CENTER, -1, 22).x
-	draw_string(font, pr.get_center() + Vector2(-pw / 2.0, 8), "II", HORIZONTAL_ALIGNMENT_CENTER, -1, 22, Color(1, 1, 1, opacity))
-	if _touch.values().has("move"):
-		var sr := STICK_R * UNIT * scale_k
-		draw_circle(_stick_origin, sr, Color(16 / 255.0, 43 / 255.0, 53 / 255.0, 0.35 * opacity))
-		draw_arc(_stick_origin, sr, 0, TAU, 40, Color(1, 1, 1, 0.5 * opacity), 2.0, true)
-		var knob := _stick_origin + (_stick_pos - _stick_origin).limit_length(sr)
-		draw_circle(knob, 23.0 * UNIT * scale_k, Color(1, 1, 1, 0.75 * opacity))
-
-func _pause_box() -> StyleBoxFlat:
+	var pa: float = _anim.get("pause", 0.0)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(16 / 255.0, 43 / 255.0, 53 / 255.0, 0.55 * opacity)
-	sb.border_color = Color(1, 1, 1, 0.5 * opacity)
+	sb.bg_color = Color(ink.r, ink.g, ink.b, 0.62 * opacity).lerp(Color(1, 1, 1, 0.6 * opacity), 0.3 * pa)
+	sb.border_color = Color(1, 1, 1, 0.55 * opacity)
 	sb.set_border_width_all(2)
-	sb.set_corner_radius_all(int(12 * UNIT))
-	return sb
+	sb.set_corner_radius_all(int(14 * UNIT))
+	sb.shadow_color = Color(0, 0, 0, 0.2 * opacity); sb.shadow_size = 4; sb.shadow_offset = Vector2(0, 2)
+	sb.anti_aliasing = true
+	draw_style_box(sb, pr.grow(-3.0 * pa))
+	_icon("pause", pr.get_center(), pr.size.x * 0.24, Color(1, 1, 1, opacity))
+	# floating stick: a faint ghost where the thumb usually rests, the real ring + knob while held
+	var sr := STICK_R * UNIT * scale_k
+	var kr := 23.0 * UNIT * scale_k
+	if _touch.values().has("move"):
+		var v := _stick_pos - _stick_origin
+		var sprint := state != null and state.is_held("sprint")
+		draw_circle(_stick_origin, sr, Color(ink.r, ink.g, ink.b, 0.4 * opacity))
+		draw_arc(_stick_origin, sr, 0, TAU, 56, Color(yel.r, yel.g, yel.b, 0.9 * opacity) if sprint else Color(1, 1, 1, 0.5 * opacity), 3.0, true)
+		draw_arc(_stick_origin, sr * 0.55, 0, TAU, 40, Color(1, 1, 1, 0.12 * opacity), 1.5, true)
+		if v.length() > 4.0:   # highlight the rim in the push direction
+			var ang := v.angle()
+			draw_arc(_stick_origin, sr - 4.0, ang - 0.5, ang + 0.5, 16, Color(yel.r, yel.g, yel.b, 0.85 * opacity), 5.0, true)
+		var knob := _stick_origin + v.limit_length(sr)
+		draw_circle(knob + Vector2(0, 3), kr, Color(0, 0, 0, 0.25 * opacity))
+		draw_circle(knob, kr, Color(1, 1, 1, 0.85 * opacity))
+		draw_arc(knob, kr - 1.0, 0, TAU, 32, Color(ink.r, ink.g, ink.b, 0.35 * opacity), 2.0, true)
+		draw_circle(knob, kr * 0.45, Color(ink.r, ink.g, ink.b, 0.12 * opacity))
+	else:
+		var gp := stick_home()
+		draw_circle(gp, sr, Color(ink.r, ink.g, ink.b, 0.16 * opacity))
+		draw_arc(gp, sr, 0, TAU, 56, Color(1, 1, 1, 0.22 * opacity), 2.0, true)
+		draw_circle(gp, kr, Color(1, 1, 1, 0.18 * opacity))
+
+## Where the faint stick ghost sits (lower part of the move zone, inside the safe area).
+func stick_home() -> Vector2:
+	var vs := get_viewport_rect().size
+	var sr := STICK_R * UNIT * scale_k
+	var y: float = vs.y - _insets[3] - sr - 34.0 * UNIT
+	var x: float = _insets[0] + sr + 40.0 * UNIT
+	if lefty: x = vs.x - _insets[2] - sr - 40.0 * UNIT
+	return Vector2(x, y)
+
+# ---------- vector icons (no fonts / emoji): `s` = half the icon size ----------
+
+func _cap(a: Vector2, b: Vector2, w: float, col: Color) -> void:
+	draw_line(a, b, col, w, true)
+	draw_circle(a, w / 2.0, col)
+	draw_circle(b, w / 2.0, col)
+
+func _icon(id: String, c: Vector2, s: float, col: Color) -> void:
+	var w := maxf(2.0, s * 0.26)
+	match id:
+		"fire":   # bullet burst: a spiky star with a hole
+			var pts := PackedVector2Array()
+			for i in 16:
+				var ang := -PI / 2.0 + i * TAU / 16.0
+				pts.append(c + Vector2.from_angle(ang) * (s * (1.0 if i % 2 == 0 else 0.55)))
+			draw_colored_polygon(pts, col)
+			draw_circle(c, s * 0.28, Color(1.0, 0.812, 0.353, col.a))
+		"jump":   # up arrow over a ground line
+			_cap(c + Vector2(0, s * 0.55), c + Vector2(0, -s * 0.55), w, col)
+			_cap(c + Vector2(0, -s * 0.75), c + Vector2(-s * 0.6, -s * 0.1), w, col)
+			_cap(c + Vector2(0, -s * 0.75), c + Vector2(s * 0.6, -s * 0.1), w, col)
+			_cap(c + Vector2(-s * 0.7, s * 0.95), c + Vector2(s * 0.7, s * 0.95), w * 0.8, col)
+		"aim":    # scope reticle
+			draw_arc(c, s * 0.75, 0, TAU, 32, col, w * 0.8, true)
+			_cap(c + Vector2(0, -s * 1.05), c + Vector2(0, -s * 0.35), w * 0.7, col)
+			_cap(c + Vector2(0, s * 1.05), c + Vector2(0, s * 0.35), w * 0.7, col)
+			_cap(c + Vector2(-s * 1.05, 0), c + Vector2(-s * 0.35, 0), w * 0.7, col)
+			_cap(c + Vector2(s * 1.05, 0), c + Vector2(s * 0.35, 0), w * 0.7, col)
+			draw_circle(c, w * 0.45, col)
+		"swap":   # two opposite arrows
+			_cap(c + Vector2(-s * 0.8, -s * 0.35), c + Vector2(s * 0.7, -s * 0.35), w * 0.8, col)
+			_cap(c + Vector2(s * 0.8, -s * 0.35), c + Vector2(s * 0.35, -s * 0.8), w * 0.8, col)
+			_cap(c + Vector2(s * 0.8, s * 0.35), c + Vector2(-s * 0.7, s * 0.35), w * 0.8, col)
+			_cap(c + Vector2(-s * 0.8, s * 0.35), c + Vector2(-s * 0.35, s * 0.8), w * 0.8, col)
+		"reload": # circular arrow
+			draw_arc(c, s * 0.7, -PI * 0.35, PI * 1.35, 28, col, w * 0.85, true)
+			var tip := c + Vector2.from_angle(-PI * 0.35) * s * 0.7
+			draw_colored_polygon(PackedVector2Array([tip + Vector2(-s * 0.05, -s * 0.5), tip + Vector2(s * 0.5, s * 0.08), tip + Vector2(-s * 0.35, s * 0.3)]), col)
+		"shove":  # open palm
+			var palm := Rect2(c + Vector2(-s * 0.55, -s * 0.1), Vector2(s * 1.1, s * 0.85))
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = col
+			sb.set_corner_radius_all(int(s * 0.3))
+			sb.anti_aliasing = true
+			draw_style_box(sb, palm)
+			for i in 4:
+				var x := palm.position.x + s * 0.14 + i * s * 0.27
+				_cap(Vector2(x, palm.position.y + s * 0.1), Vector2(x, palm.position.y - s * (0.6 if i == 1 or i == 2 else 0.45)), s * 0.22, col)
+			_cap(Vector2(palm.position.x + s * 0.1, palm.position.y + s * 0.45), Vector2(palm.position.x - s * 0.4, palm.position.y + s * 0.05), s * 0.22, col)
+		"kick":   # a boot swung up (drawn tilted around the button centre) + motion lines
+			draw_set_transform(c, -0.45, Vector2.ONE)
+			var boot := PackedVector2Array()
+			for q: Vector2 in [Vector2(-0.6, -0.95), Vector2(-0.05, -0.95), Vector2(-0.05, 0.0), Vector2(0.55, 0.12),
+					Vector2(0.78, 0.38), Vector2(0.7, 0.62), Vector2(-0.6, 0.62)]:
+				boot.append(q * s * 0.9)
+			draw_colored_polygon(boot, col)
+			boot.append(boot[0])
+			draw_polyline(boot, col, 1.5, true)
+			_cap(Vector2(-0.6, 0.78) * s * 0.9, Vector2(0.62, 0.78) * s * 0.9, w * 0.5, col)   # sole
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_cap(c + Vector2(-s * 1.0, s * 0.55), c + Vector2(-s * 0.55, s * 0.55), w * 0.5, col)
+			_cap(c + Vector2(-s * 0.95, s * 0.9), c + Vector2(-s * 0.35, s * 0.9), w * 0.5, col)
+		"dash":   # speed lines + chevron
+			_cap(c + Vector2(-s * 0.95, -s * 0.4), c + Vector2(-s * 0.35, -s * 0.4), w * 0.6, col)
+			_cap(c + Vector2(-s * 1.05, 0), c + Vector2(-s * 0.2, 0), w * 0.6, col)
+			_cap(c + Vector2(-s * 0.95, s * 0.4), c + Vector2(-s * 0.35, s * 0.4), w * 0.6, col)
+			_cap(c + Vector2(s * 0.1, -s * 0.65), c + Vector2(s * 0.75, 0), w, col)
+			_cap(c + Vector2(s * 0.75, 0), c + Vector2(s * 0.1, s * 0.65), w, col)
+		"pause":
+			_cap(c + Vector2(-s * 0.4, -s * 0.6), c + Vector2(-s * 0.4, s * 0.6), s * 0.42, col)
+			_cap(c + Vector2(s * 0.4, -s * 0.6), c + Vector2(s * 0.4, s * 0.6), s * 0.42, col)

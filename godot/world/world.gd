@@ -1,7 +1,7 @@
 extends Node3D
 ## Offline match world: builds a map with MapBuilder, runs a MatchSim (the player + bots, combat, crates) at the web
 ## game's fixed step (SIM = 1/120, one accumulator, like `frame`/`simStep` in public/index.html ~10077 / ~9630),
-## presents every fighter with a Wobbler, drains Combat events into effects, and draws a minimal HUD.
+## presents every fighter with a Wobbler, drains Combat events into effects, and feeds the HUD (ui/hud.tscn).
 ## Per frame (like `frame`): camera -> sim steps -> animate/applyPose (Fighter.present) -> melee sweep -> effects/HUD.
 ## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n> --dyn=<off|random|wobble|tilt|quake|drift>.
 ## Dynamic arenas: MatchSim.dyn moves the collision; this node moves the tile / block meshes to match (_dyn_views).
@@ -26,7 +26,7 @@ const FX_DMG_LIFE := 0.9
 @onready var cam: FollowCamera = $Camera
 @onready var input: PlayerInput = $PlayerInput
 @onready var touch: TouchControls = $UI/TouchControls
-@onready var hud: Label = $UI/Hud
+@onready var hud: MatchHud = $UI/Hud
 @onready var pause_menu: Control = $UI/Pause
 
 var sim: MatchSim
@@ -48,10 +48,7 @@ var _crates := {}                  ## crate id -> Node3D
 var _fx: Array = []                ## {node, life, max, vel, kind}
 var _fx_root: Node3D
 var _fighters_root: Node3D
-var _toast_t := 0.0
-var _fps_t := 0.0
 var _touch_was := false
-var _ui := {}
 var _mats := {}
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
@@ -72,12 +69,16 @@ func _ready() -> void:
 	touch.state = input.state
 	touch.pause_pressed.connect(_toggle_pause)
 	input.pause_requested.connect(_toggle_pause)
-	$UI/Pause/Box/Resume.pressed.connect(_toggle_pause)
-	$UI/Pause/Box/Title.pressed.connect(_on_title_pressed)
+	$UI/Pause/Panel/Box/Resume.pressed.connect(_toggle_pause)
+	$UI/Pause/Panel/Box/Title.pressed.connect(_on_title_pressed)
+	var fps: CheckButton = $UI/Pause/Panel/Box/Fps
+	fps.button_pressed = bool(Settings.get_value("show_fps", false))
+	fps.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))
+	Settings.changed.connect(_on_setting)
+	JuicyButton.attach_all(pause_menu)
 	pause_menu.visible = false
 	_fx_root = Node3D.new(); _fx_root.name = "Fx"; add_child(_fx_root)
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
-	_build_hud()
 	if session != null:
 		map_id = start_msg.get("map", map_id)
 		session.match_started.connect(_on_net_start)
@@ -85,7 +86,7 @@ func _ready() -> void:
 		session.votes_changed.connect(_on_net_votes)
 		session.ended.connect(_on_net_ended)
 		session.rehosted.connect(_on_net_rehosted)
-		$UI/Pause/Box/Title.text = "Leave room"
+		$UI/Pause/Panel/Box/Title.text = "Leave room"
 	load_map(map_id)
 
 func _exit_tree() -> void:
@@ -138,11 +139,14 @@ func load_map(id: String) -> void:
 		_fighters_root.add_child(v)
 		var lk: Dictionary = sim.looks.get(f, _my_look())
 		v.bind(f, lk)
+		if v.tag:   # the HUD draws the nameplates (ui/hud_nameplates.gd)
+			v.tag.queue_free(); v.tag = null
 		views[f] = v
 	player_view = views[sim.player]
 	cam.yaw = PI; cam.pitch = -0.2
 	feed.clear()
 	acc = 0.0
+	hud.bind(self)
 
 func _my_look() -> Dictionary:
 	var col := int(Settings.get_value("color", 0x39b5a8))
@@ -250,6 +254,7 @@ func _on_ko(e: Dictionary) -> void:
 	else: txt = "%s  [%s]  %s" % [k.name, e.get("weapon", ""), v.name]
 	feed.push_front([txt, FEED_TIME])
 	if feed.size() > 5: feed.resize(5)
+	hud.add_feed(k, v, str(e.get("weapon", "")), bool(e.get("fall", false)))
 	if k == sim.player: _toast("K.O.!")
 
 # ============================== effects (minimal: the art pass replaces them) ==============================
@@ -465,102 +470,17 @@ func _update_crates(_dt: float) -> void:
 		if c["grounded"]:
 			beam.scale = Vector3(0.45, 0.07, 0.45); beam.position.y = 1.4
 
-# ============================== HUD ==============================
-
-func _label(parent: Node, size: int, align := HORIZONTAL_ALIGNMENT_LEFT) -> Label:
-	var l := Label.new()
-	l.add_theme_font_size_override("font_size", size)
-	l.add_theme_color_override("font_color", Color.WHITE)
-	l.add_theme_color_override("font_outline_color", Color(0.06, 0.17, 0.21))
-	l.add_theme_constant_override("outline_size", 6)
-	l.horizontal_alignment = align
-	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(l)
-	return l
-
-## Anchor a control to a fraction of the screen (ax, ay) with a pixel rect around that point.
-static func _pin(c: Control, ax: float, ay: float, rect: Rect2) -> void:
-	c.anchor_left = ax; c.anchor_right = ax; c.anchor_top = ay; c.anchor_bottom = ay
-	c.offset_left = rect.position.x; c.offset_top = rect.position.y
-	c.offset_right = rect.end.x; c.offset_bottom = rect.end.y
-
-func _build_hud() -> void:
-	var ui: CanvasLayer = $UI
-	var root := Control.new()
-	root.name = "MatchHud"
-	root.anchor_right = 1.0; root.anchor_bottom = 1.0
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui.add_child(root)
-	ui.move_child(root, 0)
-	# health bar with the class's max hp, bottom left
-	var bar := Control.new()
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(bar)
-	_pin(bar, 0.0, 1.0, Rect2(24, -70, 300, 26))
-	var bg := ColorRect.new(); bg.color = Color(0.06, 0.08, 0.12, 0.7); bg.size = Vector2(300, 26); bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(bg)
-	var fill := ColorRect.new(); fill.color = Color(0.36, 0.89, 0.48); fill.position = Vector2(3, 3); fill.size = Vector2(294, 20)
-	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.add_child(fill)
-	var hp_l := _label(bar, 18, HORIZONTAL_ALIGNMENT_CENTER); hp_l.size = Vector2(300, 26); hp_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var cls_l := _label(bar, 16); cls_l.position = Vector2(0, -26)
-	# weapon + ammo, bottom right
-	var wl := _label(root, 24, HORIZONTAL_ALIGNMENT_RIGHT)
-	wl.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	_pin(wl, 1.0, 1.0, Rect2(-424, -90, 400, 60))
-	# K.O. count + match clock, top centre
-	var top := _label(root, 26, HORIZONTAL_ALIGNMENT_CENTER)
-	_pin(top, 0.5, 0.0, Rect2(-200, 10, 400, 40))
-	# kill feed, top right
-	var fd := _label(root, 18, HORIZONTAL_ALIGNMENT_RIGHT)
-	_pin(fd, 1.0, 0.0, Rect2(-524, 14, 500, 160))
-	# toast, upper middle
-	var ts := _label(root, 30, HORIZONTAL_ALIGNMENT_CENTER)
-	_pin(ts, 0.5, 0.0, Rect2(-400, 64, 800, 50))
-	_ui = {"fill": fill, "fill_w": 294.0, "hp": hp_l, "cls": cls_l, "weapon": wl, "top": top, "feed": fd, "toast": ts}
+# ============================== HUD (ui/hud.tscn) ==============================
 
 func _toast(t: String) -> void:
-	_ui["toast"].text = t
-	_toast_t = 2.2
+	hud.toast(t)
 
 func _update_hud(delta: float) -> void:
-	if sim == null: return
-	var p := sim.player
-	var mx := sim.combat.max_hp(p)
-	var k := clampf(p.hp / mx, 0.0, 1.0) if not p.dead else 0.0
-	_ui["fill"].size.x = _ui["fill_w"] * k
-	_ui["fill"].color = Color(0.36, 0.89, 0.48) if k > 0.5 else (Color(1.0, 0.8, 0.25) if k > 0.25 else Color(1.0, 0.35, 0.3))
-	_ui["hp"].text = "%d / %d" % [ceili(maxf(p.hp, 0.0)) if not p.dead else 0, roundi(mx)]
-	_ui["cls"].text = str(sim.combat.classes.get(p.class_id, {}).get("name", p.class_id))
-	var wtxt := ""
-	if p.dead: wtxt = "Respawning..."
-	else:
-		var w := sim.combat.wdata(p.weapon if p.weapon != "" else "spatula")
-		wtxt = str(w.get("name", p.weapon))
-		var s: Variant = p.current_slot()
-		if s != null:
-			if int(s["mag"]) >= 0: wtxt += "  %d / %d" % [int(s["mag"]), int(s["ammo"])]
-			else: wtxt += "  x%d" % int(s["ammo"])
-		if p.reloading: wtxt += "  (reloading)"
-	_ui["weapon"].text = wtxt
-	var t := int(sim.elapsed())
-	_ui["top"].text = "K.O. %d    %d:%02d" % [p.ko, t / 60, t % 60]
-	var lines: Array = []
-	for i in range(feed.size() - 1, -1, -1):
-		feed[i][1] -= delta
-		if feed[i][1] <= 0.0: feed.remove_at(i)
-	for it: Array in feed: lines.append(it[0])
-	_ui["feed"].text = "\n".join(lines)
-	_toast_t -= delta
-	_ui["toast"].visible = _toast_t > 0.0
-	_fps_t += delta
-	if _fps_t < 0.25: return
-	_fps_t = 0.0
-	var name_s := str(map_node.map.get("name", map_id)) if map_node else map_id
-	var hint := ""
-	if Tier.is_pc() and not touch.visible and not input.mouse_captured() and not paused:
-		hint = "\nClick to look around (Esc: menu)"
-	hud.text = "%s  |  %s  |  %d fps%s" % [name_s, Tier.tier_name(), Engine.get_frames_per_second(), hint]
+	hud.update(delta)
+
+func _on_setting(key: String, v: Variant) -> void:
+	if key == "show_fps":
+		($UI/Pause/Panel/Box/Fps as CheckButton).set_pressed_no_signal(bool(v))
 
 # ============================== online (guest) ==============================
 
@@ -605,19 +525,32 @@ func _relook(f: FighterState) -> void:
 	v.bind(f, sim.looks.get(f, {}))
 	views[f] = v
 
-## pend: the host ended the match. Results + rematch vote (placeholder UI).
+## pend: the host ended the match. Results + rematch vote (themed panel, centred, over the HUD).
 func _show_results(winner: String) -> void:
 	if _results: _results.queue_free()
 	var p := PanelContainer.new()
 	p.name = "Results"
-	_pin(p, 0.5, 0.5, Rect2(-220, -110, 440, 220))
+	p.set_anchors_preset(Control.PRESET_CENTER)
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.grow_vertical = Control.GROW_DIRECTION_BOTH
+	p.custom_minimum_size = Vector2(380, 0)
 	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 12)
 	p.add_child(box)
-	var l := _label(box, 30, HORIZONTAL_ALIGNMENT_CENTER)
+	var l := Label.new()
+	l.theme_type_variation = &"TitleLabel"
+	l.add_theme_color_override("font_color", UiTheme.ACCENT)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.text = ("You win!" if winner == "You" else winner + " wins!")
-	var votes := _label(box, 18, HORIZONTAL_ALIGNMENT_CENTER)
+	box.add_child(l)
+	var votes := Label.new()
+	votes.theme_type_variation = &"MutedLabel"
+	votes.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	votes.name = "Votes"
-	var rm := Button.new(); rm.text = "Rematch"; rm.custom_minimum_size = Vector2(0, 54)
+	box.add_child(votes)
+	var rm := Button.new(); rm.text = "Rematch"; rm.custom_minimum_size = Vector2(0, 58)
+	rm.theme_type_variation = &"PrimaryButton"
+	rm.add_theme_font_size_override("font_size", 26)
 	rm.pressed.connect(func() -> void:
 		if session: session.vote_rematch()
 		rm.disabled = true; rm.text = "Waiting for the others…")
@@ -625,7 +558,9 @@ func _show_results(winner: String) -> void:
 	var lv := Button.new(); lv.text = "Leave room"; lv.custom_minimum_size = Vector2(0, 54)
 	lv.pressed.connect(_on_title_pressed)
 	box.add_child(lv)
+	JuicyButton.attach_all(box)
 	$UI.add_child(p)
+	$UI.move_child(p, pause_menu.get_index())   # under the pause menu, over the HUD and touch layer
 	_results = p
 
 func _on_net_votes(list: Array, total: int) -> void:

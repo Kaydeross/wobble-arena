@@ -16,7 +16,7 @@ autoload/   content.gd (loads ../shared/*.json via res:// copy), tier.gd, settin
 logic/      fighter_physics.gd fighter_state.gd combat.gd weapons.gd pickups.gd match_sim.gd bot_brain.gd player_control.gd spring.gd ...   (RefCounted, headless)
 actors/     wobbler.tscn/.gd   (visual only)     fighter.tscn/.gd (FighterState + Wobbler)
 world/      world.tscn/.gd (sim loop, camera, map)  map_builder.gd
-ui/         (later phases)
+ui/         theme_builder.gd -> theme.tres (project theme), juicy_button.gd, safe_area.gd, logo.gd, hud.tscn/.gd (+ hud_*.gd), fps_overlay.gd (autoload)
 net/        net_client.gd (exists) snapshot.gd ...
 tests/      one script per parity/unit test + tools/test-*.js runner in the repo's tools/
 ```
@@ -60,5 +60,13 @@ Each track merges to `main` behind its own tests. The lead integrates `Fighter` 
 - **`net/net_match.gd` `NetMatch`**: the guest half of netStartMatch/netHandle/netSnap/netStep over a MatchSim (`sim.net`; MatchSim calls `pre_step`/`post_controls` around the controllers). Ghost fighters (`is_ghost`) for every other slot, interpolated like `netStep` (`NetMatch.interp`, parity-tested against the sliced JS); `sw`/`f`/`k` replayed for looks; `h` applied with `Combat.net_apply`; my `S` at 30 Hz and `sw/f/k/h/ko/take`. `Pickups.remote` + `spawn_at`/`remove_cid` for host crates.
 - **`net/account_api.gd` `AccountApi`**: POST `/api/login` (token to Settings). World: `session` + `start_msg` switch it to online (no bots, ghosts, results/rematch panel). Title: server/room/name/login fields, `-- --join=ROOM --server=URL --name=N`. Manual steps: `docs/CROSSPLAY_TEST.md`.
 
+## UI (first UI pass)
+
+- **Theme**: `ui/theme_builder.gd` (`UiTheme`, colour constants + `box()`/`font()` helpers) writes `ui/theme.tres`, set as `gui/theme/custom` in project.godot. Rebuild: `godot --headless --path godot --script res://ui/theme_builder.gd`. Font: Fredoka (SIL OFL, `ui/fonts/OFL.txt`). Type variations: `PrimaryButton`, `HudPanel`, `ChipPanel`, `HudLabel`, `TitleLabel`, `MutedLabel`. `JuicyButton.attach_all(node)` adds the hover/press tween to every button under a node.
+- **Safe area**: `SafeArea.insets(viewport)` (canvas units; phones only; tests set `SafeArea.override`). Used by the title screen, HUD, touch layer and FPS overlay.
+- **HUD**: `ui/hud.tscn` (`MatchHud`) under `world.tscn` `UI/Hud`; World calls `hud.bind(self)` after `load_map`, `hud.update(delta)` per frame, `hud.toast()` and `hud.add_feed()` from Combat events. It only reads `sim`/`cam`/`touch`/`input` (no gameplay accessors were needed: FighterState/MatchSim fields are public). The old `Fighter.tag` Label3D is removed by World in favour of the HUD nameplates.
+- **FPS overlay**: autoload `FpsOverlay` (`ui/fps_overlay.gd`), Settings `show_fps` (title Options + pause menu), F3 or a three-finger tap.
+- **Brand**: `tools/shoot-godot-brand.sh` renders `icon.png` and `ui/brand/launch_logo.png` (boot splash + iOS storyboard). `tools/shoot-godot-ui.sh` renders `docs/style/godot-ui-*.png`.
+
 ## Test commands
-`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match), `npm run test:godot-netguest` (Godot guest in a room hosted by a Node bot on the real server, plus interpolation parity). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.
+`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match), `npm run test:godot-netguest` (Godot guest in a room hosted by a Node bot on the real server, plus interpolation parity), `npm run test:godot-ui` (title layout at 4 window sizes with safe areas, HUD layout vs touch buttons, FPS overlay toggles). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR.
