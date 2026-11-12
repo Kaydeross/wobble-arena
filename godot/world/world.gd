@@ -316,7 +316,8 @@ func _drain_events() -> void:
 		if net_match != null: net_match.on_event(e)
 		var f: FighterState = e.get("f") if e.get("f") is FighterState else null
 		proj_views.on_event(e)
-		if fx: fx.on_event(e)          # hits, damage numbers, K.O.s, tracers, puffs, pads, muzzle flashes
+		if fx and not (String(e.get("type", "")) == "dmg_number" and not bool(Settings.get_value("damage_numbers", true))):
+			fx.on_event(e)             # hits, damage numbers (Settings damage_numbers), K.O.s, tracers, puffs, pads, muzzle flashes
 		match String(e["type"]):
 			"lean", "head", "arm":
 				if views.has(f): views[f].on_event(e)
