@@ -1,6 +1,6 @@
 # Wobble Arena → iOS: Review, Plan & Design
 
-_Status: proposal · Written against build b76 (`public/index.html`) · Nov 2026_
+_Status: decisions made 2026-11-12 (see §6): **native Godot 4 rewrite with web cross-play**. Sections 1–4 are the original review of build b76 (`public/index.html`); §4.6, §5 and §7 are revised for the Godot path._
 
 ---
 
@@ -16,7 +16,7 @@ Wobble Arena already has the hard part done: a fun, content-rich wobbly-physics 
 4. **The economy can't be monetized.** `coins_####` gives unlimited coins, everything runs on the client, and there's no In-App Purchase.
 5. **It's missing App Store policy items.** There's no report/block for chat and names (guideline 1.2), a free shared TURN server is hard-coded, and there's no privacy manifest.
 
-**Recommendation.** Ship with **Capacitor (WKWebView) first**, with all game code bundled into the app. Add native Game Center, In-App Purchase, haptics and push so it clears guideline 4.2 ("more than a repackaged website"). Only rewrite in Unity or Godot if real iPhones show performance or thermal problems in Phase 1.
+**Original recommendation** was Capacitor (WKWebView) first. **Decision (§6): a native rewrite in Godot 4 instead**, which keeps cross-play with the web version. Blockers 1–3 go away in the native client because it gets new touch input, ships its own assets and has a configured server URL. Blockers 4–5 and the netcode issues still apply, and they now matter more, because the server protocol becomes a shared contract between two clients.
 
 ---
 
@@ -113,9 +113,9 @@ These are landscape controls in the style of Brawl Stars and Stumble Guys, re-us
 - **Movement:** a floating left stick that appears where the thumb lands. The camera follows automatically, and dragging on the right half of the screen looks around.
 - **Attack button doubles as aim:** tap to swing or shoot at the nearest target (aim assist), or drag to aim yourself and release to fire. This is the Brawl Stars convention.
 - **Weapon slots:** the hotbar becomes 3 compact icons with no keyboard hints. Hide hints whenever the last input was touch.
-- **Haptics:** light on a hit, heavy on a KO, selection ticks in menus (Capacitor Haptics).
+- **Haptics:** light on a hit, heavy on a KO, selection ticks in menus (native haptics through a Godot iOS plugin).
 - **Accessibility:** left-handed swap, button size and opacity sliders, Reduce Motion (already exists), and aim-assist strength.
-- **Controllers:** MFi and PlayStation/Xbox controllers through the Gamepad API (WKWebView supports it). It's cheap to add and on-trend.
+- **Controllers:** MFi and PlayStation/Xbox controllers through Godot's built-in joypad input. It's cheap to add and on-trend.
 
 ### 4.3 HUD and menus for a 393 pt tall screen
 - **HUD:** collapse the scoreboard into a top-centre pill (your KOs, the timer, the leader). The full table appears on hold or at round end. Cap name tags to 3 at a time and fade the far ones.
@@ -137,48 +137,60 @@ These are landscape controls in the style of Brawl Stars and Stumble Guys, re-us
 - **Quick-chat and emotes** as the default communication. Free-text chat is off by default for under-16s, with report and block on every name and message.
 - **Kill-cam clip share:** export a 6-second clip to Photos or a share sheet. Shareable clips are free marketing.
 
-### 4.6 Tech architecture target
+### 4.6 Tech architecture target (revised: Godot 4 native)
 ```
-iOS app (Capacitor)
- ├─ WKWebView ── bundled web build (Vite): three.js, game modules, assets (offline-capable)
- ├─ Native plugins: Game Center, StoreKit 2 IAP, Haptics, Push, Keychain storage, Share
- └─ HTTPS/WSS ──► Game server (Node, ws) ── Redis/Postgres
-                    ├─ accounts, wallet, inventory, IAP receipt validation (App Store Server API)
-                    ├─ matchmaking + room relay (existing), regional instances
-                    └─ live-ops config (rotation, shop, pass season) as JSON
+iOS app (Godot 4, GDScript; iOS export via Xcode)
+ ├─ Game: scenes for player, weapons, maps, modes; hand-rolled wobble physics ported 1:1 from JS
+ ├─ Net: WebSocket client speaking the existing JSON room protocol (docs/PROTOCOL.md, to be written)
+ ├─ Native: Game Center, StoreKit 2 IAP, haptics, Keychain (Godot iOS plugins)
+ └─ WSS ──► Game server (Node, ws) ── Redis/Postgres          ◄── Web client (three.js, existing)
+              ├─ accounts, wallet, inventory, IAP receipt validation (App Store Server API)
+              ├─ room relay (existing), regional instances
+              └─ live-ops config (rotation, shop, pass season) as JSON
 ```
-- **Drop PeerJS for ranked and public play.** Use only the WebSocket relay (it already exists and is more reliable on mobile networks). Keep P2P only for "LAN or no server".
-- **Netcode hardening without rewriting the game logic:** the server stamps who sent each message, the host clamps damage per weapon, only the host can end a match, and the server checks that results are plausible before granting rewards.
+- **Cross-play is the hard constraint.** In the current netcode one player's client is the host and the server only relays. A Godot host has to run the same simulation as a web host and send the same ~25 message types (`hello`, `welcome`, `roster`, `start`, `s`/`S` state, `h` hits, `ko`, `pend`, `crate(s)`, `chat`, `ping`/`pong`, `badver`…). So:
+  - **Write the protocol down first** (`docs/PROTOCOL.md`) from `server.js` and `public/index.html`, with a shared **protocol version** in place of today's build-number gate. Web and iOS ship builds on different schedules.
+  - **Port the physics, don't replace it.** Keep the AABB collision and spring-driven limbs, with the same constants and tick rate. Don't use Jolt ragdolls for gameplay; they would feel different and desync. Jolt is fine for cosmetic debris only.
+  - **Content is data.** Move maps, weapons, modes and cosmetics out of JS code into shared JSON that both clients load, so they can't drift apart.
+  - **Drop PeerJS for cross-play rooms.** The Godot client uses only the WebSocket relay. Over time, move authority from the host client to the server (it's already the relay), starting with damage clamps and match results.
+- **Minimum device: iPhone 12 (A14).** Target 60 fps on iPhone 12 using Godot's Mobile renderer, with a Low tier for thermal fallback.
 
 ---
 
-## 5. Roadmap
+## 5. Roadmap (revised for Godot)
 
 | Phase | Length (1 dev) | Goal | Key work | Exit criteria |
 |---|---|---|---|---|
-| **0. Foundation** | 1–2 wk | A buildable project | Split `index.html` into ES modules with Vite; bundle three and PeerJS locally; configurable `SERVER_URL`; delete the stale root `index.html`; add a smoke test (Playwright boots the game, starts a match) | `npm run build` produces an offline bundle, and CI is green |
-| **1. Playable on iPhone** | 2–3 wk | Fun with thumbs | Touch controls (§4.2); remove Pointer Lock gating; mobile HUD and menu (§4.3); a Mobile quality preset (DPR ≤1.5, shadows 1024 or off, no AA, shared materials, `dispose()` on map change); audio resume; Capacitor iOS shell; TestFlight | 60 fps on iPhone 13, 30+ on iPhone 11, no thermal throttling in 15 min, 10 testers rate the controls "good" |
-| **2. Store-ready** | 2–3 wk | Pass App Review | Game Center sign-in and leaderboards; report, block and filter (1.2); in-app account deletion (already exists, re-check); privacy manifest and nutrition labels; age rating questionnaire (expect 9+ or 13+); remove the client coin codes; netcode fixes #5 and #8; paid server host and own TURN (or relay only) | Internal review checklist passed, submitted |
-| **3. Monetization and meta** | 3–4 wk | Retention and revenue | StoreKit 2 IAP with server receipt validation; gems; Wobble Pass; quests; trophy road; server-side wallet; analytics (privacy-friendly, no ATT) | D1 ≥ 35%, D7 ≥ 12% in soft launch |
-| **4. Soft launch** | 4–6 wk | Tune | Launch in 2–3 small markets (e.g. Philippines, Canada, Nordics); tune the economy; fix crashes; mode rotation | Crash-free sessions ≥ 99.5% and the KPIs above met |
-| **5. Global and live-ops** | ongoing | Grow | Season 1; Workshop (UGC block builder sharing); clip sharing; controller support; regional servers; Android with the same Capacitor shell | Steady 6-week season cadence |
+| **0. Contract** | 1–2 wk | Both clients can target one spec | `docs/PROTOCOL.md`; protocol version handshake; netcode security fixes on server and web (sender stamping, damage clamp, host-only `pend`, escape roster); extract content (maps, weapons, modes, cosmetics) to shared JSON; a headless protocol test bot in Node | The web game still works, and the test bot can join a room, move and get KO'd |
+| **1. Godot vertical slice** | 4–6 wk | One map, one mode, cross-play | Godot project in `godot/`; the wobble character and physics ported; 3 weapons; Classic mode on 1 map; touch controls (§4.2); joins web rooms as a guest | An iPhone 12 player and a browser player finish a match together at 60 fps |
+| **2. Host parity and content** | 6–10 wk | Feature parity | Godot can host web guests; all modes, maps and weapons from JSON; bots (4 difficulties); HUD and menus (§4.3); kill-cam; audio | Every mode playable in mixed rooms with either side hosting |
+| **3. Store-ready** | 2–3 wk | Pass App Review | Game Center; quick-chat and emotes only (no free text on iOS); report and block on names; in-app account deletion; privacy manifest; remove `coins_` codes; paid server host and own TURN (or relay only) | Internal review checklist passed, TestFlight external beta |
+| **4. Monetization and meta** | 3–4 wk | Retention and revenue | StoreKit 2 with server receipt validation; gems; Wobble Pass; quests; trophy road; server-side wallet | D1 ≥ 35%, D7 ≥ 12% in soft launch |
+| **5. Soft launch, then global** | 4–6 wk, then ongoing | Tune and grow | 2–3 small markets; tune the economy; crash-free sessions ≥ 99.5%; 6-week seasons; Android from the same Godot project | KPIs met |
 
-**Rough total to global launch:** about 4–5 months for one developer, about 2.5–3 months with two.
+**Rough total to global launch:** about 6–8 months for one developer, about 4–5 with two. That's 2–3 months more than the Capacitor path, mostly in Phases 1–2.
 
 ---
 
-## 6. Decisions needed from you
+## 6. Decisions (answered 2026-11-12)
 
-1. **Capacitor (reuse the code, faster)** or a **native rewrite in Unity or Godot** (better performance, 4–6 extra months)? This plan recommends Capacitor first.
-2. **Monetization model:** cosmetics, a pass and gems (recommended), premium paid ($2.99, no IAP), or rewarded ads?
-3. **Online scope at launch:** full public matchmaking, or **friends and private rooms plus bots** only? The second is smaller, with less moderation and lower server cost.
-4. **Free-text chat at launch:** off (quick-chat and emotes only) is the simplest way through App Review.
-5. **Target devices:** iPhone 11 and newer as the minimum?
+| # | Question | Decision |
+|---|---|---|
+| 1 | Capacitor or native rewrite | **Native rewrite in Godot 4** (GDScript) |
+| 2 | Monetization | **Cosmetics, Wobble Pass and gems** (IAP, no loot boxes) |
+| 3 | Online scope at launch | **Friends and private rooms plus bots.** No public matchmaking at launch |
+| 4 | Free-text chat | **Off at launch.** Quick-chat and emotes only |
+| 5 | Minimum device | **iPhone 12 (A14) and newer** |
+| 6 | Cross-play with web | **Yes.** The Godot client speaks the existing room protocol |
+
+Because of decision 3, the one-tap "matchmade" Play in §4.1 becomes **Play vs bots instantly, or Create/Join a room**. Public matchmaking moves to post-launch.
+
+Still open, but not blocking Phase 0: whether the web version also gets free-text chat turned off (simpler moderation for mixed rooms), and the bundle ID and Apple Developer account.
 
 ---
 
 ## 7. Immediate next steps (proposed PRs)
-1. **PR A — Foundation:** Vite build, local three and PeerJS, `SERVER_URL` config, remove the stale root `index.html`.
-2. **PR B — Touch controls and Mobile preset:** port and redesign the b66 touch layer, remove Pointer Lock gating on touch, safe-area CSS, a mobile quality tier.
-3. **PR C — Security quick wins:** host stamps the sender, clamp damage, host-only `pend`, escape roster colours, `coins_` only in dev builds.
-4. **PR D — Capacitor iOS shell:** `ios/` project, Haptics, Keychain storage, TestFlight lane.
+1. **PR A — Protocol spec:** `docs/PROTOCOL.md` documents every message type, its fields, who sends it and the host/relay rules; adds a `proto` version to `hello`/`welcome` alongside the build gate.
+2. **PR B — Server and web netcode hardening:** the server stamps the sender, damage is clamped per weapon, `pend` is host-only, roster colours are escaped, and `coins_` works only in dev builds.
+3. **PR C — Shared content data:** extract weapons, maps, modes and cosmetics from `public/index.html` into `shared/*.json`, loaded by the web client with no behaviour change.
+4. **PR D — Godot skeleton:** a `godot/` project with iOS export preset, a WebSocket client that does `hello`/`welcome`/`ping`, and a test scene that joins a live web room as a spectator.
