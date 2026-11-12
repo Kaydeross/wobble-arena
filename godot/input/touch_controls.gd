@@ -326,6 +326,10 @@ func _look(d: Vector2) -> void:
 	var inv := -1.0 if bool(Settings.get_value("invert_y", false)) else 1.0
 	state.add_look(-d.x * k, -d.y * k * inv)
 
+## A finger is on the look area (or dragging from FIRE): the follow camera does not auto-centre meanwhile.
+func look_held() -> bool:
+	return _touch.values().has("look") or _touch.values().has("fire")
+
 ## Let go of every touch (pause, leaving the match). A held MELEE that has not kicked yet is dropped, not shoved.
 func release_all() -> void:
 	_melee["kicked"] = true
