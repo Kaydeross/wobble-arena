@@ -85,13 +85,13 @@ func spawn_drop(force_key: String = "") -> Dictionary:
 	combat.ev({"type": "toast", "text": "Crate incoming: " + label(key) + "!"})
 	return p
 
-## Heal, power-ups and the weapons whose behaviour is ported (melee, plain hitscan guns, thrown knives).
+## Heal, power-ups and the weapons whose behaviour is ported (melee, hitscan guns incl. shotgun/Uzi/minigun, thrown knives).
 func usable(key: String) -> bool:
 	if key == "heal" or PU_TIMERS.has(key): return true
 	var w := combat.wdata(key)
 	match String(w.get("type", "")):
 		"melee": return true
-		"gun": return w.get("style", "") == "" and not w.get("adsMul", 0) and not w.get("dual", false) and not w.get("spinup", 0)
+		"gun": return w.get("style", "") != "flame"      # TODO(next batch): flame
 	return Weapons.LAUNCH.has(String(w.get("type", "")))
 
 ## Display name of a drop key (weapon, heal or power-up).

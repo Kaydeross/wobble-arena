@@ -144,13 +144,87 @@ func aim_from_hand(f: FighterState, from: Array, aim_point: Array) -> Array:
 
 # ============================== guns ==============================
 
+const UZI_SIDE := 0.66          ## how far apart the two Uzis are held
+
+## shotSpread: the shotgun is wide from the hip and tight when aimed (the on-screen circle is only the HUD).
+static func shot_spread(w: Dictionary, aim: float) -> float:
+	var sp := float(w["spread"]) if w.has("spread") else 0.012
+	if w.get("adsMul", 0): sp *= Combat.lerp_js(1.0, float(w["adsMul"]), Combat.clampf_js(aim, 0.0, 1.0))
+	return sp
+
+## arm.quaternion applied to (1,0,0): "the shooter's left". The web game builds the quaternion in Fighter.animate
+## (setFromUnitVectors(DOWN, armDir), then rolls guns upright about the aim line); the visual layer may overwrite
+## `arm_right` later, until then it is derived from the arm direction exactly like the JS.
+static func arm_right(f: FighterState) -> Array:
+	var dx := f.arm_x
+	var dy := f.arm_y
+	var dz := f.arm_z
+	# Quaternion.setFromUnitVectors(from = (0,-1,0), to = d)
+	var r := -dy + 1.0
+	var qx := 0.0
+	var qy := 0.0
+	var qz := 0.0
+	var qw := 0.0
+	if r < 1e-8:               # pointing straight up (opposite of DOWN): three.js picks the axis (0, -from.z, from.y)
+		qx = 0.0; qy = 0.0; qz = -1.0; qw = 0.0
+	else:
+		qx = -1.0 * dz - 0.0 * dy
+		qy = 0.0 * dx - 0.0 * dz
+		qz = 0.0 * dy - -1.0 * dx
+		qw = r
+	var ql := sqrt(qx * qx + qy * qy + qz * qz + qw * qw)
+	if ql != 0.0:
+		var il := 1.0 / ql
+		qx *= il; qy *= il; qz *= il; qw *= il
+	if f.slot >= 0 and ROLL_KEYS.has(f.weapon) and not f.dead:
+		var zx := 2.0 * (qx * qz + qw * qy)
+		var zy := 2.0 * (qy * qz - qw * qx)
+		var zz := 1.0 - 2.0 * (qx * qx + qy * qy)
+		var ux := -dy * dx
+		var uy := 1.0 - dy * dy
+		var uz := -dy * dz
+		var ul := sqrt(ux * ux + uy * uy + uz * uz)
+		if ul > 0.15:
+			ux /= ul; uy /= ul; uz /= ul
+			var ang := atan2((zy * uz - zz * uy) * dx + (zz * ux - zx * uz) * dy + (zx * uy - zy * ux) * dz, zx * ux + zy * uy + zz * uz)
+			var sn := sin(ang / 2.0)
+			var rx := dx * sn
+			var ry := dy * sn
+			var rz := dz * sn
+			var rw := cos(ang / 2.0)
+			var nx := rw * qx + rx * qw + ry * qz - rz * qy
+			var ny := rw * qy - rx * qz + ry * qw + rz * qx
+			var nz := rw * qz + rx * qy - ry * qx + rz * qw
+			var nw := rw * qw - rx * qx - ry * qy - rz * qz
+			qx = nx; qy = ny; qz = nz; qw = nw
+	# Vector3(1,0,0).applyQuaternion(q), three.js operation order (q is not unit after the roll when the arm is not)
+	var ix := qw * 1.0 + qy * 0.0 - qz * 0.0
+	var iy := qw * 0.0 + qz * 1.0 - qx * 0.0
+	var iz := qw * 0.0 + qx * 0.0 - qy * 1.0
+	var iw := -qx * 1.0 - qy * 0.0 - qz * 0.0
+	return [ix * qw + iw * -qx + iy * -qz - iz * -qy, iy * qw + iw * -qy + iz * -qx - ix * -qz, iz * qw + iw * -qz + ix * -qy - iy * -qx]
+
+## GUN_KEYS in the web game: guns are rolled upright about the aim line.
+const ROLL_KEYS := ["net", "shotgun", "sniper", "ak", "smg", "uzi", "minigun", "revolver", "mammoth", "flame", "rocket", "glauncher", "cluster"]
+
+## playerControl's gun lines: reload on an empty trigger, minigun spin-up, fire. `held` = fire button.
+func gun_tick(f: FighterState, held: bool, dt: float, aim_point: Array = []) -> void:
+	var w := combat.wdata(f.weapon)
+	var gs: Variant = f.current_slot()
+	if gs != null and w.get("mag", 0) and int(gs["mag"]) >= 0 and not combat.inf:
+		if int(gs["mag"]) <= 0 and int(gs["ammo"]) > 0 and not f.reloading: combat.start_reload(f)
+	var spinup := float(w.get("spinup", 0.0))
+	if spinup != 0.0: f.spin = minf(spinup, f.spin + dt) if held else maxf(0.0, f.spin - dt * 2.0)
+	if held and f.cool <= 0.0 and f.swing < 0.0 and not f.reloading and (spinup == 0.0 or f.spin >= spinup):
+		f.cool = float(w["cooldown"]); fire_gun(f, f.weapon, aim_point); combat.use_ammo(f)
+
 ## Fighter.fireGun for the plain hitscan style. `aim_point` = the crosshair point for the player ([] for bots).
-## Not ported yet: style 'flame' and 'punch' (spring glove), adsMul spread circle (shotgun), dual Uzis' second muzzle.
+## Not ported yet: style 'flame'. Spring glove ('punch'), shotgun pellet circle and dual Uzis are ported.
 func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 	var w := combat.wdata(key)
 	var giant := combat.giant
-	if w.get("style", "") != "":
-		push_warning("Weapons.fire_gun: style '%s' not ported yet" % w["style"]); return
+	if w.get("style", "") == "flame":
+		push_warning("Weapons.fire_gun: style 'flame' not ported yet"); return   # TODO(next batch): flame cone + burn
 	# barrelDir
 	var bx := f.arm_x
 	var by := f.arm_y
@@ -175,11 +249,15 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		var ez: float = aim_point[2] - f.hand_z
 		var dd := sqrt(ex * ex + ey * ey + ez * ez)
 		if dd < float(w.get("muzzle", 0.0)) + 1.2 and dd > 0.05: o = [f.hand_x, f.hand_y, f.hand_z]
-	# TODO(uzi): w.dual alternates the muzzle between both hands (needs the arm's right axis from the animation).
+	if w.get("dual", false):               # dual Uzis: shots come out of each gun in turn
+		f.uzi_side ^= 1; f.uzi_k[f.uzi_side] = 1.0
+		if f.uzi_side != 0:
+			var ax := arm_right(f)
+			o[0] += ax[0] * UZI_SIDE; o[1] += ax[1] * UZI_SIDE; o[2] += ax[2] * UZI_SIDE
 	var n := int(w.get("pellets", 1)) if w.get("pellets", 0) else 1
 	var sp := float(w["spread"]) if w.has("spread") else 0.012
 	if w.get("adsMul", 0):
-		push_warning("Weapons.fire_gun: adsMul spread (shotSpread) not ported yet"); sp = 0.0
+		sp = shot_spread(w, f.ads if f.is_player else 0.0)
 	elif f.is_player and f.ads > 0.5:
 		sp *= 0.45
 	var victims := {}                  # FighterState -> {dmg, force, dx, dy, dz, head}; insertion order = hit order
@@ -193,13 +271,25 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		if f.climb > 0.0: a[1] += f.climb
 		a = Combat.norm3(a[0], a[1], a[2])
 		base = Combat.norm3(bx + (a[0] - bx) * asst, by + (a[1] - by) * asst, bz + (a[2] - bz) * asst)
+	if w.get("style", "") == "punch":
+		_punch(f, w, o)
+		return
 	var rng: CombatRng = combat.rng
 	var rng_range := float(w.get("range", 0.0))
 	for i in n:
 		var dx: float = base[0]
 		var dy: float = base[1]
 		var dz: float = base[2]
-		if sp != 0.0:
+		if sp != 0.0 and w.get("adsMul", 0):   # pellets land anywhere inside the circle drawn round the crosshair
+			var pa := rng.range_f(0, 6.2832)
+			var pr := sqrt(rng.next()) * sp
+			var rx: Array = Combat.norm3(-base[2], 0.0, base[0]) if (base[2] * base[2] + base[0] * base[0]) >= 1e-6 else [1.0, 0.0, 0.0]
+			var ry := [rx[1] * base[2] - rx[2] * base[1], rx[2] * base[0] - rx[0] * base[2], rx[0] * base[1] - rx[1] * base[0]]
+			var cs := cos(pa) * pr
+			var sn := sin(pa) * pr
+			dx += rx[0] * cs; dy += rx[1] * cs; dz += rx[2] * cs
+			dx += ry[0] * sn; dy += ry[1] * sn; dz += ry[2] * sn
+		elif sp != 0.0:
 			dx += rng.range_f(-sp, sp); dy += rng.range_f(-sp, sp); dz += rng.range_f(-sp, sp)
 		var d := Combat.norm3(dx, dy, dz)
 		dx = d[0]; dy = d[1]; dz = d[2]
@@ -264,6 +354,51 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		var kb2 := float(w["kickback"])
 		f.phys.vx -= lx * kb2; f.phys.vz -= lz * kb2
 	combat.ev({"type": "shot", "f": f, "key": key})
+
+## fireGun style 'punch' (Spring Glove): a big springy fist that hits whoever is roughly in front of it.
+func _punch(f: FighterState, w: Dictionary, o: Array) -> void:
+	var best: FighterState = null
+	var best_score := -1.0
+	var rng_range := float(w["range"])
+	var adx := f.arm_x
+	var ady := f.arm_y
+	var adz := f.arm_z
+	for e: FighterState in combat.fighters:
+		if e == f or e.dead: continue
+		var cx := e.chest_x - f.hand_x
+		var cy := e.chest_y - f.hand_y
+		var cz := e.chest_z - f.hand_z
+		var d := sqrt(cx * cx + cy * cy + cz * cz)
+		if d > rng_range or d < 0.05: continue
+		var inv := 1.0 / d
+		var cs := (cx * inv) * adx + (cy * inv) * ady + (cz * inv) * adz
+		if cs < 0.82 and d > 1.8: continue          # within ~35 degrees (anyone really close counts too)
+		if not has_los(f, e): continue
+		var score := cs + (1.0 - d / rng_range) * 0.6
+		if score > best_score: best_score = score; best = e
+	var ex: float = o[0] + adx * (rng_range * 0.5)
+	var ey: float = o[1] + ady * (rng_range * 0.5)
+	var ez: float = o[2] + adz * (rng_range * 0.5)
+	if best != null: ex = best.chest_x; ey = best.chest_y; ez = best.chest_z
+	combat.ev({"type": "tracer", "f": f, "key": f.weapon, "ox": o[0], "oy": o[1], "oz": o[2], "ex": ex, "ey": ey, "ez": ez, "hit": best != null, "punch": true})
+	if best != null:
+		var dd := Combat.norm3(best.chest_x - f.hand_x, best.chest_y - f.hand_y, best.chest_z - f.hand_z)
+		var dn := Combat.norm3(dd[0], dd[1] + 0.25, dd[2])
+		var fm := 2.1 if (combat.giant and f.weapon == "glove") else 1.0
+		combat.hit(best, float(w["dmg"]) * f.dmg_scale, dn[0], dn[1], dn[2], float(w["force"]) * fm, false, f)
+		if combat.rng.next() < float(w.get("topple", 0.0)): combat.topple(best, 1.0)
+	combat.push_arm(f, adx * 4.0, ady * 4.0, adz * 4.0); combat.kick_lean(f, -1.6, 0.0)
+	combat.ev({"type": "sfx", "name": "whack", "f": f})
+
+## hasLOS: nothing solid between the shooter's shoulder and the target's chest.
+func has_los(b: FighterState, tg: FighterState) -> bool:
+	var cx := tg.chest_x - b.shoulder_x
+	var cy := tg.chest_y - b.shoulder_y
+	var cz := tg.chest_z - b.shoulder_z
+	var d := sqrt(cx * cx + cy * cy + cz * cz)
+	if d < 0.1: return true
+	var inv := 1.0 / d
+	return ray_walls(b.shoulder_x, b.shoulder_y, b.shoulder_z, cx * inv, cy * inv, cz * inv, d) < 0.0
 
 ## Recoil climb settles once you stop shooting (from Fighter.animate in the web game).
 func climb_tick(f: FighterState, dt: float) -> void:
