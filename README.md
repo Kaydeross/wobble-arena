@@ -1,171 +1,109 @@
-<p align="center">
-  <img src="docs/img/banner.jpg" alt="Wobblers Arena" width="100%">
-</p>
+<div align="center">
 
-<p align="center">
-  <b>Bonk your friends off floating arenas.</b><br>
-  A chaotic, wobbly-physics party brawler. Play free in your browser today.<br>
-  Native iPhone and Android builds are in testing. Same rooms, same chaos.
-</p>
+  <img src="docs/images/hero-banner.png" alt="Wobble Arena Cinematic Banner" width="100%" />
 
-<p align="center">
-  <img alt="Play now" src="https://img.shields.io/badge/Play%20in%20browser-ffcf5a?style=for-the-badge&labelColor=102b35">
-  <img alt="iPhone" src="https://img.shields.io/badge/iPhone-TestFlight%20testing-4aa3d8?style=for-the-badge&labelColor=102b35">
-  <img alt="Android" src="https://img.shields.io/badge/Android-APK%20export%20ready-8fe0a5?style=for-the-badge&labelColor=102b35">
-  <img alt="Cross-play" src="https://img.shields.io/badge/Cross--play-web%20%2B%20native-8fe0a5?style=for-the-badge&labelColor=102b35">
-</p>
+  # 🥊 WOBBLE ARENA
+  **Fast-paced, physics-fuelled low-poly arena brawling.**  
+  *Grab a spatula, pick your fighter, and knock your mates out of the yard.*
+
+  [![Play on TestFlight](https://img.shields.io/badge/iOS_Beta-TestFlight_0.1.0_(130)-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/v1/app/6833812750)
+  [![Play on Web](https://img.shields.io/badge/Web_Build-Play_in_Browser-FF5722?style=for-the-badge&logo=googlechrome&logoColor=white)](#)
+  [![Engine](https://img.shields.io/badge/Godot_4.x-478cbf?style=for-the-badge&logo=godotengine&logoColor=white)](#)
+
+</div>
 
 ---
 
-## The Game
+## 🎮 About the Game
 
-You’re a floppy, spring-limbed wobbler. Fight on floating maps with open edges. Weapons rain from the sky. Every hit sends bodies flying.
+**Wobble Arena** is a chaotic 3D party brawler where blocky, wobbly fighters clash in tight, hazard-filled arenas. Built around snappy movement, momentum-based knockback, and over-the-top melee swings, every match is a scramble for positioning and survival.
 
-**Knock everyone else off. Or fall trying.**
+Whether you are dashing across the arena with an oversized kitchen spatula or swinging heavy tradie gear in the **Site Yard**, every hit lands with punchy shader flashes, procedural weapon ribbon trails, and physics-driven chaos.
 
-Play solo against bots (Easy to Insane), practise weapons on the practice range, or jump into online rooms with up to 8 players using a room code. Works on desktop and phone, with touch controls included.
+* 📱 **iOS Beta (TestFlight):** [Install Wobblers Arena on TestFlight](https://testflight.apple.com/v1/app/6833812750) (iOS 15.0+)
+* 🌐 **Instant Host Multiplayer:** Spin up peer-to-peer matches directly from a Godot host client—no dedicated server required—or jump straight into offline solo play.
 
-## Screenshots
+---
 
-<table>
-  <tr>
-    <td><img src="docs/img/shot-sunny-arena.jpg" alt="Sunny Arena"><br><sub><b>Sunny Arena</b></sub></td>
-    <td><img src="docs/img/shot-volcano-rim.jpg" alt="Volcano Rim"><br><sub><b>Volcano Rim</b></sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/img/shot-pirate-ship.jpg" alt="Pirate Ship"><br><sub><b>Pirate Ship</b></sub></td>
-    <td><img src="docs/img/shot-temple-ruins.jpg" alt="Temple Ruins"><br><sub><b>Temple Ruins</b></sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/img/shot-moon-base.jpg" alt="Moon Base"><br><sub><b>Moon Base</b></sub></td>
-    <td><img src="docs/img/shot-haunted-hollow.jpg" alt="Haunted Hollow"><br><sub><b>Haunted Hollow</b></sub></td>
-  </tr>
-</table>
+## 📸 Screenshots & Gameplay
 
-<p align="center">
-  <img src="docs/img/iphone-menu.jpg" alt="Phone menu" width="45%">
-  <img src="docs/img/iphone-match.jpg" alt="Phone match" width="45%">
-</p>
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%">
+        <img src="docs/images/screen-combat.png" alt="Arena Combat" width="100%" />
+        <p align="center"><em>High-impact melee brawling with procedural ribbon trails & hit-flash shaders</em></p>
+      </td>
+      <td width="50%">
+        <img src="docs/images/screen-site-yard.png" alt="Site Yard Mode" width="100%" />
+        <p align="center"><em>Scaffold Construction mode inside the Site Yard arena</em></p>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%">
+        <img src="docs/images/screen-main-menu.png" alt="Main Menu & Class Select" width="100%" />
+        <p align="center"><em>3D class showcase & cosmetic loadout selection</em></p>
+      </td>
+      <td width="50%">
+        <img src="docs/images/screen-mobile-hud.png" alt="Mobile Landscape Controls" width="100%" />
+        <p align="center"><em>Responsive landscape touch controls (852×393 native HUD)</em></p>
+      </td>
+    </tr>
+  </table>
+</div>
 
-## Pick Your Wobbler
+---
 
-| Class | Vibe | Superpower | Trade-off |
-|---|---|---|---|
-| **Wobbler** | Balanced | Reliable all-rounder | None |
-| **Bruiser** | Heavy tank | +30% health, hits harder | Slow & clumsy in air |
-| **Scamp** | Tiny & zippy | Fastest, great air control | Fragile |
-| **Gramps** | Precision | Sharp steering, fast reloads | Lower top speed |
-| **Zorp** | Alien tech | Guns 20% faster, more ammo | Lowest health |
+## 🦸 Meet the Fighters
 
-<p align="center">
-  <img src="docs/style/godot-wobbler-classes.png" alt="The five classes" width="80%">
-</p>
+Pick from five distinct low-poly 3D classes, each with its own silhouette, stats, and brawl style:
 
-## What’s Inside
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="20%">
+        <img src="docs/images/classes/wobbler.png" width="120" alt="Wobbler" /><br />
+        <strong>Wobbler</strong><br />
+        <sub><strong>All-Rounder</strong><br />Balanced speed, weight, and swing recovery built for pure arena fundamentals.</sub>
+      </td>
+      <td align="center" width="20%">
+        <img src="docs/images/classes/bruiser.png" width="120" alt="Bruiser" /><br />
+        <strong>Bruiser</strong><br />
+        <sub><strong>Heavy Tank</strong><br />High knockback resistance and crushing melee force that sends rivals flying.</sub>
+      </td>
+      <td align="center" width="20%">
+        <img src="docs/images/classes/scamp.png" width="120" alt="Scamp" /><br />
+        <strong>Scamp</strong><br />
+        <sub><strong>Speedster</strong><br />Hyper-agile dasher built for hit-and-run strikes and baiting heavy swings.</sub>
+      </td>
+      <td align="center" width="20%">
+        <img src="docs/images/classes/gramps.png" width="120" alt="Gramps" /><br />
+        <strong>Gramps</strong><br />
+        <sub><strong>Veteran Brawler</strong><br />Stubborn footing, deceptive weapon reach, and punishing counter-hits.</sub>
+      </td>
+      <td align="center" width="20%">
+        <img src="docs/images/classes/zorp.png" width="120" alt="Zorp" /><br />
+        <strong>Zorp</strong><br />
+        <sub><strong>Cosmic Wildcard</strong><br />Floaty momentum and erratic movement timings that keep opponents guessing.</sub>
+      </td>
+    </tr>
+  </table>
+</div>
 
-- **15 modes** in the browser game: Classic, Melee, Guns, Ninja, Explosive, Giant, Mega Damage, Weapon Ladder, Pillars, team fights (1v1 to 4v4), Sandbox and Construction.
-- **Native build extras:** Team Deathmatch, Death Match, Sudden Death, Chaos (5v5 with random events), Moon Drift (low gravity) and Practice Range.
-- **34 maps** including Sunny Arena, Volcano Rim, Pirate Ship, Moon Base, Haunted Hollow and Candy Land.
-- **30 weapons**: bats, spring gloves, shotguns, rockets, flamethrowers, katanas, boomerangs, bows, nets and more.
-- **5 classes** (see above), with a locker for skins, hats and emotes.
-- **Bots** on Easy, Normal, Hard and Insane.
-- **Online rooms** with room codes, a room browser and host-run bots.
-- **Accounts and cloud save**, shop, results with coins, kill cam and a Settings screen.
-- **Cross-play** between browser and native clients (in progress).
+---
 
-## Platforms
+## 🛠️ Weapons, Modes & Features
 
-| Platform | Status |
-|---|---|
-| **Browser** | Playable now (the original three.js game) |
-| **iPhone** | Native Godot build on TestFlight for internal testers. External testing is waiting on Apple review |
-| **Android** | Same Godot project. APK and AAB export pipeline is ready (`docs/BUILD_ANDROID.md`) |
-| **PC** | After phones |
-| **Godot web** | Planned once the native client reaches parity. The browser game will move to `/classic` |
+* **Tradie & Kitchen Arsenal:** Trade blows with classic **Kitchen Spatulas**, heavy-duty **Site Yard Tradie Weapons** (wrenches, hammers, levels, and site gear), and unlockable cosmetics.
+* **Scaffold Construction Mode (`Site Yard`):** Battle across multi-tiered scaffolding and construction hazards in the Site Yard, with full offline mode support.
+* **Juicy Combat VFX:** Every swing and dash drives custom 3D lighting, hit-flash character shaders, procedural weapon ribbons, and impact particle bursts.
+* **Serverless Godot Host Multiplayer:** Host lobbies directly from your device without needing a dedicated backend server, or play offline anytime.
+* **Built for Mobile & Desktop:** Tuned for widescreen mobile landscape (`852×393`) with dedicated virtual joysticks, dash/attack buttons, and clean HUD framing.
 
-The native client is a Godot 4 project in `godot/`. It is not yet verified on real phone hardware for performance or thermals.
+---
 
-## Play It
+## 🗺️ Project & Developer Docs
 
-You need Node.js 18 or newer.
-
-```bash
-npm install
-npm start
-```
-
-Open http://localhost:3000 and choose Play online → Quick play.
-
-By default, online play requires a signed-in account. To try online play locally without logging in:
-
-```bash
-REQUIRE_LOGIN=0 npm start
-```
-
-Other settings:
-
-| Variable | Default | What it does |
-|---|---|---|
-| `PORT` | `3000` | Port the server listens on |
-| `REQUIRE_LOGIN` | on | Set to `0` to allow online play without an account |
-| `DATA_DIR` | `./data` | Where account data is stored on the file store |
-| `PUBLIC_DIR` | `./public` | Folder of static game files to serve |
-| `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN` | unset | Use Upstash Redis for accounts instead of files |
-
-The server exposes a health check at `GET /health`.
-
-## Play the Native Build
-
-1. Install Godot **4.7.2** (the version CI and the export scripts use).
-2. Open the `godot/` folder as a project and run it. The main scene is `res://scenes/main.tscn`.
-
-For a headless run from the command line, set `GODOT` to your Godot binary before running the Godot tests (see below).
-
-## Repository Layout
-
-| Path | What is in it |
-|---|---|
-| `server.js` | Static file server and WebSocket room relay |
-| `accounts.js` | Login, signup, password reset and cloud save REST API |
-| `public/index.html` | The browser game (the reference implementation) |
-| `godot/` | The native Godot 4 client: logic, scenes, net, tests |
-| `shared/*.json` | Game data (weapons, modes, maps, classes, cosmetics, difficulties). Source of truth |
-| `godot/data/` | Copies of `shared/*.json` synced for Godot, checked by `npm test` |
-| `tools/` | Content export, map checks, test runners, build scripts, screenshot tools |
-| `docs/` | Protocol, architecture, roadmap, build guides and per-system notes |
-
-## Testing
-
-```bash
-npm test                    # content drift, map checker and server tests
-npm run test:browser        # browser game smoke test (Playwright)
-npm run test:godot          # cross-client join test (needs Godot)
-```
-
-The Godot suites run headless and need `GODOT` set to a Godot 4.7.2 binary. Examples:
-
-```bash
-export GODOT=/path/to/godot
-npm run test:godot-physics  # movement parity with the browser game
-npm run test:godot-combat   # hit and knockback math
-npm run test:godot-bots     # bot AI parity and full bot-only matches
-npm run test:godot-modes    # every ported mode played to its end
-npm run test:godot-host     # Godot host with web and Godot guests
-```
-
-`npm run` lists every test script. Content in `shared/` must be exported and synced with `npm run content` and `npm run sync`. `npm test` fails if they have drifted.
-
-## Deploying
-
-`render.yaml` describes a Render web service (Node, free plan, health check on `/health`). The `Dockerfile` builds a Node 22 image that runs the same server on port 3000.
-
-## Developers
-
-Full server protocol, architecture, roadmap, build notes and test details live in [`docs/`](docs/). Start here:
-
-- [`docs/ROADMAP.md`](docs/ROADMAP.md): current status and plan for the native client
-- [`docs/PROTOCOL.md`](docs/PROTOCOL.md): WebSocket room protocol
-- [`docs/CODEMAP.md`](docs/CODEMAP.md): where each system lives in the browser game
-- [`docs/GODOT_ARCH.md`](docs/GODOT_ARCH.md): how the Godot client is structured
-- [`docs/BUILD_IOS.md`](docs/BUILD_IOS.md) and [`docs/BUILD_ANDROID.md`](docs/BUILD_ANDROID.md): device builds
-- [`docs/CROSSPLAY_TEST.md`](docs/CROSSPLAY_TEST.md): testing browser and native players in one room
+Looking for architecture details, build pipelines, or upcoming milestones?
+* 🧭 **[Roadmap](docs/ROADMAP.md)** — Upcoming modes, visual passes, and feature milestones.
+* 🗂️ **[Codemap](docs/CODEMAP.md)** — Project structure, networking flow, and Godot scene breakdown.
