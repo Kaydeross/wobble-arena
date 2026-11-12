@@ -62,10 +62,15 @@ var _mats := {}
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
-var _mode_l: Label                 ## the mode line (lives, team score, ladder rung, arena size, dashes)
+var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event)
+var _team_board: TeamBoard         ## team modes: coloured chips with each team's score and a YOU tag on yours
 var _banner: Label                 ## "YOU WIN!" at the end of a match
 var _banner_t := 0.0
 var _shrink_mesh: MeshInstance3D   ## the shrinking floor (shrink / squeeze maps)
+## Spectator mode (Sudden Death, or any match the player is out of but that plays on): the camera follows this
+## surviving fighter; tap / click / jump cycles to the next one (spectate_next). null = following the player.
+var spectating: FighterState = null
+var _spect_jump := false
 
 ## The player's physics (tests and the camera read it).
 var phys: FighterPhysics:
@@ -83,6 +88,7 @@ func _ready() -> void:
 	Tier.configure_viewport(get_viewport())
 	touch.state = input.state
 	touch.pause_pressed.connect(_toggle_pause)
+	touch.spectate_tap.connect(_on_spectate_tap)
 	input.pause_requested.connect(_toggle_pause)
 	$UI/Pause/Panel/Box/Resume.pressed.connect(_toggle_pause)
 	$UI/Pause/Panel/Box/Title.pressed.connect(_on_title_pressed)
@@ -131,6 +137,7 @@ func load_map(id: String) -> void:
 	if _results: _results.queue_free(); _results = null
 	if _shrink_mesh: _shrink_mesh.queue_free(); _shrink_mesh = null
 	_banner_t = 0.0
+	spectating = null; touch.spectate_mode = false
 	map_id = id
 	map_node = MapBuilder.build(id)
 	add_child(map_node)
@@ -149,6 +156,8 @@ func load_map(id: String) -> void:
 		var mode := mode_id if mode_id != "" else str(Settings.get_value("mode", "classic"))
 		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
 		sim.dyn_choice = dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random"))
+		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
+			sim.dyn_choice = "random"            # Chaos: a random floor unless the player picked a moving one
 		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
@@ -230,14 +239,16 @@ func tick(delta: float) -> void:
 			var st := input.state
 			var look := st.take_look()
 			cam.add_look(look)
-			var p := sim.player.phys
-			cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
-		cam.follow(dt, player_pos(), input.state.aiming(), solids)
+			if spectating == null:          # the auto-recentre follows the player's own walk, not a spectated fighter's
+				var p := sim.player.phys
+				cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
+		cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
 		acc += minf(dt, 0.1)
 		while acc >= SIM:
 			sim_step(SIM)
 			acc -= SIM
 	present(dt if (not paused or net_match != null) else 0.0)
+	_update_spectate()
 	_update_hud(delta)
 
 func _process(delta: float) -> void:
@@ -247,13 +258,15 @@ func _process(delta: float) -> void:
 	if auto_run:
 		tick(delta)
 	else:
-		cam.follow(minf(delta, 0.05), player_pos(), false, solids)
+		cam.follow(minf(delta, 0.05), cam_target(), false, solids)
 		_update_hud(delta)
 
 ## applyPose + meleeSweep + effects (also used by tests that step the sim by hand).
 func present(dt: float) -> void:
 	for v: Fighter in views.values():
 		v.visible = not v.state.left
+		var k := 1.5 if v.state.big_t > 0.0 else 1.0           # Chaos giant
+		if v.scale.x != k: v.scale = Vector3.ONE * k
 		v.present(dt)
 	sim.sweep()
 	_drain_events()
@@ -321,6 +334,13 @@ func _drain_events() -> void:
 				if str(e.get("kind", "")) == "dash": _puff(Vector3(e["x"], e["y"], e["z"]), Color(0.85, 0.92, 1.0), 6, 3.5)
 			"relook":
 				_relook(f)
+			"chaos_warn":
+				_show_banner(str(e["name"]).to_upper() + "!", "in %d…" % ceili(float(e["in"])), true, float(e["in"]))
+			"chaos":
+				if e["id"] == "giant" and f: _toast("You are a giant!" if f == sim.player else "%s is a giant!" % f.name)
+				else: _toast(str(e["name"]) + "!")
+			"chaos_end":
+				if e["id"] != "crates": _toast("Back to normal")
 	evs.clear()
 
 func _on_ko(e: Dictionary) -> void:
@@ -574,6 +594,11 @@ func _build_mode_ui() -> void:
 	_mode_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	$UI.add_child(_mode_l)
 	$UI.move_child(_mode_l, hud.get_index() + 1)
+	_team_board = TeamBoard.new()
+	_team_board.name = "TeamBoard"
+	_team_board.visible = false
+	$UI.add_child(_team_board)
+	$UI.move_child(_team_board, hud.get_index() + 1)
 	_banner = Label.new()
 	_banner.name = "Banner"
 	_banner.theme_type_variation = &"TitleLabel"
@@ -587,23 +612,95 @@ func _update_mode_ui(delta: float) -> void:
 	if sim == null or _mode_l == null: return
 	var vs := get_viewport().get_visible_rect().size
 	var ins := SafeArea.insets(get_viewport())
-	var t := sim.combat.rules.hud_text(sim.player) if session == null else ""
+	var board := session == null and sim.combat.teams > 0 and spectating == null
+	var t := sim.combat.rules.hud_text(sim.player, not board) if session == null else ""
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
-	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)      # under the crate toast (hud.gd keeps that at the very top)
+	var top := float(ins[1]) + 44.0                  # under the crate toast (hud.gd keeps that at the very top)
+	_team_board.visible = board
+	if board:
+		var rules := sim.combat.rules
+		_team_board.set_data(rules.team_ko(0), rules.team_ko(1), maxi(sim.player.team, 0), rules.limit)
+		_team_board.position = Vector2(vs.x / 2.0 - _team_board.size.x / 2.0, top + 4.0)
+		top += _team_board.size.y + 4.0
+	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
+	if spectating != null:                      # spectator line: who, how many left, how to switch
+		_mode_l.text = "Spectating %s  ·  %d left  ·  tap to switch" % [spectating.name, sim.combat.rules.survivors().size()]
+		_mode_l.visible = true
+		_mode_l.reset_size()
+		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)
 	if _banner.visible:
+		var ct := sim.combat.rules.chaos
+		if not ct.is_empty() and float(ct.get("warn", 0.0)) > 0.0:   # the Chaos countdown ticks in the banner
+			_banner.text = "%s!\nin %d…" % [sim.combat.rules.chaos_name(ct["id"]).to_upper(), ceili(float(ct["warn"]))]
 		_banner_t -= delta
 		_banner.reset_size()
 		_banner.position = Vector2(vs.x / 2.0 - _banner.size.x / 2.0, vs.y * 0.3)
 		if _banner_t <= 0.0: _banner.visible = false
 
 ## endMatch's "YOU WIN!" pop (shown while the match runs on for ModeRules.END_TIME).
-func _show_banner(title: String, sub: String, won: bool) -> void:
+func _show_banner(title: String, sub: String, won: bool, dur: float = ModeRules.END_TIME + 0.5) -> void:
 	_banner.text = title + "\n" + sub
 	_banner.add_theme_color_override("font_color", UiTheme.ACCENT if won else Color(1, 0.85, 0.8))
 	_banner.visible = true
-	_banner_t = ModeRules.END_TIME + 0.5
+	_banner_t = dur
+
+# ============================== spectator mode ==============================
+
+## Where the camera looks: the spectated fighter, else the player.
+func cam_target() -> Vector3:
+	if spectating != null:
+		var p := spectating.phys
+		return Vector3(p.px, p.py, p.pz)
+	return player_pos()
+
+## Fighters the spectator can follow: still in, not the player.
+func spectate_candidates() -> Array:
+	var out: Array = []
+	for f: FighterState in sim.combat.rules.survivors():
+		if f != sim.player and not f.is_ghost: out.append(f)
+	if out.is_empty() and sim.combat.rules.winner != null and sim.combat.rules.winner != sim.player: out.append(sim.combat.rules.winner)
+	return out
+
+## Follow `f` (null = stop spectating, the camera goes back to the player).
+func spectate(f: FighterState) -> void:
+	if f == spectating: return
+	if spectating == null and f != null: input.state.clear()
+	touch.spectate_mode = f != null             # no controls: the touch layer keeps only pause, taps switch
+	spectating = f
+
+## The next fighter still in (after the current one, wrapping).
+func spectate_next() -> void:
+	var list := spectate_candidates()
+	if list.is_empty(): return
+	var i := list.find(spectating)
+	spectate(list[(i + 1) % list.size()])
+
+## Each frame offline: the player is out but the match plays on -> spectate; the followed fighter went out -> next.
+func _update_spectate() -> void:
+	if session != null or sim == null: return
+	var out := sim.player.elim
+	if not out:
+		if spectating != null: spectate(null)
+		return
+	if spectating == null or (spectating.elim and not (sim.combat.rules.match_over and spectating == sim.combat.rules.winner)):
+		var list := spectate_candidates()
+		if list.is_empty(): return
+		spectate(list[0])
+	var j := input.state.is_held("jump")          # keyboard / pad: jump switches too
+	if j and not _spect_jump: spectate_next()
+	_spect_jump = j
+
+func _on_spectate_tap() -> void:
+	if spectating != null and not paused and _results == null: spectate_next()
+
+## Mouse: a left click switches too (touch taps come through the touch layer's spectate_tap).
+func _unhandled_input(e: InputEvent) -> void:
+	if spectating == null or paused or _results != null: return
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+		spectate_next()
+		get_viewport().set_input_as_handled()
 
 ## finishMatch offline: the result with Play again / Title (themed, centred, over the HUD).
 func _show_offline_results(won: bool, winner_name: String) -> void:

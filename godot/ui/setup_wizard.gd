@@ -1,28 +1,32 @@
 class_name SetupWizard
 extends VBoxContainer
-## Offline match setup, one choice per page (title screen PLAY opens it):
-##   1 Arena (cards for the maps the chosen mode allows), 2 Game type (cards for ModeRules.PLAYABLE + Construction, and
-##   the Floor row: Settings "dyn"), 3 Players (you + 1..7 bots, team modes fix the count; bot skill), 4 Your fighter
-##   (Content.classes), 5 Summary + START.
-## Every pick is saved in Settings straight away (offline_map, mode, dyn, bots, difficulty, class), so the next PLAY
-## starts where the last one ended. Arena comes before the game type, but modes restrict maps: when the picked map is
-## not allowed in the new mode the wizard moves to the nearest allowed one and says so in one line (`note`).
+## Offline match setup, one choice per page (title screen Play opens it):
+##   1 Game type (cards for ModeRules.PLAYABLE + Construction, read from code, and the Moving floor row: Settings "dyn"),
+##   2 Arena (cards for the maps that game type allows), 3 Players (you + 1..7 bots, team modes fix the count; bot
+##   skill), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
+##   of the four picks, each row jumps back to its page, and the big Start button).
+## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, class), so the next Play
+## starts where the last one ended. Game types restrict arenas: when the remembered arena is not allowed in the new
+## game type, the wizard moves to the nearest allowed one and says so in one line (`note`).
+## Card grids scroll with DragScroll (drag + fling, a tap picks, a drag never does; wheel on PC) inside a frame that
+## fades the edge where more cards are hidden; opening a page scrolls its selected card into view.
 ## Built in code (no .tscn) in the UiTheme look; scenes/main.tscn adds it under Safe. Header: title + step + note;
-## body: the page; footer: Back, the step pills (tap to jump) and Next / START.
+## body: the page; footer: Back, the step pills (tap to jump) and Next / Start.
 
-signal start_requested     ## START on the last page
+signal start_requested     ## Start on the last page
 signal closed              ## Back on the first page
 
-const TITLES := ["Pick an arena", "Game type", "Players", "Your fighter", "Ready?"]
-const SHORT := ["Arena", "Game", "Players", "Fighter", "Go"]
-const PAGE_NAMES := ["Arena", "Mode", "Players", "Class", "Go"]
+const TITLES := ["Pick a game type", "Pick an arena", "Players", "Pick your character", "Ready to play?"]
+const SHORT := ["Game type", "Arena", "Players", "Character", "Start"]
+const PAGE_NAMES := ["GameType", "Arena", "Players", "Character", "Start"]
+enum {P_MODE, P_ARENA, P_PLAYERS, P_CHAR, P_START}
 const BOT_MIN := 1
 const BOT_MAX := 7
 const DIFFS := ["easy", "normal", "hard", "insane"]
 const GAP := 12
-const MAP_CARD := Vector2(208, 132)
-const MODE_CARD := Vector2(208, 104)
-const CLASS_CARD := Vector2(172, 196)
+const MAP_CARD := Vector2(220, 140)
+const MODE_CARD := Vector2(220, 104)
+const CLASS_CARD := Vector2(172, 250)
 
 var page := 0
 var map_id := "arena"
@@ -31,8 +35,8 @@ var dyn := "random"
 var bots := 3
 var diff := "normal"
 var cls := "wobbler"
-var note := ""              ## one line shown in the header (map moved because of the mode, ...)
-var _want_map := ""         ## the arena the player last tapped: a mode change returns to it when it is allowed again
+var note := ""              ## one line shown in the header (arena moved because of the game type, ...)
+var _want_map := ""         ## the arena the player last tapped: a game type change returns to it when it is allowed again
 
 var title_l: Label
 var step_l: Label
@@ -43,10 +47,12 @@ var next_b: Button
 var step_bs: Array = []
 var players_l: Label
 var players_hint: Label
-var _grids := {}            ## page index -> [ScrollContainer, GridContainer, card width]
+var stage: CharacterStage   ## the shared 3D stage for the character cards
+var _grids := {}            ## page index -> [DragScroll, GridContainer, card width, EdgeFade]
 var _map_bs := {}
 var _mode_bs := {}
 var _class_bs := {}
+var _class_art := {}        ## class id -> TextureRect
 var _dyn_bs := {}
 var _bot_bs := {}
 var _diff_bs := {}
@@ -103,6 +109,10 @@ func bot_total() -> int:
 func is_team_mode() -> bool:
 	return int(Content.modes.get(mode_id, {}).get("teams", 0)) > 0
 
+## Team Deathmatch: the Players page sizes the two teams (odd bot counts only, so the sides stay even).
+func is_flex_teams() -> bool:
+	return is_team_mode() and bool(Content.modes.get(mode_id, {}).get("flexTeams", false))
+
 static func mode_name(m: String) -> String:
 	return str(Content.modes.get(m, {}).get("name", m.capitalize()))
 
@@ -112,9 +122,13 @@ static func map_name(id: String) -> String:
 static func class_name_of(id: String) -> String:
 	return str(Content.get_class_data(id).get("name", id))
 
-## One line for the title screen PLAY button: the last setup.
+## The last setup in one line (title screen Play tooltip).
 func summary_line() -> String:
-	return "%s · %s · %d bot%s" % [map_name(map_id), mode_name(mode_id), bot_total(), "" if bot_total() == 1 else "s"]
+	return "%s · %s · %s" % [mode_name(mode_id), map_name(map_id), _players_text()]
+
+func _players_text() -> String:
+	var t := bot_total()
+	return "You + %d bot%s" % [t, "" if t == 1 else "s"]
 
 ## Loads the remembered choices from Settings (and fixes anything no longer valid).
 func load_settings() -> void:
@@ -151,9 +165,9 @@ func set_mode(m: String) -> void:
 	var to := nearest_map(want, valid)
 	note = ""
 	if to != map_id and not valid.has(map_id):
-		note = "%s is not played in %s: arena changed to %s." % [map_name(map_id), mode_name(m), map_name(to)]
+		note = "%s has no %s: arena is now %s." % [mode_name(m), map_name(map_id), map_name(to)]
 	elif to != map_id:
-		note = "Back to %s." % map_name(to)
+		note = "Arena back to %s." % map_name(to)
 	map_id = to
 	Settings.set_value("offline_map", to)
 	_rebuild_maps()
@@ -178,8 +192,9 @@ func set_class(id: String) -> void:
 	cls = id
 	Settings.set_value("class", id)
 	_refresh()
+	_show_class_art()
 
-## Writes every choice (START does this once more, so a match always starts from what is on screen).
+## Writes every choice (Start does this once more, so a match always starts from what is on screen).
 func save() -> void:
 	for kv in [["offline_map", map_id], ["mode", mode_id], ["dyn", dyn], ["bots", bots], ["difficulty", diff], ["class", cls]]:
 		Settings.set_value(kv[0], kv[1])
@@ -191,6 +206,10 @@ func go(i: int) -> void:
 	for k in pages.size():
 		(pages[k] as Control).visible = k == page
 	_refresh()
+	if stage:
+		stage.active = page == P_CHAR and is_visible_in_tree()
+		if page == P_CHAR: _bake()
+	_reveal_selected.call_deferred()
 	if Tier.is_pc(): next_b.grab_focus.call_deferred()
 
 func next() -> void:
@@ -209,6 +228,28 @@ func _unhandled_input(e: InputEvent) -> void:
 		back()
 		get_viewport().set_input_as_handled()
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_VISIBILITY_CHANGED and stage:
+		stage.active = page == P_CHAR and is_visible_in_tree()
+
+## The selected card of the current page, scrolled into view (after the grid has its layout).
+func _reveal_selected() -> void:
+	if not _grids.has(page) or not is_inside_tree(): return
+	await get_tree().process_frame
+	if not _grids.has(page): return
+	var store: Dictionary = {P_MODE: _mode_bs, P_ARENA: _map_bs, P_CHAR: _class_bs}[page]
+	var key: String = {P_MODE: mode_id, P_ARENA: map_id, P_CHAR: cls}[page]
+	if store.has(key): (_grids[page][0] as DragScroll).reveal(store[key])
+
+## The card currently picked on a grid page (tests).
+func selected_card(p: int) -> Control:
+	var store: Dictionary = {P_MODE: _mode_bs, P_ARENA: _map_bs, P_CHAR: _class_bs}.get(p, {})
+	var key: String = {P_MODE: mode_id, P_ARENA: map_id, P_CHAR: cls}.get(p, "")
+	return store.get(key)
+
+func scroll_of(p: int) -> DragScroll:
+	return _grids[p][0] if _grids.has(p) else null
+
 # ---------------- build ----------------
 
 func _init() -> void:
@@ -220,6 +261,9 @@ func _ready() -> void:
 	if _heavy == null: _heavy = UiTheme.font(700)
 	_make_styles()
 	if not _loaded: load_settings()
+	stage = CharacterStage.new()
+	add_child(stage)
+	stage.baked_one.connect(func(_id: String) -> void: _show_class_art())
 	_build_head()
 	var body := VBoxContainer.new()
 	body.name = "Pages"
@@ -232,14 +276,29 @@ func _ready() -> void:
 		p.add_theme_constant_override("separation", 10)
 		body.add_child(p)
 		pages.append(p)
-	_build_arena(pages[0])
-	_build_mode(pages[1])
-	_build_players(pages[2])
-	_build_class(pages[3])
-	_build_go(pages[4])
+	_build_mode(pages[P_MODE])
+	_build_arena(pages[P_ARENA])
+	_build_players(pages[P_PLAYERS])
+	_build_class(pages[P_CHAR])
+	_build_start(pages[P_START])
 	_build_foot()
 	JuicyButton.attach_all(self)
 	go(page)
+
+func _bake() -> void:
+	var ids: Array = Content.classes.keys()
+	stage.live(cls)
+	stage.bake(ids)
+	_show_class_art()
+
+## Character card art: the selected card shows the live (turning) stage, the others their baked render.
+func _show_class_art() -> void:
+	if stage == null: return
+	stage.live(cls)
+	for id: String in _class_art:
+		var tr: TextureRect = _class_art[id]
+		var tex: Texture2D = stage.get_texture() if id == cls and not stage.is_baking() else stage.baked.get(id)
+		tr.texture = tex
 
 func _make_styles() -> void:
 	var edge := Color(1, 1, 1, 0.14)
@@ -287,19 +346,19 @@ func _build_head() -> void:
 func _build_foot() -> void:
 	var foot := HBoxContainer.new()
 	foot.name = "Foot"
-	foot.add_theme_constant_override("separation", 12)
+	foot.add_theme_constant_override("separation", 10)
 	add_child(foot)
 	back_b = Button.new()
 	back_b.name = "Back"
 	back_b.text = "Back"
-	back_b.custom_minimum_size = Vector2(150, 60)
+	back_b.custom_minimum_size = Vector2(124, 60)
 	back_b.pressed.connect(back)
 	foot.add_child(back_b)
 	var steps := HBoxContainer.new()
 	steps.name = "Steps"
 	steps.size_flags_horizontal = SIZE_EXPAND_FILL
 	steps.alignment = BoxContainer.ALIGNMENT_CENTER
-	steps.add_theme_constant_override("separation", 6)
+	steps.add_theme_constant_override("separation", 5)
 	foot.add_child(steps)
 	for k in SHORT.size():
 		var b := Button.new()
@@ -318,35 +377,51 @@ func _build_foot() -> void:
 	next_b.text = "Next"
 	next_b.theme_type_variation = &"PrimaryButton"
 	next_b.add_theme_font_size_override("font_size", 28)
-	next_b.custom_minimum_size = Vector2(200, 60)
+	next_b.custom_minimum_size = Vector2(170, 60)
 	next_b.pressed.connect(next)
 	foot.add_child(next_b)
 
-## A ScrollContainer with a card grid that re-flows its column count to the width.
+## A card grid that scrolls by drag (DragScroll) inside a frame with edge fades; the column count re-flows to the width.
 func _grid_page(p: Control, k: int, card_w: float) -> GridContainer:
-	var sc := ScrollContainer.new()
+	var frame := Control.new()
+	frame.name = "Frame"
+	frame.size_flags_vertical = SIZE_EXPAND_FILL
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(frame)
+	var sc := DragScroll.new()
 	sc.name = "Scroll"
-	sc.size_flags_vertical = SIZE_EXPAND_FILL
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	sc.scroll_deadzone = 10   # a finger drag on a card scrolls instead of picking it
-	p.add_child(sc)
+	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(sc)
 	var g := GridContainer.new()
 	g.name = "Grid"
 	g.size_flags_horizontal = SIZE_EXPAND_FILL
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	g.add_theme_constant_override("h_separation", GAP)
 	g.add_theme_constant_override("v_separation", GAP)
 	sc.add_child(g)
-	_grids[k] = [sc, g, card_w]
+	var fade := EdgeFade.new(sc)
+	fade.name = "Fade"
+	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(fade)
+	sc.tapped.connect(func(c: Control) -> void:
+		var j := c.get_node_or_null("Juicy")
+		if j: j._release())
+	_grids[k] = [sc, g, card_w, fade]
 	sc.resized.connect(_reflow.bind(k))
 	return g
 
 func _reflow(k: int) -> void:
 	var e: Array = _grids[k]
-	var sc: ScrollContainer = e[0]
-	var w := sc.size.x - 14.0   # room for the scroll bar
+	var sc: DragScroll = e[0]
+	var w := sc.size.x - 16.0   # room for the scroll bar
 	var g: GridContainer = e[1]
-	# never more columns than cards, so a short row (5 fighters) spreads over the width
+	# never more columns than cards, so a short row (5 characters) spreads over the width
 	g.columns = clampi(int((w + GAP) / (float(e[2]) + GAP)), 1, maxi(1, g.get_child_count()))
+	if k == P_CHAR:   # character cards: one row fills the page height (bigger renders), more rows keep the base size
+		var rows := ceili(g.get_child_count() / float(g.columns))
+		var h := CLASS_CARD.y if rows > 1 else clampf(sc.size.y - 2.0, CLASS_CARD.y, 380.0)
+		for c: Control in g.get_children(): c.custom_minimum_size.y = h
+	(e[3] as Control).queue_redraw()
 
 ## A selectable card: optional art on top, a heavy title, a muted line or two.
 func _card(title: String, sub: String, size: Vector2, art: Control = null) -> Button:
@@ -393,7 +468,7 @@ func _pills(parent: Control, row_name: String, label: String, keys: Array, names
 	row.add_theme_constant_override("separation", 8)
 	parent.add_child(row)
 	var l := _label(label, 18, "MutedLabel")
-	l.custom_minimum_size = Vector2(110, 0)
+	l.custom_minimum_size = Vector2(124, 0)
 	l.size_flags_vertical = SIZE_SHRINK_CENTER
 	row.add_child(l)
 	var g := ButtonGroup.new()
@@ -412,13 +487,29 @@ func _pills(parent: Control, row_name: String, label: String, keys: Array, names
 		store[keys[i]] = b
 	return row
 
+func _build_mode(p: Control) -> void:
+	var g := _grid_page(p, P_MODE, MODE_CARD.x)
+	var grp := ButtonGroup.new()
+	for m: String in modes():
+		var b := _card(mode_name(m), str(Content.modes[m].get("desc", "")), MODE_CARD)
+		b.name = m
+		b.button_group = grp
+		b.pressed.connect(set_mode.bind(m))
+		g.add_child(b)
+		scroll_of(P_MODE).add_card(b)
+		_mode_bs[m] = b
+	var names: Array = []
+	for k: String in Dynamics.KINDS: names.append(Dynamics.NAMES[k])
+	var row := _pills(p, "Floor", "Moving floor", Dynamics.KINDS, names, _dyn_bs, set_dyn)
+	row.tooltip_text = "Does the arena floor move? Random = a different moving floor every match"
+
 func _build_arena(p: Control) -> void:
-	_grid_page(p, 0, MAP_CARD.x)
+	_grid_page(p, P_ARENA, MAP_CARD.x)
 	_rebuild_maps()
 
 func _rebuild_maps() -> void:
-	if not _grids.has(0): return
-	var g: GridContainer = _grids[0][1]
+	if not _grids.has(P_ARENA): return
+	var g: GridContainer = _grids[P_ARENA][1]
 	for c in g.get_children(): c.queue_free(); g.remove_child(c)
 	_map_bs.clear()
 	var grp := ButtonGroup.new()
@@ -431,23 +522,10 @@ func _rebuild_maps() -> void:
 		b.tooltip_text = str(m.get("blurb", ""))
 		b.pressed.connect(set_map.bind(id))
 		g.add_child(b)
+		scroll_of(P_ARENA).add_card(b)
 		_map_bs[id] = b
 		JuicyButton.attach(b)
-
-func _build_mode(p: Control) -> void:
-	var g := _grid_page(p, 1, MODE_CARD.x)
-	var grp := ButtonGroup.new()
-	for m: String in modes():
-		var b := _card(mode_name(m), str(Content.modes[m].get("desc", "")), MODE_CARD)
-		b.name = m
-		b.button_group = grp
-		b.pressed.connect(set_mode.bind(m))
-		g.add_child(b)
-		_mode_bs[m] = b
-	var names: Array = []
-	for k: String in Dynamics.KINDS: names.append(Dynamics.NAMES[k])
-	var row := _pills(p, "Floor", "Floor", Dynamics.KINDS, names, _dyn_bs, set_dyn)
-	row.tooltip_text = "Does the floor move? Random = a different moving arena every match"
+	_reflow(P_ARENA)
 
 func _build_players(p: Control) -> void:
 	p.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -468,24 +546,35 @@ func _build_players(p: Control) -> void:
 	p.add_child(players_hint)
 
 func _build_class(p: Control) -> void:
-	var g := _grid_page(p, 3, CLASS_CARD.x)
+	var g := _grid_page(p, P_CHAR, CLASS_CARD.x)
 	var grp := ButtonGroup.new()
 	for id: String in Content.classes:
 		var c := Content.get_class_data(id)
-		var b := _card(class_name_of(id), str(c.get("tag", "")), CLASS_CARD, ClassThumb.new(c))
+		var art := TextureRect.new()
+		art.name = "Render"
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		art.custom_minimum_size = Vector2(0, 120)
+		var b := _card(class_name_of(id), str(c.get("tag", "")), CLASS_CARD, art)
 		b.name = id
 		b.button_group = grp
 		b.pressed.connect(set_class.bind(id))
 		g.add_child(b)
+		scroll_of(P_CHAR).add_card(b)
 		_class_bs[id] = b
+		_class_art[id] = art
 
-func _build_go(p: Control) -> void:
+func _build_start(p: Control) -> void:
 	p.alignment = BoxContainer.ALIGNMENT_CENTER
-	var keys := ["Arena", "Game", "Players", "Fighter"]
+	var hint := _label("Check your match. Tap a row to change it.", 18, "MutedLabel", true)
+	hint.name = "Hint"
+	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	p.add_child(hint)
+	var keys := ["Game type", "Arena", "Players", "Character"]
 	for k in keys.size():
 		var b := Button.new()
-		b.name = keys[k]
-		b.custom_minimum_size = Vector2(0, 58)
+		b.name = keys[k].replace(" ", "")
+		b.custom_minimum_size = Vector2(0, 56)
 		b.focus_mode = Control.FOCUS_NONE
 		b.pressed.connect(go.bind(k))
 		var h := HBoxContainer.new()
@@ -495,7 +584,7 @@ func _build_go(p: Control) -> void:
 		h.add_theme_constant_override("separation", 16)
 		b.add_child(h)
 		var kl := _label(keys[k], 18, "MutedLabel")
-		kl.custom_minimum_size = Vector2(100, 0)
+		kl.custom_minimum_size = Vector2(120, 0)
 		kl.size_flags_vertical = SIZE_SHRINK_CENTER
 		h.add_child(kl)
 		var vl := _label("", 22, "", true)
@@ -518,12 +607,12 @@ func _refresh() -> void:
 	title_l.text = TITLES[page]
 	step_l.text = "Step %d of %d" % [page + 1, TITLES.size()]
 	var n := note
-	if n == "" and page == 0 and ModeRules.maps_for(mode_id).size() > 0:
-		n = "Arenas for %s (game type is next)" % mode_name(mode_id)
+	if n == "" and page == P_ARENA:
+		n = "Arenas for %s" % mode_name(mode_id)
 	note_l.text = n
 	note_l.tooltip_text = n
 	back_b.text = "Back"
-	next_b.text = "START" if page == pages.size() - 1 else "Next"
+	next_b.text = "Start" if page == pages.size() - 1 else "Next"
 	for k in step_bs.size():
 		(step_bs[k] as Button).set_pressed_no_signal(k == page)
 	_select(_map_bs, map_id)
@@ -532,25 +621,53 @@ func _refresh() -> void:
 	_select(_class_bs, cls)
 	_select(_diff_bs, diff)
 	var team := is_team_mode()
+	var flex := is_flex_teams()
 	var total := bot_total()
 	for n2 in _bot_bs:
 		var b: Button = _bot_bs[n2]
-		b.disabled = team and n2 != total
+		b.disabled = (team and not flex and n2 != total) or (flex and n2 % 2 == 0)
 		b.set_pressed_no_signal(n2 == (total if team else bots))
 	if players_l:
-		players_l.text = "You + %d bot%s" % [total, "" if total == 1 else "s"]
-		var t := int(Content.modes.get(mode_id, {}).get("teams", 0))
-		players_hint.text = ("%s fixes the teams: %d vs %d." % [mode_name(mode_id), t, t]) if team \
-			else "Free for all. Bots fight you and each other."
+		players_l.text = _players_text()
+		var t := ModeRules.team_size(mode_id, Content.modes, total)
+		if flex: players_hint.text = "Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even)." % [t, t]
+		elif team: players_hint.text = "Bots are computer players. %s fixes the teams: %d vs %d." % [mode_name(mode_id), t, t]
+		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
 	if _sum_vals.size() == 4:
-		_sum_vals[0].text = map_name(map_id)
-		_sum_vals[1].text = "%s · Floor: %s" % [mode_name(mode_id), Dynamics.NAMES.get(dyn, dyn)]
-		_sum_vals[2].text = "You + %d bot%s · %s" % [total, "" if total == 1 else "s", diff.capitalize()]
+		_sum_vals[0].text = "%s · Floor: %s" % [mode_name(mode_id), Dynamics.NAMES.get(dyn, dyn)]
+		_sum_vals[1].text = map_name(map_id)
+		_sum_vals[2].text = "%s · %s" % [_players_text(), diff.capitalize()]
 		_sum_vals[3].text = class_name_of(cls)
 
 func _select(store: Dictionary, key: Variant) -> void:
 	for k in store:
 		(store[k] as Button).set_pressed_no_signal(k == key)
+
+# ---------------- scroll edge hint ----------------
+
+## Soft dark fades over the top / bottom edge of a card grid while more cards are hidden there (the scroll hint,
+## together with the scroll bar and the half-visible next row).
+class EdgeFade extends Control:
+	const H := 26.0
+	var sc: DragScroll
+
+	func _init(s: DragScroll) -> void:
+		sc = s
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		s.get_v_scroll_bar().value_changed.connect(func(_v: float) -> void: queue_redraw())
+		s.get_v_scroll_bar().changed.connect(queue_redraw)
+
+	func _draw() -> void:
+		var m := sc.max_scroll()
+		if m <= 1.0: return
+		var w := size.x - 16.0
+		var c0 := Color(0.04, 0.12, 0.15, 0.0)
+		var c1 := Color(0.04, 0.12, 0.15, 0.75)
+		if sc.scroll_vertical > 1:
+			draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(w, 0), Vector2(w, H), Vector2(0, H)]), PackedColorArray([c1, c1, c0, c0]))
+		if sc.scroll_vertical < m - 1:
+			var y := size.y
+			draw_polygon(PackedVector2Array([Vector2(0, y - H), Vector2(w, y - H), Vector2(w, y), Vector2(0, y)]), PackedColorArray([c0, c0, c1, c1]))
 
 # ---------------- card art ----------------
 
@@ -590,40 +707,3 @@ class MapThumb extends Control:
 		draw_colored_polygon(PackedVector2Array([Vector2(w * 0.18, h), Vector2(w * 0.3, h * 0.72), Vector2(w * 0.7, h * 0.72), Vector2(w * 0.82, h)]), floor_c)
 		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, 0.12), false, 2.0)
 
-## Class card art: a little wobbler (body, head, eyes) sized and tinted like the class.
-class ClassThumb extends Control:
-	var col: Color
-	var k: float
-	var wide: float
-
-	func _init(c: Dictionary) -> void:
-		var skin := int(c.get("skin", 0x39b5a8))
-		col = Color8((skin >> 16) & 255, (skin >> 8) & 255, skin & 255)
-		k = float(c.get("size", 1.0))
-		wide = float(c.get("wide", 1.0))
-		custom_minimum_size = Vector2(0, 84)
-
-	func _draw() -> void:
-		var cx := size.x * 0.5
-		var base := size.y - 4.0
-		var s := size.y / 96.0 * k
-		draw_set_transform(Vector2(cx, base), 0.0, Vector2(1.0, 0.28))
-		draw_circle(Vector2.ZERO, 30.0 * s * wide, Color(0, 0, 0, 0.28))
-		draw_set_transform(Vector2.ZERO)
-		var bw := 21.0 * s * wide
-		var bh := 46.0 * s
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = col
-		sb.set_corner_radius_all(int(bw))
-		sb.corner_detail = 12
-		sb.anti_aliasing = true
-		sb.border_color = col.darkened(0.3)
-		sb.border_width_bottom = int(5 * s)
-		draw_style_box(sb, Rect2(cx - bw, base - bh, bw * 2.0, bh))
-		var hr := 19.0 * s
-		var hc := Vector2(cx, base - bh - hr * 0.55)
-		draw_circle(hc, hr + 2.5, col.darkened(0.35))
-		draw_circle(hc, hr, Color(1.0, 0.86, 0.72))
-		for e in [-1, 1]:
-			draw_circle(hc + Vector2(e * hr * 0.38, -hr * 0.05), hr * 0.17, Color(0.06, 0.1, 0.12))
-			draw_circle(hc + Vector2(e * hr * 0.38 + hr * 0.05, -hr * 0.11), hr * 0.06, Color.WHITE)

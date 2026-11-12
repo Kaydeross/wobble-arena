@@ -313,8 +313,8 @@ func update(delta: float) -> void:
 	_hint.visible = hint != ""
 	_hint.reset_size()
 	_hint.position = Vector2(vs.x / 2.0 - _hint.size.x / 2.0, _hotbar.position.y - _hint.size.y - 6.0)
-	_center.text = "Respawning…" if p.dead else ""
-	_center.visible = p.dead
+	_center.text = "Respawning…" if p.dead and not p.elim else ""     # out for good (Sudden Death): the spectator line says it
+	_center.visible = p.dead and not p.elim
 	_center.reset_size()
 	_center.position = Vector2(vs.x / 2.0 - _center.size.x / 2.0, vs.y * 0.38)
 	_cross.position = vs / 2.0

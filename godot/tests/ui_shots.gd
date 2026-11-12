@@ -1,10 +1,13 @@
 extends SceneTree
 ## Renders UI screenshots for visual review (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot match --out FILE.png
-## Shots: title (scenes/main.tscn), title-online (its Play online panel), title-settings (the gear sheet), wizard-arena /
-## wizard-mode / wizard-players / wizard-class / wizard-go (the offline setup wizard pages, ui/setup_wizard.gd), match (offline world with the HUD), touch (same with the touch layer forced on and
+## Shots: title (scenes/main.tscn), title-online (its Play online panel), title-settings (the gear sheet), wizard-mode /
+## wizard-arena / wizard-players / wizard-character / wizard-start (the five offline setup wizard pages in order,
+## ui/setup_wizard.gd; the character page waits for its 3D renders), match (offline world with the HUD), touch (same with the touch layer forced on and
 ## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
-## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing). Used by tools/shoot-godot-ui.sh.
+## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
+## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
+## teams (Team Deathmatch with the team scoreboard), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on). Used by tools/shoot-godot-ui.sh.
 
 const FRAME := 1.0 / 60.0
 
@@ -26,9 +29,10 @@ func _settings() -> Node:
 
 func _start() -> void:
 	if shot == "title-construction": _settings().set_value("mode", "construction")
-	if shot.begins_with("title") or shot.begins_with("wizard"):
-		if shot.begins_with("wizard"):   # a fixed setup so the shots are comparable
-			for kv in [["offline_map", "arena"], ["mode", "classic"], ["dyn", "random"], ["bots", 3], ["difficulty", "normal"], ["class", "wobbler"]]:
+	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
+		if shot.begins_with("wizard") or shot.begins_with("newmodes"):   # a fixed setup so the shots are comparable
+			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm"}.get(shot, "classic")
+			for kv in [["offline_map", "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
 				_settings().set_value(kv[0], kv[1])
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
@@ -38,11 +42,14 @@ func _start() -> void:
 		elif shot == "title-settings":
 			m.show_settings(true)
 		elif shot.begins_with("wizard"):
-			m.open_wizard(["wizard-arena", "wizard-mode", "wizard-players", "wizard-class", "wizard-go"].find(shot))
+			m.open_wizard(["wizard-mode", "wizard-arena", "wizard-players", "wizard-character", "wizard-start"].find(shot))
+		elif shot.begins_with("newmodes"):
+			m.open_wizard(0 if shot == "newmodes-mode" else 2)
+			if shot == "newmodes-mode": _scroll_wizard = m.wizard
 		frames = 40
 		process_frame.connect(_wait)
 		return
-	var touch_shot := shot == "touch" or shot == "touch-lefty"
+	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate"
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
 	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
@@ -50,6 +57,12 @@ func _start() -> void:
 	world.map_id = "siteyard" if shot == "construction" else "arena"
 	if shot == "construction":
 		world.mode_id = "construction"
+		world.dyn_choice = "off"
+	if shot == "spectate":
+		world.mode_id = "sudden"
+		world.dyn_choice = "off"
+	if shot == "teams":                                  # Team Deathmatch: the TeamBoard (colour chips, YOU tag)
+		world.mode_id = "tdm"
 		world.dyn_choice = "off"
 	world.auto_run = false
 	world.bot_count = 3
@@ -61,7 +74,12 @@ func _start() -> void:
 		world.touch.visible = false
 	process_frame.connect(_frame)
 
+var _scroll_wizard: Node = null
+
 func _wait() -> void:
+	if _scroll_wizard != null and frames == 20:       # scroll the game type grid to its end (the new modes)
+		var sc: ScrollContainer = _scroll_wizard.scroll_of(0)
+		sc.scroll_vertical = int(sc.get_v_scroll_bar().max_value)
 	frames -= 1
 	if frames == 0:
 		process_frame.disconnect(_wait)
@@ -87,6 +105,9 @@ func _frame() -> void:
 	var st: InputState = world.input.state
 	if shot == "construction":
 		_hammer_frame(sim, p, st)
+		return
+	if shot == "spectate":
+		_spectate_frame(sim, p)
 		return
 	if i == 2:
 		sim.combat.pickup(p, "katana")
@@ -142,6 +163,21 @@ func _hammer_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
 	world.tick(FRAME)
 	i += 1
 	if (i > 260 and p.weapon == "hammer" and p.swing > 0.35 and p.swing < 0.6 and dist < 3.0) or i == 720:
+		process_frame.disconnect(_frame)
+		_save()
+
+## Sudden Death: the player is pushed off the edge at 2 s, the camera spectates a survivor; save 4 s later.
+func _spectate_frame(sim: MatchSim, p: FighterState) -> void:
+	if i == 120 and not p.elim:
+		p.phys.place(60.0, -30.0, 0.0); p.last_attacker = null
+	world.tick(FRAME)
+	i += 1
+	if world.spectating != null:
+		var sp: FighterState = world.spectating
+		var d := Vector2(sp.phys.px, sp.phys.pz)
+		world.cam.yaw = lerp_angle(world.cam.yaw, atan2(-d.x, -d.y) + PI, 0.05)
+		world.cam.pitch = -0.2
+	if i == 400 or (i > 140 and sim.combat.rules.match_over):
 		process_frame.disconnect(_frame)
 		_save()
 

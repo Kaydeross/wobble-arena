@@ -1,0 +1,41 @@
+{
+ "_note": "Godot-only game modes (not in the web game). ModeRules.merge_extra() adds these to shared/modes.json at load. allowFrom / dropsAs = copy that mode's weapon list and crate pool. teams = players per side; flexTeams = the Players page sets the side size (odd bot counts only).",
+ "tdm": {
+  "name": "Team Deathmatch",
+  "desc": "Two teams, no friendly fire. First team to 30 K.O.s",
+  "teams": 2,
+  "flexTeams": true,
+  "preset": {"limit": 30},
+  "start": null,
+  "allowFrom": "classic",
+  "dropsAs": "classic"
+ },
+ "deathmatch": {
+  "name": "Death Match",
+  "desc": "Free for all. First to 20 K.O.s wins",
+  "preset": {"limit": 20, "behav": "brawl", "ffa": true},
+  "start": null,
+  "allowFrom": "classic",
+  "dropsAs": "classic"
+ },
+ "sudden": {
+  "name": "Sudden Death",
+  "desc": "One life each. A K.O. or a fall and you are out. Last one standing wins",
+  "lives": 1,
+  "spectate": true,
+  "preset": {"limit": 0, "behav": "brawl", "ffa": true},
+  "start": null,
+  "allowFrom": "classic",
+  "dropsAs": "classic"
+ },
+ "chaos": {
+  "name": "Chaos",
+  "desc": "5 vs 5 with random events: crate rain, low gravity, knockback storms, giants. First team to 50",
+  "teams": 5,
+  "chaos": true,
+  "preset": {"limit": 50},
+  "start": null,
+  "allowFrom": "classic",
+  "dropsAs": "classic"
+ }
+}

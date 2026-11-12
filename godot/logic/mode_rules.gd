@@ -10,6 +10,11 @@ extends RefCounted
 ##   {"type": "eliminated", "f"}                               out of lives
 ##   {"type": "puff", "kind": "dash", x, y, z}                 a dash
 ##   {"type": "toast", "text"}                                 player messages (ladder rung, arena growing...)
+##   {"type": "chaos_warn", "id", "name", "in"}              Chaos: an event is about to fire (banner + countdown)
+##   {"type": "chaos", "id", "name", "dur"} / {"type": "chaos_end", "id"}   Chaos: an event started / ended
+## Godot-only modes (res://data/extra/modes.json, merged by merge_extra): Team Deathmatch (tdm: two teams sized by the
+## Players page, team limit 30), Death Match (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
+## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events).
 ## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there), Pillars (needs the
 ## pillar-hopping bot AI and pillarGive), Explosive / Moon Drift (their weapons are not ported yet).
 
@@ -23,12 +28,32 @@ const END_TIME := 3.4                                   ## endT: the game keeps 
 const MODE_DEFAULTS := {"count": 3, "hp": 200, "behav": "brawl", "ffa": true, "limit": 0}   ## MODE_DEFAULTS (pickMode)
 ## Modes the Godot port can play offline (the picker lists these). Explosive needs rockets, Pillars its bot AI, Sandbox and
 ## Construction belong to other tracks.
-const PLAYABLE := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4", "mega", "giant", "gungame"]
+const PLAYABLE := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4", "mega", "giant", "gungame",
+	"tdm", "deathmatch", "sudden", "chaos"]
+## Godot-only modes (not in shared/modes.json, which `npm run content` regenerates from the web game).
+const EXTRA_PATH := "res://data/extra/modes.json"
+## Chaos needs room for 10: maps with at least 9 bot spots away from the player (bots + spawns) and wander >= 20.
+const CHAOS_MAPS := ["arenaxl", "colosseum", "fortress", "rinkxl", "farm", "temple", "pirate", "rooftops"]
+## Chaos events (CombatRng picks one every 15..25 s, never the same twice in a row). dur = seconds it lasts.
+const CHAOS_EVENTS := {
+	"crates": {"name": "Crate rain", "dur": 0.0},
+	"gravity": {"name": "Low gravity", "dur": 8.0},
+	"knockback": {"name": "Knockback storm", "dur": 10.0},
+	"giant": {"name": "Giant", "dur": 12.0},
+	"speed": {"name": "Speed surge", "dur": 8.0},
+	"floor": {"name": "Floor quake", "dur": 9.0},
+}
+const CHAOS_ORDER := ["crates", "gravity", "knockback", "giant", "speed", "floor"]
+const CHAOS_WARN := 3.0              ## the banner counts down this long before the event fires
+const CHAOS_GAP := [15.0, 25.0]
+const CHAOS_GRAV := 0.4
+const CHAOS_KB := 2.5
+const CHAOS_CRATES := 5
 ## MODES[k].maps (index.html ~3093; not in shared/modes.json). [] = every level.
 const TEAM_MAPS := ["arena", "park", "ice", "temple", "rooftops"]
 const MODE_MAPS := {"melee": ["arena", "park", "ice", "rooftops", "cloud", "tower", "brawlpit"], "guns": ["arena", "temple", "rooftops", "gunrange"],
 	"ninja": ["temple", "cloud", "rooftops", "tower"], "sandbox": ["custom"], "construction": ["siteyard"], "mega": ["shrink", "squeeze"],
-	"pillars": ["pillars", "pillars2"], "duel": TEAM_MAPS, "t2": TEAM_MAPS, "t3": TEAM_MAPS, "t4": TEAM_MAPS}
+	"pillars": ["pillars", "pillars2"], "duel": TEAM_MAPS, "t2": TEAM_MAPS, "t3": TEAM_MAPS, "t4": TEAM_MAPS, "chaos": CHAOS_MAPS}
 ## The shrinking floors (MAPS.shrink / MAPS.squeeze build(): `shrink = {...}`); the floor is the map's first box.
 const SHRINK := {
 	"shrink": {"S0": 64.0, "min": 16.0, "max": 40.0, "both": true, "D": 64.0, "rate": 55.0},
@@ -45,6 +70,10 @@ var end_t := 0.0                     ## endT
 ## updateShrink state (empty = this map does not shrink): S0, size, start, min, max, dir, cycle, hold, both, D, rate,
 ## rest (-1 = unset), box (the floor solid in combat.solids).
 var shrink := {}
+## Chaos state: next (s to the next warning), warn (s left on the countdown, 0 = none), id (the pending / running
+## event), left (s the running event has left), last (the previous event), giant (the fighter made a giant), kb0 (the
+## knockback setting to restore), floor (the floor kind forced). Empty = not Chaos.
+var chaos := {}
 
 func _init(c: Combat) -> void:
 	_combat = weakref(c)
@@ -53,14 +82,40 @@ func _init(c: Combat) -> void:
 static func preset_limit(mode_id: String, modes: Dictionary) -> int:
 	return int(modes.get(mode_id, {}).get("preset", {}).get("limit", MODE_DEFAULTS["limit"]))
 
-## How many bots a mode plays with (setBotCfg): teams force teams * 2 - 1, otherwise `requested` (0..12).
+## How many bots a mode plays with (setBotCfg): teams force teams * 2 - 1, otherwise `requested` (0..12). flexTeams
+## (Team Deathmatch) keeps the teams even: an odd bot count (requested, rounded up, 1..7).
 static func bot_count(mode_id: String, modes: Dictionary, requested: int) -> int:
-	var t := int(modes.get(mode_id, {}).get("teams", 0))
+	var m: Dictionary = modes.get(mode_id, {})
+	var t := int(m.get("teams", 0))
+	if t and m.get("flexTeams", false):
+		var n := clampi(requested, 1, 7)
+		return n if n % 2 == 1 else n + 1
 	if t: return t * 2 - 1
 	return clampi(requested, 0, 12)
 
+## Players per side for `bots` bots (team modes; 0 = free for all).
+static func team_size(mode_id: String, modes: Dictionary, bots: int) -> int:
+	var m: Dictionary = modes.get(mode_id, {})
+	var t := int(m.get("teams", 0))
+	if t and m.get("flexTeams", false): return (bots + 1) / 2
+	return t
+
 static func maps_for(mode_id: String) -> Array:
 	return MODE_MAPS.get(mode_id, [])
+
+## Adds the Godot-only modes (EXTRA_PATH) to `modes` (shared/modes.json) in place: keys already there win, allowFrom
+## copies another mode's allowWeapons. Returns `modes`.
+static func merge_extra(modes: Dictionary, path: String = EXTRA_PATH) -> Dictionary:
+	if not FileAccess.file_exists(path): return modes
+	var x: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not (x is Dictionary): return modes
+	for k: String in x:
+		if k.begins_with("_") or modes.has(k) or not (x[k] is Dictionary): continue
+		var m: Dictionary = (x[k] as Dictionary).duplicate(true)
+		if not m.has("allowWeapons"):
+			m["allowWeapons"] = (modes.get(str(m.get("allowFrom", "classic")), {}) as Dictionary).get("allowWeapons", []).duplicate()
+		modes[k] = m
+	return modes
 
 ## cfg from setBotCfg for `mode_id`: teams, lives, ffa/brawl, giant, hp, K.O. limit (`p_limit` < 0 = the preset's).
 func configure(mode_id: String, p_limit: int = -1) -> void:
@@ -77,11 +132,13 @@ func configure(mode_id: String, p_limit: int = -1) -> void:
 	if mode_id == "explosive": c.hp_setting = 300.0           # Explosive is always 300 health
 	limit = p_limit if p_limit >= 0 else preset_limit(mode_id, c.modes)
 	match_over = false; winner = null; end_t = 0.0
+	chaos = {}
 
 ## setBotCfg team split + loadMap's per-fighter reset (dashes, lives) + initLadder. `bots` in setup order.
 func start_match(player: FighterState, bots: Array) -> void:
 	var c := combat
 	player.team = 0
+	if c.teams and c.mode.get("flexTeams", false): c.teams = (bots.size() + 1) / 2     # Team Deathmatch: sides from the bot count
 	for i in bots.size():
 		var b: FighterState = bots[i]
 		b.team = (0 if i < c.teams - 1 else 1) if c.teams else -1
@@ -90,6 +147,19 @@ func start_match(player: FighterState, bots: Array) -> void:
 	for f: FighterState in [player] + bots:                     # initLadder
 		f.gg_rung = 0
 		if c.mode_id == "gungame" and not f.is_ghost: gg_give(f)
+	if c.mode.get("chaos", false):
+		chaos = {"next": _chaos_gap() - CHAOS_WARN, "warn": 0.0, "id": "", "left": 0.0, "last": "", "giant": null, "kb0": c.kb_setting, "floor": ""}
+
+## One life: a K.O. or a fall eliminates at once (Sudden Death).
+func one_life() -> bool:
+	return combat.lives_mode == 1 and bool(combat.mode.get("spectate", false))
+
+## Fighters still in (not eliminated, not gone).
+func survivors() -> Array:
+	var out: Array = []
+	for f: FighterState in combat.fighters:
+		if not f.elim and not f.left: out.append(f)
+	return out
 
 func team_color(f: FighterState) -> int:
 	return TEAM_COL[f.team] if combat.teams and f.team >= 0 and f.team < TEAM_COL.size() else -1
@@ -143,8 +213,9 @@ func eliminate(f: FighterState, counted: bool) -> void:
 	for x: FighterState in c.fighters:
 		if not x.elim and not x.left: alive.append(x)
 	var online := c.net_started
-	if f.is_player and (c.mode_id == "pillars" or online) and not match_over: c.ev({"type": "toast", "text": "You're out! Spectating."})
-	if not match_over and c.lives_mode and (alive.size() <= 1 or (f.is_player and c.mode_id != "pillars" and not online)):
+	var spect := c.mode_id == "pillars" or online or bool(c.mode.get("spectate", false))    # the player watches the rest play on
+	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": "You're out! Spectating."})
+	if not match_over and c.lives_mode and (alive.size() <= 1 or (f.is_player and not spect)):
 		var best: FighterState = null                          # alive.sort((a, b) => b.lives - a.lives || b.ko - a.ko)[0] (stable)
 		for x: FighterState in alive:
 			if best == null or x.lives > best.lives or (x.lives == best.lives and x.ko > best.ko): best = x
@@ -273,11 +344,121 @@ func shrink_drops() -> Array:
 		return [[r * 0.6, 4], [-r * 0.6, -4], [r * 0.9, -7], [-r * 0.9, 7], [r * 0.3, 8], [-r * 0.3, -8]]
 	return [[r * 0.5, 0], [-r * 0.5, 0], [0, r * 0.5], [0, -r * 0.5], [r * 0.8, r * 0.6], [-r * 0.8, -r * 0.6]]
 
+# ============================== Chaos events ==============================
+
+func _chaos_gap() -> float:
+	return CHAOS_GAP[0] + combat.rng.next() * (CHAOS_GAP[1] - CHAOS_GAP[0])
+
+## Can `id` run on this match? (the floor event needs tiles that move: wobble / tilt / quake)
+func chaos_ok(id: String, dyn: ArenaDyn) -> bool:
+	if id == "floor": return dyn != null and dyn.can_force()
+	return true
+
+## Every CHAOS_GAP seconds: pick an event (not the last one), count down CHAOS_WARN, run it, restore the rules.
+## Cheap: a few float compares per step; the events touch each fighter once at start and once at the end.
+func update_chaos(dt: float, pickups: Pickups, dyn: ArenaDyn) -> void:
+	var s := chaos
+	if match_over:
+		if s["id"] != "" and s["left"] > 0.0: _chaos_end(dyn)
+		return
+	if s["left"] > 0.0:
+		s["left"] -= dt
+		if s["id"] == "speed":                            # newcomers (respawns) get the surge too; it runs out with the event
+			for f: FighterState in combat.fighters:
+				if not f.dead and f.spd_t < s["left"]: f.spd_t = s["left"]
+		if s["left"] <= 0.0: _chaos_end(dyn)
+		return
+	if s["warn"] > 0.0:
+		s["warn"] -= dt
+		if s["warn"] <= 0.0:
+			s["warn"] = 0.0
+			_chaos_start(s["id"], pickups, dyn)
+		return
+	s["next"] -= dt
+	if s["next"] > 0.0: return
+	var pool: Array = []
+	for id: String in CHAOS_ORDER:
+		if id != s["last"] and chaos_ok(id, dyn): pool.append(id)
+	var pick: String = pool[int(floor(combat.rng.next() * pool.size()))]
+	if pick == "floor": s["floor"] = dyn.force_kind()
+	s["id"] = pick; s["warn"] = CHAOS_WARN
+	combat.ev({"type": "chaos_warn", "id": pick, "name": chaos_name(pick), "in": CHAOS_WARN})
+
+## The event's display name ("Floor quake" says which floor it forces).
+func chaos_name(id: String) -> String:
+	if id == "floor": return "Floor " + (str(chaos.get("floor", "")) if str(chaos.get("floor", "")) != "" else "quake")
+	return str(CHAOS_EVENTS.get(id, {}).get("name", id))
+
+func _chaos_start(id: String, pickups: Pickups, dyn: ArenaDyn) -> void:
+	var c := combat
+	var s := chaos
+	var dur: float = CHAOS_EVENTS[id]["dur"]
+	match id:
+		"crates":                                          # several random-weapon crates at once (free spots only)
+			if pickups != null and not pickups.no_crates:
+				for i in CHAOS_CRATES:
+					var k := pickups.pick_crate_key()
+					if k != "": pickups.spawn_drop(k)
+		"gravity":
+			for f: FighterState in c.fighters: f.phys.grav_scale = CHAOS_GRAV
+		"knockback":
+			s["kb0"] = c.kb_setting
+			c.kb_setting = (c.kb_setting if c.kb_setting != 0.0 else 1.0) * CHAOS_KB
+		"giant":
+			var pool: Array = []
+			for f: FighterState in c.fighters:
+				if not f.dead and not f.elim and not f.is_ghost: pool.append(f)
+			if pool.is_empty(): dur = 0.0
+			else:
+				var g: FighterState = pool[int(floor(c.rng.next() * pool.size()))]
+				g.big_t = dur; g.hp = c.max_hp(g)
+				s["giant"] = g
+		"speed":
+			for f: FighterState in c.fighters:
+				if not f.dead: f.spd_t = maxf(f.spd_t, dur)
+		"floor":
+			if dyn != null: dyn.force(str(s["floor"]), dur)
+	s["left"] = dur
+	var ev := {"type": "chaos", "id": id, "name": chaos_name(id), "dur": dur}
+	if id == "giant" and s["giant"] != null: ev["f"] = s["giant"]
+	c.ev(ev)
+	if dur <= 0.0: _chaos_end(dyn)
+
+## Back to the normal rules.
+func _chaos_end(dyn: ArenaDyn) -> void:
+	var c := combat
+	var s := chaos
+	var id: String = s["id"]
+	match id:
+		"gravity":
+			for f: FighterState in c.fighters: f.phys.grav_scale = c.grav_setting
+		"knockback":
+			c.kb_setting = s["kb0"]
+		"giant":
+			var g: FighterState = s["giant"]
+			if g != null:
+				g.big_t = 0.0; g.hp = minf(g.hp, c.max_hp(g))
+			s["giant"] = null
+		"floor":
+			if dyn != null: dyn.force("", 0.0)
+	s["left"] = 0.0; s["last"] = id; s["id"] = ""; s["floor"] = ""
+	s["next"] = _chaos_gap() - CHAOS_WARN
+	c.ev({"type": "chaos_end", "id": id})
+
+## The Chaos HUD bit: "Crate rain in 3" / "Low gravity 6s" ("" = nothing pending).
+func chaos_text() -> String:
+	var s := chaos
+	if s.is_empty() or match_over: return ""
+	if s["warn"] > 0.0: return "%s in %d" % [chaos_name(s["id"]), ceili(s["warn"])]
+	if s["left"] > 0.0: return "%s %ds" % [chaos_name(s["id"]), ceili(s["left"])]
+	return ""
+
 # ============================== per step ==============================
 
 ## simStep's mode updates (updatePotato / updatePillars / updateShrink) plus the end-of-match countdown.
-func update(dt: float, pickups: Pickups = null) -> void:
+func update(dt: float, pickups: Pickups = null, dyn: ArenaDyn = null) -> void:
 	update_shrink(dt, pickups)
+	if not chaos.is_empty(): update_chaos(dt, pickups, dyn)
 	if end_t > 0.0:
 		end_t -= dt
 		if end_t <= 0.0:
@@ -285,20 +466,25 @@ func update(dt: float, pickups: Pickups = null) -> void:
 			combat.ev({"type": "match_finished", "winner": winner, "won": player_won(winner)})
 
 ## The mode line under the K.O. counter (updateModeHud + updateKoText), "" = nothing to show.
-func hud_text(player: FighterState) -> String:
+func hud_text(player: FighterState, with_teams := true) -> String:
 	var c := combat
 	if player == null: return ""
 	var t := ""
-	if c.lives_mode and c.mode_id != "pillars":
+	if c.mode.get("spectate", false):                       # Sudden Death: in or out, and how many are left
+		t = ("♥" if not player.elim else "OUT") + "  ·  %d left" % survivors().size()
+	elif c.lives_mode and c.mode_id != "pillars":
 		t = "♥".repeat(player.lives) if player.lives > 0 else "OUT"
 	elif c.teams:
-		var mine := player.team
-		t = "Team %d v %d" % [team_ko(mine), team_ko(1 - mine)] + (" / %d" % limit if limit else "")
+		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
+			var mine := player.team
+			t = "Team %d v %d" % [team_ko(mine), team_ko(1 - mine)] + (" / %d" % limit if limit else "")
 	elif limit:
 		t = "%d / %d K.O.s" % [player.ko, limit]
 	var extra := ""
 	if c.mode_id == "gungame" and not match_over:
 		extra = "Weapon %d of %d · %s" % [player.gg_rung + 1, GG.size(), c.wdata(GG[player.gg_rung]).get("name", "Spatula")]
+	elif chaos_text() != "":
+		extra = "⚡ " + chaos_text()
 	elif not shrink.is_empty() and not match_over:
 		var s := shrink
 		extra = "Arena %dm" % Combat.js_round(s["size"]) + (" · shrinking soon" if s["hold"] > 0.0 else (" · growing" if s["dir"] == 1 else (" · smallest" if s["size"] <= s["min"] else "")))

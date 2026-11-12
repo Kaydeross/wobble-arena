@@ -63,8 +63,10 @@ func _run() -> void:
 	world.tick(FRAME)
 	check(not hud.get_node("Toast").visible, "toast hides when its time is up")
 	_fps()
-	SafeArea.override = []
 	world.free()
+	await process_frame
+	await _team_layout()
+	SafeArea.override = []
 	print("HUD ok" if fails == 0 else "HUD checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
 
@@ -127,3 +129,43 @@ func _fps() -> void:
 	_settings().set_value("show_fps", false)
 	var st: Vector2 = ov.stats(PackedFloat64Array([1.0 / 60.0, 1.0 / 60.0, 1.0 / 20.0, 1.0 / 60.0]))
 	check(absf(st.y - 20.0) < 0.01 and st.x > 30.0 and st.x < 60.0, "avg / 1%% low stats (%s)" % st)
+
+## Team modes: the TeamBoard, the mode line (chaos event / dash), the crate toast and every HUD panel stay inside the
+## safe area and never overlap each other or the pause button, with the toast showing (worst case).
+func _team_layout() -> void:
+	for mode in ["tdm", "chaos"]:
+		var world: Node = load("res://world/world.tscn").instantiate()
+		world.auto_run = false
+		world.mode_id = mode
+		world.dyn_choice = "off"
+		world.bot_count = 9 if mode == "chaos" else 5
+		world.rng_seed = 31
+		root.add_child(world)
+		await process_frame
+		var hud: Control = world.hud
+		hud.toast("Crate incoming: Mammoth Sniper Rifle!")
+		for i in 90:
+			world.tick(FRAME)
+		var vs: Vector2 = hud.get_viewport_rect().size
+		var ins: Array = SafeArea.override
+		var safe := Rect2(Vector2(ins[0], ins[1]), vs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
+		var rects := {}
+		for n: String in ["Score", "Radar", "Health", "Hotbar", "Toast"]:
+			var c: Control = hud.get_node(n)
+			if c.visible: rects[n] = Rect2(c.position, c.size * c.scale)
+		var board: Control = world.get_node("UI/TeamBoard")
+		check(board.visible, "%s team board shown" % mode)
+		rects["TeamBoard"] = Rect2(board.position, board.size)
+		var ml: Control = world.get_node("UI/ModeLine")
+		if ml.visible: rects["ModeLine"] = Rect2(ml.position, ml.size)
+		rects["Pause"] = world.touch.pause_rect()
+		var keys := rects.keys()
+		for k: String in keys:
+			if k != "Pause" and k != "Toast":
+				check(safe.grow(0.5).encloses(rects[k]), "%s %s %s inside safe %s" % [mode, k, rects[k], safe])
+		for i in keys.size():
+			for j in range(i + 1, keys.size()):
+				check(not rects[keys[i]].intersects(rects[keys[j]]), "%s: %s %s overlaps %s %s" % [mode, keys[i], rects[keys[i]], keys[j], rects[keys[j]]])
+		print("HUD teams %s checked (%s)" % [mode, ", ".join(keys)])
+		world.free()
+		await process_frame

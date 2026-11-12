@@ -5,6 +5,9 @@ extends SceneTree
 ## maps. Checks that the match ends by the mode's rule (K.O. limit, team K.O. limit, last one standing, top of the
 ## Weapon Ladder), that the results panel shows after ModeRules.END_TIME, team colours, dashes in Ninja, the shrinking
 ## floor, finite state, and no node leaks.
+## Godot-only modes (res://data/extra/modes.json): Team Deathmatch (a team reaches 30), Death Match (first to 20),
+## Sudden Death (one life: K.O.s and falls eliminate, the player is pushed off and spectates until one stands) and Chaos
+## (10 fighters, 5 v 5 to 50, random events that end cleanly; prints the step time).
 
 const FRAME := 1.0 / 30.0           ## coarse frames: the sim still steps at 1/120
 ## [mode, map, K.O. limit (-1 = preset), hp, max simulated minutes]
@@ -21,6 +24,11 @@ const CASES := [
 	["mega", "shrink", -1, 100.0, 8.0],
 	["mega", "squeeze", -1, 100.0, 8.0],
 	["gungame", "arena", -1, 60.0, 14.0],
+	["tdm", "arena", -1, 50.0, 16.0],
+	["deathmatch", "park", -1, 50.0, 16.0],
+	["sudden", "arena", -1, 100.0, 8.0],
+	["sudden", "shrink", -1, 100.0, 8.0],
+	["chaos", "arenaxl", -1, 50.0, 20.0],
 ]
 
 var fails := 0
@@ -71,7 +79,7 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 	world.player_class = "bruiser"
 	world.rng_seed = 777
 	world.hp_setting = hp
-	world.dyn_choice = "off"
+	world.dyn_choice = "wobble" if mode == "chaos" else "off"     # Chaos: a tile floor so the floor event can run
 	root.add_child(world)
 	var sim: MatchSim = world.sim
 	var c := sim.combat
@@ -91,6 +99,17 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 		for f: FighterState in sim.fighters: check(f.lives == c.lives_mode, "%s: %s starts with %d lives" % [tag, f.name, c.lives_mode])
 	if mode == "gungame":
 		for f: FighterState in sim.fighters: check(f.weapon == ModeRules.GG[0], "%s: %s starts on the first rung (%s)" % [tag, f.name, f.weapon])
+	if mode == "tdm": check(c.teams == 2 and sim.fighters.size() == 4, "%s: 2 v 2 from 3 bots (%d per side)" % [tag, c.teams])
+	if mode == "chaos":
+		check(sim.fighters.size() == 10 and c.teams == 5, "%s: 10 fighters, 5 v 5 (%d)" % [tag, sim.fighters.size()])
+		check(not r.chaos.is_empty(), "%s: chaos events armed" % tag)
+	var chaos_seq: Array = []
+	var chaos_bad := 0
+	var step_us := 0
+	var steps := 0
+	var spect_ok := false
+	var spect_cycled := false
+	var pushed := false
 	var shrinks := not r.shrink.is_empty()
 	check(shrinks == (map == "shrink" or map == "squeeze"), "%s: shrinking floor %s" % [tag, shrinks])
 	var frames := int(minutes * 60.0 / FRAME)
@@ -120,7 +139,24 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 		st.hold("script", "jump", i % 87 < 2)
 		var dn := 0
 		for f: FighterState in sim.fighters: dn += f.dash_n
+		if mode == "sudden" and not pushed and sim.elapsed() > 3.0 and not p.dead:   # off the edge: a fall eliminates too
+			p.phys.place(60.0, -30.0, 0.0); p.last_attacker = null; pushed = true
+		var us0 := Time.get_ticks_usec()
 		world.tick(FRAME)
+		step_us += Time.get_ticks_usec() - us0; steps += 1
+		if mode == "chaos":
+			var ch := r.chaos
+			if int(world.counts.get("chaos_end", 0)) > chaos_seq.size(): chaos_seq.append(ch["last"])
+			if ch["id"] == "" and not r.match_over:          # between events: the normal rules are back
+				for f: FighterState in sim.fighters:
+					if f.phys.grav_scale != c.grav_setting or f.big_t > 0.0: chaos_bad += 1
+				if c.kb_setting != float(ch["kb0"]): chaos_bad += 1
+		if mode == "sudden" and p.elim and not r.match_over:
+			var sp: FighterState = world.spectating
+			if sp != null and not sp.elim and sp != p: spect_ok = true
+			if sp != null and not spect_cycled and r.survivors().size() >= 2:
+				world.spectate_next()
+				spect_cycled = world.spectating != sp and world.spectating != null and not world.spectating.elim
 		var dn2 := 0
 		for f: FighterState in sim.fighters: dn2 += f.dash_n
 		if dn2 < dn: dashes += 1
@@ -155,6 +191,28 @@ func _play(mode: String, map: String, limit: int, hp: float, minutes: float) -> 
 		else:
 			check(w.ko >= r.limit and r.limit > 0, "%s: winner reached %d K.O.s (%d)" % [tag, r.limit, w.ko])
 	if mode == "ninja": check(dashes > 0, "%s: someone dashed" % tag)
+	if mode == "sudden":
+		check(pushed and p.elim and int(p.st["falls"]) >= 1, "%s: the player's fall eliminated them" % tag)
+		check(spect_ok, "%s: the camera followed a survivor after the player was out" % tag)
+		check(spect_cycled, "%s: tap switched the spectated fighter" % tag)
+		check(world.touch.spectate_mode, "%s: touch layer in spectator mode" % tag)
+		for f: FighterState in sim.fighters:
+			if int(f.st["deaths"]) > 0: check(f.elim, "%s: %s was out after one death" % [tag, f.name])
+			check(int(f.st["deaths"]) <= 1, "%s: %s died once at most (%d)" % [tag, f.name, int(f.st["deaths"])])
+		var fell := 0
+		for f: FighterState in sim.fighters: fell += int(f.st["falls"])
+		print("SUDDEN %-14s eliminated=%d falls=%d spectating=%s" % [tag, sim.fighters.size() - r.survivors().size(), fell,
+			world.spectating.name if world.spectating else "-"])
+	if mode == "chaos":
+		var ok_seq := true
+		for k in range(1, chaos_seq.size()):
+			if chaos_seq[k] == chaos_seq[k - 1]: ok_seq = false
+		print("CHAOS %-15s events=%s warns=%d ms/step=%.3f (10 fighters, %d frames)" % [tag, chaos_seq, int(world.counts.get("chaos_warn", 0)),
+			step_us / 1000.0 / maxf(1.0, steps * 4.0), steps])
+		check(chaos_seq.size() >= 3, "%s: several chaos events ran (%d)" % [tag, chaos_seq.size()])
+		check(ok_seq, "%s: no event twice in a row %s" % [tag, chaos_seq])
+		check(chaos_bad == 0, "%s: rules restored between events (%d bad)" % [tag, chaos_bad])
+		check(int(world.counts.get("chaos_warn", 0)) >= chaos_seq.size(), "%s: every event was announced" % tag)
 	if shrinks: check(min_size < float(ModeRules.SHRINK[map]["S0"]) - 10.0, "%s: the floor shrank (min %.1f)" % [tag, min_size])
 	world.queue_free()
 	await process_frame

@@ -26,13 +26,13 @@ func _run() -> void:
 	settings = root.get_node("Settings")
 	settings.set_value("cam_auto_center", true)
 	settings.set_value("cam_center_dist", 5.0)
-	var walk := _walk("offset", 1.2, Vector2.ZERO, 14.0, {})
-	_walk("strafe", PI / 2.0, Vector2(1, 0), 14.0, {})
-	_walk("backpedal", -2.2, Vector2.ZERO, 14.0, {})
-	var sprint := _walk("sprint", 1.2, Vector2.ZERO, 16.0, {"sprint": true})
+	var walk := _walk("offset", 1.2, Vector2.ZERO, 34.0, {})
+	_walk("strafe", PI / 2.0, Vector2(1, 0), 34.0, {})
+	_walk("backpedal", -2.2, Vector2.ZERO, 34.0, {})
+	var sprint := _walk("sprint", 1.2, Vector2.ZERO, 38.0, {"sprint": true})
 	check(sprint["settle_t"] > 0.0 and sprint["settle_t"] < walk["settle_t"], "sprint centres faster (%.2f s vs %.2f s)" % [sprint["settle_t"], walk["settle_t"]])
 	_walk("drag", 1.0, Vector2.ZERO, 12.0, {"drag": true})
-	_walk("aim", 1.0, Vector2.ZERO, 7.0, {"aim": true})
+	_walk("aim", 1.0, Vector2.ZERO, 8.0, {"aim": true})
 	settings.set_value("cam_auto_center", false)
 	_walk("off", 1.0, Vector2.ZERO, 12.0, {"off": true})
 	settings.set_value("cam_auto_center", true)
@@ -115,7 +115,7 @@ func _walk(name: String, offset: float, stick: Vector2, metres: float, opt: Dict
 			st.hold("script", "aim", false)        # let go of aim, keep walking: another full distance before it centres
 			phase2 = true
 			yaw0 = cam.yaw
-			metres = walked + 13.0
+			metres = walked + 30.0
 	var err_end := wrapf(head - cam.yaw, -PI, PI)
 	print("CAM %-8s walked=%.1fm t=%.2fs yaw_err0=%.2f end=%.3f pitch=%.3f over=%.4f quiet=%.5f dev=%.3fm head_dev=%.3f settle=%.2fs" % [
 		name, walked, t, e0, err_end, cam.pitch, max_over, quiet_drift, max_dev, max_head_dev, settle_t])

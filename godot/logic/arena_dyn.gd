@@ -11,11 +11,18 @@ var plan: Dictionary = {}
 var tiles: Array = []             ## {s, ix, iz, mask, off, dy, low}  (s = the tile's solid, in sim.solids)
 var drift: Array = []             ## {s, i, axis, bi, d, dd}          (i = the block's index in the map's boxes)
 var support := {"tile": false, "drift": false}
+## Chaos floor event (Godot-only): another tile kind blended over this one for a while (ModeRules.update_chaos).
+var force_k := ""                 ## the forced kind ("" = none)
+var force_w := 0.0                ## its blend weight, eases 0 -> 1 -> 0 over FORCE_RAMP so tiles never jump
+var force_left := 0.0
+var _force_t := -1.0
+const FORCE_RAMP := 1.0
 var fx: Array = []                ## quake moments for the world: {type: "drop" | "rise", x, y, z}; the world drains it
 
 ## dynSetup (from MatchSim.setup, after the solids are loaded). Splits the floor into tiles in `solids` in place.
 func setup(map_id: String, map: Dictionary, solids: Array, ladders: Array, pads: Array, p_choice: String, p_seed: int) -> void:
 	kind = "off"; plan = {}; tiles = []; drift = []; fx = []
+	force_k = ""; force_w = 0.0; force_left = 0.0; _force_t = -1.0
 	support = {"tile": false, "drift": false}
 	choice = p_choice if Dynamics.KINDS.has(p_choice) else "off"
 	seed = p_seed & Dynamics.U32
@@ -61,6 +68,19 @@ func _build_drift(solids: Array) -> void:
 		drift.append({"s": solids[d["i"]], "i": d["i"], "axis": d["axis"], "bi": bi, "d": 0.0, "dd": 0.0})
 		bi += 1
 
+## Can the Chaos floor event run here? (tiles that move up and down: wobble / tilt / quake)
+func can_force() -> bool:
+	return (kind == "wobble" or kind == "tilt" or kind == "quake") and not tiles.is_empty()
+
+## The kind the floor event forces: a quake, or a wobble where the floor already quakes.
+func force_kind() -> String:
+	return "wobble" if kind == "quake" else "quake"
+
+## Blend `k` over the floor for `dur` seconds ("" = ease back now).
+func force(k: String, dur: float) -> void:
+	if k == "" or not can_force(): force_left = 0.0; return
+	force_k = k; force_left = dur
+
 ## dynSupport: the moving thing a fighter stands on (highest top), or {}.
 static func support_of(f: FighterState, list: Array) -> Dictionary:
 	if f.is_ghost or not f.phys.grounded or f.dead: return {}
@@ -98,15 +118,24 @@ func update(t: float, fighters: Array) -> void:
 		return
 	var nx: int = plan["nx"]
 	var nz: int = plan["nz"]
+	if force_k != "":                                    # Chaos floor event: ease in, hold, ease out
+		var fdt := clampf(t - _force_t, 0.0, 0.1) if _force_t >= 0.0 else 0.0
+		force_left -= fdt
+		force_w = clampf(force_w + (fdt if force_left > 0.0 else -fdt) / FORCE_RAMP, 0.0, 1.0)
+		if force_left <= 0.0 and force_w <= 0.0: force_k = ""
+	_force_t = t
+	var quake := kind == "quake" or (force_k == "quake" and force_w > 0.5)
 	var on: Array = []
 	for f: FighterState in fighters: on.append(support_of(f, tiles))
 	for e: Dictionary in tiles:
 		var off := Dynamics.offset(kind, seed, t, e["ix"], e["iz"], nx, nz, e["mask"])
+		if force_k != "" and force_w > 0.0:
+			off = lerpf(off, Dynamics.offset(force_k, seed, t, e["ix"], e["iz"], nx, nz, e["mask"]), force_w)
 		var dy: float = off - e["off"]
 		e["dy"] = dy
 		if dy == 0.0: continue
 		var s: Dictionary = e["s"]
-		if kind == "quake":
+		if quake:
 			var cx: float = (s.minX + s.maxX) * 0.5
 			var cz: float = (s.minZ + s.maxZ) * 0.5
 			if not e["low"] and off <= -0.3:

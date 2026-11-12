@@ -45,7 +45,8 @@ func set_map(map: Dictionary) -> void:
 func pick_crate_key() -> String:
 	var tot := 0.0
 	var ents: Array = []
-	var allow: Array = drops.get("allow", {}).get(combat.mode_id, [])
+	var al: Dictionary = drops.get("allow", {})
+	var allow: Array = al.get(combat.mode_id, al.get(str(combat.mode.get("dropsAs", "")), []))   # Godot-only modes borrow a pool
 	var base: Dictionary = drops.get("base", {})
 	var mult: Dictionary = drops.get("mult", {})
 	for k: String in base:

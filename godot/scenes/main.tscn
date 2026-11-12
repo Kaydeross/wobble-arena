@@ -71,21 +71,7 @@ theme_override_constants/separation = 8
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.812, 0.353, 1)
 theme_override_font_sizes/font_size = 17
-text = "GUEST"
-
-[node name="Dot" type="Panel" parent="Safe/Col/Top/GuestChip/Row"]
-custom_minimum_size = Vector2(10, 10)
-layout_mode = 2
-size_flags_vertical = 4
-mouse_filter = 2
-
-[node name="Status" type="Label" parent="Safe/Col/Top/GuestChip/Row"]
-custom_minimum_size = Vector2(110, 0)
-layout_mode = 2
-theme_override_font_sizes/font_size = 17
-text = "Offline"
-clip_text = true
-text_overrun_behavior = 3
+text = "Guest"
 
 [node name="Gear" type="Button" parent="Safe/Col/Top"]
 custom_minimum_size = Vector2(56, 56)
@@ -105,7 +91,7 @@ theme_override_constants/separation = 16
 alignment = 1
 
 [node name="Play" type="Button" parent="Safe/Col/Body/Home"]
-custom_minimum_size = Vector2(560, 192)
+custom_minimum_size = Vector2(520, 176)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_type_variation = &"PrimaryButton"
@@ -128,7 +114,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.0627, 0.1686, 0.2078, 1)
 theme_override_colors/font_shadow_color = Color(1, 1, 1, 0.35)
 theme_override_font_sizes/font_size = 84
-text = "PLAY"
+text = "Play"
 horizontal_alignment = 1
 
 [node name="Sub" type="Label" parent="Safe/Col/Body/Home/Play/Stack"]
@@ -136,16 +122,43 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.0627, 0.1686, 0.2078, 0.8)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0)
 theme_override_font_sizes/font_size = 21
-text = "Offline vs bots"
+text = "Offline, against computer players"
 horizontal_alignment = 1
 clip_text = true
 text_overrun_behavior = 3
 
 [node name="Online" type="Button" parent="Safe/Col/Body/Home"]
-custom_minimum_size = Vector2(300, 60)
+custom_minimum_size = Vector2(520, 84)
 layout_mode = 2
 size_flags_horizontal = 4
-text = "Play online"
+
+[node name="Stack" type="VBoxContainer" parent="Safe/Col/Body/Home/Online"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_right = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Big" type="Label" parent="Safe/Col/Body/Home/Online/Stack"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+text = "Play online with friends"
+horizontal_alignment = 1
+
+[node name="Sub" type="Label" parent="Safe/Col/Body/Home/Online/Stack"]
+layout_mode = 2
+theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
+text = "Needs internet · join a room code"
+horizontal_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
 
 [node name="Online" type="PanelContainer" parent="Safe/Col/Body"]
 visible = false
@@ -171,7 +184,7 @@ text = "Back"
 layout_mode = 2
 theme_type_variation = &"TitleLabel"
 theme_override_font_sizes/font_size = 30
-text = "Play online"
+text = "Play online with friends"
 
 [node name="ServerRow" type="HBoxContainer" parent="Safe/Col/Body/Online/Box"]
 layout_mode = 2
@@ -297,6 +310,7 @@ text_overrun_behavior = 3
 [node name="Tip" type="Label" parent="Safe/Col"]
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
+theme_override_font_sizes/font_size = 16
 text = "Tip"
 horizontal_alignment = 1
 autowrap_mode = 3

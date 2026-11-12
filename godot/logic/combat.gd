@@ -79,7 +79,7 @@ static func read_json(path: String) -> Variant:
 func load_content(dir: String = "res://data") -> void:
 	weapons_data = read_json(dir.path_join("weapons.json"))
 	classes = read_json(dir.path_join("classes.json"))
-	modes = read_json(dir.path_join("modes.json"))
+	modes = ModeRules.merge_extra(read_json(dir.path_join("modes.json")))   # + the Godot-only modes (res://data/extra)
 	var dp := dir.path_join("damage.json")
 	var dd: Variant = read_json(dp) if FileAccess.file_exists(dp) else null
 	damage = dd if dd is Dictionary and dd.has("tables") else DEFAULT_DAMAGE
@@ -96,7 +96,7 @@ func is_friend(a: FighterState, b: FighterState) -> bool:
 	return teams != 0 and a != null and b != null and a != b and a.team == b.team
 
 func max_hp(f: FighterState) -> float:
-	return hp_setting * (2.0 if giant else 1.0) * f.cls_hp
+	return hp_setting * (2.0 if giant or f.big_t > 0.0 else 1.0) * f.cls_hp
 
 ## Bots only hurt each other in a free-for-all brawl.
 func bots_can_hit(a: FighterState, e: FighterState) -> bool:
@@ -186,6 +186,8 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		dmg *= attacker.cls_dmg
 	if attacker != null and attacker != v and attacker.rage_t > 0.0:
 		dmg *= 1.5
+	if attacker != null and attacker != v and attacker.big_t > 0.0:    # Chaos giant (Godot-only)
+		dmg *= 1.5
 	if v.shield_t > 0.0:
 		dmg *= 0.5
 	if v.down_t > 0.0 and not (v.trap_t > 0.0):
@@ -203,7 +205,7 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		ev({"type": "hurt", "f": v, "amount": 0.35 + dmg / 90.0})
 	var light := force < 8.0           # bullets, knives: a small shove, no stun
 	var kf := 0.4 if light else 1.0
-	var fk := (kb_setting if kb_setting != 0.0 else 1.0) * 0.8 * float(mode.get("kbMul", 1.0) if mode.get("kbMul", 0) else 1.0) * v.cls_kb
+	var fk := (kb_setting if kb_setting != 0.0 else 1.0) * 0.8 * float(mode.get("kbMul", 1.0) if mode.get("kbMul", 0) else 1.0) * v.cls_kb * (0.5 if v.big_t > 0.0 else 1.0)
 	var p := v.phys
 	p.vx += dx * force * kf * fk
 	p.vz += dz * force * kf * fk
@@ -238,6 +240,7 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 			add_ko(attacker, v)
 		else:
 			ev({"type": "ko", "killer": null, "victim": v, "weapon": ""})
+		if rules.one_life(): rules.eliminate(v, true)    # Sudden Death: out at once
 		if net_started and v.net_slot >= 0 and not v.is_ghost and (v.is_player or net_host):
 			var msg := NetSnapshot.encode_ko(attacker.net_slot if attacker != null and attacker.net_slot >= 0 else -1, v.net_slot)
 			ev({"type": "net", "msg": msg})
