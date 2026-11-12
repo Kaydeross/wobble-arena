@@ -13,29 +13,48 @@ extends SceneTree
 ## The Account sheet (ui/account_sheet.gd, from the title chip): every page (guest, sign up, log in, forgot password,
 ## recovery code, signed in, change password, delete, conflict) inside the safe area, nothing overlapping, touch
 ## targets at least 44 pt tall; _logic checks the chip opens it and the delete button waits for the typed word.
+## Polish pass: the room browser in the online panel (loading, a full list with greyed-out rows, empty, server
+## unreachable), every Settings section, the Controls picture, the three how-to cards and the pause menu (menu,
+## quit question, its Settings and Controls pages) at every size, also iPhone 8 / SE landscape (667x375): inside the
+## safe area, nothing overlapping, rows reachable by scrolling, touch targets at least TOUCH_PX tall.
 ##   godot --headless --path godot --script res://tests/ui_layout_test.gd -- --no-save   (npm run test:godot-ui)
 
 const BASE := Vector2(1170, 540)   ## project.godot viewport size (stretch canvas_items, aspect expand)
 ## window size in points, safe-area insets in points (left, top, right, bottom) like an iPhone 15 / 16
 const CASES := [
 	[Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
+	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]],
 	[Vector2(1170, 540), [59.0, 0.0, 59.0, 21.0]],
 	[Vector2(1280, 720), [0.0, 0.0, 0.0, 0.0]],
 	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0]],
 ]
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
-const SCREENS := ["title", "online", "settings", "host", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1",
+const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
+	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
+	"pause-settings", "pause-help", "host", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1",
 	"a-guest", "a-signup", "a-login", "a-reset", "a-code", "a-signed", "a-password", "a-delete", "a-conflict"]
 const SIGNED := ["a-signed", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
+## Touch targets on the new pages, in canvas px: 44 pt at the reference iPhone landscape (852x393 -> canvas 1171x540).
+## (667x375 is width-bound: its canvas is 1170x658, so the same buttons are about 34 pt there.)
+const TOUCH_PX := 60.0
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
 const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop"]
 const OB := "Safe/Col/Body/Online/Box/"
-## the online panel (back, server, room, name, join, login fields, status, roster): also must not overlap each other
-const ONLINE := [OB + "Head/Back", OB + "ServerRow/Server", OB + "RoomRow/Room", OB + "RoomRow/Name", OB + "RoomRow/Join", OB + "RoomRow/Host",
-	OB + "AcctRow/User", OB + "AcctRow/Pass", OB + "AcctRow/Login", OB + "Status", OB + "Roster"]
-const SHEET := ["Sheet/Center/Card/Box/Fps", "Sheet/Center/Card/Box/Done"]
+## the online panel (back, name, the room list, join with a code, host, account, status, roster): must not overlap
+const ONLINE := [OB + "Head/Back", OB + "Head/Title", OB + "Head/Name", OB + "Main/Rooms/Head/Refresh", OB + "Main/Rooms/Scroll",
+	OB + "Main/Side/CodeL", OB + "Main/Side/CodeRow/Room", OB + "Main/Side/CodeRow/Join", OB + "Main/Side/Host", OB + "Main/Side/Account",
+	OB + "Foot/Status", OB + "Foot/Roster"]
+## mock public rooms: a normal one, one playing, a full one, another game version, and enough to scroll
+const MOCK_ROOMS := [
+	{"id": "r1", "name": "Wobble Party", "host": "Alice", "mode": "classic", "modeName": "Classic", "map": "Arena", "n": 3, "max": 8, "started": false, "build": "b77.0"},
+	{"id": "r2", "name": "Knockout Kings with a very long room name", "host": "Bob", "mode": "t2", "modeName": "2 vs 2", "map": "Bouncy Rooftop", "n": 2, "max": 4, "started": true, "build": "b77.0"},
+	{"id": "r3", "name": "Full House", "host": "Carol", "mode": "classic", "modeName": "Classic", "map": "Farm", "n": 4, "max": 4, "started": false, "build": "b77.0"},
+	{"id": "r4", "name": "Old Version Room", "host": "Dan", "mode": "classic", "modeName": "Classic", "map": "Volcano", "n": 1, "max": 6, "started": false, "build": "b70.2"},
+	{"id": "r5", "name": "Late Night", "host": "Eve", "mode": "sudden", "modeName": "Sudden Death", "map": "Candy", "n": 1, "max": 8, "started": false, "build": ""},
+	{"id": "r6", "name": "Casual", "host": "Finn", "mode": "classic", "modeName": "Classic", "map": "Dojo", "n": 1, "max": 8, "started": false, "build": "b77.0"},
+]
 const HB := "HostSheet/Center/Card/Box/"
 ## host a room: name, who can join, seats, bots, Cancel / Create room
 const HOSTS := [HB + "Title", HB + "RoomName", HB + "Vis/P0", HB + "Vis/P1", HB + "Max/P2", HB + "Max/P8", HB + "Bots/P0", HB + "Bots/P7",
@@ -100,9 +119,33 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	root.add_child(vp)
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	vp.add_child(main)
+	main.browser.auto_refresh = false
 	var wiz := scr.begins_with("w")
-	var lock := scr.begins_with("l") or scr.begins_with("s") and scr != "settings"
+	var lock := scr.begins_with("l") or scr.begins_with("s") and not scr.begins_with("set-")
 	var acct := scr.begins_with("a-")
+	var over: Control = null          ## a new page / sheet checked generically (its visible controls)
+	var over_col: Control = null      ## its column (must fit the height)
+	var over_scroll: ScrollContainer = null
+	if scr.begins_with("pause"):
+		var pm: Control = load("res://ui/pause_menu.gd").new()
+		main.add_child(pm)
+		await process_frame
+		pm.open()
+		over = pm.card; over_col = pm.card
+		if scr == "pause-confirm": pm.ask_quit(); over = pm.confirm; over_col = pm.confirm
+		elif scr == "pause-settings": pm.open_settings(); over = pm.settings; over_col = pm.settings.col; over_scroll = pm.settings.scroll
+		elif scr == "pause-help": pm.open_help(); over = pm.help; over_col = pm.help.col
+	elif scr.begins_with("set-"):
+		main.show_settings(true, scr.substr(4))
+		over = main.settings; over_col = main.settings.col; over_scroll = main.settings.scroll
+	elif scr == "help":
+		main.show_settings(true, "controls")
+		main.settings.open_help()
+		over = main.settings.help; over_col = main.settings.help.col
+	elif scr.begins_with("intro"):
+		main.intro.open()
+		main.intro.go(int(scr.substr(5)))
+		over = main.intro.card; over_col = main.intro.card
 	var cloud: Node = root.get_node("Save").cloud
 	if acct:
 		if scr in SIGNED:
@@ -116,11 +159,13 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		var shop := scr.begins_with("s")
 		main.open_locker(shop)
 		main.locker._show_tab(main.locker.tabs()[int(scr.substr(1))])
-	elif scr == "online":
+	elif scr == "online" or scr.begins_with("rooms"):
 		main.show_tab(true)
-		main.get_node(OB + "Roster").text = "In the room: Alice, Bob, Carol"
-	elif scr == "settings":
-		main.show_settings(true)
+		main.get_node(OB + "Foot/Roster").text = "In the room: Alice, Bob, Carol"
+		if scr == "rooms": main.browser.show_rooms(load("res://net/room_list.gd").clean(MOCK_ROOMS))
+		elif scr == "rooms-empty": main.browser.show_rooms([])
+		elif scr == "rooms-error": main.browser.show_rooms([], load("res://net/room_list.gd").ERR_REACH)
+		over_scroll = main.browser.scroll
 	elif scr == "host":
 		main.show_tab(true)
 		main.show_host(true)
@@ -142,7 +187,19 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	var safe := Rect2(Vector2(ins[0], ins[1]), cs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	var inside: Array = []
 	var groups: Array = []      ## lists of paths that must not overlap each other
-	if acct:
+	if over != null:
+		for c: Control in _controls(over, over_scroll): inside.append(str(main.get_path_to(c)))
+		if over.name == "ControlsHelp": inside.append(str(main.get_path_to(over.pic)))
+		groups.append(inside)
+		check(over.is_visible_in_tree(), "%s page shown" % tag)
+		if win.x > win.y: _touch_sizes(main, inside, tag)
+		if over.name == "Settings":
+			var ts: ScrollContainer = over.get_node("Safe/Col/TabScroll")
+			check(ts.get_child(0).get_combined_minimum_size().x <= ts.size.x + 0.5, "%s settings tabs fit in one row (%.0f > %.0f)" % [tag, ts.get_child(0).get_combined_minimum_size().x, ts.size.x])
+			check(over.rows.get_child_count() >= 1, "%s section has rows" % tag)
+		if over_scroll: _scroll_rows(main, over_scroll, safe, tag, win.x > win.y)
+		_no_word(over, "fighter", tag)
+	elif acct:
 		var card: Control = main.account.card
 		for c: Control in _leaves(card): inside.append(str(main.get_path_to(c)))
 		groups.append(inside)
@@ -150,7 +207,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		for p: String in inside:
 			var c: Control = main.get_node(p)
 			if (c is Button or c is LineEdit) and win.x > win.y:   # (portrait shows the landscape canvas scaled down)
-				check(c.get_global_rect().size.y >= MIN_TOUCH * k - 0.5, "%s %s touch target %.0f tall" % [tag, p, c.get_global_rect().size.y])
+				check(c.get_global_rect().size.y >= TOUCH_PX - 0.5, "%s %s touch target %.0f tall" % [tag, p, c.get_global_rect().size.y])
 	elif lock:
 		inside = LFRAME.duplicate()
 		for b in main.locker.tab_row.get_children(): inside.append(L + "Body/Right/Tabs/" + b.name)
@@ -162,14 +219,18 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		groups.append(WFRAME)
 		groups.append(inside.slice(WFRAME.size()))
 	else:
-		var on_panel := scr in ["online", "host", "lobby"]
-		inside = BLOCKS + (ONLINE if on_panel else HOME)
-		groups.append(BLOCKS)
-		if scr == "online": groups.append(ONLINE)
+		var on_panel := scr in ["online", "host", "lobby"] or scr.begins_with("rooms")
+		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not (on_panel and b.ends_with("/Tip")))
+		inside = blocks + (ONLINE if on_panel else HOME)
+		groups.append(blocks)
+		if scr == "online" or scr.begins_with("rooms"):
+			groups.append(ONLINE)
+			if win.x > win.y: _touch_sizes(main, ONLINE, tag)
+			_scroll_rows(main, over_scroll, safe, tag, win.x > win.y)
+			_rooms_state(main.browser, scr, tag)
 		elif not on_panel: groups.append(HOME)
 		if scr == "host": inside = inside + HOSTS; groups.append(HOSTS)
 		if scr == "lobby": inside = inside + LOBBY; groups.append(LOBBY)
-		if scr == "settings": inside = inside + SHEET; groups.append(SHEET)
 	var rects := {}
 	for p: String in inside:
 		var n: Control = main.get_node(p)
@@ -182,7 +243,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 	if wiz: _page(main, int(scr.substr(1)), safe, tag)
 	if lock: _locker_grid(main.locker, safe, tag)
 	# the whole column fits (containers would otherwise overflow past the bottom)
-	var col: Control = main.wizard if wiz else main.locker if lock else main.account.card if acct else main.get_node("Safe/Col")
+	var col: Control = over_col if over_col != null else main.wizard if wiz else main.locker if lock else main.account.card if acct else main.get_node("Safe/Col")
 	check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 	_labels_fit(main, tag)
 	if lock:
@@ -201,7 +262,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 			check(sb.text == STEP_TEXT[i], "%s step pill %d says '%s'" % [tag, i + 1, sb.text])
 			check(sb.size.x + 0.5 >= sb.get_minimum_size().x, "%s step pill '%s' squeezed" % [tag, sb.text])
 		_no_word(main.wizard, "fighter", tag)
-	else:
+	elif over == null:
 		_not_cut(main.get_node("Safe/Col"), tag)
 		if scr == "title":
 			check(main.get_node("Safe/Col/Body/Home/Play/Stack/Big").text == "Play", "%s Play button says Play" % tag)
@@ -347,11 +408,29 @@ func _logic() -> void:
 	check(w2.map_id == "park" and w2.mode_id == "classic" and w2.bots == 5 and w2.diff == "hard" and w2.cls == "bruiser", "choices remembered")
 	m2.queue_free()
 	main.gear.pressed.emit()
-	check(main.sheet.visible, "gear opens the settings sheet")
-	main.fps_toggle.button_pressed = true
+	check(main.settings.visible, "gear opens the Settings screen")
+	main.settings.show_section("graphics")
+	main.settings.ctl["show_fps"].button_pressed = true
 	check(bool(st.get_value("show_fps")), "Show FPS saved")
-	main.fps_toggle.button_pressed = false
-	main.show_settings(false)
+	st.set_value("show_fps", false)
+	check(not main.settings.ctl["show_fps"].button_pressed, "the switch follows a change made elsewhere (F3)")
+	main.settings.ctl["effects"]["low"].pressed.emit()
+	check(str(st.get_value("effects")) == "low", "Effects saved (%s)" % st.get_value("effects"))
+	main.settings.ctl["effects"]["auto"].pressed.emit()
+	main.settings.ctl["screen_shake"].button_pressed = false
+	check(not bool(st.get_value("screen_shake")), "Screen shake saved")
+	main.settings.ctl["screen_shake"].button_pressed = true
+	main.settings.show_section("audio")
+	main.settings.ctl["sfx_volume"].value = 0.4
+	var sb := AudioServer.get_bus_index("SFX")
+	check(sb >= 0 and absf(db_to_linear(AudioServer.get_bus_volume_db(sb)) - 0.4) < 0.01, "Sound effects volume drives the SFX bus live")
+	main.settings.ctl["sfx_volume"].value = 1.0
+	main.settings.show_section("controls")
+	main.settings._on_row_tapped(main.settings.rows.get_node("Row_touch_lefty"))
+	check(bool(st.get_value("touch_lefty")), "a tap on a row's words flips its switch")
+	st.set_value("touch_lefty", false)
+	main.go_back()
+	check(not main.settings.visible, "Back closes the Settings screen")
 	# the title chip opens the Account sheet; Delete waits for the typed word
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = true
@@ -477,6 +556,69 @@ func _stage(main: Control) -> void:
 	check(not w.stage.active and w.stage.render_target_update_mode == SubViewport.UPDATE_DISABLED, "stage stops off its page")
 	w.set_class("bruiser")
 	main.close_wizard()
+
+## Visible buttons, fields, sliders and labels under `n`, not looking inside `skip` (a scroll list checked by row).
+func _controls(n: Node, skip: Node = null) -> Array:
+	var out: Array = []
+	for c in n.get_children():
+		if not (c is Control) or not (c as Control).is_visible_in_tree() or c == skip: continue
+		if c is Button or c is LineEdit or c is Slider or (c is Label and (c as Label).text != ""): out.append(c)
+		else: out.append_array(_controls(c, skip))
+	return out
+
+## Buttons, fields and sliders at least TOUCH_PX tall.
+func _touch_sizes(main: Node, paths: Array, tag: String) -> void:
+	for p: String in paths:
+		var c: Control = main.get_node(p)
+		if c is Button or c is LineEdit or c is Slider:
+			check(c.get_global_rect().size.y >= TOUCH_PX - 0.5, "%s %s touch target %.0f tall" % [tag, p, c.get_global_rect().size.y])
+
+## A scrolled list (Settings rows, the room list): inside the safe area, no sideways overflow, rows apart and inside
+## the list's width, every row reachable, the controls in a row apart from each other and big enough to tap.
+func _scroll_rows(main: Node, sc: ScrollContainer, safe: Rect2, tag: String, touch: bool) -> void:
+	var sr := sc.get_global_rect()
+	check(safe.grow(0.5).encloses(sr), "%s list %s inside the safe area %s" % [tag, sr, safe])
+	check(sr.size.y >= 60.0, "%s list tall enough to use (%.0f)" % [tag, sr.size.y])
+	var content: Control = null
+	for c in sc.get_children(): if c is Control and not (c is ScrollBar): content = c
+	check(content.get_combined_minimum_size().x <= sr.size.x + 0.5, "%s list content min width %.0f fits %.0f" % [tag, content.get_combined_minimum_size().x, sr.size.x])
+	var rows: Array = content.get_children().filter(func(r: Node) -> bool: return r is Control and (r as Control).visible)
+	check(rows.size() > 0, "%s list has rows" % tag)
+	var bottom := 0.0
+	for i in rows.size():
+		var r: Control = rows[i]
+		var rr := r.get_global_rect()
+		bottom = maxf(bottom, r.position.y + r.size.y)
+		check(rr.position.x >= sr.position.x - 0.5 and rr.end.x <= sr.end.x + 0.5, "%s row %s %s within the list width %s" % [tag, r.name, rr, sr])
+		if i + 1 < rows.size():
+			check(not rr.grow(-0.5).intersects((rows[i + 1] as Control).get_global_rect().grow(-0.5)), "%s rows %s and %s overlap" % [tag, r.name, rows[i + 1].name])
+		var cs: Array = [r] if r is Button else _controls(r)
+		for a in cs.size():
+			var ca: Control = cs[a]
+			if touch and (ca is Button or ca is LineEdit or ca is Slider):
+				check(ca.size.y >= TOUCH_PX - 0.5, "%s %s/%s touch target %.0f tall" % [tag, r.name, ca.name, ca.size.y])
+			for b in range(a + 1, cs.size()):
+				check(not ca.get_global_rect().grow(-0.5).intersects((cs[b] as Control).get_global_rect().grow(-0.5)), "%s %s: %s overlaps %s" % [tag, r.name, ca.name, cs[b].name])
+	var max_scroll := maxf(0.0, content.size.y - sc.size.y)
+	check(bottom - sc.size.y <= max_scroll + 0.5, "%s every row reachable (bottom %.0f, scroll %.0f)" % [tag, bottom, max_scroll])
+	_labels_fit(content, tag)
+
+## The room list says what is going on: rows (greyed out with the reason when they cannot be joined), empty, error.
+func _rooms_state(b: Control, scr: String, tag: String) -> void:
+	match scr:
+		"rooms":
+			check(b.state == "rooms" and b.rows_by_id.size() == MOCK_ROOMS.size(), "%s a row per room (%d)" % [tag, b.rows_by_id.size()])
+			check(not b.rows_by_id["r1"].disabled and not b.rows_by_id["r5"].disabled, "%s joinable rooms are enabled" % tag)
+			check(b.rows_by_id["r3"].disabled and b.rows_by_id["r3"].get_node("Row/Info/Sub").text.contains("Full"), "%s a full room is greyed out and says Full" % tag)
+			check(b.rows_by_id["r4"].disabled and b.rows_by_id["r4"].get_node("Row/Info/Sub").text.contains("Different game version"), "%s another version is greyed out and says why" % tag)
+			check(b.rows_by_id["r2"].get_node("Row/Players").text == "2/4", "%s players n/max" % tag)
+			check(b.rows_by_id["r2"].get_node("Row/Info/Sub").text.contains("Playing now") and b.rows_by_id["r1"].get_node("Row/Info/Sub").text.contains("In the lobby"), "%s started / lobby shown" % tag)
+		"rooms-empty":
+			check(b.state == "empty" and b.msg_l.text.begins_with("No rooms yet") and b.action_b.text == "Host a room", "%s empty state (%s)" % [tag, b.msg_l.text if b.msg_l else ""])
+		"rooms-error":
+			check(b.state == "error" and b.msg_l.text.contains("reach the game server") and b.action_b.text == "Try again", "%s error state" % tag)
+		"online":
+			check(b.msg_l != null and b.msg_l.text == "Looking for rooms…", "%s loading state" % tag)
 
 ## Visible buttons, fields and labels under `n` (the Account card's controls).
 func _leaves(n: Node) -> Array:

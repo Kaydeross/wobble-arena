@@ -65,6 +65,9 @@ func _start() -> void:
 		frames = 40
 		process_frame.connect(_wait)
 		return
+	if shot.begins_with("polish-") and not shot.begins_with("polish-pause"):
+		_polish()
+		return
 	if shot == "title-construction": _settings().set_value("mode", "construction")
 	if shot == "modes2-mode": shot = "newmodes-mode2"
 	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
@@ -118,6 +121,36 @@ func _start() -> void:
 	process_frame.connect(_frame)
 
 var _scroll_wizard: Node = null
+
+## Menu polish shots (docs/style/godot-polish-*.png): polish-rooms / polish-rooms-empty / polish-rooms-error (the
+## online panel's room list), polish-settings-<section>, polish-help (the controls picture), polish-intro-1..3;
+## polish-pause, polish-pause-confirm, polish-pause-settings, polish-pause-help run in a match (see _frame).
+func _polish() -> void:
+	var m: Node = load("res://scenes/main.tscn").instantiate()
+	m.auto_intro = false
+	root.add_child(m)
+	m.browser.auto_refresh = false
+	if shot.begins_with("polish-rooms"):
+		m.show_tab(true)
+		if shot == "polish-rooms":
+			m.browser.show_rooms(load("res://net/room_list.gd").clean([
+				{"id": "r1", "name": "Wobble Party", "host": "Alice", "modeName": "Classic", "map": "Bouncy Rooftop", "n": 5, "max": 8, "started": true, "build": "b77.0"},
+				{"id": "r2", "name": "Friday Knockouts", "host": "Bob", "modeName": "2 vs 2", "map": "Arena", "n": 3, "max": 4, "started": false, "build": "b77.0"},
+				{"id": "r3", "name": "Full House", "host": "Carol", "modeName": "Classic", "map": "Farm", "n": 4, "max": 4, "started": true, "build": "b77.0"},
+				{"id": "r4", "name": "Old Version Room", "host": "Dan", "modeName": "Sudden Death", "map": "Volcano", "n": 2, "max": 6, "started": false, "build": "b70.2"},
+				{"id": "r5", "name": "Chill", "host": "Eve", "modeName": "Classic", "map": "Candy", "n": 1, "max": 8, "started": false, "build": "b77.0"}]))
+		elif shot == "polish-rooms-empty": m.browser.show_rooms([])
+		else: m.browser.show_rooms([], load("res://net/room_list.gd").ERR_REACH)
+	elif shot.begins_with("polish-settings-"):
+		m.show_settings(true, shot.substr(16))
+	elif shot == "polish-help":
+		m.show_settings(true, "controls")
+		m.settings.open_help()
+	elif shot.begins_with("polish-intro-"):
+		m.intro.open()
+		m.intro.go(int(shot.substr(13)) - 1)
+	frames = 40
+	process_frame.connect(_wait)
 
 func _wait() -> void:
 	if _scroll_wizard != null and frames == 20:       # scroll the game type grid to its end (the new modes)
@@ -208,8 +241,12 @@ func _frame() -> void:
 		sv.on_ko(true, false); sv.on_ko(true, false)
 		world._reward = sv.finish_match(true, "Classic", "Arena")
 		world._show_offline_results(true, "")
-	if shot == "pause" and i == 345:
+	if (shot == "pause" or shot.begins_with("polish-pause")) and i == 345:
 		world._toggle_pause()
+		match shot:
+			"polish-pause-confirm": world.pause_menu.ask_quit()
+			"polish-pause-settings": world.pause_menu.open_settings()
+			"polish-pause-help": world.pause_menu.open_help()
 	if i == 352 and shot != "killcam" or i == 900:
 		process_frame.disconnect(_frame)
 		_save()

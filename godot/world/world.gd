@@ -36,7 +36,7 @@ const FEED_TIME := 5.0
 @onready var input: PlayerInput = $PlayerInput
 @onready var touch: TouchControls = $UI/TouchControls
 @onready var hud: MatchHud = $UI/Hud
-@onready var pause_menu: Control = $UI/Pause
+@onready var pause_menu: PauseMenu = $UI/Pause
 
 var sim: MatchSim
 var session: GuestSession = null   ## online guest session (null = offline)
@@ -101,13 +101,10 @@ func _ready() -> void:
 	touch.pause_pressed.connect(_toggle_pause)
 	touch.spectate_tap.connect(_on_spectate_tap)
 	input.pause_requested.connect(_toggle_pause)
-	$UI/Pause/Panel/Box/Resume.pressed.connect(_toggle_pause)
-	$UI/Pause/Panel/Box/Title.pressed.connect(_on_title_pressed)
-	var fps: CheckButton = $UI/Pause/Panel/Box/Fps
-	fps.button_pressed = bool(Settings.get_value("show_fps", false))
-	fps.toggled.connect(func(on: bool): Settings.set_value("show_fps", on))
-	Settings.changed.connect(_on_setting)
-	JuicyButton.attach_all(pause_menu)
+	# the pause menu (ui/pause_menu.gd): Resume, Settings, Controls, Quit to title (asks while the match runs)
+	pause_menu.resume_requested.connect(_toggle_pause)
+	pause_menu.quit_requested.connect(_on_title_pressed)
+	pause_menu.match_running = func() -> bool: return _results == null
 	pause_menu.visible = false
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
 	proj_views = ProjectileViews.new(); proj_views.name = "Projectiles"; add_child(proj_views)
@@ -126,7 +123,7 @@ func _ready() -> void:
 		session.votes_changed.connect(_on_net_votes)
 		session.ended.connect(_on_net_ended)
 		session.rehosted.connect(_on_net_rehosted)
-		$UI/Pause/Panel/Box/Title.text = "Leave room"
+		pause_menu.online = true
 	load_map(map_id)
 
 func _exit_tree() -> void:
@@ -319,7 +316,8 @@ func _drain_events() -> void:
 		if net_match != null: net_match.on_event(e)
 		var f: FighterState = e.get("f") if e.get("f") is FighterState else null
 		proj_views.on_event(e)
-		if fx: fx.on_event(e)          # hits, damage numbers, K.O.s, tracers, puffs, pads, muzzle flashes
+		if fx and not (String(e.get("type", "")) == "dmg_number" and not bool(Settings.get_value("damage_numbers", true))):
+			fx.on_event(e)             # hits, damage numbers (Settings damage_numbers), K.O.s, tracers, puffs, pads, muzzle flashes
 		match String(e["type"]):
 			"lean", "head", "arm":
 				if views.has(f): views[f].on_event(e)
@@ -787,10 +785,6 @@ func _update_shrink_view() -> void:
 	var k: float = s["size"] / s["S0"]
 	_shrink_mesh.scale = Vector3(k, 1.0, k if s["both"] else 1.0)
 
-func _on_setting(key: String, v: Variant) -> void:
-	if key == "show_fps":
-		($UI/Pause/Panel/Box/Fps as CheckButton).set_pressed_no_signal(bool(v))
-
 # ============================== online (guest) ==============================
 
 func _on_net_message(m: Dictionary) -> void:
@@ -880,7 +874,8 @@ func _on_net_votes(list: Array, total: int) -> void:
 
 func _toggle_pause() -> void:
 	paused = not paused
-	pause_menu.visible = paused
+	if paused: (pause_menu as PauseMenu).open()
+	else: pause_menu.visible = false
 	touch.release_all()
 	if paused:
 		_touch_was = touch.visible

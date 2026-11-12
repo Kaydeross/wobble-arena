@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://world/world.gd" id="1"]
 [ext_resource type="Script" path="res://world/follow_camera.gd" id="2"]
 [ext_resource type="Script" path="res://input/player_input.gd" id="3"]
 [ext_resource type="PackedScene" path="res://input/touch_controls.tscn" id="4"]
 [ext_resource type="PackedScene" path="res://ui/hud.tscn" id="5"]
+[ext_resource type="Script" path="res://ui/pause_menu.gd" id="6"]
 
 [node name="World" type="Node3D"]
 script = ExtResource("1")
@@ -31,50 +32,8 @@ script = ExtResource("3")
 
 [node name="TouchControls" parent="UI" instance=ExtResource("4")]
 
-[node name="Pause" type="ColorRect" parent="UI"]
+[node name="Pause" type="Control" parent="UI"]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.03, 0.09, 0.11, 0.62)
-
-[node name="Panel" type="PanelContainer" parent="UI/Pause"]
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -170.0
-offset_top = -150.0
-offset_right = 170.0
-offset_bottom = 150.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="Box" type="VBoxContainer" parent="UI/Pause/Panel"]
-layout_mode = 2
-theme_override_constants/separation = 12
-
-[node name="Label" type="Label" parent="UI/Pause/Panel/Box"]
-layout_mode = 2
-theme_type_variation = &"TitleLabel"
-theme_override_colors/font_color = Color(1, 0.812, 0.353, 1)
-text = "Paused"
-horizontal_alignment = 1
-
-[node name="Resume" type="Button" parent="UI/Pause/Panel/Box"]
-custom_minimum_size = Vector2(280, 62)
-layout_mode = 2
-theme_type_variation = &"PrimaryButton"
-theme_override_font_sizes/font_size = 28
-text = "Resume"
-
-[node name="Fps" type="CheckButton" parent="UI/Pause/Panel/Box"]
-custom_minimum_size = Vector2(0, 48)
-layout_mode = 2
-theme_override_font_sizes/font_size = 20
-text = "Show FPS"
-
-[node name="Title" type="Button" parent="UI/Pause/Panel/Box"]
-custom_minimum_size = Vector2(0, 58)
-layout_mode = 2
-text = "Back to title"
+script = ExtResource("6")

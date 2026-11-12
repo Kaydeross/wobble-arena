@@ -9,6 +9,7 @@ const NAMES: PackedStringArray = ["click", "pop", "whack", "clink", "slap", "swi
 	"mammoth", "sniper", "rocket", "boom", "wind", "kick", "boing", "bounce", "pickup", "drop", "mag", "shellIn"]
 const DIR := "res://audio/sfx/"
 const POOL := 12
+const BUS := "SFX"                 ## every effect plays on this bus (volume: Settings `sfx_volume`)
 
 var streams := {}                  ## name -> AudioStreamWAV
 var _pool: Array[AudioStreamPlayer] = []
@@ -24,8 +25,14 @@ func _ready() -> void:
 		var s: AudioStream = load(DIR + n + ".wav")
 		if s: streams[n] = s
 		else: push_warning("Sfx: missing stream " + n)
+	if AudioServer.get_bus_index(BUS) < 0:      # the sound-effects bus (Settings `sfx_volume`), sent to Master
+		AudioServer.add_bus()
+		var b := AudioServer.bus_count - 1
+		AudioServer.set_bus_name(b, BUS)
+		AudioServer.set_bus_send(b, "Master")
 	for i in POOL:
 		var p := AudioStreamPlayer.new()
+		p.bus = BUS
 		p.name = "Sfx%d" % i
 		add_child(p)
 		_pool.append(p)
@@ -93,7 +100,7 @@ func _free_player() -> AudioStreamPlayer:
 	return q
 
 func _on_setting(key: String, _value: Variant) -> void:
-	if key == "volume" or key == "muted":
+	if key == "volume" or key == "muted" or key == "sfx_volume":
 		_apply_settings()
 
 func _apply_settings() -> void:
@@ -102,6 +109,11 @@ func _apply_settings() -> void:
 	var bus := AudioServer.get_bus_index("Master")
 	AudioServer.set_bus_volume_db(bus, linear_to_db(maxf(vol, 0.0001)))
 	AudioServer.set_bus_mute(bus, _muted or vol <= 0.0)
+	var sb := AudioServer.get_bus_index(BUS)
+	if sb >= 0:
+		var sv := clampf(float(Settings.get_value("sfx_volume", 1.0)), 0.0, 1.0)
+		AudioServer.set_bus_volume_db(sb, linear_to_db(maxf(sv, 0.0001)))
+		AudioServer.set_bus_mute(sb, sv <= 0.0)
 	if _muted: stop_all()
 
 func stop_all() -> void:
