@@ -44,6 +44,11 @@ func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
 	pickups = Pickups.new(combat, Combat.read_json(content_dir.path_join("drops.json")), Combat.read_json(content_dir.path_join("crate-rates.json")))
 
+## The game mode (pickMode + setBotCfg): rules, teams, lives, K.O. limit (`limit` < 0 = the mode's preset). Call before
+## setup(); pass ModeRules.bot_count(mode_id, ...) as setup's bot_count. See logic/mode_rules.gd.
+func configure(mode_id: String, limit: int = -1) -> void:
+	combat.rules.configure(mode_id, limit)
+
 ## Break the reference cycles (fighters <-> combat, controllers) when the match ends.
 func dispose() -> void:
 	for b in controllers.values():
@@ -120,6 +125,13 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 			x = cos(ang) * rr; z = sin(ang) * rr
 		combat.place_at(b, x, z, y)
 		b.yaw = combat.rng.range_f(0, PI * 2.0); b.face_yaw = b.yaw
+	var bots: Array = fighters.slice(1)
+	combat.rules.start_match(player, bots)         # teams, lives, dash charges, Weapon Ladder
+	for b: FighterState in bots:
+		var tc := combat.rules.team_color(b)
+		if tc >= 0: looks[b]["color"] = tc
+		if combat.mode_id == "ninja": looks[b]["skin"] = "shadow"     # dressBots
+	combat.rules.setup_shrink(map_id, map, solids)
 
 ## One more (non-player) fighter, e.g. an online ghost: class stats, map, full health. The caller places it.
 func add_fighter(cid: String) -> FighterState:
@@ -139,7 +151,8 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 ## One fixed simulation step (simStep).
 func step(dt: float) -> void:
 	combat.time += dt
-	dyn.update(dyn_clock(), fighters)       # updateDyn: first thing in simStep
+	combat.rules.update(dt, pickups)        # updatePotato / updatePillars / updateShrink (+ the end-of-match countdown)
+	dyn.update(dyn_clock(), fighters)       # updateDyn
 	var net_pre: Variant = net.call("pre_step") if net != null else null
 	for f: FighterState in fighters:
 		var c: Variant = controllers.get(f)
@@ -236,6 +249,11 @@ func has_los(b: FighterState, tg: FighterState) -> bool:
 ## The dynamic arena clock (dynClock): match time plus the host's offset.
 func dyn_clock() -> float:
 	return combat.time - match_start + dyn_t0
+
+## MAPS[map].wander (a getter on shrinking maps: bots roam inside the floor that is left).
+func wander() -> float:
+	var w := combat.rules.shrink_wander()
+	return w if not is_nan(w) else float(map.get("wander", 10))
 
 ## Match clock in seconds.
 func elapsed() -> float:

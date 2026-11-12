@@ -31,6 +31,7 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	if l > 1.0: wx /= l; wz /= l
 	if incap: wx = 0.0; wz = 0.0
 	ph.wish_x = wx; ph.wish_z = wz; ph.climb_in = f
+	if input.consume("dash"): combat.rules.do_dash(p, wx, wz)      # ninja dash (needs a ninja weapon in hand)
 	var aiming := input.aiming()
 	var fire := input.is_held("fire")
 	squat = input.is_held("crouch") and not incap and ph.ladder.is_empty()
@@ -64,7 +65,6 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	for i in 3:
 		if input.consume("slot%d" % (i + 1)) and p.slots[i] != null: combat.equip_slot(p, i)
 	if input.consume("swap"): _cycle(p, combat)
-	input.consume("dash")              # ninja dash: not ported yet
 
 	key = p.weapon if p.weapon != "" else "spatula"
 	w = combat.wdata(key)
@@ -78,6 +78,8 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	elif t == "bow":                   # hold to draw, let go to shoot
 		combat.weapons.bow_tick(p, fire, dt, aim_point)
 		if fire and p.cool <= 0.0 and p.swing < 0.0 and p.get_ammo() > 0: ph.speed *= 0.75
+	elif t == "blower":
+		combat.weapons.blower_tick(p, fire, dt)
 	elif fire:
 		combat.weapons.try_fire(p, aim_point)
 

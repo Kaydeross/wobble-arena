@@ -10,6 +10,7 @@ extends RefCounted
 ##   bow (shootArrow with draw charge, updateArrows; playerControl draw)      -> shoot_arrow, bow_tick, step_arrows
 ##   net (shootNet, landNet, updateNets: trap_t + trap nets)                 -> shoot_net, step_nets
 ## step_all(dt) runs every projectile list in simStep's order (rockets, grenades, knives, arrows, nets).
+##   blower (Air Blower: held cone push, no damage)                          -> blower_tick
 ## Effects go to combat.events; randomness comes from combat.rng in the web game's Math.random order.
 
 ## Thrown weapons: wind-up starters (PROJ in the web game) and the release that runs when the wind-up ends.
@@ -127,6 +128,48 @@ func clear() -> void:
 			if f.trap_net == t: f.trap_t = 0.0; f.trap_net = null
 		t.victims.clear()
 	projectiles.clear(); rockets.clear(); grenades.clear(); arrows.clear(); nets.clear(); trap_nets.clear(); delayed_booms.clear()
+## Air Blower (type `blower`), the blower branch of playerControl (public/index.html ~9827). Runs every sim step
+## while the fire button is held: drains `drain` ammo per second, pushes everyone in a 0.86 cone within `range`
+## along the arm (stronger up close), lifts and stuns them a little, blames the blower for a ring-out, pushes the
+## user back, puffs/whooshes on its `cooldown`, and drops the blower when empty. No damage. Bots never use it
+## (botThink treats it like an empty hand), same as the web game. Returns true if it blew.
+func blower_tick(p: FighterState, held: bool, dt: float) -> bool:
+	var w := combat.wdata(p.weapon)
+	var s: Variant = p.current_slot()
+	if not held or s == null or float(s["ammo"]) <= 0.0:
+		return false
+	s["ammo"] = float(s["ammo"]) - dt * float(w["drain"])
+	var dx := p.arm_x
+	var dy := p.arm_y
+	var dz := p.arm_z
+	var rng_max := float(w["range"])
+	for e: FighterState in combat.fighters:
+		if e == p or e.dead: continue
+		var cx := e.chest_x - p.hand_x
+		var cy := e.chest_y - p.hand_y
+		var cz := e.chest_z - p.hand_z
+		var d := sqrt(cx * cx + cy * cy + cz * cz)
+		if d > rng_max or d < 0.2: continue
+		var inv := 1.0 / d
+		cx *= inv; cy *= inv; cz *= inv
+		if cx * dx + cy * dy + cz * dz < 0.86: continue
+		var k := 1.0 - d / rng_max
+		var sc := 34.0 * k * dt
+		e.phys.vx += dx * sc; e.phys.vy += dy * sc; e.phys.vz += dz * sc
+		e.phys.vy += 5.0 * k * dt
+		e.stun = maxf(e.stun, 0.12)
+		e.last_attacker = p; e.last_hit_time = combat.time
+		var ha := combat.rng.range_f(-1, 1) * k * 60.0 * dt
+		var hb := combat.rng.range_f(-1, 1) * k * 60.0 * dt
+		combat.kick_head(e, ha, hb)
+	p.phys.vx -= dx * 6.0 * dt; p.phys.vz -= dz * 6.0 * dt
+	if p.cool <= 0.0:
+		p.cool = float(w["cooldown"])
+		combat.ev({"type": "puff", "x": p.hand_x, "y": p.hand_y, "z": p.hand_z, "color": 0xeaf8ff, "n": 2, "spd": 5.0,
+			"dir": [dx, dy, dz], "kind": "blower", "f": p})
+		if combat.rng.next() < 0.5: combat.ev({"type": "sfx", "name": "wind", "f": p})
+	if float(s["ammo"]) <= 0.0: combat.drop_slot(p)
+	return true
 
 ## Called by Combat.timers when a thrown weapon's wind-up ends.
 func release(f: FighterState, key: String) -> void:

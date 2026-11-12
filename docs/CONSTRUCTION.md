@@ -35,6 +35,22 @@ See also [`docs/IOS_PLAN.md`](IOS_PLAN.md) and [`docs/PROTOCOL.md`](PROTOCOL.md)
 
 Edit tables in `public/index.html`, then run `npm run content` so `shared/*.json` stays in sync.
 
+## Godot / iOS: playable offline
+
+Construction is playable offline in the Godot game (the web game still shows it as a scaffold).
+
+| Piece | Where |
+|---|---|
+| Mode picker | Title screen, Offline tab: **Mode** (Classic / Construction) shares a row with **Floor**; Settings key `mode`, world `mode_id` / `--mode=construction`. `scripts/main.gd` `maps_for(mode)`: a mode with its own maps (`only` in maps.json) lists just those, so Construction offers **Site Yard** only and Classic keeps Sunny Arena / Practice Range |
+| Rules | `Combat.set_mode("construction")`: everyone (player and bots) spawns and respawns with the Claw Hammer (`start`), crates only drop the mode's allow list from `drops.json` (heal, hammer, Live Wire, Air Blower, speed / rage / shield) |
+| Site Yard | Built by `MapBuilder` like every map (88 boxes, 2 bounce pads, floor pad, no ladders). Dynamic floors: the hazard stripes anchor the floor, so only Drift (2 blocks) runs, same as the web (`node tools/test-dynamics.js --table`) |
+| Claw Hammer, Live Wire | The data-driven melee path (`Combat.melee_begin/tick/sweep`, tip / thick / lift / topple / hitSfx / speedMul / ammo from weapons.json); parity tested in the `melee2` block. Bots swing the start hammer |
+| Air Blower | `Weapons.blower_tick`, a line-by-line port of the blower branch of `playerControl` (same order of random calls); parity tested in the `blower` block of `npm run test:godot-combat`. Now also drops in Classic crates in Godot, as on the web. HUD shows its ammo in % |
+| Test | `npm run test:godot-construction` (`godot/tests/construction_test.gd`): Mode picker, Site Yard build + floors, crate pool, a 30 s Construction match (hammer start, bot hammers, the blower pushes / stuns / drains) |
+| Screenshots | `sh tools/shoot-godot-ui.sh "" title-construction construction` -> `docs/style/godot-ui-title-construction.png`, `docs/style/godot-ui-construction.png` |
+
+Still follow-up in Godot: boss rush, the tradie extras below, online Construction (still offline-only; `NetMatch.apply_rules` maps it to Classic). As on the web, bots never pick up hammer / Live Wire / blower crates (`BOT_GUNS`) and never use the blower (with it in hand they swing the spatula); the blower's puff and whoosh are simplified visuals.
+
 ## Unlock follow-up (playable v1)
 
 1. Remove the locked class / “Coming soon” blurb once combat + bots feel good offline.

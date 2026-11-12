@@ -15,6 +15,7 @@ How the combat logic in `godot/logic/` maps to the web game (`public/index.html`
 | `tests/net_snapshot_test.gd` | | NetSnapshot round trip and junk rejection |
 | `world/projectile_views.gd` `ProjectileViews` | `rocketGeo`, `makeArrowMesh`, `landNet` sheet, `explode` fireballs, `flameFx` | visuals: reads `Weapons.Shot/Proj/TrapNet` positions every frame, draws blasts and flames from the `explode` / `flame` events (shared low-poly meshes, scale-only fades, capped) |
 | `tests/weapons_shots.gd` | | batch-1 smoke match (`--smoke`, headless) and the `docs/style/godot-weapons-batch1-*.png` screenshots (`--shot rocket|net --out FILE`, needs a window) |
+| `logic/mode_rules.gd` `ModeRules` (`Combat.rules`) | `addKo` limit, `endMatch`, `eliminate`, `teamKo`, `TEAM_COL`, `GG`/`ggGive`/`ggAdvance`/`initLadder`, `doDash`/`dashTick`, `updateShrink` + shrink spot in `respawn`, `setBotCfg` team split | game modes; parity `tools/modes-reference.js` + `tests/modes_parity_test.gd`, matches `tests/modes_test.gd` (`npm run test:godot-modes`) |
 
 ## Conventions
 
@@ -60,13 +61,17 @@ Gotcha: Godot's `JSON.parse_string` (and `String.to_float`) are **not exact** fo
 | gun style `flame`: cone (0.5 inside 2.5 m, else 0.88), LOS, hit + `burn`/`burner`, arm push, sound every 3rd; burn ticks in `timers` | ported, parity tested (block `flame`) |
 | net: `S` entry, `h`, `ko`, `netCleanHit`, `netGuard` rules | ported; rounding/cleaning parity tested against JS, round-trip test |
 
-Not ported yet (TODO in code): emotes in `timers`, ninja dash (`dashTick`, `doDash`), hot potato in `hit`, dev god mode, kill cam, the trident throw (`throwTrident`), the batch-2 projectile types (table below), shrinking-arena respawn, Weapon Ladder (`ggGive/ggAdvance`), crates/drops (`pickCrateKey`, `spawnDrop`, `updatePickups`), match end on KO limit (the world reads the `ko` event).
+| Air Blower (`type: blower`): the blower branch of `playerControl` ~9827 (cone push along the arm, lift, stun 0.12, blame, head kicks, recoil, drain, drop when empty) | ported as `Weapons.blower_tick` (PlayerControl calls it while fire is held; bots never use it, like the JS), parity tested (block `blower`, op `blow`) |
+
+Game modes (`ModeRules`, called from `Combat.add_ko` / `respawn` / `place_at` / `timers` and `MatchSim.step`): K.O. limit and `endMatch` (events `match_over`, then `match_finished` after `END_TIME`), lives + `eliminate`, teams, Weapon Ladder, ninja dash, shrinking arenas: ported, parity tested (`npm run test:godot-modes`, worst error ~1e-16).
+
+Not ported yet (TODO in code): emotes in `timers`, hot potato in `hit` (dead code in the web game: no mode sets `potato`), Pillars (`updatePillars`, `pillarGive`, bot pillar hops), dev god mode, kill cam, gun style `flame`, the trident throw (`throwTrident`), all other projectile types (next batch). Crates/drops are in `logic/pickups.gd`.
 
 `FighterPhysics.step(dt, solids, st)` (now `logic/fighter_physics.gd`) applies `stun`, `down_t`, `trap_t`, `spd_t` and `dash_air_t` from the FighterState, parity tested; `MatchSim` (`logic/match_sim.gd`) runs the whole step order below for an offline match.
 
 ## Where each remaining weapon type lives (JS)
 
-Already done and removed from this table: plain guns, shotgun, dual Uzi, minigun, glove, flamethrower, all plain melee, knife, rocket/meteor, grenade/cluster launchers, bow, net gun (batch 1). Crates only drop weapons for which `Pickups.usable` is true (the types below are filtered out until they are in `Weapons.LAUNCH`). Line numbers are b76+ (grep the function name).
+Already done and removed from this table: plain guns, shotgun, dual Uzi, minigun, glove, flamethrower, the Air Blower, all plain melee, knife, rocket/meteor, grenade/cluster launchers, bow, net gun (batch 1). Crates only drop weapons for which `Pickups.usable` is true (the types below are filtered out until they are in `Weapons.LAUNCH`). Line numbers are b76+ (grep the function name).
 
 | `type` (weapons.json) | Keys | JS | Port into |
 |---|---|---|---|

@@ -161,6 +161,10 @@ func apply(op: Dictionary) -> void:
 			if not c.wdata(f.weapon).get("spinup", 0): f.spin = 0.0
 			if not f.dead and f.down_t <= 0.0 and c.wdata(f.weapon).get("type", "") == "gun":
 				c.weapons.gun_tick(f, bool(op["held"]), float(op["dt"]), aim_point if f.is_player else [])
+		"blow":
+			pose_all()
+			if not f.dead and f.down_t <= 0.0 and c.wdata(f.weapon).get("type", "") == "blower":
+				c.weapons.blower_tick(f, bool(op["held"]), float(op["dt"]))
 		"melee":
 			if c.try_melee(f, float(op["yaw"])): melee_yaw[int(op["f"])] = float(op["yaw"])
 		"kick": c.do_kick(f, float(op["yaw"]))

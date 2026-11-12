@@ -7,7 +7,7 @@ _Approved 2026-11-12. Supersedes the plan and decisions in docs/IOS_PLAN.md (sec
 
 Decisions made in this session, which replace the earlier "Godot for iOS + web game for browsers" plan:
 
-- **One codebase: Godot 4 everywhere.** The final product is a single Godot project exported to **iOS, PC (desktop app, Steam-ready) and web**, all cross-playing because they are the same code. The three.js game (`public/index.html`) becomes the **reference implementation** and is retired when Godot reaches parity.
+- **One codebase: Godot 4 everywhere.** The final product is a single Godot project exported to **iOS, Android, PC (desktop app, Steam-ready) and web**, all cross-playing because they are the same code. The three.js game (`public/index.html`) becomes the **reference implementation** and is retired when Godot reaches parity.
 - **1.0 contains everything:** all 14 modes, 33 maps, 28 weapons, 5 classes, bots, cosmetics, accounts, online rooms.
 - **Order of work: playable on iPhone soonest.**
 - Kept from before: cosmetics + pass + gems, friends/private rooms + bots at launch, quick-chat and emotes only, iPhone 12 minimum, bundle ID `com.kedrosng.wobblearena`.
@@ -54,8 +54,8 @@ Durations assume the current way of working (several parallel sessions, you revi
 ### Phase 0 — Clean up and unblock (about 1 week)
 - Merge PR #14. Commit the Stage 1 web look pass as the **art reference** (screenshots into `docs/style/`), then stop web visual work.
 - Rewrite `docs/IOS_PLAN.md` into `docs/ROADMAP.md` with the decisions above.
-- Fix the export pipeline: create export presets from the Godot editor UI once (iOS, macOS, Windows, Web), commit `export_presets.cfg`, then script `godot --headless --export-*` + `xcodebuild archive` in `tools/build-ios.sh`.
-- **Exit:** an empty-scene Godot app installs on your iPhone via TestFlight. This proves signing, upload and the whole pipeline before any game work depends on it.
+- Fix the export pipeline: create export presets from the Godot editor UI once (iOS, Android, macOS, Windows, Web), commit `export_presets.cfg`, then script `godot --headless --export-*` + `xcodebuild archive` in `tools/build-ios.sh` and APK/AAB export in `tools/build-android.sh`.
+- **Exit:** an empty-scene Godot app installs on your iPhone via TestFlight (and an Android APK via `adb`). This proves signing, upload and the whole pipeline before any game work depends on it.
 - Needs from you: App Store Connect app record + API key (`.p8`), GitHub billing fix, one editor session to create presets.
 
 ### Phase 1 — Foundation and vertical slice (5–7 weeks) → TestFlight build 1
@@ -71,6 +71,7 @@ Goal: one map, one mode, on your iPhone, in a room with web players.
 ### Phase 2 — Gameplay parity (10–14 weeks, parallel tracks) → TestFlight builds 2–4
 - **Weapons track:** all 28, grouped by type (melee, gun, bow, rocket/launcher, boomerang, thrown, net, flame, special). Each group: port + parity test + visual/audio.
 - **Modes track:** all 14 (`shared/modes.json`), including lives, teams, pillars, gun game, hot potato, ladder modes; match rules, scoring, `pend`.
+  - *Progress (batch 1, offline):* `godot/logic/mode_rules.gd` (`ModeRules`): K.O. limit + `endMatch` with an end banner and offline results panel, lives/stock + `eliminate`, teams (duel, 2v2, 3v3, 4v4: team colours, no friendly fire, team score), Weapon Ladder (`ggGive/ggAdvance`), ninja dash (`doDash/dashTick`, player + bots), shrinking arenas (Mega Damage on shrink/squeeze: `updateShrink`, shrink respawn spot). Playable offline: classic, melee, guns, ninja, giant, duel, t2, t3, t4, mega, gungame (`ModeRules.PLAYABLE`; Settings `mode` / `limit`). Parity + headless matches: `npm run test:godot-modes`. Left: Pillars (bot hops, `pillarGive`, 3-minute clock), Explosive and Moon Drift (need launchers), online `limit`/`pend`, Sandbox/Construction (other tracks). Hot Potato is gone from the web game (no mode sets `potato`), so nothing to port. Ladder rungs bow / shuriken / grenade launcher and the Ninja start shuriken wait for the weapons track.
 - **Bots track:** AI and 4 difficulties ported from the JS bot code; needed for offline play and for hosting.
 - **Host role:** slot assignment, bot ownership, relay + `netGuard` rules, rematch voting, host migration. Extend `tools/wa-client.js` tests so a Godot host serves web and Godot guests.
 - **Maps track:** all 33 from data, plus special mechanics (ice grip, shrink/squeeze, moving parts, domes, custom generator, sandbox blocks). Extend `export-maps.js` for decor and backdrops so levels look right, not just collide right.
@@ -86,12 +87,13 @@ Goal: one map, one mode, on your iPhone, in a room with web players.
 ### Phase 4 — Graphics overhaul, full (3–4 weeks, after gameplay is stable)
 Your four-stage spec, applied across all maps with the three tiers: tonemapping and post, sky and fog, soft shadows, stylized materials, Practice Range grid shader, tree wind, mountain depth; melee/projectile trails, squash-and-stretch, GPU particles (dust, dash, shockwave, KO confetti). Performance budget enforced per tier (iPhone 12: 60 fps, no thermal throttle in 15 min).
 
-### Phase 5 — Three platforms (3–4 weeks)
+### Phase 5 — Store platforms (3–4 weeks)
 - **iOS:** Game Center, haptics, Keychain token storage, orientation lock, privacy manifest.
+- **Android:** Play signing, haptics, credential storage, immersive landscape (export pipeline already in `tools/build-android.sh` / `docs/BUILD_ANDROID.md`).
 - **PC:** macOS + Windows exports, controller support, settings for the Forward+ tier, Steam-ready packaging (store page is a separate decision).
 - **Web:** Godot web export served by `server.js` (adds the COOP/COEP headers it needs). Goes live at `/`; the three.js game moves to `/classic`.
 - Protocol: bump to `proto: 2` only if a Godot-only change needs it; version gate replaces the build-number check on the server.
-- **Exit:** iPhone, PC app and browser in one room.
+- **Exit:** iPhone, Android, PC app and browser in one room.
 
 ### Phase 6 — Store readiness and monetization (4–6 weeks)
 - Server-side wallet and inventory; remove `coins_####`; StoreKit 2 with server receipt validation; gems, Wobble Pass, quests, trophy road.
@@ -117,9 +119,10 @@ Soft launch in 2–3 small markets, tune economy and balance (classes especially
 ## What I need from you
 
 1. App Store Connect: create the app record for `com.kedrosng.wobblearena`, and an API key (`.p8`, key ID, issuer ID).
-2. Fix GitHub billing so CI runs.
-3. One short session at the Mac to create export presets in the Godot editor (I can't click through its UI).
-4. Play each TestFlight build and tell me what feels wrong.
+2. Google Play Console: create the app with package `com.kedrosng.wobblearena`, and keep an upload keystore (path + alias + passwords for `GODOT_ANDROID_KEYSTORE_RELEASE_*`).
+3. Fix GitHub billing so CI runs.
+4. One short session at the Mac to confirm export presets in the Godot editor if a headless export complains about a missing key.
+5. Play each TestFlight / sideloaded APK build and tell me what feels wrong.
 
 ## Verification
 

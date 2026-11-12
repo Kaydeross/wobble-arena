@@ -2,7 +2,8 @@ extends SceneTree
 ## Renders UI screenshots for visual review (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot match --out FILE.png
 ## Shots: title (scenes/main.tscn), title-online (its Play online tab), match (offline world with the HUD), touch (same with the touch layer forced on and
-## a few fingers down), fps (match with the FPS overlay on), pause (the pause menu). Used by tools/shoot-godot-ui.sh.
+## a few fingers down), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
+## Mode picker on Construction), construction (a Construction match on Site Yard, mid hammer swing). Used by tools/shoot-godot-ui.sh.
 
 const FRAME := 1.0 / 60.0
 
@@ -23,7 +24,8 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
-	if shot == "title" or shot == "title-online":
+	if shot == "title-construction": _settings().set_value("mode", "construction")
+	if shot == "title" or shot == "title-online" or shot == "title-construction":
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
 		if shot == "title-online":
@@ -35,7 +37,10 @@ func _start() -> void:
 	_settings().set_value("touch_mode", "on" if shot == "touch" else "off")
 	_settings().set_value("show_fps", shot == "fps")
 	world = load("res://world/world.tscn").instantiate()
-	world.map_id = "arena"
+	world.map_id = "siteyard" if shot == "construction" else "arena"
+	if shot == "construction":
+		world.mode_id = "construction"
+		world.dyn_choice = "off"
 	world.auto_run = false
 	world.bot_count = 3
 	world.player_class = "wobbler"
@@ -70,6 +75,9 @@ func _frame() -> void:
 	var sim: MatchSim = world.sim
 	var p := sim.player
 	var st: InputState = world.input.state
+	if shot == "construction":
+		_hammer_frame(sim, p, st)
+		return
 	if i == 2:
 		sim.combat.pickup(p, "katana")
 		sim.combat.pickup(p, "smg")      # the last pickup is the active slot
@@ -101,6 +109,28 @@ func _frame() -> void:
 	if shot == "pause" and i == 345:
 		world._toggle_pause()
 	if i == 352:
+		process_frame.disconnect(_frame)
+		_save()
+
+## Construction: walk up to the nearest bot with the Claw Hammer and save mid swing (or after 12 s).
+func _hammer_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
+	if i == 2: world.hud.last_touch = false
+	var tg := _nearest(p)
+	var go := Vector2.ZERO
+	var fire := false
+	var dist := 99.0
+	if tg:
+		var d := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
+		dist = d.length()
+		world.cam.yaw = lerp_angle(world.cam.yaw, atan2(d.x, d.y) + 0.35, 0.1)
+		world.cam.pitch = -0.16
+		go = Vector2(0, 1) if dist > 1.7 else Vector2.ZERO
+		fire = dist < 2.6 and i > 240
+	st.set_move("script", go)
+	st.hold("script", "fire", fire)
+	world.tick(FRAME)
+	i += 1
+	if (i > 260 and p.weapon == "hammer" and p.swing > 0.35 and p.swing < 0.6 and dist < 3.0) or i == 720:
 		process_frame.disconnect(_frame)
 		_save()
 
