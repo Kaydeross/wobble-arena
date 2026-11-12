@@ -19,8 +19,10 @@ const PITCH_MAX := 0.8
 const AIM_FOV := 52.0
 const DEFAULT_YAW := PI
 const DEFAULT_PITCH := -0.2
-const CENTER_SMOOTH := 0.18        ## SmoothDamp time (s) walking: ~90 % in 0.35 s, settled by ~0.5 s
-const CENTER_SMOOTH_SPRINT := 0.11 ## sprinting
+const CENTER_SMOOTH := 0.7         ## SmoothDamp time (s) walking: a slow, gentle swing (~90 % in 1.6 s, settled by ~2.2 s)
+const CENTER_SMOOTH_SPRINT := 0.45 ## sprinting (a little quicker)
+const CENTER_DEADZONE := 0.35     ## rad (~20 deg): a smaller offset than this is left alone, so small turns never drag the camera
+const CENTER_RAMP := 1.2           ## s: the swing starts at a third of its speed and builds up to full over this time
 const CENTER_MIN_SPEED := 0.8      ## m/s: slower than this is standing (knockback alone never recentres)
 const STICK_MIN := 0.2             ## stick length below this = released
 const LATCH_TURN := 0.35           ## rad the stick may turn before the basis re-latches to the camera
@@ -32,6 +34,7 @@ var orbit_t := 0.0
 var aim_point := Vector3.ZERO   ## where the crosshair points (first solid hit or 150 m)
 var travel := 0.0               ## metres walked since the last manual look / aim / fire
 var centering := false          ## auto-centre active (travel reached cam_center_dist)
+var _ramp_t := 0.0              ## seconds since the swing started (eases the start so it never jerks)
 var _yaw_v := 0.0
 var _pitch_v := 0.0
 var _latched := false           ## stick basis held apart from `yaw` (see move_basis)
@@ -49,7 +52,7 @@ func add_look(d: Vector2) -> void:
 ## Back to the default view (match start).
 func reset_view() -> void:
 	yaw = DEFAULT_YAW; pitch = DEFAULT_PITCH
-	travel = 0.0; centering = false; _yaw_v = 0.0; _pitch_v = 0.0; _latched = false; _own_yaw = yaw
+	travel = 0.0; centering = false; _ramp_t = 0.0; _yaw_v = 0.0; _pitch_v = 0.0; _latched = false; _own_yaw = yaw
 
 ## Yaw the movement stick maps against (PlayerControl.cam_yaw): the camera yaw, except while auto-centre turns the camera
 ## under a held stick, when it stays where it was when the stick was pushed.
@@ -60,7 +63,7 @@ func move_basis() -> float:
 ## horizontal velocity (x, z), `hold` = aiming / firing / a look touch is down, `sprint` = sprint held.
 func auto_center(dt: float, look: Vector2, stick: Vector2, vel: Vector2, hold: bool, sprint: bool) -> void:
 	if look != Vector2.ZERO or hold or yaw != _own_yaw:   # a manual look (or yaw set from outside) starts the count again
-		travel = 0.0; centering = false; _yaw_v = 0.0; _pitch_v = 0.0; _latched = false; _own_yaw = yaw
+		travel = 0.0; centering = false; _ramp_t = 0.0; _yaw_v = 0.0; _pitch_v = 0.0; _latched = false; _own_yaw = yaw
 		return
 	# stick basis: release or a new direction re-latches to the camera as it is now
 	if stick.length() < STICK_MIN:
@@ -77,10 +80,14 @@ func auto_center(dt: float, look: Vector2, stick: Vector2, vel: Vector2, hold: b
 	travel += speed * dt
 	if travel < float(Settings.get_value("cam_center_dist", 5.0)):
 		return
-	centering = true
-	var st := CENTER_SMOOTH_SPRINT if sprint else CENTER_SMOOTH
 	var target := atan2(vel.x, vel.y)
-	var r := smooth_damp(0.0, wrapf(target - yaw, -PI, PI), _yaw_v, st, dt)
+	var err := wrapf(target - yaw, -PI, PI)
+	if not centering and absf(err) < CENTER_DEADZONE:
+		return                          # already roughly behind the direction of travel: leave the camera alone
+	centering = true
+	_ramp_t += dt
+	var st := (CENTER_SMOOTH_SPRINT if sprint else CENTER_SMOOTH) * lerpf(3.0, 1.0, clampf(_ramp_t / CENTER_RAMP, 0.0, 1.0))
+	var r := smooth_damp(0.0, err, _yaw_v, st, dt)
 	yaw += r.x; _yaw_v = r.y; _own_yaw = yaw
 	r = smooth_damp(pitch, DEFAULT_PITCH, _pitch_v, st, dt)
 	pitch = r.x; _pitch_v = r.y

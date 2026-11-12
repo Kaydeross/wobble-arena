@@ -11,7 +11,7 @@ const DEFAULTS := {
 	"fov": 72.0,            # vertical field of view
 	"cam_dist": 1.0,        # camera distance multiplier
 	"cam_auto_center": true, # the camera eases back behind the player after a short walk (world/follow_camera.gd)
-	"cam_center_dist": 5.0, # metres walked since the last manual look before it does
+	"cam_center_dist": 8.0, # metres walked since the last manual look before it does
 	"invert_y": false,
 	"touch_mode": "auto",   # auto | on | off
 	"touch_lefty": false,
