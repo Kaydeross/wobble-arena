@@ -1,7 +1,8 @@
 extends SceneTree
 ## Title-screen layout test (headless): instances scenes/main.tscn in a viewport the size of the stretched canvas
 ## for several window sizes (iPhone landscape 852x393, 1170x540, 1280x720, iPhone portrait 390x844), with and
-## without phone safe-area insets, on every screen (title, online panel, settings sheet, the five setup-wizard pages),
+## without phone safe-area insets, on every screen (title, online panel, settings sheet, the host-a-room sheet, the
+## lobby sheet, the five setup-wizard pages),
 ## and checks that the controls stay inside the safe area, do not overlap each other, can be reached (card grids
 ## scroll), that no label is squeezed below its text size and that the title / wizard frame labels are not cut off
 ## ("…"). Then drives the wizard (step names, navigation, saved choices, arena moved by a game type, team bot counts),
@@ -18,15 +19,22 @@ const CASES := [
 	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0]],
 ]
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
-const SCREENS := ["title", "online", "settings", "w0", "w1", "w2", "w3", "w4"]
+const SCREENS := ["title", "online", "settings", "host", "lobby", "w0", "w1", "w2", "w3", "w4"]
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
 const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online"]
 const OB := "Safe/Col/Body/Online/Box/"
 ## the online panel (back, server, room, name, join, login fields, status, roster): also must not overlap each other
-const ONLINE := [OB + "Head/Back", OB + "ServerRow/Server", OB + "RoomRow/Room", OB + "RoomRow/Name", OB + "RoomRow/Join",
+const ONLINE := [OB + "Head/Back", OB + "ServerRow/Server", OB + "RoomRow/Room", OB + "RoomRow/Name", OB + "RoomRow/Join", OB + "RoomRow/Host",
 	OB + "AcctRow/User", OB + "AcctRow/Pass", OB + "AcctRow/Login", OB + "Status", OB + "Roster"]
 const SHEET := ["Sheet/Center/Card/Box/Fps", "Sheet/Center/Card/Box/Done"]
+const HB := "HostSheet/Center/Card/Box/"
+## host a room: name, who can join, seats, bots, Cancel / Create room
+const HOSTS := [HB + "Title", HB + "RoomName", HB + "Vis/P0", HB + "Vis/P1", HB + "Max/P2", HB + "Max/P8", HB + "Bots/P0", HB + "Bots/P7",
+	HB + "Hint", HB + "Buttons/Cancel", HB + "Buttons/Create"]
+const LB := "Lobby/Center/Card/Box/"
+## the lobby: room, code, players, info, Leave / Start
+const LOBBY := [LB + "Title", LB + "Code", LB + "Players", LB + "Info", LB + "Buttons/Leave", LB + "Buttons/Start"]
 const W := "Safe/Wizard/"
 ## wizard frame: header, page, footer buttons (must not overlap each other)
 const WFRAME := [W + "Head/Title", W + "Head/Step", W + "Pages", W + "Foot/Back", W + "Foot/Steps", W + "Foot/Next"]
@@ -85,6 +93,19 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		main.get_node(OB + "Roster").text = "In the room: Alice, Bob, Carol"
 	elif scr == "settings":
 		main.show_settings(true)
+	elif scr == "host":
+		main.show_tab(true)
+		main.show_host(true)
+	elif scr == "lobby":
+		main.show_tab(true)
+		main.show_lobby(true)
+		main.get_node(LB + "Code").text = "Room code ABCDE"
+		main.get_node(LB + "Info").text = "8 / 8 players · empty seats get bots"
+		for i in 8:
+			var pl := Label.new()
+			pl.text = "Wobbly name %d%s" % [i, "  (host)" if i == 0 else ""]
+			pl.add_theme_font_size_override("font_size", 20)
+			main.get_node(LB + "Players").add_child(pl)
 	elif wiz:
 		main.open_wizard(int(scr.substr(1)))
 	for i in 4:
@@ -99,10 +120,13 @@ func _case(win: Vector2, ins_pt: Array, scr: String) -> void:
 		groups.append(WFRAME)
 		groups.append(inside.slice(WFRAME.size()))
 	else:
-		inside = BLOCKS + (ONLINE if scr == "online" else HOME)
+		var on_panel := scr in ["online", "host", "lobby"]
+		inside = BLOCKS + (ONLINE if on_panel else HOME)
 		groups.append(BLOCKS)
 		if scr == "online": groups.append(ONLINE)
-		else: groups.append(HOME)
+		elif not on_panel: groups.append(HOME)
+		if scr == "host": inside = inside + HOSTS; groups.append(HOSTS)
+		if scr == "lobby": inside = inside + LOBBY; groups.append(LOBBY)
 		if scr == "settings": inside = inside + SHEET; groups.append(SHEET)
 	var rects := {}
 	for p: String in inside:
