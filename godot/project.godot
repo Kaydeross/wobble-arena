@@ -8,6 +8,12 @@ config/features=PackedStringArray("4.7", "Mobile")
 config/version="0.1.0"
 config/icon="res://icon.png"
 
+[autoload]
+
+Tier="*res://autoload/tier.gd"
+Content="*res://autoload/content.gd"
+Settings="*res://autoload/settings.gd"
+
 [display]
 window/size/viewport_width=1170
 window/size/viewport_height=540
@@ -17,6 +23,11 @@ window/stretch/aspect="expand"
 window/handheld/orientation=4
 
 [rendering]
-renderer/rendering_method="mobile"
+; Render tiers (autoload Tier): PC = Forward+, iOS/Android = Mobile, web = Compatibility.
+renderer/rendering_method="forward_plus"
+renderer/rendering_method.mobile="mobile"
+renderer/rendering_method.web="gl_compatibility"
 ; iOS export refuses to run (with an empty error list) unless ETC2/ASTC textures are imported.
 textures/vram_compression/import_etc2_astc=true
+lights_and_shadows/directional_shadow/size.mobile=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=1
