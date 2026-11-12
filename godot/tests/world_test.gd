@@ -61,6 +61,7 @@ func _sim_map(id: String) -> void:
 	var world: Node = load("res://world/world.tscn").instantiate()
 	world.map_id = id
 	world.auto_run = false
+	world.bot_count = 0   # movement only: no bots in the way
 	root.add_child(world)
 	var sim: float = world.SIM
 	var floor_y := 0.0
@@ -109,6 +110,7 @@ func _drag(tc: Control, i: int, pos: Vector2) -> void:
 func _touch_test() -> void:
 	var world: Node = load("res://world/world.tscn").instantiate()
 	world.auto_run = false
+	world.bot_count = 0
 	root.add_child(world)
 	var tc: Control = world.touch
 	var st: InputState = world.input.state

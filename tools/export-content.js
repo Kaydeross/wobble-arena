@@ -45,8 +45,18 @@ for (const id of Object.keys(modesRaw)) {
 }
 const weapons = {}; for (const k of wkeys) weapons[k] = plain(WEAPONS[k]);
 
+// crate drops (pickCrateKey / spawnDrop ~6086): weights after the DROP_BASE overrides, rarity multipliers, power-up/heal
+// labels, and per mode which drop keys MODES[m].allow lets through (power-ups follow PU_MODE, like the wrapper at ~3414)
+const dropCode = (() => { const a = SRC.indexOf('const DROP_BASE = {};'), b = SRC.indexOf('const CRATE_MULT'); if (a < 0 || b < a) throw new Error('DROP_BASE block not found'); return SRC.slice(a, b); })();
+const DROP_BASE = vm.runInContext('const DROP_POOL = ' + grab('DROP_POOL') + ';\n' + dropCode + 'DROP_BASE', vm.createContext({}));
+const PU_MODE = get('PU_MODE');
+const dropAllow = {};
+for (const id of Object.keys(modesRaw)) dropAllow[id] = Object.keys(DROP_BASE).filter(k => (k === 'speed' || k === 'rage' || k === 'shield') ? (PU_MODE[id] ? PU_MODE[id].includes(k) : true) : (() => { try { return !!modesRaw[id].allow(k); } catch (x) { return false; } })());
+const drops = { base: DROP_BASE, mult: get('CRATE_MULT'), heal: get('HEAL_META'), powerups: get('PU_META'), allow: dropAllow };
+
 const out = {
   'weapons.json': weapons,
+  'drops.json': drops,
   'modes.json': modes,
   'difficulties.json': get('DIFFS'),
   'crate-rates.json': get('CRATE_RATE'),

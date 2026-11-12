@@ -14,7 +14,7 @@ Decisions made in this session, which replace the earlier "Godot for iOS + web g
 
 What exists today (main, PRs #1–#13 merged):
 - Web game with classes, 4 new arenas, phone menus, touch controls; `docs/PROTOCOL.md`; hardened netcode; `shared/*.json` (weapons, modes, classes, cosmetics, map collision geometry) exported by `tools/export-content.js` / `tools/export-maps.js`.
-- Godot skeleton in `godot/`: `scripts/net_client.gd` (joins a room), `scripts/fighter_physics.gd` (movement + collision, **exact parity** with the web code via `tools/physics-reference.js` + `tools/test-physics.js`).
+- Godot skeleton in `godot/`: `scripts/net_client.gd` (joins a room), `logic/fighter_physics.gd` (movement + collision, **exact parity** with the web code via `tools/physics-reference.js` + `tools/test-physics.js`).
 - Tests: `npm test` (content drift, map checker, server), `test:browser`, `test:touch`, `test:godot`, `test:godot-physics`.
 
 Loose ends right now:
