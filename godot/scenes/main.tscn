@@ -48,6 +48,31 @@ offset_bottom = 20.0
 horizontal_alignment = 1
 text = "Wobble Arena"
 
+[node name="Play" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = 40.0
+offset_right = 260.0
+offset_bottom = 110.0
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="PlayOffline" type="Button" parent="Play"]
+custom_minimum_size = Vector2(240, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "Play offline"
+
+[node name="Map" type="OptionButton" parent="Play"]
+custom_minimum_size = Vector2(220, 64)
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+
 [node name="Build" type="Label" parent="."]
 layout_mode = 1
 anchors_preset = 7
