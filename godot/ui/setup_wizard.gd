@@ -128,6 +128,7 @@ func summary_line() -> String:
 
 func _players_text() -> String:
 	var t := bot_total()
+	if mode_id == "practice": return "You + %d dummies" % t
 	return "You + %d bot%s" % [t, "" if t == 1 else "s"]
 
 ## Loads the remembered choices from Settings (and fixes anything no longer valid).
@@ -491,7 +492,7 @@ func _build_mode(p: Control) -> void:
 	var g := _grid_page(p, P_MODE, MODE_CARD.x)
 	var grp := ButtonGroup.new()
 	for m: String in modes():
-		var b := _card(mode_name(m), str(Content.modes[m].get("desc", "")), MODE_CARD)
+		var b := _card(mode_name(m), ModeRules.blurb(m, Content.modes), MODE_CARD)
 		b.name = m
 		b.button_group = grp
 		b.pressed.connect(set_mode.bind(m))
@@ -625,13 +626,16 @@ func _refresh() -> void:
 	var total := bot_total()
 	for n2 in _bot_bs:
 		var b: Button = _bot_bs[n2]
-		b.disabled = (team and not flex and n2 != total) or (flex and n2 % 2 == 0)
-		b.set_pressed_no_signal(n2 == (total if team else bots))
+		var fixed := ModeRules.fixed_bots(mode_id, Content.modes) >= 0     # Pillars / Practice Range set the count
+		b.disabled = (team and not flex and n2 != total) or (flex and n2 % 2 == 0) or (fixed and n2 != total)
+		b.set_pressed_no_signal(n2 == (total if team or fixed else bots))
 	if players_l:
 		players_l.text = _players_text()
 		var t := ModeRules.team_size(mode_id, Content.modes, total)
 		if flex: players_hint.text = "Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even)." % [t, t]
 		elif team: players_hint.text = "Bots are computer players. %s fixes the teams: %d vs %d." % [mode_name(mode_id), t, t]
+		elif mode_id == "practice": players_hint.text = "The range has %d dummies: they stand, slide and pop back up. They never fight back." % total
+		elif ModeRules.fixed_bots(mode_id, Content.modes) >= 0: players_hint.text = "%s fills every pillar: you + %d bots, one life each." % [mode_name(mode_id), total]
 		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = "%s · Floor: %s" % [mode_name(mode_id), Dynamics.NAMES.get(dyn, dyn)]

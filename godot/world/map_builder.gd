@@ -44,6 +44,7 @@ static func build(map_id: String) -> MapNode:
 	var map: Dictionary = content.get_map(map_id) if content else _load_maps_file().get(map_id, {})
 	if map.is_empty():
 		push_error("MapBuilder: unknown map " + map_id)
+	if PillarsMap.IDS.has(map_id): map = PillarsMap.complete(map)   # its pillars and spots are not in the web export
 	return build_from(map_id, map)
 
 ## Build from a map Dictionary (one entry of maps.json).

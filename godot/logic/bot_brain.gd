@@ -85,6 +85,7 @@ var hop_n := -1                  ## -1 = unset (undefined in the web game: no ai
 var hop_y0 := 0.0
 var hop_to := 0
 var hop_approach := false
+var mt := 0.0                    ## b.mt: a range dummy's mover clock (PracticeRange.range_bot)
 ## counters for tests / the HUD (not in the web game): how often the watchdog fired.
 var escapes := 0
 ## Godot-only fix (on by default; the parity test turns it off): when the watchdog trips again during an escape, the
@@ -191,6 +192,9 @@ func _pillar_hop(b: FighterState, sim: MatchSim, tg: FighterState, ranged: bool,
 ## botThink, one fixed step.
 func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 	var combat := sim.combat
+	if not combat.brawl and PracticeRange.is_range(sim.map):    # practice-range dummies (rangeBot)
+		PracticeRange.range_bot(b, sim.fighters.find(b) - 1, sim.player, sim.map["range"], dt, self)
+		return
 	var rng := combat.rng
 	var p := b.phys
 	var brawl := combat.brawl

@@ -9,21 +9,27 @@
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const { makeContext, mkFighter, seedRandom, block, line, exactJson } = require('./combat-reference');
 
-const FUNCS = ['function teamKo\\(', 'function eliminate\\(', 'function ggGive\\(', 'function ggAdvance\\(', 'function doDash\\(', 'function dashTick\\(', 'function updateShrink\\('];
-const LINES = [/^const GG = .*/m, /^const DASH_MAX = .*/m, /^const DASH_GEAR = .*/m, /^const dashGear = .*/m];
+const FUNCS = ['function initPillars\\(', 'function pillarGive\\(', 'function updatePillars\\(', 'function teamKo\\(', 'function eliminate\\(', 'function ggGive\\(', 'function ggAdvance\\(', 'function doDash\\(', 'function dashTick\\(', 'function updateShrink\\('];
+const LINES = [/^const PIL_BAN = .*/m, /^const RARITY = .*/m, /^const GG = .*/m, /^const DASH_MAX = .*/m, /^const DASH_GEAR = .*/m, /^const dashGear = .*/m];
 /* MAPS.shrink / MAPS.squeeze build(): the `shrink` objects (mesh is visual) */
 const SHRINK = {
   shrink: { S0: 64, size: 64, start: 64, min: 16, max: 40, dir: -1, cycle: 0, hold: 5, both: true, D: 64 },
   squeeze: { S0: 80, size: 80, start: 80, min: 22, max: 58, dir: -1, cycle: 0, hold: 5, both: false, D: 36, rate: 34 },
 };
 
+const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 function modesContext() {
   const ctx = makeContext();
   Object.assign(ctx, { feedItems: [], ENDS: [], pickups: [], colOf: () => '', nameOf: () => '' });
-  let code = '"use strict";\n';
+  ctx.el = id => (id === 'piltime' || id === 'pilnext' || id === 'pilhud') ? { textContent: '', style: {} } : null;   // the Pillars HUD (visual)
+  let code = '"use strict";\nvar pil = null;\n';
+  code += SRC.match(/^const DROP_POOL = \[[\s\S]*?\];/m)[0] + '\n';
+  const pilAllow = /^  pillars: \{.*allow: (k => [^,]*), start/m.exec(SRC);        // MODES.pillars.allow (shared/modes.json cannot hold a function)
+  if (!pilAllow) throw new Error('MODES.pillars.allow not found');
   for (const r of LINES) code += line(r) + '\n';
   for (const f of FUNCS) code += block(new RegExp('^' + f, 'm')) + '\n';
-  code += 'endMatch = function (w) { matchOver = true; ENDS.push(w.id); };\n';        // endMatch: only its gameplay half (stats/coins/menu are UI)
+  code += 'endMatch = function (w) { matchOver = true; ENDS.push(w.id); };\n';
+  code += 'MODES.pillars.allow = ' + pilAllow[1] + ';\n';        // endMatch: only its gameplay half (stats/coins/menu are UI)
   vm.runInContext(code, ctx);
   return ctx;
 }
@@ -34,7 +40,8 @@ function dump(ctx) {
     f.dashN, f.dashRegen, f.dashCd, f.ggRung || 0, f.st.deaths, f.st.streak, f.fallSide, f.dashAirT || 0]);
   const s = ctx.shrink;
   const S = s ? [s.size, s.start, s.dir, s.hold, s.cycle, s.rest === undefined ? -1 : s.rest, s.box.minX, s.box.maxX, s.box.minZ, s.box.maxZ] : null;
-  return { f: F, m: [ctx.matchOver ? 1 : 0, ctx.ENDS.join(','), ctx.simTime], s: S };
+  const P = ctx.pil ? [ctx.pil.t, ctx.pil.next] : null;
+  return { f: F, m: [ctx.matchOver ? 1 : 0, ctx.ENDS.join(','), ctx.simTime], s: S, p: P };
 }
 
 /* ---- ops (godot/tests/modes_parity_test.gd implements exactly the same) ---- */
@@ -50,7 +57,8 @@ function apply(ctx, op) {
         else { ctx.shrink = null; ctx.MAPS.m.shrinks = false; }
       } else ctx.cfg[op.key] = op.val;
       break;
-    case 'set': if (op.key === 'py') f.pos.y = op.val; else f[op.key] = op.val; break;
+    case 'set': if (op.key === 'py') f.pos.y = op.val; else if (op.key === 'deaths') f.st.deaths = op.val; else f[op.key] = op.val; break;
+    case 'pilInit': ctx.initPillars(); break;
     case 'placeAt': f.placeAt(op.x, op.z, op.y); break;
     case 'pickup': f.pickup(op.key); break;
     case 'hit': f.hit(op.dmg, new ctx.Vector3(...op.dir), op.force, !!op.head, op.a >= 0 ? F[op.a] : null); break;
@@ -58,7 +66,7 @@ function apply(ctx, op) {
     case 'respawn': f.respawn(); break;
     case 'dash': ctx.doDash(f, op.ix, op.iz); break;
     case 'step':                                   // simStep's order for these parts: simTime, updateShrink, per-fighter timers
-      for (let n = 0; n < op.n; n++) { ctx.simTime += op.dt; ctx.updateShrink(op.dt); for (const g of F) g.timers(op.dt); }
+      for (let n = 0; n < op.n; n++) { ctx.simTime += op.dt; ctx.updatePillars(op.dt); ctx.updateShrink(op.dt); for (const g of F) g.timers(op.dt); }
       break;
     default: throw new Error('unknown op ' + op.op);
   }
@@ -140,6 +148,26 @@ function scenario() {
       ops.push({ op: 'set', f: 0, key: 'downT', val: 0.5 }, { op: 'dash', f: 0, ix: 1, iz: 0 }); step(80);
       ops.push({ op: 'cfg', key: 'mode', val: 'pillars' }, { op: 'dash', f: 3, ix: 0.2, iz: -1 }, { op: 'dash', f: 4, ix: 0, iz: 0 }); step(40);
       ops.push({ op: 'cfg', key: 'mode', val: 'classic' });
+    },
+    pillars() {                                   // Pillars: the weapon handout (first at 1.2 s, then every 10 s, held weapon kept, full
+      ops.push({ op: 'cfg', key: 'mode', val: 'pillars' }, { op: 'cfg', key: 'lives', val: 1 });   // inventory), the clock, most K.O.s / fewest deaths wins
+      all('lives', 1); all('dead', false); all('elim', false); all('ko', 0); all('deathT', 0); all('deaths', 0);
+      for (let i = 0; i < 5; i++) ops.push({ op: 'placeAt', f: i, x: i * 3 - 6, z: -6, y: 0.01 });
+      all('invuln', 0);
+      ops.push({ op: 'pilInit' });
+      step(60, 1 / 60); step(15, 1 / 60);         // nothing yet, then the first weapon at 1.2 s
+      ops.push({ op: 'pickup', f: 0, key: 'ak' });                                              // the player holds an AK: handouts go behind it
+      ops.push({ op: 'set', f: 1, key: 'dead', val: true }, { op: 'set', f: 1, key: 'deathT', val: 99 });   // dead: skipped
+      ops.push({ op: 'set', f: 3, key: 'elim', val: true });                                    // out: skipped
+      step(10 * 60, 1 / 60);
+      ops.push({ op: 'set', f: 1, key: 'dead', val: false }, { op: 'set', f: 1, key: 'deathT', val: 0 });
+      for (let k = 0; k < 4; k++) step(10 * 60, 1 / 60);                                       // full inventories swap the held slot
+      ops.push({ op: 'set', f: 2, key: 'ko', val: 3 }, { op: 'set', f: 4, key: 'ko', val: 3 }, { op: 'set', f: 2, key: 'deaths', val: 1 });
+      ops.push({ op: 'set', f: 0, key: 'ko', val: 2 });
+      for (let k = 0; k < 13; k++) step(10 * 60, 1 / 60);                                      // the clock runs out: f4 (3 K.O.s, 0 deaths)
+      step(5 * 60, 1 / 60);                                                                    // after the end: no handouts, no second end
+      ops.push({ op: 'cfg', key: 'matchOver', val: 0 }, { op: 'cfg', key: 'lives', val: 0 }, { op: 'cfg', key: 'mode', val: 'classic' }, { op: 'pilInit' });
+      all('elim', false); all('lives', 0); all('ko', 0); all('dead', false); all('deathT', 0); all('deaths', 0);
     },
     shrink() {                                    // updateShrink both maps: hold, shrink, rest, grow, hold, everyone-fell reset; respawn spots
       for (const id of ['shrink', 'squeeze']) {

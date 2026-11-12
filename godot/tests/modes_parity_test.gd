@@ -74,6 +74,7 @@ func apply(op: Dictionary) -> void:
 		"set":
 			var key: String = op["key"]
 			if key == "py": f.phys.py = float(op["val"])
+			elif key == "deaths": f.st["deaths"] = int(op["val"])
 			elif key == "grounded": f.phys.grounded = bool(op["val"])
 			else: f.set(SET_FIELDS[key], op["val"])
 		"placeAt": c.place_at(f, float(op["x"]), float(op["z"]), float(op["y"]))
@@ -85,10 +86,12 @@ func apply(op: Dictionary) -> void:
 		"ko": c.add_ko(F[int(op["a"])], f)
 		"respawn": c.respawn(f)
 		"dash": c.rules.do_dash(f, float(op["ix"]), float(op["iz"]))
+		"pilInit": c.rules.init_pillars()
 		"step":
 			var dt := float(op["dt"])
 			for n in int(op["n"]):
 				c.time += dt
+				c.rules.update_pillars(dt)
 				c.rules.update_shrink(dt)
 				for g: FighterState in F: c.timers(g, dt)
 		_: push_error("unknown op " + str(op["op"]))
@@ -124,6 +127,13 @@ func compare(s: Dictionary) -> Array:
 	var m: Array = s["m"]
 	var ge := _num_err(1 if c.rules.match_over else 0, m[0]) + _num_err(_ends, m[1]) + _num_err(c.time, m[2])
 	if ge > worst: worst = ge; what = "match: godot %s %s %s js %s" % [c.rules.match_over, _ends, c.time, m]
+	var pv: Variant = s.get("p")
+	if (pv == null) != c.rules.pil.is_empty():
+		return [1.0, "pillars presence"]
+	if pv != null:
+		for k in 2:
+			var e := _num_err([c.rules.pil["t"], c.rules.pil["next"]][k], pv[k])
+			if e > worst: worst = e; what = "pillars field %d: godot %s js %s" % [k, [c.rules.pil["t"], c.rules.pil["next"]][k], pv[k]]
 	var sh: Variant = s["s"]
 	var rs := c.rules.shrink
 	if (sh == null) != rs.is_empty():
