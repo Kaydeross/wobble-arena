@@ -112,6 +112,7 @@ func apply(op: Dictionary) -> void:
 				"spawns": c.spawns = val; c.spawn_y = float(op["y"])
 				"solids": c.solids = val
 				"aimPoint": aim_point = val
+				"aim": F[0].ads = float(val)
 				"mode": c.set_mode(val)
 				"kb": c.kb_setting = float(val)
 				"teams": c.teams = int(val)
@@ -148,6 +149,11 @@ func apply(op: Dictionary) -> void:
 		"fire":
 			pose_all()
 			c.weapons.try_fire(f, aim_point if f.is_player else [])
+		"hold":
+			pose_all()
+			if not c.wdata(f.weapon).get("spinup", 0): f.spin = 0.0
+			if not f.dead and f.down_t <= 0.0 and c.wdata(f.weapon).get("type", "") == "gun":
+				c.weapons.gun_tick(f, bool(op["held"]), float(op["dt"]), aim_point if f.is_player else [])
 		"melee":
 			if c.try_melee(f, float(op["yaw"])): melee_yaw[int(op["f"])] = float(op["yaw"])
 		"kick": c.do_kick(f, float(op["yaw"]))
@@ -186,11 +192,11 @@ func dump_fighter(i: int) -> Array:
 	return [p.px, p.py, p.pz, p.vx, p.vy, p.vz, int(p.grounded), f.hp, int(f.dead), f.death_t, f.down_t, f.getup_immune, f.stun, f.invuln, f.flash,
 		f.cool, f.swing, f.kick_t, f.weapon, f.slot, sl, int(f.reloading), f.rl_t, f.ko, f.st["hits"], f.st["dmg"], f.st["taken"], f.st["deaths"], f.st["heads"], f.st["shots"],
 		f.st["streak"], f.st["multi"], lean[i][0], lean[i][1], head[i][0], head[i][1], arm[i][0], arm[i][1], arm[i][2], f.aim_x, f.aim_y, f.aim_z, f.climb, f.fall_side,
-		f.throw_t, f.knife_t, f.return_slot, f.lives, int(f.elim), melee_yaw[i], f.last_hit_time]
+		f.throw_t, f.knife_t, f.return_slot, f.lives, int(f.elim), melee_yaw[i], f.last_hit_time, f.spin, f.uzi_side]
 
 const NAMES := ["px", "py", "pz", "vx", "vy", "vz", "grounded", "hp", "dead", "deathT", "downT", "getupImmune", "stun", "invuln", "flash", "cool", "swing", "kickT",
 	"weapon", "slot", "slots", "reloading", "rlT", "ko", "hits", "dmg", "taken", "deaths", "heads", "shots", "streak", "multi", "leanA", "leanB", "headA", "headB",
-	"armX", "armY", "armZ", "aimX", "aimY", "aimZ", "climb", "fallSide", "throwT", "knifeT", "returnSlot", "lives", "elim", "meleeYaw", "lastHitTime"]
+	"armX", "armY", "armZ", "aimX", "aimY", "aimZ", "climb", "fallSide", "throwT", "knifeT", "returnSlot", "lives", "elim", "meleeYaw", "lastHitTime", "spin", "uziSide"]
 
 ## Worst difference between two JSON-like values ([error, description]).
 func diff(a: Variant, b: Variant, what: String) -> Array:

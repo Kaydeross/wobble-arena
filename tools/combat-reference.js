@@ -45,7 +45,26 @@ class Vector3 {
   length() { return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z); }
   normalize() { return this.divideScalar(this.length() || 1); }
   lerp(v, a) { this.x += (v.x - this.x) * a; this.y += (v.y - this.y) * a; this.z += (v.z - this.z) * a; return this; }
+  applyQuaternion(q) {
+    const x = this.x, y = this.y, z = this.z, qx = q.x, qy = q.y, qz = q.z, qw = q.w;
+    const ix = qw * x + qy * z - qz * y, iy = qw * y + qz * x - qx * z, iz = qw * z + qx * y - qy * x, iw = -qx * x - qy * y - qz * z;
+    this.x = ix * qw + iw * -qx + iy * -qz - iz * -qy; this.y = iy * qw + iw * -qy + iz * -qx - ix * -qz; this.z = iz * qw + iw * -qz + ix * -qy - iy * -qx;
+    return this;
+  }
   distanceTo(v) { const dx = this.x - v.x, dy = this.y - v.y, dz = this.z - v.z; return Math.sqrt(dx * dx + dy * dy + dz * dz); }
+}
+/* three.js Quaternion (the parts the arm needs) */
+class Quaternion {
+  constructor() { this.x = 0; this.y = 0; this.z = 0; this.w = 1; }
+  set(x, y, z, w) { this.x = x; this.y = y; this.z = z; this.w = w; return this; }
+  setFromUnitVectors(a, b) {
+    let r = a.x * b.x + a.y * b.y + a.z * b.z + 1;
+    if (r < 1e-8) { r = 0; if (Math.abs(a.x) > Math.abs(a.z)) { this.x = -a.y; this.y = a.x; this.z = 0; this.w = r; } else { this.x = 0; this.y = -a.z; this.z = a.y; this.w = r; } }
+    else { this.x = a.y * b.z - a.z * b.y; this.y = a.z * b.x - a.x * b.z; this.z = a.x * b.y - a.y * b.x; this.w = r; }
+    const l = Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z + this.w * this.w);
+    if (l === 0) { this.x = 0; this.y = 0; this.z = 0; this.w = 1; } else { const il = 1 / l; this.x *= il; this.y *= il; this.z *= il; this.w *= il; }
+    return this;
+  }
 }
 /* same slab test as Weapons.ray_box in Godot */
 function rayBox(o, d, x0, y0, z0, x1, y1, z1) {
@@ -67,7 +86,7 @@ const FIGHTER_METHODS = ['get ammo\\(\\)', 'set ammo\\(v\\)', 'equipSlot\\(i\\)'
 const FUNCS = ['function raySphere\\(', 'function aimFromHand\\(', 'function clampToWalls\\(', 'function hasLOS\\(', 'function inSolid\\(', 'function isFriend\\(',
   'function addKo\\(', 'function useAmmo\\(', 'function shove\\(', 'function doKick\\(', 'function throwKnife\\(', 'function releaseKnife\\(', 'function updateKnives\\(',
   'function netNum\\(', 'function netCleanHit\\('];
-const LINES = [/^const BAT_BASE = .*/m, /^const newSt = .*/m, /^const hpOf = .*/m, /^const HIT_MAX = .*/m, /^const BOT_RESPAWN = .*/m, /^const ladderOn = .*/m];
+const LINES = [/^const DOWN = .*/m, /^const GUN_KEYS = .*/m, /^const UZI_SIDE = .*/m, /^const shotSpread = .*/m, /^const BAT_BASE = .*/m, /^const newSt = .*/m, /^const hpOf = .*/m, /^const HIT_MAX = .*/m, /^const BOT_RESPAWN = .*/m, /^const ladderOn = .*/m];
 
 function makeContext() {
   const noop = () => {};
@@ -82,7 +101,7 @@ function makeContext() {
     clamp: (v, a, b) => Math.max(a, Math.min(b, v)), lerp: (a, b, t) => a + (b - a) * t,
     puff: noop, koBurst: noop, koPop: noop, feedAdd: noop, dmgNumber: noop, toast: noop, sfx: noop, hitMarker: noop, tracer: noop, bulletTracer: noop, bulletHole: noop,
     ejectShell: noop, flameFx: noop, updateCoins: noop, updateKoText: noop, endMatch: noop, ggAdvance: noop, ggGive: noop, eliminate: (f) => { f.elim = true; }, passPotato: noop,
-    dashTick: noop, el: () => null, landDust: noop, ringFx: noop, tyInFlight: () => false, shotSpread: () => { throw new Error('shotSpread not ported'); },
+    dashTick: noop, el: () => null, landDust: noop, ringFx: noop, tyInFlight: () => false,
     makeKnifeMesh: () => ({ position: { copy() {} }, lookAt() {}, inner: { rotation: { y: 0 } } }), scene: { add() {}, remove() {} },
     netSend: m => ctx.NETLOG.push(JSON.parse(JSON.stringify(m))),
   };
@@ -106,6 +125,7 @@ function makeContext() {
   // setWeapon builds meshes in the game; only its gameplay part is kept (same as Combat.set_weapon)
   code += '  setWeapon(key) { this.weapon = key; this.swing = -1; this.batValid = false; this.nocked = false; this.grabT = -1; this.draw = 0; }\n';
   code += '  reloadCleanup() {}\n}\n';
+  code += 'globalThis.armQuat = function() { this.arm.quaternion.setFromUnitVectors(DOWN, this.armDir);\n' + block(/^    if \(this\.slot >= 0 && GUN_KEYS\.includes\(this\.weapon\) && !this\.dead\)/m) + '\n};\n';
   code += 'globalThis.FighterBase = FighterBase; globalThis.useAmmo = useAmmo; globalThis.shove = shove; globalThis.doKick = doKick; globalThis.throwKnife = throwKnife;' +
     'globalThis.updateKnives = updateKnives; globalThis.netCleanHit = netCleanHit; globalThis.PROJ = { knife: throwKnife }; globalThis.newSt = newSt; globalThis.hpOf = hpOf; globalThis.BAT_N = BAT_N;';
   vm.createContext(ctx);
@@ -131,6 +151,7 @@ function mkFighter(ctx, d, i) {
     handPos: new Vector3(), armDir: new Vector3(0, 0, 1), aimTarget: new Vector3(0, 0, 1), shoulderPos: new Vector3(), headPos: new Vector3(), chestPos: new Vector3(), legPos: new Vector3(),
     armVel: new Vector3(), LEAN: [0, 0], HEAD: [0, 0], off: { head: [0, 1.95, 0], chest: [0, 1.22, 0], hand: [0.3, 1.3, 0.4], shoulder: [0.3, 1.55, 0] }, follow: true,
   });
+  f.arm = { quaternion: new Quaternion() }; f.armQuat = ctx.armQuat;
   f.lean = kick(f.LEAN); f.head = kick(f.HEAD);
   for (let k = 0; k < ctx.BAT_N; k++) { f.batNow.push(new Vector3()); f.batPrev.push(new Vector3()); }
   f.hp = ctx.hpOf(f);
@@ -145,6 +166,7 @@ function pose(f) {
   f.shoulderPos.set(p.x + o.shoulder[0], p.y + o.shoulder[1], p.z + o.shoulder[2]);
   f.legPos.set(p.x, p.y + 0.5, p.z);
   if (f.follow) f.armDir.copy(f.aimTarget);
+  f.armQuat();
 }
 const FIELD = { shieldT: 1, rageT: 1, downT: 1, trapT: 1, invuln: 1, yaw: 1, hp: 1, stun: 1, burn: 1, getupImmune: 1, cool: 1, kickCool: 1, shoveCool: 1, climb: 1, hipD: 1, dmgScale: 1, lastHitTime: 1, grounded: 1 };
 
@@ -154,7 +176,7 @@ function dump(ctx) {
     return [f.pos.x, f.pos.y, f.pos.z, f.vel.x, f.vel.y, f.vel.z, f.grounded ? 1 : 0, f.hp, f.dead ? 1 : 0, f.deathT, f.downT, f.getupImmune, f.stun, f.invuln, f.flash,
       f.cool, f.swing, f.kickT, f.weapon || '', f.slot, JSON.stringify(sl), f.reloading ? 1 : 0, f.rlT, f.ko, f.st.hits, f.st.dmg, f.st.taken, f.st.deaths, f.st.heads, f.st.shots,
       f.st.streak, f.st.multi, f.LEAN[0], f.LEAN[1], f.HEAD[0], f.HEAD[1], f.armVel.x, f.armVel.y, f.armVel.z, f.aimTarget.x, f.aimTarget.y, f.aimTarget.z, f.climb, f.fallSide,
-      f.throwT, f.knifeT, f.returnSlot === null ? -1 : f.returnSlot, f.lives, f.elim ? 1 : 0, f.melee || 0, f.lastHitTime];
+      f.throwT, f.knifeT, f.returnSlot === null ? -1 : f.returnSlot, f.lives, f.elim ? 1 : 0, f.melee || 0, f.lastHitTime, f.spin || 0, f.uziSide];
   });
   const K = ctx.knives.map(k => [k.pos.x, k.pos.y, k.pos.z, k.vel.x, k.vel.y, k.vel.z, k.age, k.stuck]);
   const out = { f: F, k: K, net: ctx.NETLOG.slice() }; ctx.NETLOG.length = 0;
@@ -170,6 +192,7 @@ function apply(ctx, op) {
       else if (op.key === 'net') ctx.net = op.val ? { started: true, host: true, slotKind: op.val.kinds } : null;
       else if (op.key === 'spawns') ctx.MAPS.m = { spawns: op.val, spawnY: op.y };
       else if (op.key === 'solids') ctx.solids = op.val;
+      else if (op.key === 'aim') ctx.cam.aim = op.val;
       else if (op.key === 'aimPoint') ctx.aimPoint.set(...op.val);
       else ctx.cfg[op.key] = op.val;
       break;
@@ -196,6 +219,17 @@ function apply(ctx, op) {
       } else if (ctx.PROJ[w.type]) {
         if (p.cool <= 0 && p.swing < 0) { p.cool = w.cooldown; ctx.PROJ[w.type](p, w); ctx.useAmmo(p); }
       }
+      break;
+    }
+    case 'hold': {                                          // playerControl's gun lines with the fire button held/released (minigun spin-up)
+      F.forEach(pose);
+      const w = ctx.WEAPONS[f.weapon] || ctx.WEAPONS.spatula, p = f, dt = op.dt, mouse = { l: !!op.held };
+      if (!w.spinup) p.spin = 0;
+      if (p.dead || p.downT > 0 || w.type !== 'gun') break;
+      const gs = p.slot >= 0 ? p.slots[p.slot] : null;
+      if (gs && w.mag && gs.mag !== undefined && !ctx.cfg.inf) { if (gs.mag <= 0 && gs.ammo > 0 && !p.reloading) p.startReload(); }
+      if (w.spinup) { p.spin = mouse.l ? Math.min(w.spinup, p.spin + dt) : Math.max(0, p.spin - dt * 2); }
+      if (mouse.l && p.cool <= 0 && p.swing < 0 && !p.reloading && (!w.spinup || p.spin >= w.spinup)) { p.cool = w.cooldown; p.fireGun(w); ctx.useAmmo(p); }
       break;
     }
     case 'melee': {                                         // playerControl's melee line
@@ -304,6 +338,121 @@ function scenario() {
       for (let k = 0; k < 6; k++) { ops.push({ op: 'fire', f: 0 }); step(110); }
       ops.push({ op: 'pose', f: 0, aim: [0, 0.2, 1] }, { op: 'fire', f: 0 }); step(200);
       ops.push({ op: 'pose', f: 0, aim: [-0.5, 0.1, 0.1] }, { op: 'fire', f: 0 }); step(500);
+    },
+    guns() {                                        // the other plain hitscan guns: ak, sniper, revolver, mammoth (player = crosshair assist, bot = arm assist)
+      const setup = (x1, z1) => {
+        for (const i of [0, 1, 2, 3, 4]) ops.push({ op: 'placeAt', f: i, x: [0, x1, x1 + 1.2, -1, 6][i], z: [0, z1, z1 - 5, 9, -5][i], y: 0.01 }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 });
+        for (const i of [0, 3]) ops.push({ op: 'set', f: i, key: 'climb', val: 0 });      // the harness has no animate(), which is what settles the recoil climb
+        ops.push({ op: 'pose', f: 0, aim: [x1 / -z1, 0.1, -1] });   // targets are at -z (the wall box is at +z 12..13)
+      };
+      const bot = (key, n, gap) => {                // fighter 3 shoots at fighter 0 with the weapon's own assist
+        ops.push({ op: 'pickup', f: 3, key }, { op: 'pose', f: 3, aim: [0.05, 0.0, -1] });
+        for (let k = 0; k < n; k++) { ops.push({ op: 'fire', f: 3 }); step(gap); }
+      };
+      setup(0.3, -10);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.25, -10] });
+      ops.push({ op: 'pickup', f: 0, key: 'ak' });
+      for (let k = 0; k < 45; k++) { ops.push({ op: 'fire', f: 0 }); step(13); }          // climb, recoil, mag, auto reload
+      ops.push({ op: 'class', f: 0, cls: 'bruiser' }, { op: 'pickup', f: 0, key: 'ak' }, { op: 'cfg', key: 'aim', val: 1 });
+      for (let k = 0; k < 20; k++) { ops.push({ op: 'fire', f: 0 }); step(13); }          // scoped in: tighter spread
+      ops.push({ op: 'cfg', key: 'aim', val: 0 }, { op: 'class', f: 0, cls: 'wobbler' });
+      bot('ak', 40, 7);
+      setup(0.3, -25);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.95, -25] });                       // head height: the head multiplier
+      ops.push({ op: 'pickup', f: 0, key: 'sniper' });
+      for (let k = 0; k < 6; k++) { ops.push({ op: 'fire', f: 0 }); step(160); }
+      ops.push({ op: 'reload', f: 0 }); step(500);
+      ops.push({ op: 'cfg', key: 'aim', val: 1 }, { op: 'fire', f: 0 }); step(200); ops.push({ op: 'cfg', key: 'aim', val: 0 });
+      bot('sniper', 6, 165);
+      setup(0.3, -14);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.2, -14] });
+      ops.push({ op: 'pickup', f: 0, key: 'revolver' });
+      for (let k = 0; k < 9; k++) { ops.push({ op: 'fire', f: 0 }); step(80); }
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.95, -14] });
+      for (let k = 0; k < 6; k++) { ops.push({ op: 'fire', f: 0 }); step(80); }
+      ops.push({ op: 'reload', f: 0 }); step(400);
+      bot('revolver', 8, 80);
+      setup(0.3, -14);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.95, -14] });
+      ops.push({ op: 'pickup', f: 0, key: 'mammoth' });
+      for (let k = 0; k < 8; k++) { ops.push({ op: 'fire', f: 0 }); step(110); }           // headshots: the head snap and extra shove
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.2, -14] });
+      for (let k = 0; k < 5; k++) { ops.push({ op: 'fire', f: 0 }); step(110); }
+      ops.push({ op: 'cfg', key: 'giant', val: 1 }, { op: 'pickup', f: 0, key: 'mammoth' }, { op: 'fire', f: 0 }); step(120); ops.push({ op: 'cfg', key: 'giant', val: 0 });
+      bot('mammoth', 6, 110);
+    },
+    uziMinigun() {                                  // dual Uzis alternate muzzles; the minigun needs to spin up while the button is held
+      for (const i of [0, 1, 2, 3, 4]) ops.push({ op: 'placeAt', f: i, x: [0, 0.2, 1.4, -1, 6][i], z: [0, -11, -16, 9, -5][i], y: 0.01 }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 });
+      for (const i of [0, 3]) ops.push({ op: 'set', f: i, key: 'climb', val: 0 });
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.2, 1.2, -11] }, { op: 'pose', f: 0, aim: [0.02, 0.1, -1] });
+      ops.push({ op: 'pickup', f: 0, key: 'uzi' });
+      for (let k = 0; k < 60; k++) { ops.push({ op: 'fire', f: 0 }); step(4); }
+      ops.push({ op: 'pose', f: 0, arm: [0.6, 0.3, -0.74] }, { op: 'cfg', key: 'aimPoint', val: [3, 1.3, -9] });            // arm turned: a different right axis
+      for (let k = 0; k < 20; k++) { ops.push({ op: 'fire', f: 0 }); step(4); }
+      ops.push({ op: 'pose', f: 0, aim: [0, 1, 0.001] }, { op: 'fire', f: 0 }); step(8); ops.push({ op: 'fire', f: 0 }); step(8);    // arm straight up: three.js' degenerate axis
+      ops.push({ op: 'pose', f: 0, aim: [0.02, 0.1, -1] }, { op: 'cfg', key: 'aimPoint', val: [0.2, 1.2, -11] });
+      ops.push({ op: 'pickup', f: 3, key: 'uzi' }, { op: 'pose', f: 3, aim: [0.01, 0.0, -1] });
+      for (let k = 0; k < 40; k++) { ops.push({ op: 'fire', f: 3 }); step(7); }
+      ops.push({ op: 'set', f: 0, key: 'climb', val: 0 }, { op: 'pickup', f: 0, key: 'minigun' });
+      for (let k = 0; k < 40; k++) { ops.push({ op: 'hold', f: 0, held: 1, dt: 1 / 120 }); step(1); }     // spinning up: no shots yet
+      for (let k = 0; k < 150; k++) { ops.push({ op: 'hold', f: 0, held: 1, dt: 1 / 120 }); step(1); }    // firing
+      for (let k = 0; k < 30; k++) { ops.push({ op: 'hold', f: 0, held: 0, dt: 1 / 120 }); step(1); }     // spin decays twice as fast
+      for (let k = 0; k < 20; k++) { ops.push({ op: 'hold', f: 0, held: 1, dt: 1 / 120 }); step(1); }
+      ops.push({ op: 'set', f: 0, key: 'hipD', val: 0.3 });
+      for (let k = 0; k < 100; k++) { ops.push({ op: 'hold', f: 0, held: 1, dt: 1 / 120 }); step(1); }    // hip-carried minigun (barrel tilt)
+      ops.push({ op: 'set', f: 0, key: 'hipD', val: 0 });
+      for (let k = 0; k < 400; k++) { ops.push({ op: 'hold', f: 0, held: 1, dt: 1 / 120 }); step(1); }    // empties the mag, reloads
+      ops.push({ op: 'pickup', f: 3, key: 'minigun' }, { op: 'pose', f: 3, aim: [0.01, 0.0, -1] });
+      for (let k = 0; k < 40; k++) { ops.push({ op: 'fire', f: 3 }); step(6); }                           // bots do not spin up
+    },
+    shotgun() {                                     // pellet circle round the crosshair (rx/ry basis), falloff, hop, shell reload
+      for (const i of [0, 1, 2, 3, 4]) ops.push({ op: 'placeAt', f: i, x: [0, 0.2, 1.0, -1, 6][i], z: [0, -6, -9, 9, -5][i], y: 0.01 }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 });
+      for (const i of [0, 3]) ops.push({ op: 'set', f: i, key: 'climb', val: 0 });
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.2, 1.2, -6] }, { op: 'pose', f: 0, aim: [0.03, 0.1, -1] }, { op: 'pickup', f: 0, key: 'shotgun' });
+      for (const aim of [0, 0.5, 1, 0]) { ops.push({ op: 'cfg', key: 'aim', val: aim }); for (let k = 0; k < 4; k++) { ops.push({ op: 'fire', f: 0 }); step(100); } }
+      ops.push({ op: 'reload', f: 0 }); step(100);
+      ops.push({ op: 'fire', f: 0 }); step(300);                                                                          // a shot during a shell reload cancels it? (whatever the JS does)
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0, 1.2, -40] }, { op: 'pose', f: 0, aim: [0, 0, -1] }, { op: 'cfg', key: 'aim', val: 0 });
+      for (let k = 0; k < 6; k++) { ops.push({ op: 'fire', f: 0 }); step(100); }                                          // looking straight along +z at the far wall side
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0, 1.2, -0.2] });                                                       // a target right at the hand: shoots from the hand
+      ops.push({ op: 'fire', f: 0 }); step(100);
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.2, 1.2, -6] }, { op: 'cfg', key: 'aim', val: 0 });
+      ops.push({ op: 'pickup', f: 3, key: 'shotgun' }, { op: 'pose', f: 3, aim: [0.01, 0.0, -1] });                       // bots never aim down sights
+      for (let k = 0; k < 10; k++) { ops.push({ op: 'fire', f: 3 }); step(100); }
+      ops.push({ op: 'pose', f: 3, aim: [0, 1, 0] }, { op: 'fire', f: 3 }); step(100);                                    // straight up: rx falls back to (1,0,0)? only with baseDir.x=z=0
+      ops.push({ op: 'cfg', key: 'giant', val: 1 }, { op: 'pickup', f: 0, key: 'shotgun' }, { op: 'pose', f: 0, aim: [0.03, 0.1, -1] }, { op: 'fire', f: 0 }); step(100); ops.push({ op: 'cfg', key: 'giant', val: 0 });
+    },
+    glove() {                                       // Spring Glove (gun style punch): best target by cone score, LOS, hit direction lifted, topple chance, Giant x2.1 force
+      for (const i of [0, 1, 2, 3, 4]) ops.push({ op: 'placeAt', f: i, x: [0, 0.3, -1.1, 0.5, 6][i], z: [0, -3, -2.2, 9, -5][i], y: 0.01 }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 });
+      ops.push({ op: 'cfg', key: 'aimPoint', val: [0.3, 1.2, -3] }, { op: 'pose', f: 0, aim: [0.1, 0.0, -1] }, { op: 'pickup', f: 0, key: 'glove' });
+      for (let k = 0; k < 10; k++) { ops.push({ op: 'fire', f: 0 }); step(110); ops.push({ op: 'set', f: 1, key: 'downT', val: 0 }, { op: 'set', f: 2, key: 'downT', val: 0 }, { op: 'set', f: 1, key: 'hp', val: 400 }, { op: 'set', f: 2, key: 'hp', val: 400 }); }
+      ops.push({ op: 'pose', f: 0, aim: [1, 0, 0] });                                       // nobody there: swings at air
+      ops.push({ op: 'fire', f: 0 }); step(110);
+      ops.push({ op: 'pose', f: 0, aim: [-0.7, 0, -0.7] }, { op: 'fire', f: 0 }); step(110);   // off to the side: cone check
+      ops.push({ op: 'cfg', key: 'giant', val: 1 }, { op: 'pickup', f: 0, key: 'glove' }, { op: 'pose', f: 0, aim: [0.1, 0.0, -1] }, { op: 'set', f: 1, key: 'downT', val: 0 }, { op: 'fire', f: 0 }); step(110); ops.push({ op: 'cfg', key: 'giant', val: 0 });
+      ops.push({ op: 'pickup', f: 3, key: 'glove' }, { op: 'pose', f: 3, aim: [-0.05, 0.0, -1] });  // a bot punching f0 from the front (wall box not in the way)
+      for (let k = 0; k < 4; k++) { ops.push({ op: 'fire', f: 3 }); step(110); }
+      ops.push({ op: 'class', f: 1, cls: 'bruiser' }, { op: 'pickup', f: 1, key: 'glove' }, { op: 'pose', f: 1, aim: [-0.1, 0.0, 1] }, { op: 'set', f: 1, key: 'dmgScale', val: 1.5 });
+      for (let k = 0; k < 4; k++) { ops.push({ op: 'fire', f: 1 }); step(110); }
+    },
+    melee2() {                                      // mallet, hammer, wirewhip, trident: their own timings, reach, topple chance, breaking
+      const reset = () => { for (const i of [0, 1, 2, 3, 4]) ops.push({ op: 'placeAt', f: i, x: [0, 0, 1.0, -1.2, 3][i], z: [0, 1.5, 0.9, 0.7, 3][i], y: 0.01 }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'hp', val: 400 }, { op: 'set', f: i, key: 'downT', val: 0 }, { op: 'set', f: i, key: 'getupImmune', val: 0 }, { op: 'set', f: i, key: 'cool', val: 0 }); };
+      for (const key of ['mallet', 'hammer', 'wirewhip', 'trident']) {
+        reset();
+        ops.push({ op: 'pickup', f: 0, key });
+        for (let k = 0; k < 5; k++) { ops.push({ op: 'melee', f: 0, yaw: [0, 0.5, -0.4, 0.2, 2.5][k] }); step(150); if (k % 2) reset(); }
+        ops.push({ op: 'set', f: 0, key: 'grounded', val: false }, { op: 'melee', f: 0, yaw: 0 }); step(130); ops.push({ op: 'set', f: 0, key: 'grounded', val: true });   // in the air: slam
+        reset();
+        ops.push({ op: 'class', f: 1, cls: 'kid' }, { op: 'pickup', f: 1, key }, { op: 'melee', f: 1, yaw: Math.PI });                    // another class swings too
+        step(150);
+        ops.push({ op: 'melee', f: 1, yaw: Math.PI }); step(60); ops.push({ op: 'melee', f: 1, yaw: Math.PI }); step(150);               // second press while swinging/cooling
+        ops.push({ op: 'class', f: 1, cls: 'bruiser' });
+        reset();
+        ops.push({ op: 'cfg', key: 'giant', val: 1 }, { op: 'pickup', f: 0, key }, { op: 'melee', f: 0, yaw: 0.1 }); step(180); ops.push({ op: 'cfg', key: 'giant', val: 0 });
+        reset();
+        for (let k = 0; k < 10; k++) { ops.push({ op: 'pickup', f: 0, key }, { op: 'melee', f: 0, yaw: k * 0.3 }); step(150); if (k % 3 === 2) reset(); }     // breaks after its ammo
+      }
+      reset(); ops.push({ op: 'pickup', f: 0, key: 'trident' }, { op: 'melee', f: 0, yaw: 0 }); step(30); ops.push({ op: 'hit', f: 0, a: 1, dmg: 20, dir: [0, 0, 1], force: 9 }); step(150);    // interrupted swing
     },
     net() {                                         // hits on a remote fighter become `h` messages; a K.O. sends `ko`
       ops.push({ op: 'cfg', key: 'net', val: { kinds: ['human', 'bot', 'human', 'bot', 'bot'] } }, { op: 'set', f: 2, key: 'isGhost', val: true });
