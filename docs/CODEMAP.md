@@ -119,7 +119,7 @@ Porting note: `MAPS[id].build` is imperative three.js code, not data. Spawn/bot 
 | Snake: `shootSnake, updateSnakes` | ~6714-6795 | crawler projectile |
 | Snowball: `shootBall, updateBalls` | ~6796, ~6889 | |
 | Nets / traps: `shootNet, landNet, updateNets, nets, trapNets` | ~6807-6888 | trap sets `f.trapT`, `f.trapNet`; the fighter is pinned in `simStep` after `separate()` |
-| Air Blower: `playerControl` `w.type === 'blower'` branch; Construction: `MODES.construction`, `MAPS.siteyard` | ~9827, ~3088, ~3320 | held cone push (no damage), mode start hammer + allow list, exclusive map; Godot: `Weapons.blower_tick`, title Mode picker (`scripts/main.gd`), test `npm run test:godot-construction`, see `docs/CONSTRUCTION.md` |
+| Air Blower: `playerControl` `w.type === 'blower'` branch; Construction: `MODES.construction`, `MAPS.siteyard` | ~9827, ~3088, ~3320 | held cone push (no damage), mode start hammer + allow list, exclusive map; Godot: `Weapons.blower_tick`, setup wizard Game type page (`ui/setup_wizard.gd`), test `npm run test:godot-construction`, see `docs/CONSTRUCTION.md` |
 | `clearProjectiles` | ~6302 | wipes all projectile arrays at match reset |
 | `hitMarker` | ~2672 | crosshair hit feedback |
 | `enemyInReach, crossInRange` | ~9711-9731 | reach test and crosshair colour |

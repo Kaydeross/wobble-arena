@@ -1,9 +1,10 @@
 extends SceneTree
 ## Renders UI screenshots for visual review (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot match --out FILE.png
-## Shots: title (scenes/main.tscn), title-online (its Play online tab), match (offline world with the HUD), touch (same with the touch layer forced on and
+## Shots: title (scenes/main.tscn), title-online (its Play online panel), title-settings (the gear sheet), wizard-arena /
+## wizard-mode / wizard-players / wizard-class / wizard-go (the offline setup wizard pages, ui/setup_wizard.gd), match (offline world with the HUD), touch (same with the touch layer forced on and
 ## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
-## Mode picker on Construction), construction (a Construction match on Site Yard, mid hammer swing). Used by tools/shoot-godot-ui.sh.
+## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing). Used by tools/shoot-godot-ui.sh.
 
 const FRAME := 1.0 / 60.0
 
@@ -25,12 +26,19 @@ func _settings() -> Node:
 
 func _start() -> void:
 	if shot == "title-construction": _settings().set_value("mode", "construction")
-	if shot == "title" or shot == "title-online" or shot == "title-construction":
+	if shot.begins_with("title") or shot.begins_with("wizard"):
+		if shot.begins_with("wizard"):   # a fixed setup so the shots are comparable
+			for kv in [["offline_map", "arena"], ["mode", "classic"], ["dyn", "random"], ["bots", 3], ["difficulty", "normal"], ["class", "wobbler"]]:
+				_settings().set_value(kv[0], kv[1])
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
 		if shot == "title-online":
 			m.show_tab(true)
-			m.get_node("Safe/Col/Body/Picks/Box/Online/Roster").text = "In the room: Alice, Bob"
+			m.get_node("Safe/Col/Body/Online/Box/Roster").text = "In the room: Alice, Bob"
+		elif shot == "title-settings":
+			m.show_settings(true)
+		elif shot.begins_with("wizard"):
+			m.open_wizard(["wizard-arena", "wizard-mode", "wizard-players", "wizard-class", "wizard-go"].find(shot))
 		frames = 40
 		process_frame.connect(_wait)
 		return

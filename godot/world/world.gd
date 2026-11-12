@@ -25,6 +25,7 @@ const FX_DMG_LIFE := 0.9
 @export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
 @export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
+@export var difficulty := ""       ## bot skill offline: "" = Settings "difficulty" (easy / normal / hard / insane, default normal)
 
 @onready var env_node: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $Sun
@@ -151,7 +152,9 @@ func load_map(id: String) -> void:
 		if not sim.combat.modes.has(mid): mid = "classic"
 		sim.configure(mid, ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1)))
 		bots = ModeRules.bot_count(mid, sim.combat.modes, bot_count)
-	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bots)
+	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
+	if not Content.difficulties.has(skill): skill = "normal"
+	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, 0 if session != null else bots, skill)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
 	_build_dyn_views()
 	if session != null:
