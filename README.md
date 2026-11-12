@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="docs/images/hero-banner.png" alt="Wobble Arena Cinematic Banner" width="100%" />
+  <img src="docs/img/banner.jpg" alt="Wobble Arena Cinematic Banner" width="100%" />
 
   # 🥊 WOBBLE ARENA
   **Fast-paced, physics-fuelled low-poly arena brawling.**  
@@ -31,22 +31,22 @@ Whether you are dashing across the arena with an oversized kitchen spatula or sw
   <table>
     <tr>
       <td width="50%">
-        <img src="docs/images/screen-combat.png" alt="Arena Combat" width="100%" />
+        <img src="docs/style/godot-fx-melee.png" alt="Arena Combat" width="100%" />
         <p align="center"><em>High-impact melee brawling with procedural ribbon trails & hit-flash shaders</em></p>
       </td>
       <td width="50%">
-        <img src="docs/images/screen-site-yard.png" alt="Site Yard Mode" width="100%" />
+        <img src="docs/style/godot-ui-construction.png" alt="Site Yard Mode" width="100%" />
         <p align="center"><em>Scaffold Construction mode inside the Site Yard arena</em></p>
       </td>
     </tr>
     <tr>
       <td width="50%">
-        <img src="docs/images/screen-main-menu.png" alt="Main Menu & Class Select" width="100%" />
+        <img src="docs/style/godot-locker-class.png" alt="Main Menu & Class Select" width="100%" />
         <p align="center"><em>3D class showcase & cosmetic loadout selection</em></p>
       </td>
       <td width="50%">
-        <img src="docs/images/screen-mobile-hud.png" alt="Mobile Landscape Controls" width="100%" />
-        <p align="center"><em>Responsive landscape touch controls (852×393 native HUD)</em></p>
+        <img src="docs/style/godot-gfx-moonbase-after.png" alt="Mobile Landscape Controls" width="100%" />
+        <p align="center"><em>Landscape HUD at 852×393: hotbar, health and radar</em></p>
       </td>
     </tr>
   </table>
@@ -58,31 +58,30 @@ Whether you are dashing across the arena with an oversized kitchen spatula or sw
 
 Pick from five distinct low-poly 3D classes, each with its own silhouette, stats, and brawl style:
 
+<p align="center">
+  <img src="docs/style/godot-wobbler-classes.png" alt="The five classes" width="80%" />
+</p>
+
 <div align="center">
   <table>
     <tr>
       <td align="center" width="20%">
-        <img src="docs/images/classes/wobbler.png" width="120" alt="Wobbler" /><br />
         <strong>Wobbler</strong><br />
         <sub><strong>All-Rounder</strong><br />Balanced speed, weight, and swing recovery built for pure arena fundamentals.</sub>
       </td>
       <td align="center" width="20%">
-        <img src="docs/images/classes/bruiser.png" width="120" alt="Bruiser" /><br />
         <strong>Bruiser</strong><br />
         <sub><strong>Heavy Tank</strong><br />High knockback resistance and crushing melee force that sends rivals flying.</sub>
       </td>
       <td align="center" width="20%">
-        <img src="docs/images/classes/scamp.png" width="120" alt="Scamp" /><br />
         <strong>Scamp</strong><br />
         <sub><strong>Speedster</strong><br />Hyper-agile dasher built for hit-and-run strikes and baiting heavy swings.</sub>
       </td>
       <td align="center" width="20%">
-        <img src="docs/images/classes/gramps.png" width="120" alt="Gramps" /><br />
         <strong>Gramps</strong><br />
         <sub><strong>Veteran Brawler</strong><br />Stubborn footing, deceptive weapon reach, and punishing counter-hits.</sub>
       </td>
       <td align="center" width="20%">
-        <img src="docs/images/classes/zorp.png" width="120" alt="Zorp" /><br />
         <strong>Zorp</strong><br />
         <sub><strong>Cosmic Wildcard</strong><br />Floaty momentum and erratic movement timings that keep opponents guessing.</sub>
       </td>
