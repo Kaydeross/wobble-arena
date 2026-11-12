@@ -19,6 +19,23 @@ const { chromium, devices } = require('playwright');
   const info = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth, viewport: document.querySelector('meta[name=viewport]').content, hasMenu: !!document.getElementById('menu') }));
   await page.screenshot({ path: process.env.SHOT || require('os').tmpdir() + '/wa-menu.png' });
   console.log(JSON.stringify(info), 'errors:', errors.length);
+  const cl = await page.evaluate(() => {                      // every class: stats apply to a fighter and the HP rules use the fighter's own max
+    const { CLASSES, CLASS_IDS, hpOf, player, look, cfg, myInfo, cleanInfo, renderLocker, showPage, setLockTab } = globalThis.__wobbleTest; const giantOn = () => false;
+    const out = {}; const base = cfg.hp * (giantOn() ? 2 : 1);
+    for (const id of CLASS_IDS) { player.setClass(id); out[id] = { hp: hpOf(player), want: base * CLASSES[id].hp, id: player.clsId }; }
+    player.setClass('nonsense'); out.bad = player.clsId;
+    look.cls = 'alien'; const inf = myInfo(); out.net = inf.cls; out.clean = cleanInfo({ name: 'x', cls: 'zzz' }, 1).cls; out.cleanOld = cleanInfo({ name: 'x' }, 1).cls;
+    setLockTab('class'); renderLocker(); out.cards = document.querySelectorAll('#lclass .clspick').length;
+    player.setClass('wobbler'); look.cls = 'wobbler';
+    return out;
+  });
+  for (const id of Object.keys(require('../shared/classes.json'))) assert.ok(cl[id] && Math.abs(cl[id].hp - cl[id].want) < 1e-9 && cl[id].id === id, 'class ' + id + ' applies');
+  assert.equal(cl.bad, 'wobbler', 'unknown class falls back'); assert.equal(cl.net, 'alien', 'class is sent in hello'); assert.equal(cl.clean, 'wobbler'); assert.equal(cl.cleanOld, 'wobbler'); assert.equal(cl.cards, 5, 'locker shows 5 classes');
+  await page.click('#start'); await page.waitForTimeout(800);
+  await page.evaluate(() => { const t = globalThis.__wobbleTest; t.showPage('locker'); t.setLockTab('class'); t.renderLocker(); });
+  await page.evaluate(() => document.getElementById('lclass').scrollIntoView({ block: 'start' }));
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: process.env.SHOT_CLASS || require('os').tmpdir() + '/wa-classes.png' });
   assert.ok(info.hasMenu, 'menu element exists');
   assert.ok(/viewport-fit=cover/.test(info.viewport), 'viewport-fit=cover');
   assert.ok(info.sw <= info.cw + 1, 'no horizontal scroll (' + info.sw + ' > ' + info.cw + ')');

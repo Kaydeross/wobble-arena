@@ -20,14 +20,14 @@ function script(t) {                                         // deterministic in
   const idle = (k % 240) > 200;
   return { wx: idle ? 0 : Math.cos(a), wz: idle ? 0 : Math.sin(a * 1.3), jump: k % 47 === 0 };
 }
-module.exports = function trace(mapId, spawn) {
+module.exports = function trace(mapId, spawn, cls) {
   const maps = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'shared', 'maps.json'), 'utf8'));
   const solids = maps[mapId].geometry.boxes.map(b => ({ minX: b.x - b.w / 2, maxX: b.x + b.w / 2, minZ: b.z - b.d / 2, maxZ: b.z + b.d / 2, top: b.y + b.h, bottom: b.y }));
   const code = 'let R = 0.45, STEP = 0.55, FH = 2.3; const GRAV = 24;\n' + block(/^function collide\(f\) /m).replace(/landDust\(f, -f\.vel\.y\)/, '0') + '\n' +
     'globalThis.physicsFn = ' + block(/^  physics\(dt\) /m).replace(/^\s*physics\(dt\)/, 'function (dt)') + ';';
   const ctx = vm.createContext({ solids, MAPS: { m: {} }, currentMap: 'm', cfg: { grav: 1 }, settings: { ice: 0.5 }, clamp: (v, a, b) => Math.max(a, Math.min(b, v)) });
   vm.runInContext(code, ctx);
-  const f = { pos: { x: spawn[0], y: spawn[1], z: spawn[2], addScaledVector(v, s) { this.x += v.x * s; this.y += v.y * s; this.z += v.z * s; } }, vel: { x: 0, y: 0, z: 0 }, wish: { x: 0, z: 0 }, speed: 7.5, grounded: false, wantJump: false, dead: false, downT: 0, trapT: 0, stun: 0, spdT: 0, dashAirT: 0, crouchK: 0,
+  const f = { pos: { x: spawn[0], y: spawn[1], z: spawn[2], addScaledVector(v, s) { this.x += v.x * s; this.y += v.y * s; this.z += v.z * s; } }, vel: { x: 0, y: 0, z: 0 }, wish: { x: 0, z: 0 }, speed: 7.5, cls: Object.assign({ spd: 1, acc: 1, air: 1, jump: 1 }, cls || {}), grounded: false, wantJump: false, dead: false, downT: 0, trapT: 0, stun: 0, spdT: 0, dashAirT: 0, crouchK: 0,
     ladderStep: () => false, lean: { kick() {} }, head: { kick() {} } };
   const out = [];
   for (let k = 0; k < 720; k++) {
@@ -37,4 +37,4 @@ module.exports = function trace(mapId, spawn) {
   }
   return out;
 };
-if (require.main === module) { const [map, outp] = process.argv.slice(2); const t = module.exports(map, [0, 0.01, 0]); fs.writeFileSync(outp, JSON.stringify(t)); console.log('trace', t.length, 'steps; end', t[t.length - 1].slice(0, 3).map(v => v.toFixed(3)).join(',')); }
+if (require.main === module) { const [map, outp, clsId] = process.argv.slice(2); const t = module.exports(map, [0, 0.01, 0], clsId ? JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'shared', 'classes.json'), 'utf8'))[clsId] : null); fs.writeFileSync(outp, JSON.stringify(t)); console.log('trace', t.length, 'steps; end', t[t.length - 1].slice(0, 3).map(v => v.toFixed(3)).join(',')); }

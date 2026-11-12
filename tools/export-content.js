@@ -50,6 +50,7 @@ const out = {
   'modes.json': modes,
   'difficulties.json': get('DIFFS'),
   'crate-rates.json': get('CRATE_RATE'),
+  'classes.json': get('CLASSES'),
   'cosmetics.json': { hats: get('HATS'), swatch: get('SWATCH'), skins: get('SKINS') },
 };
 
