@@ -55,9 +55,18 @@ func _draw() -> void:
 		draw_string(_font, tp, name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
 		var ammo: String = s["ammo"]
 		if ammo != "":
-			var aw := _font.get_string_size(ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x
-			draw_string(_font, Vector2(r.end.x - 10 - aw, r.position.y + 22), ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
-				UiTheme.ACCENT if g > 0.5 else UiTheme.MUTED)
+			var sub: String = s.get("sub", "")
+			var low: bool = s.get("low", false)
+			var afs := 30 if g > 0.5 else 24                               # the number that matters is big and easy to read
+			var main_c := Color(1.0, 0.42, 0.36) if low else (Color.WHITE if g > 0.5 else Color(1, 1, 1, 0.75))
+			var aw := _font.get_string_size(ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
+			var sw := _font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x if sub != "" else 0.0
+			var ax := r.end.x - 9 - aw - sw
+			var ay := r.position.y + 31
+			draw_string_outline(_font, Vector2(ax, ay), ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, afs, 5, Color(0, 0, 0, 0.5))
+			draw_string(_font, Vector2(ax, ay), ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, afs, main_c)
+			if sub != "":
+				draw_string(_font, Vector2(ax + aw + 1, ay), sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, UiTheme.MUTED)
 		var rl: float = s["reload"]
 		if rl >= 0.0:
 			var bar := Rect2(r.position + Vector2(10, SLOT.y - 8), Vector2((SLOT.x - 20), 4))

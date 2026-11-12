@@ -180,7 +180,7 @@ func current_slot() -> Variant:
 ## Ammo of the held slot (the `ammo` getter).
 func get_ammo() -> int:
 	var s: Variant = current_slot()
-	return int(s["ammo"]) if s != null else 0
+	return int(s["ammo"]) if s != null else 0   # the Air Blower's fractional ammo is read from the slot directly
 
 func set_ammo(v: int) -> void:
 	var s: Variant = current_slot()

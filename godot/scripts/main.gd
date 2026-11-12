@@ -1,5 +1,5 @@
 extends Control
-## Title scene: offline play (map + class pickers) and the online panel: server address, room code, name, Join
+## Title scene: offline play (class, mode, floor and map pickers) and the online panel: server address, room code, name, Join
 ## (as a guest, GuestSession) and a minimal login (POST /api/login, token kept in Settings). Laid out with containers
 ## inside a safe-area MarginContainer so nothing overlaps at any aspect ratio (tests/ui_layout_test.gd checks
 ## 852x393, 1170x540, 1280x720 and 390x844 with both the Offline and the Play online tab open).
@@ -7,6 +7,9 @@ extends Control
 
 const WORLD := "res://world/world.tscn"
 const OFFLINE_MAPS := ["arena", "practice"]
+## Offline modes on the title screen (Settings "mode"). A mode with its own maps (MODES[id].maps in the web game,
+## i.e. maps whose `only` is the mode) plays only those: Construction -> Site Yard. The others use OFFLINE_MAPS.
+const OFFLINE_MODES := ["classic", "construction"]
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
 const TIPS := [
 	"Tip: push the stick to the edge to sprint.",
@@ -26,20 +29,25 @@ const P := "Safe/Col/Body/Picks/Box/"
 @onready var who: Label = $Safe/Col/Top/GuestChip/Row/Who
 @onready var dot: Panel = $Safe/Col/Top/GuestChip/Row/Dot
 @onready var map_pick: OptionButton = get_node(P + "Offline/MapRow/Map")
+@onready var mode_pick: OptionButton = get_node(P + "Offline/ModeRow/Mode")
 @onready var class_pick: OptionButton = get_node(P + "Offline/ClassRow/Class")
-@onready var dyn_pick: OptionButton = get_node(P + "Offline/DynRow/Dyn")   ## dynamic floor (Settings "dyn"): Steady / Random / Wobble / Tilt / Quake / Drift
+@onready var dyn_pick: OptionButton = get_node(P + "Offline/ModeRow/Dyn")   ## dynamic floor (Settings "dyn"): Steady / Random / Wobble / Tilt / Quake / Drift
 @onready var fps_toggle: CheckButton = get_node(P + "Offline/FpsRow/Fps")
 @onready var status: Label = get_node(P + "Online/Status")
 @onready var play: Button = $Safe/Col/Body/Play
 var class_ids: Array = []
+var map_ids: Array = []          ## the maps map_pick lists for the picked mode
 var _ui := {}
 var _api: AccountApi
 
 func _ready() -> void:
-	for id in OFFLINE_MAPS:
-		map_pick.add_item(str(Content.get_map(id).get("name", id)))
-	var last := OFFLINE_MAPS.find(str(Settings.get_value("offline_map", "arena")))
-	map_pick.select(maxi(last, 0))
+	for m: String in OFFLINE_MODES:
+		mode_pick.add_item(str(Content.modes.get(m, {}).get("name", m.capitalize())))
+	mode_pick.select(maxi(OFFLINE_MODES.find(str(Settings.get_value("mode", "classic"))), 0))
+	mode_pick.item_selected.connect(func(i: int) -> void:
+		Settings.set_value("mode", OFFLINE_MODES[i])
+		_fill_maps())
+	_fill_maps()
 	class_ids = Content.classes.keys()
 	for cid in class_ids:
 		class_pick.add_item(str(Content.get_class_data(cid).get("name", cid)))
@@ -85,6 +93,21 @@ func _ready() -> void:
 func _process(dt: float) -> void:
 	if session != null:
 		session.poll(dt)
+
+## The offline maps for a mode: the maps only that mode plays (`only` == mode, e.g. Site Yard for Construction),
+## else the usual OFFLINE_MAPS.
+func maps_for(mode: String) -> Array:
+	var own: Array = []
+	for id: String in Content.maps:
+		if str(Content.get_map(id).get("only", "")) == mode: own.append(id)
+	return own if own.size() > 0 else OFFLINE_MAPS.duplicate()
+
+func _fill_maps() -> void:
+	map_ids = maps_for(OFFLINE_MODES[maxi(mode_pick.selected, 0)])
+	map_pick.clear()
+	for id: String in map_ids:
+		map_pick.add_item(str(Content.get_map(id).get("name", id)))
+	map_pick.select(maxi(map_ids.find(str(Settings.get_value("offline_map", "arena"))), 0))
 
 ## Offline pickers or the online panel in the right-hand card.
 func show_tab(online: bool) -> void:
@@ -216,10 +239,13 @@ func _enter_match(s: Dictionary) -> void:
 
 func play_offline() -> void:
 	if session != null: session.leave("")
-	var id: String = OFFLINE_MAPS[maxi(map_pick.selected, 0)]
+	var id: String = map_ids[maxi(map_pick.selected, 0)]
+	var mode: String = OFFLINE_MODES[maxi(mode_pick.selected, 0)]
 	Settings.set_value("offline_map", id)
+	Settings.set_value("mode", mode)
 	if class_ids.size() > 0:
 		Settings.set_value("class", class_ids[maxi(class_pick.selected, 0)])
 	var world: Node = load(WORLD).instantiate()
 	world.map_id = id
+	world.mode_id = mode
 	get_tree().change_scene_to_node(world)

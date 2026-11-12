@@ -5,12 +5,13 @@
 <p align="center">
   <b>Bonk your friends off floating arenas.</b><br>
   A chaotic, wobbly-physics party brawler. Play free in your browser today.<br>
-  iPhone & PC apps coming soon — same rooms, same chaos.
+  iPhone, Android & PC apps coming soon — same rooms, same chaos.
 </p>
 
 <p align="center">
   <img alt="Play now" src="https://img.shields.io/badge/Play%20in%20browser-ffcf5a?style=for-the-badge&labelColor=102b35">
   <img alt="iPhone" src="https://img.shields.io/badge/iPhone-TestFlight%20soon-4aa3d8?style=for-the-badge&labelColor=102b35">
+  <img alt="Android" src="https://img.shields.io/badge/Android-APK%20soon-8fe0a5?style=for-the-badge&labelColor=102b35">
   <img alt="Cross-play" src="https://img.shields.io/badge/Cross--play-web%20%2B%20native-8fe0a5?style=for-the-badge&labelColor=102b35">
 </p>
 
@@ -76,7 +77,8 @@ Play solo against bots, practise weapons, or jump into online rooms with up to 8
 |---|---|
 | **Browser** | Playable now |
 | **iPhone** | Offline + guest online ready. TestFlight next |
-| **PC** | After iPhone |
+| **Android** | Same Godot build; APK/AAB export ready (`docs/BUILD_ANDROID.md`) |
+| **PC** | After phones |
 | **Godot web** | Coming once native reaches parity |
 
 ## Play It

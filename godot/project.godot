@@ -1,4 +1,4 @@
-; Wobblers Arena (Godot 4) - native iOS client. Cross-plays with the web game through the room protocol in docs/PROTOCOL.md.
+; Wobblers Arena (Godot 4) - native iOS/Android client. Cross-plays with the web game through the room protocol in docs/PROTOCOL.md.
 config_version=5
 
 [application]
@@ -8,7 +8,7 @@ config/features=PackedStringArray("4.7", "Mobile")
 config/version="0.1.0"
 config/icon="res://icon.png"
 ; Launch: the two-line logo (ui/brand/launch_logo.png, rendered by tools/shoot-godot-brand.sh) on the panel teal,
-; matching the iOS launch storyboard (export_presets.cfg storyboard/*).
+; matching the iOS launch storyboard and Android splash (export_presets.cfg).
 boot_splash/bg_color=Color(0.0627, 0.1686, 0.2078, 1)
 boot_splash/show_image=true
 boot_splash/image="res://ui/brand/launch_logo.png"

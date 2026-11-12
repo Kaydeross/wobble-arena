@@ -22,6 +22,7 @@ const FX_DMG_LIFE := 0.9
 @export var player_class := ""     ## "" = Settings "class"
 @export var rng_seed := 0          ## 0 = random
 @export var hp_setting := 200.0    ## cfg.hp (the web menu offers 100 / 150 / 200 / 300 / 500)
+@export var mode_id := ""         ## offline mode (modes.json id): "" = Settings "mode" (classic / construction)
 @export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
 @export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
@@ -135,6 +136,8 @@ func load_map(id: String) -> void:
 		var rd := NetMatch.rule_dyn(start_msg.get("rules", {}))
 		sim.dyn_choice = rd["choice"]; sim.dyn_seed = rd["seed"]; sim.dyn_t0 = rd["t0"]
 	else:
+		var mode := mode_id if mode_id != "" else str(Settings.get_value("mode", "classic"))
+		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
 		sim.dyn_choice = dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random"))
 		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
 	control = PlayerControl.new(input.state)
@@ -261,6 +264,9 @@ func _drain_events() -> void:
 					_crates[c2["id"]].queue_free(); _crates.erase(c2["id"])
 				if e["type"] == "crate_take" and e["f"] == sim.player:
 					_toast("Got " + sim.pickups.label(c2["key"]))
+			"puff":                       # Combat/Weapons puffs (dash, Air Blower gusts along `dir`)
+				_puff(Vector3(e["x"], e["y"], e["z"]), Color.hex((int(e.get("color", 0xffffff)) << 8) | 0xff), int(e.get("n", 4)),
+					float(e.get("spd", 3.0)), e.get("dir", []))
 			"pad":
 				if f: _puff(Vector3(f.phys.px, 0.15, f.phys.pz), Color(0.62, 0.96, 0.92), 6, 3.0)
 			"toast":
@@ -309,7 +315,7 @@ func _add_fx(n: Node3D, life: float, vel := Vector3.ZERO, kind := "") -> void:
 	_fx_root.add_child(n)
 	_fx.append({"node": n, "life": life, "max": life, "vel": vel, "kind": kind})
 
-func _puff(at: Vector3, col: Color, n: int, spd: float) -> void:
+func _puff(at: Vector3, col: Color, n: int, spd: float, dir: Array = []) -> void:
 	if Tier.is_web() and _fx.size() > 80: return
 	for i in n:
 		var m := MeshInstance3D.new()
@@ -318,6 +324,7 @@ func _puff(at: Vector3, col: Color, n: int, spd: float) -> void:
 		m.material_override = _mat(col)
 		m.position = at
 		var d := Vector3(randf_range(-1, 1), randf_range(0.2, 1.2), randf_range(-1, 1)).normalized() * spd * randf_range(0.4, 1.0)
+		if dir.size() == 3: d = (Vector3(dir[0], dir[1], dir[2]) * 1.6 + d.normalized() * 0.35).normalized() * spd * randf_range(0.6, 1.0)
 		_add_fx(m, randf_range(0.3, 0.6), d, "puff")
 
 func _dmg_number(at: Vector3, dmg: float, head: bool) -> void:

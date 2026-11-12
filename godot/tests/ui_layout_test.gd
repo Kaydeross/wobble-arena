@@ -17,7 +17,7 @@ const CASES := [
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Body/Play", "Safe/Col/Body/Picks", "Safe/Col/Tip", "Safe/Col/Build"]
 const PB := "Safe/Col/Body/Picks/Box/"
 const TABS := [PB + "Tabs/OfflineTab", PB + "Tabs/OnlineTab"]
-const OFFLINE := [PB + "Offline/ClassRow/Class", PB + "Offline/MapRow/Map", PB + "Offline/FpsRow/Fps"]
+const OFFLINE := [PB + "Offline/ClassRow/Class", PB + "Offline/ModeRow/Mode", PB + "Offline/ModeRow/Dyn", PB + "Offline/MapRow/Map", PB + "Offline/FpsRow/Fps"]
 ## the online panel (server, room, name, join, login fields, status, roster): also must not overlap each other
 const ONLINE := [PB + "Online/ServerRow/Server", PB + "Online/RoomRow/Room", PB + "Online/RoomRow/Name", PB + "Online/RoomRow/Join",
 	PB + "Online/AcctRow/User", PB + "Online/AcctRow/Pass", PB + "Online/AcctRow/Login", PB + "Online/Status", PB + "Online/Roster"]

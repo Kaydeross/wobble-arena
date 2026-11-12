@@ -125,6 +125,7 @@ function makeContext() {
   // setWeapon builds meshes in the game; only its gameplay part is kept (same as Combat.set_weapon)
   code += '  setWeapon(key) { this.weapon = key; this.swing = -1; this.batValid = false; this.nocked = false; this.grabT = -1; this.draw = 0; }\n';
   code += '  reloadCleanup() {}\n}\n';
+  { const b = block(/^  \} else if \(w\.type === 'blower'\) \{/m); code += 'function blowerTick(p, w, dt, mouse) ' + b.slice(b.indexOf('{')) + '\nglobalThis.blowerTick = blowerTick;\n'; }   // playerControl's blower branch
   code += 'globalThis.armQuat = function() { this.arm.quaternion.setFromUnitVectors(DOWN, this.armDir);\n' + block(/^    if \(this\.slot >= 0 && GUN_KEYS\.includes\(this\.weapon\) && !this\.dead\)/m) + '\n};\n';
   code += 'globalThis.FighterBase = FighterBase; globalThis.useAmmo = useAmmo; globalThis.shove = shove; globalThis.doKick = doKick; globalThis.throwKnife = throwKnife;' +
     'globalThis.updateKnives = updateKnives; globalThis.netCleanHit = netCleanHit; globalThis.PROJ = { knife: throwKnife }; globalThis.newSt = newSt; globalThis.hpOf = hpOf; globalThis.BAT_N = BAT_N;';
@@ -230,6 +231,13 @@ function apply(ctx, op) {
       if (gs && w.mag && gs.mag !== undefined && !ctx.cfg.inf) { if (gs.mag <= 0 && gs.ammo > 0 && !p.reloading) p.startReload(); }
       if (w.spinup) { p.spin = mouse.l ? Math.min(w.spinup, p.spin + dt) : Math.max(0, p.spin - dt * 2); }
       if (mouse.l && p.cool <= 0 && p.swing < 0 && !p.reloading && (!w.spinup || p.spin >= w.spinup)) { p.cool = w.cooldown; p.fireGun(w); ctx.useAmmo(p); }
+      break;
+    }
+    case 'blow': {                                          // playerControl's Air Blower branch (held every frame)
+      F.forEach(pose);
+      const w = ctx.WEAPONS[f.weapon] || ctx.WEAPONS.spatula;
+      if (f.dead || f.downT > 0 || w.type !== 'blower') break;
+      ctx.blowerTick(f, w, op.dt, { l: !!op.held });
       break;
     }
     case 'melee': {                                         // playerControl's melee line
@@ -476,6 +484,27 @@ function scenario() {
         if (r() < 0.1) ops.push({ op: 'topple', f: v, dur: R(0.2, 2.5) });
         if (r() < 0.3) step(1 + Math.floor(r() * 90), pick([1 / 120, 1 / 60]));
       }
+    },
+    blower() {                                      // Construction: placeAt hands out the Claw Hammer; Air Blower cone push, stun, blame, head kicks, recoil, drain, drop
+      ops.push({ op: 'cfg', key: 'mode', val: 'construction' }, { op: 'cfg', key: 'kb', val: 1 }, { op: 'cfg', key: 'giant', val: 0 });
+      const cls = ['wobbler', 'bruiser', 'kid', 'alien', 'elder'];
+      const reset = () => { for (const i of [0, 1, 2, 3, 4]) ops.push({ op: 'class', f: i, cls: cls[i] }, { op: 'placeAt', f: i, x: [0, 0.2, 1.4, -0.6, 4][i], z: [0, 2.0, 3.5, 7.5, -3][i], y: 0.01 }, { op: 'set', f: i, key: 'invuln', val: 0 }, { op: 'set', f: i, key: 'downT', val: 0 }, { op: 'set', f: i, key: 'stun', val: 0 }); };
+      reset();
+      ops.push({ op: 'pickup', f: 0, key: 'blower' }, { op: 'equip', f: 0, i: 1 }, { op: 'pose', f: 0, aim: [0.05, 0.02, 1] });   // the player keeps the hammer in hand: switch
+      for (let k = 0; k < 90; k++) { ops.push({ op: 'blow', f: 0, held: true, dt: 1 / 120 }); step(1); }
+      ops.push({ op: 'blow', f: 0, held: false, dt: 1 / 120 }); step(5);                       // let go
+      ops.push({ op: 'pose', f: 0, arm: [0.3, 0.1, 0.95] });                                   // the arm lags the aim
+      for (let k = 0; k < 40; k++) { ops.push({ op: 'blow', f: 0, held: true, dt: 1 / 60 }); step(1, 1 / 60); }
+      ops.push({ op: 'pose', f: 0, aim: [0.6, 0, -0.8] });                                     // f4 off to the side
+      for (let k = 0; k < 30; k++) { ops.push({ op: 'blow', f: 0, held: true, dt: 1 / 60 }); step(1, 1 / 60); }
+      ops.push({ op: 'set', f: 0, key: 'downT', val: 0.5 }, { op: 'blow', f: 0, held: true, dt: 1 / 60 }); step(70);   // knocked down: no blowing
+      ops.push({ op: 'pose', f: 0, aim: [0, 0, 1] }, { op: 'set', f: 1, key: 'hp', val: 0 }, { op: 'hit', f: 1, a: 2, dmg: 999, dir: [0, 0, 1], force: 2 });   // a dead fighter is skipped
+      for (let k = 0; k < 160; k++) { ops.push({ op: 'blow', f: 0, held: true, dt: 1 / 40 }); step(1, 1 / 40); }  // runs dry and drops it
+      ops.push({ op: 'blow', f: 0, held: true, dt: 1 / 60 });                                  // nothing left: the hammer
+      reset();
+      ops.push({ op: 'pickup', f: 3, key: 'blower' }, { op: 'pose', f: 3, aim: [0.1, -0.05, -1] });   // someone else blows f0..f2 the other way
+      for (let k = 0; k < 60; k++) { ops.push({ op: 'blow', f: 3, held: true, dt: 1 / 120 }); step(1); }
+      ops.push({ op: 'cfg', key: 'mode', val: 'classic' });
     },
   };
   for (const b of Object.keys(blocks)) blocks[b]();

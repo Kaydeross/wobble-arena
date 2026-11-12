@@ -50,6 +50,7 @@ Gotcha: Godot's `JSON.parse_string` (and `String.to_float`) are **not exact** fo
 | melee: `meleeBegin` (lunge, slam in the air, katana target/stab, typhoon cyclone, trident jab), `meleeTick`, `meleeSweep` (8 points, 3 sub-steps, `swingHit`), `afterSwing` (breaking) | ported; spatula, bat, katana (incl. slam, giant), mallet, hammer, wirewhip, trident (jab, slam, giant, breaking, interrupted) parity tested (blocks `melee`, `melee2`). Typhoon cyclone path ported but untested (typhoon is a thrown type, next batch). The melee code is fully data driven: no weapon-specific code beyond katana/typhoon/trident |
 | guns: `fireGun` plain hitscan (spread, assist/aim point, climb, falloff, head multiplier, victim merge, `maxForce`, Mammoth headshot, topple chance, recoil, kickback/hop, `hipD`) | ported; smg, ak (incl. ADS), sniper, revolver, mammoth (head snap, Giant), shotgun (`shotSpread` + pellet circle, ADS, falloff, hop; the on-screen circle in `frame` ~10031 is HUD only and stays with the HUD), dual Uzi (`uziSide`, right axis of the arm = `Weapons.arm_right`, a port of the `arm.quaternion` maths in `animate` ~6029), minigun spin-up (`Weapons.gun_tick`, mirrors the `playerControl` gun lines; bots skip spin-up like the JS), Spring Glove (`style: 'punch'`, `Weapons._punch`) parity tested (blocks `guns`, `uziMinigun`, `shotgun`, `glove`) |
 | knife: `throwKnife`, `releaseKnife`, `updateKnives` (4 sub-steps, gravity, wall stick, hits, homing/pierce fields) | ported; knife parity tested, homing (shuriken) ported but untested |
+| Air Blower (`type: blower`): the blower branch of `playerControl` ~9827 (cone push along the arm, lift, stun 0.12, blame, head kicks, recoil, drain, drop when empty) | ported as `Weapons.blower_tick` (PlayerControl calls it while fire is held; bots never use it, like the JS), parity tested (block `blower`, op `blow`) |
 | net: `S` entry, `h`, `ko`, `netCleanHit`, `netGuard` rules | ported; rounding/cleaning parity tested against JS, round-trip test |
 
 Game modes (`ModeRules`, called from `Combat.add_ko` / `respawn` / `place_at` / `timers` and `MatchSim.step`): K.O. limit and `endMatch` (events `match_over`, then `match_finished` after `END_TIME`), lives + `eliminate`, teams, Weapon Ladder, ninja dash, shrinking arenas: ported, parity tested (`npm run test:godot-modes`, worst error ~1e-16).
@@ -60,7 +61,7 @@ Not ported yet (TODO in code): emotes in `timers`, hot potato in `hit` (dead cod
 
 ## Where each remaining weapon type lives (JS)
 
-Already done and removed from this table: plain guns, shotgun, dual Uzi, minigun, glove, all plain melee. Crates only drop weapons for which `Pickups.usable` is true (only `style: flame` guns and the types below are filtered out).
+Already done and removed from this table: plain guns, shotgun, dual Uzi, minigun, glove, all plain melee, the Air Blower. Crates only drop weapons for which `Pickups.usable` is true (only `style: flame` guns and the types below are filtered out).
 
 | `type` (weapons.json) | Keys | JS | Port into |
 |---|---|---|---|

@@ -333,7 +333,7 @@ func auto_eq(f: FighterState, i: int) -> bool:
 	if not f.is_player or auto_switch or f.slot < 0 or f.slot == i:
 		return true
 	var cur: Variant = f.slots[f.slot]
-	return cur == null or int(cur["ammo"]) <= 0
+	return cur == null or float(cur["ammo"]) <= 0.0   # float: the Air Blower drains fractional ammo
 
 func pickup(f: FighterState, key: String) -> void:
 	var w := wdata(key)
