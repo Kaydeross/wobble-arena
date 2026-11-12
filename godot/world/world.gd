@@ -71,6 +71,12 @@ var _shrink_mesh: MeshInstance3D   ## the shrinking floor (shrink / squeeze maps
 ## surviving fighter; tap / click / jump cycles to the next one (spectate_next). null = following the player.
 var spectating: FighterState = null
 var _spect_jump := false
+## Kill cam (world/kill_cam.gd): a short side-on slow-mo replay after a fast K.O. you score. Offline only, Settings
+## `kill_cam` (default on), not in team modes, not while spectating or once the match is over; a tap skips it.
+var kill_cam := KillCam.new()
+var kill_cam_in_tests := false
+var _kc_l: Label                   ## "REPLAY · tap to skip"
+var _kc_hud := true                ## HUD visibility to restore after the replay
 
 ## The player's physics (tests and the camera read it).
 var phys: FighterPhysics:
@@ -188,6 +194,9 @@ func load_map(id: String) -> void:
 			v.look["color"] = tc; v.wobbler.recolor(tc, true)
 		views[f] = v
 	player_view = views[sim.player]
+	kill_cam.stop()
+	kill_cam.setup(views.values())
+	if _kc_l: _kc_l.visible = false
 	_build_shrink_view()
 	cam.reset_view()
 	feed.clear()
@@ -217,6 +226,9 @@ func sim_step(dt: float) -> void:
 ## One rendered frame: sim steps from the accumulator, then the presentation (animation, melee sweep, effects, HUD).
 func tick(delta: float) -> void:
 	var dt := minf(delta, 0.05)
+	if kill_cam.active:                      # the replay: the match waits (the pause menu pauses the replay too)
+		if not paused and not kill_cam.step(dt, cam, solids): _end_kill_cam()
+		return
 	var finished := _results != null and session == null     # offline results panel up: finishMatch left the match
 	if (not paused or net_match != null) and not finished:      # online the match keeps running behind the menu
 		if not paused:
@@ -235,6 +247,11 @@ func tick(delta: float) -> void:
 	present(dt if (not paused or net_match != null) else 0.0)
 	_update_spectate()
 	_update_hud(delta)
+	if kill_cam_enabled() and not paused and not finished:
+		kill_cam.record(dt)
+		if kill_cam.due():
+			if spectating == null and not sim.combat.rules.match_over and _results == null: start_kill_cam()
+			else: kill_cam.pending = {}
 
 func _process(delta: float) -> void:
 	if session != null:
@@ -242,7 +259,7 @@ func _process(delta: float) -> void:
 		if not is_inside_tree() or sim == null: return
 	if auto_run:
 		tick(delta)
-	else:
+	elif not kill_cam.active:
 		cam.follow(minf(delta, 0.05), cam_target(), false, solids)
 		_update_hud(delta)
 
@@ -277,7 +294,9 @@ func _drain_events() -> void:
 			"dmg_number":
 				if f: _dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), float(e["dmg"]), String(e.get("part", "head" if e["head"] else "")), int(e.get("pct", 0)))
 			"hit":
-				if e.get("attacker") == sim.player and f != sim.player: Save.on_hit()
+				if e.get("attacker") == sim.player and f != sim.player:
+					Save.on_hit()
+					if f: kill_cam.note_hit(f)
 				if f:
 					_puff(Vector3(f.chest_x, f.chest_y, f.chest_z), Color(1, 0.95, 0.8), 4, 3.0)
 					if e.has("x") and PART_COL.has(String(e.get("part", ""))):   # body-part flash where it struck
@@ -345,6 +364,7 @@ func _on_ko(e: Dictionary) -> void:
 	if feed.size() > 5: feed.resize(5)
 	hud.add_feed(k, v, str(e.get("weapon", "")), bool(e.get("fall", false)))
 	if k == sim.player: _toast("K.O.!")
+	if k == sim.player and v != sim.player and kill_cam_enabled(): kill_cam.on_ko(k, v)
 
 # ============================== effects (minimal: the art pass replaces them) ==============================
 
@@ -684,14 +704,68 @@ func _update_spectate() -> void:
 	_spect_jump = j
 
 func _on_spectate_tap() -> void:
+	if kill_cam.active:
+		if not paused: skip_kill_cam()
+		return
 	if spectating != null and not paused and _results == null: spectate_next()
 
 ## Mouse: a left click switches too (touch taps come through the touch layer's spectate_tap).
 func _unhandled_input(e: InputEvent) -> void:
+	if kill_cam.active and not paused:          # any click / key / button skips the replay (pause still pauses)
+		if (e is InputEventMouseButton or e is InputEventKey or e is InputEventJoypadButton) and e.is_pressed() and not e.is_echo() \
+				and not e.is_action("pause"):
+			skip_kill_cam()
+			get_viewport().set_input_as_handled()
+		return
 	if spectating == null or paused or _results != null: return
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 		spectate_next()
 		get_viewport().set_input_as_handled()
+
+# ============================== kill cam ==============================
+
+## (Tests that step the world by hand, auto_run = false, get no replay unless they set `kill_cam_in_tests`: their
+## match clocks must not stop.)
+func kill_cam_enabled() -> bool:
+	return session == null and (auto_run or kill_cam_in_tests) and bool(Settings.get_value("kill_cam", true)) and sim != null and sim.combat.teams == 0
+
+func start_kill_cam() -> void:
+	if not kill_cam.start(): return
+	input.state.clear()
+	touch.release_all()
+	touch.spectate_mode = true                   # no controls; a tap anywhere but pause skips (spectate_tap)
+	_kc_hud = hud.visible
+	hud.visible = false
+	_mode_l.visible = false                      # (the mode line comes back with the next _update_mode_ui)
+	_team_board.visible = false
+	if _kc_l == null:
+		_kc_l = Label.new()
+		_kc_l.name = "KillCam"
+		_kc_l.theme_type_variation = &"HudLabel"
+		_kc_l.add_theme_font_size_override("font_size", 26)
+		_kc_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_kc_l.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+		_kc_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		$UI.add_child(_kc_l)
+		$UI.move_child(_kc_l, pause_menu.get_index())
+	var v: FighterState = kill_cam.views[kill_cam.vi].state
+	_kc_l.text = "REPLAY · you K.O.'d %s · tap to skip" % v.name
+	var top := SafeArea.insets(get_viewport())[1] as float
+	_kc_l.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - _kc_l.get_minimum_size().x / 2.0, top + 14.0)
+	_kc_l.size = _kc_l.get_minimum_size()
+	_kc_l.visible = true
+
+func skip_kill_cam() -> void:
+	kill_cam.stop()
+	_end_kill_cam()
+
+func _end_kill_cam() -> void:
+	hud.visible = _kc_hud
+	touch.spectate_mode = spectating != null
+	if _kc_l: _kc_l.visible = false
+	input.state.clear()
+	acc = 0.0
+	cam.follow(0.0, cam_target(), false, solids)   # straight back to the follow camera
 
 ## finishMatch offline: the result with Play again / Title (themed, centred, over the HUD).
 func _show_offline_results(won: bool, winner_name: String) -> void:
