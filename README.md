@@ -29,16 +29,12 @@ Play solo against bots (Easy to Insane), practise weapons on the practice range,
 
 <table>
   <tr>
-    <td><img src="docs/img/shot-sunny-arena.jpg" alt="Sunny Arena"><br><sub><b>Sunny Arena</b></sub></td>
-    <td><img src="docs/img/shot-volcano-rim.jpg" alt="Volcano Rim"><br><sub><b>Volcano Rim</b></sub></td>
+    <td><img src="docs/style/godot-gfx-volcano-after.png" alt="Volcano Rim"><br><sub><b>Volcano Rim</b></sub></td>
+    <td><img src="docs/style/godot-gfx-candy-after.png" alt="Candy Land"><br><sub><b>Candy Land</b></sub></td>
   </tr>
   <tr>
-    <td><img src="docs/img/shot-pirate-ship.jpg" alt="Pirate Ship"><br><sub><b>Pirate Ship</b></sub></td>
-    <td><img src="docs/img/shot-temple-ruins.jpg" alt="Temple Ruins"><br><sub><b>Temple Ruins</b></sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/img/shot-moon-base.jpg" alt="Moon Base"><br><sub><b>Moon Base</b></sub></td>
-    <td><img src="docs/img/shot-haunted-hollow.jpg" alt="Haunted Hollow"><br><sub><b>Haunted Hollow</b></sub></td>
+    <td><img src="docs/style/godot-gfx-moonbase-after.png" alt="Moon Base"><br><sub><b>Moon Base</b></sub></td>
+    <td><img src="docs/style/godot-modes2-pillars.png" alt="Pillars"><br><sub><b>Pillars</b></sub></td>
   </tr>
 </table>
 
