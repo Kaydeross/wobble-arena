@@ -58,11 +58,12 @@ const mp = require('./export-maps')();
 if (mp.problems.length) { console.error('map export problems:\n' + mp.problems.join('\n')); process.exit(1); }
 out['maps.json'] = mp.maps;
 
+// numbers are rounded to 6 decimals when written: Math.sin/cos differ in the last digit between Node versions, and the check must pass on any of them
 const check = process.argv.includes('--check');
 let bad = 0;
 fs.mkdirSync(path.join(ROOT, 'shared'), { recursive: true });
 for (const f of Object.keys(out)) {
-  const text = JSON.stringify(out[f], null, 1) + '\n', p = path.join(ROOT, 'shared', f);
+  const text = JSON.stringify(out[f], (k, v) => (typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 1e6) / 1e6 : v), 1) + '\n', p = path.join(ROOT, 'shared', f);
   if (check) { let cur = ''; try { cur = fs.readFileSync(p, 'utf8'); } catch (e) { /* missing */ } if (cur !== text) { console.error('out of date: shared/' + f); bad++; } }
   else { fs.writeFileSync(p, text); console.log('wrote shared/' + f + ' (' + Object.keys(out[f]).length + ' entries)'); }
 }

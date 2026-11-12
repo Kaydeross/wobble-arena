@@ -125,7 +125,7 @@
   "cooldown": 0.9,
   "stiff": 55,
   "dmg": 15,
-  "headMul": 15.333333333333334,
+  "headMul": 15.333333,
   "range": 110,
   "force": 11,
   "maxForce": 12,
