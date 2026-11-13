@@ -8,7 +8,7 @@ const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/construction_data_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 240000, maxBuffer: 64 << 20 });
 const out = (r.stdout || '') + (r.stderr || '');
-const lines = out.split('\n').filter(l => /^(WEAPONS|STAGES|MODES-AND-CRATES|CONSTRUCTION-DATA|FAIL)/.test(l));
+const lines = out.split('\n').filter(l => /^(WEAPONS|STAGES|MODES-AND-CRATES|SMOKE|CONSTRUCTION-DATA|FAIL)/.test(l));
 const errs = out.split('\n').filter(l => /SCRIPT ERROR|^ERROR|Parse Error|leaked/i.test(l));
 console.log(lines.join('\n'));
 for (const l of errs) console.log('godot:', l);

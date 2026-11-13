@@ -10,7 +10,8 @@ extends SceneTree
 
 const FRAME := 1.0 / 60.0
 const SECONDS := 30.0
-const ALLOW := ["heal", "hammer", "wirewhip", "blower", "speed", "rage", "shield"]
+const ALLOW := ["heal", "hammer", "wirewhip", "blower", "speed", "rage", "shield",
+	"pipewrench", "nailgun", "jackhammer", "spiritlevel", "tapemeasure", "cementbucket", "conelauncher", "anglegrinder", "drill"]   ## + the Construction DLC tools (data/extra/construction)
 
 var fails := 0
 

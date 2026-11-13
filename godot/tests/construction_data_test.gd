@@ -21,10 +21,74 @@ func check(ok: bool, what: String) -> void:
 func _initialize() -> void:
 	process_frame.connect(_run, CONNECT_ONE_SHOT)
 
+const SMOKE_SECONDS := 4.0
+
+## Every tool in a real Construction match (Site Yard, 3 bots) in the player's and the bots' hands for a few seconds:
+## it must fire/swing, hit something at some point (not asserted per tool), and raise no errors or non-finite state.
+func _smoke_tools() -> void:
+	for tid: String in EXPECTED_TOOLS:
+		var world: Node = load("res://world/world.tscn").instantiate()
+		world.map_id = "siteyard"
+		world.mode_id = "construction"
+		world.auto_run = false
+		world.bot_count = 3
+		world.rng_seed = 4242
+		world.hp_setting = 100.0
+		root.add_child(world)
+		var sim: MatchSim = world.sim
+		var p := sim.player
+		var st: InputState = world.input.state
+		for f: FighterState in sim.fighters:
+			sim.combat.pickup(f, tid)
+			for i in 3:
+				if f.slots[i] != null and f.slots[i]["key"] == tid: sim.combat.equip_slot(f, i)
+		check(p.weapon == tid, "smoke: player holds %s (%s)" % [tid, p.weapon])
+		var ammo0 := 0.0
+		if p.current_slot() != null: ammo0 = float(p.current_slot()["ammo"])
+		var ammo1 := ammo0
+		var acted := false
+		var bot_acted := false
+		var bad := 0
+		for i in int(round(SMOKE_SECONDS * 60.0)):
+			var tg: FighterState = null
+			var bd := 1e9
+			for f: FighterState in sim.fighters:
+				if f == p or f.dead: continue
+				var d := Vector2(f.phys.px - p.phys.px, f.phys.pz - p.phys.pz).length()
+				if d < bd: bd = d; tg = f
+			var go := Vector2.ZERO
+			if tg != null:
+				var dv := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
+				world.cam.yaw = atan2(dv.x, dv.y)
+				world.cam.pitch = -0.1
+				go = Vector2(0, 1) if dv.length() > 2.0 else Vector2.ZERO
+			st.set_move("script", go)
+			st.hold("script", "fire", i % 60 < 45)   # held, then released (throwing tools fly on release)
+			world.tick(1.0 / 60.0)
+			if p.swing >= 0.0: acted = true
+			var fired := true
+			for sl in p.slots:
+				if sl != null and sl["key"] == tid:
+					fired = false
+					ammo1 = minf(ammo1, float(sl["ammo"]))
+			if fired: ammo1 = 0.0   # the tool ran dry and left the slot
+			for f: FighterState in sim.fighters:
+				if not f.is_player and f.weapon == tid and f.swing >= 0.0: bot_acted = true
+				for v in [f.phys.px, f.phys.py, f.phys.pz, f.phys.vx, f.phys.vy, f.phys.vz, f.hp]:
+					if not is_finite(v): bad += 1
+		var used: bool = acted or ammo1 < ammo0
+		check(used, "smoke: %s fires/swings (ammo %.0f -> %.0f, swing %s)" % [tid, ammo0, ammo1, acted])
+		check(bad == 0, "smoke: %s keeps state finite (%d bad)" % [tid, bad])
+		print("SMOKE %-13s ammo %.0f->%.0f swing=%s bot_swing=%s hits=%d" % [tid, ammo0, ammo1, acted, bot_acted, int(world.counts.get("hit", 0))])
+		world.queue_free()
+		await process_frame
+		await process_frame
+
 func _run() -> void:
 	_test_weapons()
 	_test_stages()
 	_test_modes_and_crates()
+	await _smoke_tools()
 	print("CONSTRUCTION-DATA %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
 	quit(0 if fails == 0 else 1)
 

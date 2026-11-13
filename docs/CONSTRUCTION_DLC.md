@@ -10,8 +10,8 @@ Unit A introduces 9 new construction-themed tools, a 6-stage Arcade boss rush co
 | ID | Name | Type | Dmg | Force | Cooldown | Ammo | Key Stats / Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `pipewrench` | Pipe Wrench | `melee` | 38 | 24 | 1.1s | 6 | Heavy melee, swingTime 0.52s, tip 1.8m, topple 0.65, slow whack |
-| `nailgun` | Nail Gun | `gun` | 5 | 2.5 | 0.16s | 48 (mag 24) | Rapid short-range (20m) nailgun, 4 pellets/shot, reload 1.4s |
-| `jackhammer` | Jackhammer | `gun` (punch) | 14 | 18 | 0.22s | 20 | Rapid close-range (5.5m) punch style, topple 0.5, strong knockback |
+| `nailgun` | Nail Gun | `gun` | 5 | 2.5 | 0.16s | 48 (mag 24) | Rapid short-range (20m) nailgun, 2 pellets/shot, reload 1.4s |
+| `jackhammer` | Jackhammer | `gun` (punch) | 10 | 10 | 0.22s | 20 | Rapid close-range (5.5m) punch style, topple 0.5, steady knockback |
 | `spiritlevel` | Spirit Level | `melee` | 16 | 8 | 0.45s | 12 | Fast, light melee with long reach (tip 2.85m), swingTime 0.22s |
 | `tapemeasure` | Tape Measure | `melee` | 20 | 10 | 0.6s | 10 | Long whip-like melee (tip 3.3m), high lift 0.75 |
 | `cementbucket` | Cement Bucket | `ball` | 26 | 28 | 1.3s | 3 | Thrown ball projectile with slow lob, throwSpeed 9.5m/s |
