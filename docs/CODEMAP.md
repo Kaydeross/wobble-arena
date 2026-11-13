@@ -35,10 +35,11 @@ Files:
 
 | Symbol | Lines | What |
 |---|---|---|
-| `initAudio` | ~1464 | creates AudioContext, master gain, noise buffer (needs a user gesture; the Play handler and `startGame` call it) |
-| `tone(f0,f1,dur,type,vol,delay)` | ~1478 | oscillator blip with pitch slide |
-| `noise(dur,vol,freq,delay)` | ~1488 | filtered noise burst |
-| `SFX`, `sfx(name)` | ~1497-1520 | name -> recipe table; every sound effect is here |
+| `SndVoice` | ~1485 | one playing sound: layered `tone` / `noise` / `fm` nodes, ADSR (`env`) and filter sweeps; disconnects every node when its last source ends |
+| `SOUNDS` | ~1575 | effect library: name -> `{ fn, vary, gap, pri }` (UI blips, movement, attacks, impacts, pickups, damage / game over) |
+| `SoundManager`, `sound` | ~1700 | lazy AudioContext (first key / pointer / click), sfx + music buses -> compressor -> master; `play`, `setMute`, `setMasterVolume`, `setMusicVolume`, `startBGM` / `stopBGM` / `setIntensity` (lookahead music scheduler) |
+| `sfx(name, o)`, `sfxAt(name, pos, o)` | ~1830 | game glue: centred, or panned / faded from the camera for world events |
+| `musicTick` | ~1845 | picks the music mood from `ui` / `matchOver` and the match intensity each frame |
 
 ## 3. Renderer, scene, lights, materials, main loop
 

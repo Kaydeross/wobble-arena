@@ -115,7 +115,7 @@ function makeContext() {
     MAPS: { m: { spawns: [[0, 0]] } }, currentMap: 'm', cam: { shake: 0, aim: 0, yaw: 0 }, aimPoint: new Vector3(0, 1.5, -20), GIANT: false, NETLOG: [],
     V: (x, y, z) => new Vector3(x, y, z), Vector3,
     clamp: (v, a, b) => Math.max(a, Math.min(b, v)), lerp: (a, b, t) => a + (b - a) * t,
-    puff: noop, koBurst: noop, koPop: noop, feedAdd: noop, dmgNumber: noop, toast: noop, sfx: noop, hitMarker: noop, tracer: noop, bulletTracer: noop, bulletHole: noop,
+    puff: noop, koBurst: noop, koPop: noop, feedAdd: noop, dmgNumber: noop, toast: noop, sfx: noop, sfxAt: noop, hitMarker: noop, tracer: noop, bulletTracer: noop, bulletHole: noop,
     ejectShell: noop, flameFx: noop, updateCoins: noop, updateKoText: noop, endMatch: noop, ggAdvance: noop, ggGive: noop, eliminate: (f) => { f.elim = true; }, passPotato: noop,
     dashTick: noop, el: () => null, landDust: noop, ringFx: noop, feedItems: [], snakes: [], balls: [], boomers: [],
     makeShurikenMesh: () => ANY, makeTyphoonMesh: () => ANY, makeBoomerangMesh: () => ANY, makeWeaponMesh: () => ANY,
