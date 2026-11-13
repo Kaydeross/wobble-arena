@@ -8,8 +8,8 @@ extends RefCounted
 signal done(rooms: Array, err: String)
 
 const TIMEOUT := 6.0
-const ERR_REACH := "Can't reach the game server. Check your internet, then try again."
-const ERR_SILENT := "The game server did not answer. Try again in a moment."
+const ERR_REACH := "Couldn't reach the game server. Check your internet, then try again."
+const ERR_SILENT := "The game server didn't answer. Try again in a moment."
 
 var ws := WebSocketPeer.new()
 var busy := false

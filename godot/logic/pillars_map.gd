@@ -19,7 +19,7 @@ const IDS := ["pillars", "pillars2"]   ## levels built this way
 ## falling to -25 (the web game's lava is only the void colour, far below).
 const LAVA_Y := -9.0
 const LAVA := {"name": "Lava Pillars", "tags": ["Pillars", "Height", "Lava"],
-	"blurb": "The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you are out for the match. Most K.O.s when the clock ends wins.",
+	"blurb": "The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you're out for the match. Most K.O.s when the clock ends wins. The floor is lava. Literally.",
 	"env": {"speck": "ember", "speckColor": 0xffb070}, "peaks": false,
 	"sky": 0xff9a60, "skyTop": 0x3a1020, "voidColor": 0xff5a1e, "hills": [0x7a2a1e, 0x642018, 0x8a362a, 0x521812], "fog": [70, 230]}
 

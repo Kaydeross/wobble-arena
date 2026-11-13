@@ -2,7 +2,7 @@
  "wobbler": {
   "name": "Wobbler",
   "icon": "🙂",
-  "tag": "Balanced. No surprises",
+  "tag": "Balanced. No surprises, just wobbles",
   "hp": 1,
   "spd": 1,
   "acc": 1,
@@ -21,7 +21,7 @@
  "bruiser": {
   "name": "Bruiser",
   "icon": "💪",
-  "tag": "Big, slow, hard to shove",
+  "tag": "Big, slow, hard to shove. Hugs hurt",
   "hp": 1.3,
   "spd": 0.88,
   "acc": 0.85,
@@ -40,7 +40,7 @@
  "kid": {
   "name": "Scamp",
   "icon": "🧒",
-  "tag": "Tiny and zippy, easy to launch",
+  "tag": "Tiny and zippy. Flies like a frisbee",
   "hp": 0.75,
   "spd": 1.22,
   "acc": 1.2,
@@ -59,7 +59,7 @@
  "elder": {
   "name": "Gramps",
   "icon": "👴",
-  "tag": "Sharp steering, quick reloads",
+  "tag": "Sharp steering, quick reloads. Back in my day…",
   "hp": 1.05,
   "spd": 0.95,
   "acc": 1.55,
@@ -78,7 +78,7 @@
  "alien": {
   "name": "Zorp",
   "icon": "👽",
-  "tag": "Fragile, floaty, great tech",
+  "tag": "Fragile, floaty, great tech. Comes in peace, mostly",
   "hp": 0.7,
   "spd": 1.02,
   "acc": 1,

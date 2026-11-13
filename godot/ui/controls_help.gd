@@ -5,7 +5,7 @@ extends UiPage
 ## shove, hold = kick), the context button (dash / reload), hotbar taps, pause and the emote button. A line under it
 ## lists the keyboard and controller keys. Opened from the pause menu and from Settings > Controls.
 
-const KEYS := "Keyboard: WASD move · mouse look · click fire · right-click aim · Space jump · E shove · F kick · Q quick melee · 1-3 weapons · T G H emotes · Esc pause.   Controller: sticks move and look · RT fire · LT aim · A jump · RB shove · B kick · Start pause."
+const KEYS := "Keyboard: WASD move · mouse look · click fire · right-click aim · Space jump · E shove · F kick · Q quick melee · 1-3 weapons · T G H emotes · Esc pause. Controller: sticks move and look · RT fire · LT aim · A jump · RB shove · B kick · Start pause."
 
 var pic: Control
 var keys_l: Label
@@ -83,7 +83,7 @@ class Picture extends Control:
 		labels.append([lc + Vector2(0, 60.0 * k + fs * 1.2), 0, "Look", "Drag on the right side · double-tap to aim"])
 		# action buttons
 		var cols := {"fire": UiTheme.ACCENT, "jump": Color(0.22, 0.71, 0.66), "melee": Color(0.94, 0.45, 0.35), "context": Color(1, 1, 1, 0.6)}
-		var words := {"fire": ["Fire: hold", ""], "jump": ["Jump", ""], "melee": ["Melee", "Tap: shove · hold: kick"], "context": ["Dash / Reload", ""]}
+		var words := {"fire": ["Fire (hold)", ""], "jump": ["Jump", ""], "melee": ["Melee", "Tap to shove · hold to kick"], "context": ["Dash / Reload", ""]}
 		var place := {"fire": 2, "jump": -1, "melee": 0, "context": -1}   ## where each label goes: below, left, above
 		for b: Array in TouchControls.BUTTONS:
 			var br := _btn(b)

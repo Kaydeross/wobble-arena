@@ -13,7 +13,7 @@ extends RefCounted
 ## the block the crosshair hits (aimPoint + camFwd * 0.25); out of reach (sky, far away) falls back to the cell in front
 ## of the player.
 
-const MAX_BLOCKS := 150            ## the web cap ("That is a lot of blocks!")
+const MAX_BLOCKS := 150            ## the web cap ("That's a lot of blocks!")
 const CELL := 2.0                  ## block size and grid
 const MAX_YB := 18.0               ## highest block base (10 blocks tall)
 const REACH := 14.0                ## m from the player the crosshair may place / remove

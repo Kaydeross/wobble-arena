@@ -23,7 +23,7 @@ const RESUME_WAIT := 3.0         ## host migration: seconds the new host waits f
 const EMOTE_GAP := 0.4           ## seconds between two emotes of one guest
 const NOCREATE_TEXT := {
 	"auth": "Log in to host a room (or run the server with REQUIRE_LOGIN=0).",
-	"inroom": "You are already in a room.",
+	"inroom": "You're already in a room.",
 	"busy": "The server is full right now. Try again in a moment.",
 }
 ## Host sheet choices (the web settings' values).
@@ -98,7 +98,7 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 	_connect_t = CONNECT_WAIT
 	_set_status("Connecting…")
 	if net.connect_to_server(url) != OK:
-		_finish(tr("Could not open %s") % url); return false
+		_finish(tr("Couldn't open %s. Check the address and try again.") % url); return false
 	return true
 
 ## The rules part of the Host sheet (also between matches / in the lobby): mode, lim, hp, grav, kb, crate, inf, dyn.
@@ -181,7 +181,7 @@ func poll(dt: float) -> void:
 	if phase == Phase.CONNECTING or phase == Phase.JOINING:
 		_connect_t -= dt
 		if _connect_t <= 0.0:
-			_finish(tr("The game server at %s did not answer. Check the address and that the server is running.") % url); return
+			_finish(tr("The game server at %s didn't answer. Check the address and that the server is running.") % url); return
 	for i in range(_closing.size() - 1, -1, -1):
 		_closing[i][0] -= dt
 		if _closing[i][0] <= 0.0:
@@ -208,9 +208,9 @@ func _on_connected() -> void:
 
 func _on_disconnected() -> void:
 	if phase == Phase.CONNECTING or phase == Phase.JOINING:
-		_finish(tr("Could not reach the game server at %s. Check the address and that the server is running.") % url)
+		_finish(tr("Couldn't reach the game server at %s. Check the address and that the server is running.") % url)
 	elif phase != Phase.CLOSED and phase != Phase.IDLE:
-		_finish("Lost the connection to the game server.")
+		_finish("Lost the connection to the game server. Try again in a moment.")
 
 func _on_joined(_id: String, _cid: int) -> void:
 	pass
@@ -230,7 +230,7 @@ func _on_server(m: Dictionary) -> void:
 			hosted.emit(room_code)
 			roster_changed.emit(roster)
 		"nocreate":
-			_finish(tr(NOCREATE_TEXT.get(str(m.get("reason", "")), "Could not open a room. Try again.")))
+			_finish(tr(NOCREATE_TEXT.get(str(m.get("reason", "")), "Couldn't open a room. Try again in a moment.")))
 		"peer":
 			var cid := NetSnapshot.to_int32(m.get("cid"))
 			if str(m.get("ev", "")) == "close": _drop(cid)
@@ -285,9 +285,9 @@ func take_over(g: GuestSession, pub_flag: bool, rs: Dictionary) -> void:
 	_resume_slot = int(rs.get("my_slot", g.slot))
 	if not rs.is_empty():
 		_resume_t = RESUME_WAIT
-		_set_status(tr("%s left. You are now the host: carrying the match on…") % migrated)
+		_set_status(tr("%s left. You're now the host: carrying the match on…") % migrated)
 	else:
-		_set_status(tr("%s left. You are now the host. ") % migrated + (tr("The room is still open to everyone.") if pub else tr("The room code is still %s.") % room_code))
+		_set_status(tr("%s left. You're now the host. ") % migrated + (tr("The room is still open to everyone.") if pub else tr("The room code is still %s.") % room_code))
 	_last_info = ""
 	push_info()
 
@@ -632,7 +632,7 @@ func _begin_match(s: Array, keep_seed: int = -1) -> void:
 	dseed = keep_seed if keep_seed >= 0 else randi()
 	start_msg = {"slots": s, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap()}
 	start_msg.merge(_start_x)
-	_set_status("Match started" if _start_x.is_empty() else "You are the host now: the match goes on.")
+	_set_status("Match started" if _start_x.is_empty() else "You're the host now: the match goes on.")
 	match_started.emit(start_msg)
 
 ## The world's HostMatch is set up: send the `start` (bots now have names) and refresh the room list.
@@ -711,7 +711,7 @@ func rematch_start() -> void:
 	for i: int in human_slots():
 		if i == 0 or rv.has(i) or not conns.has(i): continue
 		var cid: int = conns[i]
-		_to(cid, {"t": "kick", "msg": "You did not click Rematch, so you left the room."})
+		_to(cid, {"t": "kick", "msg": "You didn't click Rematch, so you left the room."})
 		_drop(cid)
 		_close_later(cid)
 	var s: Array = []

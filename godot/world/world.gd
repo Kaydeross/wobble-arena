@@ -83,7 +83,7 @@ var _spect_jump := false
 ## `kill_cam` (default on), not in team modes, not while spectating or once the match is over; a tap skips it.
 var kill_cam := KillCam.new()
 var kill_cam_in_tests := false
-var _kc_l: Label                   ## "REPLAY · tap to skip"
+var _kc_l: Label                   ## "Replay · tap to skip"
 var _kc_hud := true                ## HUD visibility to restore after the replay
 
 ## The player's physics (tests and the camera read it).
@@ -383,7 +383,7 @@ func _drain_events() -> void:
 			"eliminated":
 				if f:
 					hud.add_feed(null, f, "", false)
-					_toast("You're out!" if f == sim.player else tr("%s is out!") % f.name)
+					_toast("You're out! Big wobble" if f == sim.player else tr("%s is out!") % f.name)
 			"relook":
 				_relook(f)
 			"emote":                         # another player's emote (online)
@@ -391,7 +391,7 @@ func _drain_events() -> void:
 			"chaos_warn":
 				_show_banner(tr("%s!") % tr(str(e["name"])).to_upper(), tr("in %d…") % ceili(float(e["in"])), true, float(e["in"]))
 			"chaos":
-				if e["id"] == "giant" and f: _toast("You are a giant!" if f == sim.player else tr("%s is a giant!") % f.name)
+				if e["id"] == "giant" and f: _toast("You're a giant! Mind the furniture" if f == sim.player else tr("%s is a giant! Run!") % f.name)
 				else: _toast(tr("%s!") % tr(str(e["name"])))
 			"chaos_end":
 				if e["id"] != "crates": _toast("Back to normal")
@@ -629,7 +629,7 @@ func _update_mode_ui(delta: float) -> void:
 		top += _team_board.size.y + 4.0
 	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
 	if spectating != null:                      # spectator line: who, how many left, how to switch
-		_mode_l.text = tr("Spectating %s  ·  %d left  ·  tap to switch") % [spectating.name, sim.combat.rules.survivors().size()]
+		_mode_l.text = tr("Spectating %s · %d left · tap to switch") % [spectating.name, sim.combat.rules.survivors().size()]
 		_mode_l.visible = true
 		_mode_l.reset_size()
 		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)
@@ -741,7 +741,7 @@ func start_kill_cam() -> void:
 		$UI.add_child(_kc_l)
 		$UI.move_child(_kc_l, pause_menu.get_index())
 	var v: FighterState = kill_cam.views[kill_cam.vi].state
-	_kc_l.text = tr("REPLAY · you K.O.'d %s · tap to skip") % v.name
+	_kc_l.text = tr("Replay · you K.O.'d %s · tap to skip") % v.name
 	var top := SafeArea.insets(get_viewport())[1] as float
 	_kc_l.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - _kc_l.get_minimum_size().x / 2.0, top + 14.0)
 	_kc_l.size = _kc_l.get_minimum_size()
@@ -782,7 +782,8 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	var info := Label.new()
 	info.theme_type_variation = &"MutedLabel"
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info.text = tr("%s  ·  %d K.O.s  ·  %d deaths") % [tr(str(sim.combat.mode.get("name", sim.combat.mode_id))), sim.player.ko, int(sim.player.st["deaths"])]
+	var deaths := int(sim.player.st["deaths"])
+	info.text = tr("%s · %d K.O.s · %d deaths") % [tr(str(sim.combat.mode.get("name", sim.combat.mode_id))), sim.player.ko, deaths]
 	box.add_child(info)
 	box.add_child(ResultsRewards.make(_reward))
 	var again := Button.new(); again.text = "Play again"; again.custom_minimum_size = Vector2(0, 58)
@@ -794,7 +795,7 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 		var ed := Button.new(); ed.name = "EditArena"; ed.text = "Edit arena"; ed.custom_minimum_size = Vector2(0, 54)
 		ed.pressed.connect(edit_arena)
 		box.add_child(ed)
-	var lv := Button.new(); lv.text = "Title"; lv.custom_minimum_size = Vector2(0, 54)
+	var lv := Button.new(); lv.text = "Quit to title"; lv.custom_minimum_size = Vector2(0, 54)
 	lv.pressed.connect(_on_title_pressed)
 	box.add_child(lv)
 	JuicyButton.attach_all(box)
@@ -858,7 +859,7 @@ func _on_net_promoted(hs: GuestSession) -> void:
 	session = hs
 	_bind_net()
 	if (hs as HostSession).resuming():
-		_show_banner(tr("HOST CHANGED"), tr("%s left. You are the host now!") % str(hs.get("migrated")), true, 4.0)
+		_show_banner(tr("HOST CHANGED"), tr("%s left. You're the host now!") % str(hs.get("migrated")), true, 4.0)
 	elif not hs.started:
 		_to_title(hs.status)
 

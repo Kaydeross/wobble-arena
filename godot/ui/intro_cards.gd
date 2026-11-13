@@ -8,12 +8,12 @@ extends Control
 signal closed
 
 const CARDS := [
-	["move", "Move and look", "Drag your left thumb to move. Drag on the right side of the screen to look around.",
-		"WASD to move, the mouse to look. Click once to grab the mouse; Esc lets it go."],
-	["fight", "Fire and melee", "Hold FIRE to shoot. Tap MELEE to shove, hold it to kick. JUMP hops over gaps.",
-		"Click to shoot, right-click to aim. E shoves, F kicks, Space jumps."],
-	["crate", "Grab the crates", "Crates drop weapons, heals and power-ups. Walk over one to pick it up, then tap a slot at the bottom to switch weapon.",
-		"Crates drop weapons, heals and power-ups. Walk over one to pick it up; 1, 2 and 3 switch weapons."],
+	["move", "Move and look", "Drag your left thumb to move. Drag on the right side of the screen to look around. Wobbling happens by itself.",
+		"WASD to move, the mouse to look. Click once to grab the mouse; Esc lets it go. Wobbling is automatic."],
+	["fight", "Fire and melee", "Hold FIRE to shoot. Tap MELEE to shove, hold it to kick. JUMP hops over gaps. Landing is up to you.",
+		"Click to shoot, right-click to aim. E shoves, F kicks, Space jumps. Landing is up to you."],
+	["crate", "Grab the crates", "Crates drop weapons, heals and power-ups. Walk over one to pick it up, then tap a slot at the bottom to switch weapon. Yes, free stuff.",
+		"Crates drop weapons, heals and power-ups. Walk over one to pick it up; 1, 2 and 3 switch weapons. Yes, free stuff."],
 ]
 
 var page := 0

@@ -89,7 +89,7 @@ func spawn_drop(force_key: String = "") -> Dictionary:
 		"grounded": false, "open": 0.0, "t": 0.0, "age": 0.0}
 	list.append(p)
 	combat.ev({"type": "crate", "crate": p})
-	combat.ev({"type": "toast", "text": tr("Crate incoming: %s!") % tr(label(key))})
+	combat.ev({"type": "toast", "text": tr("Crate incoming: %s! Look up") % tr(label(key))})
 	return p
 
 ## spawnDrop(key, {x, z}): a weapon laid out on the floor (the Practice Range rack, the Test Map grid). Already landed
@@ -122,7 +122,7 @@ func spawn_at(key: String, spot: Variant, cid: int) -> Dictionary:
 		"grounded": false, "open": 0.0, "t": 0.0, "age": 0.0}
 	list.append(p)
 	combat.ev({"type": "crate", "crate": p})
-	combat.ev({"type": "toast", "text": tr("Crate incoming: %s!") % tr(label(key))})
+	combat.ev({"type": "toast", "text": tr("Crate incoming: %s! Look up") % tr(label(key))})
 	return p
 
 ## Index in `list` of the crate with the host's id `cid`, or -1.

@@ -32,12 +32,12 @@ const WEEKLY := [
 const WEEKLY_COINS := 400
 ## Lifetime goals. stat: a SaveProfile stat ("wins", "kos", "onl") or one of ours ("heads", "mkos", "modes", "streak").
 const ACHIEVEMENTS := [
-	{"id": "first_win", "text": "First win", "stat": "wins", "n": 1, "coins": 100},
-	{"id": "first_head", "text": "First headshot", "stat": "heads", "n": 1, "coins": 100},
+	{"id": "first_win", "text": "Get your first win", "stat": "wins", "n": 1, "coins": 100},
+	{"id": "first_head", "text": "Land your first headshot", "stat": "heads", "n": 1, "coins": 100},
 	{"id": "online", "text": "Play an online match", "stat": "onl", "n": 1, "coins": 150},
 	{"id": "all_modes", "text": "Try every game type", "stat": "modes", "n": -1, "coins": 300},
-	{"id": "kos100", "text": "100 K.O.s in total", "stat": "kos", "n": 100, "coins": 300},
-	{"id": "melee25", "text": "25 melee K.O.s", "stat": "mkos", "n": 25, "coins": 200},
+	{"id": "kos100", "text": "Get 100 K.O.s in total", "stat": "kos", "n": 100, "coins": 300},
+	{"id": "melee25", "text": "Get 25 melee K.O.s", "stat": "mkos", "n": 25, "coins": 200},
 	{"id": "wins25", "text": "Win 25 matches", "stat": "wins", "n": 25, "coins": 300},
 	{"id": "streak7", "text": "Play 7 days in a row", "stat": "streak", "n": 7, "coins": 250},
 ]

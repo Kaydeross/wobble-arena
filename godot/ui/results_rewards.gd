@@ -29,10 +29,10 @@ static func make(r: Dictionary) -> Control:
 	k.theme_type_variation = &"MutedLabel"
 	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var kos := int(r.get("kos", 0))
-	var kt: Array = [(TranslationServer.translate("%d K.O. × 5") if kos == 1 else TranslationServer.translate("%d K.O.s × 5")) % kos, TranslationServer.translate("finished +40")]
+	var kt: Array = [(TranslationServer.translate("%d K.O. × 5") if kos == 1 else TranslationServer.translate("%d K.O.s × 5")) % kos, TranslationServer.translate("match +40")]
 	if r.get("won", false): kt.append(TranslationServer.translate("win +60"))
 	kt.append(TranslationServer.translate("%d coins in all") % int(r.get("total", 0)))
-	k.text = "  ·  ".join(kt)
+	k.text = " · ".join(kt)
 	box.add_child(k)
 	var cls: Array = r.get("classes", [])
 	if cls.size() > 0:                                   # a secret class unlocked by this match (ExtraClasses)
@@ -42,7 +42,7 @@ static func make(r: Dictionary) -> Control:
 		u.add_theme_font_size_override("font_size", 20)
 		u.add_theme_color_override("font_color", UiTheme.GOOD)
 		var names: Array = cls.map(func(id: String) -> String: return TranslationServer.translate(str(WobblerLooks.class_def(id).get("name", id))))
-		u.text = TranslationServer.translate("Secret class unlocked: %s! Pick it in the Walldrobe.") % ", ".join(names)
+		u.text = TranslationServer.translate("Secret class unlocked: %s! Pick it in the Walldrobe. Shh, it's a secret") % ", ".join(names)
 		box.add_child(u)
 	var gl := goals_text(r)
 	if gl != "":
@@ -62,12 +62,12 @@ static func make(r: Dictionary) -> Control:
 	p.add_theme_font_size_override("font_size", 18)
 	box.add_child(p)
 	if nx.is_empty():
-		p.text = TranslationServer.translate("You own every outfit and emote!")
+		p.text = TranslationServer.translate("You own every outfit and emote! Show-off")
 		return box
 	var price := int(nx["price"])
 	var have := int(r.get("total", 0))
 	if have >= price:
-		p.text = TranslationServer.translate("You can buy %s now (%d coins)!") % [TranslationServer.translate(str(nx["name"])), price]
+		p.text = TranslationServer.translate("You can buy %s now (%d coins)! Treat yourself") % [TranslationServer.translate(str(nx["name"])), price]
 		p.add_theme_color_override("font_color", UiTheme.GOOD)
 	else:
 		p.text = TranslationServer.translate("Next unlock: %s · %d / %d coins") % [TranslationServer.translate(str(nx["name"])), have, price]
@@ -84,7 +84,7 @@ static func make(r: Dictionary) -> Control:
 	box.add_child(bar)
 	return box
 
-## "+100 goal completed: Win a match (claim it in Goals)  ·  First win today +30 (3-day streak)", "" when there is nothing to say.
+## "+100 goal completed: Win a match (claim it in Goals) · First win today +30 (3-day streak)", "" when there is nothing to say.
 static func goals_text(r: Dictionary) -> String:
 	var parts: Array = []
 	var done: Array = r.get("goals", [])
@@ -97,4 +97,4 @@ static func goals_text(r: Dictionary) -> String:
 	if int(r.get("streak", 0)) > 0:
 		var days := int(r.get("days", 1))
 		parts.append((TranslationServer.translate("First win today +%d (%d-day streak)") % [int(r["streak"]), days]) if days > 1 else (TranslationServer.translate("First win today +%d") % int(r["streak"])))
-	return "  ·  ".join(parts)
+	return " · ".join(parts)

@@ -5,7 +5,7 @@ extends SceneTree
 ## maps. Checks that the match ends by the mode's rule (K.O. limit, team K.O. limit, last one standing, top of the
 ## Weapon Ladder), that the results panel shows after ModeRules.END_TIME, team colours, dashes in Ninja, the shrinking
 ## floor, finite state, and no node leaks.
-## Godot-only modes (res://data/extra/modes.json): Team Deathmatch (a team reaches 30), Death Match (first to 20),
+## Godot-only modes (res://data/extra/modes.json): Team Deathmatch (a team reaches 30), Deathmatch (first to 20),
 ## Sudden Death (one life: K.O.s and falls eliminate, the player is pushed off and spectates until one stands) and Chaos
 ## (10 fighters, 5 v 5 to 50, random events that end cleanly; prints the step time).
 ## Pillars (8 fighters on the eight pillars, a weapon for everyone at 1.2 s and every 10 s, one life: last one standing

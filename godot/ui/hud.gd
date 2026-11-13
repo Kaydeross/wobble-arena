@@ -204,7 +204,7 @@ func add_feed(killer: FighterState, victim: FighterState, weapon: String, fell: 
 	if killer != null:
 		_lbl(row, 15, _who_color(killer)).text = _who(killer)
 		var wl := _lbl(row, 12, UiTheme.INK)
-		wl.text = tr(weapon).to_upper() if weapon != "" else "K.O."
+		wl.text = tr(weapon) if weapon != "" else "K.O."
 		var ws := UiTheme.box(Color(1, 1, 1, 0.8), 6, Color(0, 0, 0, 0), 0, 0)
 		ws.content_margin_left = 5; ws.content_margin_right = 5; ws.content_margin_top = 0; ws.content_margin_bottom = 0
 		wl.add_theme_stylebox_override("normal", ws)
@@ -252,7 +252,7 @@ func update(delta: float) -> void:
 	for f: FighterState in sim.fighters:
 		if f.ko > 0 and (lead == null or f.ko > lead.ko): lead = f
 	_crown.visible = lead != null
-	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [lead.name, lead.ko]) if lead else "No leader yet"
+	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [lead.name, lead.ko]) if lead else "No leader yet. Be first!"
 	_leader.add_theme_color_override("font_color", UiTheme.ACCENT if lead == p else UiTheme.MUTED)
 	# keep clear of the touch layer's pause button
 	var pause_r := Rect2()
@@ -310,12 +310,12 @@ func update(delta: float) -> void:
 	# --- hint, centre message, crosshair, nameplates, toast
 	var hint := ""
 	if Tier.is_pc() and not touch_on and not world.input.mouse_captured() and not world.paused:
-		hint = "Click to look around   ·   Esc: menu"
+		hint = "Click to look around · Esc: menu"
 	_hint.text = hint
 	_hint.visible = hint != ""
 	_hint.reset_size()
 	_hint.position = Vector2(vs.x / 2.0 - _hint.size.x / 2.0, _hotbar.position.y - _hint.size.y - 6.0)
-	_center.text = "Respawning…" if p.dead and not p.elim else ""     # out for good (Sudden Death): the spectator line says it
+	_center.text = "Respawning… shake it off" if p.dead and not p.elim else ""     # out for good (Sudden Death): the spectator line says it
 	_center.visible = p.dead and not p.elim
 	_center.reset_size()
 	_center.position = Vector2(vs.x / 2.0 - _center.size.x / 2.0, vs.y * 0.38)

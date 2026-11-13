@@ -892,20 +892,20 @@ body.tplay #chat{display:none}
     <label class="chk"><input type="checkbox" id="au-show"><span>Show password</span></label>
     <label class="chk" id="au-f-carry"><input type="checkbox" id="au-carry" checked><span id="au-carryt"></span></label>
     <div id="au-err"></div>
-    <button type="submit" class="big" id="au-go">SAVE PROGRESS</button>
+    <button type="submit" class="big" id="au-go">Save progress</button>
   </form>
   <div id="au-rec">
     <div id="au-code"></div>
     <button class="opt" id="au-copy" type="button">Copy code</button>
-    <small class="help">Write it down or screenshot it. If you ever forget your password, this code is the only way back in, because there is no email reset. It works once, then you get a new one.</small>
-    <button class="big" id="au-recok" type="button">I SAVED IT, LET'S PLAY</button>
+    <small class="help">Write it down or screenshot it. If you ever forget your password, this code is the only way back in, because there's no email reset. It works once, then you get a new one.</small>
+    <button class="big" id="au-recok" type="button">I saved it, let's play</button>
   </div>
   <div class="aulinks"><button id="au-forgot" type="button">Forgot password?</button><button id="au-alt" type="button"></button><button id="au-close" type="button">Cancel</button></div>
 </div></div>
 <div id="hud">
   <div id="hurt"></div>
   <div id="lowhp"></div>
-  <div id="killcam"><i class="kcb t"></i><i class="kcb b"></i><div id="kc-vig"></div><div id="kc-flash"></div><div class="kcmain"><b>KILL CAM</b><span id="kc-cap"></span><span id="kc-who"></span><div class="kcbar"><div id="kc-fill"></div></div><small>Respawning in a moment…</small></div></div>
+  <div id="killcam"><i class="kcb t"></i><i class="kcb b"></i><div id="kc-vig"></div><div id="kc-flash"></div><div class="kcmain"><b>K.O. CAM</b><span id="kc-cap"></span><span id="kc-who"></span><div class="kcbar"><div id="kc-fill"></div></div><small>Respawning in a moment…</small></div></div>
   <div id="fps"></div>
   <div id="flash"></div><div id="bolt"></div><div id="glare"></div>
   <div id="tags"></div>
@@ -933,90 +933,90 @@ body.tplay #chat{display:none}
   <div id="hbg"></div>
   <div class="card">
     <div class="mhead"><h1>Wobblers Arena</h1><p>Build 76</p><span id="coinchip" title="Your coins. Earn them from K.O.s and finished matches">&#129689; <b id="coinn">0</b></span></div>
-    <div id="netbanner"><span>ONLINE ROOM &middot; code</span><b id="nb-code"></b><span id="nb-info"></span><button class="opt" id="nb-copy">Copy code</button><button class="opt" id="nb-leave">Leave room</button></div>
+    <div id="netbanner"><span>Online room &middot; code</span><b id="nb-code"></b><span id="nb-info"></span><button class="opt" id="nb-copy">Copy code</button><button class="opt" id="nb-leave">Leave room</button></div>
     <div id="winner"></div>
     <div id="crumbs-top"></div>
     <div class="mbody">
       <div class="tab on" id="pg-home">
         <div id="greet"></div>
         <div id="guestbar" style="display:none"><b>Guest mode</b><span>Save your progress to keep your coins and play online.</span><button id="gb-signup">Save progress</button><button id="gb-login" class="alt">Log in</button></div>
-        <div id="pausebox" style="display:none"><div id="pz-online" class="grp" style="display:none;margin:0 0 12px;padding:10px 14px;background:rgba(255,120,90,.25);font-weight:800">⚠ Online match: the game does not pause. Other players can still hit you while this menu is open, so be quick!</div><div class="grp" style="margin:0 0 12px;padding:10px 14px"><h3 style="margin:0 0 6px">Controls</h3><div id="pz-keys"></div></div><button class="big" id="pz-resume" style="background:#8fc7ff;box-shadow:0 7px 0 #4f8fcf">RESUME<small id="pz-sum"></small></button><button class="big alt" id="pz-new" style="display:none;margin-top:10px;background:#bfe8a8;box-shadow:0 7px 0 #7fb064">NEW MATCH<small>You are out. Start again</small></button><button class="big alt" id="pz-menu" style="margin-top:10px;background:#ffb4a8;box-shadow:0 7px 0 #d07a6a">MAIN MENU<small>Leave this match</small></button><div class="row" style="margin-top:10px"><button class="opt" id="go-stats">Match stats</button></div></div>
+        <div id="pausebox" style="display:none"><div id="pz-online" class="grp" style="display:none;margin:0 0 12px;padding:10px 14px;background:rgba(255,120,90,.25);font-weight:800">⚠ Online match: the game doesn't pause. Other players can still hit you while this menu is open, so be quick!</div><div class="grp" style="margin:0 0 12px;padding:10px 14px"><h3 style="margin:0 0 6px">Controls</h3><div id="pz-keys"></div></div><button class="big" id="pz-resume" style="background:#8fc7ff;box-shadow:0 7px 0 #4f8fcf">Resume<small id="pz-sum"></small></button><button class="big alt" id="pz-new" style="display:none;margin-top:10px;background:#bfe8a8;box-shadow:0 7px 0 #7fb064">New match<small>You're out. Start again</small></button><button class="big alt" id="pz-menu" style="margin-top:10px;background:#ffb4a8;box-shadow:0 7px 0 #d07a6a">Main menu<small>Leave this match</small></button><div class="row" style="margin-top:10px"><button class="opt" id="go-stats">Match stats</button></div></div>
         <div id="hleft"><div id="hlogo"></div><div id="hsub">Wobbly low-poly brawls. Bring your friends (and a bat).</div>
         <div id="homemain">
-          <button class="hbtn hero" id="go-online"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span><b>PLAY ONLINE<span class="hlock">PROFILE NEEDED</span></b><small>Quick play, open rooms and friends</small></span><em class="hpill" id="home-pill"></em></button>
-          <button class="hbtn green" id="go-play"><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 0 1 4 4v3a3 3 0 0 1-5.2 2L15 15H9l-1.8 2A3 3 0 0 1 2 15v-3a4 4 0 0 1 4-4z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg><span><b>PLAY OFFLINE</b><small>Pick a mode, a level and your rules</small></span></button>
+          <button class="hbtn hero" id="go-online"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg><span><b>PLAY ONLINE<span class="hlock">Profile needed</span></b><small>Quick play, open rooms and friends</small></span><em class="hpill" id="home-pill"></em></button>
+          <button class="hbtn green" id="go-play"><svg viewBox="0 0 24 24"><path d="M6 8h12a4 4 0 0 1 4 4v3a3 3 0 0 1-5.2 2L15 15H9l-1.8 2A3 3 0 0 1 2 15v-3a4 4 0 0 1 4-4z"/><path d="M8 11v3M6.5 12.5h3M16 12h.01M18 13.5h.01"/></svg><span><b>PLAY OFFLINE</b><small>Pick a mode, an arena and your rules</small></span></button>
           <div class="hrow" id="row-quick">
-            <button class="hbtn blue" id="quick"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span><b>QUICK PLAY</b><small>Random mode and level</small></span><em class="htag">OFFLINE</em></button>
+            <button class="hbtn blue" id="quick"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span><b>QUICK PLAY</b><small>Random mode and arena</small></span><em class="htag">Offline</em></button>
             <button class="hbtn mint" id="go-practice"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg><span><b>PRACTICE</b><small>Dummies and a weapon rack</small></span></button>
           </div>
           <div class="hrow" id="row-locker">
-            <button class="hbtn purple" id="go-locker"><svg viewBox="0 0 24 24"><path d="M8 3 3 7l3 3 2-1v12h8V9l2 1 3-3-5-4a4 4 0 0 1-8 0z"/></svg><span><b>LOCKER</b><small>Your wobbler and emotes</small></span></button>
+            <button class="hbtn purple" id="go-locker"><svg viewBox="0 0 24 24"><path d="M8 3 3 7l3 3 2-1v12h8V9l2 1 3-3-5-4a4 4 0 0 1-8 0z"/></svg><span><b>WALLDROBE</b><small>Your wobbler and emotes</small></span></button>
             <button class="hbtn gold" id="go-shop"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6zM9 8a3 3 0 0 1 6 0"/></svg><span><b>SHOP</b><small id="shopsub">Outfits and emotes</small></span></button>
           </div>
         </div>
         </div>
-        <div class="hsmall" id="homesmall"><button class="opt" id="go-controls">Settings &amp; controls</button><button class="opt" id="go-account">Account</button><button class="opt" id="go-test">Test guns</button><button class="opt" id="go-me" style="display:none">My wobbler</button></div>
+        <div class="hsmall" id="homesmall"><button class="opt" id="go-controls">Settings</button><button class="opt" id="go-account">Account</button><button class="opt" id="go-test">Practice Range</button><button class="opt" id="go-me" style="display:none">My wobbler</button></div>
         <div id="hright">
-          <div id="hlive">&#9679; LIVE</div>
+          <div id="hlive">&#9679; Live</div>
           <div id="hplate"><div id="hp-badge">1</div><div class="hp-t"><b id="hp-name">Guest</b><span id="hp-title">Rookie</span><div class="hp-xp"><i id="hp-xpb"></i></div></div></div>
           <div id="hcards">
             <div class="hcard" id="hc-daily"><span class="hci">&#127873;</span><div class="hct"><b>DAILY GIFT</b><small id="hd-txt"></small></div><button id="hd-go">CLAIM</button></div>
-            <div class="hcard" id="hc-lotd"><img id="hl-img" alt=""><div class="hct"><b>TODAY'S LEVEL</b><small id="hl-name"></small></div><button id="hl-go">PLAY</button></div>
+            <div class="hcard" id="hc-lotd"><img id="hl-img" alt=""><div class="hct"><b>TODAY'S ARENA</b><small id="hl-name"></small></div><button id="hl-go">PLAY</button></div>
           </div>
         </div>
         <small class="help" id="tip" style="margin-top:4px"></small>
         <div id="hbuild">Build 76</div>
         <div id="homehide" style="display:none">
-          <div class="feat" id="feat" style="display:none"><div class="th"><img id="feat-img" alt=""></div><span class="ftag">Level of the day</span><b id="feat-name"></b><small id="feat-blurb"></small><button class="chip" id="feat-go">Play this level</button></div>
+          <div class="feat" id="feat" style="display:none"><div class="th"><img id="feat-img" alt=""></div><span class="ftag">Arena of the day</span><b id="feat-name"></b><small id="feat-blurb"></small><button class="chip" id="feat-go">Play this arena</button></div>
           <div class="news" style="display:none"><b>What's new &middot; build 76</b><ul>
-              <li>Sunny Farm is bigger, with a big barn you can walk into (hay bales inside and stairs up to a covered hayloft). The animals are gone so it is less crowded. It now sits where the Warehouse used to be in the level list</li>
-              <li>The Warehouse level is removed</li>
-              <li>New level: Lava Pillars, the same eight pillars and rules as Pillars but over a lake of lava under a burning sky</li>
-              <li>New Mega Damage level: Squeeze Chamber. A long room whose two ends close in faster than the Shrink Zone, with crates in the middle for cover</li>
-              <li>Crates drop about twice as often, and more can be on the floor at once</li>
-              <li>The bot slider's yellow bar now follows the circle, and leaving an online room puts the rules back to normal with 3 bots</li>
-              <li>The Shop and Locker now have the live bot battle behind them, and the bots keep fighting behind the menu while you wait in an online room</li>
-              <li>The online room bar now has a Leave room button, and the coins and buttons sit below it instead of under it</li>
-              <li>Level page: the spinning view is a bit higher and closer, with a strip of background showing</li>
-              <li>The city background is redone as a cleaner skyline</li>
+              <li>Sunny Farm grew a big walk-in barn with hay bales and a hayloft. The animals moved out (they said it was getting crowded)</li>
+              <li>The Warehouse is gone. Nobody will miss the boxes</li>
+              <li>New arena: Lava Pillars. Same eight pillars, same rules, but now the floor is lava. Literally</li>
+              <li>New Mega Damage arena: Squeeze Chamber. The walls close in faster than the Shrink Zone. Crates in the middle for hiding</li>
+              <li>Crates drop about twice as often, and more of them fit on the floor. Crate fans, rejoice</li>
+              <li>The bot slider's yellow bar follows the circle now, and leaving an online room puts the rules back to normal with 3 bots</li>
+              <li>The bots keep brawling behind the Shop, the Walldrobe and the online room while you browse. They never rest</li>
+              <li>The online room bar has a Leave room button, with the coins and buttons tucked neatly below it</li>
+              <li>The arena page's spinning view sits a bit higher and closer, with a strip of sky showing</li>
+              <li>The city background got a tidy new skyline</li>
             </ul><b>Build 75</b><ul>
-              <li>The Shop and the Locker are redone to match the main menu: full screen, a big wobbly title, your wobbler in a card with a sharper preview, and a grid of rarity-coloured item cards with gold Buy and Wear buttons</li>
+              <li>The Shop and the Walldrobe got a makeover: full screen, a big wobbly title, your wobbler in a sharp preview card, and shiny rarity-coloured item cards with gold Buy and Wear buttons</li>
             </ul><b>Build 74</b><ul>
-              <li>New level: Sunny Farm. A big red barn with a hayloft, a chicken coop with chickens and chicks, a tractor, cows, a pig pen, a haystack to climb in the middle, a windmill, a silo, a duck pond, a crop field with a scarecrow, and a farm skyline with barns, windmills and doves</li>
-              <li>The level backgrounds are now much lighter on the graphics card, so they cost far less speed</li>
-              <li>Level backgrounds: trees on every level, a huge detailed castle on a mountain, a new city skyline with a needle tower, domed hall and bridge, many more pink and white cones on Candy Land, a bigger haunted mansion with a dead forest, ghosts and bats, and a deep-space Moonbase with nebulas, a space station, asteroids and a comet</li>
-              <li>The level picker previews now show the scenery and the preview spins slower</li>
-              <li>The menu battle camera favours wide shots and no longer clips into walls</li>
-              <li>Controls: unbind any action with the x, bind left, right, middle and side mouse buttons or the scroll wheel, plus new Attack, Aim, Next / Previous weapon and Swap to last weapon binds. Esc goes back a page in the menus</li>
+              <li>New arena: Sunny Farm. Barn, hayloft, chickens and chicks, a tractor, cows, a pig pen, a haystack to climb, a windmill, a silo, a duck pond and a scarecrow who has seen things</li>
+              <li>Arena backgrounds are much lighter on your graphics card, so they cost far less speed</li>
+              <li>Backgrounds got busier: trees everywhere, a huge castle on a mountain, a new city skyline, way more cones on Candy Land, a spookier haunted mansion and a Moon Base with nebulas, asteroids and a comet</li>
+              <li>Arena previews show the scenery now, and spin a bit slower so nobody gets dizzy</li>
+              <li>The menu battle camera prefers wide shots and has stopped headbutting walls</li>
+              <li>Controls: unbind anything with the x, bind any mouse button or the scroll wheel, and new Attack, Aim, Next / Previous weapon and Swap to last weapon binds. Esc goes back a page in the menus</li>
             </ul><b>Build 73</b><ul>
-              <li>The battle behind the menu cuts to a new level and a new camera every 10 seconds or so, with a TV-style camera: wide orbit, low action shots and a chase cam that follows one bot. Instant cuts, nothing fades, the menu stays put</li>
-              <li>The level page preview is now a live, sharp view of the level with the bots fighting, instead of a blurry turntable with frozen bots. Drag it to turn it</li>
+              <li>The battle behind the menu cuts to a new arena and camera every 10 seconds or so, like a sports broadcast for wobblers: wide orbits, low action shots and a chase cam that follows one bot</li>
+              <li>The arena page preview is a live, sharp view with the bots fighting, instead of a blurry turntable of frozen bots. Drag it to spin it</li>
             </ul><b>Build 72</b><ul>
-              <li>The title screen and main menu now show a live bot battle: bots run around and fight with real guns. On the Ninja levels they are ninjas with katanas and shuriken, on the Pirate Ship they are pirates, and so on. No weapon crates, no sound. Turn it off any time in Settings &gt; Video</li>
-              <li>The menu is no longer blurred, so you can see the fight sharp. The character stage is gone from the home screen</li>
+              <li>The title screen shows a live bot battle with real weapons. Ninjas on the Ninja arenas, pirates on the Pirate Ship, and so on. No crates and no sound, so it's polite about it. Turn it off in Settings &gt; Video</li>
+              <li>The menu isn't blurry any more, so you can watch the fight properly. The character stage left the home screen</li>
             </ul><b>Build 71</b><ul>
-              <li>Brand new main menu: a big wobbly logo, slanted game buttons, your own wobbler on a spotlight stage (tap it for an emote), your level and XP, floating shapes and light rays</li>
-              <li>Daily gift: claim free coins every day, and the more days in a row, the bigger it gets</li>
-              <li>Level of the day sits on the home screen, one tap to play it</li>
+              <li>Brand new main menu: a big wobbly logo, slanted buttons, your own wobbler in the spotlight (tap it for an emote), your level and XP, plus floating shapes and light rays for drama</li>
+              <li>Daily gift: free coins every day, and the longer your streak, the bigger the gift</li>
+              <li>Arena of the day sits on the home screen. One tap and you're in</li>
             </ul><b>Build 70</b><ul>
-              <li>Just press Play, nothing to set up. Tap Save your progress (small button on the title screen) to keep your coins and play online. Once you save or log in the game remembers you every time you reopen or reload</li>
-              <li>Forgot your password? Use the recovery code you get when you save your progress. You can make a new code in Account &gt; Security</li>
-              <li>Snowy mountain tops no longer flicker, and the game is calmer right after you unpause</li>
+              <li>Just press Play, nothing to set up. Tap Save your progress on the title screen to keep your coins and play online. Once you save or log in, the game remembers you every time</li>
+              <li>Forgot your password? Use the recovery code you got when you saved your progress. Make a new one in Account &gt; Security</li>
+              <li>Snowy mountain tops stopped flickering, and the game calms down right after you unpause</li>
             </ul><b>Build 69</b><ul>
-              <li>Settings has tabs (Controls, Video, Audio &amp; HUD, More) and a search box, with new switches. New options: frame-rate limit, auto resolution, sky effects, menu sounds and reduce motion</li>
-              <li>Menus feel nicer: button ripples, click sounds and a soft parallax. Skies got horizon haze, sun glare and lightning in stormy levels</li>
-              <li>Behind the scenes: a crash guard keeps the game running if something glitches, saves keep a backup, graphics recover after a reset, and a Copy bug report button helps testers</li>
-              <li>New developer panel (F2 once you use the developer code): live performance graph, cheats, tools, network info and a log</li>
+              <li>Settings has tabs (Controls, Video, Audio &amp; HUD, More) and a search box. New: frame-rate limit, auto resolution, sky effects, menu sounds and reduce motion</li>
+              <li>Menus feel nicer: button ripples, click sounds and a soft parallax. Skies got haze, sun glare and lightning on the stormy arenas</li>
+              <li>Behind the scenes: a crash guard keeps the game running if something glitches, saves keep a backup, graphics recover after a reset, and a Copy bug report button helps testers tell us what broke</li>
+              <li>New developer panel (F2 once you use the developer code): performance graph, cheats, tools, network info and a log. Very official</li>
             </ul><b>Build 68</b><ul>
-              <li>Accounts: sign up with a username, email and password, and your coins, outfits, controls and stats are saved to it and follow you to any device. Log out any time from Account</li>
+              <li>Accounts: sign up with a username, email and password, and your coins, outfits, controls and stats follow you to any device. Log out any time from Account</li>
               <li>Guests can still play, but nothing is saved and online play is locked</li>
-              <li>If the host leaves an online room, the longest-standing player becomes the host and everyone stays in the room</li>
+              <li>If the host leaves an online room, the player who's been there longest becomes the host and the party carries on</li>
               <li>Touch controls are gone, and Classic has a new parachute-crate icon</li>
             </ul><b>Build 67</b><ul>
-              <li>New main menu: a big Play online button, Play offline, Quick play, Practice, Locker and Shop, with Settings, Controls, Account and Test guns underneath. No scrolling</li>
-              <li>New Account page: your name, level, stats, badges and recent matches. You pick your name once when you first start</li>
-              <li>Making a room is simpler: the Modifiers page sets the fighters, bots (dummies or brawlers), difficulty and score limit, and the lobby just shows a summary</li>
-              <li>Tralalero Tralala and Void Emperor are gone (owners get their coins back). Mode pages have icons</li>
+              <li>New main menu: a big Play online button, Play offline, Quick play, Practice, Walldrobe and Shop, with Settings, Account and the Practice Range underneath. No scrolling</li>
+              <li>New Account page: your name, level, stats, badges and recent matches. You pick your name once, so pick a good one</li>
+              <li>Making a room is simpler: Modifiers sets the fighters, bots, difficulty and score limit, and the lobby just shows a summary</li>
+              <li>Tralalero Tralala and Void Emperor have left the building (owners got their coins back). Mode pages have icons</li>
             </ul><b>Build 66</b><ul>
               <li>Explosive revamp: always 300 health, much stronger explosives, a new Blast Yard map, the Meteor Launcher (Explosive only) and only arenas (small ones, then the big ones)</li>
               <li>New weapon: Trident. The bow is now the Twin Fang Bow (two arrows at once). 5 boomerangs, a new boomerang look, and 2 Uzis in the crate</li>
@@ -1136,7 +1136,7 @@ body.tplay #chat{display:none}
           <div class="acprof"><i class="acav" id="ac-av"></i><div class="acinfo"><label class="fld"><span>Your name</span><input id="ac-name" type="text" maxlength="12" placeholder="Your name"></label><small class="help" style="margin:0">This is the name other players see in matches and rooms.</small></div></div>
           <div class="grp aclevel"><div class="lvtop"><b id="ac-lvl">Level 1</b><span id="ac-title">Rookie</span></div><div class="lvbar"><i id="ac-xp"></i></div><small id="ac-xpt"></small></div>
           <div class="achips"><div><b id="ac-coins">0</b><small>Coins</small></div><div><b id="ac-owned">0</b><small>Outfits owned</small></div><div><b id="ac-badgen">0</b><small>Badges</small></div></div>
-          <div class="row" style="margin-top:12px"><button class="opt" id="ac-locker">Open Locker</button><button class="opt" id="ac-shop">Open Shop</button><button class="opt" id="ac-code">Redeem a code</button></div>
+          <div class="row" style="margin-top:12px"><button class="opt" id="ac-locker">Open Walldrobe</button><button class="opt" id="ac-shop">Open Shop</button><button class="opt" id="ac-code">Redeem a code</button></div>
         </div>
         <div id="ac-stats" style="display:none">
           <div class="stats" id="stats">
@@ -1149,10 +1149,10 @@ body.tplay #chat{display:none}
         <div id="ac-security" style="display:none">
           <div class="grp"><h3>Change password</h3>
             <label class="fld"><span>Current password</span><input id="sc-old" type="password" maxlength="72" autocomplete="current-password"></label>
-            <label class="fld"><span>New password (6 or more characters)</span><input id="sc-new" type="password" maxlength="72" autocomplete="new-password"></label>
+            <label class="fld"><span>New password (6 to 72 characters)</span><input id="sc-new" type="password" maxlength="72" autocomplete="new-password"></label>
             <button class="opt" id="sc-change">Change password</button><div class="scmsg" id="sc-msg1"></div></div>
           <div class="grp"><h3>Recovery code</h3>
-            <small class="help" style="margin:0 0 8px">Lets you reset your password if you forget it (there is no email reset). Making a new one cancels the old one. Accounts made before build 70 do not have one yet.</small>
+            <small class="help" style="margin:0 0 8px">Lets you reset your password if you forget it (there's no email reset). Making a new one cancels the old one. Accounts made before build 70 don't have one yet.</small>
             <label class="fld"><span>Your password</span><input id="sc-rpw" type="password" maxlength="72" autocomplete="current-password"></label>
             <button class="opt" id="sc-rec">Make a new recovery code</button><div class="scmsg" id="sc-msg3"></div><div id="sc-reccode"></div></div>
           <div class="grp"><h3>Delete account</h3>
@@ -1165,20 +1165,20 @@ body.tplay #chat{display:none}
       </div>
       <div class="tab" id="pg-vs">        <h2 class="step">Versus: how many on each team?</h2>
         <div id="vs-box"><div class="modes" id="row-vs"></div></div>
-        <small class="help" style="margin-top:6px">You are on the blue team. Bots fill every other seat.</small>
+        <small class="help" style="margin-top:6px">You're on the blue team. Bots fill every other seat.</small>
       </div>
       <div class="tab" id="pg-mode">        <h2 class="step">Pick a game mode</h2>
         <div class="modes" id="row-mode"></div>
         <small class="help" id="modedesc" style="margin-top:6px"></small>
 </div>
-      <div class="tab" id="pg-map">        <h2 class="step">Pick a level <small id="mapnote"></small></h2>
+      <div class="tab" id="pg-map">        <h2 class="step">Pick an arena <small id="mapnote"></small></h2>
         <div id="maphero"><img id="heroimg" alt=""><canvas id="herocv" width="560" height="300"></canvas><div class="shade"></div>
           <div class="hinfo"><span id="herotags"></span><b id="heroname"></b><small id="heroblurb"></small></div>
           <button class="chip" id="herospin" title="Pause or resume the spin">&#10074;&#10074; Spinning</button><span id="herohint">drag to turn</span></div>
         <div class="cats" id="cats"></div>
         <div class="maps" id="maps"></div>
         <div class="grp" id="custom">
-          <h3>Build your own level</h3>
+          <h3>Build your own arena</h3>
           <div class="grid2">
             <label>Size <b id="c-size-v"></b> <input id="c-size" type="range" min="28" max="72" step="2"></label>
             <label>Obstacles <b id="c-obs-v"></b> <input id="c-obs" type="range" min="0" max="30" step="1"></label>
@@ -1189,7 +1189,7 @@ body.tplay #chat{display:none}
           </div>
           <div class="row" id="c-themes" style="margin-top:6px"></div>
           <div class="tog"><span>Icy floor</span><button id="c-ice">Off</button></div>
-          <small class="help">In game: <b>B</b> places a block where you aim, <b>N</b> removes one. Blocks are saved with the level. <button class="chip" id="c-clear">Clear my blocks</button></small>
+          <small class="help">In game: <b>B</b> places a block where you aim, <b>N</b> removes one. Blocks are saved with the arena. <button class="chip" id="c-clear">Clear my blocks</button></small>
         </div>
 </div>
       <div class="tab" id="pg-mods"><h2 class="step">Modifiers</h2>        <h3>Match</h3>
@@ -1276,13 +1276,13 @@ body.tplay #chat{display:none}
           <div class="fld"><span>Who can see it</span>
             <div class="seg"><button class="hatb on" id="on-vis-pub">Public<small>Shows in the room list</small></button><button class="hatb" id="on-vis-priv">Private<small>Friends join with a code</small></button></div></div>
         </div>
-        <button class="big" id="on-host">NEXT<small>Next you pick the mode and the level, then the room opens.</small></button>
+        <button class="big" id="on-host">Next<small>Next you pick the mode and the arena, then the room opens.</small></button>
         <div class="onstat" id="on-sb-c" style="display:none"><span id="on-status-c"></span></div>
       </div>
       <div class="tab" id="pg-onjoin"><h2 class="step">Join with a code</h2>
         <p class="onsub">Ask the host for the 5-letter code. It is on the big screen in their lobby.</p>
         <input id="on-code" class="codein" type="text" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
-        <button class="big" id="on-join">JOIN ROOM</button>
+        <button class="big" id="on-join">Join room</button>
         <div class="onstat" id="on-sb-j" style="display:none"><span id="on-status-j"></span></div>
       </div>
       <div class="tab" id="pg-onlobby">
@@ -1295,18 +1295,18 @@ body.tplay #chat{display:none}
           <button class="olink" id="on-edit">Change settings</button>
         </div>
         <div id="on-info" class="onsub" style="display:none"></div>
-        <button class="big" id="on-start">START MATCH<small>Empty spots are filled with bots. Friends can still join later.</small></button>
-        <button class="big alt" id="on-go" style="display:none">CLICK TO JOIN THE MATCH</button>
+        <button class="big" id="on-start">Start match<small>Empty spots are filled with bots. Friends can still join later.</small></button>
+        <button class="big alt" id="on-go" style="display:none">Click to join the match</button>
         <button class="opt danger" id="on-leave">Leave room</button>
         <div class="onstat" id="on-sb-l" style="display:none"><span id="on-status-l"></span></div>
       </div>
-      <div class="tab" id="pg-test"><h2 class="step">Test range</h2>
+      <div class="tab" id="pg-test"><h2 class="step">Practice Range</h2>
         <small class="help">Tap the guns you want laid out on the floor, then jump in. Flat arena, still dummies, no crates.</small>
-        <div class="row" style="gap:8px;margin:8px 0"><button class="opt" id="t-all">All on</button><button class="opt" id="t-none">All off</button><button class="big" id="test-go" style="flex:1;padding:12px">JUMP IN!</button></div>
+        <div class="row" style="gap:8px;margin:8px 0"><button class="opt" id="t-all">All on</button><button class="opt" id="t-none">All off</button><button class="big" id="test-go" style="flex:1;padding:12px">Jump in!</button></div>
         <div id="tchips"></div>
       </div>
-      <div class="tab" id="pg-controls"><h2 class="step">Settings &amp; controls</h2>
-        <div class="stbar"><div class="stabs" id="stabs"></div><input id="ssearch" type="search" placeholder="Search settings..." autocomplete="off" spellcheck="false"></div><div id="snone" class="help" style="display:none;text-align:center;margin:18px 0">Nothing matches that. Try another word.</div>
+      <div class="tab" id="pg-controls"><h2 class="step">Settings</h2>
+        <div class="stbar"><div class="stabs" id="stabs"></div><input id="ssearch" type="search" placeholder="Search settings…" autocomplete="off" spellcheck="false"></div><div id="snone" class="help" style="display:none;text-align:center;margin:18px 0">Nothing matches that. Try another word.</div>
         <div class="grp" data-tab="controls"><h3>Controls at a glance</h3><div id="ctrl-ref"></div>
           <h3>Aiming</h3>
           <label>Mouse sensitivity <input id="sens" type="range" min="0.3" max="3" step="0.05" value="1"></label>
@@ -1337,8 +1337,8 @@ body.tplay #chat{display:none}
           <label>Music <b id="music-v"></b> <input id="music" type="range" min="0" max="1" step="0.05" value="0.5"></label>
           <div class="tog"><span>Menu click sounds</span><button id="uisnd-tog">On</button></div>
           <div class="tog"><span>Damage numbers</span><button id="dmg-tog">On</button></div>
-          <div class="tog"><span>Kill feed</span><button id="feed-tog">On</button></div>
-          <div class="tog"><span>Map (mini-map) &middot; press N in game</span><button id="radar-tog">On</button></div>
+          <div class="tog"><span>K.O. feed</span><button id="feed-tog">On</button></div>
+          <div class="tog"><span>Mini-map &middot; press N in game</span><button id="radar-tog">On</button></div>
           <div class="tog"><span>Show chat messages (online, no word filter)</span><button id="chat-tog">On</button></div>
           <div class="tog"><span>Reduce motion (calmer menus, no screen wobble)</span><button id="rm-tog">Off</button></div>
         </div>
@@ -1354,7 +1354,7 @@ body.tplay #chat{display:none}
           <div class="tog"><span>Sky effects (haze, aurora, lightning)</span><button id="skyfx-tog">On</button></div>
           <div class="tog"><span>Bot battle behind the menu</span><button id="mb-tog">On</button></div>
           <div class="tog"><span>FPS counter</span><button id="fps-tog">Off</button></div>
-          <div class="tog"><span>Kill cam (replay of how you got K.O.'d)</span><button id="killcam-tog">On</button></div>
+          <div class="tog"><span>K.O. cam (replay of how you got K.O.'d)</span><button id="killcam-tog">On</button></div>
           </div>
         <div class="grp" data-tab="video">
           <h3>Crosshair</h3>
@@ -1371,12 +1371,12 @@ body.tplay #chat{display:none}
           <h3 style="margin-top:14px">Help &amp; tools</h3>
           <div class="row" style="gap:8px"><button class="opt" id="bug-copy">Copy bug report</button><button class="opt" id="dev-open" style="display:none">Developer panel</button></div>
           <small class="help" id="bug-msg">Something broke? Press the button and paste the text to whoever makes the game. It has no passwords or personal info.</small>
-          <button class="opt" id="settings-reset" style="margin-top:8px">Reset ALL settings to default</button>
+          <button class="opt" id="settings-reset" style="margin-top:8px">Reset all settings to default</button>
           <small class="help" id="build-note" style="margin-top:6px"></small>
         </div>
         <small class="help">
           Defaults: <b>WASD</b> move · <b>Shift</b> sprint · <b>Space</b> jump · <b>C</b> squat · <b>Click</b> attack · <b>Right click / scope key</b> aim · <b>1 2 3</b> weapons<br>
-          <b>Q</b> quick spatula hit · <b>E</b> shove · <b>F</b> kick · <b>T</b> taunt · <b>M</b> mute · <b>B / N</b> place / remove a block (Build Your Own level) · <b>W / S</b> walk into a ladder to climb, <b>Space</b> to jump off
+          <b>Q</b> quick spatula hit · <b>E</b> shove · <b>F</b> kick · <b>T</b> taunt · <b>M</b> mute · <b>B / N</b> place / remove a block (Build Your Own arena) · <b>W / S</b> walk into a ladder to climb, <b>Space</b> to jump off
         </small>
       </div>
       <div class="tab" id="pg-shop"><h2 class="step"><span class="ptitle" id="shoptitle">Shop</span> <small id="shopcoins"></small></h2>
@@ -1384,7 +1384,7 @@ body.tplay #chat{display:none}
           <div class="vmain"><div class="row" style="gap:8px;margin:0 0 6px"><button class="opt on" id="shoptab-skins">Outfits</button><button class="opt" id="shoptab-emotes">Emotes</button></div>
             <small class="help">Earn coins from K.O.s (+5 each) and finished matches (+40, and +60 more for a win).</small>
             <div class="eshelf" id="eshop"></div></div></div></div>
-      <div class="tab" id="pg-locker"><h2 class="step"><span class="ptitle" id="lockertitle">Locker</span> <small id="lockname"></small> <small id="lockcoins"></small></h2>
+      <div class="tab" id="pg-locker"><h2 class="step"><span class="ptitle" id="lockertitle">Walldrobe</span> <small id="lockname"></small> <small id="lockcoins"></small></h2>
         <div class="vwrap"><div class="vcol"><canvas id="lockcv" width="240" height="300"></canvas><small class="help" id="lockinc">Your wobbler. Pick an outfit or emote to see it</small></div>
           <div class="vmain"><div class="row" style="gap:8px;margin:0 0 6px"><button class="opt on" id="locktab-skins">Outfits</button><button class="opt" id="locktab-emotes">Emotes</button><button class="opt" id="locktab-hats">Hats</button><button class="opt" id="locktab-class">Class</button></div>
             <div id="lock-class" style="display:none"><small class="help">Pick who you play as. It changes your stats in every match, and your friends see it too.</small><div class="eshelf" id="lclass"></div></div>
@@ -1408,7 +1408,7 @@ body.tplay #chat{display:none}
         </small>
       </div>
     </div>
-    <div class="mfoot"><button class="opt" id="back" style="flex:0 0 120px">&larr; Back</button><div id="crumbs"></div><button id="next">Next &rarr;</button><button id="play">START!</button></div>
+    <div class="mfoot"><button class="opt" id="back" style="flex:0 0 120px">&larr; Back</button><div id="crumbs"></div><button id="next">Next &rarr;</button><button id="play">Start!</button></div>
   </div>
 </div>
 
@@ -1434,7 +1434,7 @@ body.tplay #chat{display:none}
 </div>
 
 <div id="dev"><div class="dh" id="dv-head"><b>DEV</b><span id="dv-fps"></span><button id="dv-x">x</button></div><div class="dtabs" id="dv-tabs"></div><div class="db" id="dv-body"></div></div>
-<div id="crash"><div>The graphics hiccuped.<br><small style="font-weight:600;opacity:.8">Hang on, getting them back...</small></div></div>
+<div id="crash"><div>The graphics hiccuped.<br><small style="font-weight:600;opacity:.8">Hang on, getting them back…</small></div></div>
 <script type="importmap">
 { "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js" } }
 </script>
@@ -1474,12 +1474,12 @@ el('sens').oninput = e => { settings.sens = +e.target.value; };
 el('ice').oninput = e => { settings.ice = +e.target.value; };
 
 let toastT = null, hurtFlash = 0;
-const MULTI = ['', 'K.O.!', 'DOUBLE KILL!', 'TRIPLE KILL!', 'QUAD KILL!', 'PENTA KILL!', 'RAMPAGE!'];
+const MULTI = ['', 'K.O.!', 'DOUBLE K.O.!', 'TRIPLE K.O.!', 'QUAD K.O.!', 'PENTA K.O.!', 'RAMPAGE!'];
 function koPop(victim, label) {
   if (player.dead || kcActive || kcPending) return;                       // no kill pop-ups while you're dead or watching the replay
   const m = player.st.multi, tag = label.includes('SNAKE') ? tf('🐍 SNAKE %s', t(m >= 2 ? MULTI[Math.min(m, 6)] : 'K.O.!')) : t(MULTI[Math.min(Math.max(m, 1), 6)]);
   const sk = '\u{1F480}'.repeat(clamp(m, 1, 5)), sg = player.st.streak;
-  const sub = sg >= 2 ? tf('%s · %d kill streak', nameOf(victim), sg) : tf('%s is out!', nameOf(victim));
+  const sub = sg >= 2 ? tf('%s · %d K.O. streak', nameOf(victim), sg) : tf('%s is out!', nameOf(victim));
   el('kopop').innerHTML = '<div class="kp' + (m >= 2 ? ' multi m' + Math.min(m, 6) : '') + '"><span class="sk">' + sk + '</span>' + tag + '<span class="sk">' + sk + '</span><small>' + sub + '</small></div>';
   sfx('pickup'); if (m >= 2) sfx('boing'); flashV = Math.max(flashV, 0.18 + 0.05 * m); cam.shake = Math.max(cam.shake, 0.12 + 0.03 * m);
 }
@@ -2083,7 +2083,7 @@ const MAPS = {
   },
 };
 MAPS.ice = {
-  name: 'Slippery Rink', tags: ['Ice'], blurb: 'Everything slides. Use the pillars!', orbit: 38, orbitH: 22, sky: 0xdff3ff, voidColor: 0xbfe0f0, hills: [0xc9e6f2, 0xb5d8ea, 0xdcf0f8, 0xa7cbe0], grip: 0.2,
+  name: 'Slippery Rink', tags: ['Ice'], blurb: 'Everything slides. Use the pillars! Brakes are a myth.', orbit: 38, orbitH: 22, sky: 0xdff3ff, voidColor: 0xbfe0f0, hills: [0xc9e6f2, 0xb5d8ea, 0xdcf0f8, 0xa7cbe0], grip: 0.2,
   spawns: [[-12, 12], [12, -12], [-12, -12], [12, 12], [0, 14], [0, -14], [-14, 0]],
   player: [0, 12], bots: [[-10, -8], [10, -8], [-13, 4], [13, 4], [0, -12]], wander: 13,
   drops: [[-12, -12], [12, -12], [-12, 12], [12, 12], [0, -2.6], [-6, 0], [6, 0], [0, -8], [0, 8], [-14, 0], [14, 0]],
@@ -2190,7 +2190,7 @@ MAPS.squeeze = {
   },
 };
 MAPS.tower = {
-  name: 'Tiered Tower', cat: 'obstacle', tags: ['Height', 'Stairs', 'Tiers'], blurb: 'A wide stepped tower with a fighting floor on every level. Stairs on the sides, a ladder to the summit and bounce pads at the corners. King of the hill, no climbing puzzle.',
+  name: 'Tiered Tower', cat: 'obstacle', tags: ['Height', 'Stairs', 'Tiers'], blurb: 'A wide stepped tower with a fighting floor on every tier. Stairs on the sides, a ladder to the summit and bounce pads at the corners. King of the hill, no climbing puzzle.',
   sky: 0xc9e0ff, voidColor: 0xa4c4ee, hills: [0xa8c0f0, 0x93aee6, 0xb9cff6, 0x7f9bd8], shadow: 42, orbit: 56, orbitH: 40,
   spawns: [[17, 17], [-17, -17], [17, -17], [-17, 17], [0, 12.5, 1.6], [0, -12.5, 1.6]],
   player: [17, 17], bots: [[-17, -17], [17, -17], [-17, 17], [0, 12.5, 1.6], [0, -12.5, 1.6]], wander: 17,
@@ -3395,24 +3395,24 @@ function isFriend(a, b) { return !!(cfg.teams && a && b && a !== b && a.team ===
 function teamKo(t) { let n = 0; for (const f of fighters) if (f.team === t) n += f.ko; return n; }
 const PIL_BAN = ['heal', 'flame', 'katana', 'typhoon', 'rocket', 'glauncher', 'cluster', 'meteor', 'net', 'bat', 'snow', 'snake', 'minigun', 'shotgun', 'sniper', 'glove', 'mallet', 'blower', 'boomerang', 'hammer', 'wirewhip'];   // Pillars: nothing explosive and nothing that shoves you back
 const MODES = {
-  classic: { name: 'Classic', desc: 'Everything drops from the sky', allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
-  melee:   { name: 'Melee Only', desc: 'Bats, mallets and spring gloves', allow: k => k === 'heal' || MELEE_KEYS.includes(k), start: null },
-  guns:    { name: 'Guns Only', desc: 'SMGs, shotguns, snipers and launchers', allow: k => k === 'heal' || GUN_KEYS.includes(k), start: 'smg' },
-  ninja:   { name: 'Ninja', desc: 'Shuriken, throwing knives, Typhoon Blades and the Ninja Katana, plus 3 dashes', allow: k => k === 'heal' || k === 'shuriken' || k === 'knife' || k === 'katana' || k === 'typhoon', start: 'shuriken' },
-  duel:    { name: '1v1 Duel', desc: 'You vs one bot. First to 5', teams: 1, preset: { limit: 5 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  classic: { name: 'Classic', desc: 'Everything drops from the sky. Grab it before someone else does', allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  melee:   { name: 'Melee Only', desc: 'Bats, mallets and spring gloves. Get up close and personal', allow: k => k === 'heal' || MELEE_KEYS.includes(k), start: null },
+  guns:    { name: 'Guns Only', desc: 'SMGs, shotguns, snipers and launchers. Pew pew', allow: k => k === 'heal' || GUN_KEYS.includes(k), start: 'smg' },
+  ninja:   { name: 'Ninja', desc: 'Shuriken, throwing knives, Typhoon Blades and the Ninja Katana, plus 3 dashes. Very sneaky, very wobbly', allow: k => k === 'heal' || k === 'shuriken' || k === 'knife' || k === 'katana' || k === 'typhoon', start: 'shuriken' },
+  duel:    { name: '1v1 Duel', desc: 'You vs one bot. First to 5 K.O.s. No excuses', teams: 1, preset: { limit: 5 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
   t2:      { name: '2v2', desc: 'You + 1 bot vs 2 bots. Team score, no friendly fire', teams: 2, preset: { limit: 10 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
-  t3:      { name: '3v3', desc: 'Squads of 3. First team to 15', teams: 3, preset: { limit: 15 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
-  t4:      { name: '4v4', desc: 'Big team fight. First team to 20', teams: 4, preset: { limit: 20 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
-  explosive:{ name: 'Explosive', desc: 'Rockets and grenade launchers. Boom', preset: { hp: 300, limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || k === 'rocket' || k === 'glauncher' || k === 'cluster' || k === 'meteor', start: 'rocket' },
-  pillars: { name: 'Pillars', desc: 'Start on tall pillars too far apart to jump (dash with any weapon!). Every 10 seconds a new weapon drops into your inventory. Fall or die and you are out. Most K.O.s when the 3 minutes end wins. No launchers, explosives or knockback guns', pillars: true, lives: 1, kbMul: 0.4, preset: { limit: 0, count: 7, behav: 'brawl', ffa: true }, allow: k => !PIL_BAN.includes(k), start: null },
+  t3:      { name: '3v3', desc: 'Squads of 3. First team to 15 K.O.s', teams: 3, preset: { limit: 15 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  t4:      { name: '4v4', desc: 'Big team fight. First team to 20 K.O.s. Bring snacks', teams: 4, preset: { limit: 20 }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  explosive:{ name: 'Explosive', desc: 'Rockets and grenade launchers, and everyone has 300 health. Boom', preset: { hp: 300, limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || k === 'rocket' || k === 'glauncher' || k === 'cluster' || k === 'meteor', start: 'rocket' },
+  pillars: { name: 'Pillars', desc: 'Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon drops into your hands every 10 seconds. Fall or get K.O.\'d and you\'re out. Most K.O.s after 3 minutes wins. No launchers, explosives or knockback guns', pillars: true, lives: 1, kbMul: 0.4, preset: { limit: 0, count: 7, behav: 'brawl', ffa: true }, allow: k => !PIL_BAN.includes(k), start: null },
   mega:    { name: 'Mega Damage', desc: 'Double damage, heavy weapons, only 3 lives and a huge arena that keeps shrinking', lives: 3, dmgMul: 2, kbMul: 0.8, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || ['shotgun', 'sniper', 'revolver', 'mammoth', 'rocket', 'glauncher', 'mallet'].includes(k), start: 'mallet' },
-  giant:   { name: 'Giant', desc: 'Weapons are double size', dmgMul: 2, kbMul: 1.1, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || ['bat', 'mallet', 'glove', 'trident', 'shotgun', 'mammoth', 'rocket', 'bow'].includes(k), start: 'bat' },
+  giant:   { name: 'Giant', desc: 'Weapons are double size. Huge reach, huge hits, huge mess', dmgMul: 2, kbMul: 1.1, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k === 'heal' || ['bat', 'mallet', 'glove', 'trident', 'shotgun', 'mammoth', 'rocket', 'bow'].includes(k), start: 'bat' },
   gungame: { name: 'Weapon Ladder', desc: 'Every K.O. swaps you to the next weapon. Finish the whole ladder to win', ladder: true, preset: { limit: 0, count: 3, behav: 'brawl', ffa: true }, allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
-  sandbox: { name: 'Sandbox', desc: 'Build your own arena, place blocks and mess about', allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
-  construction: { name: 'Construction', desc: 'Tradies fight with hammers, live wire and air blowers on a worksite', allow: k => k === 'heal' || k === 'hammer' || k === 'wirewhip' || k === 'blower', start: 'hammer' },
+  sandbox: { name: 'Sandbox', desc: 'Build your own arena with blocks, then play it with bots', allow: k => k !== 'katana' && k !== 'typhoon' && k !== 'meteor' && k !== 'hammer' && k !== 'wirewhip', start: null },
+  construction: { name: 'Construction', desc: 'Tradies fight with hammers, live wire and air blowers on a worksite. Hard hats recommended', allow: k => k === 'heal' || k === 'hammer' || k === 'wirewhip' || k === 'blower', start: 'hammer' },
 };
 const LOWG_KEYS = ['shotgun', 'mammoth', 'revolver', 'sniper', 'rocket', 'glauncher', 'cluster', 'ak', 'smg', 'uzi', 'minigun', 'net'];   // Moon Drift: seven that shove (shotgun, Mammoth, revolver, sniper, rocket, grenade and cluster launchers) and five that don't (AK, SMG, Uzis, minigun, net). No melee, flamethrower, ninja gear or bow
-MODES.lowg = { name: 'Moon Drift', desc: 'Super low gravity. Float, soar and knock rivals around', preset: { hp: 200, limit: 0, count: 3, behav: 'brawl', ffa: true, grav: 0.15 }, allow: k => k === 'heal' || LOWG_KEYS.includes(k), start: 'smg' };
+MODES.lowg = { name: 'Moon Drift', desc: 'Super low gravity. Float, soar and bonk rivals into orbit', preset: { hp: 200, limit: 0, count: 3, behav: 'brawl', ffa: true, grav: 0.15 }, allow: k => k === 'heal' || LOWG_KEYS.includes(k), start: 'smg' };
 MODES.classic.maps = null;                                                 // null = every level
 MODES.melee.maps = ['arena', 'park', 'ice', 'rooftops', 'cloud', 'tower', 'brawlpit'];
 MODES.guns.maps = ['arena', 'temple', 'rooftops', 'gunrange'];
@@ -3506,7 +3506,7 @@ const cone = (x, y, z, r, h, c, n = 6) => { const m = new THREE.Mesh(new THREE.C
 const flatRing = (r0, r1, c, seg = 16, y = 0.02) => { const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, seg), lm(c)); m.rotation.x = -Math.PI / 2; m.position.y = y; m.receiveShadow = true; return addDecor(m); };
 
 MAPS.moonbase = {
-  name: 'Moon Base', cat: 'arena', tags: ['Night', 'Stars', 'Cover'], blurb: 'A quiet grey moon with the Earth hanging in the sky. Fight around the dome pods, the crater rings and the central launch pad.',
+  name: 'Moon Base', cat: 'arena', tags: ['Night', 'Stars', 'Cover'], blurb: 'A quiet grey moon with the Earth hanging in the sky. Fight around the dome pods, the crater rings and the central launch pad. In space, nobody can hear you bonk.',
   env: { stars: true, moonColor: 0x6fa8ff, moonSize: 1.7, speck: 'star', peaks: false }, hemi: 0.7, sunI: 0.95,
   sky: 0x0b1030, skyTop: 0x02030f, voidColor: 0x14182e, hills: [0x3a3f58, 0x2f3450, 0x454b66, 0x262b45], shadow: 40, orbit: 44, orbitH: 26,
   spawns: [[-20, 12], [20, -12], [-20, -12], [20, 12], [0, 17], [0, -17]], player: [0, 17], bots: [[-20, 12], [20, -12], [-20, -12], [20, 12], [0, -17]], wander: 17,
@@ -3522,7 +3522,7 @@ MAPS.moonbase = {
   },
 };
 MAPS.volcano = {
-  name: 'Volcano Rim', cat: 'arena', tags: ['Lava', 'Islands', 'Bridges'], blurb: 'Four rock islands round a burning crater, joined by narrow bridges. Fall in the lava and you are out. Knock people in!',
+  name: 'Volcano Rim', cat: 'arena', tags: ['Lava', 'Islands', 'Bridges'], blurb: 'Four rock islands round a burning crater, joined by narrow bridges. Fall in the lava and you\'re out. Knock people in!',
   env: { speck: 'ember', stars: false, peaks: true }, hemi: 0.8, sunI: 1.1,
   sky: 0xe8643a, skyTop: 0x3a1020, voidColor: 0xff5a1f, hills: [0x4a2a2a, 0x3c2224, 0x5a3430, 0x2e1a1e], shadow: 42, orbit: 46, orbitH: 28, fog: [60, 190],
   spawns: [[0, -5], [-20, 0], [20, 0], [0, 20], [0, -20], [5, 3]], player: [0, 5], bots: [[-20, 0], [20, 0], [0, 20], [0, -20], [-20, 4]], wander: 17,
@@ -3538,7 +3538,7 @@ MAPS.volcano = {
   },
 };
 MAPS.candy = {
-  name: 'Candy Land', cat: 'arena', tags: ['Sweet', 'Colourful', 'Cover'], blurb: 'Lollipop trees, candy-cane pillars and a giant cake in the middle. Sticky, sweet and a bit silly.',
+  name: 'Candy Land', cat: 'arena', tags: ['Sweet', 'Colourful', 'Cover'], blurb: 'Lollipop trees, candy-cane pillars and a giant cake in the middle. Sticky, sweet and a bit silly. Brush your teeth after.',
   env: { speck: 'confetti', peaks: true }, sunColor: 0xfff0f6,
   sky: 0xffd6ec, skyTop: 0x9fd8ff, voidColor: 0xffb6dc, hills: [0xffa8d0, 0xff93c2, 0xc9a3ff, 0x9fe6d0], shadow: 38, orbit: 42, orbitH: 24,
   spawns: [[-15, 15], [15, -15], [-15, -15], [15, 15], [0, 14], [0, -14]], player: [0, 14], bots: [[-15, 15], [15, -15], [-15, -15], [15, 15], [0, -14]], wander: 16,
@@ -3553,7 +3553,7 @@ MAPS.candy = {
   },
 };
 MAPS.pirate = {
-  name: 'Pirate Ship', cat: 'arena', tags: ['Sea', 'Ship', 'Bridges'], blurb: 'Board the big ship! Mast in the middle, a raised stern deck, rowing boats alongside and planks between. Do not fall in the sea.',
+  name: 'Pirate Ship', cat: 'arena', tags: ['Sea', 'Ship', 'Bridges'], blurb: 'Board the big ship! Mast in the middle, a raised stern deck, rowing boats alongside and planks between. Don\'t fall in the sea. The parrots will laugh.',
   env: { speck: 'bubble', speckColor: 0xdff6ff, peaks: true }, sunColor: 0xfff0b0,
   sky: 0xbfe6f8, skyTop: 0x4fa0e0, voidColor: 0x2f86c8, hills: [0x7fb8d9, 0x6aa6cb, 0x93c8e3, 0x5a95bd], shadow: 42, orbit: 48, orbitH: 28,
   spawns: [[-3, 12], [0, -12], [2, 4], [1, -5], [-22, 6], [22, -6]], player: [-3, 12], bots: [[0, -12], [2, 4], [1, -5], [-22, 6], [22, -6]], wander: 20,
@@ -3570,7 +3570,7 @@ MAPS.pirate = {
   },
 };
 MAPS.haunted = {
-  name: 'Haunted Hollow', cat: 'obstacle', tags: ['Night', 'Spooky', 'Cover'], blurb: 'A foggy graveyard under a full moon. Hide behind tombstones, climb the crypt and watch the green wisps float by.',
+  name: 'Haunted Hollow', cat: 'obstacle', tags: ['Night', 'Spooky', 'Cover'], blurb: 'A foggy graveyard under a full moon. Hide behind tombstones, climb the crypt and watch the green wisps float by. The ghosts are friendly. Mostly.',
   env: { stars: true, moonColor: 0xf6f0c8, moonSize: 1.5, speck: 'wisp', peaks: true, aurora: [0x44ffb0, 0x6a8cff] }, hemi: 0.65, sunI: 0.8,
   sky: 0x2a2145, skyTop: 0x0b0716, voidColor: 0x241c3a, hills: [0x2f2548, 0x3a2d58, 0x251c3b, 0x44356a], shadow: 40, orbit: 44, orbitH: 26, fog: [34, 130],
   spawns: [[-16, 16], [16, -16], [-16, -16], [16, 16], [0, 18], [0, -18]], player: [0, 18], bots: [[-16, 16], [16, -16], [-16, -16], [16, 16], [0, -18]], wander: 17,
@@ -3727,7 +3727,7 @@ const floatRock = (x, z, w, d, h, y, c1, c2) => {                       // a dri
 };
 const MAP_LOWG_NIGHT = { stars: true, moonColor: 0x6fa3ff, moonSize: 1.7, speck: 'star', aurora: [0x6fe8ff, 0x9a7aff] };
 MAPS.craterdome = {
-  name: 'Crater Dome', cat: 'arena', tags: ['Low-G', 'Moon', 'Floating'], only: 'lowg', ceil: 24,
+  name: 'Crater Dome', cat: 'arena', tags: ['Low-g', 'Moon', 'Floating'], only: 'lowg', ceil: 24,
   blurb: 'Built for Moon Drift. A lunar crater under a glass dome with Earth hanging in the sky. Leap off the moon rocks and float up to the drifting asteroid platforms, and bounce off the glass.',
   env: MAP_LOWG_NIGHT, hemi: 0.75, sunI: 1.15,
   sky: 0x0b1030, skyTop: 0x02030f, voidColor: 0x14182e, hills: [0x4a5068, 0x40465c, 0x545a72, 0x363c50], shadow: 40, orbit: 44, orbitH: 30,
@@ -3756,7 +3756,7 @@ MAPS.craterdome = {
   },
 };
 MAPS.capsule = {
-  name: 'Space Capsule', cat: 'arena', tags: ['Low-G', 'Space', 'Windows'], only: 'lowg', ceil: 20,
+  name: 'Space Capsule', cat: 'arena', tags: ['Low-g', 'Space', 'Windows'], only: 'lowg', ceil: 20,
   blurb: 'Built for Moon Drift. The inside of a space capsule: big glass windows onto space, a glowing core in the middle and platforms to drift between. Use the walls to bounce off.',
   env: MAP_LOWG_NIGHT, hemi: 0.85, sunI: 0.7,
   sky: 0x050818, skyTop: 0x010208, voidColor: 0x0a0d1e, hills: [0x2e3450, 0x262c46, 0x363c5a, 0x1e243c], shadow: 34, orbit: 40, orbitH: 26,
@@ -3785,7 +3785,7 @@ MAPS.capsule = {
 };
 const PIL_PTS = (() => { const o = []; for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; o.push([Math.round(Math.cos(a) * 28 * 100) / 100, Math.round(Math.sin(a) * 28 * 100) / 100]); } return o; })();   // eight pillars on a ring, 28 m from the middle
 MAPS.pillars = {
-  name: 'Pillars', cat: 'arena', tags: ['Pillars', 'Height', 'Fall'], blurb: 'Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or die and you are out for the match. Most K.O.s when the clock ends wins.',
+  name: 'Pillars', cat: 'arena', tags: ['Pillars', 'Height', 'Fall'], blurb: 'Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or get K.O.\'d and you\'re out for the match. Most K.O.s when the clock ends wins.',
   only: 'pillars', noCrates: true, edgeGuard: true, randSpawn: true, spawnY: 10.4, env: { speck: 'bubble', speckColor: 0xdff6ff }, peaks: true,
   sky: 0xa8dcff, skyTop: 0x3f8fe0, voidColor: 0x2f86c8, hills: [0x7fb8d9, 0x6aa6cb, 0x93c8e3, 0x5a95bd], shadow: 66, orbit: 76, orbitH: 42, fog: [70, 230],
   spawns: PIL_PTS.map(p => [p[0], p[1]]),
@@ -3813,12 +3813,12 @@ MAPS.pillars = {
   },
 };
 MAPS.pillars2 = Object.assign({}, MAPS.pillars, {              // the same eight pillars and rules, over a sea of lava under a red sky
-  name: 'Lava Pillars', tags: ['Pillars', 'Height', 'Lava'], blurb: 'The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you are out for the match. Most K.O.s when the clock ends wins.',
+  name: 'Lava Pillars', tags: ['Pillars', 'Height', 'Lava'], blurb: 'The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you\'re out for the match. Most K.O.s when the clock ends wins. The floor is lava. Literally.',
   env: { speck: 'ember', speckColor: 0xffb070 }, peaks: false,
   sky: 0xff9a60, skyTop: 0x3a1020, voidColor: 0xff5a1e, hills: [0x7a2a1e, 0x642018, 0x8a362a, 0x521812], fog: [70, 230],
 });
 MAPS.playroom = {
-  name: "Giant's Playroom", cat: 'obstacle', tags: ['Giant', 'Toys', 'Cover'], only: 'giant', blurb: 'A kid\'s room as seen by a giant. A teddy bear in the corner, a tennis ball, dice, a toy car, building bricks, a book stack to climb, crayons for cover and bounce pads between.',
+  name: "Giant's Playroom", cat: 'obstacle', tags: ['Giant', 'Toys', 'Cover'], only: 'giant', blurb: 'A kid\'s room as seen by a giant. A teddy bear in the corner, a tennis ball, dice, a toy car, building bricks, a book stack to climb, crayons for cover and bounce pads between. The teddy bear is judging you.',
   sky: 0xfde8c8, skyTop: 0x8fc3ee, voidColor: 0xb89a78, hills: [0xd9b88a, 0xe6c79a, 0xc9a574, 0xdfc08f], shadow: 62, orbit: 82, orbitH: 46, hemi: 0.95, sunI: 0.85,
   spawns: [[-40, 12], [40, -12], [0, -40], [0, 40], [-28, -34], [28, 34], [-12, -42], [12, 42]], player: [0, 40],
   bots: [[-40, 12], [40, -12], [0, -40], [-28, -34], [28, 34], [-12, -42], [12, 42]], wander: 40,
@@ -3871,7 +3871,7 @@ MAPS.playroom = {
 };
 
 MAPS.farm = {
-  name: 'Sunny Farm', cat: 'arena', tags: ['Farm', 'Barn', 'Cover'], blurb: 'A big farm on a sunny morning. Run into the big red barn and up to its hayloft, hide behind hay bales, fight round the tractor and the coop, or race over the haystack in the middle.',
+  name: 'Sunny Farm', cat: 'arena', tags: ['Farm', 'Barn', 'Cover'], blurb: 'A big farm on a sunny morning. Run into the big red barn and up to its hayloft, hide behind hay bales, fight round the tractor and the coop, or race over the haystack in the middle. The chickens are watching.',
   env: { speck: 'pollen', peaks: true }, sunColor: 0xfff2c8,
   sky: 0xbfe6fa, skyTop: 0x4f9ee8, voidColor: 0x7fbf5a, hills: [0x8fd06a, 0x7cc05a, 0xa8dc78, 0x6bb04e], shadow: 56, orbit: 62, orbitH: 36,
   spawns: [[-18, 3], [18, 3], [0, 20], [-17, 21], [17, 18], [-27, -8], [27, -12], [-26, 24], [26, 26]], player: [0, 20], bots: [[-18, 3], [18, 3], [-17, 21], [17, 18], [-27, -8], [27, -12], [-26, 24], [26, 26]], wander: 26,
@@ -3988,7 +3988,7 @@ MAPS.crossroads = {
   },
 };
 MAPS.donut = {
-  name: 'Donut Drop', cat: 'arena', tags: ['Ring', 'Bounce', 'Sweet'], blurb: 'A giant frosted donut with a hole in the middle. Run the ring, or take a bounce pad over the hole to the sprinkle island. Fall through the hole and you are out.',
+  name: 'Donut Drop', cat: 'arena', tags: ['Ring', 'Bounce', 'Sweet'], blurb: 'A giant frosted donut with a hole in the middle. Run the ring, or take a bounce pad over the hole to the sprinkle island. Fall through the hole and you\'re out. Don\'t eat the sprinkles.',
   env: { speck: 'confetti', peaks: true }, sunColor: 0xfff0f6,
   sky: 0xffe0ee, skyTop: 0x9fd8ff, voidColor: 0x5a2f3e, hills: [0xffa8d0, 0xff93c2, 0xc9a3ff, 0x9fe6d0], shadow: 38, orbit: 42, orbitH: 24,
   spawns: [[0, -16], [0, 16], [-16, 0], [16, 0], [-13, -13], [13, 13]], player: [0, 16], bots: [[0, -16], [-16, 0], [16, 0], [-13, -13], [13, 13]], wander: 14,
@@ -4005,7 +4005,7 @@ MAPS.donut = {
   },
 };
 MAPS.chasm = {
-  name: 'Chasm Bridge', cat: 'arena', tags: ['Long', 'Bridges', 'Ring-out'], blurb: 'Two cliffs, two narrow bridges and a small island in the chasm between them. A long, thin level that fits a phone screen. Hold the bridges, or bounce across.',
+  name: 'Chasm Bridge', cat: 'arena', tags: ['Long', 'Bridges', 'Ring-out'], blurb: 'Two cliffs, two narrow bridges and a small island in the chasm between them. A long, thin arena that fits a phone screen. Hold the bridges, or bounce across.',
   env: { speck: 'ember', peaks: true }, hemi: 0.8, sunI: 1.1,
   sky: 0xf2b27a, skyTop: 0x6a3a7a, voidColor: 0x7a3a3a, hills: [0xa8604a, 0x93523f, 0xc27a58, 0x7d4636], shadow: 42, orbit: 46, orbitH: 26,
   spawns: [[-22, -6], [22, 6], [-22, 6], [22, -6], [-13, 0], [13, 0]], player: [-22, 6], bots: [[22, 6], [-22, -6], [22, -6], [-13, 0], [13, 0]], wander: 11,
@@ -4049,7 +4049,7 @@ MODES.ninja.maps = ['dojo', 'arenaxl', 'fortress', 'temple', 'rooftops', 'tower'
 const MAP_ORDER = ['test', 'practice', 'dojo', 'blast', 'gunrange', 'brawlpit', 'siteyard', 'craterdome', 'capsule', 'playroom', 'arena', 'park', 'ice', 'arenaxl', 'rinkxl', 'colosseum', 'fortress', 'temple', 'farm', 'rooftops', 'tower', 'shrink', 'squeeze', 'crossroads', 'donut', 'chasm', 'summit', 'moonbase', 'candy', 'haunted', 'beach', 'volcano', 'pirate', 'pillars', 'pillars2', 'custom'];   // big open arenas first, then rooms and sky levels, the odd one-offs last
 { const old = Object.assign({}, MAPS); for (const k of Object.keys(MAPS)) delete MAPS[k]; for (const k of MAP_ORDER) if (old[k]) MAPS[k] = old[k]; for (const k in old) if (!MAPS[k]) MAPS[k] = old[k]; }
 for (const m in MODES) if (MODES[m].maps) MODES[m].maps = MODES[m].maps.filter(k => MAPS[k]).sort((a, b) => MAP_ORDER.indexOf(a) - MAP_ORDER.indexOf(b));
-MODES.classic.icon = 'Everything drops'; MODES.sandbox.icon = 'Your level';
+MODES.classic.icon = 'Everything drops'; MODES.sandbox.icon = 'Your arena';
 const VS = ['duel', 't2', 't3', 't4'];
 let hostFlow = false, editFlow = false;
 const MODE_ORDER = ['classic', 'versus', 'pillars', 'ninja', 'mega', 'giant', 'gungame', 'guns', 'melee', 'explosive', 'lowg', 'construction', 'sandbox'];   // two to a row, left to right
@@ -4064,9 +4064,23 @@ for (const k in WEAPONS) WEAPONS[k].name = tcase(WEAPONS[k].name);
 const wnames = (keys) => keys.filter(k => WEAPONS[k]).map(k => t(WEAPONS[k].name)).join(', ');
 const wallowed = m => Object.keys(WEAPONS).filter(k => k !== 'spatula' && MODES[m].allow(k));
 MODES.melee.allow = (old => k => k !== 'trident' && old(k))(MODES.melee.allow);          // the trident is not a melee-only weapon
-const BLURB = { classic: 'Everything drops from the sky', duel: 'You vs one bot. First to 5', t2: 'You + 1 bot vs 2 bots. No friendly fire', t3: 'Squads of 3. First to 15', t4: 'Big team fight. First to 20',
-  sandbox: 'Coming soon. Build your own arena', construction: 'Tradies fight with hammers, live wire and air blowers (offline)', melee: 'Melee weapons only', guns: 'Guns only', explosive: 'Explosives only. Always 300 health', ninja: 'Ninja weapons plus 3 dashes',
-  giant: 'Weapons are double size. Huge reach, huge hits', mega: 'Double damage, 3 lives, a huge shrinking arena', pillars: 'Start on pillars. A new weapon every 10 seconds. One life', lowg: 'Super low gravity. Float, soar and knock rivals around', gungame: 'Every K.O. swaps your weapon. Finish the ladder to win' };
+const BLURB = { // the card line under each mode: keep it word for word the same as godot/data/extra/wizard.json `short`
+  classic: 'Everything drops from the sky',
+  duel: 'You vs one bot. First to 5',
+  t2: 'You + 1 bot vs 2 bots. No friendly fire',
+  t3: 'Squads of 3. First team to 15',
+  t4: 'Big team fight. First team to 20',
+  sandbox: 'Coming soon. Build your own arena',
+  construction: 'Tradies with hammers, wire and blowers',
+  melee: 'Bats, mallets and spring gloves',
+  guns: 'SMGs, shotguns, snipers, launchers',
+  explosive: 'Explosives only, 300 health. Boom',
+  ninja: 'Shuriken, knives, katanas and 3 dashes',
+  giant: 'Weapons are double size. Huge hits',
+  mega: 'Double damage, 3 lives, shrinking arena',
+  pillars: 'Pillars, one life, a new weapon every 10s',
+  lowg: 'Super low gravity. Float and soar',
+  gungame: 'Every K.O. swaps your weapon' };
 for (const m in MODES) { MODES[m].desc = BLURB[m] || MODES[m].desc; MODES[m].wl = m === 'gungame' ? GG_NAMES() : wnames(wallowed(m)); MODES[m].ex = ''; }
 MODES.explosive.ex = 'Exclusive gun: Meteor Launcher';
 for (const m of ['classic', 'duel', 't2', 't3', 't4']) MODES[m].wl = 'All guns and weapons';
@@ -4078,7 +4092,7 @@ renderModeButtons(); el('row-vs').innerHTML = VS.map(k => '<button id="vs-' + k 
 function GG_NAMES() { return ['smg', 'ak', 'uzi', 'shotgun', 'revolver', 'sniper', 'bow', 'shuriken', 'knife', 'glauncher', 'bat', 'spatula'].map(k => t(WEAPONS[k].name)).join(', '); }
 const giantOn = () => { if (cfg.mode !== 'giant') return false; try { return ui === 'play' || (ui === 'lobby' && inMatch && !matchOver && page !== 'shop' && page !== 'locker' && page !== 'me'); } catch (e) { return true; } };   // giant only while a giant match is on, so the menus, shop and locker show you normal size
 const HEAL_META = { name: 'Health Pack', color: 0x5be37a };
-const PU_META = { speed: { name: 'Speed Boost', color: 0x4fd8ff, msg: 'Speed boost! (12s)' }, rage: { name: 'Damage Boost', color: 0xff6a3c, msg: 'Damage boost! (12s)' }, shield: { name: 'Shield', color: 0x8fb4ff, msg: 'Shield! Half damage (12s)' } };
+const PU_META = { speed: { name: 'Speed Boost', color: 0x4fd8ff, msg: 'Speed boost! Zoom zoom (12s)' }, rage: { name: 'Damage Boost', color: 0xff6a3c, msg: 'Damage boost! Bonk harder (12s)' }, shield: { name: 'Shield', color: 0x8fb4ff, msg: 'Shield! Half damage (12s)' } };
 const PU_KEYS = ['heal', 'speed', 'rage', 'shield'], isPU = k => PU_KEYS.includes(k);
 const PU_MODE = { pillars: [], mega: ['speed'] };                      // Pillars: no power-ups at all. Mega Damage: speed only (no extra damage). Everything else gets all of them
 for (const m in MODES) { const o = MODES[m].allow; MODES[m].allow = k => (k === 'speed' || k === 'rage' || k === 'shield') ? (PU_MODE[m] ? PU_MODE[m].includes(k) : true) : o(k); }
@@ -5101,7 +5115,7 @@ const EMOTES = {
   hip: { name: 'Hip Swing', price: 150, dur: 2.6, rar: 'uncommon', ico: '\u{1F57A}', blurb: 'Sway side to side' },
   clap: { name: 'Clap Along', price: 200, dur: 2.4, rar: 'uncommon', ico: '\u{1F44F}', blurb: 'Clap to the beat' },
   disco: { name: 'Disco Point', price: 250, dur: 2.8, rar: 'uncommon', ico: '\u{1FAE8}', blurb: 'Point to the sky, point to the floor' },
-  sit: { name: 'Chill Out', price: 300, dur: 3.2, rar: 'rare', ico: '\u{1F60E}', blurb: 'Squat down and wave' },
+  sit: { name: 'Chill Out', price: 300, dur: 3.2, rar: 'rare', ico: '\u{1F60E}', blurb: 'Squat down and wave. So relaxed' },
   robot: { name: 'Robot', price: 350, dur: 3.0, rar: 'rare', ico: '\u{1F916}', blurb: 'Stiff, jerky and spinning in steps' },
   spin: { name: 'Spin Cycle', price: 450, dur: 2.2, rar: 'rare', ico: '\u{1F300}', blurb: 'Two fast spins, arms out' },
   flip: { name: 'Backflip', price: 600, dur: 1.4, rar: 'epic', ico: '\u{1F938}', blurb: 'A big jump and a backflip' },
@@ -5119,7 +5133,7 @@ const EMOTES = {
   wheelie: { name: 'Sur-Ron Wheelie', price: 3500, dur: 4.6, rar: 'mythic', ico: '\u{1F3CD}\u{FE0F}', blurb: 'Jump on an electric dirt bike, rev it up and pull a huge wheelie', fx: true },
   flex: { name: 'Muscle Flex', price: 250, dur: 2.8, rar: 'uncommon', ico: '\u{1F4AA}', blurb: 'Show off both arms' },
   salute: { name: 'Salute', price: 200, dur: 2.4, rar: 'uncommon', ico: '\u{1FAE1}', blurb: 'A crisp salute, then a happy hop' },
-  bow: { name: 'Fancy Bow', price: 250, dur: 2.6, rar: 'uncommon', ico: '\u{1F3A9}', blurb: 'A gentleman\'s bow' },
+  bow: { name: 'Fancy Bow', price: 250, dur: 2.6, rar: 'uncommon', ico: '\u{1F3A9}', blurb: 'A very fancy bow. Pinkies up' },
   zombie: { name: 'Zombie Shuffle', price: 350, dur: 3.2, rar: 'rare', ico: '\u{1F9DF}', blurb: 'Arms out, head lolling, shuffle shuffle' },
   sprinkler: { name: 'Sprinkler', price: 450, dur: 3.4, rar: 'rare', ico: '\u{1F4A6}', blurb: 'Turn in little jerks, arm out like a garden sprinkler' },
   cartwheel: { name: 'Cartwheel', price: 650, dur: 1.6, rar: 'epic', ico: '\u{1F938}', blurb: 'A big sideways cartwheel' },
@@ -5268,7 +5282,7 @@ function redeem(raw) {
   const k = String(raw || '').trim().toLowerCase(), c = CODES[k];
   if (!k) return 'Type a code first.';
   { const m = /^coins_(\d{1,4})$/.exec(k); if (m && +m[1] > 0) { addCoins(+m[1]); save(); sfx('pickup'); return tf('%s coins added!', +m[1]); } }      // coins_### gives that many coins, as often as you like
-  if (!c) return 'That code is not valid.';
+  if (!c) return 'That code isn\'t valid.';
   if (wallet.codes.includes(k)) return 'You already used that code.';
   wallet.codes.push(k); if (!wallet.skins.includes(c.skin)) wallet.skins.push(c.skin);
   if (!wallet.owned.includes(c.emote)) { wallet.owned.push(c.emote); const free = wallet.slots.indexOf(null); if (free >= 0) wallet.slots[free] = c.emote; }
@@ -5301,7 +5315,7 @@ function renderShop() {
   el('eshop').innerHTML = h; renderBind();
   for (const b of sub(el('eshop'), '.buy')) b.onclick = () => buySkin(b.dataset.k);
   for (const b of sub(el('eshop'), '.buyE')) b.onclick = () => buyEmote(b.dataset.k);
-  for (const b of sub(el('eshop'), '.try')) b.onclick = () => { previewSkin(b.dataset.k); el('shoptry').textContent = tf('Trying %s', t(skinName(b.dataset.k))) + (spatOf(b.dataset.k) ? tf('. Includes the %s (looks only)', t(spatOf(b.dataset.k))) : '') + (REACTIVE[b.dataset.k] ? t('. \u2728 Reactive face: it shows pain when hit and gets excited after a kill') : '') + (SKIN_EMOTES[b.dataset.k] ? tf('. \u{1F381} Comes with the %s emote, which is only for this outfit and cannot be bought separately', SKIN_EMOTES[b.dataset.k].map(id => t(EMOTES[id].name)).join(', ')) : '') + (wallet.skins.includes(b.dataset.k) ? '' : t('. Buy it to keep it')); shopEmote = null; renderBind(); };
+  for (const b of sub(el('eshop'), '.try')) b.onclick = () => { previewSkin(b.dataset.k); el('shoptry').textContent = tf('Trying %s', t(skinName(b.dataset.k))) + (spatOf(b.dataset.k) ? tf('. Includes the %s (looks only)', t(spatOf(b.dataset.k))) : '') + (REACTIVE[b.dataset.k] ? t('. \u2728 Reactive face: it shows pain when hit and gets excited after a K.O.') : '') + (SKIN_EMOTES[b.dataset.k] ? tf('. \u{1F381} Comes with the %s emote, which is only for this outfit and can\'t be bought separately', SKIN_EMOTES[b.dataset.k].map(id => t(EMOTES[id].name)).join(', ')) : '') + (wallet.skins.includes(b.dataset.k) ? '' : t('. Buy it to keep it')); shopEmote = null; renderBind(); };
   for (const b of sub(el('eshop'), '.tryE')) b.onclick = () => { previewEmote(b.dataset.k); shopEmote = b.dataset.k; el('shoptry').textContent = tf('Trying %s', t(EMOTES[b.dataset.k].name)); renderBind(); };
 }
 function grantSkinEmotes(k) {                         // an outfit that comes with its own emote(s): they are yours as long as you own the outfit
@@ -5346,7 +5360,7 @@ function classCard(k) {
 }
 function renderLocker() {
   updateCoins();                                                  // the coin counts must show on every page, not only after the Shop has been opened
-  el('lockname').textContent = skinName(look.skin); { const li = el('lockinc'); if (li) li.textContent = (spatOf(look.skin) ? tf('Includes the %s instead of the spatula', t(spatOf(look.skin))) : '') + (REACTIVE[look.skin] ? (spatOf(look.skin) ? t('. ') : '') + t('\u2728 Reactive face: shows pain when hit and gets excited after a kill') : '') || t('Your wobbler. Pick an outfit or emote to see it'); }
+  el('lockname').textContent = skinName(look.skin); { const li = el('lockinc'); if (li) li.textContent = (spatOf(look.skin) ? tf('Includes the %s instead of the spatula', t(spatOf(look.skin))) : '') + (REACTIVE[look.skin] ? (spatOf(look.skin) ? t('. ') : '') + t('\u2728 Reactive face: shows pain when hit and gets excited after a K.O.') : '') || t('Your wobbler. Pick an outfit or emote to see it'); }
   el('locktab-skins').classList.toggle('on', lockTab === 'skins'); el('locktab-emotes').classList.toggle('on', lockTab === 'emotes');
   el('lock-skins').style.display = lockTab === 'skins' ? 'block' : 'none'; el('lock-emotes').style.display = lockTab === 'emotes' ? 'block' : 'none';
   el('locktab-class').classList.toggle('on', lockTab === 'class'); el('lock-class').style.display = lockTab === 'class' ? 'block' : 'none';
@@ -5356,13 +5370,13 @@ function renderLocker() {
   el('lhats').innerHTML = HATS.map(h => '<div class="ecard r-common' + (look.hat === h ? ' sel' : '') + '"><span class="ei">' + (HAT_ICON[h] || '\u{1F3A9}') + '</span><b>' + HAT_LABEL[h] + '</b><small>Hat</small><button class="opt hatwear" data-h="' + h + '">' + (look.hat === h ? 'Wearing' : 'Wear') + '</button></div>').join('');
   for (const b of sub(el('lhats'), '.hatwear')) b.onclick = () => { look.hat = b.dataset.h; applyLook(); save(); try { player.setHat(look.hat); pvSettle(2); } catch (e) { /* cosmetic */ } renderLocker(); };
   el('lskins').innerHTML = wallet.skins.slice().sort(byRarity(skinRar)).map(k => '<div class="ecard r-' + skinRar(k) + (look.skin === k ? ' sel' : '') + '"><span class="ei">' + skinIcon(k) + '</span><b>' + skinName(k) + '</b><small>' + RAR_LABEL[skinRar(k)] + '</small>' + (spatOf(k) ? '<small class="inc">' + tf('Includes: %s', t(spatOf(k))) + '</small>' : '') + emoteTag(k) + reactTag(k) + '<button class="opt wear" data-k="' + k + '">' + (look.skin === k ? 'Wearing' : 'Wear') + '</button></div>').join('')
-    + (Object.keys(SKIN_SHOP).some(k => !wallet.skins.includes(k)) ? '<div class="ecard"><span class="ei">\u{1F6D2}</span><b>More outfits</b><small>In the shop</small><button class="opt" id="lk-shop">Open shop</button></div>' : '');
+    + (Object.keys(SKIN_SHOP).some(k => !wallet.skins.includes(k)) ? '<div class="ecard"><span class="ei">\u{1F6D2}</span><b>More outfits</b><small>In the Shop</small><button class="opt" id="lk-shop">Open Shop</button></div>' : '');
   for (const b of sub(el('lskins'), '.wear')) b.onclick = () => { look.skin = b.dataset.k; applyLook(); save(); previewSkin(look.skin); renderLocker(); };
   const keyOf = i => keyName(settings.binds[['taunt', 'emote2', 'emote3'][i]]).replace('Key', '');
   el('eslots').innerHTML = [0, 1, 2].map(i => '<button class="' + (lockerSel === i ? 'on' : '') + '" data-s="' + i + '">' + keyOf(i) + '<small>' + (wallet.slots[i] ? EMOTES[wallet.slots[i]].name : 'empty') + '</small></button>').join('');
   for (const b of sub(el('eslots'), 'button')) b.onclick = () => { lockerSel = +b.dataset.s; renderLocker(); };
   el('elocker').innerHTML = wallet.owned.slice().sort(byRarity(k => EMOTES[k].rar)).map(k => { const E = EMOTES[k]; return '<div class="ecard r-' + E.rar + (wallet.slots[lockerSel] === k ? ' sel' : '') + '"><span class="ei">' + E.ico + '</span><b>' + E.name + '</b><small>' + E.blurb + '</small>' + (E.skin ? '<small class="inc">' + tf('Only comes with the %s outfit. Not for sale', t(skinName(E.skin))) + '</small>' : '') + '<button class="opt eq" data-e="' + k + '">' + (wallet.slots.includes(k) ? 'Move here' : 'Equip') + '</button><button class="opt tryE" data-k="' + k + '">Preview</button></div>'; }).join('')
-    + (Object.keys(EMOTES).some(k => EMOTES[k].price > 0 && !wallet.owned.includes(k)) ? '<div class="ecard"><span class="ei">\u{1F6D2}</span><b>More emotes</b><small>In the shop</small><button class="opt" id="lk-shop2">Open shop</button></div>' : '');
+    + (Object.keys(EMOTES).some(k => EMOTES[k].price > 0 && !wallet.owned.includes(k)) ? '<div class="ecard"><span class="ei">\u{1F6D2}</span><b>More emotes</b><small>In the Shop</small><button class="opt" id="lk-shop2">Open Shop</button></div>' : '');
   for (const b of sub(el('elocker'), '.eq')) b.onclick = () => { const k = b.dataset.e, old = wallet.slots.indexOf(k); if (old >= 0) wallet.slots[old] = wallet.slots[lockerSel]; wallet.slots[lockerSel] = k; save(); renderLocker(); };
   for (const b of sub(el('elocker'), '.tryE')) b.onclick = () => previewEmote(b.dataset.k);
   for (const id of ['lk-shop', 'lk-shop2']) { const sb = el(id); if (sb) sb.onclick = () => { shopTab = id === 'lk-shop' ? 'skins' : 'emotes'; showPage('shop'); }; }
@@ -5484,11 +5498,11 @@ function makeSurron() {                                // a Sur-Ron style electr
 /* ---- character classes (pure data, exported to shared/classes.json). Every value is a multiplier on the Wobbler (1 = unchanged). Hitboxes and collision never change; `size` and `wob` are looks only.
    head / wide / skin: looks only (head scale, torso width, alien skin tint). hp: max health. spd: run speed. acc / air: ground / air steering. jump: jump push. kb: knockback taken (weight: lower = heavier). dmg: damage dealt. rate: weapon fire-rate. reload: reload time. ammo: ammo from pickups. wob: wobbliness. size: body scale ---- */
 const CLASSES = {
-  wobbler: { name: 'Wobbler', icon: '\u{1F642}', tag: 'Balanced. No surprises',        hp: 1,    spd: 1,    acc: 1,    air: 1,    jump: 1,    kb: 1,    dmg: 1,    rate: 1,    reload: 1,    ammo: 1,   wob: 1,    size: 1, head: 1,    wide: 1 },
-  bruiser: { name: 'Bruiser', icon: '\u{1F4AA}', tag: 'Big, slow, hard to shove',                 hp: 1.3,  spd: 0.88, acc: 0.85, air: 0.8,  jump: 0.92, kb: 0.65, dmg: 1.12, rate: 0.95, reload: 1,    ammo: 1,   wob: 0.7,  size: 1.12, head: 0.92, wide: 1.3 },
-  kid:     { name: 'Scamp',   icon: '\u{1F9D2}', tag: 'Tiny and zippy, easy to launch', hp: 0.75, spd: 1.22, acc: 1.2,  air: 1.3,  jump: 1.12, kb: 1.3,  dmg: 0.92, rate: 1.05, reload: 1,    ammo: 1,   wob: 1.45, size: 0.86, head: 1.4,  wide: 0.95 },
-  elder:   { name: 'Gramps',  icon: '\u{1F474}', tag: 'Sharp steering, quick reloads',      hp: 1.05, spd: 0.95, acc: 1.55, air: 2.1,  jump: 1,    kb: 0.9,  dmg: 1,    rate: 1,    reload: 0.75, ammo: 1.1, wob: 0.55, size: 0.98, head: 1,    wide: 1 },
-  alien:   { name: 'Zorp',    icon: '\u{1F47D}', tag: 'Fragile, floaty, great tech',   hp: 0.7,  spd: 1.02, acc: 1,    air: 1.25, jump: 1.18, kb: 1.1,  dmg: 1,    rate: 1.2,  reload: 0.8,  ammo: 1.5, wob: 1.2,  size: 0.95, head: 1.3,  wide: 0.82, skin: 0x7fe07a },
+  wobbler: { name: 'Wobbler', icon: '\u{1F642}', tag: 'Balanced. No surprises, just wobbles',        hp: 1,    spd: 1,    acc: 1,    air: 1,    jump: 1,    kb: 1,    dmg: 1,    rate: 1,    reload: 1,    ammo: 1,   wob: 1,    size: 1, head: 1,    wide: 1 },
+  bruiser: { name: 'Bruiser', icon: '\u{1F4AA}', tag: 'Big, slow, hard to shove. Hugs hurt',                 hp: 1.3,  spd: 0.88, acc: 0.85, air: 0.8,  jump: 0.92, kb: 0.65, dmg: 1.12, rate: 0.95, reload: 1,    ammo: 1,   wob: 0.7,  size: 1.12, head: 0.92, wide: 1.3 },
+  kid:     { name: 'Scamp',   icon: '\u{1F9D2}', tag: 'Tiny and zippy. Flies like a frisbee', hp: 0.75, spd: 1.22, acc: 1.2,  air: 1.3,  jump: 1.12, kb: 1.3,  dmg: 0.92, rate: 1.05, reload: 1,    ammo: 1,   wob: 1.45, size: 0.86, head: 1.4,  wide: 0.95 },
+  elder:   { name: 'Gramps',  icon: '\u{1F474}', tag: 'Sharp steering, quick reloads. Back in my day…',      hp: 1.05, spd: 0.95, acc: 1.55, air: 2.1,  jump: 1,    kb: 0.9,  dmg: 1,    rate: 1,    reload: 0.75, ammo: 1.1, wob: 0.55, size: 0.98, head: 1,    wide: 1 },
+  alien:   { name: 'Zorp',    icon: '\u{1F47D}', tag: 'Fragile, floaty, great tech. Comes in peace, mostly',   hp: 0.7,  spd: 1.02, acc: 1,    air: 1.25, jump: 1.18, kb: 1.1,  dmg: 1,    rate: 1.2,  reload: 0.8,  ammo: 1.5, wob: 1.2,  size: 0.95, head: 1.3,  wide: 0.82, skin: 0x7fe07a },
 };
 const CLASS_IDS = Object.keys(CLASSES);
 const BOT_CLASS_ORDER = ['bruiser', 'kid', 'alien', 'elder', 'wobbler'];
@@ -6069,7 +6083,7 @@ class Fighter {
     this.head.kick(rand(-3, 3), rand(-3, 3));
     this.armVel.x += rand(-3, 3); this.armVel.z += rand(-3, 3);
     sfxAt('boing', this.pos);
-    if (this.isPlayer) toast(msg || 'You fell over!');
+    if (this.isPlayer) toast(msg || 'Whoops! You fell over');
     return true;
   }
 
@@ -7533,7 +7547,7 @@ function landNet(n, x, y, z, onFighter) {
     if (Math.hypot(f.pos.x - x, f.pos.z - z) > w.radius || Math.abs(f.pos.y - gy) > 2.6) continue;
     f.trapT = w.trap; f.trapNet = net; f.vel.x = f.vel.z = 0; f.wantJump = false; f.trapX = f.pos.x; f.trapZ = f.pos.z; f.faceYaw = f.yaw; f.lieSide = Math.random() < 0.5 ? -1 : 1;
     net.victims.push(f); if (o && o.st) o.st.hits++;
-    if (f.isPlayer) toast('Trapped in a net!'); else if (o && o.isPlayer) { toast(tf('Got %s!', nameOf(f))); hitMarker(); }
+    if (f.isPlayer) toast(t('Trapped in a net! Wriggle!')); else if (o && o.isPlayer) { toast(tf('Got %s in your net!', nameOf(f))); hitMarker(); }
   }
   if (!net.victims.length) net.life = 1.4;
   // one big sheet of net lying on the ground, weighted at the rim, bulging up over whoever is lying under it
@@ -7869,10 +7883,10 @@ function eliminate(f, counted) {
   feedItems.push({ html: '<span style="color:' + colOf(f) + '">' + nameOf(f) + '</span> is out!', t: simTime }); if (feedItems.length > 5) feedItems.shift();
   updateKoText();
   const alive = fighters.filter(x => !x.elim && !x.left), online = !!(net && net.started);
-  if (f.isPlayer && (cfg.mode === 'pillars' || online) && !matchOver) toast("You're out! Spectating. Esc for the menu");
+  if (f.isPlayer && (cfg.mode === 'pillars' || online) && !matchOver) toast("You're out! Big wobble. Esc for the menu");
   if (!matchOver && cfg.lives && (alive.length <= 1 || (f.isPlayer && cfg.mode !== 'pillars' && !online))) { alive.sort((a, b) => b.lives - a.lives || b.ko - a.ko); endMatch(alive[0] || f); }
 }
-function passPotato(to) { pot.holder = to; pot.immune = 0.9; sfx('pickup'); if (to.isPlayer) toast('You have the bomb! Hit someone!'); }
+function passPotato(to) { pot.holder = to; pot.immune = 0.9; sfx('pickup'); if (to.isPlayer) toast('You\'ve got the bomb! Hit someone!'); }
 function initPotato() {
   if (bombMesh) { scene.remove(bombMesh); bombMesh = null; }
   pot = cfg.potato ? { holder: null, fuse: 0, total: 12, round: 0, immune: 0, wait: 3 } : null;
@@ -7951,10 +7965,10 @@ function updateShrink(dt) {
   if (s.dir === 1) { s.size = Math.min(s.max, s.size + 1.8 * dt); if (s.size >= s.max) { s.dir = -1; s.start = s.max; s.hold = 3; } }          // it grows back out before it can get too cramped
   else if (s.size > s.min) s.size = Math.max(s.min, s.size - (s.start - s.min) / (s.rate || 55) * dt);
   else if (fighters.every(f => f.dead || f.elim || f.pos.y < -2)) {     // everyone fell: bring the arena back at half the original size
-    s.cycle++; s.start = Math.max(14, Math.round(s.S0 * 0.5)); s.size = s.start; s.hold = 4; toast('Arena reset at half size!'); sfx('pickup');
+    s.cycle++; s.start = Math.max(14, Math.round(s.S0 * 0.5)); s.size = s.start; s.hold = 4; toast('Arena reset at half size! Cosy'); sfx('pickup');
   } else {                                                                 // at its smallest: a short breather, then it starts growing again
     s.rest = (s.rest === undefined ? 5 : s.rest) - dt;
-    if (s.rest <= 0) { s.rest = undefined; s.dir = 1; toast('The arena is growing!'); sfx('pickup'); }
+    if (s.rest <= 0) { s.rest = undefined; s.dir = 1; toast('The arena is growing! Room to wobble'); sfx('pickup'); }
   }
   const hd = s.both ? s.size / 2 : s.D / 2;
   s.box.minX = -s.size / 2; s.box.maxX = s.size / 2; s.box.minZ = -hd; s.box.maxZ = hd;
@@ -7963,7 +7977,7 @@ function updateShrink(dt) {
 }
 function updateModeHud() {
   let txt = '';                                      // (not "t": that name is the translate function)
-  if (pot && !matchOver) txt = pot.holder ? (pot.holder.isPlayer ? tf('\u{1F4A3} YOU HAVE THE BOMB! Hit someone! %s', Math.max(0, pot.fuse).toFixed(1)) : tf('\u{1F4A3} %s has the bomb %s', nameOf(pot.holder), Math.max(0, pot.fuse).toFixed(1))) : t('\u{1F4A3} Get ready...');
+  if (pot && !matchOver) txt = pot.holder ? (pot.holder.isPlayer ? tf('\u{1F4A3} YOU HAVE THE BOMB! Hit someone! %s', Math.max(0, pot.fuse).toFixed(1)) : tf('\u{1F4A3} %s has the bomb %s', nameOf(pot.holder), Math.max(0, pot.fuse).toFixed(1))) : t('\u{1F4A3} Get ready…');
   else if (cfg.mode === 'gungame' && !matchOver) txt = tf('Weapon %d of %d \u00b7 %s', (player.ggRung || 0) + 1, GG.length, t((WEAPONS[GG[player.ggRung || 0]] || { name: 'Spatula' }).name));
   else if (shrink && MAPS[currentMap].shrinks && !matchOver) { const st = shrink.hold > 0 ? 'shrinking soon' : shrink.dir === 1 ? 'growing' : shrink.size <= shrink.min ? 'smallest' : ''; txt = st ? tf('Arena %dm \u00b7 %s', Math.round(shrink.size), t(st)) : tf('Arena %dm', Math.round(shrink.size)); }
   const m = el('modehud'); if (m._txt !== txt) { m._txt = txt; m.textContent = txt; } m.style.display = txt ? 'block' : 'none';
@@ -8413,7 +8427,7 @@ function setUi(st) {
 /* ---- menu tabs, level categories, custom level editor, new settings ---- */
 const PAGES = ['home', 'mode', 'vs', 'map', 'mods', 'controls', 'me', 'result', 'test', 'online', 'onquick', 'onrooms', 'oncreate', 'onjoin', 'onlobby', 'account', 'shop', 'locker'];
 const ONL = ['online', 'onquick', 'onrooms', 'oncreate', 'onjoin', 'onlobby'];
-const PAGE_NAME = { home: 'Main menu', mode: 'Game mode', vs: 'Team size', map: 'Level', mods: 'Modifiers', controls: 'Settings', me: 'My wobbler', result: 'Match analysis', test: 'Test guns', online: 'Play online', onquick: 'Play online · Quick play', onrooms: 'Play online · Open rooms', oncreate: 'Play online · Create a room', onjoin: 'Play online · Join with a code', onlobby: 'Play online · Room lobby', account: 'Account', shop: 'Emote shop', locker: 'Locker' };
+const PAGE_NAME = { home: 'Main menu', mode: 'Game mode', vs: 'Team size', map: 'Arena', mods: 'Modifiers', controls: 'Settings', me: 'My wobbler', result: 'Match analysis', test: 'Practice Range', online: 'Play online', onquick: 'Play online · Quick play', onrooms: 'Play online · Open rooms', oncreate: 'Play online · Create a room', onjoin: 'Play online · Join with a code', onlobby: 'Play online · Room lobby', account: 'Account', shop: 'Shop', locker: 'Walldrobe' };
 const NEXT = { mode: 'map', vs: 'map', map: 'mods' }, PREV = { result: 'home', mode: 'home', vs: 'mode', map: 'mode', mods: 'map', controls: 'home', me: 'home', test: 'home', online: 'home', onquick: 'online', onrooms: 'online', oncreate: 'online', onjoin: 'online', onlobby: 'home', account: 'home', shop: 'home', locker: 'home' };
 let page = 'home';
 const vsFlow = () => VS.includes(cfg.mode) && !hostFlow;                        // Versus gets its own team-size page between the mode and the level
@@ -8441,7 +8455,7 @@ function showPage(pg) {
   for (const k of PAGES) el('pg-' + k).classList.toggle('on', k === pg);
   el('back').style.display = pg === 'home' ? 'none' : 'block';
   el('next').style.display = nextOf(pg) ? 'block' : 'none';
-  el('play').style.display = pg === 'mods' || pg === 'result' ? 'block' : 'none'; el('play').textContent = pg === 'result' ? (matchOver ? (net && net.started ? 'REMATCH' : 'PLAY AGAIN') : 'BACK TO THE MATCH') : 'START!';
+  el('play').style.display = pg === 'mods' || pg === 'result' ? 'block' : 'none'; el('play').textContent = pg === 'result' ? (matchOver ? (net && net.started ? 'Rematch' : 'Play again') : 'Back to the match') : 'Start!';
   const steps = vsFlow() ? ['mode', 'vs', 'map', 'mods'] : ['mode', 'map', 'mods'], stepI = steps.indexOf(pg);
   el('crumbs').innerHTML = stepI >= 0 ? '<span class="dots">' + steps.map((_, i) => '<i class="' + (i <= stepI ? 'on' : '') + (i === stepI ? ' cur' : '') + '"></i>').join('') + '</span><span>' + tf('Step %d of %d · %s', stepI + 1, steps.length, t(PAGE_NAME[pg])) + '</span>' : PAGE_NAME[pg];
   if (pg === 'home') refreshHome();
@@ -8453,7 +8467,7 @@ function showPage(pg) {
   if (pg === 'test') renderTestChips();
   if (hostFlow && !['mode', 'vs', 'map', 'mods'].includes(pg)) hostFlow = false;
   if (editFlow && pg !== 'mods') editFlow = false;
-  el('play').textContent = hostFlow && pg === 'mods' ? 'CREATE ROOM' : editFlow && pg === 'mods' ? 'SAVE SETTINGS' : el('play').textContent;
+  el('play').textContent = hostFlow && pg === 'mods' ? 'Create room' : editFlow && pg === 'mods' ? 'Save settings' : el('play').textContent;
   { const rf = (hostFlow || editFlow) && pg === 'mods'; el('bn').max = rf ? 7 : 12; if (rf && cfg.count > 7) setBotCfg({ count: 7 }); el('bn-lbl').textContent = rf ? 'Bots in the room (players take their seats)' : 'How many'; el('row-ffa').style.display = rf ? 'none' : ''; }
   { const mv = el('mode-versus'), ms = el('mode-sandbox'), mc = el('mode-construction'), mp = el('mode-pillars'), mg = el('mode-gungame'); if (mg) mg.style.display = ''; if (mv) mv.style.display = hostFlow ? 'none' : ''; if (ms) ms.style.display = hostFlow ? 'none' : ''; if (mc) mc.style.display = hostFlow ? 'none' : ''; if (mp) mp.style.display = ''; }
   if (ONL.includes(pg)) { netShowLobby(); netPill(); if (!net) { srvConnect(() => {}); if (pg === 'online' || pg === 'onquick' || pg === 'onrooms') setTimeout(netRefreshRooms, 50); } }
@@ -8464,7 +8478,7 @@ function showPage(pg) {
   try { showSync(); } catch (e) { devLog('show', e && e.message); }
   const mb = document.querySelector && document.querySelector('.mbody'); if (mb) mb.scrollTop = 0;
 }
-function applyPauseUi() {                            // while a game is paused: Resume, Main menu, Match stats and Settings. No Shop, Locker, Quick Play, Practice, Online or Test guns
+function applyPauseUi() {                            // while a game is paused: Resume, Main menu, Match stats and Settings. No Shop, Walldrobe, Quick Play, Practice, Online or Practice Range
   const p = inMatch && !matchOver && ui === 'lobby';
   const pb = el('pausebox'); if (pb) pb.style.display = p ? 'block' : 'none';
   const po = el('pz-online'); if (po) po.style.display = p && net && net.started ? 'block' : 'none';
@@ -8472,7 +8486,7 @@ function applyPauseUi() {                            // while a game is paused: 
   try { el('menu').classList.toggle('homefx', page === 'home' && !p); el('menu').classList.toggle('storefx', (page === 'shop' || page === 'locker') && !p); } catch (e) { /* cosmetic */ }
   const sm = el('pz-sum'); if (sm) sm.textContent = tf('%s \u00b7 %s', t(MODES[cfg.mode].name), t(MAPS[currentMap].name));
 }
-const TIPS = ['Hold the scope key and left-click: you can shoot while scoped.', 'Spring Glove does no damage, but it launches people off the edge.', 'Boomerangs come back for the catch, but every throw uses one of your 5, even a miss.', 'Shuriken: both hands throw, and the stars curve into your target.', 'Try the Build Your Own level: B places a block, N removes one.', 'Turn the radar on in Settings to see who is above or below you.', 'Underground levels are dark: use the pillars as cover.', 'Free-for-all makes the bots fight each other too.', 'Gravity and knockback can be changed in Modifiers.'];
+const TIPS = ['Hold the scope key and left-click: you can shoot while scoped.', 'Spring Glove does no damage, but it sends people flying off the edge.', 'Boomerangs come back for the catch, but every throw uses one of your 5, even a miss.', 'Shuriken: both hands throw, and the stars curve into your target.', 'Try Build Your Own: B places a block, N removes one.', 'Turn the radar on in Settings to see who is above or below you.', 'Underground arenas are dark: use the pillars as cover.', 'Free for all makes the bots fight each other too. Grab some popcorn.', 'Gravity and knockback can be changed in Modifiers.', 'The edge of the arena is not your friend.', 'Hit the head for extra damage. Rude, but effective.', 'Falling over is part of the fun. Get back up and bonk someone.'];
 function refreshHome() {
   el('greet').textContent = settings.name ? tf(acct.user ? 'Welcome back, %s!' : 'Hi, %s!', settings.name) : acct.user ? 'Welcome back!' : 'Hi!';
   statsText(); srvConnect(() => netPill());
@@ -8508,8 +8522,8 @@ function homePanels(fid, im) {
 el('hd-go').onclick = claimDaily;
 {
   const mk = (w, c, a) => '<span>' + w.split('').map((ch, i) => '<span style="animation-delay:' + (a + i * 0.09).toFixed(2) + 's">' + ch + '</span>').join('') + '</span>';
-  el('hlogo').innerHTML = '<div>' + mk('WOBBLE', 0, 0) + '</div><div>' + mk('ARENA', 0, 0.6) + '</div>';
-  for (const [id, t] of [['shoptitle', 'SHOP'], ['lockertitle', 'LOCKER']]) { const e = el(id); if (e) e.innerHTML = mk(t, 0, 0); }   // the Shop and Locker titles wobble like the logo
+  el('hlogo').innerHTML = '<div>' + mk('WOBBLERS', 0, 0) + '</div><div>' + mk('ARENA', 0, 0.6) + '</div>';
+  for (const [id, t] of [['shoptitle', 'SHOP'], ['lockertitle', 'WALLDROBE']]) { const e = el(id); if (e) e.innerHTML = mk(t, 0, 0); }   // the Shop and Locker titles wobble like the logo
   const bg = el('hbg'); let h = '';
   bg.innerHTML = h;
 }
@@ -8529,8 +8543,8 @@ function computeAwards(fs, rank) {
     ['\u{1F9E0}', 'Headhunter', f => f.st.heads >= 3 && f.st.heads === mx(g => g.st.heads), f => tf('%d headshots', f.st.heads)],
     ['\u{1F4A5}', 'Big Hitter', f => f.st.dmg > 0 && f.st.dmg === mx(g => g.st.dmg), f => tf('%d damage dealt', Math.round(f.st.dmg))],
     ['\u{1FA82}', 'Gravity Fan', f => f.st.falls >= 2 && f.st.falls === mx(g => g.st.falls), f => tf('fell off %d times', f.st.falls)],
-    ['\u{1F525}', 'Streak Machine', f => f.st.bestStreak >= 3 && f.st.bestStreak === mx(g => g.st.bestStreak), f => tf('%d kills without dying', f.st.bestStreak)],
-    ['\u{1F480}', 'Multi-Kill Maniac', f => f.st.bestMulti >= 2 && f.st.bestMulti === mx(g => g.st.bestMulti), f => t(MULTI[Math.min(f.st.bestMulti, 6)] || '').replace('!', '').toLowerCase()],
+    ['\u{1F525}', 'Streak Machine', f => f.st.bestStreak >= 3 && f.st.bestStreak === mx(g => g.st.bestStreak), f => tf('%d K.O.s without dying', f.st.bestStreak)],
+    ['\u{1F480}', 'Multi-K.O. Maniac', f => f.st.bestMulti >= 2 && f.st.bestMulti === mx(g => g.st.bestMulti), f => t(MULTI[Math.min(f.st.bestMulti, 6)] || '').replace('!', '').toLowerCase()],
     ['\u{1F94A}', 'Punching Bag', f => f.st.taken > 0 && f.st.taken === mx(g => g.st.taken), f => tf('%d damage taken', Math.round(f.st.taken))],
     ['\u{1F635}', 'Professional Victim', f => f.st.deaths >= 2 && f.st.deaths === mx(g => g.st.deaths), f => tf('%d deaths', f.st.deaths)],
     ['\u262E\uFE0F', 'Peaceful Soul', f => f.ko === 0, f => '0 K.O.s, still smiling'],
@@ -8547,8 +8561,8 @@ function renderResult() {
   const mins = Math.max(0, simTime - matchStart), dur = Math.floor(mins / 60) + ':' + String(Math.floor(mins % 60)).padStart(2, '0');
   const mx = Math.max(1, ...fs.map(f => f.ko));
   el('res-title').textContent = matchOver ? 'Match analysis' : 'Match so far';
-  const hi = [['MVP', rank[0]], ['Most damage', top(f => f.st.dmg)], ['Longest streak', top(f => f.st.bestStreak)], ['Best multi-kill', top(f => f.st.bestMulti)], ['Tankiest', top(f => -f.st.taken)]];
-  const hv = { 'MVP': f => tf('%d K.O.s', f.ko), 'Most damage': f => tf('%d dmg', Math.round(f.st.dmg)), 'Longest streak': f => tf('%d in a row', f.st.bestStreak), 'Best multi-kill': f => t(MULTI[Math.min(Math.max(f.st.bestMulti, 1), 6)] || '-').replace('!', ''), 'Tankiest': f => tf('%d taken', Math.round(f.st.taken)) };
+  const hi = [['MVP', rank[0]], ['Most damage', top(f => f.st.dmg)], ['Longest streak', top(f => f.st.bestStreak)], ['Best combo', top(f => f.st.bestMulti)], ['Tankiest', top(f => -f.st.taken)]];
+  const hv = { 'MVP': f => tf('%d K.O.s', f.ko), 'Most damage': f => tf('%d dmg', Math.round(f.st.dmg)), 'Longest streak': f => tf('%d in a row', f.st.bestStreak), 'Best combo': f => t(MULTI[Math.min(Math.max(f.st.bestMulti, 1), 6)] || '-').replace('!', ''), 'Tankiest': f => tf('%d taken', Math.round(f.st.taken)) };
   const me = player, aw = computeAwards(fs, rank);
   const colOf2 = f => cfg.teams ? colOf(f) : '#' + (SKINS[f.skinKey] ? SKINS[f.skinKey].col : f.isPlayer ? look.color : f.botColor).toString(16).padStart(6, '0');
   const slot = (f, place) => !f ? '' : '<div class="pod p' + place + '"><div class="pav" style="background:' + colOf2(f) + '">' + (place === 1 ? '<span class="crown">\u{1F451}</span>' : '') + '</div><b>' + esc(nameOf(f)) + '</b><small>' + tf('%d K.O.s', f.ko) + '</small>' +
@@ -8605,7 +8619,7 @@ function updateMapList() {
   if (catFilter !== 'all' && !ok.some(id => MAPS[id].cat === catFilter)) catFilter = 'all';
   for (const [c] of CATS) { el('cat-' + c).classList.toggle('on', c === catFilter); el('cat-' + c).style.display = c === 'all' || ok.some(id => MAPS[id].cat === c) ? '' : 'none'; }
   for (const id of Object.keys(MAPS)) el('map-' + id).classList.toggle('hide', !mapAllowed(id) || (catFilter !== 'all' && MAPS[id].cat !== catFilter));
-  el('mapnote').textContent = tf('%d levels in %s', ok.length, t(MODES[cfg.mode].name));
+  el('mapnote').textContent = tf('%d arenas in %s', ok.length, t(MODES[cfg.mode].name));
   updateHero();
 }
 function applyCat(k) { catFilter = k; updateMapList(); }
@@ -8621,10 +8635,10 @@ function syncRules() {
   tog('inf-tog', cfg.inf);
   for (const k of DYN_KINDS) el('dyn-' + k).classList.toggle('on', (cfg.dyn || 'off') === k);
   const dm = MAPS[currentMap], sup = dyn.support, want = cfg.dyn || 'off';
-  const dmN = dm ? t(dm.name) : t('This level'), dmL = dm ? t(dm.name) : t('this level');
+  const dmN = dm ? t(dm.name) : t('This arena'), dmL = dm ? t(dm.name) : t('this arena');
   el('dyn-note').textContent = want === 'off' ? 'The floor stays put.' : !dynMapAllowed(currentMap, dm) ? tf('%s always stays steady.', dmN)
     : want === 'random' ? (sup.tile || sup.drift ? tf('Picked from the kinds %s supports, new every match.', dmL) : tf('%s stays steady.', dmN))
-    : (want === 'drift' ? sup.drift : sup.tile) ? 'Starts gently over the first 4 seconds.' : tf('%s cannot do %s: it stays steady.', dmN, t(DYN_NAMES[want]));
+    : (want === 'drift' ? sup.drift : sup.tile) ? 'Starts gently over the first 4 seconds.' : tf('%s can\'t do %s: it stays steady.', dmN, t(DYN_NAMES[want]));
 }
 for (const v of [0.15, 0.5, 1, 1.5]) el('grav-' + v).onclick = () => { cfg.grav = v; syncRules(); };
 for (const v of [0.5, 1, 1.5, 2, 3]) el('kb-' + v).onclick = () => { cfg.kb = v; syncRules(); };
@@ -8651,7 +8665,7 @@ function syncSettings() {
   el('music').value = settings.music; el('music-v').textContent = Math.round(settings.music * 100) + '%';
   syncPro();
 }
-const BIND_LABELS = [['map', 'Map on / off'], ['chat', 'Chat (online)'], ['forward', 'Move forward'], ['back', 'Move back'], ['left', 'Move left'], ['right', 'Move right'], ['jump', 'Jump'], ['sprint', 'Sprint'], ['squat', 'Squat'], ['attack', 'Attack / fire'], ['aim', 'Aim / scope (mouse)'], ['scope', 'Scope / aim (key)'], ['cycle', 'Next weapon'], ['cycleBack', 'Previous weapon'], ['lastw', 'Swap to last weapon'], ['spatula', 'Quick spatula'], ['shove', 'Shove'], ['kick', 'Kick'], ['taunt', 'Emote 1'], ['emote2', 'Emote 2'], ['emote3', 'Emote 3'], ['dash', 'Dash (Ninja mode)'], ['slot1', 'Weapon slot 1'], ['slot2', 'Weapon slot 2'], ['slot3', 'Weapon slot 3'], ['reload', 'Reload']];
+const BIND_LABELS = [['map', 'Mini-map on / off'], ['chat', 'Chat (online)'], ['forward', 'Move forward'], ['back', 'Move back'], ['left', 'Move left'], ['right', 'Move right'], ['jump', 'Jump'], ['sprint', 'Sprint'], ['squat', 'Squat'], ['attack', 'Attack / fire'], ['aim', 'Aim / scope (mouse)'], ['scope', 'Scope / aim (key)'], ['cycle', 'Next weapon'], ['cycleBack', 'Previous weapon'], ['lastw', 'Swap to last weapon'], ['spatula', 'Quick spatula'], ['shove', 'Shove'], ['kick', 'Kick'], ['taunt', 'Emote 1'], ['emote2', 'Emote 2'], ['emote3', 'Emote 3'], ['dash', 'Dash (Ninja mode)'], ['slot1', 'Weapon slot 1'], ['slot2', 'Weapon slot 2'], ['slot3', 'Weapon slot 3'], ['reload', 'Reload']];
 let rebinding = null;                                  // 'action' (first key) or 'action:2' (second key)
 let confirmYes = null;
 function askConfirm(text, yes) { confirmYes = yes; el('confirm-text').textContent = text; el('confirm').style.display = 'flex'; }
@@ -8683,8 +8697,8 @@ function hintText() {
 function renderBinds() {
   tog('multi-tog', settings.multi); tog('shared-tog', settings.shared);
   el('binds').innerHTML = BIND_LABELS.map(([a, n]) => {
-    const b1 = '<button class="opt' + (rebinding === a ? ' on' : '') + '" id="bind-' + a + '">' + (rebinding === a ? 'Press a key or click...' : keyName(settings.binds[a])) + '</button>' + (settings.binds[a] && settings.binds[a] !== 'None' ? '<button class="opt x" id="clr1-' + a + '" title="Unbind: this action is bound to nothing">x</button>' : '');
-    const b2 = settings.multi ? '<button class="opt' + (rebinding === a + ':2' ? ' on' : '') + '" id="bind2-' + a + '">' + (rebinding === a + ':2' ? 'Press a key or click...' : keyName(settings.binds2[a])) + '</button>' + (settings.binds2[a] ? '<button class="opt x" id="clr2-' + a + '">x</button>' : '') : '';
+    const b1 = '<button class="opt' + (rebinding === a ? ' on' : '') + '" id="bind-' + a + '">' + (rebinding === a ? 'Press a key or click…' : keyName(settings.binds[a])) + '</button>' + (settings.binds[a] && settings.binds[a] !== 'None' ? '<button class="opt x" id="clr1-' + a + '" title="Unbind: this action is bound to nothing">x</button>' : '');
+    const b2 = settings.multi ? '<button class="opt' + (rebinding === a + ':2' ? ' on' : '') + '" id="bind2-' + a + '">' + (rebinding === a + ':2' ? 'Press a key or click…' : keyName(settings.binds2[a])) + '</button>' + (settings.binds2[a] ? '<button class="opt x" id="clr2-' + a + '">x</button>' : '') : '';
     return '<div class="brow"><span>' + n + '</span><div class="keys">' + b1 + b2 + '</div></div>';
   }).join('');
   for (const [a] of BIND_LABELS) {
@@ -8702,7 +8716,7 @@ function applyBind(code) {                              // the next key, mouse b
   const cur = second ? settings.binds2 : settings.binds, old = cur[a];
   const clash = settings.shared ? null : Object.keys(DEF_BINDS).find(k => k !== a && (settings.binds[k] === code || (settings.multi && settings.binds2[k] === code)));
   if (settings.multi || second) {                                   // two keys per action: no clashes unless sharing is allowed
-    if (clash) { toast(tf('That is already used for %s', t(BIND_LABELS.find(x => x[0] === clash)[1].toLowerCase()))); rebinding = null; renderBinds(); return; }
+    if (clash) { toast(tf('That\'s already used for %s', t(BIND_LABELS.find(x => x[0] === clash)[1].toLowerCase()))); rebinding = null; renderBinds(); return; }
     if (settings.binds[a] === code || settings.binds2[a] === code) { rebinding = null; renderBinds(); return; }
   } else if (clash) {                                               // one key per action: swap with whatever had it
     if (settings.binds[clash] === code) settings.binds[clash] = old || 'None'; else if (settings.binds2[clash] === code) settings.binds2[clash] = old;
@@ -8767,7 +8781,7 @@ el('c-seed').onchange = e => { cfg.custom.seed = clamp(Math.round(+e.target.valu
 el('c-rand').onclick = () => { cfg.custom.seed = Math.floor(Math.random() * 99999); custChanged(); };
 el('c-ice').onclick = () => { cfg.custom.ice = !cfg.custom.ice; custChanged(); };
 for (const k of Object.keys(CUSTOM_THEMES)) el('ct-' + k).onclick = () => { cfg.custom.theme = k; custChanged(); };
-el('c-clear').onclick = () => { cfg.blocks = []; rebuildCustom(); toast('Blocks cleared'); };
+el('c-clear').onclick = () => { cfg.blocks = []; rebuildCustom(); toast('Blocks cleared. Fresh start'); };
 
 // block builder: B places a 2x2x2 block where you aim, N removes the one you aim at
 function blockAt() {
@@ -8779,9 +8793,9 @@ document.addEventListener('keydown', e => {
   if (e.code === 'KeyB') {
     tmpE.copy(aimPoint).addScaledVector(camFwd, -0.35);
     const x = Math.round(tmpE.x / 2) * 2, z = Math.round(tmpE.z / 2) * 2, yb = Math.max(0, Math.floor((tmpE.y + 0.05) / 2) * 2);
-    if (blockRefs.length >= 150) return toast('That is a lot of blocks!');
+    if (blockRefs.length >= 150) return toast('That\'s a lot of blocks! (150 max) Easy there');
     if (blockRefs.some(r => r.x === x && r.z === z && r.yb === yb)) return;
-    for (const f of fighters) if (!f.dead && Math.abs(f.pos.x - x) < 1.5 && Math.abs(f.pos.z - z) < 1.5 && f.pos.y < yb + 2 && f.pos.y + 2.3 > yb) return toast('Someone is in the way');
+    for (const f of fighters) if (!f.dead && Math.abs(f.pos.x - x) < 1.5 && Math.abs(f.pos.z - z) < 1.5 && f.pos.y < yb + 2 && f.pos.y + 2.3 > yb) return toast('Someone is in the way. Rude');
     addPlayerBlock(x, yb, z); cfg.blocks.push([x, yb, z]); sfx('clink');
   } else if (e.code === 'KeyN') {
     const r = blockAt(); if (!r) return;
@@ -8816,14 +8830,14 @@ function carrySource() {                                             // the prog
 }
 function openAuth(mode, why) {
   auMode = mode; auBusy = false; const ov = el('authov'); ov.style.display = 'flex';
-  const T = { signup: ['Save your progress', 'Free. Your coins, outfits, controls and stats are saved to it, so they follow you to any device.'], login: ['Log in', 'Welcome back! Your progress loads as soon as you are in.'], reset: ['Reset your password', 'Type your username (or email), the recovery code you were shown when you signed up, and a new password.'] }[mode] || ['Save your progress', ''];
+  const T = { signup: ['Save your progress', 'Free. Your coins, outfits, controls and stats are saved to it, so they follow you to any device.'], login: ['Log in', 'Welcome back! Your progress loads as soon as you\'re in.'], reset: ['Reset your password', 'Type your username (or email), the recovery code you were shown when you signed up, and a new password.'] }[mode] || ['Save your progress', ''];
   el('au-title').textContent = T[0]; el('au-sub').textContent = why || T[1];
   const su = mode === 'signup', rs = mode === 'reset';
   el('au-form').style.display = 'block'; el('au-rec').style.display = 'none';
   el('au-f-email').style.display = su ? 'block' : 'none'; el('au-f-code').style.display = rs ? 'block' : 'none';
-  el('au-userl').textContent = su ? 'Username (3 to 16 letters, numbers or _)' : 'Username or email'; el('au-passl').textContent = rs ? 'New password (6 or more characters)' : 'Password';
+  el('au-userl').textContent = su ? 'Username (3 to 16 letters, numbers or _)' : 'Username or email'; el('au-passl').textContent = rs ? 'New password (6 to 72 characters)' : 'Password';
   el('au-pass').autocomplete = su || rs ? 'new-password' : 'current-password';
-  el('au-go').textContent = su ? 'SAVE PROGRESS' : rs ? 'RESET PASSWORD' : 'LOG IN';
+  el('au-go').textContent = su ? 'Save progress' : rs ? 'Reset password' : 'Log in';
   const cs = su ? carrySource() : null; el('au-f-carry').style.display = cs ? 'flex' : 'none'; if (cs) { el('au-carryt').textContent = cs.t; el('au-carry').checked = true; }
   el('au-alt').style.display = ''; el('au-alt').textContent = su ? 'I already saved before' : rs ? 'Back to log in' : 'Save your progress instead';
   el('au-forgot').style.display = mode === 'login' ? 'inline-block' : 'none'; el('au-close').style.display = '';
@@ -8853,19 +8867,19 @@ function authSuccess(r, carried) {                                   // we are i
     if (r.data) localStorage.setItem('wobbleArena', JSON.stringify(r.data)); else rmSave();
     localStorage.setItem('wobbleAuth', JSON.stringify({ user: r.user.username, token: r.token, email: r.user.email, t: r.t || 0, dirty: false }));
     sessionStorage.setItem('waSkip', '1');
-  } catch (e) { el('au-err').textContent = 'Your browser would not let the game remember you. Check that cookies and site data are allowed.'; auBusy = false; el('au-go').disabled = false; return; }
+  } catch (e) { el('au-err').textContent = 'Your browser wouldn\'t let the game remember you. Check that cookies and site data are allowed.'; auBusy = false; el('au-go').disabled = false; return; }
   if (r.recovery) { showRecovery(r.recovery); return; }
   location.reload();
 }
 el('au-form').onsubmit = async e => {
   e.preventDefault(); if (auBusy) return;
   const su = auMode === 'signup', rs = auMode === 'reset', id = String(el('au-user').value || '').trim(), em = String(el('au-email').value || '').trim(), pw = String(el('au-pass').value || ''), code = String(el('au-code-in').value || '').trim(), err = t => { el('au-err').textContent = t; };
-  const label = su ? 'SAVE PROGRESS' : rs ? 'RESET PASSWORD' : 'LOG IN';
+  const label = su ? 'Save progress' : rs ? 'Reset password' : 'Log in';
   if (!id) return err(su ? 'Pick a username.' : 'Type your username or email.');
   if (su && !/^[A-Za-z0-9_]{3,16}$/.test(id)) return err('Usernames are 3 to 16 letters, numbers or underscores.');
-  if (su && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return err('Type your email (it is only used for your account).');
+  if (su && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return err('Type your email (it\'s only used for your account).');
   if (rs && !code) return err('Type your recovery code.');
-  if (!pw) return err(rs ? 'Type a new password.' : 'Type your password.'); if ((su || rs) && pw.length < 6) return err('Passwords need at least 6 characters.');
+  if (!pw) return err(rs ? 'Type a new password.' : 'Type your password.'); if ((su || rs) && pw.length < 6) return err('Passwords need 6 to 72 characters.');
   auBusy = true; el('au-go').disabled = true; err(''); el('au-go').textContent = su ? 'Creating…' : rs ? 'Resetting…' : 'Logging in…';
   let r;
   if (su) { const cs = el('au-carry').checked ? carrySource() : null; const data = cs ? cs.d : undefined; if (data && !(data.set && data.set.name && !/^Guest\d{3}$/.test(data.set.name))) { data.set = Object.assign({}, data.set || {}, { name: id.slice(0, 12) }); } r = await api('POST', '/api/signup', { username: id, email: em, password: pw, data }); }
@@ -8879,7 +8893,7 @@ async function doLogout() {
   const go = async () => {
     el('confirm').style.display = 'none'; toast('Logging out…');
     if (acct.dirty) await Promise.race([cloudPush(true), new Promise(r => setTimeout(r, 4000))]);
-    if (acct.dirty) { askConfirm('Your latest progress could not be saved (no connection). If you log out now it will be lost. Log out anyway?', () => finish()); return; }
+    if (acct.dirty) { askConfirm('Your latest progress couldn\'t be saved (no connection). If you log out now, it will be lost. Log out anyway?', () => finish()); return; }
     finish();
   };
   const finish = async () => { try { await api('POST', '/api/logout', {}, acct.token, 4000); } catch (e) { /* offline is fine */ } try { localStorage.removeItem('wobbleAuth'); rmSave(); sessionStorage.removeItem('waSkip'); } catch (e) { /* x */ } location.reload(); };
@@ -8893,25 +8907,25 @@ function acctSyncText() {
 function renderAcctBox() {
   const b = el('ac-acct'); b.className = 'grp acacct' + (acct.user ? '' : ' guest');
   if (acct.user) { b.innerHTML = '<div class="who"><b>' + escH(acct.user) + '</b><small>' + escH(acct.email) + ' &middot; <span id="ac-sync"></span></small></div><button id="ac-logout">Log out</button>'; el('ac-logout').onclick = doLogout; }
-  else { b.innerHTML = '<div class="who"><b>You are playing as a guest</b><small>Save your progress to keep your stuff and play online.</small></div><button class="pri" id="ac-su">Save progress</button><button id="ac-li">Log in</button>'; el('ac-su').onclick = () => openAuth('signup'); el('ac-li').onclick = () => openAuth('login'); }
+  else { b.innerHTML = '<div class="who"><b>You\'re playing as a guest</b><small>Save your progress to keep your stuff and play online.</small></div><button class="pri" id="ac-su">Save progress</button><button id="ac-li">Log in</button>'; el('ac-su').onclick = () => openAuth('signup'); el('ac-li').onclick = () => openAuth('login'); }
   el('at-security').style.display = acct.user ? '' : 'none'; acctSyncText();
 }
 el('sc-change').onclick = async () => {
   const m = el('sc-msg1'), set = (t, ok) => { m.textContent = t; m.className = 'scmsg ' + (ok ? 'good' : 'bad'); };
-  const o = el('sc-old').value, n = el('sc-new').value; if (!o || n.length < 6) return set('Type your current password and a new one (6 or more characters).', false);
+  const o = el('sc-old').value, n = el('sc-new').value; if (!o || n.length < 6) return set('Type your current password and a new one (6 to 72 characters).', false);
   set('Changing…', true); const r = await api('POST', '/api/password', { old: o, next: n }, acct.token);
-  if (r.ok) { set('Password changed.', true); el('sc-old').value = el('sc-new').value = ''; } else if (r.err === 'auth') authExpired(); else set(r.msg || 'Could not change it.', false);
+  if (r.ok) { set('Password changed.', true); el('sc-old').value = el('sc-new').value = ''; } else if (r.err === 'auth') authExpired(); else set(r.msg || 'Couldn\'t change your password. Try again in a moment.', false);
 };
 el('sc-rec').onclick = async () => {
   const m = el('sc-msg3'), pw = el('sc-rpw').value; if (!pw) { m.textContent = 'Type your password first.'; m.className = 'scmsg bad'; return; }
   m.textContent = 'Making it…'; m.className = 'scmsg good'; const r = await api('POST', '/api/recovery', { password: pw }, acct.token);
-  if (r.ok) { el('sc-reccode').textContent = r.recovery; m.textContent = 'Save this code now. It will not be shown again.'; m.className = 'scmsg good'; el('sc-rpw').value = ''; } else if (r.err === 'auth') authExpired(); else { m.textContent = r.msg || 'Could not make one.'; m.className = 'scmsg bad'; }
+  if (r.ok) { el('sc-reccode').textContent = r.recovery; m.textContent = 'Save this code now. It won\'t be shown again.'; m.className = 'scmsg good'; el('sc-rpw').value = ''; } else if (r.err === 'auth') authExpired(); else { m.textContent = r.msg || 'Couldn\'t make a new code. Try again in a moment.'; m.className = 'scmsg bad'; }
 };
 el('sc-delete').onclick = () => {
   const m = el('sc-msg2'), pw = el('sc-del').value; if (!pw) { m.textContent = 'Type your password to confirm.'; m.className = 'scmsg bad'; return; }
   askConfirm(tf('Delete the account %s for good? Your coins, outfits and stats will be gone.', acct.user), async () => {
     m.textContent = 'Deleting…'; m.className = 'scmsg good'; const r = await api('POST', '/api/delete', { password: pw }, acct.token);
-    if (!r.ok) { m.textContent = r.msg || 'Could not delete it.'; m.className = 'scmsg bad'; return; }
+    if (!r.ok) { m.textContent = r.msg || 'Couldn\'t delete your account. Try again in a moment.'; m.className = 'scmsg bad'; return; }
     try { localStorage.removeItem('wobbleAuth'); rmSave(); } catch (e) { /* x */ } location.reload();
   });
 };
@@ -9041,7 +9055,7 @@ function apiBases() { return srvUrls().map(u => u.replace(/^ws/, 'http').replace
 let apiBase = '';
 async function api(method, path, body, token, ms) {
   const bases = apiBase ? [apiBase] : apiBases();
-  if (!bases.length || typeof fetch !== 'function') return { ok: false, err: 'net', msg: 'No game server found, so accounts are not available right now.' };
+  if (!bases.length || typeof fetch !== 'function') return { ok: false, err: 'net', msg: 'No game server found, so accounts aren\'t available right now.' };
   for (const b of bases) {
     const ac = typeof AbortController === 'function' ? new AbortController() : null, tm = ac ? setTimeout(() => ac.abort(), ms || 9000) : 0;
     try {
@@ -9142,7 +9156,7 @@ function loadPeerLib(cb) {
   const urls = ['https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js', 'https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.4/peerjs.min.js', 'https://fastly.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js', 'https://gcore.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js'];
   let i = 0;
   const next = () => {
-    if (i >= urls.length) { cb('Could not load the connection library (the internet or a school/work network may be blocking it).'); return; }
+    if (i >= urls.length) { cb('Couldn\'t load the connection library. The internet or a school or work network may be blocking it.'); return; }
     const sc = document.createElement('script'); sc.src = urls[i++]; sc.onload = () => cb(null); sc.onerror = () => { sc.remove(); next(); }; document.head.appendChild(sc);
   };
   next();
@@ -9228,7 +9242,7 @@ function netInfoText() {
   if (!net) return;
   el('nb-info').textContent = (net.started ? tf('%d players', net.slotKind.filter(k => k === 'human').length) : tf('%d in the lobby', net.roster.length)) + (!net.host && net.ping !== undefined ? tf(' \u00b7 %s ms', net.ping) : '');
   if (!net.started) return;
-  el('netinfo').textContent = (net.pub ? net.roomName : tf('ROOM CODE %s', net.code)) + tf(' \u00b7 %d players', net.slotKind.filter(k => k === 'human').length) + (!net.host && net.ping !== undefined ? tf(' \u00b7 %s ms', net.ping) : '') + (net.limit ? tf(' \u00b7 first to %s', net.limit) : '');
+  el('netinfo').textContent = (net.pub ? net.roomName : tf('Room code %s', net.code)) + tf(' \u00b7 %d players', net.slotKind.filter(k => k === 'human').length) + (!net.host && net.ping !== undefined ? tf(' \u00b7 %s ms', net.ping) : '') + (net.limit ? tf(' \u00b7 first to %s', net.limit) : '');
 }
 /* ---- the game server: one WebSocket to our own server (it keeps the room list and passes messages along). With no server reachable the game falls back to direct peer-to-peer ---- */
 const SERVER_URL = '';        // your server, like 'wss://wobble.example.com/ws'. Leave empty when the server also serves this page (it is found by itself)
@@ -9312,7 +9326,7 @@ function netHostSrv(opts) {
   srvAsk({ op: 'create', pub, info: srvInfo(n) }, ['created', 'nocreate'], 7000, m => {
     netUnlock();
     if (net) { if (m && m.op === 'created') srvTx({ op: 'leave' }); return; }
-    if (!m || m.op !== 'created') { netStatus(!m ? 'The game server did not answer. Try again in a moment.' : m.reason === 'auth' ? 'Log in to play online. Open Account to save your progress or log in.' : m.reason === 'busy' ? 'The server is full right now. Try again in a moment.' : 'Could not open a room. Try again.'); return; }
+    if (!m || m.op !== 'created') { netStatus(!m ? 'The game server didn\'t answer. Try again in a moment.' : m.reason === 'auth' ? 'Log in to play online. Open Account to save your progress or log in.' : m.reason === 'busy' ? 'The server is full right now. Try again in a moment.' : 'Couldn\'t open a room. Try again.'); return; }
     n.code = m.id; net = n; if (opts.pre) net.prevCfg = opts.pre; net.out = hostOut; net.lastInfo = JSON.stringify(srvInfo(n));
     netStatus(pub ? 'Your room is open. It shows up in everyone\'s room list.' : 'Room ready! Tell your friend the code. Friends can join any time, even after the match starts.'); netShowLobby();
     if (opts.auto) netStartHosted();
@@ -9326,10 +9340,10 @@ function netJoinSrv(code, jo) {
   srvAsk({ op: 'join', id: code, build: NET_BUILD }, ['joined', 'nojoin'], 8000, m => {
     netUnlock();
     if (net) { if (m && m.op === 'joined') srvTx({ op: 'leave' }); return; }
-    if (!m) { netStatus('The game server did not answer. Try again in a moment.'); return; }
+    if (!m) { netStatus('The game server didn\'t answer. Try again in a moment.'); return; }
     if (m.op === 'nojoin') {
       if (jo.quick && (m.reason === 'none' || m.reason === 'full')) { netQuickPlay(jo.quick, (jo.tries | 0) + 1, jo.pre); return; }
-      netStatus(m.reason === 'auth' ? 'Log in to play online. Open Account to save your progress or log in.' : m.reason === 'build' ? 'That room is running a different version of the game. Refresh the page to get the newest one.' : m.reason === 'full' ? 'That room is full.' : m.reason === 'inroom' ? 'You are already in a room.' : 'No room with that code. Check the letters, and make sure the host still has the room open.'); return;
+      netStatus(m.reason === 'auth' ? 'Log in to play online. Open Account to save your progress or log in.' : m.reason === 'build' ? 'That room is running a different version of the game. Refresh the page to get the newest one.' : m.reason === 'full' ? 'That room is full.' : m.reason === 'inroom' ? 'You\'re already in a room.' : 'No room with that code. Check the letters, and make sure the host still has the room open.'); return;
     }
     const c = { open: true, send: x => srvTx({ op: 'tohost', m: x }), close: () => srvTx({ op: 'leave' }) };
     net = { host: false, id: -1, code: m.id, srv: true, peer: null, conn: c, roster: [], started: false, ghosts: {}, ai: {}, slotKind: ['human', 'bot', 'bot', 'bot'], slots: null, sendT: 0, cid: 0, optMax: 4, optBots: true, optLim: 0, limit: 0, quick: jo.quick || null, tries: jo.tries | 0, rv: new Set(), rvList: [], rvTotal: 0 };
@@ -9576,7 +9590,7 @@ function netMigrate(me) {                                            // the host
   const nn = { srv: true, peer: null, started: false, ghosts: {}, ai: {}, slotKind: ['human', 'bot', 'bot', 'bot'], slots: null, sendT: 0, cid: 0, optMax: o.optMax, optBots: o.optBots, optLim: o.optLim, bhv: o.bhv, hdiff: o.hdiff, limit: 0, pub: o.pub, roomName: o.roomName, code: o.code, prevCfg: o.prevCfg, rv: new Set(), rvList: [], rvTotal: 0, migrated: oldHost };
   if (me) {
     net = Object.assign(nn, { host: true, id: 0, vc: {}, conns: {}, roster: [Object.assign({ id: 0 }, cleanInfo(myInfo(), 0))], out: hostOut, lastInfo: '' });
-    toast(tf('%s left. You are now the host!', oldHost)); netStatus(o.pub ? t('You are now the host. The room is still open to everyone.') : tf('You are now the host. The room code is still %s.', o.code));
+    toast(tf('%s left. You\'re now the host!', oldHost)); netStatus(o.pub ? t('You\'re now the host. The room is still open to everyone.') : tf('You are now the host. The room code is still %s.', o.code));
   } else {
     const c = { open: true, send: x => srvTx({ op: 'tohost', m: x }), close: () => srvTx({ op: 'leave' }) };
     net = Object.assign(nn, { host: false, id: -1, conn: c, roster: [] });
@@ -9723,13 +9737,13 @@ let roomsBusy = false, roomsList = [], netOpt = { pub: true, name: '', pre: null
 function netBrowse(cb) {
   srvConnect(ok => {
     if (!ok) { netBrowsePeer(cb); return; }
-    srvAsk({ op: 'list' }, ['rooms'], 6000, m => { if (!m || !Array.isArray(m.rooms)) { cb([], 'The game server did not answer.'); return; } cb(m.rooms.map(r => Object.assign({}, r, { t: 'info', code: r.id }))); });
+    srvAsk({ op: 'list' }, ['rooms'], 6000, m => { if (!m || !Array.isArray(m.rooms)) { cb([], 'The game server didn\'t answer.'); return; } cb(m.rooms.map(r => Object.assign({}, r, { t: 'info', code: r.id }))); });
   });
 }
 function netBrowsePeer(cb) {
   loadPeerLib(err => {
     if (err) { cb([], err); return; }
-    let peer; try { peer = makePeer(); } catch (e) { cb([], 'Could not start the room search.'); return; }
+    let peer; try { peer = makePeer(); } catch (e) { cb([], 'Couldn\'t start the room search. Try again.'); return; }
     const rooms = [], settled = new Set(); let finished = false, tm = 0;
     const done = () => { if (finished) return; finished = true; clearTimeout(tm); try { peer.destroy(); } catch (e) { /* ignore */ } rooms.sort((a, b) => b.n - a.n); cb(rooms); };
     tm = setTimeout(done, 7000);
@@ -9803,7 +9817,7 @@ function netRematchStart() {
   for (const i of humanSlots()) {                                    // anybody who did not click Rematch leaves (a bot takes the place)
     if (i === 0 || net.rv.has(i)) continue;
     const c = net.conns[i]; if (!c) continue;
-    try { c.send({ t: 'kick', msg: 'You did not click Rematch, so you left the room.' }); } catch (e) { /* gone */ }
+    try { c.send({ t: 'kick', msg: 'You didn\'t click Rematch, so you left the room.' }); } catch (e) { /* gone */ }
     hostDrop(c); setTimeout(() => { try { c.close(); } catch (e) { /* ignore */ } }, 400);
   }
   const slots = net.slots.map((sl, k) => sl.kind === 'human' ? sl : sl.kind === 'empty' ? { kind: 'empty', id: k, name: '', skin: 'none', hat: 'none', color: 0 } : { kind: 'bot', id: k });
@@ -9812,11 +9826,11 @@ function netRematchStart() {
 function netRematchUi() {
   if (!(net && net.started && page === 'result' && matchOver)) return;
   const n = net.rvList.length, t = net.rvTotal;
-  el('play').textContent = net.myVote ? tf('WAITING FOR PLAYERS… %d/%d', n, t) : n ? tf('REMATCH (%d/%d ready)', n, t) : 'REMATCH';
+  el('play').textContent = net.myVote ? tf('Waiting for players… %d/%d', n, t) : n ? tf('Rematch (%d/%d ready)', n, t) : 'Rematch';
 }
 function netEnterMatch() { setUi('lobby'); showPage('online'); try { el('play').onclick(); } catch (e) { /* the browser wants a click first: the big button is on screen */ } }
 { const ti = setInterval(() => { if (ONL.includes(page) && page !== 'onlobby' && !net && !document.hidden) netRefreshRooms(); }, 10000); if (ti && ti.unref) ti.unref(); }
-el('go-online').onclick = () => { if (!needAcct('Online play needs a saved profile, so every player has a name that is theirs. It is free and takes ten seconds.')) return; showPage('online'); };
+el('go-online').onclick = () => { if (!needAcct('Online play needs a saved profile, so every player has a name that is theirs. It\'s free and takes ten seconds.')) return; showPage('online'); };
 el('oh-quick').onclick = () => showPage('onquick'); el('oh-rooms').onclick = () => showPage('onrooms'); el('oh-create').onclick = () => showPage('oncreate'); el('oh-join').onclick = () => showPage('onjoin');
 el('on-modes').innerHTML = MODE_ORDER.filter(k => MODES[k] && netMode(k) === k).map(k => '<button id="onq-' + k + '">' + modeIco(k) + escH(MODES[k].name) + '<small>' + escH(MODES[k].desc || '') + '</small><em class="live" id="onl-' + k + '"></em></button>').join('');
 for (const k of MODE_ORDER) { const b = MODES[k] && netMode(k) === k && el('onq-' + k); if (b) b.onclick = () => netQuickPlay(k); }
@@ -10015,7 +10029,7 @@ document.addEventListener('keydown', e => {
   }
   if (e.code === 'KeyM') { sound.setMute(!sound.muted); toast(sound.muted ? 'Sound off' : 'Sound on'); }
   if (is('chat', e.code) && ui === 'play' && net && net.started && settings.chat && !player.trapT) { if (chatOpen()) { e.preventDefault(); return; } }
-  if (is('map', e.code) && ui === 'play') { settings.radar = !settings.radar; syncSettings(); save(); toast(settings.radar ? 'Map on' : 'Map off'); }
+  if (is('map', e.code) && ui === 'play') { settings.radar = !settings.radar; syncSettings(); save(); toast(settings.radar ? 'Mini-map on' : 'Mini-map off'); }
   if (!locked || player.dead || player.trapT > 0) return;
   const n = is('slot1', e.code) ? 0 : is('slot2', e.code) ? 1 : is('slot3', e.code) ? 2 : undefined;
   if (n !== undefined && player.slots[n]) player.equipSlot(player.slot === n ? -1 : n);   // press again = back to the spatula
@@ -10899,7 +10913,7 @@ function copyText(txt, done) {
   const fallback = () => { try { const ta = document.createElement('textarea'); ta.value = txt; ta.style.cssText = 'position:fixed;left:-999px'; document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); done(!!ok); } catch (e) { done(false); } };
   try { if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => done(true), fallback); else fallback(); } catch (e) { fallback(); }
 }
-el('bug-copy').onclick = () => copyText(bugReport(), ok => { el('bug-msg').textContent = ok ? 'Copied! Paste it in a message to whoever makes the game.' : 'Could not copy. Try again, or send a screenshot instead.'; });
+el('bug-copy').onclick = () => copyText(bugReport(), ok => { el('bug-msg').textContent = ok ? 'Copied! Paste it in a message to whoever makes the game.' : 'Couldn\'t copy. Try again, or send a screenshot instead.'; });
 
 /* ---- new settings: frame cap, auto resolution, sky effects, menu sounds, reduce motion ---- */
 function syncPro() {
@@ -11243,7 +11257,7 @@ if (el('maphero').addEventListener) {
   const endDrag = () => { heroDrag = null; el('maphero').classList.remove('drag'); };
   el('maphero').addEventListener('pointerup', endDrag); el('maphero').addEventListener('pointercancel', endDrag);
 }
-const BOOT = [['Building the levels…', () => {            // all the little level pictures are made in one go, so the background doesn't flicker through every map
+const BOOT = [['Building the arenas…', () => {            // all the little level pictures are made in one go, so the background doesn't flicker through every map
   for (const id of Object.keys(MAPS)) { loadMap(id); const url = shot3d(560, 300, TT_A0, 0.82) || drawThumb(id); if (url) el('mimg-' + id).src = url; }
 }]];
 BOOT.push(['Warming up the weapons…', () => { for (const k of Object.keys(WEAPONS)) { makeWeaponMesh(k); weaponIcon(k); } }]);

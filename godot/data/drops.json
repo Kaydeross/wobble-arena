@@ -48,12 +48,12 @@
   "speed": {
    "name": "Speed Boost",
    "color": 5232895,
-   "msg": "Speed boost! (12s)"
+   "msg": "Speed boost! Zoom zoom (12s)"
   },
   "rage": {
    "name": "Damage Boost",
    "color": 16738876,
-   "msg": "Damage boost! (12s)"
+   "msg": "Damage boost! Bonk harder (12s)"
   },
   "shield": {
    "name": "Shield",

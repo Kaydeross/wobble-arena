@@ -146,7 +146,7 @@ func show_section(s: String) -> void:
 			_slider("sfx_volume", "Sound effects", "", 0.0, 1.0, 0.05, _pct)
 			_slider("music_volume", "Music", "", 0.0, 1.0, 0.05, _pct)
 		"gameplay":
-			_toggle("kill_cam", "Knock-out replays", "A short slow-motion replay after a quick knock-out (offline)")
+			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
 		"language":
 			_language()
@@ -154,7 +154,7 @@ func show_section(s: String) -> void:
 			var u := _account_line()
 			_info("Who", u[0], u[1])
 			if in_match:
-				_info("Where", "Account", "Open your account from the title screen (the chip at the top).")
+				_info("Where", "Account", "Open your account from the title screen (the chip at the top)")
 			else:
 				_buttons("Open", [["account", "Open account", func() -> void: account_requested.emit()]])
 		"about":
@@ -181,8 +181,8 @@ func _account_line() -> Array:
 	var cloud: Variant = sv.get("cloud") if sv else null
 	if cloud != null and cloud.signed_in():
 		var sync: String = cloud.sync_text()
-		return [tr("Signed in as %s") % str(cloud.user()), sync if sync != "" else "Your progress is saved to your account."]
-	return ["Playing as a guest", "Your progress is saved on this device only. Make an account to keep it safe."]
+		return [tr("Signed in as %s") % str(cloud.user()), sync if sync != "" else "Your progress is saved to your account"]
+	return ["Playing as a guest", "Your progress is saved on this device only. Create an account to keep it safe."]
 
 func open_help() -> void:
 	help.open()

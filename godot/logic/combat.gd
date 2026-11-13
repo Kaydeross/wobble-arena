@@ -310,7 +310,7 @@ func topple(f: FighterState, dur: float, msg: String = "") -> bool:
 	push_arm(f, ax, 0.0, az)
 	ev({"type": "sfx", "name": "boing", "f": f})
 	if f.is_player:
-		ev({"type": "toast", "text": msg if msg != "" else "You fell over!"})
+		ev({"type": "toast", "text": msg if msg != "" else "Whoops! You fell over"})
 	return true
 
 # ============================== timers / respawn ==============================
@@ -590,7 +590,7 @@ func kick_step(f: FighterState, dt: float) -> void:
 			hit_any = true
 		if hit_any:
 			f.kick_resolved = true
-			if rng.next() < 0.12: topple(f, 0.9, "Your own kick tripped you!")
+			if rng.next() < 0.12: topple(f, 0.9, "Your own kick tripped you! Classic")
 	if t > 0.6 and not f.kick_resolved:   # kicked thin air: easy to lose your balance
 		f.kick_resolved = true
 		var chance := 0.5 + (0.0 if f.phys.grounded else 0.3)
