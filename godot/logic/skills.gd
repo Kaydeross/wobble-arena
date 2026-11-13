@@ -17,6 +17,7 @@ const RECOVER_AIR := 0.5         ## s of boosted air control (FighterPhysics rea
 const RECOVER_AIR_SPEED := 12.0  ## top air speed you can steer at while boosted
 const RECOVER_AIR_ACC := 22.0    ## air acceleration while boosted (normal air control is 14)
 const RECOVER_INVULN := 0.2
+const RECOVER_OFFER := 3.0       ## s after a hit the touch context button offers RECOVER while airborne
 
 ## Forget every pool (a fresh life: Combat.place_at).
 static func reset(f: FighterState) -> void:
@@ -94,6 +95,13 @@ static func recover_ready_k(f: FighterState) -> float:
 ## can be saved but a free fall cannot.
 static func recover_min_y(ring_out_y: float) -> float:
 	return ring_out_y * 0.25 if ring_out_y < 0.0 else ring_out_y + 1.0
+
+## Touch: offer the RECOVER context button? Only after a knock (hit in the last RECOVER_OFFER s) while in the air, so
+## ordinary jumps and the spawn drop keep RELOAD / nothing on the button. The tap itself works any time it is allowed.
+static func recover_offer(f: FighterState, sim: MatchSim) -> bool:
+	var p := f.phys
+	return not f.dead and not p.grounded and p.ladder.is_empty() and f.down_t <= 0.0 and f.trap_t <= 0.0 \
+		and sim.combat.time - f.last_hit_time < RECOVER_OFFER and p.py >= recover_min_y(sim.ring_out_y)
 
 ## Why recovery is refused right now ("" = allowed). The touch button and tests read it.
 static func recover_block(f: FighterState, sim: MatchSim) -> String:

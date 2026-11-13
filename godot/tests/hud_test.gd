@@ -43,8 +43,9 @@ func _run() -> void:
 	# air recovery: in the air without dash gear the context button becomes RECOVER (same slot, still <= 4 buttons)
 	var pl: FighterState = world.sim.player
 	pl.phys.place(pl.phys.px, 3.0, pl.phys.pz); pl.phys.grounded = false
+	pl.last_hit_time = world.sim.combat.time - 0.5        # knocked: the button offers RECOVER (plain jumps keep RELOAD)
 	world.touch._refresh_context()
-	check(world.touch.context_action() == "recover", "context button is recover in the air (%s)" % world.touch.context_action())
+	check(world.touch.context_action() == "recover", "context button is recover after a knock (%s)" % world.touch.context_action())
 	check(world.touch.visible_buttons().size() <= 4, "at most 4 action buttons in the air")
 	world.touch.queue_redraw()
 	await process_frame

@@ -188,6 +188,10 @@ func _recover() -> void:
 		(cases[why] as Callable).call()
 		ok(Skills.recover_block(p, sim) == why and not Skills.do_recover(p, sim, 1.0, 0.0), "refused: %s (%s)" % [why, Skills.recover_block(p, sim)])
 		p.phys.ladder = {}
+	airborne(sim, p, 3.0)
+	ok(not Skills.recover_offer(p, sim), "plain jump: touch button does not offer RECOVER")
+	p.last_hit_time = c.time - 0.5
+	ok(Skills.recover_offer(p, sim), "knocked: touch button offers RECOVER")
 	ok(Skills.recover_min_y(-25.0) > -25.0 + 10.0, "free falls cannot be saved (min y %s)" % Skills.recover_min_y(-25.0))
 	p.dead = false
 	sim.dispose()

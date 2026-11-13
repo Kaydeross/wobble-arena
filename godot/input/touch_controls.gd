@@ -8,7 +8,7 @@ extends Control
 ##           Shows a yellow ring + scope badge while the scope (aim) is on.
 ##   JUMP    teal, held.
 ##   MELEE   tap = shove; hold (HOLD_KICK s) or flick (FLICK px) = kick. A ring fills while held, the icon turns into a boot.
-##   context only while it applies: DASH (ninja weapon in hand, with charge pips), else RECOVER in the air (the "boing
+##   context only while it applies: DASH (ninja weapon in hand, with charge pips), else RECOVER when knocked into the air (the "boing
 ##           burst", logic/skills.gd; a ring shows the charge coming back), else RELOAD (gun with a magazine and spare
 ##           ammo; shows the reload progress).
 ##   AIM     double-tap the look area to toggle the scope (tap again twice to leave it).
@@ -366,8 +366,7 @@ func _refresh_context() -> void:
 		if sim.combat.rules.dash_gear(p):
 			id = "dash"
 			sig = "dash%d" % p.dash_n
-		elif not p.phys.grounded and p.phys.ladder.is_empty() and p.down_t <= 0.0 and p.trap_t <= 0.0 \
-				and p.phys.py >= Skills.recover_min_y(sim.ring_out_y):
+		elif Skills.recover_offer(p, sim):
 			id = "recover"
 			sig = "recover%d" % int(Skills.recover_ready_k(p) * 30.0)
 		else:
