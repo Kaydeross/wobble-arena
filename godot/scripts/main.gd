@@ -606,6 +606,9 @@ func play_offline(over: Dictionary = {}) -> void:
 	world.bot_count = int(over.get("bots", wizard.bots))
 	world.difficulty = str(over.get("difficulty", wizard.diff))
 	world.build_mode = world.mode_id == "sandbox"     # Sandbox opens the arena in build mode (ui/build_hud.gd)
+	if world.map_id == SiteMap.ID:    # the generated building site: the hub's seed, or a new random site every match (0)
+		var s := int(Settings.get_value("site_seed", 0))
+		SiteMap.set_seed(s if s > 0 else randi_range(1, 2147483646))
 	get_tree().change_scene_to_node(world)
 
 ## The Construction hub's Arcade card: a new boss rush run (dlc/construction/arcade_manager.gd; locked players get nothing).
