@@ -74,7 +74,7 @@ function gdFiles(dir, acc = []) {
   }
   return acc;
 }
-const unesc = s => s.replace(/\\(.)/g, (m, c) => ({ n: '\n', t: '\t', '"': '"', "'": "'", '\\': '\\' }[c] ?? c));
+const unesc = s => s.replace(/\\u\{([0-9a-fA-F]+)\}|\\u([0-9a-fA-F]{4})|\\x([0-9a-fA-F]{2})/g, (m, a, b, c) => String.fromCodePoint(parseInt(a || b || c, 16))).replace(/\\(.)/g, (m, c) => ({ n: '\n', t: '\t', '"': '"', "'": "'", '\\': '\\' }[c] ?? c));
 const STR = '"((?:[^"\\\\\\n]|\\\\.)*)"';
 
 function doScanGodot(merged) {
@@ -120,7 +120,7 @@ const G = load(SRC, args.some(a => a.startsWith('--file=')) && fs.existsSync(pat
 const W = load(WEB_SRC, args.some(a => a.startsWith('--file=')) && fs.existsSync(path.join(WEB_SRC, only)) ? only : '');
 const errors = [...G.errors, ...W.errors];
 const dupes = [...G.dupes, ...W.dupes];
-if (dupes.length) console.warn(dupes.join('\n'));
+if (dupes.length && !scan) console.warn(dupes.join('\n'));
 if (errors.length) console.error(errors.slice(0, 60).join('\n') + (errors.length > 60 ? `\n... and ${errors.length - 60} more` : ''));
 const webMerged = Object.assign({}, W.merged, G.merged);   // a godot entry wins on the (rare) shared key: one wording for both games
 
