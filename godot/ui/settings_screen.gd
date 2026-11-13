@@ -9,6 +9,7 @@ extends UiPage
 ##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
 ##   Gameplay  knock-out replays (kill cam), damage numbers
+##   Language  the game's language (autoload Lang): the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
 ##   About     version and build, privacy policy, credits, the game server address (advanced)
 ## Every control writes its Settings key at once (Settings persists it and emits `changed`, the game applies it live)
@@ -16,9 +17,9 @@ extends UiPage
 
 signal account_requested
 
-const SECTIONS := ["controls", "camera", "graphics", "audio", "gameplay", "account", "about"]
+const SECTIONS := ["controls", "camera", "graphics", "audio", "gameplay", "language", "account", "about"]
 const NAMES := {"controls": "Controls", "camera": "Camera", "graphics": "Graphics", "audio": "Audio", "gameplay": "Gameplay",
-	"account": "Account", "about": "About"}
+	"language": "Language", "account": "Account", "about": "About"}
 const PRIVACY_URL := "https://kaydeross.github.io/wobble-arena/privacy.html"
 const TOUCH := 62.0                ## canvas px: 45 pt on an iPhone in landscape (Apple asks 44)
 const ROW_H := 66.0
@@ -147,6 +148,8 @@ func show_section(s: String) -> void:
 		"gameplay":
 			_toggle("kill_cam", "Knock-out replays", "A short slow-motion replay after a quick knock-out (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
+		"language":
+			_language()
 		"account":
 			var u := _account_line()
 			_info("Who", u[0], u[1])
@@ -269,6 +272,31 @@ func _slider(key: String, title: String, sub: String, lo: float, hi: float, step
 	s.set_meta("fmt", fmt)
 	ctl[key] = s
 
+## The language row: one drop-down, every language in its own name (never translated) so it can always be found.
+func _language() -> void:
+	var r := _row("Row_lang", "Language", "Auto follows this device")
+	var ob := OptionButton.new()
+	ob.name = "Field"
+	ob.custom_minimum_size = Vector2(CTRL_W, TOUCH)
+	ob.size_flags_vertical = SIZE_SHRINK_CENTER
+	ob.add_theme_font_size_override("font_size", 19)
+	ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED   # the names are already in their own language
+	var items: Array = [["auto", tr("Auto") + " (" + _lang_name(Lang.resolve("auto")) + ")"]]
+	for l: Array in Lang.list(): items.append([l[0], l[1]])
+	var cur := str(Settings.get_value("lang"))
+	for i in items.size():
+		ob.add_item(items[i][1], i)
+		ob.set_item_metadata(i, items[i][0])
+		if items[i][0] == cur: ob.select(i)
+	ob.item_selected.connect(func(i: int) -> void: Settings.set_value("lang", str(ob.get_item_metadata(i))))
+	r.add_child(ob)
+	ctl["lang"] = ob
+
+static func _lang_name(c: String) -> String:
+	for l: Array in Lang.list():
+		if l[0] == c: return l[1]
+	return "English"
+
 ## A row of pills (one pick). `off`: value -> true to disable that pill (not available on this device).
 func _choice(key: String, title: String, sub: String, values: Array, names: Array, off: Dictionary = {}) -> void:
 	var r := _row("Row_" + key, title, sub)
@@ -356,6 +384,9 @@ func _on_row_tapped(c: Control) -> void:
 
 ## Keep the controls in step when a setting changes elsewhere.
 func _on_setting(key: String, v: Variant) -> void:
+	if key == "lang":
+		if visible: show_section.call_deferred(section)   # sentences built in code (tr) are redone in the new language
+		return
 	if key == "server_url" and is_instance_valid(ui.get("server_active")): (ui["server_active"] as Label).text = Settings.server_status_text()
 	if not ctl.has(key): return
 	var c: Variant = ctl[key]

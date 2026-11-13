@@ -1,0 +1,478 @@
+{
+ "About": {
+  "zh_TW": "關於",
+  "zh_CN": "关于",
+  "ja": "このゲームについて",
+  "fr": "À propos",
+  "es": "Acerca de"
+ },
+ "Account": {
+  "zh_TW": "帳號",
+  "zh_CN": "账号",
+  "ja": "アカウント",
+  "fr": "Compte",
+  "es": "Cuenta"
+ },
+ "Arena": {
+  "zh_TW": "競技場",
+  "zh_CN": "竞技场",
+  "ja": "アリーナ",
+  "fr": "Arène",
+  "es": "Arena"
+ },
+ "Audio": {
+  "zh_TW": "音效",
+  "zh_CN": "音频",
+  "ja": "オーディオ",
+  "fr": "Audio",
+  "es": "Audio"
+ },
+ "Auto": {
+  "zh_TW": "自動",
+  "zh_CN": "自动",
+  "ja": "自動",
+  "fr": "Auto",
+  "es": "Automático"
+ },
+ "Auto follows this device": {
+  "zh_TW": "自動：跟隨這部裝置",
+  "zh_CN": "自动：跟随此设备",
+  "ja": "自動：この端末に合わせます",
+  "fr": "Auto : suit cet appareil",
+  "es": "Automático: sigue este dispositivo"
+ },
+ "Back": {
+  "zh_TW": "返回",
+  "zh_CN": "返回",
+  "ja": "戻る",
+  "fr": "Retour",
+  "es": "Atrás"
+ },
+ "Camera": {
+  "zh_TW": "鏡頭",
+  "zh_CN": "镜头",
+  "ja": "カメラ",
+  "fr": "Caméra",
+  "es": "Cámara"
+ },
+ "Cancel": {
+  "zh_TW": "取消",
+  "zh_CN": "取消",
+  "ja": "キャンセル",
+  "fr": "Annuler",
+  "es": "Cancelar"
+ },
+ "Character": {
+  "zh_TW": "角色",
+  "zh_CN": "角色",
+  "ja": "キャラクター",
+  "fr": "Personnage",
+  "es": "Personaje"
+ },
+ "Close": {
+  "zh_TW": "關閉",
+  "zh_CN": "关闭",
+  "ja": "閉じる",
+  "fr": "Fermer",
+  "es": "Cerrar"
+ },
+ "Coins": {
+  "zh_TW": "金幣",
+  "zh_CN": "金币",
+  "ja": "コイン",
+  "fr": "Pièces",
+  "es": "Monedas"
+ },
+ "Controls": {
+  "zh_TW": "操作",
+  "zh_CN": "操作",
+  "ja": "操作",
+  "fr": "Commandes",
+  "es": "Controles"
+ },
+ "Copied.": {
+  "zh_TW": "已複製。",
+  "zh_CN": "已复制。",
+  "ja": "コピーしました。",
+  "fr": "Copié.",
+  "es": "Copiado."
+ },
+ "Copy": {
+  "zh_TW": "複製",
+  "zh_CN": "复制",
+  "ja": "コピー",
+  "fr": "Copier",
+  "es": "Copiar"
+ },
+ "Create account": {
+  "zh_TW": "建立帳號",
+  "zh_CN": "创建账号",
+  "ja": "アカウントを作る",
+  "fr": "Créer un compte",
+  "es": "Crear cuenta"
+ },
+ "Done": {
+  "zh_TW": "完成",
+  "zh_CN": "完成",
+  "ja": "完了",
+  "fr": "Terminé",
+  "es": "Listo"
+ },
+ "Easy": {
+  "zh_TW": "簡單",
+  "zh_CN": "简单",
+  "ja": "やさしい",
+  "fr": "Facile",
+  "es": "Fácil"
+ },
+ "Game type": {
+  "zh_TW": "遊戲模式",
+  "zh_CN": "游戏模式",
+  "ja": "ゲームタイプ",
+  "fr": "Mode de jeu",
+  "es": "Modo de juego"
+ },
+ "Gameplay": {
+  "zh_TW": "遊戲玩法",
+  "zh_CN": "游戏玩法",
+  "ja": "ゲームプレイ",
+  "fr": "Gameplay",
+  "es": "Jugabilidad"
+ },
+ "Goals": {
+  "zh_TW": "目標",
+  "zh_CN": "目标",
+  "ja": "目標",
+  "fr": "Objectifs",
+  "es": "Objetivos"
+ },
+ "Graphics": {
+  "zh_TW": "畫面",
+  "zh_CN": "画面",
+  "ja": "グラフィック",
+  "fr": "Graphismes",
+  "es": "Gráficos"
+ },
+ "Guest": {
+  "zh_TW": "訪客",
+  "zh_CN": "访客",
+  "ja": "ゲスト",
+  "fr": "Invité",
+  "es": "Invitado"
+ },
+ "Hard": {
+  "zh_TW": "困難",
+  "zh_CN": "困难",
+  "ja": "むずかしい",
+  "fr": "Difficile",
+  "es": "Difícil"
+ },
+ "Health": {
+  "zh_TW": "生命值",
+  "zh_CN": "生命值",
+  "ja": "体力",
+  "fr": "Santé",
+  "es": "Salud"
+ },
+ "High": {
+  "zh_TW": "高",
+  "zh_CN": "高",
+  "ja": "高",
+  "fr": "Élevé",
+  "es": "Alto"
+ },
+ "Host a room": {
+  "zh_TW": "建立房間",
+  "zh_CN": "创建房间",
+  "ja": "ルームを作る",
+  "fr": "Créer un salon",
+  "es": "Crear una sala"
+ },
+ "K.O. limit": {
+  "zh_TW": "擊倒上限",
+  "zh_CN": "击倒上限",
+  "ja": "KO数の上限",
+  "fr": "Limite de K.O.",
+  "es": "Límite de K.O."
+ },
+ "Language": {
+  "zh_TW": "語言",
+  "zh_CN": "语言",
+  "ja": "言語",
+  "fr": "Langue",
+  "es": "Idioma"
+ },
+ "Leave room": {
+  "zh_TW": "離開房間",
+  "zh_CN": "离开房间",
+  "ja": "ルームを出る",
+  "fr": "Quitter le salon",
+  "es": "Salir de la sala"
+ },
+ "Lobby": {
+  "zh_TW": "大廳",
+  "zh_CN": "大厅",
+  "ja": "ロビー",
+  "fr": "Salle d'attente",
+  "es": "Sala de espera"
+ },
+ "Locker": {
+  "zh_TW": "置物櫃",
+  "zh_CN": "储物柜",
+  "ja": "ロッカー",
+  "fr": "Vestiaire",
+  "es": "Casillero"
+ },
+ "Log in": {
+  "zh_TW": "登入",
+  "zh_CN": "登录",
+  "ja": "ログイン",
+  "fr": "Se connecter",
+  "es": "Iniciar sesión"
+ },
+ "Log out": {
+  "zh_TW": "登出",
+  "zh_CN": "退出登录",
+  "ja": "ログアウト",
+  "fr": "Se déconnecter",
+  "es": "Cerrar sesión"
+ },
+ "Low": {
+  "zh_TW": "低",
+  "zh_CN": "低",
+  "ja": "低",
+  "fr": "Bas",
+  "es": "Bajo"
+ },
+ "Medium": {
+  "zh_TW": "中",
+  "zh_CN": "中",
+  "ja": "中",
+  "fr": "Moyen",
+  "es": "Medio"
+ },
+ "Next": {
+  "zh_TW": "下一步",
+  "zh_CN": "下一步",
+  "ja": "次へ",
+  "fr": "Suivant",
+  "es": "Siguiente"
+ },
+ "No": {
+  "zh_TW": "否",
+  "zh_CN": "否",
+  "ja": "いいえ",
+  "fr": "Non",
+  "es": "No"
+ },
+ "Normal": {
+  "zh_TW": "普通",
+  "zh_CN": "普通",
+  "ja": "ふつう",
+  "fr": "Normal",
+  "es": "Normal"
+ },
+ "OK": {
+  "zh_TW": "確定",
+  "zh_CN": "确定",
+  "ja": "OK",
+  "fr": "OK",
+  "es": "OK"
+ },
+ "Off": {
+  "zh_TW": "關",
+  "zh_CN": "关",
+  "ja": "オフ",
+  "fr": "Désactivé",
+  "es": "No"
+ },
+ "On": {
+  "zh_TW": "開",
+  "zh_CN": "开",
+  "ja": "オン",
+  "fr": "Activé",
+  "es": "Sí"
+ },
+ "One moment…": {
+  "zh_TW": "請稍候…",
+  "zh_CN": "请稍候…",
+  "ja": "少々お待ちください…",
+  "fr": "Un instant…",
+  "es": "Un momento…"
+ },
+ "Pause": {
+  "zh_TW": "暫停",
+  "zh_CN": "暂停",
+  "ja": "一時停止",
+  "fr": "Pause",
+  "es": "Pausa"
+ },
+ "Paused": {
+  "zh_TW": "已暫停",
+  "zh_CN": "已暂停",
+  "ja": "一時停止中",
+  "fr": "En pause",
+  "es": "En pausa"
+ },
+ "Play": {
+  "zh_TW": "開始遊戲",
+  "zh_CN": "开始游戏",
+  "ja": "プレイ",
+  "fr": "Jouer",
+  "es": "Jugar"
+ },
+ "Player": {
+  "zh_TW": "玩家",
+  "zh_CN": "玩家",
+  "ja": "プレイヤー",
+  "fr": "Joueur",
+  "es": "Jugador"
+ },
+ "Players": {
+  "zh_TW": "玩家",
+  "zh_CN": "玩家",
+  "ja": "プレイヤー",
+  "fr": "Joueurs",
+  "es": "Jugadores"
+ },
+ "Privacy policy": {
+  "zh_TW": "隱私權政策",
+  "zh_CN": "隐私政策",
+  "ja": "プライバシーポリシー",
+  "fr": "Politique de confidentialité",
+  "es": "Política de privacidad"
+ },
+ "Public rooms": {
+  "zh_TW": "公開房間",
+  "zh_CN": "公开房间",
+  "ja": "公開ルーム",
+  "fr": "Salons publics",
+  "es": "Salas públicas"
+ },
+ "Quit to title": {
+  "zh_TW": "回到標題畫面",
+  "zh_CN": "返回标题画面",
+  "ja": "タイトルに戻る",
+  "fr": "Retour au titre",
+  "es": "Volver al título"
+ },
+ "Refresh": {
+  "zh_TW": "重新整理",
+  "zh_CN": "刷新",
+  "ja": "更新",
+  "fr": "Actualiser",
+  "es": "Actualizar"
+ },
+ "Respawning…": {
+  "zh_TW": "重生中…",
+  "zh_CN": "重生中…",
+  "ja": "復活中…",
+  "fr": "Réapparition…",
+  "es": "Reapareciendo…"
+ },
+ "Resume": {
+  "zh_TW": "繼續",
+  "zh_CN": "继续",
+  "ja": "再開",
+  "fr": "Reprendre",
+  "es": "Reanudar"
+ },
+ "Room": {
+  "zh_TW": "房間",
+  "zh_CN": "房间",
+  "ja": "ルーム",
+  "fr": "Salon",
+  "es": "Sala"
+ },
+ "Rooms": {
+  "zh_TW": "房間",
+  "zh_CN": "房间",
+  "ja": "ルーム",
+  "fr": "Salons",
+  "es": "Salas"
+ },
+ "Save": {
+  "zh_TW": "儲存",
+  "zh_CN": "保存",
+  "ja": "保存",
+  "fr": "Enregistrer",
+  "es": "Guardar"
+ },
+ "Settings": {
+  "zh_TW": "設定",
+  "zh_CN": "设置",
+  "ja": "設定",
+  "fr": "Paramètres",
+  "es": "Ajustes"
+ },
+ "Shop": {
+  "zh_TW": "商店",
+  "zh_CN": "商店",
+  "ja": "ショップ",
+  "fr": "Boutique",
+  "es": "Tienda"
+ },
+ "Skip": {
+  "zh_TW": "略過",
+  "zh_CN": "跳过",
+  "ja": "スキップ",
+  "fr": "Passer",
+  "es": "Omitir"
+ },
+ "Spatula": {
+  "zh_TW": "鍋鏟",
+  "zh_CN": "锅铲",
+  "ja": "フライ返し",
+  "fr": "Spatule",
+  "es": "Espátula"
+ },
+ "Start": {
+  "zh_TW": "開始",
+  "zh_CN": "开始",
+  "ja": "スタート",
+  "fr": "Démarrer",
+  "es": "Empezar"
+ },
+ "Try again": {
+  "zh_TW": "再試一次",
+  "zh_CN": "再试一次",
+  "ja": "もう一度",
+  "fr": "Réessayer",
+  "es": "Reintentar"
+ },
+ "Version": {
+  "zh_TW": "版本",
+  "zh_CN": "版本",
+  "ja": "バージョン",
+  "fr": "Version",
+  "es": "Versión"
+ },
+ "Walldrobe": {
+  "zh_TW": "衣櫥",
+  "zh_CN": "衣橱",
+  "ja": "ワードローブ",
+  "fr": "Garde-robe",
+  "es": "Armario"
+ },
+ "Weapons": {
+  "zh_TW": "武器",
+  "zh_CN": "武器",
+  "ja": "武器",
+  "fr": "Armes",
+  "es": "Armas"
+ },
+ "Yes": {
+  "zh_TW": "是",
+  "zh_CN": "是",
+  "ja": "はい",
+  "fr": "Oui",
+  "es": "Sí"
+ },
+ "You": {
+  "zh_TW": "你",
+  "zh_CN": "你",
+  "ja": "あなた",
+  "fr": "Toi",
+  "es": "Tú"
+ }
+}

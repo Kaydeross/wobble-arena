@@ -58,6 +58,7 @@ const DEFAULTS := {
 	"damage_numbers": true, # floating damage numbers over the fighter you hit (read by the world's effects)
 	"sfx_volume": 1.0,      # sound effects bus 0..1 (autoload Sfx); `volume` stays the master volume
 	"music_volume": 0.5,    # music bus 0..1 (autoload Music; the web settings.music)
+	"lang": "auto",         # language: auto (the device's) | en | zh_TW | zh_CN | ja | fr | es (autoload Lang, i18n/strings.json)
 	"seen_intro": false,    # the 3-card how-to (ui/intro_cards.gd) was shown or skipped once
 }
 
