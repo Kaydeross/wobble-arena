@@ -279,6 +279,11 @@ func _language() -> void:
 	ob.size_flags_vertical = SIZE_SHRINK_CENTER
 	ob.add_theme_font_size_override("font_size", 19)
 	ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED   # the names are already in their own language
+	var pf := FontVariation.new()                                 # 繁體中文 / 简体中文 / 日本語 need CJK glyphs whatever the game's language is
+	pf.base_font = UiTheme.font(700)
+	pf.fallbacks = Lang.cjk_fonts()
+	ob.add_theme_font_override("font", pf)
+	ob.get_popup().add_theme_font_override("font", pf)
 	var items: Array = [["auto", tr("Auto") + " (" + _lang_name(Lang.resolve("auto")) + ")"]]
 	for l: Array in Lang.list(): items.append([l[0], l[1]])
 	var cur := str(Settings.get_value("lang"))

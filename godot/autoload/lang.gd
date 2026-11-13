@@ -98,9 +98,10 @@ func apply(setting: String) -> void:
 	code = c
 	if changed: language_changed.emit(c)
 
-## Fredoka has Latin letters only. CJK glyphs come from the bundled Noto Sans CJK subset for that language (so they show
-## on every platform, the web export included), then from the device's own fonts for any other character. Heavy weight, to
-## match the rounded UI font.
+## Fredoka has Latin letters only. In a CJK language the UI font gets the bundled Noto Sans CJK subset for that language first,
+## then the other two, then the device's own fonts for any other character (names players type). In en / fr / es there are no
+## fallbacks at all: every fallback costs shaping time on every label, and the language picker (the only CJK text left) gets
+## its own font, see cjk_fonts(). The subsets report Fredoka's line metrics (tools/subset-fonts.py), so no line gets taller.
 func _set_fonts(c: String) -> void:
 	var base: FontFile = load(FONT_PATH)
 	if base == null: return
@@ -108,21 +109,31 @@ func _set_fonts(c: String) -> void:
 	for l: Dictionary in LANGS:
 		if l.code == c: def = l
 	var fb: Array[Font] = []
-	var order: Array = []           # this language's own font first (Han characters differ between zh_TW, zh_CN and ja), then the others,
-	if str(def.get("bundled", "")) != "": order.append(str(def.bundled))   # so the language picker's names always show
-	for l: Dictionary in LANGS:
-		if l.has("bundled") and not order.has(l.bundled): order.append(l.bundled)
-	for path: String in order:
-		if ResourceLoader.exists(path):
-			var f := load(path) as Font
-			if f != null: fb.append(f)
-	var names: Array = def.get("fonts", [])
-	if not names.is_empty():
-		var sys := SystemFont.new()
-		sys.font_names = PackedStringArray(names)
-		sys.font_weight = 700
-		fb.append(sys)
+	if def.has("bundled"):
+		var order: Array = [str(def.bundled)]
+		for l: Dictionary in LANGS:
+			if l.has("bundled") and not order.has(l.bundled): order.append(l.bundled)
+		for path: String in order:
+			if ResourceLoader.exists(path):
+				var f := load(path) as Font
+				if f != null: fb.append(f)
+		var names: Array = def.get("fonts", [])
+		if not names.is_empty():
+			var sys := SystemFont.new()
+			sys.font_names = PackedStringArray(names)
+			sys.font_weight = 700
+			fb.append(sys)
 	base.fallbacks = fb
+
+## The three bundled CJK fonts (a glyph missing in one is taken from the next), for text that shows CJK whatever the language is:
+## the language picker's own names.
+static func cjk_fonts() -> Array[Font]:
+	var out: Array[Font] = []
+	for l: Dictionary in LANGS:
+		if l.has("bundled") and ResourceLoader.exists(l.bundled):
+			var f := load(l.bundled) as Font
+			if f != null: out.append(f)
+	return out
 
 ## (code, native name) of every language, for pickers.
 static func list() -> Array:
