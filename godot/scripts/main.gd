@@ -395,7 +395,7 @@ func _build_online() -> void:
 	ab.add_theme_font_size_override("font_size", 18)
 	ab.clip_text = true
 	ab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	ab.pressed.connect(func() -> void: open_account("" if Save.cloud.signed_in() else "login"))
+	ab.pressed.connect(func() -> void: open_account())
 	side.add_child(ab)
 	_ui["acct"] = ab
 	browser = RoomBrowser.new()
@@ -431,11 +431,11 @@ func open_account(pg := "") -> void:
 func _refresh_login() -> void:
 	var u := Save.cloud.user()
 	var logged := Save.cloud.signed_in()
-	_ui["acct"].text = (tr("Signed in as %s") % u) if logged else tr("Log in to host")
-	_ui["acct"].tooltip_text = tr("Your account") if logged else tr("Hosting a room needs an account. Joining works as a guest.")
+	_ui["acct"].text = (tr("Signed in as %s") % u) if logged else tr("Pick a name to host")
+	_ui["acct"].tooltip_text = tr("Your account") if logged else tr("Hosting a room needs a name. Joining works as a guest.")
 	who.text = (tr("Signed in as %s") % u.substr(0, 12)) if logged and u != "" else tr("Guest")
 	var sync := Save.cloud.sync_text()
-	who.tooltip_text = ((tr("Account: sign up or log in to save to the cloud") if not logged else tr("Signed in: %s") % u) + ("\n" + sync if sync != "" else ""))
+	who.tooltip_text = ((tr("Account: pick a name to save to the cloud") if not logged else tr("Signed in: %s") % u) + ("\n" + sync if sync != "" else ""))
 	chip.tooltip_text = who.tooltip_text
 
 func _refresh_buttons() -> void:

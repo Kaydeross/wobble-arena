@@ -12,7 +12,7 @@ extends SceneTree
 ## KEY picks another card), shop (the Shop, an outfit tried on), shop-class (the Shop's Class tab, a class tried on),
 ## shop-confirm (its Buy card), goals (the Goals screen after a won match: some goals to claim, one claimed), emote-wheel (a match with the emote wheel open while the player dances), results (the
 ## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on),
-## account-guest / account-signed (the Account sheet from the title chip; signed in, saved to the cloud 2 min ago),
+## account-guest (Pick a name) / account-signed (signed in, saved to the cloud 2 min ago) / account-signed-np (a name with no password yet); --lang ja|fr,
 ## perf (match with the performance readout on, top-left), soak (a real 20 s soak run and its summary card),
 ## killcam (a fast K.O. by the player, mid replay in slow-mo). Used by tools/shoot-godot-ui.sh.
 ## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
@@ -36,6 +36,7 @@ func _initialize() -> void:
 		if a[k] == "--shot" and k + 1 < a.size(): shot = a[k + 1]
 		elif a[k] == "--out" and k + 1 < a.size(): out = a[k + 1]
 		elif a[k] == "--pick" and k + 1 < a.size(): pick_arg = a[k + 1]
+		elif a[k] == "--lang" and k + 1 < a.size(): TranslationServer.set_locale(a[k + 1])   # e.g. ja, fr
 	process_frame.connect(_start, CONNECT_ONE_SHOT)
 
 func _settings() -> Node:
@@ -98,10 +99,11 @@ func _start() -> void:
 	if shot.begins_with("account"):
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
-		if shot == "account-signed":
+		if shot == "account-signed" or shot == "account-signed-np":
 			var c: Node = root.get_node("Save").cloud
-			c.setv("token", "ab".repeat(32)); c.setv("user", "WobbleQueen"); c.setv("email", "queen@example.com")
+			c.setv("token", "ab".repeat(32)); c.setv("user", "WobbleQueen"); c.setv("email", "queen@example.com" if shot == "account-signed" else "")
 			c.setv("cloud_t", int((Time.get_unix_time_from_system() - 130.0) * 1000.0))
+			c.has_password = shot == "account-signed"
 			m._refresh_login()
 		m.open_account()
 		frames = 40
