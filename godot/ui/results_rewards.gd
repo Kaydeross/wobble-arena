@@ -2,7 +2,8 @@ class_name ResultsRewards
 extends RefCounted
 ## The rewards block of the end-of-match results panel (world/world.gd): coins earned this match (K.O.s +5 each, +40
 ## for finishing, +60 more for a win: Save.finish_match), your K.O.s and hits, and the unlock progress towards the
-## cheapest outfit or emote you do not own yet (a bar, or "You can buy it now!").
+## cheapest outfit or emote you do not own yet (a bar, or "You can buy it now!"). A "Goals" line says which coin goals
+## the match completed (logic/quests.gd, claimed on the title's Goals screen) and the first-win-of-the-day streak bonus.
 
 ## `r` = Save.finish_match()'s summary ({} = nothing earned, e.g. the match was left early: shows nothing).
 static func make(r: Dictionary) -> Control:
@@ -38,8 +39,19 @@ static func make(r: Dictionary) -> Control:
 		u.add_theme_font_size_override("font_size", 20)
 		u.add_theme_color_override("font_color", UiTheme.GOOD)
 		var names: Array = cls.map(func(id: String) -> String: return str(WobblerLooks.class_def(id).get("name", id)))
-		u.text = "Secret class unlocked: %s! Pick it in the Locker." % ", ".join(names)
+		u.text = "Secret class unlocked: %s! Pick it in the Walldrobe." % ", ".join(names)
 		box.add_child(u)
+	var gl := goals_text(r)
+	if gl != "":
+		var g := Label.new()
+		g.name = "Goals"
+		g.text = gl
+		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		g.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		g.custom_minimum_size = Vector2(200, 0)
+		g.add_theme_font_size_override("font_size", 19)
+		g.add_theme_color_override("font_color", UiTheme.GOOD)
+		box.add_child(g)
 	var nx: Dictionary = r.get("next", {})
 	var p := Label.new()
 	p.name = "Next"
@@ -68,3 +80,18 @@ static func make(r: Dictionary) -> Control:
 	bar.add_theme_stylebox_override("fill", fg)
 	box.add_child(bar)
 	return box
+
+## "+100 goal completed: Win a match (claim it in Goals)  ·  First win today +30 (3-day streak)", "" when there is nothing to say.
+static func goals_text(r: Dictionary) -> String:
+	var parts: Array = []
+	var done: Array = r.get("goals", [])
+	if done.size() == 1:
+		parts.append("+%d goal completed: %s (claim it in Goals)" % [int(done[0]["coins"]), done[0]["text"]])
+	elif done.size() > 1:
+		var sum := 0
+		for d: Dictionary in done: sum += int(d["coins"])
+		parts.append("+%d: %d goals completed (claim them in Goals)" % [sum, done.size()])
+	if int(r.get("streak", 0)) > 0:
+		var days := int(r.get("days", 1))
+		parts.append("First win today +%d%s" % [int(r["streak"]), " (%d-day streak)" % days if days > 1 else ""])
+	return "  ·  ".join(parts)

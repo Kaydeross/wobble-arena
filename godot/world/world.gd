@@ -356,7 +356,7 @@ func _drain_events() -> void:
 				if views.has(f): views[f].on_event(e)
 			"hit":
 				if e.get("attacker") == sim.player and f != sim.player:
-					Save.on_hit()
+					Save.on_hit(bool(e.get("head", false)))
 					if f: kill_cam.note_hit(f)         # (hit puffs and flashes are drawn by FxSystem)
 			"ko":
 				_on_ko(e)
@@ -371,12 +371,12 @@ func _drain_events() -> void:
 			"toast":
 				_toast(str(e["text"]))
 			"match_end":
-				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true)
+				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
 			"match_over":
 				_show_banner(str(e["title"]), str(e["sub"]), bool(e["won"]))
 				if session == null:
-					_reward = Save.finish_match(bool(e["won"]), str(sim.combat.mode.get("name", sim.combat.mode_id)), str(map_node.map.get("name", map_id)))
+					_reward = Save.finish_match(bool(e["won"]), str(sim.combat.mode.get("name", sim.combat.mode_id)), str(map_node.map.get("name", map_id)), false, sim.combat.mode_id)
 			"match_finished":
 				if session == null: _show_offline_results(bool(e["won"]), str(e["winner"].name) if e.get("winner") else "")
 				elif session.is_host(): _show_results("You" if e["won"] else (str(e["winner"].name) if e.get("winner") else "?"))
@@ -401,7 +401,8 @@ func _on_ko(e: Dictionary) -> void:
 	var k: FighterState = e.get("killer")
 	var v: FighterState = e.get("victim")
 	if v == null: return
-	Save.on_ko(k == sim.player and v != sim.player, v == sim.player)
+	var melee := k != null and (k.weapon == "" or str(sim.combat.wdata(k.weapon).get("type", "")) == "melee")
+	Save.on_ko(k == sim.player and v != sim.player, v == sim.player, melee)
 	var txt := ""
 	if k == null: txt = "%s fell off" % v.name if e.get("fall", false) else "%s was K.O.'d" % v.name
 	else: txt = "%s  [%s]  %s" % [k.name, e.get("weapon", ""), v.name]
