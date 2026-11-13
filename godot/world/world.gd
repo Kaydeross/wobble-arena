@@ -84,6 +84,7 @@ var _team_board: TeamBoard         ## team modes: coloured chips with each team'
 var _banner: Label                 ## "YOU WIN!" at the end of a match
 var _banner_t := 0.0
 var _shrink_mesh: MeshInstance3D   ## the shrinking floor (shrink / squeeze maps)
+var _shrink_pad: Node3D            ## the map's flat floor pad (the visible ground on generated sites): it closes in with the floor
 ## Spectator mode (Sudden Death, or any match the player is out of but that plays on): the camera follows this
 ## surviving fighter; tap / click / jump cycles to the next one (spectate_next). null = following the player.
 var spectating: FighterState = null
@@ -164,6 +165,7 @@ func load_map(id: String) -> void:
 	if sim: sim.dispose()
 	if _results: _results.queue_free(); _results = null
 	if _shrink_mesh: _shrink_mesh.queue_free(); _shrink_mesh = null
+	_shrink_pad = null
 	_banner_t = 0.0
 	spectating = null; touch.spectate_mode = false
 	_reward = {}
@@ -332,8 +334,13 @@ func present(dt: float) -> void:
 	var frozen := _hitstop > 0 and dt > 0.0
 	for v: Fighter in views.values():
 		v.visible = not v.state.left
-		var k := 1.5 if v.state.big_t > 0.0 else 1.0           # Chaos giant
-		if v.scale.x != k: v.scale = Vector3.ONE * k
+		var k := 1.5 if v.state.big_t > 0.0 else 1.0           # Chaos giant / the Arcade's Client
+		# Scale about the fighter's feet: the node scales around the world origin, and the wobbler places itself in world
+		# space, so a plain scale drew a giant away from his own hit spheres (and the hand points read back from the rig,
+		# so his swings missed). Position (1 - k) x feet keeps the feet fixed.
+		var fp := v.state.phys
+		v.scale = Vector3.ONE * k
+		v.position = Vector3(fp.px, fp.py, fp.pz) * (1.0 - k)
 		v.frozen = frozen
 		v.present(dt)
 	sim.sweep()
@@ -888,6 +895,7 @@ func _build_shrink_view() -> void:
 	mi.position = Vector3(float(b["x"]), float(b["y"]) + float(b["h"]) / 2.0, float(b["z"]))
 	map_node.add_child(mi)
 	_shrink_mesh = mi
+	_shrink_pad = map_node.get_node_or_null("FloorPad") as Node3D
 	_update_shrink_view()
 
 func _update_shrink_view() -> void:
@@ -895,6 +903,9 @@ func _update_shrink_view() -> void:
 	var s: Dictionary = sim.combat.rules.shrink
 	var k: float = s["size"] / s["S0"]
 	_shrink_mesh.scale = Vector3(k, 1.0, k if s["both"] else 1.0)
+	if _shrink_pad != null and is_instance_valid(_shrink_pad):   # the pad is 58 m on a 64 m slab: it stays inside the slab's edge
+		var kp := minf(1.0, float(s["size"]) / 58.0)
+		_shrink_pad.scale = Vector3(kp, 1.0, kp if s["both"] else 1.0)
 
 # ============================== online (guest) ==============================
 

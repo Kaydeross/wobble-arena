@@ -406,6 +406,16 @@ func _events() -> void:
 	check(arc.enemies.size() == 2, "scope creep at 25 s: one more worker (%d)" % arc.enemies.size())
 	for k in 5: arc.events._creep({"spawn_extra": 1, "max_extra": 3})
 	check(arc.enemies.size() == 4, "scope creep never goes past max_extra 3 (%d)" % arc.enemies.size())
+	# the ground you see closes in with the collision floor, and reinforcements arrive on what is left of it
+	_idle(w, 10.0)
+	var half: float = float(sim.combat.rules.shrink["size"]) / 2.0
+	check(w._shrink_pad != null and w._shrink_pad.scale.x < 0.9, "the visible floor pad shrinks with the floor (scale %.2f at %.0f m)" % [w._shrink_pad.scale.x if w._shrink_pad else -1.0, half * 2.0])
+	check(w._shrink_pad == null or absf(w._shrink_pad.scale.x * 29.0 - half) < 1.0 or w._shrink_pad.scale.x >= 1.0, "the pad's edge sits on the floor's edge")
+	var edge_bad := 0
+	for k in 12:
+		var m: FighterState = arc.spawn_minion()
+		if absf(m.phys.px) > half + 0.1 or absf(m.phys.pz) > half + 0.1: edge_bad += 1
+	check(edge_bad == 0, "scope creep / backup workers spawn on the shrunk floor (%d off the edge)" % edge_bad)
 	var ct: Array = arc.events.fired.filter(func(e: Array) -> bool: return e[1] == "scope_creep").map(func(e: Array) -> float: return e[0])
 	check(absf(ct[0] - 25.0) < 0.1, "scope creep at 25 s (%s)" % [ct])
 	await _free_world(w)
@@ -426,6 +436,17 @@ func _phases() -> void:
 	check(key0 == "jackhammer", "the Client starts with the jackhammer")
 	check(b.big_t > 0.0, "the Client is a Giant (big_t)")
 	check(arc.phase_n == 0, "no phase at full health")
+	# the Giant is drawn where he fights: the rig scales about his feet, so his hand and shoulder (read back from it, and the
+	# points his swings use) stay next to his body wherever he stands (a scale about the world origin pushed them metres away)
+	b.phys.place(24.0, 0.05, -20.0)
+	for k in 3: w.tick(FRAME)
+	var gv: Node3D = w.views[b]
+	check(is_equal_approx(gv.scale.x, 1.5), "the Giant's view is 1.5 x")
+	var feet := Vector3(b.phys.px, b.phys.py, b.phys.pz)
+	var shoulder_off := Vector2(b.shoulder_x - feet.x, b.shoulder_z - feet.z).length()
+	var hand_off := Vector2(b.hand_x - feet.x, b.hand_z - feet.z).length()
+	check(shoulder_off < 2.5 and hand_off < 4.0, "the Giant's shoulder (%.1f m) and hand (%.1f m) are by his body, far from the arena centre" % [shoulder_off, hand_off])
+	check((gv.position - feet * (1.0 - gv.scale.x)).length() < 0.001, "the Giant's view is scaled about his feet")
 	var toasts := []
 	var mx := sim.combat.max_hp(b)
 	b.hp = mx * 0.65
