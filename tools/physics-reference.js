@@ -81,7 +81,7 @@ module.exports = function trace(mapId, spawn, cls, grav = 1) {
     dead: false, downT: 0, trapT: 0, stun: 0, spdT: 0, dashAirT: 0, padCool: 0, crouchK: 0, isPlayer: true, onLadder: null, climbIn: 0,
     armVel: { y: 0 }, lean: { kick() {} }, head: { kick() {} } };
   const ctx = vm.createContext({ solids, ladders, pads, fighters: [f], MAPS: { m: mapFlags }, currentMap: 'm', cfg: { grav }, settings: { ice: 0.6 },
-    clamp: (v, a, b) => Math.max(a, Math.min(b, v)), rand: () => 0, puff() {}, sfx() {}, V: () => null });
+    clamp: (v, a, b) => Math.max(a, Math.min(b, v)), rand: () => 0, puff() {}, sfx() {}, sfxAt() {}, V: () => null });
   vm.runInContext(code, ctx);
   f.ladderStep = ctx.ladderFn;
   const out = [];
