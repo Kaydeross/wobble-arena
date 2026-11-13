@@ -1,29 +1,32 @@
 # Godot sound effects
 
 The web game has no audio files: `public/index.html` synthesizes every effect and its music at runtime with the
-layered `SoundManager` (WebAudio; `docs/CODEMAP.md` section 2). The Godot client plays 21 pre-rendered effects made
-from the web game's original, simpler `tone` / `noise` recipes, frozen in `tools/sfx-recipes.js`.
+layered `SoundManager` (WebAudio; `docs/CODEMAP.md` section 2). The Godot client plays 21 pre-rendered effects
+(the `NAMES` in `godot/autoload/audio.gd`) rendered from that same engine.
 
-## Approach: pre-rendered WAVs
-`tools/render-sfx.js` (`npm run sfx`) slices the `SFX` table out of `tools/sfx-recipes.js`, runs each recipe with an
-offline, sample-by-sample version of the WebAudio nodes it uses and writes `godot/audio/sfx/<name>.wav` (16-bit,
-44.1 kHz mono, ~550 KB for all 21, imported as uncompressed PCM).
+## Approach: pre-rendered WAVs from the real engine
+`tools/render-sfx.js` (`npm run sfx`) boots the web page in Playwright's Chromium (like `tools/render-music.js`),
+builds a `SoundManager` whose `init()` is given a stereo 44.1 kHz `OfflineAudioContext`, and plays each `SOUNDS` entry
+through the real graph (sfx bus -> master -> compressor -> limiter). Master volume is 1 (Godot applies the player's
+volume). Per sound:
 
-Why not `AudioStreamGenerator` at runtime: the recipes are fixed (no per-call parameters), so rendering them once gives
-identical output on iOS, PC and web, costs no CPU per hit, works with the web export's sample playback (generators
+- `Math.random` is seeded and the entry's `vary` is set to 0 during the render, so the WAV is the centre pitch.
+- The sound is played with `{ delay: 0.5 }` and the output is cut from the voice start (0.5 s + the 0.005 s in the
+  `SndVoice` constructor): Chromium's compressor misbehaves for sounds at the very start of an offline render.
+- The stereo render is downmixed to mono ((L + R) / 2) and the tail is trimmed once the signal stays below 1e-4
+  (20 ms are kept after the last louder sample).
+- Output: `godot/audio/sfx/<name>.wav` (16-bit, 44.1 kHz mono, imported as uncompressed PCM) and
+  `godot/audio/sfx/sfx.json` = `{name: {dur, peak}}` (seconds, peak amplitude), which `tools/test-audio.js` hands to the
+  Godot test as the expected lengths.
+
+Why not `AudioStreamGenerator` at runtime: the sounds are fixed once pitch variation is dropped, so rendering them once
+gives identical output on iOS, PC and web, costs no CPU per hit, works with the web export's sample playback (generators
 are stream-only there and need the main thread to keep the buffer full) and keeps the runtime a plain player pool.
-Fidelity is not a problem because the renderer models the nodes directly:
 
-- `tone`: band-limited oscillator (Fourier series of WebAudio's sine/triangle/square/sawtooth, normalised to peak 1
-  like the built-in waves, harmonics up to Nyquist), exponential frequency ramp `f0 -> max(20, f1)` over `dur`, gain
-  `vol -> 0.001` exponential ramp, stop at `dur + 0.03`, optional `delay`.
-- `noise`: the 0.7 s white-noise buffer through a lowpass biquad (Q = 1 dB, the spec's cookbook formulas), same gain
-  envelope. JS starts the buffer at a random 0..0.3 s offset; the render uses 0.15 s and a seeded generator so the
-  output is deterministic (`node tools/render-sfx.js --check` verifies the committed files).
-- Mixed through the master gain 0.9 (the JS `0.9 * settings.vol`; the volume part is applied by Godot) and clamped
-  to +-1 like the browser's output (nothing clips; the loudest, `boom`, peaks at 0.70).
-
-Change a recipe in `tools/sfx-recipes.js` -> run `npm run sfx` and commit the WAVs; `npm run test:godot-audio` fails until then.
+Chromium's offline render is not bit-exact between runs, so a re-render differs by tiny amounts and
+`node tools/render-sfx.js --check` verifies structure only: every name has a WAV and an `sfx.json` entry, and the WAV
+length matches `dur` within 1 ms. Change a sound in `public/index.html` -> run `npm run sfx` and commit the WAVs and
+`sfx.json`. Needs Chromium (`CHROME_PATH` to use a specific binary).
 
 ## Runtime: autoload `Sfx` (`godot/autoload/audio.gd`)
 - `Sfx.play(name, volume := 1.0)`: 12 pre-made `AudioStreamPlayer`s, round robin over idle ones, the oldest is cut

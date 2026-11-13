@@ -1489,7 +1489,7 @@ function koPop(victim, label) {
   const sk = '\u{1F480}'.repeat(clamp(m, 1, 5)), sg = player.st.streak;
   const sub = sg >= 2 ? tf('%s · %d K.O. streak', nameOf(victim), sg) : tf('%s is out!', nameOf(victim));
   el('kopop').innerHTML = '<div class="kp' + (m >= 2 ? ' multi m' + Math.min(m, 6) : '') + '"><span class="sk">' + sk + '</span>' + tag + '<span class="sk">' + sk + '</span><small>' + sub + '</small></div>';
-  sfx('pickup'); if (m >= 2) sfx('boing'); flashV = Math.max(flashV, 0.18 + 0.05 * m); cam.shake = Math.max(cam.shake, 0.12 + 0.03 * m);
+  sfx('ko', { pitch: 1 + 0.06 * (Math.min(m, 5) - 1) }); if (m >= 2) sfx('boing', { delay: 0.08 }); flashV = Math.max(flashV, 0.18 + 0.05 * m); cam.shake = Math.max(cam.shake, 0.12 + 0.03 * m);
 }
 function toast(msg) {
   const t = el('toast'); t.textContent = msg; t.classList.add('show');
@@ -1630,10 +1630,11 @@ const SOUNDS = {
   kick: { vary: 0.08, fn: v => {
     v.noise({ env: { a: 0.001, peak: 0.26, d: 0.06 }, filter: { type: 'lowpass', f0: 1600, f1: 500 } });
     v.tone({ f0: 170, f1: 52, env: { a: 0.002, peak: 0.36, d: 0.13 } }); } },
-  clink: { vary: 0.06, fn: v => {
-    v.noise({ env: { a: 0.001, peak: 0.2, d: 0.035 }, filter: { type: 'highpass', f0: 4000 } });
-    v.fm({ f: 1450, ratio: 2.76, index: 1.6, env: { a: 0.001, peak: 0.16, d: 0.22 } });
-    v.tone({ type: 'triangle', f0: 1400, f1: 950, env: { a: 0.001, peak: 0.08, d: 0.1 } }); } },
+  clink: { vary: 0.1, fn: v => {                       // blade / knife / metal hit: a short muted "tick-thud", no ringing tail
+    v.noise({ env: { a: 0.001, peak: 0.3, d: 0.04 }, filter: { type: 'bandpass', f0: 3000, f1: 1400, Q: 1.2 } });
+    v.tone({ type: 'triangle', f0: 320, f1: 120, env: { a: 0.001, peak: 0.22, d: 0.06 } });
+    v.tone({ f0: 140, f1: 70, env: { a: 0.002, peak: 0.2, d: 0.07 } });
+    v.tone({ type: 'sine', f0: 2100, env: { a: 0.001, peak: 0.02, d: 0.045 }, filter: { type: 'lowpass', f0: 2600 } }); } },
   shot: { vary: 0.07, fn: v => {
     v.noise({ env: { a: 0.001, peak: 0.42, d: 0.11 }, filter: { type: 'lowpass', f0: 7000, f1: 900, Q: 0.7 } });
     v.tone({ type: 'sawtooth', f0: 560, f1: 85, env: { a: 0.001, peak: 0.16, d: 0.1 }, filter: { type: 'lowpass', f0: 3000, f1: 400 } });
@@ -1680,7 +1681,10 @@ const SOUNDS = {
     v.noise({ env: { a: 0.001, peak: 0.25, d: 0.04 }, filter: { type: 'bandpass', f0: 3200, Q: 2 } });
     v.tone({ type: 'triangle', f0: 260, f1: 130, env: { a: 0.001, peak: 0.12, d: 0.06 } });
     v.noise({ at: 0.05, env: { a: 0.001, peak: 0.12, d: 0.03 }, filter: { type: 'highpass', f0: 4500 } }); } },
-  shellIn: { vary: 0.08, fn: v => { v.fm({ f: 760, ratio: 2.4, index: 0.8, env: { a: 0.001, peak: 0.09, d: 0.08 } }); v.noise({ env: { a: 0.001, peak: 0.12, d: 0.03 }, filter: { type: 'bandpass', f0: 2500, Q: 1.5 } }); } },
+  shellIn: { vary: 0.08, fn: v => { v.tone({ type: 'triangle', f0: 520, f1: 360, env: { a: 0.001, peak: 0.08, d: 0.045 } }); v.noise({ env: { a: 0.001, peak: 0.14, d: 0.03 }, filter: { type: 'bandpass', f0: 1800, Q: 1.5 } }); } },
+  tick: { gap: 0.05, fn: v => {                         // timer beep (Hot Potato): a soft woodblock
+    v.tone({ f0: 880, f1: 820, env: { a: 0.002, peak: 0.12, d: 0.05 } });
+    v.noise({ env: { a: 0.001, peak: 0.06, d: 0.02 }, filter: { type: 'bandpass', f0: 1200, Q: 2 } }); } },
 
   // bouncy, wobbly cartoon springs (the house sound)
   boing: { vary: 0.06, fn: v => {
@@ -1688,12 +1692,16 @@ const SOUNDS = {
     v.tone({ type: 'triangle', f0: 420, f1: 1080, glide: 0.22, env: { a: 0.005, peak: 0.05, d: 0.3 }, vib: { rate: 14, depth: 0.08 } }); } },
   bounce: { vary: 0.07, fn: v => { v.tone({ f0: 260, f1: 760, glide: 0.18, env: { a: 0.004, peak: 0.2, d: 0.24 } }); v.tone({ type: 'triangle', f0: 520, f1: 1520, glide: 0.18, env: { a: 0.004, peak: 0.05, d: 0.16 } }); } },
 
-  // pickup / score: fast major-pentatonic arpeggio, bright triangle + FM bell
+  // pickup / score: a warm two-note "bloop" (G4 -> D5), round sines under a low-pass, no bells
   pickup: { pri: 1, vary: 0.02, fn: v => {
-    [72, 76, 79, 84].forEach((m, i) => { const f = midiHz(m), at = i * 0.05;
-      v.tone({ type: 'triangle', f0: f, at, env: { a: 0.003, peak: 0.13, d: 0.16 } });
-      v.fm({ f: f * 2, ratio: 3.5, index: 1.2, at, env: { a: 0.002, peak: 0.05, d: 0.22 } }); });
-    v.noise({ env: { a: 0.001, peak: 0.05, d: 0.04 }, filter: { type: 'highpass', f0: 7000 } }); } },
+    [[67, 0], [74, 0.06]].forEach(([m, at]) => {
+      v.tone({ f0: midiHz(m) * 0.94, f1: midiHz(m), glide: 0.03, at, env: { a: 0.006, peak: 0.14, d: 0.16 }, filter: { type: 'lowpass', f0: 2200 } });
+      v.tone({ type: 'triangle', f0: midiHz(m + 12), at, env: { a: 0.006, peak: 0.025, d: 0.1 }, filter: { type: 'lowpass', f0: 2400 } }); }); } },
+  // K.O.: a punchy thump + a rising pop (pitched up a little per multi-kill)
+  ko: { pri: 1, fn: v => {
+    v.tone({ f0: 190, f1: 55, env: { a: 0.002, peak: 0.42, d: 0.2 } });
+    v.noise({ env: { a: 0.001, peak: 0.28, d: 0.07 }, filter: { type: 'lowpass', f0: 2400, f1: 600 } });
+    v.tone({ f0: 300, f1: 720, glide: 0.09, at: 0.03, env: { a: 0.006, peak: 0.13, d: 0.16 }, filter: { type: 'lowpass', f0: 2000 } }); } },
   victory: { pri: 1, fn: v => {
     [[60, 0], [64, 0.1], [67, 0.2], [72, 0.3], [76, 0.42], [79, 0.42], [84, 0.42]].forEach(([m, at], i) => {
       v.tone({ type: 'triangle', f0: midiHz(m), at, env: { a: 0.004, peak: 0.14, d: 0.1, s: 0.5, hold: i > 3 ? 0.5 : 0.04, r: 0.5 } });
@@ -1716,7 +1724,7 @@ const SOUNDS = {
 
 class SoundManager {
   constructor() {
-    this.ctx = null; this.muted = false; this.vol = 0.5; this.musicVol = 0.5; this.voices = 0; this.last = {};
+    this.ctx = null; this.muted = false; this.vol = 0.5; this.musicVol = 0.5; this.voices = 0; this.last = {}; this.rep = {};
     this.bgm = { on: false, timer: 0, mood: 'menu', step: 0, nextT: 0, int: 0, want: 0 };
   }
   init() {                                             // lazy: called from the first user gesture
@@ -1731,7 +1739,8 @@ class SoundManager {
       this.bgmBus = c.createGain(); this.bgmBus.gain.value = SND_EPS;
       this.limit = c.createDynamicsCompressor();       // last-stage brick wall after the volume: a pile-up of hits can't clip
       this.limit.threshold.value = -4; this.limit.knee.value = 0; this.limit.ratio.value = 20; this.limit.attack.value = 0.001; this.limit.release.value = 0.12;
-      this.sfxBus.connect(this.comp); this.bgmBus.connect(this.comp); this.comp.connect(this.master); this.master.connect(this.limit); this.limit.connect(c.destination);
+      this.shelf = c.createBiquadFilter(); this.shelf.type = 'highshelf'; this.shelf.frequency.value = 6000; this.shelf.gain.value = -5;     // takes the edge off every effect
+      this.sfxBus.connect(this.shelf); this.shelf.connect(this.comp); this.bgmBus.connect(this.comp); this.comp.connect(this.master); this.master.connect(this.limit); this.limit.connect(c.destination);
       // arp echo for the music: a dotted-eighth feedback delay with a darkening filter (persistent, a few nodes)
       this.echo = c.createDelay(1); this.echoFb = c.createGain(); this.echoLp = c.createBiquadFilter(); this.echoIn = c.createGain();
       this.echoFb.gain.value = 0.32; this.echoLp.type = 'lowpass'; this.echoLp.frequency.value = 2200; this.echoIn.gain.value = 0.35;
@@ -1764,10 +1773,13 @@ class SoundManager {
     o = o || {}; const now = this.ctx.currentTime;
     if (r.gap && now - (this.last[name] || -9) < r.gap) return null;          // the same sound a moment ago: skip (flamethrower, footsteps)
     if (this.voices >= 48 && !r.pri) return null;                             // the mix is full: drop the unimportant
+    const rp = this.rep[name] || (this.rep[name] = { t: -9, n: 0 });          // the same sound again and again: each one a bit quieter
+    rp.n = now - rp.t < 0.35 ? rp.n + 1 : 0; rp.t = now;
     this.last[name] = now;
+    const damp = Math.max(0.45, Math.pow(0.82, rp.n));
     const vr = r.vary || 0, k = (o.pitch || 1) * (1 + sndRand(-vr, vr)), fk = 1 + sndRand(-vr, vr);
     try {
-      const v = new SndVoice(this, this.sfxBus, { vol: o.vol, pan: o.pan, delay: o.delay, k, fk }); this.voices++;
+      const v = new SndVoice(this, this.sfxBus, { vol: (o.vol === undefined ? 1 : o.vol) * damp, pan: o.pan, delay: o.delay, k, fk }); this.voices++;
       r.fn(v); if (!v.live) v.free();
       return v;
     } catch (e) { return null; }                       // sound is a bonus: never break the game
@@ -7951,7 +7963,7 @@ function updatePotato(dt) {
   pot.fuse -= dt;
   const frac = Math.max(0, pot.fuse / pot.total);
   potBeep -= dt;
-  if (potBeep <= 0) { potBeep = 0.12 + 0.75 * frac; sfxAt('clink', h.pos); h.flash = 0.12; }
+  if (potBeep <= 0) { potBeep = 0.12 + 0.75 * frac; sfxAt('tick', h.pos); h.flash = 0.12; }
   if (!bombMesh) {
     bombMesh = new THREE.Group();
     const bb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 1), lm(0x222831));
