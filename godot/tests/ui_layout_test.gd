@@ -216,6 +216,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 			over = main.hub.code_sheet.card; over_col = main.hub.code_sheet.card
 		else:
 			over = main.hub; over_col = main.hub.col
+			if scr == "dlc-arc-class": over_scroll = main.hub.arc_wizard.scroll_of(3)    # the class cards scroll (DragScroll): its rows are checked as a list
 	elif scr.begins_with("intro"):
 		main.intro.open()
 		main.intro.go(int(scr.substr(5)))

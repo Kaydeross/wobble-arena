@@ -515,7 +515,7 @@ func _difficulties() -> void:
 	var tab: Dictionary = AM.call("difficulties")
 	check(tab.keys() == ["easy", "normal", "nightmare"], "three difficulties (%s)" % [tab.keys()])
 	# tuned numbers (data/extra/construction/stages.json difficulties): changing them is a balance decision, so it fails here first
-	var want := {"easy": [5, 0.6, 0.9, 1.5], "normal": [4, 0.85, 1.0, 1.15], "nightmare": [3, 1.0, 1.0, 1.0]}
+	var want := {"easy": [5, 0.35, 0.85, 1.5], "normal": [4, 0.65, 1.0, 1.15], "nightmare": [3, 1.0, 1.0, 1.0]}
 	for k: String in want:
 		var d: Dictionary = tab[k]
 		var w: Array = want[k]

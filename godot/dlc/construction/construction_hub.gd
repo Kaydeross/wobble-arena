@@ -294,6 +294,7 @@ func _build_arcade() -> void:
 		var c := _diff_card(d, grp)
 		arc_diff_box.add_child(c)
 		_diff_cards[d] = c
+	arc_diff_box.resized.connect(fit_diff_cards.call_deferred)
 	arc_foot = HBoxContainer.new()
 	arc_foot.name = "ArcadeFoot"
 	arc_foot.visible = false
@@ -361,7 +362,6 @@ func _diff_card(d: String, grp: ButtonGroup) -> Button:
 	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(b)
 	c.pressed.connect(pick_diff.bind(d))
-	arc_diff_box.resized.connect(fit_diff_cards.call_deferred)
 	return c
 
 ## The three difficulty cards as tall as the longest words need (never under DIFF_CARD_H): a button's own minimum ignores what is inside it.
