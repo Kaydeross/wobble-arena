@@ -1,0 +1,191 @@
+{
+ "DOUBLE KILL!": {
+  "zh_TW": "雙殺！",
+  "zh_CN": "双杀！",
+  "ja": "ダブルキル！",
+  "fr": "DOUBLE ÉLIMINATION !",
+  "es": "¡DOBLE ELIMINACIÓN!"
+ },
+ "TRIPLE KILL!": {
+  "zh_TW": "三殺！",
+  "zh_CN": "三杀！",
+  "ja": "トリプルキル！",
+  "fr": "TRIPLE ÉLIMINATION !",
+  "es": "¡TRIPLE ELIMINACIÓN!"
+ },
+ "QUAD KILL!": {
+  "zh_TW": "四殺！",
+  "zh_CN": "四杀！",
+  "ja": "クアドラキル！",
+  "fr": "QUADRUPLE ÉLIMINATION !",
+  "es": "¡CUÁDRUPLE ELIMINACIÓN!"
+ },
+ "PENTA KILL!": {
+  "zh_TW": "五殺！",
+  "zh_CN": "五杀！",
+  "ja": "ペンタキル！",
+  "fr": "PENTA-ÉLIMINATION !",
+  "es": "¡PENTA ELIMINACIÓN!"
+ },
+ "RAMPAGE!": {
+  "zh_TW": "狂暴連殺！",
+  "zh_CN": "狂暴连杀！",
+  "ja": "ランページ！",
+  "fr": "DÉCHAÎNEMENT !",
+  "es": "¡DESENFRENO!"
+ },
+ "🐍 SNAKE %s": {
+  "zh_TW": "🐍 毒蛇 %s",
+  "zh_CN": "🐍 毒蛇 %s",
+  "ja": "🐍 スネーク %s",
+  "fr": "🐍 SERPENT %s",
+  "es": "🐍 SERPIENTE %s"
+ },
+ "%s · %d kill streak": {
+  "zh_TW": "%s · %d 連殺",
+  "zh_CN": "%s · %d 连杀",
+  "ja": "%s · %d 連続キル",
+  "fr": "%s · série de %d éliminations",
+  "es": "%s · racha de %d eliminaciones"
+ },
+ "Pick the size, theme, seed and how much stuff goes in. Press B / N in game to place or remove blocks.": {
+  "zh_TW": "選擇大小、主題、種子和物件數量。遊戲中按 B / N 放置或移除方塊。",
+  "zh_CN": "选择大小、主题、种子和物件数量。游戏中按 B / N 放置或移除方块。",
+  "ja": "サイズ、テーマ、シード、置くものの量を選びます。ゲーム中に B / N でブロックを置く・消します。",
+  "fr": "Choisissez la taille, le thème, la graine et la quantité d'objets. Appuyez sur B / N en jeu pour placer ou retirer des blocs.",
+  "es": "Elige el tamaño, el tema, la semilla y cuánto material habrá. Pulsa B / N en la partida para colocar o quitar bloques."
+ },
+ "You + 1 bot vs 2 bots. No friendly fire": {
+  "zh_TW": "你和 1 個電腦玩家 對 2 個電腦玩家。團隊計分，不會誤傷隊友",
+  "zh_CN": "你和 1 个电脑玩家 对 2 个电脑玩家。团队计分，不会误伤队友",
+  "ja": "あなた＋ボット1体 対 ボット2体。チーム得点制、味方への攻撃なし",
+  "fr": "Vous + 1 bot contre 2 bots. Score d'équipe, pas de tir allié",
+  "es": "Tú + 1 bot contra 2 bots. Puntuación por equipo, sin fuego amigo"
+ },
+ "Squads of 3. First to 15": {
+  "zh_TW": "每隊 3 人。先到 15 分的隊伍獲勝",
+  "zh_CN": "每队 3 人。先到 15 分的队伍获胜",
+  "ja": "3人一組。先に15点取ったチームの勝ち",
+  "fr": "Escouades de 3. Première équipe à 15",
+  "es": "Escuadrones de 3. Gana el primer equipo en 15"
+ },
+ "Big team fight. First to 20": {
+  "zh_TW": "大型團隊混戰。先到 20 分者勝",
+  "zh_CN": "大型团队混战。先到 20 分者胜",
+  "ja": "大人数の団体戦。先に20点取ったチームの勝ち",
+  "fr": "Grande bataille d'équipe. Première équipe à 20",
+  "es": "Gran batalla por equipos. Gana el primer equipo en 20"
+ },
+ "Coming soon. Build your own arena": {
+  "zh_TW": "即將推出。打造你自己的競技場",
+  "zh_CN": "即将推出。打造你自己的竞技场",
+  "ja": "近日公開。自分だけのアリーナを作ろう",
+  "fr": "Bientôt. Créez votre propre arène",
+  "es": "Próximamente. Crea tu propia arena"
+ },
+ "Tradies fight with hammers, live wire and air blowers (offline)": {
+  "zh_TW": "工人用錘子、活電線和鼓風機戰鬥（離線）",
+  "zh_CN": "工人用锤子、带电电线和鼓风机战斗（离线）",
+  "ja": "職人がハンマー、活線、エアブロワーで戦う（オフライン）",
+  "fr": "Des ouvriers se battent au marteau, au fil sous tension et au souffleur (hors ligne)",
+  "es": "Obreros luchando con martillos, cable vivo y sopladores (sin conexión)"
+ },
+ "Melee weapons only": {
+  "zh_TW": "只有近戰武器",
+  "zh_CN": "只有近战武器",
+  "ja": "近接武器のみ",
+  "fr": "Armes de mêlée uniquement",
+  "es": "Solo armas cuerpo a cuerpo"
+ },
+ "Guns only": {
+  "zh_TW": "只有槍械",
+  "zh_CN": "只有枪械",
+  "ja": "銃のみ",
+  "fr": "Armes à feu uniquement",
+  "es": "Solo armas de fuego"
+ },
+ "Ninja weapons plus 3 dashes": {
+  "zh_TW": "忍者武器加 3 次衝刺",
+  "zh_CN": "忍者武器加 3 次冲刺",
+  "ja": "忍者の武器と3回のダッシュ",
+  "fr": "Armes ninja et 3 dashs",
+  "es": "Armas ninja y 3 impulsos"
+ },
+ "Weapons are double size. Huge reach, huge hits": {
+  "zh_TW": "武器是兩倍大小。攻擊範圍超大，打擊超重",
+  "zh_CN": "武器是两倍大小。攻击范围超大，打击超重",
+  "ja": "武器が2倍の大きさ。リーチも威力も抜群",
+  "fr": "Armes deux fois plus grandes. Grande portée, gros dégâts",
+  "es": "Armas del doble de tamaño. Gran alcance, grandes golpes"
+ },
+ "Double damage, 3 lives, a huge shrinking arena": {
+  "zh_TW": "雙倍傷害、3 條命，還有超大且會縮小的競技場",
+  "zh_CN": "双倍伤害、3 条命，还有超大且会缩小的竞技场",
+  "ja": "ダメージ2倍、残機3、巨大で縮んでいくアリーナ",
+  "fr": "Dégâts doublés, 3 vies, une immense arène qui rétrécit",
+  "es": "Daño doble, 3 vidas, una enorme arena que se encoge"
+ },
+ "Every K.O. swaps your weapon. Finish the ladder to win": {
+  "zh_TW": "每次擊倒都會換你的武器。通過整個階梯就獲勝",
+  "zh_CN": "每次击倒都会换你的武器。通过整个阶梯就获胜",
+  "ja": "KOするたびに武器が変わる。はしご全部をクリアすれば勝ち",
+  "fr": "Chaque élimination change votre arme. Terminez l'échelle pour gagner",
+  "es": "Cada K.O. cambia tu arma. Completa la escalera para ganar"
+ },
+ "Versus": {
+  "zh_TW": "對戰",
+  "zh_CN": "对战",
+  "ja": "対戦",
+  "fr": "Versus",
+  "es": "Versus"
+ },
+ "1v1, 2v2, 3v3 or 4v4 against bots. You choose the size": {
+  "zh_TW": "對電腦玩家的 1 對 1、2 對 2、3 對 3 或 4 對 4。由你選擇人數",
+  "zh_CN": "对电脑玩家的 1 对 1、2 对 2、3 对 3 或 4 对 4。由你选择人数",
+  "ja": "ボット相手に1対1、2対2、3対3、4対4。人数はあなたが選べます",
+  "fr": "1 contre 1, 2 contre 2, 3 contre 3 ou 4 contre 4 face à des bots. Vous choisissez la taille",
+  "es": "1 contra 1, 2 contra 2, 3 contra 3 o 4 contra 4 contra bots. Tú eliges el tamaño"
+ },
+ "All guns and weapons": {
+  "zh_TW": "所有槍械和武器",
+  "zh_CN": "所有枪械和武器",
+  "ja": "すべての銃と武器",
+  "fr": "Toutes les armes à feu et armes",
+  "es": "Todas las armas de fuego y armas"
+ },
+ "Fully customisable: modifiers, arena and guns": {
+  "zh_TW": "完全可自訂：規則、競技場和槍械",
+  "zh_CN": "完全可自定义：规则、竞技场和枪械",
+  "ja": "完全にカスタマイズ可能：ルール、アリーナ、銃",
+  "fr": "Entièrement personnalisable : modificateurs, arène et armes à feu",
+  "es": "Totalmente personalizable: modificadores, arena y armas de fuego"
+ },
+ "Claw Hammer, Live Wire, Air Blower": {
+  "zh_TW": "羊角鎚、活電線、鼓風機",
+  "zh_CN": "羊角锤、带电电线、鼓风机",
+  "ja": "クローハンマー、ライブワイヤー、エアブロワー",
+  "fr": "Marteau à griffe, fil sous tension, souffleur d'air",
+  "es": "Martillo de garra, cable vivo, soplador de aire"
+ },
+ "Exclusive gun: Meteor Launcher": {
+  "zh_TW": "專屬武器：隕石發射器",
+  "zh_CN": "专属武器：陨石发射器",
+  "ja": "専用の銃：メテオランチャー",
+  "fr": "Arme exclusive : Lance-météores",
+  "es": "Arma exclusiva: Lanzameteoros"
+ },
+ "Exclusive maps: Crater Dome, Space Capsule · Exclusive gravity: Drift": {
+  "zh_TW": "專屬地圖：隕石坑穹頂、太空艙 · 專屬重力：漂移",
+  "zh_CN": "专属地图：陨坑穹顶、太空舱 · 专属重力：漂移",
+  "ja": "専用マップ：クレーターのドーム、宇宙カプセル · 専用重力：ドリフト",
+  "fr": "Cartes exclusives : Dôme du cratère, Capsule spatiale · Gravité exclusive : Drift",
+  "es": "Mapas exclusivos: Cúpula del cráter, Cápsula espacial · Gravedad exclusiva: Drift"
+ },
+ "Exclusive map: %s": {
+  "zh_TW": "專屬地圖：%s",
+  "zh_CN": "专属地图：%s",
+  "ja": "専用マップ：%s",
+  "fr": "Carte exclusive : %s",
+  "es": "Mapa exclusivo: %s"
+ }
+}
