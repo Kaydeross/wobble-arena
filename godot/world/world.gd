@@ -993,3 +993,5 @@ func _toggle_pause() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED and not paused and auto_run:
 		_toggle_pause()   # phones: app sent to background
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_toggle_pause()   # Android: back button opens/closes pause menu

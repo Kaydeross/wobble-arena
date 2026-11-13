@@ -21,8 +21,20 @@ static func insets(vp: Viewport) -> Array:
 	if ws.x <= 0 or ws.y <= 0 or sa.size.x <= 0:
 		return out
 	var k := vp.get_visible_rect().size / Vector2(ws)
-	return [maxf(0, sa.position.x - wp.x) * k.x, maxf(0, sa.position.y - wp.y) * k.y,
-		maxf(0, (wp.x + ws.x) - sa.end.x) * k.x, maxf(0, (wp.y + ws.y) - sa.end.y) * k.y]
+	var left := maxf(0, sa.position.x - wp.x)
+	var top := maxf(0, sa.position.y - wp.y)
+	var right := maxf(0, (wp.x + ws.x) - sa.end.x)
+	var bottom := maxf(0, (wp.y + ws.y) - sa.end.y)
+	for cutout: Rect2 in DisplayServer.get_display_cutouts():
+		if cutout.position.x <= wp.x and cutout.end.x > wp.x:
+			left = maxf(left, cutout.end.x - wp.x)
+		if cutout.end.x >= wp.x + ws.x and cutout.position.x < wp.x + ws.x:
+			right = maxf(right, (wp.x + ws.x) - cutout.position.x)
+		if cutout.position.y <= wp.y and cutout.end.y > wp.y:
+			top = maxf(top, cutout.end.y - wp.y)
+		if cutout.end.y >= wp.y + ws.y and cutout.position.y < wp.y + ws.y:
+			bottom = maxf(bottom, (wp.y + ws.y) - cutout.position.y)
+	return [left * k.x, top * k.y, right * k.x, bottom * k.y]
 
 ## The visible canvas rect minus the insets.
 static func rect(vp: Viewport) -> Rect2:
