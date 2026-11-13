@@ -142,7 +142,7 @@ static func unlock_text(k: String) -> String:
 	var u := ExtraClasses.unlock(k)
 	if u.is_empty(): return ""
 	var n := int(u.get("n", 1))
-	return tr("%s · %d/%d") % [tr(str(u.get("text", ""))), mini(save().class_progress(k), n), n]
+	return TranslationServer.translate("%s · %d/%d") % [TranslationServer.translate(str(u.get("text", ""))), mini(save().class_progress(k), n), n]
 
 ## The worn look with this card tried on.
 static func try_look(t: String, k: String) -> Dictionary:

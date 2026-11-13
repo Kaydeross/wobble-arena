@@ -1294,62 +1294,6 @@
   "fr": "Rampage",
   "es": "Rampage"
  },
- "Scamp": {
-  "zh_TW": "小搗蛋",
-  "zh_CN": "小捣蛋",
-  "ja": "スキャンプ",
-  "fr": "Galopin",
-  "es": "Pillo"
- },
- "Gramps": {
-  "zh_TW": "老爺爺",
-  "zh_CN": "老爷爷",
-  "ja": "じいちゃん",
-  "fr": "Papy",
-  "es": "Abuelito"
- },
- "Zorp": {
-  "zh_TW": "佐普",
-  "zh_CN": "佐普",
-  "ja": "ゾープ",
-  "fr": "Zorp",
-  "es": "Zorp"
- },
- "Balanced. No surprises": {
-  "zh_TW": "平衡。沒有意外",
-  "zh_CN": "平衡。没有意外",
-  "ja": "バランス型。意外性なし",
-  "fr": "Équilibré. Sans surprise",
-  "es": "Equilibrado. Sin sorpresas"
- },
- "Big, slow, hard to shove": {
-  "zh_TW": "體型大、動作慢、很難被推",
-  "zh_CN": "体型大、动作慢、很难被推",
-  "ja": "大きくて遅い。押し出しにくい",
-  "fr": "Gros, lent, difficile à bousculer",
-  "es": "Grande, lento, difícil de empujar"
- },
- "Tiny and zippy, easy to launch": {
-  "zh_TW": "嬌小靈活，容易被彈飛",
-  "zh_CN": "娇小灵活，容易被弹飞",
-  "ja": "小さくて素早い。吹き飛ばしやすい",
-  "fr": "Petit et vif, facile à projeter",
-  "es": "Pequeño y ágil, fácil de lanzar"
- },
- "Sharp steering, quick reloads": {
-  "zh_TW": "操控靈敏，換彈迅速",
-  "zh_CN": "操控灵敏，换弹迅速",
-  "ja": "操作が鋭く、リロードが速い",
-  "fr": "Maniabilité précise, rechargement rapide",
-  "es": "Control preciso, recargas rápidas"
- },
- "Fragile, floaty, great tech": {
-  "zh_TW": "脆弱、輕飄，技術感強",
-  "zh_CN": "脆弱、轻飘，技术感强",
-  "ja": "脆いが浮きやすく、テクニカル",
-  "fr": "Fragile, aérien, grande technique",
-  "es": "Frágil, flotante, gran técnica"
- },
  "A walking wall. Slow to get going": {
   "zh_TW": "移動的牆。起步慢",
   "zh_CN": "移动的墙。起步慢",

@@ -19,7 +19,7 @@ static func make(r: Dictionary) -> Control:
 	row.add_child(LockerScreen.LockerIcon.new("coin", 26))
 	var c := Label.new()
 	c.name = "Earned"
-	c.text = tr("+%d coins") % int(r.get("coins", 0))
+	c.text = TranslationServer.translate("+%d coins") % int(r.get("coins", 0))
 	c.add_theme_font_override("font", UiTheme.font(700))
 	c.add_theme_font_size_override("font_size", 26)
 	c.add_theme_color_override("font_color", UiTheme.ACCENT)
@@ -29,9 +29,9 @@ static func make(r: Dictionary) -> Control:
 	k.theme_type_variation = &"MutedLabel"
 	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var kos := int(r.get("kos", 0))
-	var kt: Array = [(tr("%d K.O. × 5") if kos == 1 else tr("%d K.O.s × 5")) % kos, tr("finished +40")]
-	if r.get("won", false): kt.append(tr("win +60"))
-	kt.append(tr("%d coins in all") % int(r.get("total", 0)))
+	var kt: Array = [(TranslationServer.translate("%d K.O. × 5") if kos == 1 else TranslationServer.translate("%d K.O.s × 5")) % kos, TranslationServer.translate("finished +40")]
+	if r.get("won", false): kt.append(TranslationServer.translate("win +60"))
+	kt.append(TranslationServer.translate("%d coins in all") % int(r.get("total", 0)))
 	k.text = "  ·  ".join(kt)
 	box.add_child(k)
 	var cls: Array = r.get("classes", [])
@@ -41,8 +41,8 @@ static func make(r: Dictionary) -> Control:
 		u.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		u.add_theme_font_size_override("font_size", 20)
 		u.add_theme_color_override("font_color", UiTheme.GOOD)
-		var names: Array = cls.map(func(id: String) -> String: return tr(str(WobblerLooks.class_def(id).get("name", id))))
-		u.text = tr("Secret class unlocked: %s! Pick it in the Walldrobe.") % ", ".join(names)
+		var names: Array = cls.map(func(id: String) -> String: return TranslationServer.translate(str(WobblerLooks.class_def(id).get("name", id))))
+		u.text = TranslationServer.translate("Secret class unlocked: %s! Pick it in the Walldrobe.") % ", ".join(names)
 		box.add_child(u)
 	var gl := goals_text(r)
 	if gl != "":
@@ -62,15 +62,15 @@ static func make(r: Dictionary) -> Control:
 	p.add_theme_font_size_override("font_size", 18)
 	box.add_child(p)
 	if nx.is_empty():
-		p.text = tr("You own every outfit and emote!")
+		p.text = TranslationServer.translate("You own every outfit and emote!")
 		return box
 	var price := int(nx["price"])
 	var have := int(r.get("total", 0))
 	if have >= price:
-		p.text = tr("You can buy %s now (%d coins)!") % [tr(str(nx["name"])), price]
+		p.text = TranslationServer.translate("You can buy %s now (%d coins)!") % [TranslationServer.translate(str(nx["name"])), price]
 		p.add_theme_color_override("font_color", UiTheme.GOOD)
 	else:
-		p.text = tr("Next unlock: %s · %d / %d coins") % [tr(str(nx["name"])), have, price]
+		p.text = TranslationServer.translate("Next unlock: %s · %d / %d coins") % [TranslationServer.translate(str(nx["name"])), have, price]
 	var bar := ProgressBar.new()
 	bar.name = "Bar"
 	bar.show_percentage = false
@@ -89,12 +89,12 @@ static func goals_text(r: Dictionary) -> String:
 	var parts: Array = []
 	var done: Array = r.get("goals", [])
 	if done.size() == 1:
-		parts.append(tr("+%d goal completed: %s (claim it in Goals)") % [int(done[0]["coins"]), tr(str(done[0]["text"]))])
+		parts.append(TranslationServer.translate("+%d goal completed: %s (claim it in Goals)") % [int(done[0]["coins"]), TranslationServer.translate(str(done[0]["text"]))])
 	elif done.size() > 1:
 		var sum := 0
 		for d: Dictionary in done: sum += int(d["coins"])
-		parts.append(tr("+%d: %d goals completed (claim them in Goals)") % [sum, done.size()])
+		parts.append(TranslationServer.translate("+%d: %d goals completed (claim them in Goals)") % [sum, done.size()])
 	if int(r.get("streak", 0)) > 0:
 		var days := int(r.get("days", 1))
-		parts.append((tr("First win today +%d (%d-day streak)") % [int(r["streak"]), days]) if days > 1 else (tr("First win today +%d") % int(r["streak"])))
+		parts.append((TranslationServer.translate("First win today +%d (%d-day streak)") % [int(r["streak"]), days]) if days > 1 else (TranslationServer.translate("First win today +%d") % int(r["streak"])))
 	return "  ·  ".join(parts)
