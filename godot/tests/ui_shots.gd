@@ -91,7 +91,7 @@ func _start() -> void:
 		root.add_child(m)
 		if shot == "account-signed" or shot == "account-signed-np":
 			var c: Node = root.get_node("Save").cloud
-			c.setv("token", "ab".repeat(32)); c.setv("user", "WobbleQueen"); c.setv("email", "queen@example.com")
+			c.setv("token", "ab".repeat(32)); c.setv("user", "WobbleQueen"); c.setv("email", "queen@example.com" if shot == "account-signed" else "")
 			c.setv("cloud_t", int((Time.get_unix_time_from_system() - 130.0) * 1000.0))
 			c.has_password = shot == "account-signed"
 			m._refresh_login()
