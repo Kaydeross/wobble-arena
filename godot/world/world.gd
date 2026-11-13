@@ -367,14 +367,14 @@ func _drain_events() -> void:
 				if _crates.has(c2["id"]):
 					_crates[c2["id"]].queue_free(); _crates.erase(c2["id"])
 				if e["type"] == "crate_take" and e["f"] == sim.player:
-					_toast("Got " + sim.pickups.label(c2["key"]))
+					_toast(tr("Got %s") % tr(sim.pickups.label(c2["key"])))
 			"toast":
 				_toast(str(e["text"]))
 			"match_end":
 				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
 			"match_over":
-				_show_banner(str(e["title"]), str(e["sub"]), bool(e["won"]))
+				_show_banner(tr(str(e["title"])), tr(str(e["sub"])), bool(e["won"]))
 				if session == null:
 					_reward = Save.finish_match(bool(e["won"]), str(sim.combat.mode.get("name", sim.combat.mode_id)), str(map_node.map.get("name", map_id)), false, sim.combat.mode_id)
 			"match_finished":
@@ -383,16 +383,16 @@ func _drain_events() -> void:
 			"eliminated":
 				if f:
 					hud.add_feed(null, f, "", false)
-					_toast("You're out! Big wobble" if f == sim.player else "%s is out!" % f.name)
+					_toast("You're out! Big wobble" if f == sim.player else tr("%s is out!") % f.name)
 			"relook":
 				_relook(f)
 			"emote":                         # another player's emote (online)
 				if views.has(f): views[f].wobbler.play_emote(str(e["id"]))
 			"chaos_warn":
-				_show_banner(str(e["name"]).to_upper() + "!", "in %d…" % ceili(float(e["in"])), true, float(e["in"]))
+				_show_banner(tr("%s!") % tr(str(e["name"])).to_upper(), tr("in %d…") % ceili(float(e["in"])), true, float(e["in"]))
 			"chaos":
-				if e["id"] == "giant" and f: _toast("You're a giant! Mind the furniture" if f == sim.player else "%s is a giant! Run!" % f.name)
-				else: _toast(str(e["name"]) + "!")
+				if e["id"] == "giant" and f: _toast("You're a giant! Mind the furniture" if f == sim.player else tr("%s is a giant! Run!") % f.name)
+				else: _toast(tr("%s!") % tr(str(e["name"])))
 			"chaos_end":
 				if e["id"] != "crates": _toast("Back to normal")
 	evs.clear()
@@ -629,14 +629,14 @@ func _update_mode_ui(delta: float) -> void:
 		top += _team_board.size.y + 4.0
 	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
 	if spectating != null:                      # spectator line: who, how many left, how to switch
-		_mode_l.text = "Spectating %s · %d left · tap to switch" % [spectating.name, sim.combat.rules.survivors().size()]
+		_mode_l.text = tr("Spectating %s · %d left · tap to switch") % [spectating.name, sim.combat.rules.survivors().size()]
 		_mode_l.visible = true
 		_mode_l.reset_size()
 		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)
 	if _banner.visible:
 		var ct := sim.combat.rules.chaos
 		if not ct.is_empty() and float(ct.get("warn", 0.0)) > 0.0:   # the Chaos countdown ticks in the banner
-			_banner.text = "%s!\nin %d…" % [sim.combat.rules.chaos_name(ct["id"]).to_upper(), ceili(float(ct["warn"]))]
+			_banner.text = tr("%s!\nin %d…") % [tr(sim.combat.rules.chaos_name(ct["id"])).to_upper(), ceili(float(ct["warn"]))]
 		_banner_t -= delta
 		_banner.reset_size()
 		_banner.position = Vector2(vs.x / 2.0 - _banner.size.x / 2.0, vs.y * 0.3)
@@ -741,7 +741,7 @@ func start_kill_cam() -> void:
 		$UI.add_child(_kc_l)
 		$UI.move_child(_kc_l, pause_menu.get_index())
 	var v: FighterState = kill_cam.views[kill_cam.vi].state
-	_kc_l.text = "Replay · you K.O.'d %s · tap to skip" % v.name
+	_kc_l.text = tr("Replay · you K.O.'d %s · tap to skip") % v.name
 	var top := SafeArea.insets(get_viewport())[1] as float
 	_kc_l.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - _kc_l.get_minimum_size().x / 2.0, top + 14.0)
 	_kc_l.size = _kc_l.get_minimum_size()
@@ -777,13 +777,13 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	l.add_theme_color_override("font_color", UiTheme.ACCENT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var teams := sim.combat.teams != 0
-	l.text = ("Your team wins!" if won else "Enemy team wins!") if teams else ("You win!" if won else winner_name + " wins!")
+	l.text = ("Your team wins!" if won else "Enemy team wins!") if teams else ("You win!" if won else tr("%s wins!") % winner_name)
 	box.add_child(l)
 	var info := Label.new()
 	info.theme_type_variation = &"MutedLabel"
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var deaths := int(sim.player.st["deaths"])
-	info.text = "%s · %d K.O.%s · %d death%s" % [str(sim.combat.mode.get("name", sim.combat.mode_id)), sim.player.ko, "" if sim.player.ko == 1 else "s", deaths, "" if deaths == 1 else "s"]
+	info.text = tr("%s · %d K.O.s · %d deaths") % [tr(str(sim.combat.mode.get("name", sim.combat.mode_id))), sim.player.ko, deaths]
 	box.add_child(info)
 	box.add_child(ResultsRewards.make(_reward))
 	var again := Button.new(); again.text = "Play again"; again.custom_minimum_size = Vector2(0, 58)
@@ -850,7 +850,7 @@ func _resume_state() -> Dictionary:
 
 ## The host left and another player hosts now: the arena stays until their `start` (or `rehosted` ends it).
 func _on_net_host_changing(old_host: String) -> void:
-	_show_banner("HOST CHANGED", "%s left. Waiting for the new host…" % old_host, true, 4.0)
+	_show_banner(tr("HOST CHANGED"), tr("%s left. Waiting for the new host…") % old_host, true, 4.0)
 
 ## The relay made me the host: the HostSession carries the match on (its `start` rebuilds the arena) or, with no
 ## match running, the lobby takes over.
@@ -859,7 +859,7 @@ func _on_net_promoted(hs: GuestSession) -> void:
 	session = hs
 	_bind_net()
 	if (hs as HostSession).resuming():
-		_show_banner("HOST CHANGED", "%s left. You're the host now!" % str(hs.get("migrated")), true, 4.0)
+		_show_banner(tr("HOST CHANGED"), tr("%s left. You're the host now!") % str(hs.get("migrated")), true, 4.0)
 	elif not hs.started:
 		_to_title(hs.status)
 
@@ -921,7 +921,7 @@ func _show_results(winner: String) -> void:
 	l.theme_type_variation = &"TitleLabel"
 	l.add_theme_color_override("font_color", UiTheme.ACCENT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.text = ("You win!" if winner == "You" else winner + " wins!")
+	l.text = ("You win!" if winner == "You" else tr("%s wins!") % winner)
 	box.add_child(l)
 	var votes := Label.new()
 	votes.theme_type_variation = &"MutedLabel"
@@ -945,7 +945,7 @@ func _show_results(winner: String) -> void:
 	_results = p
 
 func _on_net_votes(list: Array, total: int) -> void:
-	if _results: (_results.find_child("Votes", true, false) as Label).text = "Rematch votes: %d / %d" % [list.size(), total]
+	if _results: (_results.find_child("Votes", true, false) as Label).text = tr("Rematch votes: %d / %d") % [list.size(), total]
 
 func _toggle_pause() -> void:
 	paused = not paused

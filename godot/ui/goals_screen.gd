@@ -87,7 +87,7 @@ func _refresh_head() -> void:
 	coins_l.text = str(Save.coins)
 	var n := int(Save.quests.get("streak", {}).get("n", 0))
 	var on := int(Save.quests.get("streak", {}).get("last", -1)) >= Save.quest_day() - 1
-	streak_l.text = "Play streak: %d day%s. First win of the day pays a bonus. Roll on!" % [n, "" if n == 1 else "s"] if on and n > 0 \
+	streak_l.text = (tr("Play streak: %d day. First win of the day pays a bonus. Roll on!") if n == 1 else tr("Play streak: %d days. First win of the day pays a bonus. Roll on!")) % n if on and n > 0 \
 		else "Win a match each day to build a streak. Wobble daily!"
 	streak_l.tooltip_text = streak_l.text
 
@@ -140,7 +140,7 @@ func _row(r: Dictionary) -> void:
 	pr.add_child(bar)
 	var n := Label.new()
 	n.name = "N"
-	n.text = "%d / %d" % [int(r["p"]), int(r["n"])]
+	n.text = tr("%d / %d") % [int(r["p"]), int(r["n"])]
 	n.theme_type_variation = &"MutedLabel"
 	n.add_theme_font_size_override("font_size", 15)
 	pr.add_child(n)
@@ -153,12 +153,12 @@ func _row(r: Dictionary) -> void:
 		b.text = "Claimed"
 		b.disabled = true
 	elif r["done"]:
-		b.text = "Claim +%d" % int(r["coins"])
+		b.text = tr("Claim +%d") % int(r["coins"])
 		b.theme_type_variation = &"PrimaryButton"
 	else:
-		b.text = "+%d" % int(r["coins"])
+		b.text = tr("+%d") % int(r["coins"])
 		b.disabled = true
-		b.tooltip_text = "Finish the goal to claim %d coins" % int(r["coins"])
+		b.tooltip_text = tr("Finish the goal to claim %d coins") % int(r["coins"])
 	b.pressed.connect(claim.bind(key))
 	row.add_child(b)
 	scroll.add_card(b)

@@ -8,7 +8,7 @@ extends UiPage
 ##   Camera    Manual / Auto-centre, distance, field of view
 ##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
-##   Gameplay  knock-out replays (kill cam), damage numbers
+##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), knock-out replays (kill cam), damage numbers
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
 ##   About     version and build, privacy policy, credits, the game server address (advanced)
 ## Every control writes its Settings key at once (Settings persists it and emits `changed`, the game applies it live)
@@ -133,7 +133,7 @@ func show_section(s: String) -> void:
 			_slider("fov", "Field of view", "", 60.0, 90.0, 1.0, func(v: float) -> String: return "%d°" % int(v))
 		"graphics":
 			var auto_n: String = ["Low", "Medium", "High"][MapBuilder.gfx_q()]
-			_choice("effects", "Effects", "Particles, trails and flashes in a match. Auto follows this device (%s)." % auto_n,
+			_choice("effects", "Effects", tr("Particles, trails and flashes in a match. Auto follows this device (%s).") % tr(auto_n),
 				["auto", "low", "medium", "high"], ["Auto", "Low", "Medium", "High"])
 			_choice("ui_scale", "Text and button size", "Menus, HUD and touch buttons. Auto keeps buttons finger-sized on this screen.",
 				UiScale.MODES, ["Auto", "Small", "Normal", "Large"])
@@ -145,6 +145,7 @@ func show_section(s: String) -> void:
 			_slider("sfx_volume", "Sound effects", "", 0.0, 1.0, 0.05, _pct)
 			_slider("music_volume", "Music", "", 0.0, 1.0, 0.05, _pct)
 		"gameplay":
+			_language()
 			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
 		"account":
@@ -171,14 +172,14 @@ static func version_text() -> String:
 	if cfg.load("res://build_info.cfg") == OK:
 		version = str(cfg.get_value("build", "version", version))
 		build = str(cfg.get_value("build", "number", build))
-	return "Version %s, build %s" % [version, build]
+	return TranslationServer.translate("Version %s, build %s") % [version, build]
 
 func _account_line() -> Array:
 	var sv := get_node_or_null("/root/Save")
 	var cloud: Variant = sv.get("cloud") if sv else null
 	if cloud != null and cloud.signed_in():
 		var sync: String = cloud.sync_text()
-		return ["Signed in as " + str(cloud.user()), sync if sync != "" else "Your progress is saved to your account"]
+		return [tr("Signed in as %s") % str(cloud.user()), sync if sync != "" else "Your progress is saved to your account"]
 	return ["Playing as a guest", "Your progress is saved on this device only. Create an account to keep it safe."]
 
 func open_help() -> void:
@@ -269,6 +270,31 @@ func _slider(key: String, title: String, sub: String, lo: float, hi: float, step
 	s.set_meta("fmt", fmt)
 	ctl[key] = s
 
+## The language row: one drop-down, every language in its own name (never translated) so it can always be found.
+func _language() -> void:
+	var r := _row("Row_lang", "Language", "Auto follows this device")
+	var ob := OptionButton.new()
+	ob.name = "Field"
+	ob.custom_minimum_size = Vector2(CTRL_W, TOUCH)
+	ob.size_flags_vertical = SIZE_SHRINK_CENTER
+	ob.add_theme_font_size_override("font_size", 19)
+	ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED   # the names are already in their own language
+	var items: Array = [["auto", tr("Auto") + " (" + _lang_name(Lang.resolve("auto")) + ")"]]
+	for l: Array in Lang.list(): items.append([l[0], l[1]])
+	var cur := str(Settings.get_value("lang"))
+	for i in items.size():
+		ob.add_item(items[i][1], i)
+		ob.set_item_metadata(i, items[i][0])
+		if items[i][0] == cur: ob.select(i)
+	ob.item_selected.connect(func(i: int) -> void: Settings.set_value("lang", str(ob.get_item_metadata(i))))
+	r.add_child(ob)
+	ctl["lang"] = ob
+
+static func _lang_name(c: String) -> String:
+	for l: Array in Lang.list():
+		if l[0] == c: return l[1]
+	return "English"
+
 ## A row of pills (one pick). `off`: value -> true to disable that pill (not available on this device).
 func _choice(key: String, title: String, sub: String, values: Array, names: Array, off: Dictionary = {}) -> void:
 	var r := _row("Row_" + key, title, sub)
@@ -356,6 +382,9 @@ func _on_row_tapped(c: Control) -> void:
 
 ## Keep the controls in step when a setting changes elsewhere.
 func _on_setting(key: String, v: Variant) -> void:
+	if key == "lang":
+		if visible: show_section.call_deferred(section)   # sentences built in code (tr) are redone in the new language
+		return
 	if key == "server_url" and is_instance_valid(ui.get("server_active")): (ui["server_active"] as Label).text = Settings.server_status_text()
 	if not ctl.has(key): return
 	var c: Variant = ctl[key]

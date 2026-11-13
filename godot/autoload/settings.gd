@@ -58,6 +58,7 @@ const DEFAULTS := {
 	"damage_numbers": true, # floating damage numbers over the fighter you hit (read by the world's effects)
 	"sfx_volume": 1.0,      # sound effects bus 0..1 (autoload Sfx); `volume` stays the master volume
 	"music_volume": 0.5,    # music bus 0..1 (autoload Music; the web settings.music)
+	"lang": "auto",         # language: auto (the device's) | en | zh_TW | zh_CN | ja | fr | es (autoload Lang, i18n/strings.json)
 	"seen_intro": false,    # the 3-card how-to (ui/intro_cards.gd) was shown or skipped once
 }
 
@@ -86,7 +87,7 @@ static func server_default(config_path: String = SERVER_CONFIG_PATH, release: bo
 ## "Using: <url> (default|custom)" for the Settings screen.
 func server_status_text() -> String:
 	var cur := str(get_value("server_url"))
-	return "Using: %s (%s)" % [cur, "default" if cur == server_default() else "custom"]
+	return tr("Using: %s (%s)") % [cur, tr("default") if cur == server_default() else tr("custom")]
 
 func get_value(key: String, default: Variant = null) -> Variant:
 	if default == null:

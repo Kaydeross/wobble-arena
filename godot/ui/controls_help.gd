@@ -134,6 +134,8 @@ class Picture extends Control:
 	## A title (and a smaller sub line) next to `at`: side -1 = to its left, 1 = to its right, 0 = centred above,
 	## 2 = centred below; kept inside the screen picture.
 	func _label(at: Vector2, side: int, title: String, sub: String, fs: int, fs2: int) -> void:
+		title = tr(title)   # drawn with draw_string, so it does not translate itself
+		sub = tr(sub)
 		var w1 := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var w2 := font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x if sub != "" else 0.0
 		var h := fs + (fs2 + 2 if sub != "" else 0)

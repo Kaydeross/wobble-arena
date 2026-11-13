@@ -1,0 +1,611 @@
+{
+ "K.O.": {
+  "zh_TW": "擊倒",
+  "zh_CN": "击倒",
+  "ja": "KO",
+  "fr": "K.O.",
+  "es": "K.O."
+ },
+ "fell off": {
+  "zh_TW": "掉出場外",
+  "zh_CN": "掉出场外",
+  "ja": "場外へ落下",
+  "fr": "est tombé",
+  "es": "se cayó"
+ },
+ "was K.O.'d": {
+  "zh_TW": "被擊倒",
+  "zh_CN": "被击倒",
+  "ja": "KOされた",
+  "fr": "a été mis K.O.",
+  "es": "fue K.O."
+ },
+ "You lead with %d": {
+  "zh_TW": "你領先，擊倒 %d",
+  "zh_CN": "你领先，击倒 %d",
+  "ja": "あなたが %d KOでリード",
+  "fr": "En tête avec %d",
+  "es": "Lideras con %d"
+ },
+ "No leader yet": {
+  "zh_TW": "還沒有領先者",
+  "zh_CN": "还没有领先者",
+  "ja": "まだ首位なし",
+  "fr": "Pas encore de leader",
+  "es": "Aún no hay líder"
+ },
+ "Click to look around   ·   Esc: menu": {
+  "zh_TW": "點擊環顧四周   ·   Esc：選單",
+  "zh_CN": "点击环顾四周   ·   Esc：菜单",
+  "ja": "クリックで見回す   ·   Esc：メニュー",
+  "fr": "Cliquer pour regarder autour   ·   Esc : menu",
+  "es": "Haz clic para mirar alrededor   ·   Esc: menú"
+ },
+ "empty": {
+  "zh_TW": "空",
+  "zh_CN": "空",
+  "ja": "空",
+  "fr": "vide",
+  "es": "vacío"
+ },
+ "Got %s": {
+  "zh_TW": "獲得 %s",
+  "zh_CN": "获得 %s",
+  "ja": "%s を入手",
+  "fr": "Obtenu : %s",
+  "es": "Obtienes %s"
+ },
+ "Got %s!": {
+  "zh_TW": "獲得 %s！",
+  "zh_CN": "获得 %s！",
+  "ja": "%s を取った！",
+  "fr": "%s obtenu !",
+  "es": "¡Obtienes %s!"
+ },
+ "%s is out!": {
+  "zh_TW": "%s 出局了！",
+  "zh_CN": "%s 出局了！",
+  "ja": "%s が脱落！",
+  "fr": "%s est éliminé !",
+  "es": "¡%s está fuera!"
+ },
+ "You're out!": {
+  "zh_TW": "你出局了！",
+  "zh_CN": "你出局了！",
+  "ja": "脱落！",
+  "fr": "Éliminé !",
+  "es": "¡Estás fuera!"
+ },
+ "in %d…": {
+  "zh_TW": "%d 秒後…",
+  "zh_CN": "%d 秒后…",
+  "ja": "あと %d…",
+  "fr": "dans %d…",
+  "es": "en %d…"
+ },
+ "%s!": {
+  "zh_TW": "%s！",
+  "zh_CN": "%s！",
+  "ja": "%s！",
+  "fr": "%s !",
+  "es": "¡%s!"
+ },
+ "%s!\nin %d…": {
+  "zh_TW": "%s！\n%d 秒後…",
+  "zh_CN": "%s！\n%d 秒后…",
+  "ja": "%s！\nあと %d…",
+  "fr": "%s !\ndans %d…",
+  "es": "¡%s!\nen %d…"
+ },
+ "%s is a giant!": {
+  "zh_TW": "%s 變成巨人了！",
+  "zh_CN": "%s 变成巨人了！",
+  "ja": "%s が巨大化！",
+  "fr": "%s est un géant !",
+  "es": "¡%s es un gigante!"
+ },
+ "You are a giant!": {
+  "zh_TW": "你變成巨人了！",
+  "zh_CN": "你变成巨人了！",
+  "ja": "あなたが巨大化！",
+  "fr": "Te voilà géant !",
+  "es": "¡Eres un gigante!"
+ },
+ "Back to normal": {
+  "zh_TW": "恢復正常",
+  "zh_CN": "恢复正常",
+  "ja": "通常に戻った",
+  "fr": "Retour à la normale",
+  "es": "Vuelta a la normalidad"
+ },
+ "Spectating %s  ·  %d left  ·  tap to switch": {
+  "zh_TW": "觀戰 %s  ·  剩 %d 人  ·  點擊切換",
+  "zh_CN": "观战 %s  ·  剩 %d 人  ·  点击切换",
+  "ja": "%s を観戦  ·  残り %d 人  ·  タップで切替",
+  "fr": "Spectateur : %s  ·  %d restants  ·  toucher pour changer",
+  "es": "Observando a %s  ·  quedan %d  ·  toca para cambiar"
+ },
+ "REPLAY · you K.O.'d %s · tap to skip": {
+  "zh_TW": "重播 · 你擊倒了 %s · 點擊跳過",
+  "zh_CN": "回放 · 你击倒了 %s · 点击跳过",
+  "ja": "リプレイ · %s をKOしました · タップでスキップ",
+  "fr": "REPLAY · K.O. de %s · toucher pour passer",
+  "es": "REPETICIÓN · dejaste K.O. a %s · toca para saltar"
+ },
+ "%s wins!": {
+  "zh_TW": "%s 獲勝！",
+  "zh_CN": "%s 获胜！",
+  "ja": "%s の勝ち！",
+  "fr": "%s gagne !",
+  "es": "¡Gana %s!"
+ },
+ "Your team wins!": {
+  "zh_TW": "你的隊伍獲勝！",
+  "zh_CN": "你的队伍获胜！",
+  "ja": "あなたのチームの勝ち！",
+  "fr": "Victoire de l'équipe !",
+  "es": "¡Gana tu equipo!"
+ },
+ "Enemy team wins!": {
+  "zh_TW": "敵方隊伍獲勝！",
+  "zh_CN": "敌方队伍获胜！",
+  "ja": "敵チームの勝ち！",
+  "fr": "L'équipe ennemie gagne !",
+  "es": "¡Gana el equipo enemigo!"
+ },
+ "You win!": {
+  "zh_TW": "你獲勝！",
+  "zh_CN": "你获胜！",
+  "ja": "あなたの勝ち！",
+  "fr": "Victoire !",
+  "es": "¡Ganas!"
+ },
+ "%s  ·  %d K.O.s  ·  %d deaths": {
+  "zh_TW": "%s  ·  %d 次擊倒  ·  %d 次死亡",
+  "zh_CN": "%s  ·  %d 次击倒  ·  %d 次死亡",
+  "ja": "%s  ·  KO %d  ·  やられ %d",
+  "fr": "%s  ·  %d K.O.  ·  %d morts",
+  "es": "%s  ·  %d K.O.  ·  %d muertes"
+ },
+ "Play again": {
+  "zh_TW": "再玩一次",
+  "zh_CN": "再玩一次",
+  "ja": "もう一度プレイ",
+  "fr": "Rejouer",
+  "es": "Jugar otra vez"
+ },
+ "Edit arena": {
+  "zh_TW": "編輯競技場",
+  "zh_CN": "编辑竞技场",
+  "ja": "アリーナを編集",
+  "fr": "Modifier l'arène",
+  "es": "Editar arena"
+ },
+ "Title": {
+  "zh_TW": "標題畫面",
+  "zh_CN": "标题画面",
+  "ja": "タイトル",
+  "fr": "Titre",
+  "es": "Título"
+ },
+ "Rematch": {
+  "zh_TW": "再戰一局",
+  "zh_CN": "再战一局",
+  "ja": "リマッチ",
+  "fr": "Revanche",
+  "es": "Revancha"
+ },
+ "Waiting for the others…": {
+  "zh_TW": "等待其他玩家…",
+  "zh_CN": "等待其他玩家…",
+  "ja": "ほかのプレイヤーを待っています…",
+  "fr": "En attente des autres…",
+  "es": "Esperando a los demás…"
+ },
+ "HOST CHANGED": {
+  "zh_TW": "房主已更換",
+  "zh_CN": "房主已更换",
+  "ja": "ホストが交代",
+  "fr": "HÔTE CHANGÉ",
+  "es": "CAMBIO DE ANFITRIÓN"
+ },
+ "%s left. Waiting for the new host…": {
+  "zh_TW": "%s 離開了。等待新房主…",
+  "zh_CN": "%s 离开了。等待新房主…",
+  "ja": "%s が退出しました。新しいホストを待っています…",
+  "fr": "%s est parti. En attente du nouvel hôte…",
+  "es": "%s se fue. Esperando al nuevo anfitrión…"
+ },
+ "%s left. You are the host now!": {
+  "zh_TW": "%s 離開了。你現在是房主！",
+  "zh_CN": "%s 离开了。你现在是房主！",
+  "ja": "%s が退出しました。あなたが新しいホストです！",
+  "fr": "%s est parti. Vous êtes l'hôte !",
+  "es": "¡%s se fue. Ahora eres el anfitrión!"
+ },
+ "Rematch votes: %d / %d": {
+  "zh_TW": "再戰投票：%d / %d",
+  "zh_CN": "再战投票：%d / %d",
+  "ja": "リマッチ投票：%d / %d",
+  "fr": "Votes pour la revanche : %d / %d",
+  "es": "Votos de revancha: %d / %d"
+ },
+ "K.O.!": {
+  "zh_TW": "擊倒！",
+  "zh_CN": "击倒！",
+  "ja": "KO！",
+  "fr": "K.O. !",
+  "es": "¡K.O.!"
+ },
+ "The host left. Waiting for the new host to start…": {
+  "zh_TW": "房主已離開。等待新房主開始遊戲…",
+  "zh_CN": "房主已离开。等待新房主开始游戏…",
+  "ja": "ホストが退出しました。新しいホストの開始を待っています…",
+  "fr": "L'hôte est parti. En attente du nouvel hôte pour lancer la partie…",
+  "es": "El anfitrión se fue. Esperando a que el nuevo anfitrión empiece…"
+ },
+ "You fell over!": {
+  "zh_TW": "你摔倒了！",
+  "zh_CN": "你摔倒了！",
+  "ja": "転んでしまった！",
+  "fr": "Chute !",
+  "es": "¡Te caíste!"
+ },
+ "Your own kick tripped you!": {
+  "zh_TW": "你自己的踢擊絆倒了你！",
+  "zh_CN": "你自己的踢击绊倒了你！",
+  "ja": "自分のキックでつまずいた！",
+  "fr": "Trébuché sur son propre coup de pied !",
+  "es": "¡Tu propio golpe te hizo tropezar!"
+ },
+ "Whoops! Missed and fell over": {
+  "zh_TW": "哎呀！撲空摔倒了",
+  "zh_CN": "哎呀！扑空摔倒了",
+  "ja": "おっと！空振りして転んだ",
+  "fr": "Oups ! Raté, chute",
+  "es": "¡Ups! Fallaste y te caíste"
+ },
+ "Trapped in a net!": {
+  "zh_TW": "被網住了！",
+  "zh_CN": "被网住了！",
+  "ja": "ネットに捕まった！",
+  "fr": "Pris dans un filet !",
+  "es": "¡Atrapado en la red!"
+ },
+ "Crate incoming: %s!": {
+  "zh_TW": "補給箱來了：%s！",
+  "zh_CN": "补给箱来了：%s！",
+  "ja": "クレート接近：%s！",
+  "fr": "Caisse en approche : %s !",
+  "es": "¡Caja en camino: %s!"
+ },
+ "+60 health!": {
+  "zh_TW": "+60 生命值！",
+  "zh_CN": "+60 生命值！",
+  "ja": "体力 +60！",
+  "fr": "+60 de santé !",
+  "es": "¡+60 de salud!"
+ },
+ "Health Pack": {
+  "zh_TW": "生命包",
+  "zh_CN": "生命包",
+  "ja": "ヘルスパック",
+  "fr": "Trousse de soins",
+  "es": "Botiquín"
+ },
+ "Speed Boost": {
+  "zh_TW": "加速",
+  "zh_CN": "加速",
+  "ja": "スピードブースト",
+  "fr": "Boost de vitesse",
+  "es": "Aumento de velocidad"
+ },
+ "Damage Boost": {
+  "zh_TW": "傷害強化",
+  "zh_CN": "伤害强化",
+  "ja": "ダメージブースト",
+  "fr": "Boost de dégâts",
+  "es": "Aumento de daño"
+ },
+ "Shield": {
+  "zh_TW": "護盾",
+  "zh_CN": "护盾",
+  "ja": "シールド",
+  "fr": "Bouclier",
+  "es": "Escudo"
+ },
+ "Speed boost! (12s)": {
+  "zh_TW": "加速！（12 秒）",
+  "zh_CN": "加速！（12 秒）",
+  "ja": "スピードアップ！（12秒）",
+  "fr": "Boost de vitesse ! (12 s)",
+  "es": "¡Aumento de velocidad! (12 s)"
+ },
+ "Damage boost! (12s)": {
+  "zh_TW": "傷害強化！（12 秒）",
+  "zh_CN": "伤害强化！（12 秒）",
+  "ja": "ダメージアップ！（12秒）",
+  "fr": "Boost de dégâts ! (12 s)",
+  "es": "¡Aumento de daño! (12 s)"
+ },
+ "Shield! Half damage (12s)": {
+  "zh_TW": "護盾！傷害減半（12 秒）",
+  "zh_CN": "护盾！伤害减半（12 秒）",
+  "ja": "シールド！ダメージ半減（12秒）",
+  "fr": "Bouclier ! Dégâts réduits de moitié (12 s)",
+  "es": "¡Escudo! Mitad de daño (12 s)"
+ },
+ "Wobbler": {
+  "zh_TW": "搖搖人",
+  "zh_CN": "摇摇人",
+  "ja": "ウォブラー",
+  "fr": "Wobbler",
+  "es": "Wobbler"
+ },
+ "Bruiser": {
+  "zh_TW": "壯漢",
+  "zh_CN": "壮汉",
+  "ja": "ブルーザー",
+  "fr": "Costaud",
+  "es": "Fortachón"
+ },
+ "Scamp": {
+  "zh_TW": "小淘氣",
+  "zh_CN": "小淘气",
+  "ja": "やんちゃ",
+  "fr": "Gamin",
+  "es": "Pillín"
+ },
+ "Gramps": {
+  "zh_TW": "老爺爺",
+  "zh_CN": "老爷爷",
+  "ja": "じいちゃん",
+  "fr": "Papy",
+  "es": "Abuelito"
+ },
+ "Zorp": {
+  "zh_TW": "佐普",
+  "zh_CN": "佐普",
+  "ja": "ゾープ",
+  "fr": "Zorp",
+  "es": "Zorp"
+ },
+ "Balanced. No surprises": {
+  "zh_TW": "均衡，沒有意外",
+  "zh_CN": "均衡，没有意外",
+  "ja": "バランス型。意外性なし",
+  "fr": "Équilibré. Sans surprise",
+  "es": "Equilibrado. Sin sorpresas"
+ },
+ "Big, slow, hard to shove": {
+  "zh_TW": "又大又慢，很難被推",
+  "zh_CN": "又大又慢，很难被推",
+  "ja": "大きくて遅い、突き飛ばされにくい",
+  "fr": "Grand, lent, difficile à bousculer",
+  "es": "Grande y lento, difícil de empujar"
+ },
+ "Tiny and zippy, easy to launch": {
+  "zh_TW": "又小又靈活，容易被彈飛",
+  "zh_CN": "又小又灵活，容易被弹飞",
+  "ja": "小柄で素早く、吹っ飛びやすい",
+  "fr": "Minuscule et vif, facile à catapulter",
+  "es": "Diminuto y ágil, fácil de lanzar"
+ },
+ "Sharp steering, quick reloads": {
+  "zh_TW": "轉向靈敏，換彈快",
+  "zh_CN": "转向灵敏，换弹快",
+  "ja": "操作が鋭く、リロードが速い",
+  "fr": "Maniabilité vive, rechargements rapides",
+  "es": "Dirección precisa, recargas rápidas"
+ },
+ "Fragile, floaty, great tech": {
+  "zh_TW": "脆弱、飄忽，技巧高",
+  "zh_CN": "脆弱、飘忽，技巧高",
+  "ja": "もろくて浮遊感あり、テクニック向き",
+  "fr": "Fragile, aérien, grande technique",
+  "es": "Frágil, flotante, gran técnica"
+ },
+ "Ninja Katana": {
+  "zh_TW": "忍者太刀",
+  "zh_CN": "忍者太刀",
+  "ja": "忍者カタナ",
+  "fr": "Katana ninja",
+  "es": "Katana ninja"
+ },
+ "Big Bat": {
+  "zh_TW": "大球棒",
+  "zh_CN": "大球棒",
+  "ja": "ビッグバット",
+  "fr": "Grosse batte",
+  "es": "Bate gigante"
+ },
+ "Shotgun": {
+  "zh_TW": "霰彈槍",
+  "zh_CN": "霰弹枪",
+  "ja": "ショットガン",
+  "fr": "Fusil à pompe",
+  "es": "Escopeta"
+ },
+ "Sniper": {
+  "zh_TW": "狙擊槍",
+  "zh_CN": "狙击枪",
+  "ja": "スナイパー",
+  "fr": "Fusil de précision",
+  "es": "Francotirador"
+ },
+ "Typhoon Blades": {
+  "zh_TW": "颱風刃",
+  "zh_CN": "台风刃",
+  "ja": "タイフーンブレード",
+  "fr": "Lames typhon",
+  "es": "Hojas tifón"
+ },
+ "Mammoth Pistol": {
+  "zh_TW": "猛瑪手槍",
+  "zh_CN": "猛犸手枪",
+  "ja": "マンモスピストル",
+  "fr": "Pistolet mammouth",
+  "es": "Pistola mamut"
+ },
+ "Spring Glove": {
+  "zh_TW": "彈簧拳套",
+  "zh_CN": "弹簧拳套",
+  "ja": "バネグローブ",
+  "fr": "Gant à ressort",
+  "es": "Guante de muelle"
+ },
+ "Meteor Launcher": {
+  "zh_TW": "流星發射器",
+  "zh_CN": "流星发射器",
+  "ja": "メテオランチャー",
+  "fr": "Lance-météores",
+  "es": "Lanzameteoros"
+ },
+ "Rocket Launcher": {
+  "zh_TW": "火箭發射器",
+  "zh_CN": "火箭发射器",
+  "ja": "ロケットランチャー",
+  "fr": "Lance-roquettes",
+  "es": "Lanzacohetes"
+ },
+ "Trident": {
+  "zh_TW": "三叉戟",
+  "zh_CN": "三叉戟",
+  "ja": "トライデント",
+  "fr": "Trident",
+  "es": "Tridente"
+ },
+ "Giant Mallet": {
+  "zh_TW": "巨型木槌",
+  "zh_CN": "巨型木槌",
+  "ja": "ジャイアントマレット",
+  "fr": "Maillet géant",
+  "es": "Mazo gigante"
+ },
+ "Snowball Cannon": {
+  "zh_TW": "雪球砲",
+  "zh_CN": "雪球炮",
+  "ja": "スノーボールキャノン",
+  "fr": "Canon à neige",
+  "es": "Cañón de nieve"
+ },
+ "Grenade Launcher": {
+  "zh_TW": "榴彈發射器",
+  "zh_CN": "榴弹发射器",
+  "ja": "グレネードランチャー",
+  "fr": "Lance-grenades",
+  "es": "Lanzagranadas"
+ },
+ "Cluster Launcher": {
+  "zh_TW": "集束發射器",
+  "zh_CN": "集束发射器",
+  "ja": "クラスターランチャー",
+  "fr": "Lance-clusters",
+  "es": "Lanzador de racimos"
+ },
+ "Throwing Knives": {
+  "zh_TW": "飛刀",
+  "zh_CN": "飞刀",
+  "ja": "投げナイフ",
+  "fr": "Couteaux de lancer",
+  "es": "Cuchillos arrojadizos"
+ },
+ "Net Gun": {
+  "zh_TW": "網槍",
+  "zh_CN": "网枪",
+  "ja": "ネットガン",
+  "fr": "Pistolet filet",
+  "es": "Pistola red"
+ },
+ "Snake Shooter": {
+  "zh_TW": "毒蛇發射器",
+  "zh_CN": "毒蛇发射器",
+  "ja": "スネークシューター",
+  "fr": "Tire-serpent",
+  "es": "Disparador serpiente"
+ },
+ "AK-47": {
+  "zh_TW": "AK-47",
+  "zh_CN": "AK-47",
+  "ja": "AK-47",
+  "fr": "AK-47",
+  "es": "AK-47"
+ },
+ "SMG": {
+  "zh_TW": "衝鋒槍",
+  "zh_CN": "冲锋枪",
+  "ja": "サブマシンガン",
+  "fr": "SMG",
+  "es": "SMG"
+ },
+ "Dual Uzis": {
+  "zh_TW": "雙持烏茲",
+  "zh_CN": "双持乌兹",
+  "ja": "デュアルウージ",
+  "fr": "Double Uzi",
+  "es": "Uzis dobles"
+ },
+ "Minigun": {
+  "zh_TW": "加特林",
+  "zh_CN": "加特林",
+  "ja": "ミニガン",
+  "fr": "Minigun",
+  "es": "Minigun"
+ },
+ "Revolver": {
+  "zh_TW": "左輪手槍",
+  "zh_CN": "左轮手枪",
+  "ja": "リボルバー",
+  "fr": "Revolver",
+  "es": "Revólver"
+ },
+ "Twin Fang Bow": {
+  "zh_TW": "雙牙弓",
+  "zh_CN": "双牙弓",
+  "ja": "ツインファングボウ",
+  "fr": "Arc double croc",
+  "es": "Arco de doble colmillo"
+ },
+ "Shuriken": {
+  "zh_TW": "手裡劍",
+  "zh_CN": "手里剑",
+  "ja": "手裏剣",
+  "fr": "Shuriken",
+  "es": "Shuriken"
+ },
+ "Flamethrower": {
+  "zh_TW": "火焰噴射器",
+  "zh_CN": "火焰喷射器",
+  "ja": "火炎放射器",
+  "fr": "Lance-flammes",
+  "es": "Lanzallamas"
+ },
+ "Boomerang": {
+  "zh_TW": "回力鏢",
+  "zh_CN": "回旋镖",
+  "ja": "ブーメラン",
+  "fr": "Boomerang",
+  "es": "Bumerán"
+ },
+ "Air Blower": {
+  "zh_TW": "氣炮",
+  "zh_CN": "气炮",
+  "ja": "エアブロワー",
+  "fr": "Souffleur à air",
+  "es": "Soplador de aire"
+ },
+ "Claw Hammer": {
+  "zh_TW": "爪錘",
+  "zh_CN": "爪锤",
+  "ja": "クローハンマー",
+  "fr": "Marteau-griffe",
+  "es": "Martillo de garra"
+ },
+ "Live Wire": {
+  "zh_TW": "電鞭",
+  "zh_CN": "电鞭",
+  "ja": "ライブワイヤー",
+  "fr": "Fouet électrique",
+  "es": "Látigo eléctrico"
+ }
+}

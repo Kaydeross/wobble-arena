@@ -87,7 +87,7 @@ func begin(p_url: String, p_room: String, info: Dictionary, token: String = "") 
 	phase = Phase.CONNECTING
 	_set_status("Connecting…")
 	if net.connect_to_server(url) != OK:
-		_finish("Couldn't open %s. Check the address and try again." % url); return false
+		_finish(tr("Couldn't open %s. Check the address and try again.") % url); return false
 	return true
 
 func is_active() -> bool:
@@ -165,12 +165,12 @@ func make_match(sim: MatchSim) -> NetMatch:
 func _on_connected() -> void:
 	if phase != Phase.CONNECTING: return
 	phase = Phase.JOINING
-	_set_status("Joining %s…" % room_code)
+	_set_status(tr("Joining %s…") % room_code)
 	net.join_room(room_code)
 
 func _on_disconnected() -> void:
 	if phase == Phase.CONNECTING:
-		_finish("Couldn't reach the game server at %s. Check the address and that the server is running." % url)
+		_finish(tr("Couldn't reach the game server at %s. Check the address and that the server is running.") % url)
 	elif phase != Phase.CLOSED and phase != Phase.IDLE:
 		_finish("Lost the connection to the game server. Try again in a moment.")
 
@@ -181,7 +181,7 @@ func _on_join_failed(reason: String) -> void:
 		_build_retry = true
 		net.join_room(room_code, "")
 		return
-	_finish(NOJOIN_TEXT.get(reason, "Couldn't join the room (%s). Try again." % reason))
+	_finish(tr(NOJOIN_TEXT[reason]) if NOJOIN_TEXT.has(reason) else tr("Couldn't join the room (%s). Try again.") % reason)
 
 func _on_server(m: Dictionary) -> void:
 	match str(m.get("op", "")):
@@ -212,7 +212,7 @@ func _rehost() -> void:
 	slot = -1; net.slot = -1; started = false; roster = []; voted = false; rv_list = []; rv_total = 0; host_gd = false
 	phase = Phase.WAITING
 	net.send_hello()
-	_set_status("%s left. Joining the new host…" % old)
+	_set_status(tr("%s left. Joining the new host…") % old)
 	_rehosting = true; _rehost_t = REHOST_WAIT
 	host_changing.emit(old)
 
@@ -258,7 +258,7 @@ func _on_room(m: Dictionary) -> void:
 			room_name = str(m.get("name", "")).substr(0, 24)
 			host_gd = NetSnapshot.to_int32(m.get("gd")) > 0
 			phase = Phase.LOBBY
-			_set_status("In room \"%s\" as player %d. Waiting for the host to start…" % [room_name, slot])
+			_set_status(tr("In room \"%s\" as player %d. Waiting for the host to start…") % [room_name, slot])
 			welcomed.emit(slot, room_name)
 			if _rehosting:
 				_rehosting = false; net.pslot = -1

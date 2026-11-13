@@ -40,7 +40,7 @@ func _draw() -> void:
 		draw_style_box(sb, r)
 		# the colour block
 		draw_style_box(UiTheme.box(col, 9, Color(1, 1, 1, 0.9), 2, 0), Rect2(r.position + Vector2(8, 8), Vector2(26, 26)))
-		draw_string(_font, r.position + Vector2(42, 27), NAMES[i], HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.8))
+		draw_string(_font, r.position + Vector2(42, 27), tr(NAMES[i]), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, 0.8))
 		var s := str(scores[i])
 		var sw := _font.get_string_size(s, HORIZONTAL_ALIGNMENT_LEFT, -1, 30).x
 		var sp := Vector2(r.end.x - 12.0 - sw, r.position.y + 31.0)
@@ -49,8 +49,9 @@ func _draw() -> void:
 		if lit:                                                    # "YOU" tag riding the top edge
 			var pill := Rect2(Vector2(r.position.x + CHIP.x / 2.0 - 22.0, 0), Vector2(44, 18))
 			draw_style_box(UiTheme.box(col, 9, Color(1, 1, 1, 0.9), 2, 0), pill)
-			var yw := _font.get_string_size("You", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-			draw_string(_font, pill.position + Vector2((pill.size.x - yw) / 2.0, 13.5), "You", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
-	var mid := "First to %d" % limit if limit > 0 else "vs"
+			var you := tr("You")
+			var yw := _font.get_string_size(you, HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+			draw_string(_font, pill.position + Vector2((pill.size.x - yw) / 2.0, 13.5), you, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+	var mid := (tr("First to %d") % limit) if limit > 0 else tr("vs")
 	var mw := _font.get_string_size(mid, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	draw_string(_font, Vector2(CHIP.x + (GAP - mw) / 2.0, 40), mid, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UiTheme.MUTED)

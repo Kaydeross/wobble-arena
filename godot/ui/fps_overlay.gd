@@ -118,10 +118,10 @@ func _process(dt: float) -> void:
 	var vp := get_viewport()
 	var top_inset: float = SafeArea.insets(vp)[1]
 	_panel.offset_top = 4.0 + top_inset
-	_top.text = "%d fps   %.1f ms   avg %.0f   1%% low %.0f" % [fps, dt * 1000.0, _avg, _low]
+	_top.text = tr("%d fps   %.1f ms   avg %.0f   1%% low %.0f") % [fps, dt * 1000.0, _avg, _low]
 	var draws := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	_bot.text = "%s · %s · 3D x%.2f · %d draws" % [renderer_name(), Tier.tier_name(), vp.scaling_3d_scale, draws]
+	_bot.text = tr("%s · %s · 3D x%.2f · %d draws") % [renderer_name(), Tier.tier_name(), vp.scaling_3d_scale, draws]
 
 static func renderer_name() -> String:
 	var m := RenderingServer.get_current_rendering_method()
-	return {"forward_plus": "Forward+", "mobile": "Mobile", "gl_compatibility": "Compatibility"}.get(m, m)
+	return TranslationServer.translate({"forward_plus": "Forward+", "mobile": "Mobile", "gl_compatibility": "Compatibility"}.get(m, m))

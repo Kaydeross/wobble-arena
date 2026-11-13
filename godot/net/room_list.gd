@@ -26,7 +26,7 @@ func fetch(url: String) -> void:
 	_t = 0.0; _sent = false; _opened = false
 	ws = WebSocketPeer.new()
 	if url.strip_edges() == "" or ws.connect_to_url(url.strip_edges()) != OK:
-		_finish([], ERR_REACH)
+		_finish([], tr(ERR_REACH))
 
 func poll(dt: float) -> void:
 	if not busy: return
@@ -45,10 +45,10 @@ func poll(dt: float) -> void:
 				_finish(clean(m.get("rooms", [])), "")
 				return
 	elif s == WebSocketPeer.STATE_CLOSED:
-		_finish([], ERR_SILENT if _opened else ERR_REACH)
+		_finish([], tr(ERR_SILENT) if _opened else tr(ERR_REACH))
 		return
 	if busy and _t > TIMEOUT:
-		_finish([], ERR_SILENT if _opened else ERR_REACH)
+		_finish([], tr(ERR_SILENT) if _opened else tr(ERR_REACH))
 
 func _finish(list: Array, err: String) -> void:
 	busy = false
@@ -72,6 +72,6 @@ static func clean(raw: Variant) -> Array:
 ## Why a room cannot be joined from the list ("" = it can): another game version, or no free seat.
 static func blocked_reason(r: Dictionary) -> String:
 	var b := str(r.get("build", ""))
-	if b != "" and b != NetClient.BUILD: return "Different game version"
-	if int(r.get("max", 0)) > 0 and int(r.get("n", 0)) >= int(r.get("max", 0)): return "Full"
+	if b != "" and b != NetClient.BUILD: return TranslationServer.translate("Different game version")
+	if int(r.get("max", 0)) > 0 and int(r.get("n", 0)) >= int(r.get("max", 0)): return TranslationServer.translate("Full")
 	return ""
