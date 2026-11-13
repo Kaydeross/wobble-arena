@@ -102,6 +102,7 @@ func _ready() -> void:
 	hub = ConstructionHub.new()
 	add_child(hub)
 	hub.start_requested.connect(play_offline)
+	hub.arcade_requested.connect(play_arcade)
 	hub.closed.connect(func() -> void:
 		_coins_sub()
 		if Tier.is_pc(): dlc_b.grab_focus.call_deferred())
@@ -605,6 +606,13 @@ func play_offline(over: Dictionary = {}) -> void:
 	world.bot_count = int(over.get("bots", wizard.bots))
 	world.difficulty = str(over.get("difficulty", wizard.diff))
 	world.build_mode = world.mode_id == "sandbox"     # Sandbox opens the arena in build mode (ui/build_hud.gd)
+	get_tree().change_scene_to_node(world)
+
+## The Construction hub's Arcade card: a new boss rush run (dlc/construction/arcade_manager.gd; locked players get nothing).
+func play_arcade() -> void:
+	var world: Node = ArcadeManager.launch()
+	if world == null: return
+	if session != null: session.leave("")
 	get_tree().change_scene_to_node(world)
 
 # ---------------- hosting and the lobby ----------------

@@ -476,6 +476,8 @@ func shrink_wander() -> float:
 ## MAPS.shrink/squeeze `drops` getter.
 func shrink_drops() -> Array:
 	var r := maxf(2.0, shrink["size"] / 2.0 - 3.0)
+	if shrink.has("spots"):                 # Construction Arcade (dlc/construction/stage_events.gd): the map's own crate spots that are still on the floor
+		return (shrink["spots"] as Array).filter(func(sp: Array) -> bool: return absf(sp[0]) <= r + 2.5 and absf(sp[1]) <= r + 2.5)
 	if shrink["id"] == "squeeze":
 		return [[r * 0.6, 4], [-r * 0.6, -4], [r * 0.9, -7], [-r * 0.9, 7], [r * 0.3, 8], [-r * 0.3, -8]]
 	return [[r * 0.5, 0], [-r * 0.5, 0], [0, r * 0.5], [0, -r * 0.5], [r * 0.8, r * 0.6], [-r * 0.8, -r * 0.6]]

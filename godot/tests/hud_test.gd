@@ -91,6 +91,7 @@ func _run() -> void:
 	await process_frame
 	await _team_layout()
 	await _build_layout()
+	await _arcade_layout()
 	SafeArea.override = []
 	print("HUD ok" if fails == 0 else "HUD checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
@@ -309,6 +310,96 @@ func _team_layout() -> void:
 		print("HUD teams %s checked (%s)" % [mode, ", ".join(keys)])
 		world.free()
 		await process_frame
+
+## Construction Arcade (dlc/construction/arcade_boss_hud.gd): the run strip and the boss bar hang under the toast, between the K.O. panel
+## and the radar, and the mode line starts under them; at every phone / tablet size and both handedness settings they stay inside
+## the safe area and clear of the HUD panels, the kill feed, the toast, the pause / emote buttons and the touch buttons; the
+## labels are at least MIN_FONT and the boss name fits its bar. Three stages: the crew (strip only), the Project Manager (boss bar
+## and the arena line from the deadline shrink) and the Client (boss bar).
+func _arcade_layout() -> void:
+	var AM: GDScript = load("res://dlc/construction/arcade_manager.gd")
+	var tier: Node = root.get_node("Tier")
+	_settings().set_value("touch_mode", "on")
+	root.get_node("Save").dlc["owned"] = true
+	var size0 := root.size
+	var ins0: Array = SafeArea.override
+	tier.force_ui_scale = true
+	var n_layouts := 0
+	for stage in [0, 4, 5]:
+		var world: Node = AM.call("launch", 11)
+		world.arcade.stage = stage
+		world.arcade.difficulty_override = "easy"
+		world.auto_run = false
+		world.rng_seed = 31
+		root.add_child(world)
+		await process_frame
+		world.arcade.begin_fight()
+		var hud: Control = world.hud
+		hud.add_feed(world.sim.player, world.sim.fighters[1], "hammer", false)       # the widest top-right content
+		hud.add_feed(null, world.sim.fighters[1], "", true)
+		for i in 30: world.tick(FRAME)
+		var ah: Control = world.arcade.hud
+		check(ah.visible and ah.boss_visible() == (stage > 0), "arcade stage %d: boss bar %s" % [stage + 1, ah.boss_visible()])
+		for c: Array in SIZES:
+			var win: Vector2 = c[0]
+			root.size = Vector2i(win)
+			tier.apply_ui_scale()
+			await process_frame
+			var vs := root.get_visible_rect().size
+			var k := vs.x / win.x
+			SafeArea.override = (c[1] as Array).map(func(v: float) -> float: return v * k)
+			world.touch._update_insets()
+			hud._update_insets()
+			for lefty in [false, true]:
+				_settings().set_value("touch_lefty", lefty)
+				hud.toast("Crate incoming: Mammoth Sniper Rifle!")
+				world.sim.player.hp = 150.0
+				for i in 3: world.tick(FRAME)
+				_arcade_checks(world, "arcade s%d %dx%d %s" % [stage + 1, win.x, win.y, "lefty" if lefty else "right"])
+				n_layouts += 1
+		world.free()
+		await process_frame
+	_settings().set_value("touch_lefty", false)
+	root.size = size0
+	tier.force_ui_scale = false
+	root.content_scale_factor = 1.0
+	SafeArea.override = ins0
+	await process_frame
+	print("HUD arcade: %d layouts checked (3 stages x %d sizes x 2 hands)" % [n_layouts, SIZES.size()])
+
+func _arcade_checks(world: Node, tag: String) -> void:
+	var hud: Control = world.hud
+	var ah: Control = world.arcade.hud
+	var vs: Vector2 = hud.get_viewport_rect().size
+	var ins: Array = SafeArea.override
+	var safe := Rect2(Vector2(ins[0], ins[1]), vs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
+	var r := Rect2(ah.position, ah.size)
+	check(safe.grow(0.5).encloses(r), "%s HUD %s inside safe %s" % [tag, r, safe])
+	var others := {}
+	for n: String in ["Score", "Radar", "Health", "Hotbar", "Toast"]:
+		var c: Control = hud.get_node(n)
+		if c.visible: others[n] = Rect2(c.position, c.size * c.scale)
+	var fd: Control = hud.get_node("Feed")
+	if fd.get_child_count() > 0: others["Feed"] = Rect2(fd.position, fd.size)
+	var ml: Control = world.get_node("UI/ModeLine")
+	if ml.visible: others["ModeLine"] = Rect2(ml.position, ml.size)
+	others["Pause"] = world.touch.pause_rect()
+	others["Emote"] = world.emote_wheel.button_rect()
+	for b: Array in world.touch.BUTTONS:
+		var br: Array = world.touch.button_rect(b)
+		others["btn " + str(b[0])] = Rect2(br[0] - Vector2(br[1], br[1]), Vector2(br[1], br[1]) * 2.0)
+	for n: String in others:
+		check(not r.intersects(others[n]), "%s HUD %s overlaps %s %s" % [tag, r, n, others[n]])
+	if others.has("Toast"): check(r.position.y - others["Toast"].end.y >= 6.0, "%s the HUD hangs %.0f px under the toast (need 6)" % [tag, r.position.y - others["Toast"].end.y])
+	if others.has("ModeLine"): check(others["ModeLine"].position.y - r.end.y >= 2.0, "%s the mode line keeps clear of the HUD" % tag)
+	for l: Label in [ah.strip, ah.name_l, ah.pct_l]:
+		if l.is_visible_in_tree() and l.text != "":
+			var fs: int = l.get_theme_font_size("font_size")
+			check(fs >= UiTheme.MIN_FONT, "%s label '%s' font %d below %d" % [tag, l.text, fs, UiTheme.MIN_FONT])
+			var tw: float = l.get_theme_font("font").get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			check(tw <= l.size.x + 0.5, "%s label '%s' (%.0f px) fits its %.0f px box" % [tag, l.text, tw, l.size.x])
+	if ah.bar.visible:
+		check(ah.name_l.size.x + ah.pct_l.size.x <= ah.bar.size.x, "%s name and percent fit the bar" % tag)
 
 ## Sandbox build mode (ui/build_hud.gd): the palette, its status line and the open Style panel stay inside the safe area,
 ## apart from each other, the touch buttons, the pause and emote buttons and a toast, on a phone (1170 x 540 canvas)

@@ -25,3 +25,23 @@ static func clean(v: Variant) -> Dictionary:
 			if id is String and (id as String).length() <= 32 and not out["arcade_clears"].has(id) and out["arcade_clears"].size() < 32:
 				out["arcade_clears"].append(id)
 	return out
+
+## Arcade progress helpers (dlc/construction/arcade_manager.gd). The victory is remembered as the pseudo stage id "_victory"
+## in arcade_clears (so the blob keeps its shape): it owns the exclusive Site Foreman hat.
+const VICTORY := "_victory"
+
+static func has_cleared(d: Dictionary, id: String) -> bool:
+	return (d.get("arcade_clears", []) as Array).has(id)
+
+static func won_arcade(d: Dictionary) -> bool:
+	return has_cleared(d, VICTORY)
+
+## Hats only the Arcade victory unlocks (data/extra/locker.json `exclusive_hats`).
+static var _exclusive: Array = []
+static var _exclusive_read := false
+static func exclusive_hats() -> Array:
+	if not _exclusive_read:
+		_exclusive_read = true
+		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string("res://data/extra/locker.json"))
+		_exclusive = (v as Dictionary).get("exclusive_hats", []) if v is Dictionary else []
+	return _exclusive

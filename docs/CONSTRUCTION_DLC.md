@@ -103,3 +103,49 @@ Screenshots: `godot --path godot --resolution 1280x720 --script res://tests/site
 - **Unlock** (`dlc_unlock.gd`, state in `dlc_save.gd`): 1500 coins (`DlcUnlock.PRICE`) or the developer code. Save blob key `dlc` = `{owned, arcade_best, arcade_clears, bonus}`, written only once the DLC is touched (old saves load as locked; the web game ignores the key). The code is never stored or logged: only `sha256("wobblers-arena-dlc-v1:" + code)` is compared with `DEV_HASH`. A right code unlocks the DLC, every outfit, emote and class (secret ones too), pays 5000 coins once and adds `dev` to the wallet codes; three wrong tries start a 1.5 s cooldown. The code field is on the hub (Enter code) and in Settings > About (tap the version line 7 times).
 - **Hub**: Classic (pre-match card: bots 1..7 default 7, bot skill, site seed Random / Re-roll, Start) and Arcade ("Coming soon" until `res://dlc/construction/arcade_manager.gd` exists; the hub emits `arcade_requested` for the arcade manager to hook). Start writes the Settings keys `mode = construction`, `bots`, `difficulty`, `offline_map` (`sitegen` when that map is registered, else `siteyard`) and `site_seed` (0 = a new random site every match), then calls `main.play_offline({...})`.
 - Tests: `npm run test:godot-dlc-ui` (`godot/tests/dlc_ui_test.gd`), plus the `dlc-*` screens in `ui_layout_test.gd`.
+
+## Unit D: the Arcade boss rush
+
+**Flow.** Title > Construction > Arcade card (enabled once `dlc/construction/arcade_manager.gd` exists and the DLC is owned) > `main.play_arcade()` >
+`ArcadeManager.launch()` builds a World with `world.arcade` set. `start_run(seed)` picks the run seed (the stage sites are `base + map_seed_offset`, +1009 per retry)
+and 3 lives. Per stage: **intro card** (stage no., name, tagline, the boss portrait in its table colour, Start; the match is frozen behind it) > fight > **stage clear
+card** (name, time, K.O.s, coins, Next stage / Quit run) or **stage failed card** (lives left, Retry stage / Quit run) > after the sixth stage the **victory card**.
+Dying (or falling out) ends the attempt after 1.8 s, costs a life and retries the SAME stage on a fresh site; no lives left = **run over** card. Stage clear = the boss is
+down (stages with `boss: true`; the crew that is left gives up) or every enemy is (stage 1). Enemies that go down never respawn. Quit run = back to the title.
+
+**Rewards.** `coin_reward + first_clear_bonus` is paid ONCE per stage, the first time it is cleared (`Save.dlc.arcade_clears`); a replay pays only the normal K.O. coins.
+`arcade_best` = furthest stage cleared. The victory (after The Client) pays 2000 bonus coins once and unlocks the exclusive **Site Foreman Hard Hat** (`foreman`, rare;
+`locker.json` `extra_hats` + `exclusive_hats`, listed by `LockerData.hats()` only after the victory; remembered as the pseudo stage id `_victory` in `arcade_clears`).
+
+**What the stage table drives** (`ArcadeManager._dress`): each bot's name, skin, hat, colour, tool (`give_weapon`, topped up every 0.5 s so tools never run dry), `hp` (x the
+Health setting, via `cls_hp`), `dmg_scale` (x the skill's damage), `speed` (x the skill's speed) and `difficulty` (its own `BotBrain`; `bot_brain.gd` itself is untouched).
+Bots are not hostile to each other (`combat.ffa = false`). The Client's `giant_scale` makes him a Giant (`big_t`, 1.5 x model; health and damage are divided back so the
+table's numbers hold). Boss phases at 66 % and 33 % health: speed x1.1, damage x1.2 each, a toast; stages with `change_request` also swap tools.
+
+**Events** (`stage_events.gd`, driven by `ArcadeManager.step` after each sim step; own RNG = the run's, never the combat RNG):
+
+| Type | Stage | Behaviour |
+| --- | --- | --- |
+| `load_test` | Engineer | every `every` s, `crate_count` crates drop (one near you); a red ring warns `warning_time` s ahead; the landing hurts everyone within 2.8 m (30 dmg) |
+| `revision_pads` | Designer | every `every` s, 3 boost pads (bounce power x `boost_mul`) for `duration` s |
+| `backup_call` | Supervisor | once, at `hp_threshold` of the boss' health: `summon_count` tradies (`summon_bots` names) join in |
+| `deadline_shrink` | Project Manager | `ModeRules.shrink` on the site floor (the Mega / Shrink machinery): holds `every` s, closes in at `rate` m/s to `min_floor`, breathes back out and repeats; crate spots stay the map's own (`shrink["spots"]`) |
+| `scope_creep` | Project Manager | every `every` s, `spawn_extra` more tradies, at most `max_extra` alive |
+| `change_request` | The Client | at the boss phases: the boss (and you) get a random different tool; `giant_scale` |
+
+`whistle shove` and `red-tape net` are not in `stages.json`, so they are not built (only types present in the table are implemented).
+
+**HUD.** `arcade_boss_hud.gd`: a run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its bar in the stage's `hp_bar_color` (name inside, ticks at 66 / 33 %). It hangs in
+the `MatchHud.TOP_STACK` slot under the toast, between the K.O. panel and the radar (and the kill feed); `World._update_mode_ui` starts the mode line under it. `hud_test.gd`
+checks it at every phone / tablet size, both handedness settings (`npm run test:godot-ui`).
+
+**World hooks** (all `if arcade != null`): `begin_stage` (top of `load_map`), `setup_sim` (after `MatchSim.setup`), `stage_ready` (end of `load_map`), `step` (after each sim step),
+`show_panel` / `close_panel` / `add_view`; the kill cam is off in a run. Every other mode is byte-identical.
+
+**How to add a stage.** Append an entry to `godot/data/extra/construction/stages.json` (`id`, `name`, `tagline`, `boss`, `hp_bar_color`, `map_seed_offset`, `coin_reward`,
+`first_clear_bonus`, `bots[]`, `events[]`; see its `_readme`). Skins and hats must exist in `cosmetics.json`, tools in `weapons.json`. Add the name and tagline to a
+`godot/i18n/src/*.json` file (5 languages) and run `node tools/i18n.js`. A new event type: a `case` in `StageEvents.update` plus its `_xxx` method. Extend
+`godot/tests/arcade_test.gd` (the full run walks the whole table) and run `npm run test:godot-arcade`.
+
+Tests: `npm run test:godot-arcade` (`godot/tests/arcade_test.gd`: all six stages with a boosted hammer, lives / retry / run over, events, phases, once-only coins, saved
+records and the hat, a Classic match afterwards). Screenshots: `godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot arcade-<intro|fight|engineer|client|clear|victory> --out FILE.png`.

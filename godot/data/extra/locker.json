@@ -373,10 +373,12 @@
   "santa": "Santa",
   "hardhat": "Hard Hat",
   "hardhat_white": "White Hard Hat",
-  "hardhat_orange": "Orange Hard Hat"
+  "hardhat_orange": "Orange Hard Hat",
+  "foreman": "Site Foreman Hard Hat"
  },
- "extra_hats": ["hardhat", "hardhat_white", "hardhat_orange"],
- "hat_rarity": {"hardhat": "common", "hardhat_white": "common", "hardhat_orange": "common"},
+ "extra_hats": ["hardhat", "hardhat_white", "hardhat_orange", "foreman"],
+ "exclusive_hats": ["foreman"],
+ "hat_rarity": {"hardhat": "common", "hardhat_white": "common", "hardhat_orange": "common", "foreman": "rare"},
  "hat_icon": {
   "none": "🚫",
   "party": "🎉",
