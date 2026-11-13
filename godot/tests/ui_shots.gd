@@ -5,7 +5,8 @@ extends SceneTree
 ## wizard-arena / wizard-players / wizard-character / wizard-start (the five offline setup wizard pages in order,
 ## ui/setup_wizard.gd; the character page waits for its 3D renders), match (offline world with the HUD), touch (same with the touch layer forced on and
 ## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
-## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
+## Construction banner, same as title), dlc-hub-locked / dlc-hub-poor / dlc-hub (the Construction hub: locked with enough coins, locked
+## and short of coins, unlocked) / dlc-prematch (the Classic pre-match card) / dlc-code (the code sheet), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
 ## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
 ## teams (Team Deathmatch with the team scoreboard), locker-skin / locker-hat / locker-color / locker-emote /
 ## locker-class (the Walldrobe tabs, ui/locker.gd: a few outfits, emotes and a class bought first, a card picked; --pick
@@ -43,6 +44,9 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
+	var la := OS.get_cmdline_user_args()
+	for k in la.size():
+		if la[k] == "--lang" and k + 1 < la.size(): root.get_node("Lang").apply(la[k + 1])   # (the Lang autoload picks the device language otherwise)
 	if "--phone" in OS.get_cmdline_user_args():          # like a touch device: the 44 pt UI scale and the touch layer (docs/UI_REVIEW.md)
 		_settings().set_value("ui_scale", "normal")
 		_settings().set_value("touch_mode", "on")
@@ -83,6 +87,19 @@ func _start() -> void:
 		frames = 150
 		process_frame.connect(_wait)
 		return
+	if shot.begins_with("dlc-"):
+		var sv: Node = root.get_node("Save")
+		sv.coins = 800 if shot == "dlc-hub-poor" else 2300
+		if shot in ["dlc-hub", "dlc-prematch"]: sv.dlc["owned"] = true
+		var m: Node = load("res://scenes/main.tscn").instantiate()
+		m.auto_intro = false
+		root.add_child(m)
+		m.open_hub()
+		if shot == "dlc-prematch": m.hub.open_pre()
+		if shot == "dlc-code": m.hub.open_code()
+		frames = 40
+		process_frame.connect(_wait)
+		return
 	if shot == "news":                                    # the What's new card over the title
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
@@ -112,7 +129,6 @@ func _start() -> void:
 	if (shot.begins_with("polish-") and not shot.begins_with("polish-pause")) or shot.begins_with("online-"):
 		_polish()
 		return
-	if shot == "title-construction": _settings().set_value("mode", "construction")
 	if shot == "modes2-mode": shot = "newmodes-mode2"
 	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
 		if shot.begins_with("wizard") or shot.begins_with("newmodes"):   # a fixed setup so the shots are comparable

@@ -1,7 +1,8 @@
 extends SceneTree
 ## Construction mode offline, headless (run by tools/test-construction.js, npm run test:godot-construction):
 ##   godot --headless --path godot --script res://tests/construction_test.gd -- --no-save
-## 1. Title: the Mode picker lists Classic and Construction; Construction offers only Site Yard, Classic arena/practice.
+## 1. Title: the wizard's game types do NOT list Construction any more (the title's Construction banner opens the hub); the
+##    mode itself still offers only Site Yard (the hub's Start sets Settings mode / offline_map), Classic arena/practice.
 ## 2. Site Yard builds (solids = boxes, 2 bounce pads, no ladders); dynamic floors resolve like the web (drift only).
 ## 3. Crates in Construction only ever hold what the mode allows (heal, hammer, Live Wire, Air Blower, power-ups).
 ## 4. A 30 s match on Site Yard in Construction: everyone starts with the Claw Hammer, bots swing it, the scripted
@@ -51,15 +52,10 @@ func _title() -> void:
 	var w = main.wizard   # the setup wizard (ui/setup_wizard.gd): game type page lists the modes
 	var names: Array = []
 	for m: String in w.modes(): names.append(w.mode_name(m))
-	check(names.has("Classic") and names.has("Construction"), "wizard modes %s" % [names])
+	check(names.has("Classic") and not names.has("Construction"), "wizard modes %s (Construction lives behind the banner)" % [names])
 	check(w.maps_for("classic").has("arena") and w.maps_for("classic").has("practice") and not w.maps_for("classic").has("siteyard"), "classic maps %s" % [w.maps_for("classic")])
 	check(w.maps_for("construction") == ["siteyard"], "construction maps %s" % [w.maps_for("construction")])
-	w.set_map("arena")
-	w.set_mode("construction")
-	check(w._map_bs.size() == 1 and w._map_bs.has("siteyard") and w.map_id == "siteyard", "Construction lists only Site Yard")
-	check(str(root.get_node("Settings").get_value("mode")) == "construction", "mode saved in Settings")
-	w.set_mode("classic")
-	check(w._map_bs.has("arena") and w._map_bs.has("practice") and w.map_id == "arena", "Classic lists arena + practice again")
+	check(main.get_node("Safe/Col/Body/Home/Construction") != null, "the title has the Construction banner")
 	print("TITLE modes=%s" % [names])
 	vp.queue_free()
 	await process_frame

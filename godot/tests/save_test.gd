@@ -137,6 +137,25 @@ func _parity() -> void:
 	check(gb.has("quests") and gb["quests"] is Dictionary, "the blob carries the goals")
 	gb.erase("quests")
 	check(g.apply_blob(gb) and g.quests == Quests.fresh() and not g.extra.has("quests") and not g.get_blob()["wallet"].has("quests"), "an old blob without quests loads with fresh goals")
+	# the Godot-only "dlc" key (Construction DLC: dlc/construction/dlc_save.gd): ignored by the web, additive, absent until used
+	check(snap.begins_with("function snapshot()") and not snap.contains("dlc"), "the web save ignores the dlc key")
+	check(not gb.has("dlc") and g.dlc == DlcSave.fresh(), "a profile that never touched the DLC writes no dlc key")
+	g.dlc["owned"] = true
+	g.dlc["arcade_best"] = 3
+	g.dlc["arcade_clears"] = ["tradies", "engineer", "designer"]
+	var db := g.get_blob()
+	check(db.has("dlc") and db["dlc"]["owned"] == true and int(db["dlc"]["arcade_best"]) == 3, "the blob carries the dlc state")
+	var g2 := _fresh()
+	g2.persist = false
+	check(g2.apply_blob(db) and g2.dlc == g.dlc and not g2.extra.has("dlc"), "the dlc key round-trips through apply_blob (and is not kept twice)")
+	var db_js: Variant = JSON.parse_string(JSON.stringify(db))      # through JSON, like the file and the cloud (ints come back as floats)
+	var g3 := _fresh()
+	g3.persist = false
+	check(g3.apply_blob(db_js) and g3.dlc["owned"] == true and int(g3.dlc["arcade_best"]) == 3 and g3.dlc["arcade_clears"].size() == 3, "the dlc key survives JSON")
+	db.erase("dlc")
+	check(g2.apply_blob(db) and g2.dlc == DlcSave.fresh(), "an old blob without dlc loads as locked, nothing else changed")
+	db["dlc"] = {"owned": "yes", "arcade_best": -4, "arcade_clears": [5, "x", "x"], "junk": 1}
+	check(g2.apply_blob(db) and g2.dlc == {"owned": false, "arcade_best": 0, "arcade_clears": ["x"], "bonus": false}, "a damaged dlc key is cleaned (%s)" % [g2.dlc])
 	var shop := js.substr(js.find("const SKIN_SHOP = {"), 1200)
 	for k: String in LockerData.data()["skin_shop"]:
 		var e: Array = LockerData.data()["skin_shop"][k]
