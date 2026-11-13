@@ -141,7 +141,7 @@ func show_section(s: String) -> void:
 			_toggle("show_fps", "Show frame rate (FPS)", "F3 or a three-finger tap also toggles it")
 			_toggle("perf_overlay", "Performance readout", "Top-left: fps, frame time, CPU / GPU, draws, thermal. For testing on a device.")
 			if not in_match:
-				_info("soak", "15-minute soak test", "An offline Chaos 5v5 bot match logs the frame rate every second. Leave the phone alone: the screen stays on. Results: Files app > Wobblers Arena > soak.")
+				_info("soak", "15-minute soak test", "An offline Chaos 5v5 bot match logs the frame rate every second. Leave the phone alone: the screen stays on. At the end, tap Copy summary to share the result.")
 				_buttons("Soak", [["soak", "Start soak test", func() -> void: SoakRun.launch(get_tree())]])
 		"audio":
 			_toggle("muted", "Sound", "", true)

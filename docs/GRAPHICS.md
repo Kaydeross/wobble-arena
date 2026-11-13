@@ -171,10 +171,9 @@ next to the CSV. Pausing the match pauses the soak clock; Quit to title abandons
 3. Settings > Graphics > **Start soak test**. Leave the phone propped up for 15 minutes without touching it. Do not
    switch apps (a backgrounded run is invalid).
 4. When the card appears, tap **Copy summary** and paste it into a message or note (that is the number to send back).
-5. The CSV: Files app > On My iPhone > Wobblers Arena > soak > `<date>_<time>.csv` (and `.txt`). Share it from there
-   (long-press > Share / AirDrop), or on a Mac use Finder > the iPhone > Files > Wobblers Arena. The export sets
-   `UIFileSharingEnabled` and `LSSupportsOpeningDocumentsInPlace` (`godot/export_presets.cfg`,
-   `user_data/accessible_from_*`), which also shows the app's other user files (settings, save) in Files.
+5. The full CSV stays inside the app (`user://soak/<date>_<time>.csv` and `.txt`). The app's files are **not** shared
+   to the Files app, because they include `settings.cfg` with the account token. To get the CSV, run the soak from Xcode
+   (Window > Devices and Simulators > the app > Download Container) or use the Copy summary text.
 6. For the exit criterion read the card: PASS with the worst minute near 60 fps and last third equal to the first third.
    Compare the CSV's `fps` and `frame_ms_p95` columns by minute to see where it dips; `draws` / `objects` per map show
    which arena is heaviest. Run it once more right after to see a warm-phone result.
