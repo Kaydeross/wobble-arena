@@ -18,7 +18,7 @@ func _init() -> void:
 	reload()
 
 func reload() -> void:
-	weapons = load_json("weapons")
+	weapons = ExtraWeapons.merge(load_json("weapons"))   # + Godot-only weapons (res://data/extra/construction/weapons.json)
 	modes = ModeRules.merge_extra(load_json("modes"))   # + Godot-only modes (res://data/extra/modes.json)
 	classes = ExtraClasses.merge(load_json("classes"))   # + Godot-only classes (res://data/extra/classes.json)
 	cosmetics = load_json("cosmetics")
