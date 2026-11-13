@@ -1042,6 +1042,13 @@
   "fr": "Un match Chaos 5 contre 5 contre des bots, hors ligne, note la fréquence d'images chaque seconde. Ne touchez pas le téléphone : l'écran reste allumé. À la fin, touchez Copier le résumé pour partager le résultat.",
   "es": "Una partida Caos 5 contra 5 con bots sin conexión registra la tasa de fotogramas cada segundo. No toques el teléfono: la pantalla sigue encendida. Al final, toca Copiar resumen para compartir el resultado."
  },
+ "Angle Grinder": {
+  "zh_TW": "角磨機",
+  "zh_CN": "角磨机",
+  "ja": "ディスクグラインダー",
+  "fr": "Meuleuse d'angle",
+  "es": "Amoladora angular"
+ },
  "App only: a web player in the room makes it Classic.": {
   "zh_TW": "僅限應用程式：房間內有網頁玩家時會改為經典模式。",
   "zh_CN": "仅限应用：房间内有网页玩家时会改为经典模式。",
@@ -1693,6 +1700,13 @@
   "fr": "CPU / GPU ms (médiane)",
   "es": "CPU / GPU ms (mediana)"
  },
+ "Calculated risk. Watch out for falling load test crates.": {
+  "zh_TW": "計算精確的風險。小心墜落的負載測試箱。",
+  "zh_CN": "计算精确的风险。小心坠落的负载测试箱。",
+  "ja": "計算されたリスク。落下する荷重テスト木箱に注意。",
+  "fr": "Risque calculé. Attention aux caisses de test de charge qui tombent.",
+  "es": "Riesgo calculado. Cuidado con las cajas de prueba de carga que caen."
+ },
  "Camera": {
   "zh_TW": "鏡頭",
   "zh_CN": "镜头",
@@ -1756,6 +1770,13 @@
   "fr": "Roue",
   "es": "Voltereta lateral"
  },
+ "Cement Bucket": {
+  "zh_TW": "水泥桶",
+  "zh_CN": "水泥桶",
+  "ja": "セメントバケツ",
+  "fr": "Seau de ciment",
+  "es": "Cubo de cemento"
+ },
  "Champ": {
   "zh_TW": "冠軍",
   "zh_CN": "冠军",
@@ -1776,6 +1797,13 @@
   "ja": "パスワードを変更",
   "fr": "Changer le mot de passe",
   "es": "Cambiar contraseña"
+ },
+ "Change request approved! Weapons swapped!": {
+  "zh_TW": "修改需求已批准！武器已更換！",
+  "zh_CN": "修改需求已批准！武器已更换！",
+  "ja": "仕様変更承認！武器が変更された！",
+  "fr": "Demande de modification approuvée ! Changement d'armes !",
+  "es": "¡Solicitud de cambio aprobada! ¡Armas intercambiadas!"
  },
  "Chaos": {
   "zh_TW": "混亂",
@@ -2001,6 +2029,13 @@
   "fr": "Cône",
   "es": "Cono"
  },
+ "Cone Launcher": {
+  "zh_TW": "錐筒發射器",
+  "zh_CN": "锥筒发射器",
+  "ja": "コーンランチャー",
+  "fr": "Lance-cône",
+  "es": "Lanzaconos"
+ },
  "Connected · %s": {
   "zh_TW": "已連線 · %s",
   "zh_CN": "已连接 · %s",
@@ -2063,6 +2098,13 @@
   "ja": "概要をコピー",
   "fr": "Copier le résumé",
   "es": "Copiar resumen"
+ },
+ "Cordless Drill": {
+  "zh_TW": "手電鑽",
+  "zh_CN": "手电钻",
+  "ja": "コードレスドリル",
+  "fr": "Perceuse sans fil",
+  "es": "Taladro inalámbrico"
  },
  "Could not change it.": {
   "zh_TW": "無法變更。",
@@ -2463,6 +2505,13 @@
   "fr": "Dash / Recharger",
   "es": "Impulso / Recargar"
  },
+ "Deadline approaching! Floor is shrinking!": {
+  "zh_TW": "截止日期臨近！地面正在縮小！",
+  "zh_CN": "截止日期临近！地面正在缩小！",
+  "ja": "納期が迫る！床が縮小しているぞ！",
+  "fr": "Date limite imminente ! Le sol rétrécit !",
+  "es": "¡Se acerca la fecha límite! ¡El suelo se encoge!"
+ },
  "Death Match": {
   "zh_TW": "死鬥",
   "zh_CN": "死斗",
@@ -2490,6 +2539,13 @@
   "ja": "アカウントを削除",
   "fr": "Supprimer le compte",
   "es": "Eliminar cuenta"
+ },
+ "Designer": {
+  "zh_TW": "設計師",
+  "zh_CN": "设计师",
+  "ja": "デザイナー",
+  "fr": "Designer",
+  "es": "Diseñador"
  },
  "Detective": {
   "zh_TW": "偵探",
@@ -2742,6 +2798,13 @@
   "ja": "敵チームの勝ち！",
   "fr": "L'équipe ennemie gagne !",
   "es": "¡Gana el equipo enemigo!"
+ },
+ "Engineer": {
+  "zh_TW": "工程師",
+  "zh_CN": "工程师",
+  "ja": "エンジニア",
+  "fr": "Ingénieur",
+  "es": "Ingeniero"
  },
  "Enter a server address and a room code.": {
   "zh_TW": "請輸入伺服器位址和房間代碼。",
@@ -3779,6 +3842,13 @@
   "fr": "Veste",
   "es": "Chaqueta"
  },
+ "Jackhammer": {
+  "zh_TW": "氣動鎬",
+  "zh_CN": "风镐",
+  "ja": "削岩機",
+  "fr": "Marteau-piqueur",
+  "es": "Martillo neumático"
+ },
  "Jester": {
   "zh_TW": "小丑",
   "zh_CN": "小丑",
@@ -4044,6 +4114,13 @@
   "ja": "残機 %d",
   "fr": "Vies %d",
   "es": "Vidas %d"
+ },
+ "Load test incoming! Crates falling!": {
+  "zh_TW": "負載測試開始！板箱正在墜落！",
+  "zh_CN": "负载测试开始！板箱正在坠落！",
+  "ja": "荷重テスト開始！木箱が降ってくるぞ！",
+  "fr": "Test de charge imminent ! Caisses en chute !",
+  "es": "¡Prueba de carga entrante! ¡Cajas cayendo!"
  },
  "Lobby": {
   "zh_TW": "大廳",
@@ -4409,6 +4486,13 @@
   "fr": "Mythique",
   "es": "Mítico"
  },
+ "Nail Gun": {
+  "zh_TW": "釘槍",
+  "zh_CN": "钉枪",
+  "ja": "ネイルガン",
+  "fr": "Pistolet à clous",
+  "es": "Pistola de clavos"
+ },
  "Names nobody uses for 30 days are freed.": {
   "zh_TW": "30 天沒人使用的名字會被釋出。",
   "zh_CN": "30 天没人使用的名字会被释放。",
@@ -4668,6 +4752,13 @@
   "fr": "Pas à vendre",
   "es": "No está en venta"
  },
+ "Not on my watch! Calls in backup when pressed.": {
+  "zh_TW": "休想在我的地盤撒野！受到威脅時呼叫增援。",
+  "zh_CN": "休想在我的地盘撒野！受到威胁时呼叫增援。",
+  "ja": "オレの目の前で勝手はさせん！追い詰められると応援を呼ぶ。",
+  "fr": "Pas sous ma garde ! Appelle du renfort en cas d'urgence.",
+  "es": "¡No bajo mi supervisión! Pide refuerzos si se ve acorralado."
+ },
  "Not saved to the cloud: this account changed on another device.": {
   "zh_TW": "未儲存到雲端：此帳號在另一部裝置上有變更。",
   "zh_CN": "未保存到云端：此账号在另一台设备上有改动。",
@@ -4737,6 +4828,13 @@
   "ja": "オン",
   "fr": "Activé",
   "es": "Sí"
+ },
+ "One last change request before sign-off!": {
+  "zh_TW": "簽收前的最後一個修改需求！",
+  "zh_CN": "签收前的最后一个修改需求！",
+  "ja": "承認前にもう1件だけ仕様変更の依頼だ！",
+  "fr": "Une toute dernière demande de modification avant signature !",
+  "es": "¡Una última solicitud de cambio antes de la entrega!"
  },
  "One leg up, then the other, then a power kick": {
   "zh_TW": "一腳抬起，換另一腳，最後強力踢擊",
@@ -5032,6 +5130,13 @@
   "fr": "Piliers, une vie, une nouvelle arme toutes les 10 s",
   "es": "Pilares, una vida, un arma nueva cada 10 s"
  },
+ "Pipe Wrench": {
+  "zh_TW": "管鉗",
+  "zh_CN": "管钳",
+  "ja": "パイプレンチ",
+  "fr": "Clé à tube",
+  "es": "Llave grifa"
+ },
  "Pirate": {
   "zh_TW": "海盜",
   "zh_CN": "海盗",
@@ -5199,6 +5304,13 @@
   "ja": "非公開（コード）",
   "fr": "Privé (code)",
   "es": "Privada (código)"
+ },
+ "Project Manager": {
+  "zh_TW": "專案經理",
+  "zh_CN": "项目经理",
+  "ja": "プロジェクトマネージャー",
+  "fr": "Chef de projet",
+  "es": "Jefe de proyecto"
  },
  "Propeller": {
   "zh_TW": "螺旋槳",
@@ -5430,6 +5542,13 @@
   "ja": "再開",
   "fr": "Reprendre",
   "es": "Reanudar"
+ },
+ "Revision pads active! Step carefully!": {
+  "zh_TW": "修改彈跳墊已啟用！小心腳下！",
+  "zh_CN": "修改弹跳垫已启用！小心脚下！",
+  "ja": "修正パッド稼働中！足元に注意！",
+  "fr": "Plateformes de révision actives ! Attention où tu marches !",
+  "es": "¡Plataformas de revisión activas! ¡Pisa con cuidado!"
  },
  "Revolver": {
   "zh_TW": "左輪手槍",
@@ -5696,6 +5815,20 @@
   "ja": "やんちゃ",
   "fr": "Gamin",
   "es": "Pillín"
+ },
+ "Scope creep! Extra workers arriving!": {
+  "zh_TW": "需求蔓延！額外工人趕到了！",
+  "zh_CN": "需求蔓延！额外工人赶到了！",
+  "ja": "スコープの肥大化！追加の作業員が到着！",
+  "fr": "Dérive des objectifs ! Des ouvriers supplémentaires arrivent !",
+  "es": "¡Ampliación de alcance! ¡Llegan trabajadores adicionales!"
+ },
+ "Scope is fluid. Mind the revision pads!": {
+  "zh_TW": "需求變動中。注意修改彈跳墊！",
+  "zh_CN": "需求变动中。注意修改弹跳垫！",
+  "ja": "スコープは流動的。修正パッドに気をつけろ！",
+  "fr": "Le périmètre évolue. Gare aux plateformes de révision !",
+  "es": "El alcance es flexible. ¡Cuidado con las plataformas de revisión!"
  },
  "Score 50 K.O.s": {
   "zh_TW": "擊倒 50 次",
@@ -6026,6 +6159,13 @@
   "fr": "Petit",
   "es": "Pequeño"
  },
+ "Smoko's over. Watch your back around the tool shed.": {
+  "zh_TW": "休息結束了。在工具棚附近多加小心。",
+  "zh_CN": "休息结束了。在工具棚附近多加小心。",
+  "ja": "休憩時間は終わりだ。道具置き場周辺に気をつけろ。",
+  "fr": "La pause est finie. Fais attention à toi près du hangar à outils.",
+  "es": "Se acabó el descanso. Cuida tu espalda cerca del cobertizo de herramientas."
+ },
  "Snake Shooter": {
   "zh_TW": "毒蛇發射器",
   "zh_CN": "毒蛇发射器",
@@ -6179,6 +6319,13 @@
   "ja": "くるくる回ってジャンプ。全員が持っています",
   "fr": "Tourne et saute. Tout le monde l'a",
   "es": "Gira y salta. Todos la tienen"
+ },
+ "Spirit Level": {
+  "zh_TW": "水平尺",
+  "zh_CN": "水平尺",
+  "ja": "水準器",
+  "fr": "Niveau à bulle",
+  "es": "Nivel de burbuja"
  },
  "Spooky": {
   "zh_TW": "驚悚",
@@ -6446,6 +6593,20 @@
   "fr": "Supernova",
   "es": "Supernova"
  },
+ "Supervisor": {
+  "zh_TW": "監工",
+  "zh_CN": "监工",
+  "ja": "現場監督",
+  "fr": "Superviseur",
+  "es": "Supervisor"
+ },
+ "Supervisor called in backup tradies!": {
+  "zh_TW": "監工呼叫了工友增援！",
+  "zh_CN": "监工呼叫了工友增援！",
+  "ja": "現場監督が応援の職人を呼んだ！",
+  "fr": "Le superviseur a appelé des ouvriers en renfort !",
+  "es": "¡El supervisor pidió refuerzos de obreros!"
+ },
  "Sur-Ron Wheelie": {
   "zh_TW": "電動越野車前輪翹起",
   "zh_CN": "电动越野车翘头",
@@ -6501,6 +6662,13 @@
   "ja": "タップ：突き飛ばし · 長押し：キック",
   "fr": "Tape : bousculer · maintiens : coup de pied",
   "es": "Toque: empujar · mantener: patear"
+ },
+ "Tape Measure": {
+  "zh_TW": "捲尺",
+  "zh_CN": "卷尺",
+  "ja": "メジャー",
+  "fr": "Mètre ruban",
+  "es": "Cinta métrica"
  },
  "Targets": {
   "zh_TW": "靶",
@@ -6606,6 +6774,13 @@
   "ja": "ブロックが多すぎ！",
   "fr": "Ça fait beaucoup de blocs !",
   "es": "¡Son muchísimos bloques!"
+ },
+ "The Client": {
+  "zh_TW": "業主",
+  "zh_CN": "业主",
+  "ja": "クライアント",
+  "fr": "Le Client",
+  "es": "El Cliente"
  },
  "The Dab": {
   "zh_TW": "達布",
@@ -6845,6 +7020,13 @@
   "fr": "Étages",
   "es": "Niveles"
  },
+ "Tight deadlines, red tape, and creeping scope.": {
+  "zh_TW": "緊迫的截止日期、繁文縟節與不斷蔓延的專案範疇。",
+  "zh_CN": "紧迫的截止日期、繁文缛节与不断蔓延的项目范畴。",
+  "ja": "迫る納期、お役所仕事、膨らみ続けるスコープ。",
+  "fr": "Délais serrés, paperasse et dérive des objectifs.",
+  "es": "Plazos ajustados, burocracia y alcance descontrolado."
+ },
  "Tilt": {
   "zh_TW": "傾斜",
   "zh_CN": "倾斜",
@@ -6998,6 +7180,13 @@
   "ja": "おもちゃ",
   "fr": "Jouets",
   "es": "Juguetes"
+ },
+ "Tradies": {
+  "zh_TW": "工友隊",
+  "zh_CN": "工友队",
+  "ja": "職人たち",
+  "fr": "Ouvriers",
+  "es": "Obreros"
  },
  "Tradies fight with hammers, live wire and air blowers on a worksite": {
   "zh_TW": "工匠們在工地上用鐵鎚、帶電電線和鼓風機互鬥",

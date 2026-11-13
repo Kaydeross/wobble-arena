@@ -85,7 +85,7 @@ static func read_json(path: String) -> Variant:
 
 ## Load weapons/classes/modes from a folder holding copies of shared/*.json (the Content autoload will call this later).
 func load_content(dir: String = "res://data") -> void:
-	weapons_data = read_json(dir.path_join("weapons.json"))
+	weapons_data = ExtraWeapons.merge(read_json(dir.path_join("weapons.json")))   # + Godot-only weapons (res://data/extra/construction)
 	classes = ExtraClasses.merge(read_json(dir.path_join("classes.json")))   # + the Godot-only classes (res://data/extra)
 	modes = ModeRules.merge_extra(read_json(dir.path_join("modes.json")))   # + the Godot-only modes (res://data/extra)
 	var dp := dir.path_join("damage.json")

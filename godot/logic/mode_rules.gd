@@ -55,6 +55,7 @@ const PIL_EVERY := 10.0
 const PIL_BOTS := 7                  ## setBotCfg: every pillar without a player gets a bot
 ## Godot-only modes (not in shared/modes.json, which `npm run content` regenerates from the web game).
 const EXTRA_PATH := "res://data/extra/modes.json"
+const CONSTRUCTION_MODES_PATH := "res://data/extra/construction/modes.json"
 ## Chaos needs room for 10: maps with at least 9 bot spots away from the player (bots + spawns) and wander >= 20.
 const CHAOS_MAPS := ["arenaxl", "colosseum", "fortress", "rinkxl", "farm", "temple", "pirate", "rooftops"]
 ## Chaos events (CombatRng picks one every 15..25 s, never the same twice in a row). dur = seconds it lasts.
@@ -177,16 +178,30 @@ static func sort_maps(ids: Array) -> Array:
 ## Adds the Godot-only modes (EXTRA_PATH) to `modes` (shared/modes.json) in place: keys already there win, allowFrom
 ## copies another mode's allowWeapons. Returns `modes`.
 static func merge_extra(modes: Dictionary, path: String = EXTRA_PATH) -> Dictionary:
-	if not FileAccess.file_exists(path): return modes
+	_merge_modes_file(modes, path)
+	if path == EXTRA_PATH and FileAccess.file_exists(CONSTRUCTION_MODES_PATH):
+		_merge_modes_file(modes, CONSTRUCTION_MODES_PATH)
+	return modes
+
+static func _merge_modes_file(modes: Dictionary, path: String) -> void:
+	if not FileAccess.file_exists(path): return
 	var x: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not (x is Dictionary): return modes
+	if not (x is Dictionary): return
 	for k: String in x:
-		if k.begins_with("_") or modes.has(k) or not (x[k] is Dictionary): continue
+		if k.begins_with("_") or not (x[k] is Dictionary): continue
+		if modes.has(k):
+			# Additive hook: if an existing mode has allowWeapons, extend it with any new allowed weapons
+			var src: Dictionary = x[k]
+			var dst: Dictionary = modes[k]
+			if src.has("allowWeapons") and dst.get("allowWeapons") is Array:
+				for w in src["allowWeapons"]:
+					if not dst["allowWeapons"].has(w):
+						dst["allowWeapons"].append(w)
+			continue
 		var m: Dictionary = (x[k] as Dictionary).duplicate(true)
 		if not m.has("allowWeapons"):
 			m["allowWeapons"] = (modes.get(str(m.get("allowFrom", "classic")), {}) as Dictionary).get("allowWeapons", []).duplicate()
 		modes[k] = m
-	return modes
 
 ## cfg from setBotCfg for `mode_id`: teams, lives, ffa/brawl, giant, hp, K.O. limit (`p_limit` < 0 = the preset's).
 func configure(mode_id: String, p_limit: int = -1) -> void:
