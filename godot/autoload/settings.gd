@@ -25,6 +25,7 @@ const DEFAULTS := {
 	"touch_assist": true,
 	"ui_scale": "auto",     # menus, HUD and touch buttons: auto | small | normal | large (ui/ui_scale.gd)
 	"show_fps": false,      # FPS / frame-time overlay (F3 or a three-finger tap toggles it)
+	"perf_overlay": false,  # device readout in the top-left corner: fps, frame ms, CPU / GPU, draws, tier, thermal (ui/perf_overlay.gd)
 	"effects": "auto",      # combat effects level: auto (= graphics tier) | low | medium | high (world/fx.gd)
 	"screen_shake": true,   # camera shake on big hits, explosions and K.O.s (world/follow_camera.gd)
 	"class": "wobbler",     # character class (shared/classes.json id)

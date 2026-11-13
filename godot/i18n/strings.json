@@ -118,6 +118,13 @@
   "fr": "%d K.O. × 5",
   "es": "%d K.O. × 5"
  },
+ "%d change(s)": {
+  "zh_TW": "%d 次變化",
+  "zh_CN": "%d 次变化",
+  "ja": "%d 回変化",
+  "fr": "%d changement(s)",
+  "es": "%d cambio(s)"
+ },
  "%d coins": {
   "zh_TW": "%d 金幣",
   "zh_CN": "%d 金币",
@@ -587,6 +594,13 @@
   "fr": "12 armes",
   "es": "12 armas"
  },
+ "15-minute soak test": {
+  "zh_TW": "15 分鐘穩定性測試",
+  "zh_CN": "15 分钟稳定性测试",
+  "ja": "15分の連続テスト",
+  "fr": "Test d'endurance de 15 minutes",
+  "es": "Prueba de resistencia de 15 minutos"
+ },
  "1v1 Duel": {
   "zh_TW": "1 對 1 決鬥",
   "zh_CN": "1 对 1 决斗",
@@ -1007,6 +1021,13 @@
   "fr": "Munitions",
   "es": "Munición"
  },
+ "An offline Chaos 5v5 bot match logs the frame rate every second. Leave the phone alone: the screen stays on. Results: Files app > Wobblers Arena > soak.": {
+  "zh_TW": "離線 5 對 5 混亂模式機器人對戰，每秒記錄一次幀率。請別動手機：螢幕會保持開啟。結果：檔案 App > Wobblers Arena > soak。",
+  "zh_CN": "离线 5 对 5 混乱模式机器人对战，每秒记录一次帧率。请别动手机：屏幕会保持常亮。结果：文件 App > Wobblers Arena > soak。",
+  "ja": "オフラインのカオス5対5ボット戦で、毎秒フレームレートを記録します。端末には触れないでください（画面は点灯したまま）。結果：ファイルApp > Wobblers Arena > soak。",
+  "fr": "Un match Chaos 5 contre 5 contre des bots, hors ligne, note la fréquence d'images chaque seconde. Ne touchez pas le téléphone : l'écran reste allumé. Résultats : app Fichiers > Wobblers Arena > soak.",
+  "es": "Una partida Caos 5 contra 5 con bots sin conexión registra la tasa de fotogramas cada segundo. No toques el teléfono: la pantalla sigue encendida. Resultados: app Archivos > Wobblers Arena > soak."
+ },
  "App only: a web player in the room makes it Classic.": {
   "zh_TW": "僅限應用程式：房間內有網頁玩家時會改為經典模式。",
   "zh_CN": "仅限应用：房间内有网页玩家时会改为经典模式。",
@@ -1154,6 +1175,13 @@
   "fr": "Le centrage auto replace la caméra derrière toi quand tu cours",
   "es": "El centrado automático lleva la cámara detrás de ti al correr"
  },
+ "Average fps": {
+  "zh_TW": "平均幀率",
+  "zh_CN": "平均帧率",
+  "ja": "平均fps",
+  "fr": "fps moyen",
+  "es": "fps medio"
+ },
  "BLUE": {
   "zh_TW": "藍隊",
   "zh_CN": "蓝队",
@@ -1174,6 +1202,13 @@
   "ja": "通常に戻った",
   "fr": "Retour à la normale",
   "es": "Vuelta a la normalidad"
+ },
+ "Back to title": {
+  "zh_TW": "返回標題",
+  "zh_CN": "返回标题",
+  "ja": "タイトルへ戻る",
+  "fr": "Retour au titre",
+  "es": "Volver al título"
  },
  "Backflip": {
   "zh_TW": "後空翻",
@@ -1637,6 +1672,13 @@
   "fr": "Acheter tenues, emotes et classes avec des pièces",
   "es": "Compra atuendos, emotes y clases con monedas"
  },
+ "CPU / GPU ms (median)": {
+  "zh_TW": "CPU / GPU 毫秒（中位數）",
+  "zh_CN": "CPU / GPU 毫秒（中位数）",
+  "ja": "CPU / GPU ms（中央値）",
+  "fr": "CPU / GPU ms (médiane)",
+  "es": "CPU / GPU ms (mediana)"
+ },
  "Camera": {
   "zh_TW": "鏡頭",
   "zh_CN": "镜头",
@@ -1980,6 +2022,13 @@
   "fr": "Commandes",
   "es": "Controles"
  },
+ "Copied": {
+  "zh_TW": "已複製",
+  "zh_CN": "已复制",
+  "ja": "コピーしました",
+  "fr": "Copié",
+  "es": "Copiado"
+ },
  "Copied.": {
   "zh_TW": "已複製。",
   "zh_CN": "已复制。",
@@ -1993,6 +2042,13 @@
   "ja": "コピー",
   "fr": "Copier",
   "es": "Copiar"
+ },
+ "Copy summary": {
+  "zh_TW": "複製摘要",
+  "zh_CN": "复制摘要",
+  "ja": "概要をコピー",
+  "fr": "Copier le résumé",
+  "es": "Copiar resumen"
  },
  "Could not change it.": {
   "zh_TW": "無法變更。",
@@ -2764,6 +2820,13 @@
   "fr": "F3 ou un tap à trois doigts l'active aussi",
   "es": "F3 o un toque con tres dedos también lo cambia"
  },
+ "FAIL": {
+  "zh_TW": "未通過",
+  "zh_CN": "未通过",
+  "ja": "不合格",
+  "fr": "ÉCHEC",
+  "es": "SUSPENDIDO"
+ },
  "Fall": {
   "zh_TW": "墜落",
   "zh_CN": "坠落",
@@ -2826,6 +2889,13 @@
   "ja": "視野角",
   "fr": "Champ de vision",
   "es": "Campo de visión"
+ },
+ "Files app > On My iPhone > Wobblers Arena > soak": {
+  "zh_TW": "檔案 App > 我的 iPhone > Wobblers Arena > soak",
+  "zh_CN": "文件 App > 我的 iPhone > Wobblers Arena > soak",
+  "ja": "ファイルApp > このiPhone内 > Wobblers Arena > soak",
+  "fr": "app Fichiers > Sur mon iPhone > Wobblers Arena > soak",
+  "es": "app Archivos > En mi iPhone > Wobblers Arena > soak"
  },
  "Finish 10 matches this week": {
   "zh_TW": "本週完成 10 場比賽",
@@ -3064,6 +3134,20 @@
   "ja": "もろくてふわふわ、テクニック派向けです。たいてい平和主義です",
   "fr": "Fragile, aérien, grosse technique. Venu en paix, en principe",
   "es": "Frágil, flotador, gran técnica. Viene en son de paz, más o menos"
+ },
+ "Frame p95 (mean / worst)": {
+  "zh_TW": "幀時間 p95（平均 / 最差）",
+  "zh_CN": "帧时间 p95（平均 / 最差）",
+  "ja": "フレーム p95（平均 / 最悪）",
+  "fr": "Image p95 (moy. / pire)",
+  "es": "Fotograma p95 (media / peor)"
+ },
+ "Frames over %.1f ms": {
+  "zh_TW": "超過 %.1f 毫秒的幀",
+  "zh_CN": "超过 %.1f 毫秒的帧",
+  "ja": "%.1f ms超のフレーム",
+  "fr": "Images au-delà de %.1f ms",
+  "es": "Fotogramas sobre %.1f ms"
  },
  "Free": {
   "zh_TW": "免費",
@@ -3884,6 +3968,13 @@
   "fr": "Légendaire",
   "es": "Legendario"
  },
+ "Length": {
+  "zh_TW": "時長",
+  "zh_CN": "时长",
+  "ja": "時間",
+  "fr": "Durée",
+  "es": "Duración"
+ },
  "Let's play": {
   "zh_TW": "開始吧",
   "zh_CN": "开始吧",
@@ -4682,6 +4773,13 @@
   "fr": "Possédé",
   "es": "Obtenido"
  },
+ "PASS": {
+  "zh_TW": "通過",
+  "zh_CN": "通过",
+  "ja": "合格",
+  "fr": "RÉUSSI",
+  "es": "APROBADO"
+ },
  "Particles, trails and flashes in a match. Auto follows this device (%s).": {
   "zh_TW": "比賽中的粒子、軌跡與閃光。自動：跟隨這部裝置（%s）。",
   "zh_CN": "比赛中的粒子、轨迹和闪光。自动：跟随此设备（%s）。",
@@ -4737,6 +4835,13 @@
   "ja": "一時停止中",
   "fr": "En pause",
   "es": "En pausa"
+ },
+ "Performance readout": {
+  "zh_TW": "效能顯示",
+  "zh_CN": "性能显示",
+  "ja": "パフォーマンス表示",
+  "fr": "Affichage des performances",
+  "es": "Lectura de rendimiento"
  },
  "Pick": {
   "zh_TW": "選擇",
@@ -5382,6 +5487,13 @@
   "fr": "Enregistre ce code maintenant. Il ne sera plus affiché.",
   "es": "Guarda este código ahora. No volverá a mostrarse."
  },
+ "Saved %s (and .txt). %s": {
+  "zh_TW": "已儲存 %s（及 .txt）。%s",
+  "zh_CN": "已保存 %s（及 .txt）。%s",
+  "ja": "%s（と .txt）を保存しました。%s",
+  "fr": "%s (et .txt) enregistré. %s",
+  "es": "Guardado %s (y .txt). %s"
+ },
  "Saved on this device": {
   "zh_TW": "已儲存在這台裝置上",
   "zh_CN": "已保存在这台设备上",
@@ -5788,6 +5900,20 @@
   "fr": "Canon à neige",
   "es": "Cañón de nieve"
  },
+ "Soak %s / %s": {
+  "zh_TW": "測試 %s / %s",
+  "zh_CN": "测试 %s / %s",
+  "ja": "テスト %s / %s",
+  "fr": "Test %s / %s",
+  "es": "Prueba %s / %s"
+ },
+ "Soak test: %s": {
+  "zh_TW": "穩定性測試：%s",
+  "zh_CN": "稳定性测试：%s",
+  "ja": "連続テスト：%s",
+  "fr": "Test d'endurance : %s",
+  "es": "Prueba de resistencia: %s"
+ },
  "Someone is in the way": {
   "zh_TW": "有人擋住了",
   "zh_CN": "有人挡住了",
@@ -6039,6 +6165,13 @@
   "ja": "跳んで渡れないほど離れた高い柱からスタート（どの武器でもダッシュ可）。10秒ごとに新しい武器がインベントリに入ります。落ちるか倒れると脱落。3分終了時にKOが最も多い人の勝ち。ランチャー、爆発物、ノックバック銃はなし",
   "fr": "Départ sur de hauts piliers trop espacés pour sauter (dash avec n'importe quelle arme). Toutes les 10 secondes, une nouvelle arme arrive dans l'inventaire. Qui tombe ou meurt est éliminé. Le plus de K.O. à la fin des 3 minutes gagne. Ni lanceurs, ni explosifs, ni armes à recul",
   "es": "Empiezas en altos pilares demasiado separados para saltar (usa impulso con cualquier arma). Cada 10 segundos cae un arma nueva al inventario. Si caes o mueres, quedas fuera. Gana quien tenga más K.O. al acabar los 3 minutos. Sin lanzadores, explosivos ni armas de empuje"
+ },
+ "Start soak test": {
+  "zh_TW": "開始穩定性測試",
+  "zh_CN": "开始稳定性测试",
+  "ja": "連続テストを開始",
+  "fr": "Lancer le test",
+  "es": "Iniciar la prueba"
  },
  "Steady": {
   "zh_TW": "穩定",
@@ -6495,6 +6628,13 @@
   "fr": "L'assistant de configuration est trié en Classique, Équipes et Spécial, avec de petites icônes dessinées et un interrupteur Sol mobile",
   "es": "El asistente de configuración está organizado en Clásico, Equipos y Especial, con iconitos dibujados y un interruptor de Suelo móvil"
  },
+ "Thermal state": {
+  "zh_TW": "溫度狀態",
+  "zh_CN": "温度状态",
+  "ja": "温度状態",
+  "fr": "État thermique",
+  "es": "Estado térmico"
+ },
  "This account has different progress saved in the cloud. Which one do you want to keep? The other one is replaced.": {
   "zh_TW": "這個帳號在雲端保存的進度不同。你要保留哪一個？另一個會被取代。",
   "zh_CN": "这个账号在云端保存的进度不同。你要保留哪一个？另一个会被替换。",
@@ -6676,6 +6816,13 @@
   "ja": "シルクハット",
   "fr": "Haut-de-forme",
   "es": "Sombrero de copa"
+ },
+ "Top-left: fps, frame time, CPU / GPU, draws, thermal. For testing on a device.": {
+  "zh_TW": "左上角：幀率、幀時間、CPU / GPU、繪製數、溫度。用於在裝置上測試。",
+  "zh_CN": "左上角：帧率、帧时间、CPU / GPU、绘制数、温度。用于在设备上测试。",
+  "ja": "左上に fps、フレーム時間、CPU / GPU、描画数、温度を表示。実機テスト用。",
+  "fr": "En haut à gauche : fps, temps d'image, CPU / GPU, appels de rendu, thermique. Pour tester sur l'appareil.",
+  "es": "Arriba a la izquierda: fps, tiempo de fotograma, CPU / GPU, llamadas de dibujo, temperatura. Para probar en el dispositivo."
  },
  "Touch buttons": {
   "zh_TW": "觸控按鈕",
@@ -7195,6 +7342,13 @@
   "fr": "Jambes de pantin qui vacillent, chutes et relevés. Tomber, c'est une fonctionnalité",
   "es": "Piernas de muñeco tambaleantes, caídas y levantadas. Caerse es una característica"
  },
+ "Worst minute": {
+  "zh_TW": "最差的一分鐘",
+  "zh_CN": "最差的一分钟",
+  "ja": "最悪の1分",
+  "fr": "Pire minute",
+  "es": "Peor minuto"
+ },
  "YOU": {
   "zh_TW": "你",
   "zh_CN": "你",
@@ -7706,6 +7860,13 @@
   "fr": "sol %s",
   "es": "suelo %s"
  },
+ "fps first / last third": {
+  "zh_TW": "前 / 後三分之一幀率",
+  "zh_CN": "前 / 后三分之一帧率",
+  "ja": "前半 / 後半の fps",
+  "fr": "fps premier / dernier tiers",
+  "es": "fps primer / último tercio"
+ },
  "gravity %sx": {
   "zh_TW": "重力 %sx",
   "zh_CN": "重力 %sx",
@@ -7747,6 +7908,20 @@
   "ja": "試合 +40",
   "fr": "partie +40",
   "es": "partida +40"
+ },
+ "measuring…": {
+  "zh_TW": "測量中…",
+  "zh_CN": "测量中…",
+  "ja": "計測中…",
+  "fr": "mesure…",
+  "es": "midiendo…"
+ },
+ "n/a (no iOS API)": {
+  "zh_TW": "無（iOS 未提供）",
+  "zh_CN": "无（iOS 未提供）",
+  "ja": "なし（iOSのAPIなし）",
+  "fr": "n.d. (pas d'API iOS)",
+  "es": "n/d (sin API de iOS)"
  },
  "no K.O. limit": {
   "zh_TW": "無擊倒上限",
