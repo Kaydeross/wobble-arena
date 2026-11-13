@@ -1,0 +1,142 @@
+{
+ "Arcade": {
+  "zh_TW": "街機",
+  "zh_CN": "街机",
+  "ja": "アーケード",
+  "fr": "Arcade",
+  "es": "Arcade"
+ },
+ "Up to 8 on a random building site. Hard hats on, tools out.": {
+  "zh_TW": "最多 8 人，在隨機工地上開打。戴好安全帽，拿出工具。",
+  "zh_CN": "最多 8 人，在随机工地上开打。戴好安全帽，拿出工具。",
+  "ja": "最大8人でランダムな工事現場へ。ヘルメットを被って、道具を構えよう。",
+  "fr": "Jusqu'à 8 sur un chantier aléatoire. Casques sur la tête, outils en main.",
+  "es": "Hasta 8 en una obra aleatoria. Cascos puestos, herramientas fuera."
+ },
+ "Boss rush: Tradies, Engineer, Designer, Supervisor, Project Manager, then the Client.": {
+  "zh_TW": "頭目連戰：工人、工程師、設計師、監工、專案經理，最後是客戶。",
+  "zh_CN": "头目连战：工人、工程师、设计师、监工、项目经理，最后是客户。",
+  "ja": "ボスラッシュ：職人、エンジニア、デザイナー、現場監督、プロジェクトマネージャー、そして依頼主。",
+  "fr": "Enchaînement de boss : ouvriers, ingénieur, designer, chef de chantier, chef de projet, puis le Client.",
+  "es": "Jefes seguidos: obreros, ingeniero, diseñador, capataz, jefe de proyecto y, al final, el Cliente."
+ },
+ "Unlock for %d coins": {
+  "zh_TW": "用 %d 金幣解鎖",
+  "zh_CN": "用 %d 金币解锁",
+  "ja": "%d コインで解放",
+  "fr": "Débloquer pour %d pièces",
+  "es": "Desbloquear por %d monedas"
+ },
+ "Enter code": {
+  "zh_TW": "輸入代碼",
+  "zh_CN": "输入代码",
+  "ja": "コードを入力",
+  "fr": "Saisir un code",
+  "es": "Introducir código"
+ },
+ "Code": {
+  "zh_TW": "代碼",
+  "zh_CN": "代码",
+  "ja": "コード",
+  "fr": "Code",
+  "es": "Código"
+ },
+ "Submit": {
+  "zh_TW": "送出",
+  "zh_CN": "提交",
+  "ja": "送信",
+  "fr": "Valider",
+  "es": "Enviar"
+ },
+ "Coming soon": {
+  "zh_TW": "即將推出",
+  "zh_CN": "即将推出",
+  "ja": "近日公開",
+  "fr": "Bientôt",
+  "es": "Próximamente"
+ },
+ "Site seed": {
+  "zh_TW": "工地種子",
+  "zh_CN": "工地种子",
+  "ja": "現場シード",
+  "fr": "Graine du chantier",
+  "es": "Semilla de obra"
+ },
+ "Seed %d": {
+  "zh_TW": "種子 %d",
+  "zh_CN": "种子 %d",
+  "ja": "シード %d",
+  "fr": "Graine %d",
+  "es": "Semilla %d"
+ },
+ "Re-roll": {
+  "zh_TW": "重擲",
+  "zh_CN": "重掷",
+  "ja": "振り直す",
+  "fr": "Relancer",
+  "es": "Repetir"
+ },
+ "Wrong code": {
+  "zh_TW": "代碼不對",
+  "zh_CN": "代码不对",
+  "ja": "コードが違います",
+  "fr": "Code incorrect",
+  "es": "Código incorrecto"
+ },
+ "Unlocked everything": {
+  "zh_TW": "全部解鎖了",
+  "zh_CN": "全部解锁了",
+  "ja": "すべて解放しました",
+  "fr": "Tout est débloqué",
+  "es": "Todo desbloqueado"
+ },
+ "Wait a moment": {
+  "zh_TW": "請稍等一下",
+  "zh_CN": "请稍等一下",
+  "ja": "少し待ってね",
+  "fr": "Patientez un instant",
+  "es": "Espera un momento"
+ },
+ "Build site brawls": {
+  "zh_TW": "工地大亂鬥",
+  "zh_CN": "工地大乱斗",
+  "ja": "工事現場バトル",
+  "fr": "Bagarres de chantier",
+  "es": "Peleas de obra"
+ },
+ "Build site brawls · %d coins": {
+  "zh_TW": "工地大亂鬥 · %d 金幣",
+  "zh_CN": "工地大乱斗 · %d 金币",
+  "ja": "工事現場バトル · %d コイン",
+  "fr": "Bagarres de chantier · %d pièces",
+  "es": "Peleas de obra · %d monedas"
+ },
+ "Unlock to play": {
+  "zh_TW": "解鎖後即可遊玩",
+  "zh_CN": "解锁后即可游玩",
+  "ja": "解放すると遊べます",
+  "fr": "Débloquez pour jouer",
+  "es": "Desbloquea para jugar"
+ },
+ "Unlock Construction first": {
+  "zh_TW": "請先解鎖建造",
+  "zh_CN": "请先解锁建造",
+  "ja": "先に建設を解放してください",
+  "fr": "Débloquez d'abord Construction",
+  "es": "Desbloquea primero Construcción"
+ },
+ "Best stage: %d": {
+  "zh_TW": "最佳關卡：%d",
+  "zh_CN": "最佳关卡：%d",
+  "ja": "最高ステージ：%d",
+  "fr": "Meilleure étape : %d",
+  "es": "Mejor etapa: %d"
+ },
+ "Random: a new site every match. Re-roll fixes a seed, so the same site comes back.": {
+  "zh_TW": "隨機：每場都是新工地。重擲會固定種子，同一個工地會再次出現。",
+  "zh_CN": "随机：每场都是新工地。重掷会固定种子，同一个工地会再次出现。",
+  "ja": "ランダム：毎試合新しい現場。振り直すとシードが固定され、同じ現場に戻れます。",
+  "fr": "Aléatoire : un nouveau chantier à chaque match. Relancer fixe une graine : le même chantier revient.",
+  "es": "Aleatorio: una obra nueva en cada partida. Repetir fija una semilla y vuelve la misma obra."
+ }
+}

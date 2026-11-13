@@ -152,7 +152,20 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		var tc := combat.rules.team_color(b)
 		if tc >= 0: looks[b]["color"] = tc
 		if combat.mode_id == "ninja": looks[b]["skin"] = "shadow"     # dressBots
+	if combat.mode_id == "construction": _dress_tradies(bots)
 	combat.rules.setup_shrink(map_id, map, solids)
+
+## Construction DLC: every bot is a tradie in the Builder's hi-vis vest and a hard hat, with a trade nickname. Presentation only
+## (names and looks): no random draws, nothing the simulation reads.
+const TRADIE_NAMES := ["Dazza", "Bluey", "Sparky", "Chippy", "Spud", "Tradie Tom", "Foreman Fred"]
+const TRADIE_HATS := ["hardhat", "hardhat_white", "hardhat_orange"]
+func _dress_tradies(bots: Array) -> void:
+	for i in bots.size():
+		var b: FighterState = bots[i]
+		b.name = TRADIE_NAMES[i % TRADIE_NAMES.size()]
+		if looks.has(b):
+			looks[b]["skin"] = "builder"
+			looks[b]["hat"] = TRADIE_HATS[i % TRADIE_HATS.size()]
 
 ## One more (non-player) fighter, e.g. an online ghost: class stats, map, full health. The caller places it.
 func add_fighter(cid: String) -> FighterState:

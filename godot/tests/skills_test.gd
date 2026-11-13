@@ -95,7 +95,7 @@ func _bursts() -> void:
 		ok(c.weapons.try_fire(p, []), "burst shot %d fires" % (i + 1))
 	p.cool = 0.0
 	ok(not Skills.burst_ready(c, p) and not c.weapons.try_fire(p, []), "empty pool: no shot")
-	ok(String(c.rules.hud_text(p)).contains("Shots " + "◇".repeat(n)), "HUD pips empty (%s)" % c.rules.hud_text(p))
+	ok(String(c.rules.hud_text(p)).contains("Shots " + "-".repeat(n)), "HUD pips empty (%s)" % c.rules.hud_text(p))
 	c.weapons.clear()
 	var st0 := c.rng.state
 	for i in int(regen / DT) + 2: Skills.tick(c, p, DT)

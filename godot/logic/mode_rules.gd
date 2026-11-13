@@ -55,6 +55,7 @@ const PIL_EVERY := 10.0
 const PIL_BOTS := 7                  ## setBotCfg: every pillar without a player gets a bot
 ## Godot-only modes (not in shared/modes.json, which `npm run content` regenerates from the web game).
 const EXTRA_PATH := "res://data/extra/modes.json"
+const CONSTRUCTION_MODES_PATH := "res://data/extra/construction/modes.json"
 ## Chaos needs room for 10: maps with at least 9 bot spots away from the player (bots + spawns) and wander >= 20.
 const CHAOS_MAPS := ["arenaxl", "colosseum", "fortress", "rinkxl", "farm", "temple", "pirate", "rooftops"]
 ## Chaos events (CombatRng picks one every 15..25 s, never the same twice in a row). dur = seconds it lasts.
@@ -78,13 +79,13 @@ const NEW_ARENAS := ["moonbase", "volcano", "candy", "pirate", "haunted", "beach
 const BIG_ARENAS := ["arenaxl", "rinkxl", "colosseum", "fortress"]
 const MODE_MAPS := {"melee": ["arena", "park", "ice", "rooftops", "cloud", "tower", "brawlpit"] + NEW_ARENAS + BIG_ARENAS,
 	"guns": ["arena", "temple", "rooftops", "gunrange"] + NEW_ARENAS + BIG_ARENAS,
-	"ninja": ["dojo", "temple", "cloud", "rooftops", "tower", "arenaxl", "fortress"], "sandbox": ["custom"], "construction": ["siteyard"],
+	"ninja": ["dojo", "temple", "cloud", "rooftops", "tower", "arenaxl", "fortress"], "sandbox": ["custom"], "construction": ["siteyard", "sitegen"],
 	"mega": ["shrink", "squeeze"], "pillars": ["pillars", "pillars2"], "lowg": ["craterdome", "capsule"],
 	"giant": ["playroom"] + BIG_ARENAS, "explosive": ["blast", "arena", "park", "ice"] + BIG_ARENAS,
 	"duel": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS, "t2": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS,
 	"t3": TEAM_MAPS + BIG_ARENAS, "t4": TEAM_MAPS + BIG_ARENAS, "chaos": CHAOS_MAPS, "practice": ["practice", "test"]}
 ## MAP_ORDER (index.html ~3725): big open arenas first, then rooms and sky levels, the odd one-offs last. Arena lists follow it.
-const MAP_ORDER := ["test", "practice", "dojo", "blast", "gunrange", "brawlpit", "siteyard", "craterdome", "capsule", "playroom",
+const MAP_ORDER := ["test", "practice", "dojo", "blast", "gunrange", "brawlpit", "siteyard", "sitegen", "craterdome", "capsule", "playroom",
 	"arena", "park", "ice", "arenaxl", "rinkxl", "colosseum", "fortress", "temple", "farm", "rooftops", "tower", "shrink", "squeeze",
 	"crossroads", "donut", "chasm", "summit", "moonbase", "candy", "haunted", "beach", "volcano", "pirate", "pillars", "pillars2", "custom"]
 ## The shrinking floors (MAPS.shrink / MAPS.squeeze build(): `shrink = {...}`); the floor is the map's first box.
@@ -177,16 +178,30 @@ static func sort_maps(ids: Array) -> Array:
 ## Adds the Godot-only modes (EXTRA_PATH) to `modes` (shared/modes.json) in place: keys already there win, allowFrom
 ## copies another mode's allowWeapons. Returns `modes`.
 static func merge_extra(modes: Dictionary, path: String = EXTRA_PATH) -> Dictionary:
-	if not FileAccess.file_exists(path): return modes
+	_merge_modes_file(modes, path)
+	if path == EXTRA_PATH and FileAccess.file_exists(CONSTRUCTION_MODES_PATH):
+		_merge_modes_file(modes, CONSTRUCTION_MODES_PATH)
+	return modes
+
+static func _merge_modes_file(modes: Dictionary, path: String) -> void:
+	if not FileAccess.file_exists(path): return
 	var x: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if not (x is Dictionary): return modes
+	if not (x is Dictionary): return
 	for k: String in x:
-		if k.begins_with("_") or modes.has(k) or not (x[k] is Dictionary): continue
+		if k.begins_with("_") or not (x[k] is Dictionary): continue
+		if modes.has(k):
+			# Additive hook: if an existing mode has allowWeapons, extend it with any new allowed weapons
+			var src: Dictionary = x[k]
+			var dst: Dictionary = modes[k]
+			if src.has("allowWeapons") and dst.get("allowWeapons") is Array:
+				for w in src["allowWeapons"]:
+					if not dst["allowWeapons"].has(w):
+						dst["allowWeapons"].append(w)
+			continue
 		var m: Dictionary = (x[k] as Dictionary).duplicate(true)
 		if not m.has("allowWeapons"):
 			m["allowWeapons"] = (modes.get(str(m.get("allowFrom", "classic")), {}) as Dictionary).get("allowWeapons", []).duplicate()
 		modes[k] = m
-	return modes
 
 ## cfg from setBotCfg for `mode_id`: teams, lives, ffa/brawl, giant, hp, K.O. limit (`p_limit` < 0 = the preset's).
 func configure(mode_id: String, p_limit: int = -1) -> void:
@@ -461,6 +476,8 @@ func shrink_wander() -> float:
 ## MAPS.shrink/squeeze `drops` getter.
 func shrink_drops() -> Array:
 	var r := maxf(2.0, shrink["size"] / 2.0 - 3.0)
+	if shrink.has("spots"):                 # Construction Arcade (dlc/construction/stage_events.gd): the map's own crate spots that are still on the floor
+		return (shrink["spots"] as Array).filter(func(sp: Array) -> bool: return absf(sp[0]) <= r + 2.5 and absf(sp[1]) <= r + 2.5)
 	if shrink["id"] == "squeeze":
 		return [[r * 0.6, 4], [-r * 0.6, -4], [r * 0.9, -7], [-r * 0.9, 7], [r * 0.3, 8], [-r * 0.3, -8]]
 	return [[r * 0.5, 0], [-r * 0.5, 0], [0, r * 0.5], [0, -r * 0.5], [r * 0.8, r * 0.6], [-r * 0.8, -r * 0.6]]
@@ -618,13 +635,13 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	if player == null: return ""
 	var t := ""
 	if c.mode.get("spectate", false):                       # Sudden Death: in or out, and how many are left
-		t = tr("Out · %d left") % survivors().size() if player.elim else tr("♥ · %d left") % survivors().size()
+		t = tr("Out · %d left") % survivors().size() if player.elim else tr("Alive · %d left") % survivors().size()
 	elif c.mode_id == "pillars":                           # updateKoText: the K.O. count (one life, no hearts)
 		t = tr("Out · %d left") % survivors().size() if player.elim else tr("%d K.O.s · %d left") % [player.ko, survivors().size()]
 	elif not c.brawl:                                       # the Practice Range's dummies
 		t = tr("Practice · %d K.O.s") % player.ko
 	elif c.lives_mode:
-		t = "♥".repeat(player.lives) if player.lives > 0 else tr("Out")
+		t = tr("Lives %d") % player.lives if player.lives > 0 else tr("Out")
 	elif c.teams:
 		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
 			var mine := player.team
@@ -637,7 +654,7 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	elif not pil.is_empty() and not match_over:
 		extra = tr("%s · New weapon in %d") % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
 	elif chaos_text() != "":
-		extra = "⚡ " + chaos_text()
+		extra = tr("Event: %s") % chaos_text()
 	elif not shrink.is_empty() and not match_over:
 		var s := shrink
 		var sz := Combat.js_round(s["size"])
@@ -646,8 +663,8 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 		elif s["size"] <= s["min"]: extra = tr("Arena %dm · smallest") % sz
 		else: extra = tr("Arena %dm") % sz
 	if dash_gear(player) and not player.dead:
-		extra += ("   " if extra != "" else "") + tr("Dash") + " " + "◆".repeat(player.dash_n) + "◇".repeat(DASH_MAX - player.dash_n)
+		extra += ("   " if extra != "" else "") + tr("Dash") + " " + "+".repeat(player.dash_n) + "-".repeat(DASH_MAX - player.dash_n)
 	var bh := Skills.burst_hud(c, player) if not player.dead else []   # weapon_tuning.json burst pool of the held weapon
 	if bh.size() > 0:
-		extra += ("   " if extra != "" else "") + tr("Shots") + " " + "◆".repeat(bh[0]) + "◇".repeat(bh[1] - bh[0])
+		extra += ("   " if extra != "" else "") + tr("Shots") + " " + "+".repeat(bh[0]) + "-".repeat(bh[1] - bh[0])
 	return t if extra == "" else (t + "   " + extra if t != "" else extra)

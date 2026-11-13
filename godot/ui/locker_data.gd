@@ -101,7 +101,12 @@ static func shop_emotes() -> Array:
 # ---------------- hats, colours, rarity ----------------
 
 static func hats() -> Array:
-	return cosmetics().get("hats", ["none"])
+	var all: Array = cosmetics().get("hats", ["none"])
+	var ex := DlcSave.exclusive_hats()
+	var tree := Engine.get_main_loop() as SceneTree          # (the Save autoload by path: this script must compile without it, like in the --script tests)
+	var sv: Node = tree.root.get_node_or_null("Save") if tree != null else null
+	if ex.is_empty() or (sv != null and DlcSave.won_arcade(sv.dlc)): return all     # the Arcade victory hat is listed only once it is won
+	return all.filter(func(h: String) -> bool: return not ex.has(h))
 
 static func hat_name(h: String) -> String:
 	return str(data().get("hat_label", {}).get(h, h.capitalize()))

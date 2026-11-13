@@ -48,6 +48,7 @@ var look := DEFAULT_LOOK.duplicate()
 var stats := {}
 var hist: Array = []
 var quests := {}                     ## coin goals (logic/quests.gd), blob key "quests" (Godot only, the web ignores it)
+var dlc := DlcSave.fresh()           ## Construction DLC state (dlc/construction/dlc_unlock.gd), blob key "dlc" (Godot only, the web ignores it)
 var last_seen_news := ""             ## newest What's new version the player has seen (ui/whats_new.gd), blob key "last_seen_news" (Godot only)
 var day_override := -1               ## tests: the day the goals use (-1 = Quests.today())
 var extra := {}                      ## blob keys this client does not use, kept for the web game
@@ -108,6 +109,7 @@ func reset() -> void:
 	hist = []
 	extra = {}; extra_wallet = {}; extra_stats = {}
 	quests = Quests.fresh()
+	dlc = DlcSave.fresh()
 	last_seen_news = ""
 	match_kos = 0; match_hits = 0; match_deaths = 0; match_heads = 0; match_mkos = 0; _streak = 0
 	_quest_before = []
@@ -134,6 +136,7 @@ func get_blob() -> Dictionary:
 	w["daily"] = daily.duplicate()
 	d["wallet"] = w
 	d["quests"] = quests.duplicate(true)
+	if not DlcSave.is_fresh(dlc): d["dlc"] = dlc.duplicate(true)   # additive: saves that never touched the DLC stay as they were
 	if last_seen_news != "": d["last_seen_news"] = last_seen_news
 	return d
 
@@ -143,8 +146,9 @@ func apply_blob(d: Variant) -> bool:
 	if not (d is Dictionary): return false
 	reset()
 	for k: String in d:
-		if not k in ["look", "stats", "wallet", "quests", "last_seen_news"]: extra[k] = d[k]
+		if not k in ["look", "stats", "wallet", "quests", "dlc", "last_seen_news"]: extra[k] = d[k]
 	quests = Quests.clean(d.get("quests"))
+	dlc = DlcSave.clean(d.get("dlc"))
 	if d.get("last_seen_news") is String: last_seen_news = (d["last_seen_news"] as String).substr(0, 24)
 	var w: Variant = d.get("wallet")
 	if w is Dictionary:
@@ -161,7 +165,7 @@ func apply_blob(d: Variant) -> bool:
 			if not skins.has(k): skins.append(k)
 		if w.get("classes") is Array:
 			for k in w["classes"]:
-				if k is String and ExtraClasses.price(k) > 0 and not classes.has(k): classes.append(k)
+				if k is String and ExtraClasses.is_extra(k) and not classes.has(k): classes.append(k)
 		for k: String in skins:
 			for id: String in LockerData.skin_emotes(k):
 				if not owned.has(id): owned.append(id)
@@ -275,6 +279,10 @@ func mark_news_seen(version: String) -> void:
 func _commit() -> void:
 	save()
 	changed.emit()
+
+## Saves and announces a change made from outside (the Construction DLC unlock, dlc/construction/dlc_unlock.gd).
+func commit() -> void:
+	_commit()
 
 # ============================== look + Settings mirror ==============================
 

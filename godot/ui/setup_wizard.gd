@@ -1,7 +1,7 @@
 class_name SetupWizard
 extends VBoxContainer
 ## Offline match setup, one choice per page (title screen Play opens it):
-##   1 Game type (cards for ModeRules.PLAYABLE + Construction, read from code),
+##   1 Game type (cards for ModeRules.PLAYABLE, read from code),
 ##   2 Arena (cards for the maps that game type allows, and the Moving floor row: Settings "dyn"), 3 Players (you + 1..7 bots, team modes fix the count; bot
 ##   skill), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
 ##   of the four picks, each row jumps back to its page, and the big Start button).
@@ -72,10 +72,11 @@ static var _heavy: Font
 
 # ---------------- choices ----------------
 
-## Game types the wizard offers: every mode the port plays offline (ModeRules.PLAYABLE) plus Construction, in that order.
+## Game types the wizard offers: every mode the port plays offline (ModeRules.PLAYABLE). Construction is not here: it
+## lives behind the title's Construction banner (dlc/construction/construction_hub.gd).
 static func modes() -> Array:
 	var out: Array = []
-	for m: String in ModeRules.PLAYABLE + ["construction"]:
+	for m: String in ModeRules.PLAYABLE:
 		if Content.modes.has(m) and not out.has(m): out.append(m)
 	return out
 
@@ -187,7 +188,8 @@ func _players_text() -> String:
 func load_settings() -> void:
 	var ms := modes()
 	mode_id = str(Settings.get_value("mode", "classic"))
-	if not ms.has(mode_id): mode_id = "classic" if ms.has("classic") else ms[0]
+	var stale := not ms.has(mode_id)      # (the hub's Construction start leaves mode = construction and its site map in Settings)
+	if stale: mode_id = "classic" if ms.has("classic") else ms[0]
 	dyn = str(Settings.get_value("dyn", "random"))
 	if not Dynamics.KINDS.has(dyn): dyn = "random"
 	bots = clampi(int(Settings.get_value("bots", 3)), BOT_MIN, BOT_MAX)
@@ -195,7 +197,7 @@ func load_settings() -> void:
 	if not DIFFS.has(diff): diff = "normal"
 	cls = str(Settings.get_value("class", "wobbler"))
 	if not Content.classes.has(cls) or not owns_class(cls): cls = "wobbler"
-	_want_map = str(Settings.get_value("offline_map", "arena"))
+	_want_map = "arena" if stale else str(Settings.get_value("offline_map", "arena"))
 	map_id = nearest_map(_want_map, maps_for(mode_id))
 	note = ""
 	_loaded = true

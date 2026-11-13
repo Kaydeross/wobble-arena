@@ -47,12 +47,13 @@ const DEFAULTS := {
 	"kill_cam": true,       # short slow-mo replay after a fast K.O. you score (offline, world/kill_cam.gd)
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
-	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE + construction)
+	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE; the Construction hub sets construction)
 	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
 	"wobble_rig": "ragdoll",   # character animation: ragdoll (leg-driven floppy overlay, docs/RAGDOLL.md) | classic (web pose)
 	"offline_map": "arena", # offline arena (setup wizard page 1)
 	"bots": 3,              # offline bots 1..7 (team modes fix the count: ModeRules.bot_count)
 	"difficulty": "normal", # offline bot skill: easy | normal | hard | insane (data/difficulties.json)
+	"site_seed": 0,         # Construction: the building-site seed (0 = a new random site every match; the hub's Re-roll fixes one)
 	# --- the Settings screen (ui/settings_screen.gd) ---
 	"mouse_sens": 1.0,      # look sensitivity for the mouse and a controller's right stick (input/player_input.gd); touch uses `sens`
 	"aim_mode": "hold",     # keyboard / mouse / controller aim: hold | toggle (touch always double-taps to toggle)

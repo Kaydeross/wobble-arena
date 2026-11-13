@@ -18,6 +18,7 @@ extends Control
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
 const WORLD := "res://world/world.tscn"
+const TIP_MIN_H := 600.0           ## canvas px: the tip line needs a taller title than the iPhone landscape canvas has
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
 const COMPACT_H := 530.0                  ## safe height (canvas px) below which the title tightens up
 const TIPS := [
@@ -54,6 +55,8 @@ var locker_b: Button
 var shop_b: Button
 var goals_b: Button
 var goals: GoalsScreen              ## the Goals screen (title: Goals)
+var hub: ConstructionHub            ## the Construction DLC hub (the yellow banner under the cards row)
+var dlc_b: Button                   ## the Construction banner
 var news_dot: Control
 var news: WhatsNew                  ## the What's new card (patch notes; opens once per new version)
 var settings: SettingsScreen        ## the Settings screen (gear)
@@ -96,6 +99,13 @@ func _ready() -> void:
 	goals.closed.connect(func() -> void:
 		_coins_sub()
 		if Tier.is_pc(): goals_b.grab_focus.call_deferred())
+	hub = ConstructionHub.new()
+	add_child(hub)
+	hub.start_requested.connect(play_offline)
+	hub.arcade_requested.connect(play_arcade)
+	hub.closed.connect(func() -> void:
+		_coins_sub()
+		if Tier.is_pc(): dlc_b.grab_focus.call_deferred())
 	news = WhatsNew.new()
 	add_child(news)
 	news.closed.connect(func() -> void:
@@ -135,6 +145,7 @@ func _ready() -> void:
 	JuicyButton.attach_all(self)
 	if not Save.cloud.pending.is_empty(): account.open("conflict")   # a cloud conflict found during a match
 	get_viewport().size_changed.connect(apply_safe_area)
+	get_viewport().size_changed.connect(_tip_room)
 	apply_safe_area()
 	if Tier.is_pc():
 		play.grab_focus.call_deferred()   # keyboard / gamepad start on Play
@@ -159,6 +170,7 @@ func go_back() -> bool:
 	if news.visible: return news.back()      # (opened from Settings > About: it sits on top of Settings)
 	if settings.visible: return settings.back()
 	if goals.visible: return goals.back()
+	if hub.visible: return hub.back()
 	if lobby.visible:
 		if session: session.leave("You left the room.")
 		show_lobby(false)
@@ -207,8 +219,61 @@ func _build_more() -> void:
 	goals_b = _small_button("Goals", "")
 	goals_b.pressed.connect(open_goals)
 	more.add_child(goals_b)
+	_build_dlc_banner()
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
+
+## The Construction DLC entry: its own wide hazard-tape banner under the cards row (drawn in code, no images).
+func _build_dlc_banner() -> void:
+	var b := Button.new()
+	b.name = "Construction"
+	b.custom_minimum_size = Vector2(752, 62)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.add_theme_stylebox_override("normal", ConstructionStyle.tape_box(ConstructionStyle.YELLOW))
+	b.add_theme_stylebox_override("hover", ConstructionStyle.tape_box(ConstructionStyle.YELLOW_HI))
+	b.add_theme_stylebox_override("pressed", ConstructionStyle.tape_box(ConstructionStyle.YELLOW_DK, 2))
+	b.add_theme_stylebox_override("hover_pressed", ConstructionStyle.tape_box(ConstructionStyle.YELLOW_DK, 2))
+	var focus := ConstructionStyle.tape_box(Color(0, 0, 0, 0), 0)
+	focus.border_color = Color.WHITE
+	focus.draw_center = false
+	focus.shadow_size = 0
+	b.add_theme_stylebox_override("focus", focus)
+	for side: String in ["Left", "Right"]:
+		var t := ConstructionStyle.Hazard.new()
+		t.name = "Tape" + side
+		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		t.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE if side == "Left" else Control.PRESET_RIGHT_WIDE)
+		t.offset_top = 10; t.offset_bottom = -16
+		if side == "Left": t.offset_left = 12; t.offset_right = 70
+		else: t.offset_left = -70; t.offset_right = -12
+		b.add_child(t)
+	var st := VBoxContainer.new()
+	st.name = "Stack"
+	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	st.offset_left = 82; st.offset_right = -82; st.offset_bottom = -4
+	st.alignment = BoxContainer.ALIGNMENT_CENTER
+	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	st.add_theme_constant_override("separation", -4)
+	b.add_child(st)
+	var bl := Label.new()
+	bl.name = "Big"
+	bl.text = "Construction"
+	bl.add_theme_font_size_override("font_size", 26)
+	bl.add_theme_font_override("font", UiTheme.font(700))
+	bl.add_theme_color_override("font_color", ConstructionStyle.BLACK)
+	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	st.add_child(bl)
+	var sl := Label.new()
+	sl.name = "Sub"
+	sl.add_theme_font_size_override("font_size", 16)
+	sl.add_theme_color_override("font_color", Color(0.2, 0.15, 0.02))
+	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sl.clip_text = true
+	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	st.add_child(sl)
+	b.pressed.connect(open_hub)
+	home.add_child(b)
+	dlc_b = b
 
 ## A gold dot on the gear while the newest patch notes are unseen (What's new lives in Settings > About, one button fewer on the title).
 func _news_dot() -> void:
@@ -256,6 +321,8 @@ func _small_button(big: String, sub: String) -> Button:
 	return b
 
 func _coins_sub() -> void:
+	if dlc_b:
+		(dlc_b.get_node("Stack/Sub") as Label).text = tr("Build site brawls") if DlcUnlock.owned() else tr("Build site brawls · %d coins") % DlcUnlock.price()
 	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = tr("You have %d coins") % Save.coins
 	if goals_b:
 		var n := Save.goals_to_claim()
@@ -266,6 +333,10 @@ func _coins_sub() -> void:
 ## The Goals screen over the title.
 func open_goals() -> void:
 	goals.open()
+
+## The Construction hub (Classic / Arcade, the DLC unlock) over the title.
+func open_hub() -> void:
+	hub.open()
 
 ## The What's new card over the title.
 func open_news() -> void:
@@ -294,9 +365,16 @@ func show_tab(online: bool) -> void:
 	($Safe/Col/Top/Logo as WobbleLogo).font_size = 46 if online else 68     # a compact header: the room list needs the height
 	online_panel.visible = online
 	$Safe/Col/Build.visible = not online      # (the version line waits for the title: the room list needs the height)
-	$Safe/Col/Tip.visible = not online    # the room list needs the height
+	_tip_room()
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
 	elif not online and Tier.is_pc(): online_b.grab_focus.call_deferred()
+
+## The tip line shows on the title only when the canvas is tall enough for it after the Construction banner (the
+## tip is the Play button's tooltip too); the room list needs the height.
+func _tip_room() -> void:
+	var tip := $Safe/Col/Tip as Label
+	tip.visible = not online_panel.visible and get_viewport_rect().size.y >= TIP_MIN_H
+	play.tooltip_text = (tr("Last time: %s") % wizard.summary_line()) + ("" if tip.visible else "\n" + tip.text)
 
 ## The setup wizard (page 0 = Game type) instead of the title column.
 func open_wizard(p: int = 0) -> void:
@@ -312,7 +390,7 @@ func close_wizard() -> void:
 
 ## Play keeps one plain sub line; the last setup is its tooltip (the wizard opens on it anyway).
 func _play_sub() -> void:
-	play.tooltip_text = tr("Last time: %s") % wizard.summary_line()
+	_tip_room()
 
 func show_settings(on: bool, section := "") -> void:
 	if on:
@@ -356,7 +434,8 @@ func apply_safe_area() -> void:
 	safe.add_theme_constant_override("margin_top", int(m.y + i[1]))
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
-	play.custom_minimum_size.y = 140.0 if short else 176.0
+	play.custom_minimum_size.y = 102.0 if short else 146.0   # (the Construction banner sits below the cards row)
+	(play.get_node("Stack/Big") as Label).add_theme_font_size_override("font_size", 66 if short else 84)
 	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
 		var cc := get_node_or_null(sheet + "/Center") as Control
 		if cc:
@@ -516,15 +595,24 @@ func _enter_match(s: Dictionary) -> void:
 	get_tree().change_scene_to_node.call_deferred(world)
 
 ## Starts the offline match the wizard describes (map, mode, bots, bot skill; class and floor via Settings).
-func play_offline() -> void:
+## `over` (the Construction hub's Start: {mode, map, bots, difficulty}, its Settings keys already written) replaces the
+## wizard's picks; the wizard's own Settings are then left alone.
+func play_offline(over: Dictionary = {}) -> void:
 	if session != null: session.leave("")
-	wizard.save()
+	if over.is_empty(): wizard.save()
 	var world: Node = load(WORLD).instantiate()
-	world.map_id = wizard.map_id
-	world.mode_id = wizard.mode_id
-	world.bot_count = wizard.bots
-	world.difficulty = wizard.diff
-	world.build_mode = wizard.mode_id == "sandbox"     # Sandbox opens the arena in build mode (ui/build_hud.gd)
+	world.map_id = str(over.get("map", wizard.map_id))
+	world.mode_id = str(over.get("mode", wizard.mode_id))
+	world.bot_count = int(over.get("bots", wizard.bots))
+	world.difficulty = str(over.get("difficulty", wizard.diff))
+	world.build_mode = world.mode_id == "sandbox"     # Sandbox opens the arena in build mode (ui/build_hud.gd)
+	get_tree().change_scene_to_node(world)
+
+## The Construction hub's Arcade card: a new boss rush run (dlc/construction/arcade_manager.gd; locked players get nothing).
+func play_arcade() -> void:
+	var world: Node = ArcadeManager.launch()
+	if world == null: return
+	if session != null: session.leave("")
 	get_tree().change_scene_to_node(world)
 
 # ---------------- hosting and the lobby ----------------

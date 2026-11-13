@@ -1,0 +1,37 @@
+{
+ "Building Site": {
+  "zh_TW": "建築工地",
+  "zh_CN": "建筑工地",
+  "ja": "建設現場",
+  "fr": "Chantier de construction",
+  "es": "Obra en construcción"
+ },
+ "Hard Hat": {
+  "zh_TW": "安全帽",
+  "zh_CN": "安全帽",
+  "ja": "ヘルメット",
+  "fr": "Casque de chantier",
+  "es": "Casco de obra"
+ },
+ "White Hard Hat": {
+  "zh_TW": "白色安全帽",
+  "zh_CN": "白色安全帽",
+  "ja": "白いヘルメット",
+  "fr": "Casque blanc",
+  "es": "Casco blanco"
+ },
+ "Orange Hard Hat": {
+  "zh_TW": "橘色安全帽",
+  "zh_CN": "橙色安全帽",
+  "ja": "オレンジのヘルメット",
+  "fr": "Casque orange",
+  "es": "Casco naranja"
+ },
+ "A new building site every time: a fenced yard with a crane, an excavator, a bulldozer, spoil heaps, containers, scaffold towers and a trench with a bounce pad. Climb ladders, jump from machine to machine, and mind the open gates.": {
+  "zh_TW": "每次都是全新的建築工地：圍欄工地裡有吊車、挖土機、推土機、土堆、貨櫃、鷹架塔和附彈跳墊的壕溝。爬梯子、在機器之間跳躍，小心敞開的大門。",
+  "zh_CN": "每次都是全新的建筑工地：围栏工地里有塔吊、挖掘机、推土机、土堆、集装箱、脚手架塔和带弹跳垫的沟渠。爬梯子、在机器之间跳跃，小心敞开的大门。",
+  "ja": "毎回新しい建設現場：フェンスで囲まれた敷地にクレーン、ショベルカー、ブルドーザー、土の山、コンテナ、足場タワー、バウンドパッド付きの溝。はしごを登り、機械から機械へジャンプ。開いたゲートに注意。",
+  "fr": "Un nouveau chantier à chaque fois : une cour clôturée avec une grue, une pelleteuse, un bulldozer, des tas de terre, des conteneurs, des tours d'échafaudage et une tranchée avec un tremplin. Grimpez aux échelles, sautez de machine en machine et méfiez-vous des portails ouverts.",
+  "es": "Una obra nueva cada vez: un recinto vallado con grúa, excavadora, bulldozer, montones de tierra, contenedores, torres de andamio y una zanja con trampolín. Sube escaleras, salta de máquina en máquina y cuidado con las puertas abiertas."
+ }
+}

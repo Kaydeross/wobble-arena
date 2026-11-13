@@ -125,6 +125,13 @@
   "fr": "%d changement(s)",
   "es": "%d cambio(s)"
  },
+ "%d clear + %d first clear bonus": {
+  "zh_TW": "通關 %d + 首次獎勵 %d",
+  "zh_CN": "通关 %d + 首次奖励 %d",
+  "ja": "クリア %d + 初クリアボーナス %d",
+  "fr": "%d victoire + %d bonus première victoire",
+  "es": "%d por superar + %d de bono por primera vez"
+ },
  "%d coins": {
   "zh_TW": "%d 金幣",
   "zh_CN": "%d 金币",
@@ -313,6 +320,20 @@
   "ja": "%s はアプリ専用です。ウェブのプレイヤーがいるため、クラシックで遊びます。",
   "fr": "%s est réservé à l'app : un joueur web est présent, donc on joue en Classique.",
   "es": "%s solo está en la app: hay un jugador web, así que se juega en Clásico."
+ },
+ "%s is fired up!": {
+  "zh_TW": "%s 火力全開！",
+  "zh_CN": "%s 火力全开！",
+  "ja": "%s が本気を出した！",
+  "fr": "%s est remonté !",
+  "es": "¡%s se ha motivado!"
+ },
+ "%s is furious!": {
+  "zh_TW": "%s 暴怒了！",
+  "zh_CN": "%s 暴怒了！",
+  "ja": "%s が激怒した！",
+  "fr": "%s est furieux !",
+  "es": "¡%s está furioso!"
  },
  "%s is on T and first in the emote button.": {
   "zh_TW": "%s 已放在 T 鍵，並排在表情按鈕的第一格。",
@@ -727,6 +748,13 @@
   "fr": "Un cimetière brumeux sous la pleine lune. Cache-toi derrière les pierres tombales, grimpe sur le caveau et regarde les feux follets verts flotter. Les fantômes sont gentils. Presque.",
   "es": "Un cementerio brumoso bajo la luna llena. Escóndete tras las lápidas, sube a la cripta y mira flotar los fuegos fatuos verdes. Los fantasmas son amigables. Más o menos."
  },
+ "A fresh site, a fresh try.": {
+  "zh_TW": "新工地，新挑戰。",
+  "zh_CN": "新工地，新挑战。",
+  "ja": "新しい現場で、もう一度。",
+  "fr": "Un nouveau chantier, un nouvel essai.",
+  "es": "Una obra nueva, otro intento."
+ },
  "A gentleman's bow": {
   "zh_TW": "紳士鞠躬",
   "zh_CN": "绅士鞠躬",
@@ -796,6 +824,13 @@
   "ja": "七段の階段状の長い尾根。両端は低く、中央は高い。坂の上で戦い、下り坂に相手を突き落とし、頂上を守ろう。ふもとのバウンスパッドで最初の段まで跳ね上がる。",
   "fr": "Une longue crête en sept marches, basse aux deux bouts et haute au milieu. Combats en montée, pousse les autres en descente et tiens le sommet. Les tremplins au pied font sauter sur la première marche.",
   "es": "Una larga cresta en siete escalones, baja en los dos extremos y alta en el medio. Lucha cuesta arriba, empuja cuesta abajo y mantén la cima. Los trampolines al pie te catapultan al primer escalón."
+ },
+ "A new building site every time: a fenced yard with a crane, an excavator, a bulldozer, spoil heaps, containers, scaffold towers and a trench with a bounce pad. Climb ladders, jump from machine to machine, and mind the open gates.": {
+  "zh_TW": "每次都是全新的建築工地：圍欄工地裡有吊車、挖土機、推土機、土堆、貨櫃、鷹架塔和附彈跳墊的壕溝。爬梯子、在機器之間跳躍，小心敞開的大門。",
+  "zh_CN": "每次都是全新的建筑工地：围栏工地里有塔吊、挖掘机、推土机、土堆、集装箱、脚手架塔和带弹跳垫的沟渠。爬梯子、在机器之间跳跃，小心敞开的大门。",
+  "ja": "毎回新しい建設現場：フェンスで囲まれた敷地にクレーン、ショベルカー、ブルドーザー、土の山、コンテナ、足場タワー、バウンドパッド付きの溝。はしごを登り、機械から機械へジャンプ。開いたゲートに注意。",
+  "fr": "Un nouveau chantier à chaque fois : une cour clôturée avec une grue, une pelleteuse, un bulldozer, des tas de terre, des conteneurs, des tours d'échafaudage et une tranchée avec un tremplin. Grimpez aux échelles, sautez de machine en machine et méfiez-vous des portails ouverts.",
+  "es": "Una obra nueva cada vez: un recinto vallado con grúa, excavadora, bulldozer, montones de tierra, contenedores, torres de andamio y una zanja con trampolín. Sube escaleras, salta de máquina en máquina y cuidado con las puertas abiertas."
  },
  "A plus-shaped street high above the city. Four arms, a raised hub and nothing but sky in the corners, so every shove can be the last. Bounce pads fling you back toward the middle.": {
   "zh_TW": "高懸於城市之上的十字形街道。四條臂、一個高起的中心，四角只有天空，所以每一次推擠都可能是最後一次。彈跳墊會把你彈回中間。",
@@ -1014,6 +1049,13 @@
   "fr": "Air guitar",
   "es": "Guitarra aérea"
  },
+ "Alive · %d left": {
+  "zh_TW": "存活 · 剩 %d 人",
+  "zh_CN": "存活 · 剩 %d 人",
+  "ja": "生存 · 残り %d 人",
+  "fr": "En vie · %d en jeu",
+  "es": "Vivo · quedan %d"
+ },
  "All three daily goals": {
   "zh_TW": "每日三個目標全部完成",
   "zh_CN": "每日三个目标全部完成",
@@ -1035,12 +1077,26 @@
   "fr": "Un match Chaos 5 contre 5 contre des bots, hors ligne, note la fréquence d'images chaque seconde. Ne touchez pas le téléphone : l'écran reste allumé. À la fin, touchez Copier le résumé pour partager le résultat.",
   "es": "Una partida Caos 5 contra 5 con bots sin conexión registra la tasa de fotogramas cada segundo. No toques el teléfono: la pantalla sigue encendida. Al final, toca Copiar resumen para compartir el resultado."
  },
+ "Angle Grinder": {
+  "zh_TW": "角磨機",
+  "zh_CN": "角磨机",
+  "ja": "ディスクグラインダー",
+  "fr": "Meuleuse d'angle",
+  "es": "Amoladora angular"
+ },
  "App only: a web player in the room makes it Classic.": {
   "zh_TW": "僅限應用程式：房間內有網頁玩家時會改為經典模式。",
   "zh_CN": "仅限应用：房间内有网页玩家时会改为经典模式。",
   "ja": "アプリ専用：Webのプレイヤーがいると、クラシックになります。",
   "fr": "Appli uniquement : un joueur web dans le salon le passe en classique.",
   "es": "Solo app: si hay un jugador web en la sala, pasa a clásico."
+ },
+ "Arcade": {
+  "zh_TW": "街機",
+  "zh_CN": "街机",
+  "ja": "アーケード",
+  "fr": "Arcade",
+  "es": "Arcade"
  },
  "Arena": {
   "zh_TW": "競技場",
@@ -1280,6 +1336,13 @@
   "fr": "Bonnet",
   "es": "Gorro"
  },
+ "Best stage: %d": {
+  "zh_TW": "最佳關卡：%d",
+  "zh_CN": "最佳关卡：%d",
+  "ja": "最高ステージ：%d",
+  "fr": "Meilleure étape : %d",
+  "es": "Mejor etapa: %d"
+ },
  "Beta Tester": {
   "zh_TW": "測試員",
   "zh_CN": "测试员",
@@ -1434,6 +1497,20 @@
   "fr": "Boomerang",
   "es": "Bumerán"
  },
+ "Boss fight": {
+  "zh_TW": "首領戰",
+  "zh_CN": "首领战",
+  "ja": "ボス戦",
+  "fr": "Combat de boss",
+  "es": "Pelea de jefe"
+ },
+ "Boss rush: Tradies, Engineer, Designer, Supervisor, Project Manager, then the Client.": {
+  "zh_TW": "頭目連戰：工人、工程師、設計師、監工、專案經理，最後是客戶。",
+  "zh_CN": "头目连战：工人、工程师、设计师、监工、项目经理，最后是客户。",
+  "ja": "ボスラッシュ：職人、エンジニア、デザイナー、現場監督、プロジェクトマネージャー、そして依頼主。",
+  "fr": "Enchaînement de boss : ouvriers, ingénieur, designer, chef de chantier, chef de projet, puis le Client.",
+  "es": "Jefes seguidos: obreros, ingeniero, diseñador, capataz, jefe de proyecto y, al final, el Cliente."
+ },
  "Bot skill": {
   "zh_TW": "電腦玩家強度",
   "zh_CN": "电脑玩家强度",
@@ -1553,6 +1630,20 @@
   "fr": "Mode construction : crée ta propre arène avec des blocs, puis affronte des bots. Plus les Piliers de lave, où le sol est (toujours) de la lave",
   "es": "Modo construcción: crea tu propia arena con bloques y juega contra bots. Además, Pilares de lava, donde el suelo sigue siendo lava"
  },
+ "Build site brawls": {
+  "zh_TW": "工地大亂鬥",
+  "zh_CN": "工地大乱斗",
+  "ja": "工事現場バトル",
+  "fr": "Bagarres de chantier",
+  "es": "Peleas de obra"
+ },
+ "Build site brawls · %d coins": {
+  "zh_TW": "工地大亂鬥 · %d 金幣",
+  "zh_CN": "工地大乱斗 · %d 金币",
+  "ja": "工事現場バトル · %d コイン",
+  "fr": "Bagarres de chantier · %d pièces",
+  "es": "Peleas de obra · %d monedas"
+ },
  "Build your own arena with blocks, then play it with bots": {
   "zh_TW": "用方塊蓋出你自己的競技場，再和電腦玩家對戰。",
   "zh_CN": "用方块搭建你自己的竞技场，再和电脑玩家对战。",
@@ -1573,6 +1664,13 @@
   "ja": "ビルダー",
   "fr": "Bricoleur",
   "es": "Constructor"
+ },
+ "Building Site": {
+  "zh_TW": "建築工地",
+  "zh_CN": "建筑工地",
+  "ja": "建設現場",
+  "fr": "Chantier de construction",
+  "es": "Obra en construcción"
  },
  "Built for Moon Drift. A lunar crater under a glass dome with Earth hanging in the sky. Leap off the moon rocks and float up to the drifting asteroid platforms, and bounce off the glass.": {
   "zh_TW": "為月球漂移而建。玻璃穹頂下的月球隕石坑，天空中懸掛著地球。從月岩上跳起，飄向漂移的小行星平台，並在玻璃上反彈。",
@@ -1686,6 +1784,13 @@
   "fr": "CPU / GPU ms (médiane)",
   "es": "CPU / GPU ms (mediana)"
  },
+ "Calculated risk. Watch out for falling load test crates.": {
+  "zh_TW": "計算精確的風險。小心墜落的負載測試箱。",
+  "zh_CN": "计算精确的风险。小心坠落的负载测试箱。",
+  "ja": "計算されたリスク。落下する荷重テスト木箱に注意。",
+  "fr": "Risque calculé. Attention aux caisses de test de charge qui tombent.",
+  "es": "Riesgo calculado. Cuidado con las cajas de prueba de carga que caen."
+ },
  "Camera": {
   "zh_TW": "鏡頭",
   "zh_CN": "镜头",
@@ -1749,6 +1854,13 @@
   "fr": "Roue",
   "es": "Voltereta lateral"
  },
+ "Cement Bucket": {
+  "zh_TW": "水泥桶",
+  "zh_CN": "水泥桶",
+  "ja": "セメントバケツ",
+  "fr": "Seau de ciment",
+  "es": "Cubo de cemento"
+ },
  "Champ": {
   "zh_TW": "冠軍",
   "zh_CN": "冠军",
@@ -1769,6 +1881,13 @@
   "ja": "パスワードを変更",
   "fr": "Changer le mot de passe",
   "es": "Cambiar contraseña"
+ },
+ "Change request approved! Weapons swapped!": {
+  "zh_TW": "修改需求已批准！武器已更換！",
+  "zh_CN": "修改需求已批准！武器已更换！",
+  "ja": "仕様変更承認！武器が変更された！",
+  "fr": "Demande de modification approuvée ! Changement d'armes !",
+  "es": "¡Solicitud de cambio aprobada! ¡Armas intercambiadas!"
  },
  "Chaos": {
   "zh_TW": "混亂",
@@ -1875,6 +1994,13 @@
   "fr": "Tout effacer",
   "es": "Borrar todo"
  },
+ "Cleared before: no coins this time": {
+  "zh_TW": "已通關過：這次沒有金幣",
+  "zh_CN": "已通关过：这次没有金币",
+  "ja": "クリア済み：今回のコインはなし",
+  "fr": "Déjà réussie : pas de pièces cette fois",
+  "es": "Ya superada: sin monedas esta vez"
+ },
  "Click to look around   ·   Esc: menu": {
   "zh_TW": "點擊環顧四周   ·   Esc：選單",
   "zh_CN": "点击环顾四周   ·   Esc：菜单",
@@ -1931,6 +2057,13 @@
   "fr": "Lance-clusters",
   "es": "Lanzador de racimos"
  },
+ "Code": {
+  "zh_TW": "代碼",
+  "zh_CN": "代码",
+  "ja": "コード",
+  "fr": "Code",
+  "es": "Código"
+ },
  "Code Spin": {
   "zh_TW": "代碼旋轉",
   "zh_CN": "代码旋转",
@@ -1973,6 +2106,13 @@
   "fr": "Inclut %s",
   "es": "Incluye %s"
  },
+ "Coming soon": {
+  "zh_TW": "即將推出",
+  "zh_CN": "即将推出",
+  "ja": "近日公開",
+  "fr": "Bientôt",
+  "es": "Próximamente"
+ },
  "Common": {
   "zh_TW": "普通",
   "zh_CN": "普通",
@@ -1993,6 +2133,13 @@
   "ja": "コーン",
   "fr": "Cône",
   "es": "Cono"
+ },
+ "Cone Launcher": {
+  "zh_TW": "錐筒發射器",
+  "zh_CN": "锥筒发射器",
+  "ja": "コーンランチャー",
+  "fr": "Lance-cône",
+  "es": "Lanzaconos"
  },
  "Connected · %s": {
   "zh_TW": "已連線 · %s",
@@ -2056,6 +2203,13 @@
   "ja": "概要をコピー",
   "fr": "Copier le résumé",
   "es": "Copiar resumen"
+ },
+ "Cordless Drill": {
+  "zh_TW": "手電鑽",
+  "zh_CN": "手电钻",
+  "ja": "コードレスドリル",
+  "fr": "Perceuse sans fil",
+  "es": "Taladro inalámbrico"
  },
  "Could not change it.": {
   "zh_TW": "無法變更。",
@@ -2344,6 +2498,13 @@
   "fr": "Crédits",
   "es": "Créditos"
  },
+ "Crew fight": {
+  "zh_TW": "工友戰",
+  "zh_CN": "工友战",
+  "ja": "職人バトル",
+  "fr": "Combat d'équipe",
+  "es": "Pelea de cuadrilla"
+ },
  "Crimson Samurai": {
   "zh_TW": "赤紅武士",
   "zh_CN": "赤红武士",
@@ -2456,6 +2617,13 @@
   "fr": "Dash / Recharger",
   "es": "Impulso / Recargar"
  },
+ "Deadline approaching! Floor is shrinking!": {
+  "zh_TW": "截止日期臨近！地面正在縮小！",
+  "zh_CN": "截止日期临近！地面正在缩小！",
+  "ja": "納期が迫る！床が縮小しているぞ！",
+  "fr": "Date limite imminente ! Le sol rétrécit !",
+  "es": "¡Se acerca la fecha límite! ¡El suelo se encoge!"
+ },
  "Death Match": {
   "zh_TW": "死鬥",
   "zh_CN": "死斗",
@@ -2483,6 +2651,13 @@
   "ja": "アカウントを削除",
   "fr": "Supprimer le compte",
   "es": "Eliminar cuenta"
+ },
+ "Designer": {
+  "zh_TW": "設計師",
+  "zh_CN": "设计师",
+  "ja": "デザイナー",
+  "fr": "Designer",
+  "es": "Diseñador"
  },
  "Detective": {
   "zh_TW": "偵探",
@@ -2736,6 +2911,13 @@
   "fr": "L'équipe ennemie gagne !",
   "es": "¡Gana el equipo enemigo!"
  },
+ "Engineer": {
+  "zh_TW": "工程師",
+  "zh_CN": "工程师",
+  "ja": "エンジニア",
+  "fr": "Ingénieur",
+  "es": "Ingeniero"
+ },
  "Enter a server address and a room code.": {
   "zh_TW": "請輸入伺服器位址和房間代碼。",
   "zh_CN": "请输入服务器地址和房间代码。",
@@ -2749,6 +2931,13 @@
   "ja": "サーバーのアドレスを入力してください。",
   "fr": "Saisis l'adresse du serveur.",
   "es": "Escribe la dirección del servidor."
+ },
+ "Enter code": {
+  "zh_TW": "輸入代碼",
+  "zh_CN": "输入代码",
+  "ja": "コードを入力",
+  "fr": "Saisir un code",
+  "es": "Introducir código"
  },
  "Epic": {
   "zh_TW": "史詩",
@@ -2770,6 +2959,13 @@
   "ja": "装備中",
   "fr": "Équipé",
   "es": "Equipado"
+ },
+ "Event: %s": {
+  "zh_TW": "事件：%s",
+  "zh_CN": "事件：%s",
+  "ja": "イベント：%s",
+  "fr": "Événement : %s",
+  "es": "Evento: %s"
  },
  "Every K.O. swaps you to the next weapon. Finish the whole ladder to win": {
   "zh_TW": "每次擊倒都會換到下一把武器。走完整個階梯即獲勝",
@@ -2918,6 +3114,13 @@
   "fr": "app Fichiers > Sur mon iPhone > Wobblers Arena > soak",
   "es": "app Archivos > En mi iPhone > Wobblers Arena > soak"
  },
+ "Final boss": {
+  "zh_TW": "最終首領",
+  "zh_CN": "最终首领",
+  "ja": "ラスボス",
+  "fr": "Boss final",
+  "es": "Jefe final"
+ },
  "Finish 10 matches this week": {
   "zh_TW": "本週完成 10 場比賽",
   "zh_CN": "本周完成 10 场比赛",
@@ -2987,6 +3190,13 @@
   "ja": "射撃場",
   "fr": "Champ de tir",
   "es": "Campo de tiro"
+ },
+ "First clear: %d coins": {
+  "zh_TW": "首次通關：%d 金幣",
+  "zh_CN": "首次通关：%d 金币",
+  "ja": "初クリア：%d コイン",
+  "fr": "Première victoire : %d pièces",
+  "es": "Primera victoria: %d monedas"
  },
  "First headshot": {
   "zh_TW": "首次爆頭",
@@ -3478,6 +3688,13 @@
   "fr": "Difficile",
   "es": "Difícil"
  },
+ "Hard Hat": {
+  "zh_TW": "安全帽",
+  "zh_CN": "安全帽",
+  "ja": "ヘルメット",
+  "fr": "Casque de chantier",
+  "es": "Casco de obra"
+ },
  "Hats": {
   "zh_TW": "帽子",
   "zh_CN": "帽子",
@@ -3730,6 +3947,13 @@
   "fr": "Dans le salon : %s",
   "es": "En la sala: %s"
  },
+ "Includes %d victory bonus coins": {
+  "zh_TW": "包含 %d 金幣勝利獎勵",
+  "zh_CN": "包含 %d 金币胜利奖励",
+  "ja": "勝利ボーナス %d コインを含む",
+  "fr": "Dont %d pièces de bonus de victoire",
+  "es": "Incluye %d monedas de bono de victoria"
+ },
  "Infinite": {
   "zh_TW": "無限",
   "zh_CN": "无限",
@@ -3764,6 +3988,13 @@
   "ja": "ジャケット",
   "fr": "Veste",
   "es": "Chaqueta"
+ },
+ "Jackhammer": {
+  "zh_TW": "氣動鎬",
+  "zh_CN": "风镐",
+  "ja": "削岩機",
+  "fr": "Marteau-piqueur",
+  "es": "Martillo neumático"
  },
  "Jester": {
   "zh_TW": "小丑",
@@ -3834,6 +4065,13 @@
   "ja": "KO",
   "fr": "K.O.",
   "es": "K.O."
+ },
+ "K.O.s %d": {
+  "zh_TW": "K.O. %d",
+  "zh_CN": "K.O. %d",
+  "ja": "K.O. %d",
+  "fr": "K.O. %d",
+  "es": "K.O. %d"
  },
  "KB resist": {
   "zh_TW": "擊退抗性",
@@ -4023,6 +4261,27 @@
   "ja": "ライブワイヤー",
   "fr": "Fouet électrique",
   "es": "Látigo eléctrico"
+ },
+ "Lives %d": {
+  "zh_TW": "生命 %d",
+  "zh_CN": "生命 %d",
+  "ja": "残機 %d",
+  "fr": "Vies %d",
+  "es": "Vidas %d"
+ },
+ "Lives left: %d": {
+  "zh_TW": "剩餘生命：%d",
+  "zh_CN": "剩余生命：%d",
+  "ja": "残りライフ：%d",
+  "fr": "Vies restantes : %d",
+  "es": "Vidas restantes: %d"
+ },
+ "Load test incoming! Crates falling!": {
+  "zh_TW": "負載測試開始！板箱正在墜落！",
+  "zh_CN": "负载测试开始！板箱正在坠落！",
+  "ja": "荷重テスト開始！木箱が降ってくるぞ！",
+  "fr": "Test de charge imminent ! Caisses en chute !",
+  "es": "¡Prueba de carga entrante! ¡Cajas cayendo!"
  },
  "Lobby": {
   "zh_TW": "大廳",
@@ -4388,6 +4647,13 @@
   "fr": "Mythique",
   "es": "Mítico"
  },
+ "Nail Gun": {
+  "zh_TW": "釘槍",
+  "zh_CN": "钉枪",
+  "ja": "ネイルガン",
+  "fr": "Pistolet à clous",
+  "es": "Pistola de clavos"
+ },
  "Names nobody uses for 30 days are freed.": {
   "zh_TW": "30 天沒人使用的名字會被釋出。",
   "zh_CN": "30 天没人使用的名字会被释放。",
@@ -4422,6 +4688,13 @@
   "ja": "ネットガン",
   "fr": "Pistolet filet",
   "es": "Pistola red"
+ },
+ "New hat: %s. Pick it in the Walldrobe": {
+  "zh_TW": "新帽子：%s。可在衣櫥中選擇",
+  "zh_CN": "新帽子：%s。可在衣橱中选择",
+  "ja": "新しい帽子：%s。ワードローブで選べます",
+  "fr": "Nouveau chapeau : %s. À choisir dans la garde-robe",
+  "es": "Sombrero nuevo: %s. Elígelo en el armario"
  },
  "New modes: Team Deathmatch, Deathmatch, Sudden Death and Chaos. Chaos is exactly what it sounds like": {
   "zh_TW": "新模式：團隊死鬥、死鬥、猝死賽和混亂。混亂就是字面上的意思",
@@ -4485,6 +4758,13 @@
   "ja": "次へ",
   "fr": "Suivant",
   "es": "Siguiente"
+ },
+ "Next stage": {
+  "zh_TW": "下一關",
+  "zh_CN": "下一关",
+  "ja": "次のステージ",
+  "fr": "Étape suivante",
+  "es": "Siguiente etapa"
  },
  "Next unlock: %s · %d / %d coins": {
   "zh_TW": "下一個解鎖：%s · %d / %d 金幣",
@@ -4647,6 +4927,13 @@
   "fr": "Pas à vendre",
   "es": "No está en venta"
  },
+ "Not on my watch! Calls in backup when pressed.": {
+  "zh_TW": "休想在我的地盤撒野！受到威脅時呼叫增援。",
+  "zh_CN": "休想在我的地盘撒野！受到威胁时呼叫增援。",
+  "ja": "オレの目の前で勝手はさせん！追い詰められると応援を呼ぶ。",
+  "fr": "Pas sous ma garde ! Appelle du renfort en cas d'urgence.",
+  "es": "¡No bajo mi supervisión! Pide refuerzos si se ve acorralado."
+ },
  "Not saved to the cloud: this account changed on another device.": {
   "zh_TW": "未儲存到雲端：此帳號在另一部裝置上有變更。",
   "zh_CN": "未保存到云端：此账号在另一台设备上有改动。",
@@ -4710,12 +4997,26 @@
   "fr": "Hors ligne",
   "es": "Sin conexión"
  },
+ "Offline, against computer players": {
+  "zh_TW": "離線，對戰電腦玩家",
+  "zh_CN": "离线，对战电脑玩家",
+  "ja": "オフライン · コンピューターと対戦",
+  "fr": "Hors ligne, contre l'ordinateur",
+  "es": "Sin conexión, contra la computadora"
+ },
  "On": {
   "zh_TW": "開",
   "zh_CN": "开",
   "ja": "オン",
   "fr": "Activé",
   "es": "Sí"
+ },
+ "One last change request before sign-off!": {
+  "zh_TW": "簽收前的最後一個修改需求！",
+  "zh_CN": "签收前的最后一个修改需求！",
+  "ja": "承認前にもう1件だけ仕様変更の依頼だ！",
+  "fr": "Une toute dernière demande de modification avant signature !",
+  "es": "¡Una última solicitud de cambio antes de la entrega!"
  },
  "One leg up, then the other, then a power kick": {
   "zh_TW": "一腳抬起，換另一腳，最後強力踢擊",
@@ -4801,12 +5102,26 @@
   "fr": "Orange",
   "es": "Naranja"
  },
+ "Orange Hard Hat": {
+  "zh_TW": "橘色安全帽",
+  "zh_CN": "橙色安全帽",
+  "ja": "オレンジのヘルメット",
+  "fr": "Casque orange",
+  "es": "Casco naranja"
+ },
  "Out": {
   "zh_TW": "出局",
   "zh_CN": "出局",
   "ja": "脱落",
   "fr": "ÉLIMINÉ",
   "es": "Fuera"
+ },
+ "Out of lives. The site wins this time.": {
+  "zh_TW": "生命用完了。這次工地贏了。",
+  "zh_CN": "生命用完了。这次工地赢了。",
+  "ja": "ライフがなくなりました。今回は現場の勝ちです。",
+  "fr": "Plus de vies. Le chantier gagne cette fois.",
+  "es": "Sin vidas. La obra gana esta vez."
  },
  "Out · %d left": {
   "zh_TW": "出局 · 剩 %d 人",
@@ -5011,6 +5326,13 @@
   "fr": "Piliers, une vie, une nouvelle arme toutes les 10 s",
   "es": "Pilares, una vida, un arma nueva cada 10 s"
  },
+ "Pipe Wrench": {
+  "zh_TW": "管鉗",
+  "zh_CN": "管钳",
+  "ja": "パイプレンチ",
+  "fr": "Clé à tube",
+  "es": "Llave grifa"
+ },
  "Pirate": {
   "zh_TW": "海盜",
   "zh_CN": "海盗",
@@ -5073,6 +5395,13 @@
   "ja": "オンライン対戦を1試合",
   "fr": "Jouer un match en ligne",
   "es": "Juega una partida en línea"
+ },
+ "Play online with friends": {
+  "zh_TW": "與朋友線上對戰",
+  "zh_CN": "与朋友在线对战",
+  "ja": "友達とオンラインで遊ぶ",
+  "fr": "Jouer en ligne avec des amis",
+  "es": "Jugar en línea con amigos"
  },
  "Play streak: %d day. First win of the day pays a bonus": {
   "zh_TW": "連續遊玩：%d 天。當日首勝有獎勵",
@@ -5179,6 +5508,13 @@
   "fr": "Privé (code)",
   "es": "Privada (código)"
  },
+ "Project Manager": {
+  "zh_TW": "專案經理",
+  "zh_CN": "项目经理",
+  "ja": "プロジェクトマネージャー",
+  "fr": "Chef de projet",
+  "es": "Jefe de proyecto"
+ },
  "Propeller": {
   "zh_TW": "螺旋槳",
   "zh_CN": "螺旋桨",
@@ -5249,6 +5585,13 @@
   "fr": "Quitter la partie",
   "es": "Terminar partida"
  },
+ "Quit run": {
+  "zh_TW": "結束挑戰",
+  "zh_CN": "结束挑战",
+  "ja": "挑戦をやめる",
+  "fr": "Quitter la partie",
+  "es": "Salir de la partida"
+ },
  "Quit this match? It won't count, and you'll go back to the title.": {
   "zh_TW": "要結束這場比賽嗎？不會計入成績，並回到標題畫面。",
   "zh_CN": "要结束这场比赛吗？不会计入成绩，并返回标题画面。",
@@ -5291,6 +5634,13 @@
   "fr": "Aléatoire",
   "es": "Aleatorio"
  },
+ "Random: a new site every match. Re-roll fixes a seed, so the same site comes back.": {
+  "zh_TW": "隨機：每場都是新工地。重擲會固定種子，同一個工地會再次出現。",
+  "zh_CN": "随机：每场都是新工地。重掷会固定种子，同一个工地会再次出现。",
+  "ja": "ランダム：毎試合新しい現場。振り直すとシードが固定され、同じ現場に戻れます。",
+  "fr": "Aléatoire : un nouveau chantier à chaque match. Relancer fixe une graine : le même chantier revient.",
+  "es": "Aleatorio: una obra nueva en cada partida. Repetir fija una semilla y vuelve la misma obra."
+ },
  "Range": {
   "zh_TW": "靶場",
   "zh_CN": "靶场",
@@ -5304,6 +5654,13 @@
   "ja": "レア",
   "fr": "Rare",
   "es": "Raro"
+ },
+ "Re-roll": {
+  "zh_TW": "重擲",
+  "zh_CN": "重掷",
+  "ja": "振り直す",
+  "fr": "Relancer",
+  "es": "Repetir"
  },
  "Ready to play?": {
   "zh_TW": "準備好了嗎？",
@@ -5409,6 +5766,20 @@
   "ja": "再開",
   "fr": "Reprendre",
   "es": "Reanudar"
+ },
+ "Retry stage": {
+  "zh_TW": "重試本關",
+  "zh_CN": "重试本关",
+  "ja": "ステージをやり直す",
+  "fr": "Réessayer l'étape",
+  "es": "Reintentar etapa"
+ },
+ "Revision pads active! Step carefully!": {
+  "zh_TW": "修改彈跳墊已啟用！小心腳下！",
+  "zh_CN": "修改弹跳垫已启用！小心脚下！",
+  "ja": "修正パッド稼働中！足元に注意！",
+  "fr": "Plateformes de révision actives ! Attention où tu marches !",
+  "es": "¡Plataformas de revisión activas! ¡Pisa con cuidado!"
  },
  "Revolver": {
   "zh_TW": "左輪手槍",
@@ -5535,6 +5906,13 @@
   "ja": "ルール",
   "fr": "Règles",
   "es": "Reglas"
+ },
+ "Run over": {
+  "zh_TW": "挑戰結束",
+  "zh_CN": "挑战结束",
+  "ja": "ゲームオーバー",
+  "fr": "Partie terminée",
+  "es": "Fin de la partida"
  },
  "SMG": {
   "zh_TW": "衝鋒槍",
@@ -5676,6 +6054,20 @@
   "fr": "Gamin",
   "es": "Pillín"
  },
+ "Scope creep! Extra workers arriving!": {
+  "zh_TW": "需求蔓延！額外工人趕到了！",
+  "zh_CN": "需求蔓延！额外工人赶到了！",
+  "ja": "スコープの肥大化！追加の作業員が到着！",
+  "fr": "Dérive des objectifs ! Des ouvriers supplémentaires arrivent !",
+  "es": "¡Ampliación de alcance! ¡Llegan trabajadores adicionales!"
+ },
+ "Scope is fluid. Mind the revision pads!": {
+  "zh_TW": "需求變動中。注意修改彈跳墊！",
+  "zh_CN": "需求变动中。注意修改弹跳垫！",
+  "ja": "スコープは流動的。修正パッドに気をつけろ！",
+  "fr": "Le périmètre évolue. Gare aux plateformes de révision !",
+  "es": "El alcance es flexible. ¡Cuidado con las plataformas de revisión!"
+ },
  "Score 50 K.O.s": {
   "zh_TW": "擊倒 50 次",
   "zh_CN": "击倒 50 次",
@@ -5745,6 +6137,13 @@
   "ja": "操作を見る",
   "fr": "Voir les commandes",
   "es": "Ver los controles"
+ },
+ "Seed %d": {
+  "zh_TW": "種子 %d",
+  "zh_CN": "种子 %d",
+  "ja": "シード %d",
+  "fr": "Graine %d",
+  "es": "Semilla %d"
  },
  "Set new password": {
   "zh_TW": "設定新密碼",
@@ -5963,12 +6362,33 @@
   "fr": "Chevalier d'argent",
   "es": "Caballero de plata"
  },
+ "Site Foreman Hard Hat": {
+  "zh_TW": "工地主管安全帽",
+  "zh_CN": "工地主管安全帽",
+  "ja": "現場監督のヘルメット",
+  "fr": "Casque de chef de chantier",
+  "es": "Casco de capataz"
+ },
  "Site Yard": {
   "zh_TW": "工地廣場",
   "zh_CN": "工地广场",
   "ja": "工事現場",
   "fr": "Chantier",
   "es": "Obra"
+ },
+ "Site cleared!": {
+  "zh_TW": "工地清場！",
+  "zh_CN": "工地清场！",
+  "ja": "現場クリア！",
+  "fr": "Chantier nettoyé !",
+  "es": "¡Obra despejada!"
+ },
+ "Site seed": {
+  "zh_TW": "工地種子",
+  "zh_CN": "工地种子",
+  "ja": "現場シード",
+  "fr": "Graine du chantier",
+  "es": "Semilla de obra"
  },
  "Size": {
   "zh_TW": "大小",
@@ -6004,6 +6424,13 @@
   "ja": "小",
   "fr": "Petit",
   "es": "Pequeño"
+ },
+ "Smoko's over. Watch your back around the tool shed.": {
+  "zh_TW": "休息結束了。在工具棚附近多加小心。",
+  "zh_CN": "休息结束了。在工具棚附近多加小心。",
+  "ja": "休憩時間は終わりだ。道具置き場周辺に気をつけろ。",
+  "fr": "La pause est finie. Fais attention à toi près du hangar à outils.",
+  "es": "Se acabó el descanso. Cuida tu espalda cerca del cobertizo de herramientas."
  },
  "Snake Shooter": {
   "zh_TW": "毒蛇發射器",
@@ -6159,6 +6586,13 @@
   "fr": "Tourne et saute. Tout le monde l'a",
   "es": "Gira y salta. Todos la tienen"
  },
+ "Spirit Level": {
+  "zh_TW": "水平尺",
+  "zh_CN": "水平尺",
+  "ja": "水準器",
+  "fr": "Niveau à bulle",
+  "es": "Nivel de burbuja"
+ },
  "Spooky": {
   "zh_TW": "驚悚",
   "zh_CN": "惊悚",
@@ -6221,6 +6655,41 @@
   "ja": "圧迫の部屋",
   "fr": "Chambre étouffante",
   "es": "Cámara de compresión"
+ },
+ "Stage %d / %d": {
+  "zh_TW": "第 %d / %d 關",
+  "zh_CN": "第 %d / %d 关",
+  "ja": "ステージ %d / %d",
+  "fr": "Étape %d / %d",
+  "es": "Etapa %d / %d"
+ },
+ "Stage %d of %d": {
+  "zh_TW": "第 %d 關，共 %d 關",
+  "zh_CN": "第 %d 关，共 %d 关",
+  "ja": "ステージ %d / %d",
+  "fr": "Étape %d sur %d",
+  "es": "Etapa %d de %d"
+ },
+ "Stage %d of %d: %s": {
+  "zh_TW": "第 %d 關（共 %d 關）：%s",
+  "zh_CN": "第 %d 关（共 %d 关）：%s",
+  "ja": "ステージ %d / %d：%s",
+  "fr": "Étape %d sur %d : %s",
+  "es": "Etapa %d de %d: %s"
+ },
+ "Stage clear!": {
+  "zh_TW": "過關！",
+  "zh_CN": "过关！",
+  "ja": "ステージクリア！",
+  "fr": "Étape réussie !",
+  "es": "¡Etapa superada!"
+ },
+ "Stage failed": {
+  "zh_TW": "挑戰失敗",
+  "zh_CN": "挑战失败",
+  "ja": "ステージ失敗",
+  "fr": "Étape échouée",
+  "es": "Etapa fallida"
  },
  "Stairs": {
   "zh_TW": "階梯",
@@ -6334,6 +6803,13 @@
   "fr": "Style",
   "es": "Estilo"
  },
+ "Submit": {
+  "zh_TW": "送出",
+  "zh_CN": "提交",
+  "ja": "送信",
+  "fr": "Valider",
+  "es": "Enviar"
+ },
  "Sudden Death": {
   "zh_TW": "猝死賽",
   "zh_CN": "猝死赛",
@@ -6425,6 +6901,20 @@
   "fr": "Supernova",
   "es": "Supernova"
  },
+ "Supervisor": {
+  "zh_TW": "監工",
+  "zh_CN": "监工",
+  "ja": "現場監督",
+  "fr": "Superviseur",
+  "es": "Supervisor"
+ },
+ "Supervisor called in backup tradies!": {
+  "zh_TW": "監工呼叫了工友增援！",
+  "zh_CN": "监工呼叫了工友增援！",
+  "ja": "現場監督が応援の職人を呼んだ！",
+  "fr": "Le superviseur a appelé des ouvriers en renfort !",
+  "es": "¡El supervisor pidió refuerzos de obreros!"
+ },
  "Sur-Ron Wheelie": {
   "zh_TW": "電動越野車前輪翹起",
   "zh_CN": "电动越野车翘头",
@@ -6480,6 +6970,13 @@
   "ja": "タップ：突き飛ばし · 長押し：キック",
   "fr": "Tape : bousculer · maintiens : coup de pied",
   "es": "Toque: empujar · mantener: patear"
+ },
+ "Tape Measure": {
+  "zh_TW": "捲尺",
+  "zh_CN": "卷尺",
+  "ja": "メジャー",
+  "fr": "Mètre ruban",
+  "es": "Cinta métrica"
  },
  "Targets": {
   "zh_TW": "靶",
@@ -6585,6 +7082,20 @@
   "ja": "ブロックが多すぎ！",
   "fr": "Ça fait beaucoup de blocs !",
   "es": "¡Son muchísimos bloques!"
+ },
+ "The Client": {
+  "zh_TW": "業主",
+  "zh_CN": "业主",
+  "ja": "クライアント",
+  "fr": "Le Client",
+  "es": "El Cliente"
+ },
+ "The Client signed off. Every tradie is back on smoko.": {
+  "zh_TW": "客戶簽字驗收了。工友們都回去休息了。",
+  "zh_CN": "客户签字验收了。工友们都回去休息了。",
+  "ja": "依頼主が承認しました。職人たちは休憩に戻りました。",
+  "fr": "Le client a validé. Tous les ouvriers retournent en pause.",
+  "es": "El cliente dio el visto bueno. Todos los obreros vuelven al descanso."
  },
  "The Dab": {
   "zh_TW": "達布",
@@ -6824,12 +7335,26 @@
   "fr": "Étages",
   "es": "Niveles"
  },
+ "Tight deadlines, red tape, and creeping scope.": {
+  "zh_TW": "緊迫的截止日期、繁文縟節與不斷蔓延的專案範疇。",
+  "zh_CN": "紧迫的截止日期、繁文缛节与不断蔓延的项目范畴。",
+  "ja": "迫る納期、お役所仕事、膨らみ続けるスコープ。",
+  "fr": "Délais serrés, paperasse et dérive des objectifs.",
+  "es": "Plazos ajustados, burocracia y alcance descontrolado."
+ },
  "Tilt": {
   "zh_TW": "傾斜",
   "zh_CN": "倾斜",
   "ja": "傾き",
   "fr": "Inclinaison",
   "es": "Inclinación"
+ },
+ "Time %s": {
+  "zh_TW": "時間 %s",
+  "zh_CN": "时间 %s",
+  "ja": "タイム %s",
+  "fr": "Temps %s",
+  "es": "Tiempo %s"
  },
  "Tiny and zippy, easy to launch": {
   "zh_TW": "又小又靈活，容易被彈飛",
@@ -6977,6 +7502,13 @@
   "ja": "おもちゃ",
   "fr": "Jouets",
   "es": "Juguetes"
+ },
+ "Tradies": {
+  "zh_TW": "工友隊",
+  "zh_CN": "工友队",
+  "ja": "職人たち",
+  "fr": "Ouvriers",
+  "es": "Obreros"
  },
  "Tradies fight with hammers, live wire and air blowers on a worksite": {
   "zh_TW": "工匠們在工地上用鐵鎚、帶電電線和鼓風機互鬥",
@@ -7132,6 +7664,41 @@
   "fr": "Peu commun",
   "es": "Poco común"
  },
+ "Unlock Construction first": {
+  "zh_TW": "請先解鎖建造",
+  "zh_CN": "请先解锁建造",
+  "ja": "先に建設を解放してください",
+  "fr": "Débloquez d'abord Construction",
+  "es": "Desbloquea primero Construcción"
+ },
+ "Unlock for %d coins": {
+  "zh_TW": "用 %d 金幣解鎖",
+  "zh_CN": "用 %d 金币解锁",
+  "ja": "%d コインで解放",
+  "fr": "Débloquer pour %d pièces",
+  "es": "Desbloquear por %d monedas"
+ },
+ "Unlock to play": {
+  "zh_TW": "解鎖後即可遊玩",
+  "zh_CN": "解锁后即可游玩",
+  "ja": "解放すると遊べます",
+  "fr": "Débloquez pour jouer",
+  "es": "Desbloquea para jugar"
+ },
+ "Unlocked everything": {
+  "zh_TW": "全部解鎖了",
+  "zh_CN": "全部解锁了",
+  "ja": "すべて解放しました",
+  "fr": "Tout est débloqué",
+  "es": "Todo desbloqueado"
+ },
+ "Up to 8 on a random building site. Hard hats on, tools out.": {
+  "zh_TW": "最多 8 人，在隨機工地上開打。戴好安全帽，拿出工具。",
+  "zh_CN": "最多 8 人，在随机工地上开打。戴好安全帽，拿出工具。",
+  "ja": "最大8人でランダムな工事現場へ。ヘルメットを被って、道具を構えよう。",
+  "fr": "Jusqu'à 8 sur un chantier aléatoire. Casques sur la tête, outils en main.",
+  "es": "Hasta 8 en una obra aleatoria. Cascos puestos, herramientas fuera."
+ },
  "Use cloud": {
   "zh_TW": "使用雲端",
   "zh_CN": "使用云端",
@@ -7222,6 +7789,13 @@
   "ja": "移動はWASD、視点はマウス。クリックでマウスをキャプチャ、Escで解除。ゆれは自動です。",
   "fr": "WASD pour te déplacer, la souris pour regarder. Clique une fois pour capturer la souris ; Esc la libère. L'oscillation est automatique.",
   "es": "WASD para moverte, el ratón para mirar. Haz clic una vez para capturar el ratón; Esc lo suelta. El balanceo es automático."
+ },
+ "Wait a moment": {
+  "zh_TW": "請稍等一下",
+  "zh_CN": "请稍等一下",
+  "ja": "少し待ってね",
+  "fr": "Patientez un instant",
+  "es": "Espera un momento"
  },
  "Waiting for the others…": {
   "zh_TW": "等待其他玩家…",
@@ -7356,6 +7930,13 @@
   "fr": "Blanc",
   "es": "Blanco"
  },
+ "White Hard Hat": {
+  "zh_TW": "白色安全帽",
+  "zh_CN": "白色安全帽",
+  "ja": "白いヘルメット",
+  "fr": "Casque blanc",
+  "es": "Casco blanco"
+ },
  "Who can join": {
   "zh_TW": "誰能加入",
   "zh_CN": "谁能加入",
@@ -7481,6 +8062,13 @@
   "ja": "最悪の1分",
   "fr": "Pire minute",
   "es": "Peor minuto"
+ },
+ "Wrong code": {
+  "zh_TW": "代碼不對",
+  "zh_CN": "代码不对",
+  "ja": "コードが違います",
+  "fr": "Code incorrect",
+  "es": "Código incorrecto"
  },
  "YOU": {
   "zh_TW": "你",
@@ -7685,6 +8273,13 @@
   "fr": "Joué avec %s.",
   "es": "Juegas como %s."
  },
+ "You reached stage %d of %d: %s": {
+  "zh_TW": "你到達了第 %d 關（共 %d 關）：%s",
+  "zh_CN": "你到达了第 %d 关（共 %d 关）：%s",
+  "ja": "ステージ %d / %d まで到達：%s",
+  "fr": "Vous avez atteint l'étape %d sur %d : %s",
+  "es": "Llegaste a la etapa %d de %d: %s"
+ },
  "You vs one bot. First to 5": {
   "zh_TW": "你對上一個電腦玩家，先達 5 次擊倒者勝",
   "zh_CN": "你对一个电脑玩家，先达 5 次击倒者胜",
@@ -7768,6 +8363,13 @@
   "ja": "今からあなたがホスト。試合は続行！",
   "fr": "Tu es l'hôte maintenant : la partie continue.",
   "es": "Ahora eres el anfitrión: la partida sigue."
+ },
+ "Your %s is already in the Walldrobe": {
+  "zh_TW": "你的%s已在衣櫥中",
+  "zh_CN": "你的%s已在衣橱中",
+  "ja": "%s はすでにワードローブにあります",
+  "fr": "Votre %s est déjà dans la garde-robe",
+  "es": "Tu %s ya está en el armario"
  },
  "Your account": {
   "zh_TW": "你的帳號",
@@ -8160,12 +8762,5 @@
   "ja": "♥  ·  残り %d 人",
   "fr": "♥  ·  %d en jeu",
   "es": "♥  ·  %d en juego"
- },
- "♥ · %d left": {
-  "zh_TW": "♥ · 剩 %d 人",
-  "zh_CN": "♥ · 剩 %d 人",
-  "ja": "♥ · 残り %d 人",
-  "fr": "♥ · %d en jeu",
-  "es": "♥ · quedan %d"
  }
 }

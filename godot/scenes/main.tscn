@@ -91,7 +91,7 @@ theme_override_constants/separation = 16
 alignment = 1
 
 [node name="Play" type="Button" parent="Safe/Col/Body/Home"]
-custom_minimum_size = Vector2(520, 176)
+custom_minimum_size = Vector2(520, 120)
 layout_mode = 2
 size_flags_horizontal = 4
 theme_type_variation = &"PrimaryButton"

@@ -1,0 +1,191 @@
+{
+ "Pipe Wrench": {
+  "zh_TW": "管鉗",
+  "zh_CN": "管钳",
+  "ja": "パイプレンチ",
+  "fr": "Clé à tube",
+  "es": "Llave grifa"
+ },
+ "Nail Gun": {
+  "zh_TW": "釘槍",
+  "zh_CN": "钉枪",
+  "ja": "ネイルガン",
+  "fr": "Pistolet à clous",
+  "es": "Pistola de clavos"
+ },
+ "Jackhammer": {
+  "zh_TW": "氣動鎬",
+  "zh_CN": "风镐",
+  "ja": "削岩機",
+  "fr": "Marteau-piqueur",
+  "es": "Martillo neumático"
+ },
+ "Spirit Level": {
+  "zh_TW": "水平尺",
+  "zh_CN": "水平尺",
+  "ja": "水準器",
+  "fr": "Niveau à bulle",
+  "es": "Nivel de burbuja"
+ },
+ "Tape Measure": {
+  "zh_TW": "捲尺",
+  "zh_CN": "卷尺",
+  "ja": "メジャー",
+  "fr": "Mètre ruban",
+  "es": "Cinta métrica"
+ },
+ "Cement Bucket": {
+  "zh_TW": "水泥桶",
+  "zh_CN": "水泥桶",
+  "ja": "セメントバケツ",
+  "fr": "Seau de ciment",
+  "es": "Cubo de cemento"
+ },
+ "Cone Launcher": {
+  "zh_TW": "錐筒發射器",
+  "zh_CN": "锥筒发射器",
+  "ja": "コーンランチャー",
+  "fr": "Lance-cône",
+  "es": "Lanzaconos"
+ },
+ "Angle Grinder": {
+  "zh_TW": "角磨機",
+  "zh_CN": "角磨机",
+  "ja": "ディスクグラインダー",
+  "fr": "Meuleuse d'angle",
+  "es": "Amoladora angular"
+ },
+ "Cordless Drill": {
+  "zh_TW": "手電鑽",
+  "zh_CN": "手电钻",
+  "ja": "コードレスドリル",
+  "fr": "Perceuse sans fil",
+  "es": "Taladro inalámbrico"
+ },
+ "Tradies": {
+  "zh_TW": "工友隊",
+  "zh_CN": "工友队",
+  "ja": "職人たち",
+  "fr": "Ouvriers",
+  "es": "Obreros"
+ },
+ "Engineer": {
+  "zh_TW": "工程師",
+  "zh_CN": "工程师",
+  "ja": "エンジニア",
+  "fr": "Ingénieur",
+  "es": "Ingeniero"
+ },
+ "Designer": {
+  "zh_TW": "設計師",
+  "zh_CN": "设计师",
+  "ja": "デザイナー",
+  "fr": "Designer",
+  "es": "Diseñador"
+ },
+ "Supervisor": {
+  "zh_TW": "監工",
+  "zh_CN": "监工",
+  "ja": "現場監督",
+  "fr": "Superviseur",
+  "es": "Supervisor"
+ },
+ "Project Manager": {
+  "zh_TW": "專案經理",
+  "zh_CN": "项目经理",
+  "ja": "プロジェクトマネージャー",
+  "fr": "Chef de projet",
+  "es": "Jefe de proyecto"
+ },
+ "The Client": {
+  "zh_TW": "業主",
+  "zh_CN": "业主",
+  "ja": "クライアント",
+  "fr": "Le Client",
+  "es": "El Cliente"
+ },
+ "Smoko's over. Watch your back around the tool shed.": {
+  "zh_TW": "休息結束了。在工具棚附近多加小心。",
+  "zh_CN": "休息结束了。在工具棚附近多加小心。",
+  "ja": "休憩時間は終わりだ。道具置き場周辺に気をつけろ。",
+  "fr": "La pause est finie. Fais attention à toi près du hangar à outils.",
+  "es": "Se acabó el descanso. Cuida tu espalda cerca del cobertizo de herramientas."
+ },
+ "Calculated risk. Watch out for falling load test crates.": {
+  "zh_TW": "計算精確的風險。小心墜落的負載測試箱。",
+  "zh_CN": "计算精确的风险。小心坠落的负载测试箱。",
+  "ja": "計算されたリスク。落下する荷重テスト木箱に注意。",
+  "fr": "Risque calculé. Attention aux caisses de test de charge qui tombent.",
+  "es": "Riesgo calculado. Cuidado con las cajas de prueba de carga que caen."
+ },
+ "Scope is fluid. Mind the revision pads!": {
+  "zh_TW": "需求變動中。注意修改彈跳墊！",
+  "zh_CN": "需求变动中。注意修改弹跳垫！"
+  ,"ja": "スコープは流動的。修正パッドに気をつけろ！",
+  "fr": "Le périmètre évolue. Gare aux plateformes de révision !",
+  "es": "El alcance es flexible. ¡Cuidado con las plataformas de revisión!"
+ },
+ "Not on my watch! Calls in backup when pressed.": {
+  "zh_TW": "休想在我的地盤撒野！受到威脅時呼叫增援。",
+  "zh_CN": "休想在我的地盘撒野！受到威胁时呼叫增援。",
+  "ja": "オレの目の前で勝手はさせん！追い詰められると応援を呼ぶ。",
+  "fr": "Pas sous ma garde ! Appelle du renfort en cas d'urgence.",
+  "es": "¡No bajo mi supervisión! Pide refuerzos si se ve acorralado."
+ },
+ "Tight deadlines, red tape, and creeping scope.": {
+  "zh_TW": "緊迫的截止日期、繁文縟節與不斷蔓延的專案範疇。",
+  "zh_CN": "紧迫的截止日期、繁文缛节与不断蔓延的项目范畴。",
+  "ja": "迫る納期、お役所仕事、膨らみ続けるスコープ。",
+  "fr": "Délais serrés, paperasse et dérive des objectifs.",
+  "es": "Plazos ajustados, burocracia y alcance descontrolado."
+ },
+ "One last change request before sign-off!": {
+  "zh_TW": "簽收前的最後一個修改需求！",
+  "zh_CN": "签收前的最后一个修改需求！",
+  "ja": "承認前にもう1件だけ仕様変更の依頼だ！",
+  "fr": "Une toute dernière demande de modification avant signature !",
+  "es": "¡Una última solicitud de cambio antes de la entrega!"
+ },
+ "Load test incoming! Crates falling!": {
+  "zh_TW": "負載測試開始！板箱正在墜落！",
+  "zh_CN": "负载测试开始！板箱正在坠落！",
+  "ja": "荷重テスト開始！木箱が降ってくるぞ！",
+  "fr": "Test de charge imminent ! Caisses en chute !",
+  "es": "¡Prueba de carga entrante! ¡Cajas cayendo!"
+ },
+ "Revision pads active! Step carefully!": {
+  "zh_TW": "修改彈跳墊已啟用！小心腳下！",
+  "zh_CN": "修改弹跳垫已启用！小心脚下！",
+  "ja": "修正パッド稼働中！足元に注意！",
+  "fr": "Plateformes de révision actives ! Attention où tu marches !",
+  "es": "¡Plataformas de revisión activas! ¡Pisa con cuidado!"
+ },
+ "Supervisor called in backup tradies!": {
+  "zh_TW": "監工呼叫了工友增援！",
+  "zh_CN": "监工呼叫了工友增援！",
+  "ja": "現場監督が応援の職人を呼んだ！",
+  "fr": "Le superviseur a appelé des ouvriers en renfort !",
+  "es": "¡El supervisor pidió refuerzos de obreros!"
+ },
+ "Deadline approaching! Floor is shrinking!": {
+  "zh_TW": "截止日期臨近！地面正在縮小！",
+  "zh_CN": "截止日期临近！地面正在缩小！",
+  "ja": "納期が迫る！床が縮小しているぞ！",
+  "fr": "Date limite imminente ! Le sol rétrécit !",
+  "es": "¡Se acerca la fecha límite! ¡El suelo se encoge!"
+ },
+ "Scope creep! Extra workers arriving!": {
+  "zh_TW": "需求蔓延！額外工人趕到了！",
+  "zh_CN": "需求蔓延！额外工人赶到了！",
+  "ja": "スコープの肥大化！追加の作業員が到着！",
+  "fr": "Dérive des objectifs ! Des ouvriers supplémentaires arrivent !",
+  "es": "¡Ampliación de alcance! ¡Llegan trabajadores adicionales!"
+ },
+ "Change request approved! Weapons swapped!": {
+  "zh_TW": "修改需求已批准！武器已更換！",
+  "zh_CN": "修改需求已批准！武器已更换！",
+  "ja": "仕様変更承認！武器が変更された！",
+  "fr": "Demande de modification approuvée ! Changement d'armes !",
+  "es": "¡Solicitud de cambio aprobada! ¡Armas intercambiadas!"
+ }
+}
