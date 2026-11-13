@@ -33,6 +33,9 @@ const FEED_TIME := 5.0
 ## instead of the score / radar / health / hotbar. Its Play saves and reloads the arena as a Sandbox match with bots.
 @export var build_mode := false
 var build_hud: BuildHud = null
+## Construction DLC Arcade run (dlc/construction/arcade_manager.gd): the boss rush this World plays, set by the title's Arcade card
+## before the world enters the tree. null = every other match: none of the arcade hooks below run.
+var arcade: ArcadeManager = null
 ## Soak test (world/soak_run.gd): > 0 = a scripted-player performance run of this many seconds over `soak_maps`, logged to
 ## `soak_dir`. Built by SoakRun.make_world; the sim, combat and physics play as usual.
 @export var soak_duration := 0.0
@@ -138,6 +141,7 @@ func _ready() -> void:
 		add_child(soak)
 
 func _exit_tree() -> void:
+	if arcade != null: arcade.end_run()
 	if net_match:
 		net_match.dispose()
 	if sim:
@@ -145,6 +149,7 @@ func _exit_tree() -> void:
 
 ## loadMap: a fresh match on `id`.
 func load_map(id: String) -> void:
+	if arcade != null: id = arcade.begin_stage(self)      # Arcade: this stage's site, bots and skill
 	if map_node:
 		map_node.queue_free()
 	for v in views.values(): v.queue_free()
@@ -202,6 +207,7 @@ func load_map(id: String) -> void:
 	if not Content.difficulties.has(skill): skill = "normal"
 	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, session.sim_bots(start_msg) if session != null else bots, skill)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
+	if arcade != null: arcade.setup_sim(sim)              # Arcade: the stage's fighters, tools and events
 	_build_dyn_views()
 	if session != null:
 		net_match = session.make_match(sim)   # NetMatch (guest) or HostMatch (net/host_match.gd: bots, relaying)
@@ -231,6 +237,7 @@ func load_map(id: String) -> void:
 	acc = 0.0
 	hud.bind(self)
 	_setup_build()
+	if arcade != null: arcade.stage_ready(self)           # Arcade: the run strip and the stage's intro card
 
 ## Build mode on: the palette (BuildHud, last in UI so it sees touches first). Off: back to the normal HUD panels.
 func _setup_build() -> void:
@@ -274,6 +281,7 @@ func sim_step(dt: float) -> void:
 	control.aim_point = [ap.x, ap.y, ap.z] if ap != Vector3.ZERO else []
 	var before: int = sim.player.st["falls"]
 	sim.step(dt)
+	if arcade != null: arcade.step(dt)
 	if sim.player.st["falls"] != before:
 		falls += 1
 
@@ -631,6 +639,7 @@ func _update_mode_ui(delta: float) -> void:
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
 	var top := float(ins[1]) + MatchHud.TOP_STACK     # under the toast (hud.gd keeps that at the very top), with a gap
+	if arcade != null and arcade.hud != null: top = arcade.hud.place(self, top, delta)   # Arcade: run strip + boss bar, then the mode line
 	_team_board.visible = board
 	if board:
 		var rules := sim.combat.rules
@@ -729,7 +738,7 @@ func _unhandled_input(e: InputEvent) -> void:
 ## (Tests that step the world by hand, auto_run = false, get no replay unless they set `kill_cam_in_tests`: their
 ## match clocks must not stop.)
 func kill_cam_enabled() -> bool:
-	return session == null and soak_duration <= 0.0 and (auto_run or kill_cam_in_tests) and bool(Settings.get_value("kill_cam", true)) and sim != null and sim.combat.teams == 0
+	return session == null and arcade == null and soak_duration <= 0.0 and (auto_run or kill_cam_in_tests) and bool(Settings.get_value("kill_cam", true)) and sim != null and sim.combat.teams == 0
 
 func start_kill_cam() -> void:
 	if not kill_cam.start(): return
@@ -815,6 +824,40 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	_dim_behind(p)
 	touch.release_all()
 	input.release_mouse()
+
+## An Arcade run's card (stage intro / clear / failed / run over / victory) over the frozen match, like the results panel.
+func show_panel(p: Control) -> void:
+	if _results: _results.queue_free()
+	_banner.visible = false
+	p.set_anchors_preset(Control.PRESET_CENTER)
+	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	p.grow_vertical = Control.GROW_DIRECTION_BOTH
+	$UI.add_child(p)
+	$UI.move_child(p, pause_menu.get_index())
+	_results = p
+	_dim_behind(p)
+	touch.release_all()
+	input.release_mouse()
+
+func close_panel() -> void:
+	var r := _results
+	_results = null
+	if r != null:
+		if r.get_parent() != null: r.get_parent().remove_child(r)    # out of the tree at once (its dim goes with it)
+		r.queue_free()
+	acc = 0.0
+
+## A fighter that joined after the map was built (an Arcade backup call): its Wobbler and bookkeeping.
+func add_view(f: FighterState) -> Fighter:
+	var v: Fighter = load("res://actors/fighter.tscn").instantiate()
+	_fighters_root.add_child(v)
+	v.bind(f, sim.looks.get(f, {}))
+	if v.tag:
+		v.tag.queue_free(); v.tag = null
+	Gfx.dress_fighter(v)
+	if fx: v.juice = FighterJuice.new()
+	views[f] = v
+	return v
 
 ## A dimmed backdrop right under the results panel: the HUD and touch buttons behind it stay as quiet context, never a second
 ## set of controls competing with Play again / Quit; it goes away with the panel. The HUD toast is cleared (see MatchHud.toast).

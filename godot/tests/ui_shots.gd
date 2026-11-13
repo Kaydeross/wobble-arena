@@ -150,6 +150,9 @@ func _start() -> void:
 		frames = 40
 		process_frame.connect(_wait)
 		return
+	if shot.begins_with("arcade-"):
+		_arcade_start()
+		return
 	var phone: bool = "--phone" in OS.get_cmdline_user_args()
 	var touch_shot := phone or shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel" or shot == "recover" or shot.begins_with("hud-")
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
@@ -185,6 +188,91 @@ func _start() -> void:
 	if not touch_shot:
 		world.touch.visible = false
 	process_frame.connect(_frame)
+
+## Construction Arcade shots (dlc/construction/arcade_*): arcade-intro (stage 1 intro card), arcade-fight (stage 1 mid fight), arcade-engineer
+## (the Engineer with load test crates falling), arcade-pm (Project Manager: bar, shrinking floor line), arcade-client / -client2 / -client3 (The Client with the
+## boss bar at full health, after phase 1 and after phase 2), arcade-clear (stage clear card), arcade-victory (the victory card), arcade-failed. --phone = touch layer.
+func _arcade_start() -> void:
+	var phone: bool = "--phone" in OS.get_cmdline_user_args()
+	_settings().set_value("touch_mode", "on" if phone else "off")
+	_settings().set_value("touch_lefty", false)
+	root.get_node("Save").dlc["owned"] = true
+	var AM: GDScript = load("res://dlc/construction/arcade_manager.gd")
+	world = AM.call("launch", 4242)
+	var arc = world.arcade
+	arc.stage = {"arcade-engineer": 1, "arcade-pm": 4, "arcade-client": 5, "arcade-client2": 5, "arcade-client3": 5, "arcade-clear": 1, "arcade-victory": 5, "arcade-failed": 1}.get(shot, 0)
+	arc.fixed_seed = 777
+	if shot in ["arcade-clear", "arcade-victory"]: arc.player_dmg = 40.0
+	world.auto_run = false
+	world.player_class = "wobbler"
+	root.add_child(world)
+	if not phone: world.touch.visible = false
+	process_frame.connect(_arcade_frame)
+
+func _arcade_frame() -> void:
+	var arc = world.arcade
+	var sim: MatchSim = world.sim
+	var p := sim.player
+	var st: InputState = world.input.state
+	i += 1
+	if shot == "arcade-intro":
+		world.tick(FRAME)
+		if i == 8:
+			process_frame.disconnect(_arcade_frame)
+			_save()
+		return
+	if i == 2: arc.begin_fight()
+	if i == 3 and arc.boss != null and shot in ["arcade-client", "arcade-client2", "arcade-client3", "arcade-engineer", "arcade-pm"]:
+		var bp: FighterPhysics = arc.boss.phys                  # the player a few metres from the boss, facing it
+		p.phys.place(bp.px + 5.0, bp.py + 0.05, bp.pz)
+	if i > 2:
+		var tg: FighterState = null
+		var bd := 1e9
+		for f: FighterState in arc.enemies:
+			if f.dead or arc.downed.has(f): continue
+			var d := Vector2(f.phys.px - p.phys.px, f.phys.pz - p.phys.pz).length()
+			if d < bd: bd = d; tg = f
+		var go := Vector2.ZERO
+		var fire := false
+		if tg != null and shot not in ["arcade-client", "arcade-client2", "arcade-client3", "arcade-engineer", "arcade-pm"]:
+			var dd := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
+			world.cam.yaw = atan2(dd.x, dd.y)
+			world.cam.pitch = -0.1
+			if dd.length() > 7.0 and i % 40 == 0:
+				var away := (-dd).normalized() * 1.7
+				p.phys.place(tg.phys.px + away.x, tg.phys.py + 0.05, tg.phys.pz + away.y)
+			go = Vector2(0, 1) if dd.length() > 1.6 else Vector2.ZERO
+			fire = dd.length() < 2.6
+		elif tg != null:                         # boss shots: the player faces the boss, on a spot a few metres away
+			var dd := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
+			world.cam.yaw = atan2(dd.x, dd.y)
+			world.cam.pitch = -0.12
+			p.invuln = 5.0
+		st.set_move("script", go)
+		st.hold("script", "fire", fire)
+	if shot == "arcade-engineer" and i == 30:
+		arc.events._load_test({"crate_count": 3, "warning_time": 2.5})
+	if shot == "arcade-client2" and i == 30: arc.boss.hp = sim.combat.max_hp(arc.boss) * 0.6
+	if shot == "arcade-client3" and i == 30: arc.boss.hp = sim.combat.max_hp(arc.boss) * 0.3
+	if shot == "arcade-pm" and i == 3: arc.events._creep({"spawn_extra": 1, "max_extra": 3})
+	if shot == "arcade-failed" and i == 40:
+		p.invuln = 0.0
+		sim.combat.hit(p, 1e6, 0.0, 1.0, 0.0, 5.0, false, null)
+	world.tick(FRAME)
+	var wait: int = {"arcade-fight": 160, "arcade-engineer": 70, "arcade-pm": 150, "arcade-client": 60, "arcade-client2": 110, "arcade-client3": 110}.get(shot, 0)
+	if wait > 0 and i >= wait:
+		process_frame.disconnect(_arcade_frame)
+		_save()
+	elif shot == "arcade-clear" or shot == "arcade-victory" or shot == "arcade-failed":
+		var up: bool = world.get_node("UI").get_node_or_null({"arcade-clear": "ArcadeClear", "arcade-victory": "ArcadeVictory", "arcade-failed": "ArcadeFailed"}[shot]) != null
+		if up:
+			frames += 1
+			if frames > 12:
+				process_frame.disconnect(_arcade_frame)
+				_save()
+		if i > 2400:
+			process_frame.disconnect(_arcade_frame)
+			_save()
 
 var _scroll_wizard: Node = null
 var _soak: SoakRun = null
