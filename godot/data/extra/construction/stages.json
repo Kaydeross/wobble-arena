@@ -1,5 +1,37 @@
 {
- "_readme": "Construction DLC Arcade Boss Rush stages table. Fields: id (unique stage identifier), name (display name), tagline (subtitle/announcement), boss (boolean boss flag), hp_bar_color (HUD color integer), map_seed_offset (integer RNG offset for arena layout), coin_reward (standard clear reward), first_clear_bonus (one-time first clear reward), bots (list of fighters with name, skin, hat, color, weapon, hp multiplier in [1.0, 6.0], dmg_scale in [0.6, 1.8], speed multiplier, difficulty), events (periodic or triggered stage events with type, every in seconds, and params dictionary).",
+ "_readme": "Construction DLC Arcade Boss Rush stages table. Fields: id (unique stage identifier), name (display name), tagline (subtitle/announcement), boss (boolean boss flag), hp_bar_color (HUD color integer), map_seed_offset (integer RNG offset for arena layout), coin_reward (standard clear reward), first_clear_bonus (one-time first clear reward), bots (list of fighters with name, skin, hat, color, weapon, hp multiplier in [1.0, 6.0], dmg_scale in [0.6, 1.8], speed multiplier, difficulty), events (periodic or triggered stage events with type, every in seconds, and params dictionary). difficulties (top level): per difficulty id (easy, normal, nightmare; nightmare = the numbers in this table unchanged): hp_mul (x each bot's hp), hp_floor / boss_hp_floor (minimum bot hp multiplier, non-boss / boss, applied after hp_mul; 0 = none), dmg_mul (x dmg_scale), speed_mul (x speed), event_mul (x every / hold of the stage events, >1 = fewer), lives, coin_mul (x stage coins and the victory bonus).",
+ "difficulties": {
+  "easy": {
+   "hp_mul": 0.4,
+   "hp_floor": 0.8,
+   "boss_hp_floor": 1.5,
+   "dmg_mul": 0.35,
+   "speed_mul": 0.85,
+   "event_mul": 1.5,
+   "lives": 5,
+   "coin_mul": 0.6
+  },
+  "normal": {
+   "hp_mul": 0.7,
+   "hp_floor": 0.9,
+   "boss_hp_floor": 1.5,
+   "dmg_mul": 0.65,
+   "speed_mul": 1.0,
+   "event_mul": 1.15,
+   "lives": 4,
+   "coin_mul": 1.0
+  },
+  "nightmare": {
+   "hp_mul": 1.0,
+   "hp_floor": 0.0,
+   "boss_hp_floor": 0.0,
+   "dmg_mul": 1.0,
+   "speed_mul": 1.0,
+   "event_mul": 1.0,
+   "lives": 3,
+   "coin_mul": 1.5
+  }
+ },
  "stages": [
   {
    "id": "tradies",
@@ -153,7 +185,10 @@
      "params": {
       "hp_threshold": 0.5,
       "summon_count": 2,
-      "summon_bots": ["Bluey", "Sparky"]
+      "summon_bots": [
+       "Bluey",
+       "Sparky"
+      ]
      }
     }
    ]
@@ -226,7 +261,10 @@
      "type": "change_request",
      "every": 0.0,
      "params": {
-      "phases": [0.66, 0.33],
+      "phases": [
+       0.66,
+       0.33
+      ],
       "random_weapon_swap": true,
       "giant_scale": 1.5
      }

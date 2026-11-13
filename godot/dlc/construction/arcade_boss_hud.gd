@@ -92,7 +92,11 @@ func place(w: Node, top: float, delta: float = 0.0) -> float:
 		hi = minf(hi, fd.position.x - 10.0)
 	var width := clampf(minf(MAX_W, hi - lo), MIN_W, MAX_W)
 	var x := clampf(vs.x / 2.0 - width / 2.0, lo, maxf(lo, hi - width))
-	strip.text = "%s   %s" % [tr("Stage %d / %d") % [m.stage + 1, ArcadeManager.count()], tr("Lives %d") % m.lives]
+	strip.text = "%s · %s · %s" % [tr(ConstructionHub.diff_name(m.diff)), tr("Stage %d / %d") % [m.stage + 1, ArcadeManager.count()], tr("Lives %d") % m.lives]
+	var fs := STRIP_FONT                                     # long translations: the strip shrinks (never under 14) to stay on one line
+	var sfont := strip.get_theme_font("font", "HudLabel")
+	while fs > 14 and sfont != null and sfont.get_string_size(strip.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > width - 4.0: fs -= 1
+	strip.add_theme_font_size_override("font_size", fs)
 	strip.size = Vector2(width, STRIP_H)
 	strip.position = Vector2.ZERO
 	bar.visible = show_bar

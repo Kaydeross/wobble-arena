@@ -1,0 +1,65 @@
+{
+ "Nightmare": {
+  "zh_TW": "噩夢",
+  "zh_CN": "噩梦",
+  "ja": "ナイトメア",
+  "fr": "Cauchemar",
+  "es": "Pesadilla"
+ },
+ "Pick a difficulty": {
+  "zh_TW": "選擇難度",
+  "zh_CN": "选择难度",
+  "ja": "難易度を選ぼう",
+  "fr": "Choisis la difficulté",
+  "es": "Elige la dificultad"
+ },
+ "Softer foes, fewer hazards, five lives. A relaxed first run.": {
+  "zh_TW": "敵人較弱、障礙較少、五條命。輕鬆的第一次挑戰。",
+  "zh_CN": "敌人较弱、障碍较少、五条命。轻松的第一次挑战。",
+  "ja": "敵は弱め、仕掛けも少なめで残機5。気軽な初挑戦に。",
+  "fr": "Ennemis plus mous, moins de pièges, cinq vies. Pour une première partie tranquille.",
+  "es": "Rivales más blandos, menos peligros y cinco vidas. Una primera partida relajada."
+ },
+ "A fair fight with four lives. Bosses still bite.": {
+  "zh_TW": "公平的對決，四條命。首領依然有點難纏。",
+  "zh_CN": "公平的对决，四条命。首领依然有点难缠。",
+  "ja": "ほどよい手ごたえで残機4。ボスは手強いまま。",
+  "fr": "Un combat équilibré avec quatre vies. Les boss mordent toujours.",
+  "es": "Una pelea justa con cuatro vidas. Los jefes aún muerden."
+ },
+ "The full boss rush: tough bosses, three lives, the best coin rewards.": {
+  "zh_TW": "完整的首領連戰：強悍首領、三條命、最多金幣獎勵。",
+  "zh_CN": "完整的首领连战：强悍首领、三条命、最多金币奖励。",
+  "ja": "本気のボスラッシュ。強敵ぞろい、残機3、コイン報酬も最大。",
+  "fr": "Le défi complet : boss coriaces, trois vies, les meilleures récompenses.",
+  "es": "El desafío completo: jefes duros, tres vidas y las mejores recompensas."
+ },
+ "Best: stage %d/%d": {
+  "zh_TW": "最佳：第 %d/%d 關",
+  "zh_CN": "最佳：第 %d/%d 关",
+  "ja": "ベスト：ステージ %d/%d",
+  "fr": "Meilleur : étape %d/%d",
+  "es": "Mejor: etapa %d/%d"
+ },
+ "Cleared": {
+  "zh_TW": "已通關",
+  "zh_CN": "已通关",
+  "ja": "クリア済み",
+  "fr": "Terminé",
+  "es": "Superado"
+ },
+ "Not played yet": {
+  "zh_TW": "尚未挑戰",
+  "zh_CN": "尚未挑战",
+  "ja": "未プレイ",
+  "fr": "Pas encore joué",
+  "es": "Aún sin jugar"
+ },
+ "Win on Normal or Nightmare for the Site Foreman hat": {
+  "zh_TW": "在普通或噩夢難度通關，即可獲得工地領班帽",
+  "zh_CN": "在普通或噩梦难度通关，即可获得工地领班帽",
+  "ja": "ノーマルかナイトメアでクリアすると現場監督のヘルメットが手に入る",
+  "fr": "Gagne en Normal ou Cauchemar pour le casque de contremaître",
+  "es": "Gana en Normal o Pesadilla para el casco de capataz"
+ }
+}

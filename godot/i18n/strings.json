@@ -741,6 +741,13 @@
   "fr": "Un coin de chantier poussiéreux pour le mode Construction. Tours d'échafaudage, piles de bois, barrières de sécurité et baraque de chantier. Bords ouverts : un seul grand coup peut envoyer hors de la dalle.",
   "es": "Un rincón polvoriento de obra para el modo Construcción. Torres de andamio, pilas de madera, vallas de seguridad y una caseta de obra. Bordes abiertos, así que un solo golpe puede mandarte fuera de la losa."
  },
+ "A fair fight with four lives. Bosses still bite.": {
+  "zh_TW": "公平的對決，四條命。首領依然有點難纏。",
+  "zh_CN": "公平的对决，四条命。首领依然有点难缠。",
+  "ja": "ほどよい手ごたえで残機4。ボスは手強いまま。",
+  "fr": "Un combat équilibré avec quatre vies. Les boss mordent toujours.",
+  "es": "Una pelea justa con cuatro vidas. Los jefes aún muerden."
+ },
  "A foggy graveyard under a full moon. Hide behind tombstones, climb the crypt and watch the green wisps float by.": {
   "zh_TW": "滿月下的霧氣墓園。躲在墓碑後，爬上墓穴，看綠色的幽光飄過。",
   "zh_CN": "满月下的雾气墓园。躲在墓碑后，爬上墓穴，看绿色的幽光飘过。",
@@ -1356,6 +1363,13 @@
   "ja": "最高ステージ：%d",
   "fr": "Meilleure étape : %d",
   "es": "Mejor etapa: %d"
+ },
+ "Best: stage %d/%d": {
+  "zh_TW": "最佳：第 %d/%d 關",
+  "zh_CN": "最佳：第 %d/%d 关",
+  "ja": "ベスト：ステージ %d/%d",
+  "fr": "Meilleur : étape %d/%d",
+  "es": "Mejor: etapa %d/%d"
  },
  "Beta Tester": {
   "zh_TW": "測試員",
@@ -2014,6 +2028,13 @@
   "ja": "すべて消す",
   "fr": "Tout effacer",
   "es": "Borrar todo"
+ },
+ "Cleared": {
+  "zh_TW": "已通關",
+  "zh_CN": "已通关",
+  "ja": "クリア済み",
+  "fr": "Terminé",
+  "es": "Superado"
  },
  "Cleared before: no coins this time": {
   "zh_TW": "已通關過：這次沒有金幣",
@@ -4815,6 +4836,13 @@
   "fr": "Nuit",
   "es": "Noche"
  },
+ "Nightmare": {
+  "zh_TW": "噩夢",
+  "zh_CN": "噩梦",
+  "ja": "ナイトメア",
+  "fr": "Cauchemar",
+  "es": "Pesadilla"
+ },
  "Nine rooftops, bridges between them and the street far below. Highest roof wins.": {
   "zh_TW": "九座屋頂、屋頂之間的橋，以及遠在下方的街道。最高的屋頂獲勝。",
   "zh_CN": "九座屋顶、屋顶之间的桥，以及远在下方的街道。最高的屋顶获胜。",
@@ -4968,6 +4996,13 @@
   "ja": "オレの目の前で勝手はさせん！追い詰められると応援を呼ぶ。",
   "fr": "Pas sous ma garde ! Appelle du renfort en cas d'urgence.",
   "es": "¡No bajo mi supervisión! Pide refuerzos si se ve acorralado."
+ },
+ "Not played yet": {
+  "zh_TW": "尚未挑戰",
+  "zh_CN": "尚未挑战",
+  "ja": "未プレイ",
+  "fr": "Pas encore joué",
+  "es": "Aún sin jugar"
  },
  "Not saved to the cloud: this account changed on another device.": {
   "zh_TW": "未儲存到雲端：此帳號在另一部裝置上有變更。",
@@ -5276,6 +5311,13 @@
   "ja": "選ぶ",
   "fr": "Choisir",
   "es": "Elegir"
+ },
+ "Pick a difficulty": {
+  "zh_TW": "選擇難度",
+  "zh_CN": "选择难度",
+  "ja": "難易度を選ぼう",
+  "fr": "Choisis la difficulté",
+  "es": "Elige la dificultad"
  },
  "Pick a game type": {
   "zh_TW": "選擇遊戲模式",
@@ -6523,6 +6565,13 @@
   "fr": "Test d'endurance : %s",
   "es": "Prueba de resistencia: %s"
  },
+ "Softer foes, fewer hazards, five lives. A relaxed first run.": {
+  "zh_TW": "敵人較弱、障礙較少、五條命。輕鬆的第一次挑戰。",
+  "zh_CN": "敌人较弱、障碍较少、五条命。轻松的第一次挑战。",
+  "ja": "敵は弱め、仕掛けも少なめで残機5。気軽な初挑戦に。",
+  "fr": "Ennemis plus mous, moins de pièges, cinq vies. Pour une première partie tranquille.",
+  "es": "Rivales más blandos, menos peligros y cinco vidas. Una primera partida relajada."
+ },
  "Someone is in the way": {
   "zh_TW": "有人擋住了",
   "zh_CN": "有人挡住了",
@@ -7222,6 +7271,13 @@
   "ja": "床はどんどん小さくなり、窮屈になる前に再び広がります。床の上にとどまろう。全員落ちると、半分の大きさで戻ってきます。",
   "fr": "Le sol rétrécit sans cesse, puis s'agrandit avant de devenir trop étroit. Reste dessus. Si tout le monde tombe, il revient à moitié taille.",
   "es": "El suelo se encoge sin parar y luego vuelve a crecer antes de quedar demasiado estrecho. Quédate encima. Si todos caen, vuelve a la mitad de tamaño."
+ },
+ "The full boss rush: tough bosses, three lives, the best coin rewards.": {
+  "zh_TW": "完整的首領連戰：強悍首領、三條命、最多金幣獎勵。",
+  "zh_CN": "完整的首领连战：强悍首领、三条命、最多金币奖励。",
+  "ja": "本気のボスラッシュ。強敵ぞろい、残機3、コイン報酬も最大。",
+  "fr": "Le défi complet : boss coriaces, trois vies, les meilleures récompenses.",
+  "es": "El desafío completo: jefes duros, tres vidas y las mejores recompensas."
  },
  "The game server at %s did not answer. Check the address and that the server is running.": {
   "zh_TW": "遊戲伺服器 %s 沒有回應。請檢查位址，並確認伺服器正在執行。",
@@ -8069,6 +8125,13 @@
   "ja": "毎日1試合勝って連続記録を伸ばそう。毎日ゆれよう！",
   "fr": "Gagne une partie chaque jour pour enchaîner les jours. Oscille chaque jour !",
   "es": "Gana una partida cada día para mantener la racha. ¡Tambaléate a diario!"
+ },
+ "Win on Normal or Nightmare for the Site Foreman hat": {
+  "zh_TW": "在普通或噩夢難度通關，即可獲得工地領班帽",
+  "zh_CN": "在普通或噩梦难度通关，即可获得工地领班帽",
+  "ja": "ノーマルかナイトメアでクリアすると現場監督のヘルメットが手に入る",
+  "fr": "Gagne en Normal ou Cauchemar pour le casque de contremaître",
+  "es": "Gana en Normal o Pesadilla para el casco de capataz"
  },
  "Windows": {
   "zh_TW": "窗戶",

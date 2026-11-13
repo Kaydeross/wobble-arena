@@ -613,7 +613,9 @@ func play_offline(over: Dictionary = {}) -> void:
 
 ## The Construction hub's Arcade card: a new boss rush run (dlc/construction/arcade_manager.gd; locked players get nothing).
 func play_arcade() -> void:
-	var world: Node = ArcadeManager.launch()
+	var cls := str(Settings.get_value("class", "wobbler"))
+	if not Content.classes.has(cls) or not SetupWizard.owns_class(cls): cls = "wobbler"
+	var world: Node = ArcadeManager.launch(0, str(Settings.get_value("arcade_diff", "normal")), cls)
 	if world == null: return
 	if session != null: session.leave("")
 	get_tree().change_scene_to_node(world)

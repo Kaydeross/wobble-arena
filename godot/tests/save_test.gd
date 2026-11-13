@@ -141,21 +141,35 @@ func _parity() -> void:
 	check(snap.begins_with("function snapshot()") and not snap.contains("dlc"), "the web save ignores the dlc key")
 	check(not gb.has("dlc") and g.dlc == DlcSave.fresh(), "a profile that never touched the DLC writes no dlc key")
 	g.dlc["owned"] = true
-	g.dlc["arcade_best"] = 3
-	g.dlc["arcade_clears"] = ["tradies", "engineer", "designer"]
+	g.dlc["arcade_best"]["normal"] = 3
+	g.dlc["arcade_clears"]["normal"] = ["tradies", "engineer", "designer"]
 	var db := g.get_blob()
-	check(db.has("dlc") and db["dlc"]["owned"] == true and int(db["dlc"]["arcade_best"]) == 3, "the blob carries the dlc state")
+	check(db.has("dlc") and db["dlc"]["owned"] == true and int(db["dlc"]["arcade_best"]["normal"]) == 3, "the blob carries the dlc state")
 	var g2 := _fresh()
 	g2.persist = false
 	check(g2.apply_blob(db) and g2.dlc == g.dlc and not g2.extra.has("dlc"), "the dlc key round-trips through apply_blob (and is not kept twice)")
 	var db_js: Variant = JSON.parse_string(JSON.stringify(db))      # through JSON, like the file and the cloud (ints come back as floats)
 	var g3 := _fresh()
 	g3.persist = false
-	check(g3.apply_blob(db_js) and g3.dlc["owned"] == true and int(g3.dlc["arcade_best"]) == 3 and g3.dlc["arcade_clears"].size() == 3, "the dlc key survives JSON")
+	check(g3.apply_blob(db_js) and g3.dlc["owned"] == true and int(g3.dlc["arcade_best"]["normal"]) == 3 and g3.dlc["arcade_clears"]["normal"].size() == 3, "the dlc key survives JSON")
 	db.erase("dlc")
 	check(g2.apply_blob(db) and g2.dlc == DlcSave.fresh(), "an old blob without dlc loads as locked, nothing else changed")
 	db["dlc"] = {"owned": "yes", "arcade_best": -4, "arcade_clears": [5, "x", "x"], "junk": 1}
-	check(g2.apply_blob(db) and g2.dlc == {"owned": false, "arcade_best": 0, "arcade_clears": ["x"], "bonus": false}, "a damaged dlc key is cleaned (%s)" % [g2.dlc])
+	var want_old := DlcSave.fresh()
+	want_old["arcade_clears"]["nightmare"] = ["x"]
+	check(g2.apply_blob(db) and g2.dlc == want_old, "a damaged (old-shape) dlc key is cleaned (%s)" % [g2.dlc])
+	# saves from before the difficulties: one best int and one clears Array = the old balance = Nightmare progress, nothing lost
+	db["dlc"] = {"owned": true, "arcade_best": 4, "arcade_clears": ["tradies", "engineer", "_victory"], "bonus": true}
+	var old_ok := g2.apply_blob(db)
+	check(old_ok and g2.dlc["owned"] == true and g2.dlc["bonus"] == true and DlcSave.best(g2.dlc, "nightmare") == 4 and DlcSave.has_cleared(g2.dlc, "engineer", "nightmare")
+		and DlcSave.won_diff(g2.dlc, "nightmare") and DlcSave.won_arcade(g2.dlc) and DlcSave.best(g2.dlc, "easy") == 0 and DlcSave.best(g2.dlc, "normal") == 0
+		and not DlcSave.has_cleared(g2.dlc, "tradies", "easy") and not DlcSave.has_cleared(g2.dlc, "tradies", "normal"), "an old single-value dlc save migrates to Nightmare (%s)" % [g2.dlc])
+	var again := _fresh()
+	again.persist = false
+	check(again.apply_blob(JSON.parse_string(JSON.stringify(g2.get_blob()))) and again.dlc == g2.dlc, "... and the migrated shape round-trips")
+	db["dlc"] = {"owned": true, "arcade_best": {"easy": 6, "normal": "x", "nightmare": 2.0, "bogus": 9}, "arcade_clears": {"easy": ["a", "_victory"], "normal": 5, "zzz": ["q"]}}
+	check(g2.apply_blob(db) and DlcSave.best(g2.dlc, "easy") == 6 and DlcSave.best(g2.dlc, "normal") == 0 and DlcSave.best(g2.dlc, "nightmare") == 2
+		and DlcSave.won_diff(g2.dlc, "easy") and not DlcSave.won_arcade(g2.dlc) and not g2.dlc["arcade_clears"].has("zzz"), "per-difficulty dlc progress is cleaned; an Easy victory alone does not own the hat")
 	var shop := js.substr(js.find("const SKIN_SHOP = {"), 1200)
 	for k: String in LockerData.data()["skin_shop"]:
 		var e: Array = LockerData.data()["skin_shop"][k]

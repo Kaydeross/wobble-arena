@@ -35,9 +35,13 @@ const NO_SWAP := ["heal", "speed", "rage", "shield"]
 ## The run in progress (null = no Arcade run: every other mode). Cleared by end_run().
 static var running: ArcadeManager = null
 static var _stages: Array = []
+static var _diffs: Dictionary = {}
+const DEFAULT_DIFF := "normal"
 
 # ---------------- run state ----------------
 var seed_base := 0
+var diff := DEFAULT_DIFF               ## easy, normal or nightmare (the table's `difficulties`; nightmare = the numbers as written)
+var player_class := ""                 ## the class picked for the run ("" = Settings "class")
 var lives := LIVES
 var stage := 0                         ## index into stages()
 var attempt := 0                       ## retries of this stage (fresh seed offset each)
@@ -79,6 +83,28 @@ static func stages() -> Array:
 		if v is Dictionary and (v as Dictionary).get("stages") is Array: _stages = v["stages"]
 	return _stages
 
+## The `difficulties` table of stages.json (id -> multipliers); see its _readme.
+static func difficulties() -> Dictionary:
+	if _diffs.is_empty():
+		stages()
+		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(STAGES_PATH)) if FileAccess.file_exists(STAGES_PATH) else null
+		if v is Dictionary and (v as Dictionary).get("difficulties") is Dictionary: _diffs = v["difficulties"]
+	return _diffs
+
+static func diff_def_of(id: String) -> Dictionary:
+	var t := difficulties()
+	return t.get(id, t.get(DEFAULT_DIFF, {}))
+
+func diff_def() -> Dictionary:
+	return diff_def_of(diff)
+
+## Stage coins (and the victory bonus) at this difficulty.
+func scaled(coins: int) -> int:
+	return roundi(float(coins) * float(diff_def().get("coin_mul", 1.0)))
+
+func stage_coins(d: Dictionary) -> int:
+	return scaled(int(d.get("coin_reward", 0))) + scaled(int(d.get("first_clear_bonus", 0)))
+
 static func count() -> int:
 	return stages().size()
 
@@ -91,11 +117,13 @@ static func site_map() -> String:
 
 ## The title's Arcade card: builds a World for a new run (null when the DLC is not owned or the table is missing).
 ## The caller puts it in the tree (scripts/main.gd: change_scene_to_node).
-static func launch(seed_value: int = 0) -> Node:
+static func launch(seed_value: int = 0, p_diff: String = DEFAULT_DIFF, p_class: String = "") -> Node:
 	if not DlcUnlock.owned() or count() == 0: return null
 	var w: Node = load("res://world/world.tscn").instantiate()
 	var run := ArcadeManager.new()
-	run.start_run(seed_value)
+	run.start_run(seed_value, p_diff)
+	run.player_class = p_class
+	if p_class != "": w.player_class = p_class
 	w.arcade = run
 	w.map_id = site_map()
 	w.mode_id = "construction"
@@ -103,10 +131,11 @@ static func launch(seed_value: int = 0) -> Node:
 
 # ---------------- the run ----------------
 
-func start_run(p_seed: int = 0) -> void:
+func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF) -> void:
+	diff = p_diff if difficulties().has(p_diff) else DEFAULT_DIFF
 	seed_base = p_seed if p_seed > 0 else randi_range(1, 900000)
 	rng.seed = seed_base
-	lives = LIVES; stage = 0; attempt = 0; state = "idle"
+	lives = int(diff_def().get("lives", LIVES)); stage = 0; attempt = 0; state = "idle"
 	run_coins = 0; run_kos = 0; run_time = 0.0
 	history = []; last = {}; victory = {}
 	_seed_saved = SiteMap.current_seed
@@ -135,7 +164,7 @@ func is_last_stage() -> bool:
 	return stage >= count() - 1
 
 func first_clear() -> bool:
-	return not DlcSave.has_cleared(Save.dlc, str(stage_def().get("id", "")))
+	return not DlcSave.has_cleared(Save.dlc, str(stage_def().get("id", "")), diff)
 
 # ---------------- World hooks ----------------
 
@@ -166,7 +195,7 @@ func setup_sim(s: MatchSim) -> void:
 	var bots: Array = s.fighters.slice(1)
 	var giant := _giant_scale(d) > 1.0
 	for i in mini(bots.size(), specs.size()):
-		_dress(bots[i], specs[i], giant and bool(d.get("boss", false)))
+		_dress(bots[i], specs[i], giant and bool(d.get("boss", false)), i == 0 and bool(d.get("boss", false)))
 		enemies.append(bots[i])
 	if bool(d.get("boss", false)) and enemies.size() > 0: boss = enemies[0]
 	s.player.dmg_scale *= player_dmg
@@ -265,19 +294,19 @@ func _failed() -> void:
 func _pay() -> Dictionary:
 	var d := stage_def()
 	var id := str(d["id"])
-	var first := not DlcSave.has_cleared(Save.dlc, id)
+	var first := not DlcSave.has_cleared(Save.dlc, id, diff)
 	var coins := 0
 	if first:
-		coins = int(d.get("coin_reward", 0)) + int(d.get("first_clear_bonus", 0))
-		(Save.dlc["arcade_clears"] as Array).append(id)
-	Save.dlc["arcade_best"] = maxi(int(Save.dlc.get("arcade_best", 0)), stage + 1)
+		coins = stage_coins(d)
+		DlcSave.mark_cleared(Save.dlc, id, diff)
+	DlcSave.set_best(Save.dlc, diff, stage + 1)
 	if coins > 0: Save.coins += coins
 	Save.commit()
 	var kos := int(sim.player.ko)
 	run_coins += coins
 	run_kos += kos
 	var out := {"id": id, "stage": stage, "name": str(d["name"]), "time": t_stage, "kos": kos, "coins": coins, "first": first,
-		"reward": int(d.get("coin_reward", 0)), "bonus": int(d.get("first_clear_bonus", 0)) if first else 0}
+		"reward": scaled(int(d.get("coin_reward", 0))), "bonus": scaled(int(d.get("first_clear_bonus", 0))) if first else 0}
 	history.append(out)
 	return out
 
@@ -298,15 +327,16 @@ func _finish_attempt() -> void:
 
 ## The final victory: bonus coins and the Site Foreman hat, once.
 func _win() -> void:
-	var first := not DlcSave.won_arcade(Save.dlc)
+	var first := not DlcSave.won_diff(Save.dlc, diff)     # the victory bonus is paid once per difficulty
+	var hat_first := DlcSave.HAT_DIFFS.has(diff) and not DlcSave.won_arcade(Save.dlc)
 	var coins := 0
 	if first:
-		coins = VICTORY_COINS
-		(Save.dlc["arcade_clears"] as Array).append(DlcSave.VICTORY)
+		coins = scaled(VICTORY_COINS)
+		DlcSave.mark_cleared(Save.dlc, DlcSave.VICTORY, diff)
 		Save.coins += coins
 		Save.commit()
 		run_coins += coins
-	victory = {"coins": coins, "hat": FOREMAN_HAT, "first": first}
+	victory = {"coins": coins, "hat": FOREMAN_HAT, "first": first, "hat_first": hat_first, "hat_owned": DlcSave.won_arcade(Save.dlc), "diff": diff}
 	state = "won"
 	run_won.emit()
 	world.show_panel(ArcadePanels.won(self, quit_run))
@@ -337,7 +367,7 @@ func _giant_scale(d: Dictionary) -> float:
 	return 1.0
 
 ## One stage bot from its table entry: name, look, tool, health, damage, speed and skill. Boss scale like Giant (big_t).
-func _dress(b: FighterState, spec: Dictionary, giant: bool) -> void:
+func _dress(b: FighterState, spec: Dictionary, giant: bool, is_boss := false) -> void:
 	var c := sim.combat
 	b.name = str(spec.get("name", b.name))
 	sim.looks[b] = {"skin": str(spec.get("skin", "builder")), "hat": str(spec.get("hat", "none")), "color": int(spec.get("color", 0xf08a3c))}
@@ -349,9 +379,10 @@ func _dress(b: FighterState, spec: Dictionary, giant: bool) -> void:
 	b.kick_cool = rng.randf_range(1.0, 4.0)
 	brain.strafe = 1.0 if rng.randf() < 0.5 else -1.0
 	sim.controllers[b] = brain
-	b.phys.speed = float(dd.get("speed", 4.4)) * float(spec.get("speed", 1.0))
-	b.dmg_scale = float(dd.get("dmg", 0.45)) * float(spec.get("dmg_scale", 1.0))
-	var hp := float(spec.get("hp", 1.0))
+	var df := diff_def()
+	b.phys.speed = float(dd.get("speed", 4.4)) * float(spec.get("speed", 1.0)) * float(df.get("speed_mul", 1.0))
+	b.dmg_scale = float(dd.get("dmg", 0.45)) * float(spec.get("dmg_scale", 1.0)) * float(df.get("dmg_mul", 1.0))
+	var hp := enemy_hp(float(spec.get("hp", 1.0)), is_boss)
 	if giant:
 		b.big_t = 1e9                          # Chaos' Giant flags: 1.5 x model and hit spheres, double health, harder hits
 		b.dmg_scale /= 1.5                     # ... so the table's damage and health stay what they say
@@ -359,6 +390,12 @@ func _dress(b: FighterState, spec: Dictionary, giant: bool) -> void:
 	b.cls_hp = hp
 	b.hp = c.max_hp(b)
 	give_weapon(b, str(spec.get("weapon", "hammer")))
+
+## A table hp multiplier at this difficulty: x hp_mul, never below the floor (boss / non-boss), never above the table's own value.
+func enemy_hp(table_hp: float, is_boss: bool) -> float:
+	var df := diff_def()
+	var floor_hp := float(df.get("boss_hp_floor" if is_boss else "hp_floor", 0.0))
+	return minf(table_hp, maxf(table_hp * float(df.get("hp_mul", 1.0)), floor_hp))
 
 ## The fighter's trade tool in hand (replaces whatever else it carried).
 func give_weapon(f: FighterState, key: String) -> void:
