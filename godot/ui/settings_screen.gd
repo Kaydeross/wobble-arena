@@ -158,6 +158,7 @@ func show_section(s: String) -> void:
 			_buttons("Links", [["privacy", "Privacy policy", func() -> void: OS.shell_open(PRIVACY_URL)]])
 			_info("Credits", "Credits", "Made by Kaydeross. Built with the Godot Engine (godotengine.org). Font: Fredoka (SIL Open Font License).")
 			_field("server_url", "Game server (advanced)", "Only change this if a friend runs their own server")
+			_server_extras()
 	JuicyButton.attach_all(rows)
 	scroll.scroll_vertical = 0
 	_focus_tab()
@@ -328,11 +329,23 @@ func _field(key: String, title: String, sub: String) -> void:
 	e.size_flags_vertical = SIZE_SHRINK_CENTER
 	e.add_theme_font_size_override("font_size", 17)
 	e.text = str(Settings.get_value(key))
-	e.placeholder_text = "ws://server:3000/ws"
+	e.placeholder_text = Settings.server_default() if key == "server_url" else "ws://server:3000/ws"
 	e.text_submitted.connect(func(t: String) -> void: Settings.set_value(key, t.strip_edges()))
 	e.focus_exited.connect(func() -> void: if e.text.strip_edges() != "": Settings.set_value(key, e.text.strip_edges()))
 	r.add_child(e)
 	ctl[key] = e
+
+## Under the server field: which server is active, and a button back to the app's own server.
+func _server_extras() -> void:
+	var lab := Label.new()
+	lab.name = "ServerActive"
+	lab.theme_type_variation = &"MutedLabel"
+	lab.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	lab.add_theme_font_size_override("font_size", 16)
+	lab.text = Settings.server_status_text()
+	rows.add_child(lab)
+	ui["server_active"] = lab
+	_buttons("server_reset", [["server_reset", "Reset to default", func() -> void: Settings.reset("server_url")]])
 
 ## A tap on a row's words flips its switch (the switch itself takes taps too).
 func _on_row_tapped(c: Control) -> void:
@@ -342,6 +355,7 @@ func _on_row_tapped(c: Control) -> void:
 
 ## Keep the controls in step when a setting changes elsewhere.
 func _on_setting(key: String, v: Variant) -> void:
+	if key == "server_url" and is_instance_valid(ui.get("server_active")): (ui["server_active"] as Label).text = Settings.server_status_text()
 	if not ctl.has(key): return
 	var c: Variant = ctl[key]
 	if c is CheckButton:

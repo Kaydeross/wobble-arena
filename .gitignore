@@ -12,3 +12,4 @@ godot/build_info.cfg
 build/
 *.keystore
 *.jks
+deploy/nas/.env
