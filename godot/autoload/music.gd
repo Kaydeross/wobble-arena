@@ -31,6 +31,8 @@ var _players: Array[AudioStreamPlayer] = []
 var _cur := 0                      ## index of the active player in _players
 var _target_i := 0.0               ## raw intensity before smoothing
 var _tweens := [null, null]
+var _headless := DisplayServer.get_name() == "headless"
+var _busy_until := 0               ## ticks (ms) until which a stopped loop may still be held by the mixer
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS          # keeps playing under the pause menu
@@ -113,17 +115,24 @@ func _start(trk: String, from: float, fade: float) -> void:
 	if _players[old].playing: _fade(old, SILENT_DB, fade, true)
 	track = trk
 
+func _stopped(i: int) -> void:
+	_players[i].stop()
+	_busy_until = Time.get_ticks_msec()
+
 func _fade(i: int, db: float, t: float, stop_after: bool) -> void:
 	if _tweens[i] and (_tweens[i] as Tween).is_valid(): (_tweens[i] as Tween).kill()
 	var p := _players[i]
 	var tw := create_tween()
 	tw.tween_property(p, "volume_db", db, maxf(t, 0.01))
-	if stop_after: tw.tween_callback(p.stop)
+	if stop_after: tw.tween_callback(_stopped.bind(i))
 	_tweens[i] = tw
 
 ## Mood and intensity from the current scene: a world (it has a MatchSim in `sim`) plays the match; the end of a
 ## match and the results panel are silent; everything else is the menu.
 func _follow_scene() -> void:
+	if _headless:                                   # test runs: no music unless a test drives it (auto = false)
+		set_mood("")
+		return
 	var s := get_tree().current_scene
 	if s == null:
 		set_mood("menu")
@@ -173,7 +182,11 @@ func _apply_settings() -> void:
 	AudioServer.set_bus_mute(b, v <= 0.0)
 
 func stop_all() -> void:
-	for p in _players: p.stop()
+	for i in _players.size():
+		if _tweens[i] and (_tweens[i] as Tween).is_valid(): (_tweens[i] as Tween).kill()
+		_tweens[i] = null
+		if _players[i].playing: _busy_until = Time.get_ticks_msec()
+		_players[i].stop()
 	track = ""
 
 ## Phone call / app in the background: pause the loop where it is and carry on from there on return.
@@ -183,8 +196,11 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_APPLICATION_RESUMED or what == NOTIFICATION_APPLICATION_FOCUS_IN:
 		for p in _players: p.stream_paused = false
 
+## On quit: stop, drop the streams and, if a loop was playing, give the mix thread time to free its playback (as
+## Sfx does), so the streams are not reported as leaked.
 func _exit_tree() -> void:
-	for p in _players:
-		p.stop()
-		p.stream = null
+	stop_all()
+	for p in _players: p.stream = null
 	streams.clear()
+	if _busy_until > 0 and Time.get_ticks_msec() < _busy_until + 200:
+		OS.delay_msec(250)
