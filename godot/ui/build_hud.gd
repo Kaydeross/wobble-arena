@@ -102,7 +102,7 @@ func place_now() -> int:
 	var t: Array = layout.place_target(a[0], a[1], a[2], a[3])
 	var r := layout.place(t[0], t[1], _bodies())
 	var n: int = (r["added"] as Array).size()
-	if r["why"] == "full": world._toast("That's a lot of blocks! (%d max) Easy there" % SandboxLayout.MAX_BLOCKS)
+	if r["why"] == "full": world._toast("Easy there! That's a lot of blocks (%d max)" % SandboxLayout.MAX_BLOCKS)
 	elif n == 0 and r["why"] == "blocked": world._toast("Someone is in the way. Rude")
 	elif n == 0: world._toast("No room there. Too snug")
 	if n > 0: _changed("clink")
