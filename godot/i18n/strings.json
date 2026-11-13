@@ -4997,6 +4997,13 @@
   "fr": "Hors ligne",
   "es": "Sin conexión"
  },
+ "Offline, against computer players": {
+  "zh_TW": "離線，對戰電腦玩家",
+  "zh_CN": "离线，对战电脑玩家",
+  "ja": "オフライン · コンピューターと対戦",
+  "fr": "Hors ligne, contre l'ordinateur",
+  "es": "Sin conexión, contra la computadora"
+ },
  "On": {
   "zh_TW": "開",
   "zh_CN": "开",
@@ -5388,6 +5395,13 @@
   "ja": "オンライン対戦を1試合",
   "fr": "Jouer un match en ligne",
   "es": "Juega una partida en línea"
+ },
+ "Play online with friends": {
+  "zh_TW": "與朋友線上對戰",
+  "zh_CN": "与朋友在线对战",
+  "ja": "友達とオンラインで遊ぶ",
+  "fr": "Jouer en ligne avec des amis",
+  "es": "Jugar en línea con amigos"
  },
  "Play streak: %d day. First win of the day pays a bonus": {
   "zh_TW": "連續遊玩：%d 天。當日首勝有獎勵",

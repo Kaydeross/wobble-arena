@@ -434,7 +434,7 @@ func apply_safe_area() -> void:
 	safe.add_theme_constant_override("margin_top", int(m.y + i[1]))
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
-	play.custom_minimum_size.y = 108.0 if short else 146.0   # (the Construction banner sits below the cards row)
+	play.custom_minimum_size.y = 102.0 if short else 146.0   # (the Construction banner sits below the cards row)
 	(play.get_node("Stack/Big") as Label).add_theme_font_size_override("font_size", 66 if short else 84)
 	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
 		var cc := get_node_or_null(sheet + "/Center") as Control
