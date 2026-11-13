@@ -289,7 +289,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 		check(safe.grow(0.5).encloses(r), "%s %s %s inside the safe area %s" % [tag, p, r, safe])
 	for g: Array in groups: _no_overlap(rects, g, tag)
 	if touch_case: _touch_sizes(main, inside, tag)   # title, wizard frame + step pills, locker / shop tabs and footer
-	if wiz: _page(main, int(scr.substr(1)), safe, tag)
+	if wiz: await _page(main, int(scr.substr(1)), safe, tag)
 	if lock: _locker_grid(main.locker, safe, tag)
 	# the whole column fits (containers would otherwise overflow past the bottom)
 	var col: Control = over_col if over_col != null else main.wizard if wiz else main.locker if lock else main.account.card if acct else main.get_node("Safe/Col")
@@ -333,24 +333,52 @@ func _page(main: Control, p: int, safe: Rect2, tag: String) -> void:
 	var sc: ScrollContainer = page.get_node_or_null("Frame/Scroll")
 	var free: Array = []        ## controls outside the scroll area
 	if sc:
-		var g: GridContainer = sc.get_node("Grid")
+		var grids: Array = w._grids[p][4]
 		var sr := sc.get_global_rect()
 		check(safe.grow(0.5).encloses(sr), "%s scroll %s inside the safe area" % [tag, sr])
-		check(g.get_combined_minimum_size().x <= sr.size.x + 0.5, "%s grid min width %.0f fits %.0f" % [tag, g.get_combined_minimum_size().x, sr.size.x])
-		var cards: Array = g.get_children().filter(func(c: Control) -> bool: return c.visible)   # (classes you do not own are hidden)
+		var body: Control = sc.get_node("Pad/Body")
+		check(body.get_combined_minimum_size().x <= sr.size.x + 0.5, "%s grid min width %.0f fits %.0f" % [tag, body.get_combined_minimum_size().x, sr.size.x])
+		var cards: Array = []
+		for g: GridContainer in grids: cards.append_array(g.get_children().filter(func(c: Control) -> bool: return c.visible))   # (classes you do not own are hidden)
 		check(cards.size() > 0, "%s page %d has cards" % [tag, p])
 		var bottom := 0.0
+		var content := sc.get_child(0) as Control
 		for i in cards.size():
 			var c: Control = cards[i]
 			var r := c.get_global_rect()
-			bottom = maxf(bottom, c.position.y + c.size.y)
+			bottom = maxf(bottom, c.get_global_rect().end.y - content.get_global_rect().position.y)
 			check(r.position.x >= sr.position.x - 0.5 and r.end.x <= sr.end.x + 0.5, "%s card %s %s within the scroll width %s" % [tag, c.name, r, sr])
 			check(c.size.y >= 90.0 and c.size.x >= 150.0, "%s card %s big enough to tap (%s)" % [tag, c.name, c.size])
-			if i < g.columns: check(sr.grow(0.5).encloses(r), "%s first-row card %s visible" % [tag, c.name])
 			for j in range(i + 1, cards.size()):
 				check(not r.grow(-0.5).intersects((cards[j] as Control).get_global_rect().grow(-0.5)), "%s cards %s and %s overlap" % [tag, c.name, cards[j].name])
-		var max_scroll := maxf(0.0, g.size.y - sc.size.y)
+			_card_text(c, tag)
+		# at the top of the scroll: the first row (and its section header) is fully visible with room for the card ring
+		sc.scroll_vertical = 0
+		await process_frame
+		var first_rect: Rect2 = (cards[0] as Control).get_global_rect()
+		check(first_rect.position.y - sr.position.y >= 3.0, "%s first card is not clipped at the top (%.1f below the scroll top)" % [tag, first_rect.position.y - sr.position.y])
+		var first_row := cards.slice(0, (grids[0] as GridContainer).columns)
+		for c: Control in first_row: check(sr.grow(0.5).encloses(c.get_global_rect()), "%s first-row card %s visible" % [tag, c.name])
+		for h: Node in body.get_children():
+			if String(h.name).begins_with("Head_"):
+				check((h as Control).get_global_rect().position.y >= sr.position.y - 0.5, "%s section header %s not clipped" % [tag, h.name])
+				for cap: Label in h.find_children("Caption", "Label", true, false): _label_fits(cap, tag)
+				break   # (the first one is at the top; later ones scroll)
+		var max_scroll := maxf(0.0, content.size.y - sc.size.y)
 		check(bottom - sc.size.y <= max_scroll + 0.5, "%s every card reachable (bottom %.0f, scroll %.0f)" % [tag, bottom, max_scroll])
+		if p == 0:
+			check(w.detail_l.is_visible_in_tree() and safe.grow(0.5).encloses(w.detail_l.get_global_rect()), "%s detail line visible inside the safe area" % tag)
+			check(w.detail_l.get_line_count() <= 2 and w.detail_l.get_global_rect().size.y >= w.detail_l.get_line_count() * 16.0, "%s detail line fits (%d lines)" % [tag, w.detail_l.get_line_count()])
+			check(body.get_children().filter(func(n: Node) -> bool: return String(n.name).begins_with("Head_")).size() >= 3, "%s game types are in labelled sections" % tag)
+		if p == 3:
+			for c: Control in cards:
+				var stats: Node = c.get_node_or_null("Margin/Col/Stats")
+				check(stats != null and stats.get_child_count() == ClassStats.STATS.size(), "%s class card %s shows %d stat bars" % [tag, c.name, ClassStats.STATS.size()])
+				if stats == null: continue
+				for cell: Control in stats.get_children():
+					var bar = cell.get_node("Bar")
+					check(bar.is_visible_in_tree() and bar.size.x >= 30.0 and bar.size.y >= 6.0 and bar.v > 0.0 and bar.v <= 1.0, "%s %s %s bar visible (%s, %.2f)" % [tag, c.name, cell.name, bar.size, bar.v])
+					_label_fits(cell.get_node("Label"), tag)
 	for c in page.get_children():
 		if c == sc or c.name == "Frame": continue
 		if c is HBoxContainer:
@@ -363,6 +391,23 @@ func _page(main: Control, p: int, safe: Rect2, tag: String) -> void:
 	for i in free.size():
 		for j in range(i + 1, free.size()):
 			check(not (free[i] as Control).get_global_rect().grow(-0.5).intersects((free[j] as Control).get_global_rect().grow(-0.5)), "%s %s overlaps %s" % [tag, free[i].name, free[j].name])
+
+## A card's title fits on one line and its description is not cut (no "..."): measured with the label's own font.
+func _card_text(c: Control, tag: String) -> void:
+	for nm: String in ["Name", "Sub"]:
+		var l: Label = c.find_child(nm, true, false)
+		if l == null: continue
+		if nm == "Name" or l.autowrap_mode == TextServer.AUTOWRAP_OFF: _label_fits(l, tag)
+		else:
+			var lines := l.get_line_count()
+			check(lines <= maxi(1, l.max_lines_visible) and l.size.y >= lines * l.get_line_height() - 0.5, "%s card %s description '%s' fits %d lines (%d, height %.0f)" % [tag, c.name, l.text, l.max_lines_visible, lines, l.size.y])
+
+## A one-line label whose text is not trimmed.
+func _label_fits(l: Label, tag: String) -> void:
+	var f := l.get_theme_font("font")
+	var fs := l.get_theme_font_size("font_size")
+	var w := f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	check(w <= l.size.x + 0.5, "%s label '%s' trimmed (%.0f > %.0f)" % [tag, l.text, w, l.size.x])
 
 ## The Locker / Shop card grid: no horizontal overflow, cards apart and big enough to tap, the first row visible, every
 ## card reachable by scrolling.
@@ -406,6 +451,23 @@ func _logic() -> void:
 	for m: String in ModeRules.PLAYABLE: check(names.has(m), "wizard offers %s" % m)
 	check(names.has("construction"), "wizard offers construction")
 	check(w._mode_bs.size() == names.size(), "a card per mode")
+	var in_secs: Array = []
+	for sec: Array in w.sections():
+		check(str(sec[0]) != "" and (sec[1] as Array).size() > 0, "section %s has game types" % sec[0])
+		for m: String in sec[1]:
+			check(not in_secs.has(m), "%s is in one section only" % m)
+			in_secs.append(m)
+	check(in_secs.size() == names.size(), "every game type sits in a section (%d of %d)" % [in_secs.size(), names.size()])
+	for m: String in names:
+		check(w.mode_short(m) != "" and w.mode_short(m).length() <= 46, "%s short card line is short (%s)" % [m, w.mode_short(m)])
+		check(w.mode_long(m) != "", "%s has a detail text" % m)
+	check(w._dyn_bs.size() == Dynamics.KINDS.size() and w.pages[1].has_node("Floor") and not w.pages[0].has_node("Floor"), "Moving floor is a labelled row on the Arena page")
+	for m: String in ["classic", "pillars"]:
+		w.set_mode(m)
+		check(w.detail_l.text.contains(w.mode_long(m)), "the detail line shows the full text of %s" % m)
+	w.set_mode("classic")
+	for k: String in ["Selected card shows a tick"]:
+		check(w._checks[w._mode_bs["classic"]].visible and not w._checks[w._mode_bs["melee"]].visible, k)
 	check(w._map_bs.size() == w.maps_for("classic").size(), "a card per classic arena")
 	w.next_b.pressed.emit()
 	check(w.page == 1 and w.title_l.text == "Pick an arena", "Next goes to the arena")
@@ -446,7 +508,7 @@ func _logic() -> void:
 	check(w.next_b.text == "Start" and w.step_bs[4].text == "5 Start", "last page is Start")
 	var sums: Array = []
 	for l: Label in w._sum_vals: sums.append(l.text)
-	check(sums[0].begins_with("Classic") and sums[1] == "Bouncy Rooftop" and sums[2].contains("5 bots") and sums[3] == "Bruiser", "summary lists the picks: %s" % [sums])
+	check(sums[0].begins_with("Classic") and sums[1].begins_with("Bouncy Rooftop") and sums[1].ends_with("Tilt") and sums[2].contains("5 bots") and sums[3] == "Bruiser", "summary lists the picks: %s" % [sums])
 	w._sum_bs[1].pressed.emit()
 	check(w.page == 1, "a summary row jumps to its page")
 	w.go(0)
@@ -628,6 +690,14 @@ func _stage(main: Control) -> void:
 		check(w._class_art.has(id) and w._class_bs[id].find_children("Render", "TextureRect", true, false).size() == 1, "card %s has a render" % id)
 	check(w._class_art[w.cls].texture == w.stage.get_texture(), "the selected card shows the live stage")
 	check(w._class_bs["wobbler"].visible and not w._class_bs["tank"].visible and not w._class_bs["ghost"].visible, "only classes you own get a card (the Shop sells, playing unlocks the rest)")
+	for id: String in root.get_node("Content").classes:     # heads, hats and antennas stay in the shot whichever way it faces
+		w.stage.pose(id, 0.0)
+		var cam := w.stage.get_node("Cam") as Camera3D
+		var b: Array = w.stage.model_bounds()
+		for yaw: float in [0.0, PI / 2.0, PI]:
+			for pt: Vector3 in [Vector3(0, b[0], 0), Vector3(0, b[1], 0), Vector3(b[2], b[1], 0), Vector3(-b[2], b[1], 0)]:
+				check(cam.is_position_in_frustum(w.stage.get_node("Pivot").global_transform.origin + pt.rotated(Vector3.UP, yaw)), "class %s fits the camera at yaw %.1f (%s, bounds %s)" % [id, yaw, pt, b])
+		check(b[1] > 1.4, "class %s bounds look sane (%s)" % [id, b])
 	w.set_class("kid")
 	check(w.stage.current == "kid" and w._class_art["kid"].texture == w.stage.get_texture(), "picking a character swaps the stage model")
 	w.go(4)
