@@ -54,7 +54,7 @@ var locker_b: Button
 var shop_b: Button
 var goals_b: Button
 var goals: GoalsScreen              ## the Goals screen (title: Goals)
-var news_b: Button
+var news_dot: Control
 var news: WhatsNew                  ## the What's new card (patch notes; opens once per new version)
 var settings: SettingsScreen        ## the Settings screen (gear)
 var intro: IntroCards               ## the first-run how-to (also Settings > Controls)
@@ -98,7 +98,11 @@ func _ready() -> void:
 		if Tier.is_pc(): goals_b.grab_focus.call_deferred())
 	news = WhatsNew.new()
 	add_child(news)
-	news.closed.connect(func() -> void: if Tier.is_pc(): news_b.grab_focus.call_deferred())
+	news.closed.connect(func() -> void:
+		_news_dot()
+		if Tier.is_pc() and not settings.visible: gear.grab_focus.call_deferred())
+	settings.news_requested.connect(open_news)
+	_news_dot()
 	_build_host_sheet()
 	_build_lobby()
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
@@ -152,9 +156,9 @@ func _ready() -> void:
 func go_back() -> bool:
 	if intro.visible: return intro.back()
 	if account.visible: return account.back()
+	if news.visible: return news.back()      # (opened from Settings > About: it sits on top of Settings)
 	if settings.visible: return settings.back()
 	if goals.visible: return goals.back()
-	if news.visible: return news.back()
 	if lobby.visible:
 		if session: session.leave("You left the room.")
 		show_lobby(false)
@@ -190,9 +194,9 @@ func _build_more() -> void:
 	var more := HBoxContainer.new()
 	more.name = "More"
 	more.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	more.add_theme_constant_override("separation", 12)   # four buttons now: still fit the narrowest canvas (960 wide)
+	more.add_theme_constant_override("separation", UiTheme.SP_4)   # three cards: What's new moved up beside the account chip
 	home.add_child(more)
-	home.add_theme_constant_override("separation", 12)   # one more row: a little tighter, so the column still fits a phone
+	home.add_theme_constant_override("separation", UiTheme.SP_3)
 	locker_b = _small_button("Walldrobe", "What you own")
 	locker_b.name = "Locker"
 	locker_b.pressed.connect(open_locker.bind(false))
@@ -203,17 +207,28 @@ func _build_more() -> void:
 	goals_b = _small_button("Goals", "")
 	goals_b.pressed.connect(open_goals)
 	more.add_child(goals_b)
-	news_b = _small_button("What's new", "Patch notes")
-	news_b.name = "News"
-	news_b.pressed.connect(open_news)
-	more.add_child(news_b)
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
+
+## A gold dot on the gear while the newest patch notes are unseen (What's new lives in Settings > About, one button fewer on the title).
+func _news_dot() -> void:
+	if news_dot == null:
+		news_dot = Control.new()
+		news_dot.name = "Dot"
+		news_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		news_dot.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		news_dot.offset_left = -20; news_dot.offset_right = -6; news_dot.offset_top = 6; news_dot.offset_bottom = 20
+		news_dot.draw.connect(func() -> void:
+			news_dot.draw_circle(Vector2(7, 7), 8.0, UiTheme.INK)
+			news_dot.draw_circle(Vector2(7, 7), 6.0, UiTheme.ACCENT))
+		gear.add_child(news_dot)
+	var newest := WhatsNew.newest_version()
+	news_dot.visible = newest != "" and newest != Save.last_seen_news
 
 func _small_button(big: String, sub: String) -> Button:
 	var b := Button.new()
 	b.name = big
-	b.custom_minimum_size = Vector2(212, 60)
+	b.custom_minimum_size = Vector2(240, 60)
 	var st := VBoxContainer.new()
 	st.name = "Stack"
 	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -276,7 +291,9 @@ func close_locker() -> void:
 func show_tab(online: bool) -> void:
 	browser.url = str(Settings.get_value("server_url"))
 	home.visible = not online
+	($Safe/Col/Top/Logo as WobbleLogo).font_size = 46 if online else 68     # a compact header: the room list needs the height
 	online_panel.visible = online
+	$Safe/Col/Build.visible = not online      # (the version line waits for the title: the room list needs the height)
 	$Safe/Col/Tip.visible = not online    # the room list needs the height
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
 	elif not online and Tier.is_pc(): online_b.grab_focus.call_deferred()
@@ -340,7 +357,13 @@ func apply_safe_area() -> void:
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
 	play.custom_minimum_size.y = 140.0 if short else 176.0
-	col.add_theme_constant_override("separation", 8 if short else 14)
+	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
+		var cc := get_node_or_null(sheet + "/Center") as Control
+		if cc:
+			cc.offset_left = float(i[0]); cc.offset_top = float(i[1]); cc.offset_right = -float(i[2]); cc.offset_bottom = -float(i[3])
+	var hint := get_node_or_null("HostSheet/Center/Card/Box/Hint")
+	if hint: hint.visible = get_viewport_rect().size.y >= 500.0      # on the shortest canvases the arena hint gives way (it is in the tooltip too)
+	col.add_theme_constant_override("separation", UiTheme.SP_3 if short else UiTheme.SP_4)
 
 # ---------------- online ----------------
 
@@ -514,7 +537,7 @@ func _sheet_frame(sheet_name: String, title: String, min_w: float) -> VBoxContai
 	add_child(sh)
 	var dim := ColorRect.new()
 	dim.name = "Dim"
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0.02, 0.06, 0.08, 0.86)   # strong enough that the panel behind never reads through
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sh.add_child(dim)
 	var cc := CenterContainer.new()
@@ -542,7 +565,7 @@ func _sheet_frame(sheet_name: String, title: String, min_w: float) -> VBoxContai
 func _pill_row(box: Control, row_name: String, label: String, keys: Array, names: Array, prefix: String, on_pick: Callable, label_w := 110.0) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.name = row_name
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
 	row.size_flags_horizontal = SIZE_EXPAND_FILL
 	box.add_child(row)
 	var l := Label.new()
@@ -581,7 +604,7 @@ const HOST_TABS := ["Room", "Mode", "Rules"]
 func _build_host_sheet() -> void:
 	var box := _sheet_frame("HostSheet", "Host a room", 640)
 	host_sheet = get_node("HostSheet")
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.SP_3)
 	var h: Variant = Settings.get_value("host_opts", {})
 	if h is Dictionary:
 		for k in _host.keys():
@@ -606,7 +629,7 @@ func _build_host_sheet() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.name = "Tabs"
 	tabs.size_flags_horizontal = SIZE_EXPAND_FILL
-	tabs.add_theme_constant_override("separation", 6)
+	tabs.add_theme_constant_override("separation", UiTheme.SP_3)
 	head.add_child(tabs)
 	var tg := ButtonGroup.new()
 	for t: String in HOST_TABS:
@@ -622,7 +645,7 @@ func _build_host_sheet() -> void:
 	for t: String in HOST_TABS:
 		var pg := VBoxContainer.new()
 		pg.name = t
-		pg.add_theme_constant_override("separation", 8)
+		pg.add_theme_constant_override("separation", UiTheme.SP_3)
 		box.add_child(pg)
 	var room: VBoxContainer = box.get_node("Room")
 	var nm := LineEdit.new()
@@ -639,7 +662,7 @@ func _build_host_sheet() -> void:
 	var mode: VBoxContainer = box.get_node("Mode")
 	var mr := HBoxContainer.new()
 	mr.name = "Game"
-	mr.add_theme_constant_override("separation", 6)
+	mr.add_theme_constant_override("separation", UiTheme.SP_3)
 	mode.add_child(mr)
 	var ml := Label.new()
 	ml.name = "Label"; ml.text = "Game"
@@ -675,7 +698,7 @@ func _build_host_sheet() -> void:
 	_pill_row(rules, "Hp", "Health", HostSession.HPS, HostSession.HPS, "hp_", func(k: int) -> void: _host["hp"] = k)
 	var pair := HBoxContainer.new()
 	pair.name = "Pair"
-	pair.add_theme_constant_override("separation", 14)
+	pair.add_theme_constant_override("separation", UiTheme.SP_4)
 	rules.add_child(pair)
 	_pill_row(pair, "Grav", "Gravity", [0, 1, 2], ["Low", "Normal", "High"], "grav_", func(i: int) -> void: _host["grav"] = HostSession.GRAVS[i])
 	_pill_row(pair, "Inf", "Ammo", [0, 1], ["Normal", "Infinite"], "inf_", func(i: int) -> void: _host["inf"] = i == 1, 64.0)
@@ -690,7 +713,7 @@ func _build_host_sheet() -> void:
 	box.add_child(hint)
 	var row := HBoxContainer.new()
 	row.name = "Buttons"
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
 	box.add_child(row)
 	var cancel := Button.new()
 	cancel.name = "Cancel"; cancel.text = "Cancel"
@@ -814,8 +837,8 @@ func _build_lobby() -> void:
 	var grid := GridContainer.new()
 	grid.name = "Players"
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 16)
-	grid.add_theme_constant_override("v_separation", 4)
+	grid.add_theme_constant_override("h_separation", UiTheme.SP_4)
+	grid.add_theme_constant_override("v_separation", UiTheme.SP_1)
 	box.add_child(grid)
 	var info := Label.new()
 	info.name = "Info"
@@ -832,7 +855,7 @@ func _build_lobby() -> void:
 	box.add_child(rl)
 	var row := HBoxContainer.new()
 	row.name = "Buttons"
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
 	box.add_child(row)
 	var lv := Button.new()
 	lv.name = "Leave"; lv.text = "Leave"
@@ -868,6 +891,10 @@ func _fill_lobby() -> void:
 	for r: Dictionary in roster:
 		var l := Label.new()
 		l.add_theme_font_size_override("font_size", 20)
+		l.custom_minimum_size.x = 250
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.clip_text = true
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		l.text = "%s%s%s" % [r.get("name", "?"), tr("  (host)") if int(r.get("id", -1)) == 0 else "", tr("  (web)") if hs != null and int(r.get("id", -1)) != 0 and not r.has("gd") else ""]
 		grid.add_child(l)
 	var seats := hs.opt_max if hs != null else int(session.lobby.get("max", 0)) if session != null else 0

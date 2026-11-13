@@ -15,6 +15,7 @@ extends UiPage
 ## and follows `changed` from elsewhere (F3 toggles the FPS, for example).
 
 signal account_requested
+signal news_requested
 
 const SECTIONS := ["controls", "camera", "graphics", "audio", "gameplay", "account", "about"]
 const NAMES := {"controls": "Controls", "camera": "Camera", "graphics": "Graphics", "audio": "Audio", "gameplay": "Gameplay",
@@ -49,7 +50,7 @@ func _ready() -> void:
 	tab_box = HBoxContainer.new()
 	tab_box.name = "Tabs"
 	tab_box.size_flags_horizontal = SIZE_EXPAND_FILL
-	tab_box.add_theme_constant_override("separation", 6)
+	tab_box.add_theme_constant_override("separation", UiTheme.SP_3)
 	tscroll.add_child(tab_box)
 	var g := ButtonGroup.new()
 	for s: String in SECTIONS:
@@ -61,8 +62,12 @@ func _ready() -> void:
 		b.button_group = g
 		b.custom_minimum_size = Vector2(0, TOUCH)
 		b.size_flags_horizontal = SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 19)
+		b.add_theme_font_size_override("font_size", 17)
 		b.pressed.connect(show_section.bind(s))
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:      # slimmer side padding: seven tabs share one row, even in French / Japanese
+			var sb := b.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+			sb.content_margin_left = 8; sb.content_margin_right = 8
+			b.add_theme_stylebox_override(state, sb)
 		tab_box.add_child(b)
 		tabs[s] = b
 	var page := PanelContainer.new()
@@ -75,7 +80,7 @@ func _ready() -> void:
 	rows = VBoxContainer.new()
 	rows.name = "Rows"
 	rows.size_flags_horizontal = SIZE_EXPAND_FILL
-	rows.add_theme_constant_override("separation", 4)
+	rows.add_theme_constant_override("separation", UiTheme.SP_3)
 	scroll.add_child(rows)
 	scroll.tapped.connect(_on_row_tapped)
 	help = ControlsHelp.new()
@@ -111,7 +116,7 @@ func _focus_tab() -> void:
 func show_section(s: String) -> void:
 	if not tabs.has(s): return
 	section = s
-	(tabs[s] as Button).set_pressed_no_signal(true)
+	for t: String in tabs: (tabs[t] as Button).set_pressed_no_signal(t == s)   # exactly one lit tab (a jump from the code left the old one gold)
 	for c in rows.get_children():
 		rows.remove_child(c)
 		c.queue_free()
@@ -157,7 +162,9 @@ func show_section(s: String) -> void:
 				_buttons("Open", [["account", "Open account", func() -> void: account_requested.emit()]])
 		"about":
 			_info("Version", "Wobblers Arena", version_text())
-			_buttons("Links", [["privacy", "Privacy policy", func() -> void: OS.shell_open(PRIVACY_URL)]])
+			var links: Array = [["privacy", "Privacy policy", func() -> void: OS.shell_open(PRIVACY_URL)]]
+			if not in_match: links.insert(0, ["news", "What's new", func() -> void: news_requested.emit()])   # the patch notes (moved off the title)
+			_buttons("Links", links)
 			_info("Credits", "Credits", "Made by Kaydeross. Built with the Godot Engine (godotengine.org). Font: Fredoka (SIL Open Font License).")
 			_field("server_url", "Game server (advanced)", "Only change this if a friend runs their own server")
 			_server_extras()
@@ -306,7 +313,7 @@ func _choice(key: String, title: String, sub: String, values: Array, names: Arra
 	var h := HBoxContainer.new()
 	h.name = "Ctl"
 	h.custom_minimum_size = Vector2(CTRL_W, 0)
-	h.add_theme_constant_override("separation", 6)
+	h.add_theme_constant_override("separation", UiTheme.SP_3)
 	r.add_child(h)
 	var g := ButtonGroup.new()
 	var by := {}

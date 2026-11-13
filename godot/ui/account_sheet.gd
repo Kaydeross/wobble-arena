@@ -59,7 +59,7 @@ func _process(dt: float) -> void:
 func _build() -> void:
 	var dim := ColorRect.new()
 	dim.name = "Dim"
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0.02, 0.06, 0.08, 0.86)   # strong enough that the title behind never reads through
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.gui_input.connect(func(e: InputEvent) -> void:
 		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed and page in ["guest", "signed"]: close())
@@ -173,7 +173,7 @@ func _build() -> void:
 func _page(holder: Control, n: String) -> VBoxContainer:
 	var p := VBoxContainer.new()
 	p.name = n.capitalize()
-	p.add_theme_constant_override("separation", 10)
+	p.add_theme_constant_override("separation", UiTheme.SP_3)
 	p.visible = false
 	holder.add_child(p)
 	pages[n] = p
@@ -224,7 +224,7 @@ func _btn(pg: String, n: String, t: String, primary: bool, cb: Callable) -> Butt
 func _row(p: Control, n: String, items: Array) -> HBoxContainer:
 	var r := HBoxContainer.new()
 	r.name = n
-	r.add_theme_constant_override("separation", 10)
+	r.add_theme_constant_override("separation", UiTheme.SP_3)
 	for c: Control in items: r.add_child(c)
 	p.add_child(r)
 	return r

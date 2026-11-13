@@ -21,6 +21,11 @@ extends SceneTree
 ## UI scale pass (ui/ui_scale.gd): the canvas of each case is the one UiScale gives a touch screen (also Large and
 ## Small), and in landscape every button and field on every screen is at least 44 pt tall and wide (sliders: tall);
 ## prints the smallest target per size ("UI tap targets ...").
+## Congestion pass (docs/UI_REVIEW.md, every case): in landscape at the 44 pt scale the interactive controls of the visible
+## layer keep MIN_GAP_PT apart (and never overlap), no visible label / button text is set below UiTheme.MIN_FONT, no
+## visible text is truncated (an ellipsis, a clipped line, a wrap past its line limit), and the busy bars (title top row and
+## cards row, wizard footer, Walldrobe header / footer, page headers) hold at most MAX_BAR buttons. English at every size, then
+## Français (the longest text) and 日本語 on the key screens at the iPhone sizes and one iPad.
 ##   godot --headless --path godot --script res://tests/ui_layout_test.gd -- --no-save   (npm run test:godot-ui)
 
 const BASE := Vector2(1170, 540)   ## project.godot viewport size (stretch canvas_items, aspect expand)
@@ -48,6 +53,16 @@ const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set
 	"a-guest", "a-signup", "a-login", "a-reset", "a-code", "a-signed", "a-password", "a-delete", "a-conflict"]
 const SIGNED := ["a-signed", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
+const MIN_GAP_PT := 8.0      ## pt: the least space between two interactive controls (congestion pass)
+const MAX_BAR := 4           ## the most buttons in one bar (footer, header, card row)
+## Languages beyond English (the longest, and the shortest, text): on these screens at LANG_CASES
+const LANG_SCREENS := ["title", "online", "rooms", "w0", "w1", "w2", "w3", "w4", "l0", "l3", "s0", "goals", "set-controls", "set-graphics",
+	"set-gameplay", "set-about", "help", "pause", "pause-help", "host", "host-rules", "lobby", "a-guest"]
+const LANG_CASES := [
+	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]], [Vector2(812, 375), [44.0, 0.0, 44.0, 21.0]], [Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
+	[Vector2(926, 428), [47.0, 0.0, 47.0, 21.0]], [Vector2(1180, 820), [0.0, 24.0, 0.0, 20.0]],
+]
+var lang_tag := ""
 ## Touch targets in canvas px for the case being checked: MIN_TOUCH pt (UiScale keeps the canvas small enough that the
 ## designed 60 px are at least 44 pt on every landscape phone / tablet; "small" is checked against the old 60 px).
 var TOUCH_PX := 60.0
@@ -73,7 +88,7 @@ const MOCK_ROOMS := [
 ]
 const HB := "HostSheet/Center/Card/Box/"
 ## host a room: tabs (Room / Mode / Rules), the arena hint, Cancel / Create room
-const HOST_FRAME := [HB + "Head/Title", HB + "Head/Tabs/Room", HB + "Head/Tabs/Mode", HB + "Head/Tabs/Rules", HB + "Hint", HB + "Buttons/Cancel", HB + "Buttons/Create"]
+const HOST_FRAME := [HB + "Head/Title", HB + "Head/Tabs/Room", HB + "Head/Tabs/Mode", HB + "Head/Tabs/Rules", HB + "Buttons/Cancel", HB + "Buttons/Create"]
 ## the three tabs: Room (name, who can join, seats, bots), Mode (game type, K.O. limit, floor), Rules (health, gravity,
 ## ammo, knockback, crates)
 const HOST_TABS := {
@@ -94,8 +109,6 @@ const L := "Safe/Locker/"
 ## Walldrobe / Shop frame (must not overlap each other); the tab buttons are added per mode (the coins: Shop only)
 const LFRAME := [L + "Head/Title", L + "Head/Sub", L + "Head/Coins", L + "Head/Switch", L + "Body/Preview", L + "Body/Right/Tabs",
 	L + "Body/Right/Frame", L + "Foot/Back", L + "Foot/Action"]
-
-const STEP_TEXT := ["1 Game type", "2 Arena", "3 Players", "4 Character", "5 Start"]
 
 var fails := 0
 var pt_k := 1.0              ## pt per canvas px of the case being checked
@@ -120,6 +133,14 @@ func _run() -> void:
 			if with_insets and c[1] == [0.0, 0.0, 0.0, 0.0]: continue
 			for scr: String in SCREENS:
 				await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], scr, c[2])
+	for lg: String in ["fr", "ja"]:
+		root.get_node("Lang").apply(lg)
+		lang_tag = lg
+		for c: Array in LANG_CASES:
+			for scr: String in LANG_SCREENS:
+				await _case(c[0], c[1], scr, "normal")
+	root.get_node("Lang").apply("en")
+	lang_tag = ""
 	for t: String in min_pt: print("UI tap targets %s: min %.1f pt" % [t, min_pt[t]])
 	SafeArea.override = []
 	await _logic()
@@ -151,7 +172,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 	vp.add_child(main)
 	main.browser.auto_refresh = false
 	var wiz := scr.begins_with("w")
-	var lock := scr.begins_with("l") or scr.begins_with("s") and not scr.begins_with("set-")
+	var lock := (scr.begins_with("l") and scr != "lobby") or (scr.begins_with("s") and not scr.begins_with("set-"))
 	var acct := scr.begins_with("a-")
 	var over: Control = null          ## a new page / sheet checked generically (its visible controls)
 	var over_col: Control = null      ## its column (must fit the height)
@@ -224,7 +245,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 		main.open_wizard(int(scr.substr(1)))
 	for i in 4:
 		await process_frame
-	var tag := "%dx%d%s%s %s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else "", "" if mode == "normal" else " " + mode, scr]
+	var tag := "%dx%d%s%s %s%s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else "", "" if mode == "normal" else " " + mode, scr, " " + lang_tag if lang_tag != "" else ""]
 	var safe := Rect2(Vector2(ins[0], ins[1]), cs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	var inside: Array = []
 	var groups: Array = []      ## lists of paths that must not overlap each other
@@ -258,12 +279,10 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 		groups.append(inside.slice(frame.size()))
 	elif wiz:
 		inside = WFRAME.duplicate()
-		for b in main.wizard.step_bs: inside.append(W + "Foot/Steps/" + b.name)
 		groups.append(WFRAME)
-		groups.append(inside.slice(WFRAME.size()))
 	else:
 		var on_panel := scr in ["online", "lobby"] or scr.begins_with("rooms") or scr.begins_with("host")
-		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not (on_panel and b.ends_with("/Tip")))
+		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not (on_panel and (b.ends_with("/Tip") or b.ends_with("/Build"))))
 		inside = blocks + (ONLINE if on_panel else HOME)
 		groups.append(blocks)
 		if scr == "online" or scr.begins_with("rooms"):
@@ -295,6 +314,10 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 	var col: Control = over_col if over_col != null else main.wizard if wiz else main.locker if lock else main.account.card if acct else main.get_node("Safe/Col")
 	check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 	_labels_fit(main, tag)
+	var layer: Control = over if over != null else main.account.card if acct else main.locker if lock else main.wizard if wiz \
+		else main.get_node("HostSheet/Center/Card") if scr.begins_with("host") else main.get_node("Lobby/Center/Card") if scr == "lobby" else main.get_node("Safe/Col")
+	_congestion(main, layer, tag, k, win.x > win.y)
+	_bars(main, tag, scr)
 	if lock:
 		_not_cut(main.locker.get_node("Head"), tag)
 		_not_cut(main.locker.get_node("Foot"), tag)
@@ -306,14 +329,11 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 		_not_cut(main.wizard.get_node("Head"), tag)
 		_not_cut(main.wizard.get_node("Foot"), tag)
 		if scr == "w4": _not_cut(main.wizard.pages[4], tag)
-		for i in main.wizard.step_bs.size():
-			var sb: Button = main.wizard.step_bs[i]
-			check(sb.text == STEP_TEXT[i], "%s step pill %d says '%s'" % [tag, i + 1, sb.text])
-			check(sb.size.x + 0.5 >= sb.get_minimum_size().x, "%s step pill '%s' squeezed" % [tag, sb.text])
+		check(main.wizard.dots.page == int(scr.substr(1)) and main.wizard.dots.n == 5, "%s the progress dots show step %d" % [tag, int(scr.substr(1)) + 1])
 		_no_word(main.wizard, "fighter", tag)
 	elif over == null:
 		_not_cut(main.get_node("Safe/Col"), tag)
-		if scr == "title":
+		if scr == "title" and lang_tag == "":
 			check(main.get_node("Safe/Col/Body/Home/Play/Stack/Big").text == "Play", "%s Play button says Play" % tag)
 			check(main.get_node("Safe/Col/Body/Home/Online/Stack/Big").text == "Play online with friends", "%s online button label" % tag)
 			check(main.who.text == "Guest", "%s chip says Guest (%s)" % [tag, main.who.text])
@@ -323,6 +343,97 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 	print("UI %s canvas %dx%d checked" % [tag, cs.x, cs.y])
 	vp.queue_free()
 	await process_frame
+
+## Rect of a control as it shows: cut to the scroll areas / clipping panels it sits in (empty when scrolled out of sight).
+func _shown_rect(c: Control) -> Rect2:
+	var r := c.get_global_rect()
+	var p := c.get_parent()
+	while p != null and r.size.x > 0.0 and r.size.y > 0.0:
+		if p is Control and (p as Control).clip_contents:
+			r = r.intersection((p as Control).get_global_rect())
+		p = p.get_parent()
+	return r if r.size.x > 0.0 and r.size.y > 0.0 else Rect2()
+
+func _rect_gap(a: Rect2, b: Rect2) -> float:
+	var dx := maxf(maxf(a.position.x - b.end.x, b.position.x - a.end.x), 0.0)
+	var dy := maxf(maxf(a.position.y - b.end.y, b.position.y - a.end.y), 0.0)
+	return sqrt(dx * dx + dy * dy)
+
+func _gather_ui(n: Node, out: Array) -> void:
+	for c in n.get_children():
+		if not (c is Control) or not (c as Control).is_visible_in_tree(): continue
+		out.append(c)
+		_gather_ui(c, out)
+
+## The congestion pass over the visible layer: gaps between interactive controls (landscape at the 44 pt scale only: the
+## portrait / small canvases are the old denser look), the smallest font, and text that is cut short.
+func _congestion(main: Control, layer: Control, tag: String, k: float, landscape: bool) -> void:
+	var all: Array = []
+	_gather_ui(layer, all)
+	var items: Array = []
+	for c: Control in all:
+		if c is BaseButton or c is LineEdit or c is Slider:
+			var r := _shown_rect(c)
+			if r.size.x > 0.0: items.append([c, r])
+	if touch_case and landscape:
+		var need := MIN_GAP_PT * k
+		for i in items.size():
+			for j in range(i + 1, items.size()):
+				var a: Control = items[i][0]
+				var b: Control = items[j][0]
+				if a.is_ancestor_of(b) or b.is_ancestor_of(a): continue
+				var g := _rect_gap(items[i][1], items[j][1])
+				check(g >= need - 0.6, "%s controls '%s' and '%s' are %.1f pt apart (need %.0f)" % [tag, _name_of(a), _name_of(b), g / k, MIN_GAP_PT])
+	for c: Control in all:
+		if c is Label or c is Button or c is LineEdit:
+			var txt: String = c.text if not (c is LineEdit) else ""
+			if txt == "": continue
+			var fs := c.get_theme_font_size("font_size")
+			check(fs >= UiTheme.MIN_FONT, "%s '%s' font %d is below %d" % [tag, txt, fs, UiTheme.MIN_FONT])
+			if c.has_meta("user_text"): continue
+			_text_whole(c, txt, tag)
+
+func _name_of(c: Control) -> String:
+	var t = c.get("text")
+	return str(t) if t != null and str(t) != "" else str(c.name)
+
+## A label / button shows all of its text: no "...", no clipped line, a wrapped label inside its line limit.
+func _text_whole(c: Control, txt: String, tag: String) -> void:
+	var f := c.get_theme_font("font")
+	var fs := c.get_theme_font_size("font_size")
+	if c is Label:
+		var l := c as Label
+		if l.autowrap_mode != TextServer.AUTOWRAP_OFF:
+			var lines := l.get_line_count()
+			if l.max_lines_visible > 0: check(lines <= l.max_lines_visible, "%s '%s' needs %d lines, shows %d" % [tag, txt, lines, l.max_lines_visible])
+			var shown := mini(lines, l.max_lines_visible) if l.max_lines_visible > 0 else lines
+			check(l.size.y + 0.5 >= shown * l.get_line_height(), "%s '%s' wraps taller than its box" % [tag, txt])
+		else:
+			var w := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			if l.clip_text or l.text_overrun_behavior != TextServer.OVERRUN_NO_TRIMMING:
+				check(w <= l.size.x + 1.0, "%s '%s' cut off (%.0f > %.0f)" % [tag, txt, w, l.size.x])
+			else:
+				check(l.size.x + 0.5 >= l.get_minimum_size().x, "%s '%s' squeezed" % [tag, txt])
+	elif c is Button:
+		var b := c as Button
+		if txt.contains("\n"): return
+		var w := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		check(w <= b.size.x - 8.0, "%s button '%s' text %.0f is tight in %.0f" % [tag, txt, w, b.size.x])
+
+## Buttons in the busy bars (MAX_BAR at most): title top row and cards row, wizard footer, Walldrobe header / footer.
+func _bars(main: Control, tag: String, scr: String) -> void:
+	var bars: Array = []
+	if scr == "title": bars = ["Safe/Col/Top", "Safe/Col/Body/Home/More"]
+	elif scr.begins_with("w"): bars = ["Safe/Wizard/Foot", "Safe/Wizard/Head"]
+	elif (scr.begins_with("l") and scr != "lobby") or (scr.begins_with("s") and not scr.begins_with("set-")): bars = ["Safe/Locker/Head", "Safe/Locker/Foot"]
+	for p: String in bars:
+		var n: Node = main.get_node(p)
+		var cnt := 0
+		var all: Array = []
+		_gather_ui(n as Control, all)
+		for c: Control in all:
+			if c is BaseButton or c.name == "GuestChip": cnt += 1
+		check(cnt <= MAX_BAR, "%s bar %s holds %d buttons (max %d)" % [tag, p, cnt, MAX_BAR])
 
 ## One wizard page: every control is reachable. Card grids: no horizontal overflow, cards apart, the first row fully
 ## visible and every card reachable by scrolling; pill rows and summary rows: inside the safe area and apart.
@@ -505,7 +616,7 @@ func _logic() -> void:
 	w.go(3)
 	check(w.title_l.text == "Pick your character", "page 4 is the character (%s)" % w.title_l.text)
 	w.go(4)
-	check(w.next_b.text == "Start" and w.step_bs[4].text == "5 Start", "last page is Start")
+	check(w.next_b.text == "Start" and w.dots.page == 4, "last page is Start")
 	var sums: Array = []
 	for l: Label in w._sum_vals: sums.append(l.text)
 	check(sums[0].begins_with("Classic") and sums[1].begins_with("Bouncy Rooftop") and sums[1].ends_with("Tilt") and sums[2].contains("5 bots") and sums[3] == "Bruiser", "summary lists the picks: %s" % [sums])
@@ -764,6 +875,7 @@ func _scroll_rows(main: Node, sc: ScrollContainer, safe: Rect2, tag: String, tou
 
 ## The room list says what is going on: rows (greyed out with the reason when they cannot be joined), empty, error.
 func _rooms_state(b: Control, scr: String, tag: String) -> void:
+	if lang_tag != "": return      # the state words are checked in English
 	match scr:
 		"rooms":
 			check(b.state == "rooms" and b.rows_by_id.size() == MOCK_ROOMS.size(), "%s a row per room (%d)" % [tag, b.rows_by_id.size()])

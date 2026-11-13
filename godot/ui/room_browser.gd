@@ -28,7 +28,7 @@ var action_b: Button              ## Host a room (empty) / Try again (error)
 
 func _init() -> void:
 	name = "Rooms"
-	add_theme_constant_override("separation", 6)
+	add_theme_constant_override("separation", UiTheme.SP_3)
 	size_flags_horizontal = SIZE_EXPAND_FILL
 	size_flags_vertical = SIZE_EXPAND_FILL
 
@@ -68,7 +68,7 @@ func _ready() -> void:
 	rows = VBoxContainer.new()
 	rows.name = "List"
 	rows.size_flags_horizontal = SIZE_EXPAND_FILL
-	rows.add_theme_constant_override("separation", 6)
+	rows.add_theme_constant_override("separation", UiTheme.SP_3)
 	scroll.add_child(rows)
 	list.done.connect(_on_done)
 	_show_message("Looking for rooms…", "")
@@ -196,6 +196,7 @@ func _row(r: Dictionary) -> Button:
 	if str(r["host"]) != "": parts.append(tr("Host: %s") % str(r["host"]))
 	if str(r["modeName"]) != "": parts.append(tr(str(r["modeName"])))
 	if str(r["map"]) != "": parts.append(tr(str(r["map"])))
+	if why != "": parts = parts.slice(0, 1)              # a room you cannot join: who hosts it and why, nothing else to read
 	parts.append(tr(why) if why != "" else (tr("Playing now") if r["started"] else tr("In the lobby")))
 	var s := Label.new()
 	s.name = "Sub"
