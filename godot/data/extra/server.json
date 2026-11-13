@@ -1,0 +1,4 @@
+{
+  "_note": "Public production server for release exports, e.g. \"wss://play.example.com/ws\". Leave url empty to use ws://127.0.0.1:3000/ws. NOT a secret: no tokens or keys here. See docs/SERVER_PLAN.md.",
+  "url": ""
+}

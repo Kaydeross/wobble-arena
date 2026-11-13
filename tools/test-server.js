@@ -44,6 +44,11 @@ const { Client } = require('./wa-client');
   await full[0].join(id); await full[1].join(id);
   full[2].tx({ op: 'join', id }); assert.equal((await full[2].op('nojoin')).reason, 'full', 'room of 4 is full');
 
+  { const mk = (h, a) => ({ headers: h, socket: { remoteAddress: a } }), spoof = { 'x-forwarded-for': '6.6.6.6, 9.9.9.9', 'cf-connecting-ip': '1.2.3.4' };   // client-supplied header first, proxy-appended last
+    delete process.env.TRUST_PROXY; assert.equal(srv.ipOf(mk(spoof, '10.0.0.2')), '10.0.0.2', 'proxy headers ignored by default (limits cannot be spoofed)');
+    process.env.TRUST_PROXY = '1'; assert.equal(srv.ipOf(mk(spoof, '10.0.0.2')), '9.9.9.9', 'TRUST_PROXY=1 uses the last x-forwarded-for entry, not the spoofable first one'); assert.equal(srv.ipOf(mk({}, '10.0.0.2')), '10.0.0.2', 'no header falls back to the socket');
+    process.env.TRUST_PROXY = 'cloudflare'; assert.equal(srv.ipOf(mk(spoof, '10.0.0.2')), '1.2.3.4', 'cloudflare mode uses cf-connecting-ip'); assert.equal(srv.ipOf(mk({ 'x-forwarded-for': '7.7.7.7' }, '10.0.0.2')), '7.7.7.7');
+    delete process.env.TRUST_PROXY; }
   [g1, g2, ...full].forEach(c => c.close());
   console.log('server integration tests pass'); await srv.stop(); process.exit(0);
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
