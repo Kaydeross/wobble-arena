@@ -16,6 +16,12 @@ func _init() -> void:
 	focus_mode = Control.FOCUS_ALL
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	text = ""
+	mouse_entered.connect(queue_redraw)
+	mouse_exited.connect(queue_redraw)
+	button_down.connect(queue_redraw)
+	button_up.connect(queue_redraw)
+	focus_entered.connect(queue_redraw)
+	focus_exited.connect(queue_redraw)
 	for s in ["normal", "hover", "pressed", "disabled", "focus"]:
 		add_theme_stylebox_override(s, StyleBoxEmpty.new())
 
@@ -29,10 +35,13 @@ func _process(dt: float) -> void:
 
 func _draw() -> void:
 	if _font == null: _font = UiTheme.font(700)
-	var r := Rect2(Vector2.ZERO, size)
+	var pressed := get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
+	var hovered := get_draw_mode() == DRAW_HOVER or get_draw_mode() == DRAW_HOVER_PRESSED
+	var r := Rect2(Vector2.ZERO, size).grow(-2.0 if pressed else 0.0)
 	# pulsing amber glow behind the sign
 	var pulse := 0.5 + 0.5 * sin(_t * 4.0)
-	draw_rect(r.grow(3.0 + pulse * 3.0), Color(1.0, 0.7, 0.1, 0.12 + 0.16 * pulse), false, 4.0)
+	var lift := 1.0 if hovered else 0.0
+	draw_rect(r.grow(3.0 + pulse * 3.0 + lift), Color(1.0, 0.7, 0.1, 0.12 + 0.16 * pulse + 0.08 * lift), false, 4.0 + lift)
 	# black plate, hazard-tape frame, yellow face
 	draw_rect(r, HazardTape.BLACK)
 	HazardTape.stripes(self, r.grow(-2.0), 8.0, _t * 14.0)
@@ -44,5 +53,14 @@ func _draw() -> void:
 	var asc := _font.get_ascent(fs)
 	var base := Vector2((size.x - tw) / 2.0, (size.y + asc - _font.get_descent(fs)) / 2.0)
 	draw_string(_font, base, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HazardTape.BLACK)
+	var arrow := minf(13.0, tw * 0.08)
+	for side: float in [-1.0, 1.0]:
+		var cx := size.x * 0.5 + side * (tw * 0.5 + arrow)
+		var cy := size.y * 0.5
+		draw_colored_polygon(PackedVector2Array([
+			Vector2(cx - side * arrow * 0.55, cy),
+			Vector2(cx + side * arrow * 0.3, cy - arrow * 0.55),
+			Vector2(cx + side * arrow * 0.3, cy + arrow * 0.55),
+		]), HazardTape.BLACK)
 	if has_focus():
 		draw_rect(r.grow(2.0), Color.WHITE, false, 3.0)

@@ -7,6 +7,6 @@ GODOT="${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}"
 OUT="$PWD/docs/style"
 mkdir -p "$OUT"
 timeout 120 "$GODOT" --headless --path godot --import >/dev/null 2>&1 || true
-for s in explosion confetti dash melee dust; do
+for s in explosion confetti dash melee impact dust; do
 	timeout 90 "$GODOT" --path godot --resolution 1280x720 --script res://tests/fx_shots.gd -- --no-save --shot "$s" --out "$OUT/godot-fx-$s.png" 2>&1 | grep '^SHOT' || { echo "FAIL $s"; exit 1; }
 done

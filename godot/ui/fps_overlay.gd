@@ -43,8 +43,8 @@ func _ready() -> void:
 	_panel.add_child(box)
 	_top = _line(box, 15, Color(1, 1, 1))
 	_bot = _line(box, 12, Color(0.75, 0.85, 0.88))
-	_panel.anchor_left = 0.5; _panel.anchor_right = 0.5
-	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_panel.anchor_left = 0.0; _panel.anchor_right = 0.0
+	_panel.grow_horizontal = Control.GROW_DIRECTION_END
 	get_tree().root.window_input.connect(_on_window_input)
 	Settings.changed.connect(func(k, _v):
 		if k == "show_fps": _sync()
@@ -57,7 +57,7 @@ func _line(parent: Node, fs: int, c: Color) -> Label:
 	l.add_theme_font_size_override("font_size", fs)
 	l.add_theme_color_override("font_color", c)
 	l.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0))
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(l)
 	return l
@@ -132,10 +132,25 @@ func _process(dt: float) -> void:
 	var fps := Engine.get_frames_per_second()
 	var vp := get_viewport()
 	var top_inset: float = SafeArea.insets(vp)[1]
-	_panel.offset_top = 4.0 + top_inset
 	_top.text = tr("%d fps   %.1f ms   avg %.0f   1%% low %.0f") % [fps, dt * 1000.0, _avg, _low]
 	var draws := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
 	_bot.text = tr("%s · %s · 3D x%.2f · %d draws") % [renderer_name(), Tier.tier_name(), vp.scaling_3d_scale, draws]
+	_place(top_inset)
+
+## Timing lives below the score instead of the notification band at the top centre. This keeps
+## objective banners readable and gives the compact telemetry a stable corner.
+func _place(top_inset: float) -> void:
+	var ins := SafeArea.insets(get_viewport())
+	var pos := Vector2(float(ins[0]) + 14.0, top_inset + 4.0)
+	var found := get_tree().root.find_children("*", "MatchHud", true, false)
+	if not found.is_empty():
+		var score := found[0].get_node_or_null("Score") as Control
+		if score and score.is_visible_in_tree():
+			pos = Vector2(score.position.x, score.position.y + score.size.y * score.scale.y + 6.0)
+	_panel.position = pos
+
+func rect() -> Rect2:
+	return Rect2(_panel.position, _panel.size)
 
 static func renderer_name() -> String:
 	var m := RenderingServer.get_current_rendering_method()

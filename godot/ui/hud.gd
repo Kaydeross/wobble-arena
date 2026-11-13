@@ -66,6 +66,8 @@ func _ready() -> void:
 	_hint.name = "Hint"
 	_hint.theme_type_variation = &"HudLabel"
 	_hint.add_theme_font_size_override("font_size", 16)
+	_hint.add_theme_constant_override("outline_size", 4)
+	_hint.add_theme_color_override("font_outline_color", UiTheme.INK)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_hint)
@@ -74,6 +76,8 @@ func _ready() -> void:
 	_center.theme_type_variation = &"HudLabel"
 	_center.add_theme_font_size_override("font_size", 34)
 	_center.add_theme_color_override("font_color", UiTheme.ACCENT)
+	_center.add_theme_constant_override("outline_size", 6)
+	_center.add_theme_color_override("font_outline_color", UiTheme.INK)
 	_center.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_center)
@@ -169,7 +173,8 @@ func _lbl(parent: Node, fs: int, c: Color) -> Label:
 	l.theme_type_variation = &"HudLabel"
 	l.add_theme_font_size_override("font_size", fs)
 	l.add_theme_color_override("font_color", c)
-	l.add_theme_constant_override("outline_size", 0)
+	l.add_theme_constant_override("outline_size", 4)
+	l.add_theme_color_override("font_outline_color", UiTheme.INK)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(l)
 	return l

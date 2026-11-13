@@ -5,10 +5,9 @@ extends RefCounted
 ##
 ## The layouts are designed on a 1170x540 canvas (project.godot, stretch canvas_items + aspect expand) with touch
 ## targets at least DESIGN_TOUCH canvas px. On an iPhone 15 landscape (852x393 pt) that is 44 pt, but on a 667x375
-## iPhone SE the canvas is width-bound (1170x658) and the same buttons are only ~34 pt. `normal` therefore shrinks the
-## canvas until DESIGN_TOUCH px are at least MIN_TOUCH pt (the layouts reflow to the narrower canvas, never below
-## MIN_CANVAS); `small` is the plain designed canvas (denser, the old look); `large` adds LARGE on top, still never
-## below MIN_CANVAS; `auto` = `normal` on touch screens (phones, tablets, touch web) and `small` with a mouse.
+## iPhone SE the canvas is width-bound (1170x658) and the same buttons are only ~34 pt. Every touch mode therefore
+## shrinks the canvas until DESIGN_TOUCH px are at least MIN_TOUCH pt. `small` remains denser on mouse-driven devices;
+## `large` adds LARGE on top, still never below MIN_CANVAS; `auto` = `normal` on touch screens and `small` with a mouse.
 ## Tests call the static functions with a window size in points; the autoload passes the real window and screen.
 
 const BASE := Vector2(1170, 540)    ## project.godot viewport size
@@ -22,9 +21,10 @@ const MODES := ["auto", "small", "normal", "large"]
 static func factor(win_pt: Vector2, mode: String, touch: bool) -> float:
 	if win_pt.x < 200.0 or win_pt.y < 200.0: return 1.0
 	if mode == "auto": mode = "normal" if touch else "small"
-	if mode == "small" or win_pt.y > win_pt.x: return 1.0   # portrait shows the landscape layout scaled down
+	if win_pt.y > win_pt.x: return 1.0             # portrait shows the landscape layout scaled down
 	var k := minf(win_pt.x / BASE.x, win_pt.y / BASE.y)       # pt per canvas px at factor 1
 	var want := maxf(1.0, MIN_TOUCH / DESIGN_TOUCH / k)
+	if mode == "small" and not touch: return 1.0
 	if mode == "large": want *= LARGE
 	# never a canvas smaller than MIN_CANVAS (the layouts would overflow), never below the designed size
 	var cap := minf(win_pt.x / MIN_CANVAS.x, win_pt.y / MIN_CANVAS.y) / k

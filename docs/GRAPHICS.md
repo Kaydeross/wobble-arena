@@ -143,8 +143,9 @@ CPU 4.1  GPU 6.2 ms              process ms, GPU frame ms
 MID  thermal n/a  310 MB         graphics tier, thermal state, engine memory
 ```
 
-The node exists only while the setting is on, so there is no cost when off. (The older "Show frame rate" pill, F3 or
-a three-finger tap, is separate and unchanged.)
+The node exists only while the setting is on, so there is no cost when off. The compact "Show frame rate" pill (F3 or
+a three-finger tap) now sits below the score panel too; when both are enabled, the detailed readout stacks beneath it
+instead of competing with objective banners at the top centre.
 
 ### 15-minute soak
 
@@ -185,12 +186,18 @@ Tests: `npm run test:godot-perf` (stats maths, readout on/off, a 10 s soak with 
 ## Effects (Phase 4 part 2: motion polish and particles)
 
 Screenshots (HIGH): `docs/style/godot-fx-explosion.png` (mid-explosion), `-confetti.png` (K.O. confetti + ring),
-`-dash.png` (dash streaks + ring), `-melee.png` (katana swing trail), `-dust.png` (landing dust, ring and squash);
+`-dash.png` (dash streaks + ring), `-melee.png` (katana swing trail), `-impact.png` (faceted hit burst and damage
+vignette), `-dust.png` (landing dust, ring and squash);
 `tools/shoot-godot-fx.sh` re-renders them (`godot/tests/fx_shots.gd`).
 
 Everything here is presentation only: it reads Combat events and fighter states, never writes sim state and never
 draws from the global RNG. `npm run test:godot-fx` plays a seeded 40 s match with effects on and off and compares
 the sim hash every second (identical), and floods every pool on every level.
+
+The effect language stays deliberately low-poly: 20-face icosahedral fire masses, angular debris, faceted contact
+sparks, a segmented twelve-sided shockwave shader, and a matching twelve-sided damage vignette. Explosions favour a
+bright core with smaller offset lobes, soot-dark chips and radial streaks over one opaque sphere; this keeps the
+silhouette readable and the fighters visible through the blast.
 
 | | LOW | MID | HIGH |
 |---|---|---|---|
@@ -203,7 +210,7 @@ the sim hash every second (identical), and floods every pool on every level.
 | Damage-number labels (pooled Label3D) | 10 | 20 | 28 |
 | Ribbons (live trails) / samples per ribbon | 4 / 8, melee only | 12 / 12 | 24 / 18 |
 | Ambient specks | off | 36 | 72 |
-| Explosion | 2 fireballs, ring, 2 smoke, 4 debris | 3 fireballs, 2 rings, 5 smoke, 8 debris, 6 spark streaks | + 4 offset fireballs, 9 smoke, 14 debris, 10 streaks |
+| Explosion | offset hot lobes, dark shells, 2 rings, debris and embers | additional dark smoke, 3 hot lobes, 10 debris, 8 radial embers | 6 dark shells, 3 hot lobes, 2 rings, 16 debris, 11 radial embers |
 | Shell casings, spark streaks, head-hit ring, take-off dust, sprint footsteps | off | on | on |
 | Squash / stretch, hitstop, camera shake | on | on | on |
 
@@ -218,16 +225,19 @@ What triggers what:
   the feet and a puff. **Slam** landing (an air swing that lands): a shockwave ring, dust ring, shake.
 - **Hits** (`hit` event, damage zones from its `part`): sparks in the part colour (the damage-number colours: head red,
   torso yellow, arms blue, legs grey, so the struck spot and the number read the same) at the struck point, count by
-  damage, speed by force, spark streaks above LOW, a small ring on head hits; the wobbler's own hit flash stays.
+  damage, speed by force, a compact faceted contact burst, dark chips and hot directional streaks above LOW, a small
+  ring on head hits; the wobbler's own hit flash stays and player damage adds a brief twelve-sided screen edge flash.
 - **K.O.**: the death pop (`ko_burst`: puffs + `koBurst` ring + sparkles) and confetti in the killer's colour (with a
   ring), a 0.18 shake and, when the player scored it, a 4-frame hitstop.
-- **Explosions** (rockets, grenades, meteor): fireball layers, ground ring(s), rising smoke, tumbling debris, sparks,
-  shake by camera distance (the web's `0.34 - d x 0.011`). Flames and rocket exhaust smoke are blobs too.
+- **Explosions** (rockets, grenades, meteor): hot faceted lobes inside soot-dark shells, segmented ground rings,
+  radial embers, tumbling angular debris, shake by camera distance (the web's `0.34 - d x 0.011`). Flames and rocket
+  exhaust smoke use the same faceted blob pool.
 - **Guns** (`shot`): a muzzle flash blob and three sparks; a brass (red for the shotgun) shell flicked out above LOW.
 - **Bounce pads**: a cyan ring (+ white inner ring) and a puff.
 - **Trails** (`world/trails.gd`): melee swing ribbon from the shoulder along the sim's swing target (`aim_*`, the arm
-  itself lags on a spring) to the weapon tip, in the weapon colour, 0.2 s; projectile ribbons (arrow, rocket,
-  shuriken, typhoon, boomerang, knife, trident), camera facing, 0.16-0.4 s. One ImmediateMesh for all of them.
+  itself lags on a spring) to the weapon tip, with a white-hot leading edge and narrow blade core, in the weapon
+  colour, 0.2 s; projectile ribbons (arrow, rocket, shuriken, typhoon, boomerang, knife, trident), camera facing,
+  0.16-0.4 s. One ImmediateMesh for all of them.
 - **Squash / stretch** (`actors/fighter_juice.gd`): a spring kicked by the landing speed (squash, overshooting into a
   stretch), a stretch kick on take-off, vertical stretch with speed in the air, a squeeze on hits. It scales the rig on
   top of the classic pose or the ragdoll overlay; `Fighter.present` restores the nodes before `animate()`, so the
@@ -261,13 +271,14 @@ Measured (dev Mac, 1170x540 window, this branch):
 
 | Tier | Farm (no stress) | `fx` stress (Farm) | fx peaks |
 |---|---|---|---|
-| HIGH | cpu 1.76 ms, 894 draws, 114k prims | cpu 2.79 ms (p95 3.35), 912 draws, 143k prims | bits 697 / chips 240 / blobs 112 / rings 24 / streaks 84, 5 ribbons |
-| MID | cpu 1.74 ms, 464 draws, 83k prims | cpu 2.41 ms (p95 2.96), 512 draws, 99k prims | 320 / 120 / 56 / 16 / 58, 5 ribbons |
-| LOW | cpu 1.62 ms, 349 draws, 67k prims | cpu 1.94 ms (p95 2.39), 431 draws, 74k prims | 96 / 24 / 16 / 6 / 6, 4 ribbons |
+| HIGH | cpu 1.96 ms, 902 draws, 116k prims | cpu 3.08 ms (p95 3.69), 1021 draws, 139k prims | 709 / 240 / 112 / 21 / 124, 3 ribbons |
+| MID | cpu 1.88 ms, 472 draws, 85k prims | cpu 2.44 ms (p95 2.96), 563 draws, 97k prims | 320 / 120 / 56 / 16 / 64, 3 ribbons |
+| LOW | cpu 1.90 ms, 358 draws, 67k prims | cpu 2.11 ms (p95 2.52), 498 draws, 74k prims | 96 / 24 / 16 / 6 / 14, 3 ribbons |
 
 All under the 4 ms CPU / 1400-800-650 draw / 200k-130k-110k primitive budgets; frames stayed at the display's
-8.33 ms (LOW p95 10.6 ms). The effects add at most ~7 draw calls (five pools, trails, specks) plus the labels; the
-cost is CPU (~1 ms at HIGH caps, ~0.3 ms at LOW), i.e. ~3 ms of an iPhone 12 frame at MID worst case. A normal match
+8.33 ms (LOW p95 10.6 ms; the latest MID stress p95 was 6.83 ms). The effects add at most ~7 draw calls (five pools,
+trails, specks) plus the labels; the cost is CPU (~1 ms at HIGH caps, ~0.2 ms at LOW), i.e. under ~3 ms of an iPhone
+12 frame at MID worst case. A normal match
 stays far below the caps (40 s, 8 fighters, HIGH: bits peak ~110, blobs 24, streaks 23).
 
 ## Still off
