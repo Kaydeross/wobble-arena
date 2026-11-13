@@ -2,6 +2,20 @@
  "_note": "Patch notes for the What's new card (ui/whats_new.gd), newest first. `version` matches application/config/version in project.godot: the card opens by itself once when the newest version here is one the player hasn't seen. Voice and rules: docs/WRITING.md. Short lines, no trailing full stop, one silly beat at most.",
  "entries": [
   {
+   "version": "0.3.0",
+   "title": "The Construction update",
+   "notes": [
+    "Construction DLC: the title banner opens Classic with up to 8 on a random building site, nine construction tools, plus hard hats and hi-vis",
+    "Arcade boss rush: fight from the Tradies up to the Client with 3 lives, and earn the Site Foreman hard hat",
+    "Pick a name to log in. No password needed, and unused names are freed after 30 days",
+    "A cleaner, less crowded title, setup and HUD",
+    "Chinese, Japanese, French and Spanish fonts fixed",
+    "Gun feel: scatter and bloom, and a shorter net trap",
+    "Settings > Graphics has a performance readout and a 15-minute soak test",
+    "Online play now uses the new server"
+   ]
+  },
+  {
    "version": "0.2.0",
    "title": "The big wobble update",
    "notes": [
