@@ -8,8 +8,7 @@ extends UiPage
 ##   Camera    Manual / Auto-centre, distance, field of view
 ##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
-##   Gameplay  knock-out replays (kill cam), damage numbers
-##   Language  the game's language (autoload Lang): the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español
+##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), knock-out replays (kill cam), damage numbers
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
 ##   About     version and build, privacy policy, credits, the game server address (advanced)
 ## Every control writes its Settings key at once (Settings persists it and emits `changed`, the game applies it live)
@@ -17,9 +16,9 @@ extends UiPage
 
 signal account_requested
 
-const SECTIONS := ["controls", "camera", "graphics", "audio", "gameplay", "language", "account", "about"]
+const SECTIONS := ["controls", "camera", "graphics", "audio", "gameplay", "account", "about"]
 const NAMES := {"controls": "Controls", "camera": "Camera", "graphics": "Graphics", "audio": "Audio", "gameplay": "Gameplay",
-	"language": "Language", "account": "Account", "about": "About"}
+	"account": "Account", "about": "About"}
 const PRIVACY_URL := "https://kaydeross.github.io/wobble-arena/privacy.html"
 const TOUCH := 62.0                ## canvas px: 45 pt on an iPhone in landscape (Apple asks 44)
 const ROW_H := 66.0
@@ -146,10 +145,9 @@ func show_section(s: String) -> void:
 			_slider("sfx_volume", "Sound effects", "", 0.0, 1.0, 0.05, _pct)
 			_slider("music_volume", "Music", "", 0.0, 1.0, 0.05, _pct)
 		"gameplay":
+			_language()
 			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
-		"language":
-			_language()
 		"account":
 			var u := _account_line()
 			_info("Who", u[0], u[1])
