@@ -208,8 +208,8 @@ func update(dt: float) -> void:
 
 func _take(f: FighterState, key: String) -> void:
 	if key == "heal":
-		f.hp = minf(combat.max_hp(f), f.hp + combat.max_hp(f) * 0.6)
-		if f.is_player: combat.ev({"type": "toast", "text": "+60 health!"})
+		f.hp = minf(combat.max_hp(f), f.hp + combat.max_hp(f) * f.heal_frac)
+		if f.is_player: combat.ev({"type": "toast", "text": "+%d health!" % roundi(f.heal_frac * 100.0)})
 	elif PU_TIMERS.has(key):
 		f.set(PU_TIMERS[key], 12.0)
 		if f.is_player: combat.ev({"type": "toast", "text": str(drops.get("powerups", {}).get(key, {}).get("msg", key))})

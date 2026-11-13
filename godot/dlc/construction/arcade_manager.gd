@@ -388,6 +388,7 @@ func _dress(b: FighterState, spec: Dictionary, giant: bool, is_boss := false) ->
 		b.dmg_scale /= 1.5                     # ... so the table's damage and health stay what they say
 		hp /= 2.0
 	b.cls_hp = hp
+	b.heal_frac = float(df.get("boss_heal", b.heal_frac))   # a Health Pack heals an enemy only a little (5 / 8 / 10 %)
 	b.hp = c.max_hp(b)
 	give_weapon(b, str(spec.get("weapon", "hammer")))
 
