@@ -1,0 +1,667 @@
+{
+  "%s is a giant! Run!": {
+    "zh_TW": "%s 變巨人了！快跑！",
+    "zh_CN": "%s 变巨人了！快跑！",
+    "ja": "%s が巨大化！逃げろ！",
+    "fr": "%s est un géant ! Cours !",
+    "es": "¡%s es un gigante! ¡Corre!"
+  },
+  "%s left. You're now the host. ": {
+    "zh_TW": "%s 已離開。你現在是房主。 ",
+    "zh_CN": "%s 已离开。你现在是房主。 ",
+    "ja": "%s が退出しました。あなたが新しいホストです。 ",
+    "fr": "%s a quitté. Désormais hôte du salon. ",
+    "es": "%s se fue. Ahora eres el anfitrión. "
+  },
+  "%s left. You're now the host: carrying the match on…": {
+    "zh_TW": "%s 已離開。你現在是房主，正在延續比賽…",
+    "zh_CN": "%s 已离开。你现在是房主，正在延续比赛…",
+    "ja": "%s が退出しました。あなたが新しいホストとして試合を引き継ぎます…",
+    "fr": "%s a quitté. Désormais hôte, la partie se poursuit…",
+    "es": "%s se fue. Ahora eres el anfitrión y la partida continúa…"
+  },
+  "%s left. You're the host now!": {
+    "zh_TW": "%s 已離開。你現在是房主！",
+    "zh_CN": "%s 已离开。你现在是房主！",
+    "ja": "%s が退出しました。あなたがホストです！",
+    "fr": "%s a quitté. Désormais hôte !",
+    "es": "¡%s se fue. Ahora eres el anfitrión!"
+  },
+  "%s · New weapon in %d": {
+    "zh_TW": "%s · %d 秒後出新武器",
+    "zh_CN": "%s · %d 秒后出新武器",
+    "ja": "%s · 新しい武器まで %d",
+    "fr": "%s · Nouvelle arme dans %d",
+    "es": "%s · Nueva arma en %d"
+  },
+  "+100 goal completed: Win a match (claim it in Goals) · First win today +30 (3-day streak)": {
+    "zh_TW": "+100 目標完成：贏得一場比賽（到「目標」領取）· 今日首勝 +30（連勝3天）",
+    "zh_CN": "+100 目标完成：赢得一场比赛（到“目标”领取）· 今日首胜 +30（连胜3天）",
+    "ja": "+100 ゴール達成：試合に勝つ（ゴールで受け取り）· 今日の初勝利 +30（3日連続ストリーク）",
+    "fr": "+100 objectif atteint : gagner une partie (à réclamer dans Objectifs) · Première victoire du jour +30 (série de 3 jours)",
+    "es": "+100 objetivo completado: gana una partida (recógelo en Objetivos) · Primera victoria de hoy +30 (racha de 3 días)"
+  },
+  "5 vs 5 with random events: crate rain, low gravity, knockback storms, giants. First team to 50. Good luck": {
+    "zh_TW": "5 對 5，隨機事件：補給箱雨、低重力、擊退風暴、巨人。先達到50次擊倒的隊伍獲勝。祝好運",
+    "zh_CN": "5 对 5，随机事件：补给箱雨、低重力、击退风暴、巨人。先达到50次击倒的队伍获胜。祝好运",
+    "ja": "5対5、ランダムイベント付き：クレートの雨、低重力、ノックバックの嵐、巨人。先に50KOしたチームの勝ちです。がんばって",
+    "fr": "5 contre 5 avec événements aléatoires : pluie de caisses, gravité faible, tempêtes de recul, géants. Première équipe à 50 K.O. gagne. Bonne chance",
+    "es": "5 contra 5 con eventos aleatorios: lluvia de cajas, gravedad baja, tormentas de empuje, gigantes. El primer equipo en 50 K.O. gana. ¡Buena suerte!"
+  },
+  "A big farm on a sunny morning. Run into the big red barn and up to its hayloft, hide behind hay bales, fight round the tractor and the coop, or race over the haystack in the middle. The chickens are watching.": {
+    "zh_TW": "晴朗早晨的大農場。衝進大紅穀倉再爬上閣樓，躲在草捆後面，繞著拖拉機和雞舍開打，或在中間的草堆上飛奔。雞群正在看著你。",
+    "zh_CN": "晴朗早晨的大农场。冲进大红谷仓再爬上阁楼，躲在草捆后面，绕着拖拉机和鸡舍开打，或在中间的草垛上飞奔。鸡群正在看着你。",
+    "ja": "晴れた朝の大きな農場です。大きな赤い納屋に突っ込んで干し草のロフトへ登ったり、干し草の俵に隠れたり、トラクターと鶏小屋の周りで戦ったり、中央の干し草の山を駆け抜けたりできます。ニワトリたちが見ています。",
+    "fr": "Une grande ferme par un matin ensoleillé. Fonce dans la grande grange rouge et jusqu'à son grenier à foin, cache-toi derrière les bottes de paille, bats-toi autour du tracteur et du poulailler, ou file sur la meule au centre. Les poules observent.",
+    "es": "Una gran granja en una mañana soleada. Corre al granero rojo y sube al pajar, escóndete tras las balas de heno, pelea alrededor del tractor y el gallinero, o corre por el montón de heno del centro. Las gallinas están mirando."
+  },
+  "A foggy graveyard under a full moon. Hide behind tombstones, climb the crypt and watch the green wisps float by. The ghosts are friendly. Mostly.": {
+    "zh_TW": "滿月下的霧氣墓園。躲在墓碑後，爬上墓穴，看綠色鬼火飄過。鬼魂很友善。大多數時候。",
+    "zh_CN": "满月下的雾气墓园。躲在墓碑后，爬上墓穴，看绿色鬼火飘过。鬼魂很友善。大多数时候。",
+    "ja": "満月の下の霧の墓地です。墓石の陰に隠れたり、納骨堂によじ登ったり、緑の人魂が漂うのを眺めたりできます。おばけたちは親切です。たぶん。",
+    "fr": "Un cimetière brumeux sous la pleine lune. Cache-toi derrière les pierres tombales, grimpe sur le caveau et regarde les feux follets verts flotter. Les fantômes sont gentils. Presque.",
+    "es": "Un cementerio brumoso bajo la luna llena. Escóndete tras las lápidas, sube a la cripta y mira flotar los fuegos fatuos verdes. Los fantasmas son amigables. Más o menos."
+  },
+  "A giant frosted donut with a hole in the middle. Run the ring, or take a bounce pad over the hole to the sprinkle island. Fall through the hole and you're out. Don't eat the sprinkles.": {
+    "zh_TW": "一個巨大的糖霜甜甜圈，中間有個洞。沿著圓環跑，或踩彈跳墊越過洞口，到達彩糖小島。掉進洞裡就出局。別吃彩糖。",
+    "zh_CN": "一个巨大的糖霜甜甜圈，中间有个洞。沿着圆环跑，或踩弹跳垫越过洞口，到达彩糖小岛。掉进洞里就出局。别吃彩糖。",
+    "ja": "真ん中に穴の開いた、巨大なフロスティングのドーナツです。リングを走るか、穴の上のバウンスパッドを使ってスプレーの島へ行けます。穴に落ちたら脱落です。スプレーは食べないでください。",
+    "fr": "Un gigantesque donut glacé troué en son centre. Cours sur l'anneau, ou prends un tremplin au-dessus du trou jusqu'à l'île aux pépites. Tombe dans le trou et c'est l'élimination. Ne mange pas les pépites.",
+    "es": "Una donut gigante glaseada con un agujero en el centro. Corre por el aro, o usa un trampolín sobre el agujero para llegar a la isla de confeti. Cae por el agujero y quedas fuera. No te comas el confeti."
+  },
+  "A kid's room as seen by a giant. A teddy bear in the corner, a tennis ball, dice, a toy car, building bricks, a book stack to climb, crayons for cover and bounce pads between. The teddy bear is judging you.": {
+    "zh_TW": "從巨人視角看到的孩子房間。角落有泰迪熊、網球、骰子、玩具車、積木、可以攀爬的書堆、當掩護的蠟筆，中間還有彈跳墊。泰迪熊正在評判你。",
+    "zh_CN": "从巨人视角看到的孩子房间。角落有泰迪熊、网球、骰子、玩具车、积木、可以攀爬的书堆、当掩护的蜡笔，中间还有弹跳垫。泰迪熊正在评判你。",
+    "ja": "巨人の目線で見た子ども部屋です。隅にはテディベア、テニスボール、サイコロ、おもちゃの車、積み木、よじ登れる本の山、身を隠せるクレヨン、その間にバウンスパッドがあります。テディベアがあなたを見定めています。",
+    "fr": "La chambre d'enfant vue par un géant. Un ourson dans un coin, une balle de tennis, des dés, une voiture jouet, des briques de construction, une pile de livres à escalader, des crayons pour se cacher et des tremplins entre les deux. L'ourson juge les joueurs.",
+    "es": "La habitación de un niño vista por un gigante. Un osito de peluche en la esquina, una pelota de tenis, dados, un coche de juguete, bloques de construcción, una pila de libros para trepar, lápices de colores para esconderse y trampolines por medio. El osito te está juzgando."
+  },
+  "A quiet grey moon with the Earth hanging in the sky. Fight around the dome pods, the crater rings and the central launch pad. In space, nobody can hear you bonk.": {
+    "zh_TW": "一片寧靜的灰色月球，天上掛著地球。在圓頂艙、環形撞擊坑和中央發射台周圍戰鬥。在太空中，沒人聽得見你的咚一聲。",
+    "zh_CN": "一片宁静的灰色月球，天上挂着地球。在圆顶舱、环形陨石坑和中央发射台周围战斗。在太空中，没人听得见你的咚一声。",
+    "ja": "灰色の静かな月です。空には地球が浮かんでいます。ドーム型ポッド、クレーターの輪、中央の発射台の周りで戦いましょう。宇宙では、ボンッという音は誰にも聞こえません。",
+    "fr": "Une lune grise et paisible, la Terre suspendue dans le ciel. Bats-toi autour des modules-dômes, des anneaux de cratères et de la rampe de lancement centrale. Dans l'espace, personne n'entend le moindre bonk.",
+    "es": "Una luna gris y tranquila con la Tierra colgando en el cielo. Lucha alrededor de las cúpulas, los anillos de cráteres y la plataforma de lanzamiento central. En el espacio nadie oye un bonk."
+  },
+  "A short slow-motion replay after a quick K.O. (offline)": {
+    "zh_TW": "快速擊倒後的短暫慢動作重播（離線）",
+    "zh_CN": "快速击倒后的短暂慢动作重播（离线）",
+    "ja": "素早くKOしたあとに短いスローモーションを再生（オフライン）",
+    "fr": "Un court replay au ralenti après un K.O. rapide (hors ligne)",
+    "es": "Una breve repetición a cámara lenta tras un K.O. rápido (sin conexión)"
+  },
+  "A very fancy bow. Pinkies up": {
+    "zh_TW": "非常優雅的鞠躬。小指翹起來",
+    "zh_CN": "非常优雅的鞠躬。小指翘起来",
+    "ja": "とても上品なお辞儀です。小指を立てて。",
+    "fr": "Une révérence très chic. Auriculaires en l'air",
+    "es": "Una reverencia muy elegante. Meñiques levantados"
+  },
+  "A walking wall. Slow to get going, slower to stop": {
+    "zh_TW": "會走路的牆。起步慢，停下來更慢",
+    "zh_CN": "会走路的墙。起步慢，停下来更慢",
+    "ja": "歩く壁です。動き出しは遅く、止まるのはもっと遅いです。",
+    "fr": "Un mur qui marche. Lent à démarrer, encore plus lent à s'arrêter",
+    "es": "Un muro andante. Tarda en arrancar, y más en frenar"
+  },
+  "A wide stepped tower with a fighting floor on every tier. Stairs on the sides, a ladder to the summit and bounce pads at the corners. King of the hill, no climbing puzzle.": {
+    "zh_TW": "寬闊的階梯式高塔，每一層都是戰場。兩側有樓梯，頂端有梯子，角落有彈跳墊。山丘之王，沒有攀爬謎題。",
+    "zh_CN": "宽阔的阶梯式高塔，每一层都是战场。两侧有楼梯，顶端有梯子，角落有弹跳垫。山丘之王，没有攀爬谜题。",
+    "ja": "幅の広い階段状のタワーです。どの段も戦いの舞台。両側に階段、頂上へはハシゴ、角にはバウンスパッドがあります。丘の王様です。よじ登りのパズルはありません。",
+    "fr": "Une large tour en gradins, avec une aire de combat à chaque étage. Escaliers sur les côtés, échelle jusqu'au sommet et tremplins dans les coins. Roi de la colline, sans casse-tête pour grimper.",
+    "es": "Una torre ancha escalonada con una plataforma de combate en cada nivel. Escaleras a los lados, una escalera al mirador y trampolines en las esquinas. Rey de la colina, sin acertijos para trepar."
+  },
+  "Account created. You're signed in as %s.": {
+    "zh_TW": "帳號已建立。你目前以 %s 登入。",
+    "zh_CN": "账号已创建。你当前以 %s 登录。",
+    "ja": "アカウントを作成しました。%s としてサインインしています。",
+    "fr": "Compte créé. Connecté en tant que %s.",
+    "es": "Cuenta creada. Has iniciado sesión como %s."
+  },
+  "Account deleted. You're playing as a guest.": {
+    "zh_TW": "帳號已刪除。你現在以訪客身分遊玩。",
+    "zh_CN": "账号已删除。你现在以访客身份游玩。",
+    "ja": "アカウントを削除しました。ゲストとしてプレイ中です。",
+    "fr": "Compte supprimé. Jeu en tant qu'invité.",
+    "es": "Cuenta eliminada. Estás jugando como invitado."
+  },
+  "Accounts with cloud saves, a kill cam for your best K.O.s, and a fresh coat of paint on the skies, shadows and materials": {
+    "zh_TW": "帳號可雲端存檔，最精彩的擊倒會有擊殺鏡頭，天空、陰影和材質也煥然一新",
+    "zh_CN": "账号可云端存档，最精彩的击倒会有击杀镜头，天空、阴影和材质也焕然一新",
+    "ja": "クラウドセーブに対応。最高のKOはキルカムで振り返れて、空・影・質感も塗り直しました",
+    "fr": "Comptes avec sauvegarde dans le cloud, une kill cam pour tes plus beaux K.O., et un coup de peinture neuf sur le ciel, les ombres et les matériaux",
+    "es": "Cuentas con guardado en la nube, una cámara de eliminación para tus mejores K.O. y una capa de pintura nueva en el cielo, las sombras y los materiales"
+  },
+  "Aim at a block to remove it. Then poof!": {
+    "zh_TW": "瞄準方塊就能移除。然後，噗！",
+    "zh_CN": "瞄准方块就能移除。然后，噗！",
+    "ja": "ブロックを狙うと消せます。そして、ポン！",
+    "fr": "Vise un bloc pour le retirer. Puis pouf !",
+    "es": "Apunta a un bloque para quitarlo. ¡Y puf!"
+  },
+  "Arena reset at half size! Cosy": {
+    "zh_TW": "競技場縮小為一半！溫馨小巧",
+    "zh_CN": "竞技场缩小为一半！温馨小巧",
+    "ja": "アリーナが半分のサイズにリセット！こぢんまり",
+    "fr": "Arène réinitialisée à moitié taille ! Cosy",
+    "es": "¡Arena reiniciada a la mitad de tamaño! Acogedora"
+  },
+  "Arenas that wobble, tilt, quake and drift. Pick Random if you like surprises": {
+    "zh_TW": "會晃動、傾斜、震動和漂移的競技場。喜歡驚喜就選隨機",
+    "zh_CN": "会晃动、倾斜、震动和漂移的竞技场。喜欢惊喜就选随机",
+    "ja": "揺れたり、傾いたり、震えたり、漂ったりするアリーナです。サプライズが好きならランダムを選んでください",
+    "fr": "Des arènes qui vacillent, s'inclinent, tremblent et dérivent. Aléatoire pour les amateurs de surprises",
+    "es": "Arenas que se balancean, inclinan, tiemblan y derivan. Elige Aleatorio si te gustan las sorpresas"
+  },
+  "Balanced. No surprises, just wobbles": {
+    "zh_TW": "平衡。沒有驚喜，只有晃動",
+    "zh_CN": "平衡。没有惊喜，只有晃动",
+    "ja": "バランス型です。サプライズはなし、揺れるだけです。",
+    "fr": "Équilibré. Pas de surprise, juste des vacillements",
+    "es": "Equilibrado. Sin sorpresas, solo balanceos"
+  },
+  "Bats, mallets and spring gloves. Get up close and personal": {
+    "zh_TW": "球棒、木槌和彈簧拳套。近距離親密接觸",
+    "zh_CN": "球棒、木槌和弹簧拳套。近距离亲密接触",
+    "ja": "バット、木槌、バネのグローブ。至近距離でどうぞ。",
+    "fr": "Batte, maillet et gants à ressort. Au contact, et de très près",
+    "es": "Bates, mazos y guantes de resorte. De cerca y muy personal"
+  },
+  "Big team fight. First team to 20 K.O.s. Bring snacks": {
+    "zh_TW": "大型團隊混戰。先達到20次擊倒的隊伍獲勝。記得帶點心",
+    "zh_CN": "大型团队混战。先达到20次击倒的队伍获胜。记得带点心",
+    "ja": "大規模なチーム戦です。先に20KOしたチームの勝ちです。おやつをお持ちください。",
+    "fr": "Grand combat d'équipe. Première équipe à 20 K.O. gagne. Prévoyez des snacks",
+    "es": "Gran combate por equipos. El primer equipo en 20 K.O. gana. Trae algo para picar"
+  },
+  "Big, slow, hard to shove. Hugs hurt": {
+    "zh_TW": "又大又慢，很難推動。擁抱會痛",
+    "zh_CN": "又大又慢，很难推动。拥抱会痛",
+    "ja": "大きくて遅く、突き飛ばしにくいです。ハグは痛いです。",
+    "fr": "Gros, lent, difficile à bousculer. Les câlins font mal",
+    "es": "Grande, lento, difícil de empujar. Los abrazos duelen"
+  },
+  "Bigger buttons on small phones, and a Text and button size option in Settings": {
+    "zh_TW": "小型手機上的按鈕更大，設定中新增文字與按鈕大小選項",
+    "zh_CN": "小屏手机上的按钮更大，设置中新增文字与按钮大小选项",
+    "ja": "小さなスマホではボタンを大きく表示。設定に「文字とボタンの大きさ」オプションを追加しました",
+    "fr": "Boutons plus grands sur les petits téléphones, et une option Taille du texte et des boutons dans les Réglages",
+    "es": "Botones más grandes en móviles pequeños, y una opción de Tamaño del texto y los botones en Ajustes"
+  },
+  "Blocks %d / %d · %d×%d, %d high": {
+    "zh_TW": "方塊 %d / %d · %d×%d，高 %d",
+    "zh_CN": "方块 %d / %d · %d×%d，高 %d",
+    "ja": "ブロック %d / %d · %d×%d、高さ %d",
+    "fr": "Blocs %d / %d · %d×%d, %d de haut",
+    "es": "Bloques %d / %d · %d×%d, %d de alto"
+  },
+  "Blocks cleared. Fresh start": {
+    "zh_TW": "方塊已清空。重新開始",
+    "zh_CN": "方块已清空。重新开始",
+    "ja": "ブロックを全部消去。まっさらからスタート",
+    "fr": "Blocs effacés. Nouveau départ",
+    "es": "Bloques borrados. Nuevo comienzo"
+  },
+  "Board the big ship! Mast in the middle, a raised stern deck, rowing boats alongside and planks between. Don't fall in the sea. The parrots will laugh.": {
+    "zh_TW": "登上大船！中央有桅杆，船尾有高台甲板，旁邊有小划艇，中間搭著木板。別掉進海裡。鸚鵡會笑你的。",
+    "zh_CN": "登上大船！中央有桅杆，船尾有高台甲板，旁边有小划艇，中间搭着木板。别掉进海里。鹦鹉会笑你的。",
+    "ja": "大きな船に乗り込みましょう！中央にはマスト、一段高い船尾デッキ、横には手漕ぎボート、その間には板が渡されています。海に落ちないように。オウムに笑われますよ。",
+    "fr": "Monte à bord du grand navire ! Mât au centre, pont arrière surélevé, barques le long du bord et planches entre les deux. Ne tombe pas à la mer. Les perroquets vont rire.",
+    "es": "¡Sube al gran barco! Mástil en el centro, cubierta de popa elevada, botes de remos a los lados y tablones entre medias. No te caigas al mar. Los loros se reirán."
+  },
+  "Build mode: make your own arena out of blocks, then play it with bots. Plus Lava Pillars, where the floor is (still) lava": {
+    "zh_TW": "建造模式：用方塊打造自己的競技場，再跟電腦玩家對戰。另有熔岩柱，地板依然是熔岩",
+    "zh_CN": "建造模式：用方块打造自己的竞技场，再与电脑玩家对战。另有熔岩柱，地板依然是熔岩",
+    "ja": "ビルドモード：ブロックで自分のアリーナを作り、ボットと対戦できます。さらに溶岩の柱。床は（まだ）溶岩です",
+    "fr": "Mode construction : crée ta propre arène avec des blocs, puis affronte des bots. Plus les Piliers de lave, où le sol est (toujours) de la lave",
+    "es": "Modo construcción: crea tu propia arena con bloques y juega contra bots. Además, Pilares de lava, donde el suelo sigue siendo lava"
+  },
+  "Click to look around · Esc: menu": {
+    "zh_TW": "點擊環顧四周 · Esc：選單",
+    "zh_CN": "点击环顾四周 · Esc：菜单",
+    "ja": "クリックで見回す · Esc：メニュー",
+    "fr": "Cliquer pour regarder autour · Échap : menu",
+    "es": "Haz clic para mirar alrededor · Esc: menú"
+  },
+  "Click to shoot, right-click to aim. E shoves, F kicks, Space jumps. Landing is up to you.": {
+    "zh_TW": "點擊射擊，右鍵瞄準。E 推擠，F 踢，空白鍵跳躍。能不能安全落地，就看你了。",
+    "zh_CN": "点击射击，右键瞄准。E 推挤，F 踢，空格键跳跃。能不能安全落地，就看你了。",
+    "ja": "クリックで射撃、右クリックで照準。Eで突き飛ばし、Fでキック、スペースでジャンプ。着地は腕次第です。",
+    "fr": "Clic pour tirer, clic droit pour viser. E bouscule, F donne un coup de pied, Espace saute. Atterrir, c'est une affaire personnelle.",
+    "es": "Clic para disparar, clic derecho para apuntar. E empuja, F patea, Espacio salta. Aterrizar depende de ti."
+  },
+  "Couldn't change your password. Try again in a moment.": {
+    "zh_TW": "無法變更密碼。請稍後再試一次。",
+    "zh_CN": "无法更改密码。请稍后再试一次。",
+    "ja": "パスワードを変更できませんでした。少し待ってから、もう一度お試しください。",
+    "fr": "Impossible de changer le mot de passe. Réessayer dans un instant.",
+    "es": "No se pudo cambiar tu contraseña. Inténtalo de nuevo en un momento."
+  },
+  "Couldn't delete your account. Try again in a moment.": {
+    "zh_TW": "無法刪除帳號。請稍後再試一次。",
+    "zh_CN": "无法删除账号。请稍后再试一次。",
+    "ja": "アカウントを削除できませんでした。少し待ってから、もう一度お試しください。",
+    "fr": "Impossible de supprimer le compte. Réessayer dans un instant.",
+    "es": "No se pudo eliminar tu cuenta. Inténtalo de nuevo en un momento."
+  },
+  "Couldn't join the room (%s). Try again.": {
+    "zh_TW": "無法加入房間（%s）。請再試一次。",
+    "zh_CN": "无法加入房间（%s）。请再试一次。",
+    "ja": "ルーム（%s）に参加できませんでした。もう一度お試しください。",
+    "fr": "Impossible de rejoindre le salon (%s). Réessayer.",
+    "es": "No se pudo unir a la sala (%s). Inténtalo de nuevo."
+  },
+  "Couldn't log in. Check your username and password.": {
+    "zh_TW": "無法登入。請檢查使用者名稱和密碼。",
+    "zh_CN": "无法登录。请检查用户名和密码。",
+    "ja": "ログインできませんでした。ユーザー名とパスワードを確認してください。",
+    "fr": "Connexion impossible. Vérifier le nom d'utilisateur et le mot de passe.",
+    "es": "No se pudo iniciar sesión. Revisa tu usuario y contraseña."
+  },
+  "Couldn't make a recovery code. Try again in a moment.": {
+    "zh_TW": "無法產生復原碼。請稍後再試一次。",
+    "zh_CN": "无法生成恢复码。请稍后再试一次。",
+    "ja": "リカバリーコードを作成できませんでした。少し待ってから、もう一度お試しください。",
+    "fr": "Impossible de créer un code de récupération. Réessayer dans un instant.",
+    "es": "No se pudo crear un código de recuperación. Inténtalo de nuevo en un momento."
+  },
+  "Couldn't make your account. Try again in a moment.": {
+    "zh_TW": "無法建立帳號。請稍後再試一次。",
+    "zh_CN": "无法创建账号。请稍后再试一次。",
+    "ja": "アカウントを作成できませんでした。少し待ってから、もう一度お試しください。",
+    "fr": "Impossible de créer le compte. Réessayer dans un instant.",
+    "es": "No se pudo crear tu cuenta. Inténtalo de nuevo en un momento."
+  },
+  "Couldn't open %s. Check the address and try again.": {
+    "zh_TW": "無法開啟 %s。請檢查位址後再試一次。",
+    "zh_CN": "无法打开 %s。请检查地址后再试一次。",
+    "ja": "%s を開けませんでした。アドレスを確認して、もう一度お試しください。",
+    "fr": "Impossible d'ouvrir %s. Vérifier l'adresse et réessayer.",
+    "es": "No se pudo abrir %s. Revisa la dirección e inténtalo de nuevo."
+  },
+  "Couldn't open a room. Try again in a moment.": {
+    "zh_TW": "無法建立房間。請稍後再試一次。",
+    "zh_CN": "无法创建房间。请稍后再试一次。",
+    "ja": "ルームを作成できませんでした。少し待ってから、もう一度お試しください。",
+    "fr": "Impossible de créer un salon. Réessayer dans un instant.",
+    "es": "No se pudo abrir una sala. Inténtalo de nuevo en un momento."
+  },
+  "Couldn't reach the game server at %s. Check the address and that the server is running.": {
+    "zh_TW": "無法連線到位於 %s 的遊戲伺服器。請檢查位址，並確認伺服器正在執行。",
+    "zh_CN": "无法连接到位于 %s 的游戏服务器。请检查地址，并确认服务器正在运行。",
+    "ja": "%s のゲームサーバーに接続できません。アドレスと、サーバーが起動しているかを確認してください。",
+    "fr": "Impossible de joindre le serveur de jeu à %s. Vérifier l'adresse et que le serveur est lancé.",
+    "es": "No se puede conectar con el servidor de juego en %s. Revisa la dirección y que el servidor esté en marcha."
+  },
+  "Couldn't reach the game server. Check your internet, then try again.": {
+    "zh_TW": "無法連線到遊戲伺服器。請檢查網路連線，然後再試一次。",
+    "zh_CN": "无法连接到游戏服务器。请检查网络连接，然后再试一次。",
+    "ja": "ゲームサーバーに接続できません。インターネット接続を確認して、もう一度お試しください。",
+    "fr": "Impossible de joindre le serveur de jeu. Vérifier la connexion internet, puis réessayer.",
+    "es": "No se puede conectar con el servidor de juego. Revisa tu conexión a internet y vuelve a intentarlo."
+  },
+  "Couldn't reach the server. Check your internet and try again.": {
+    "zh_TW": "無法連線到伺服器。請檢查網路連線後再試一次。",
+    "zh_CN": "无法连接到服务器。请检查网络连接后再试一次。",
+    "ja": "サーバーに接続できません。インターネット接続を確認して、もう一度お試しください。",
+    "fr": "Impossible de joindre le serveur. Vérifier la connexion internet et réessayer.",
+    "es": "No se puede conectar con el servidor. Revisa tu conexión a internet e inténtalo de nuevo."
+  },
+  "Couldn't reset your password. Check your recovery code and try again.": {
+    "zh_TW": "無法重設密碼。請檢查復原碼後再試一次。",
+    "zh_CN": "无法重置密码。请检查恢复码后再试一次。",
+    "ja": "パスワードをリセットできませんでした。リカバリーコードを確認して、もう一度お試しください。",
+    "fr": "Impossible de réinitialiser le mot de passe. Vérifier le code de récupération et réessayer.",
+    "es": "No se pudo restablecer tu contraseña. Revisa tu código de recuperación e inténtalo de nuevo."
+  },
+  "Crates drop weapons, heals and power-ups. Walk over one to pick it up, then tap a slot at the bottom to switch weapon. Yes, free stuff.": {
+    "zh_TW": "補給箱會掉落武器、補血和強化道具。走過去就能撿起，然後點擊底部的格子切換武器。對，免費的東西。",
+    "zh_CN": "补给箱会掉落武器、补血和强化道具。走过去就能捡起，然后点击底部的格子切换武器。对，免费的东西。",
+    "ja": "クレートからは武器、回復、パワーアップが出ます。踏んで拾い、下のスロットをタップして武器を切り替えます。そう、ただでもらえます。",
+    "fr": "Les caisses lâchent armes, soins et bonus. Passe dessus pour la ramasser, puis touche un emplacement en bas pour changer d'arme. Oui, c'est gratuit.",
+    "es": "Las cajas sueltan armas, curas y potenciadores. Pasa por encima para recogerla y toca una ranura abajo para cambiar de arma. Sí, cosas gratis."
+  },
+  "Crates drop weapons, heals and power-ups. Walk over one to pick it up; 1, 2 and 3 switch weapons. Yes, free stuff.": {
+    "zh_TW": "補給箱會掉落武器、補血和強化道具。走過去就能撿起；按 1、2、3 切換武器。對，免費的東西。",
+    "zh_CN": "补给箱会掉落武器、补血和强化道具。走过去就能捡起；按 1、2、3 切换武器。对，免费的东西。",
+    "ja": "クレートからは武器、回復、パワーアップが出ます。踏んで拾い、1・2・3で武器を切り替えます。そう、ただでもらえます。",
+    "fr": "Les caisses lâchent armes, soins et bonus. Passe dessus pour la ramasser ; 1, 2 et 3 changent d'arme. Oui, c'est gratuit.",
+    "es": "Las cajas sueltan armas, curas y potenciadores. Pasa por encima para recogerla; 1, 2 y 3 cambian de arma. Sí, cosas gratis."
+  },
+  "Damage boost! Bonk harder (12s)": {
+    "zh_TW": "傷害強化！打得更用力（12秒）",
+    "zh_CN": "伤害强化！敲得更用力（12秒）",
+    "ja": "ダメージアップ！もっと強く叩きましょう（12秒）",
+    "fr": "Bonus de dégâts ! Tape plus fort (12 s)",
+    "es": "¡Aumento de daño! Golpea más fuerte (12 s)"
+  },
+  "Deathmatch": {
+    "zh_TW": "死亡競賽",
+    "zh_CN": "死亡竞赛",
+    "ja": "デスマッチ",
+    "fr": "Deathmatch",
+    "es": "Deathmatch"
+  },
+  "Drag your left thumb to move. Drag on the right side of the screen to look around. Wobbling happens by itself.": {
+    "zh_TW": "用左拇指拖曳移動。在螢幕右側拖曳環顧四周。晃動會自動發生。",
+    "zh_CN": "用左拇指拖动移动。在屏幕右侧拖动环顾四周。晃动会自动发生。",
+    "ja": "左の親指をドラッグして移動します。画面右側をドラッグして見回します。揺れは勝手に起きます。",
+    "fr": "Glisse le pouce gauche pour bouger. Glisse sur le côté droit de l'écran pour regarder autour. Les vacillements arrivent tout seuls.",
+    "es": "Arrastra con el pulgar izquierdo para moverte. Arrastra en el lado derecho de la pantalla para mirar alrededor. El balanceo ocurre solo."
+  },
+  "Dummies that stand, slide and pop back up, plus a rack of weapons to try. No score, no judgement": {
+    "zh_TW": "會站立、滑動並彈回的假人，還有一排武器可以試用。沒有分數，也不評判",
+    "zh_CN": "会站立、滑动并弹回的假人，还有一排武器可以试用。没有分数，也不评判",
+    "ja": "立ったり、滑ったり、起き上がったりするダミー人形と、試せる武器ラックがあります。スコアも判定もありません。",
+    "fr": "Des mannequins qui tiennent debout, glissent et se relèvent, plus un râtelier d'armes à essayer. Pas de score, pas de jugement",
+    "es": "Maniquíes que se quedan de pie, se deslizan y vuelven a levantarse, más un estante de armas para probar. Sin puntuación, sin juicios"
+  },
+  "Earn coins: K.O. +5, match +40, win +60, and Goals": {
+    "zh_TW": "賺取金幣：擊倒 +5、比賽 +40、獲勝 +60，還有目標",
+    "zh_CN": "赚取金币：击倒 +5、比赛 +40、获胜 +60，还有目标",
+    "ja": "コインを稼ぐ：KO +5、試合 +40、勝利 +60、そしてゴール",
+    "fr": "Gagne des pièces : K.O. +5, partie +40, victoire +60, et les Objectifs",
+    "es": "Gana monedas: K.O. +5, partida +40, victoria +60, y Objetivos"
+  },
+  "Easy there! That's a lot of blocks (%d max)": {
+    "zh_TW": "慢慢來！方塊太多了（上限%d個）",
+    "zh_CN": "慢点！方块太多了（上限%d个）",
+    "ja": "おっと！ブロックが多すぎます（最大 %d）",
+    "fr": "Doucement ! Ça fait beaucoup de blocs (%d max)",
+    "es": "¡Tranqui! Son muchos bloques (%d como máximo)"
+  },
+  "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or get K.O.'d and you're out for the match. Most K.O.s when the clock ends wins.": {
+    "zh_TW": "海上八根高大的柱子排成一圈，中間空無一物。缺口太寬，跳不過去，所以需要衝刺（這裡任何武器都能衝刺）。每10秒，一把新武器會落進你的物品欄。摔落或被擊倒就會在這場比賽中出局。時間到時擊倒最多者獲勝。",
+    "zh_CN": "海上八根高大的柱子围成一圈，中间空无一物。缺口太宽，跳不过去，所以需要冲刺（这里任何武器都能冲刺）。每10秒，一把新武器会落进你的物品栏。摔落或被击倒就会在本场比赛中出局。时间到时击倒最多者获胜。",
+    "ja": "海の上に並ぶ背の高い柱が8本、中央は空っぽです。隙間が広すぎてジャンプでは越えられないので、ダッシュが必要です（ここではどの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに届きます。落ちるかKOされたら、その試合は脱落です。時間切れのときにKOが最も多い人の勝ちです。",
+    "fr": "Huit hauts piliers en cercle au-dessus de la mer, rien au milieu. Les trous sont trop larges pour sauter, il faut un dash (toutes les armes peuvent dasher ici). Toutes les 10 secondes, une nouvelle arme tombe dans l'inventaire. Tomber ou être mis K.O., c'est l'élimination pour le match. Le plus de K.O. à la fin du temps gagne.",
+    "es": "Ocho pilares altos en círculo sobre el mar, sin nada en medio. Los huecos son demasiado anchos para saltar, así que necesitas un impulso (cualquier arma puede impulsarte aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes o te dejan K.O., quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
+  },
+  "Every K.O. swaps your weapon": {
+    "zh_TW": "每次擊倒都會換掉你的武器",
+    "zh_CN": "每次击倒都会换掉你的武器",
+    "ja": "KOするたびに武器が入れ替わります",
+    "fr": "Chaque K.O. change ton arme",
+    "es": "Cada K.O. cambia tu arma"
+  },
+  "Everything drops from the sky. Grab it before someone else does": {
+    "zh_TW": "所有東西都從天上掉下來。搶在別人之前拿到",
+    "zh_CN": "所有东西都从天上掉下来。抢在别人之前拿到",
+    "ja": "すべてが空から降ってきます。誰かに取られる前につかみましょう",
+    "fr": "Tout tombe du ciel. Attrape-le avant les autres",
+    "es": "Todo cae del cielo. Agárralo antes que los demás"
+  },
+  "Everything slides. Use the pillars! Brakes are a myth.": {
+    "zh_TW": "什麼都會滑。善用柱子！煞車只是傳說。",
+    "zh_CN": "什么都会滑。善用柱子！刹车只是传说。",
+    "ja": "すべてが滑ります。柱を使いましょう！ブレーキは都市伝説です。",
+    "fr": "Tout glisse. Utilise les piliers ! Les freins, c'est de la légende.",
+    "es": "Todo resbala. ¡Usa los pilares! Los frenos son un mito."
+  },
+  "Explosives only, 300 health. Boom": {
+    "zh_TW": "只能用爆裂武器，生命值300。轟！",
+    "zh_CN": "只能用爆炸武器，生命值300。轰！",
+    "ja": "爆発物のみ、体力300。ドカン",
+    "fr": "Explosifs uniquement, 300 points de vie. Boum",
+    "es": "Solo explosivos, 300 de vida. ¡Bum!"
+  },
+  "Fast trigger, fast reload, very deep pockets": {
+    "zh_TW": "扳機很快，換彈很快，彈藥口袋超深",
+    "zh_CN": "扳机很快，换弹很快，弹药口袋超深",
+    "ja": "速射、速リロード、弾薬ポーチは底なし",
+    "fr": "Détente rapide, rechargement rapide, poches très profondes",
+    "es": "Gatillo rápido, recarga rápida, bolsillos muy profundos"
+  },
+  "Fastest feet in the arena. Light as a feather": {
+    "zh_TW": "競技場裡腳程最快。輕如鴻毛",
+    "zh_CN": "竞技场里脚程最快。轻如鸿毛",
+    "ja": "アリーナで一番速い足。羽のように軽いです",
+    "fr": "Les pieds les plus rapides de l'arène. Léger comme une plume",
+    "es": "Los pies más rápidos de la arena. Ligero como una pluma"
+  },
+  "Fire (hold)": {
+    "zh_TW": "射擊（按住）",
+    "zh_CN": "射击（按住）",
+    "ja": "射撃（長押し）",
+    "fr": "Tirer (maintenir)",
+    "es": "Disparar (mantener)"
+  },
+  "Floats, drifts and jumps sky high. Boo!": {
+    "zh_TW": "飄浮、漂移，還能跳得老高。嚇！",
+    "zh_CN": "飘浮、漂移，还能跳得老高。吓！",
+    "ja": "ふわふわ浮いて、漂い、空高くジャンプします。バァ！",
+    "fr": "Flotte, dérive et saute très haut. Bouh !",
+    "es": "Flota, deriva y salta muy alto. ¡Buu!"
+  },
+  "Four rock islands round a burning crater, joined by narrow bridges. Fall in the lava and you're out. Knock people in!": {
+    "zh_TW": "四座岩石小島圍著燃燒的火山口，由狹窄的橋相連。掉進熔岩就出局。把人撞下去！",
+    "zh_CN": "四座岩石小岛围着燃烧的火山口，由狭窄的桥相连。掉进熔岩就出局。把人撞下去！",
+    "ja": "燃えるクレーターを囲む四つの岩の島。細い橋でつながっています。溶岩に落ちたら脱落です。みんなを突き落としましょう！",
+    "fr": "Quatre îles rocheuses autour d'un cratère en feu, reliées par d'étroits ponts. Dans la lave, c'est l'élimination. Pousser les autres dedans !",
+    "es": "Cuatro islas rocosas alrededor de un cráter ardiente, unidas por puentes estrechos. Cae en la lava y quedas fuera. ¡Empuja a los demás!"
+  },
+  "Fragile, floaty, great tech. Comes in peace, mostly": {
+    "zh_TW": "脆弱、飄浮，操作技巧很高。大多數時候是和平使者",
+    "zh_CN": "脆弱、飘浮，操作技巧很高。大多数时候是和平使者",
+    "ja": "もろくてふわふわ、テクニック派向けです。たいてい平和主義です",
+    "fr": "Fragile, aérien, grosse technique. Venu en paix, en principe",
+    "es": "Frágil, flotador, gran técnica. Viene en son de paz, más o menos"
+  },
+  "Free for all. First to 20 K.O.s wins. Trust nobody": {
+    "zh_TW": "大亂鬥。先達到20次擊倒者獲勝。誰都別信",
+    "zh_CN": "大乱斗。先达到20次击倒者获胜。谁都别信",
+    "ja": "フリーフォーオール。先に20KOした人の勝ちです。誰も信用しないで",
+    "fr": "Chacun pour soi. Le premier à 20 K.O. gagne. Ne faire confiance à personne",
+    "es": "Todos contra todos. El primero en 20 K.O. gana. No te fíes de nadie"
+  },
+  "Get 100 K.O.s in total": {
+    "zh_TW": "累計擊倒100次",
+    "zh_CN": "累计击倒100次",
+    "ja": "通算100KOを達成",
+    "fr": "Obtenir 100 K.O. au total",
+    "es": "Consigue 100 K.O. en total"
+  },
+  "Get 25 melee K.O.s": {
+    "zh_TW": "用近戰擊倒25次",
+    "zh_CN": "用近战击倒25次",
+    "ja": "近接で25KOを達成",
+    "fr": "Obtenir 25 K.O. au corps à corps",
+    "es": "Consigue 25 K.O. cuerpo a cuerpo"
+  },
+  "Get your first win": {
+    "zh_TW": "拿下第一場勝利",
+    "zh_CN": "拿下第一场胜利",
+    "ja": "初勝利を手にしましょう",
+    "fr": "Remporter la première victoire",
+    "es": "Consigue tu primera victoria"
+  },
+  "Giant time": {
+    "zh_TW": "巨人時間",
+    "zh_CN": "巨人时间",
+    "ja": "ジャイアントタイム",
+    "fr": "Temps des géants",
+    "es": "Hora gigante"
+  },
+  "Goals: daily, weekly and lifetime coin goals, plus a streak bonus for your first win each day. Free coins, no catch": {
+    "zh_TW": "目標：每日、每週和累計的金幣目標，另有每天首勝的連勝獎勵。免費金幣，沒有陷阱",
+    "zh_CN": "目标：每日、每周和累计的金币目标，另有每天首胜的连胜奖励。免费金币，没有陷阱",
+    "ja": "ゴール：毎日・毎週・通算のコイン目標。毎日最初の勝利にはストリークボーナスもあります。コインはタダ、裏もありません",
+    "fr": "Objectifs : pièces quotidiennes, hebdomadaires et à vie, plus un bonus de série pour la première victoire du jour. Pièces gratuites, sans piège",
+    "es": "Objetivos: metas de monedas diarias, semanales y de por vida, además de un bonus por racha en tu primera victoria del día. Monedas gratis, sin trampa"
+  },
+  "Got %s in your net!": {
+    "zh_TW": "你用網子抓到 %s 了！",
+    "zh_CN": "你用网子抓到 %s 了！",
+    "ja": "%s をネットで捕まえました！",
+    "fr": "%s est dans le filet !",
+    "es": "¡Tienes a %s en tu red!"
+  },
+  "Got knocked flying? Tap RECOVER for a boing burst and wobble back into the fight": {
+    "zh_TW": "被打飛了？點一下「恢復」，來個彈跳爆發，晃回戰場",
+    "zh_CN": "被打飞了？点一下「恢复」，来个弹跳爆发，晃回战场",
+    "ja": "吹っ飛ばされた？「リカバー」をタップしてボヨンと復帰、戦いに戻りましょう",
+    "fr": "Projeté dans les airs ? Touche RÉCUPÉRER pour un rebond et reviens dans la bataille en vacillant",
+    "es": "¿Te han mandado volando? Toca RECUPERAR para un impulso rebotante y vuelve a la pelea tambaleándote"
+  },
+  "Hats are free to wear": {
+    "zh_TW": "帽子免費戴",
+    "zh_CN": "帽子免费戴",
+    "ja": "帽子はタダで着用OK",
+    "fr": "Les chapeaux, c'est gratuit",
+    "es": "Los sombreros son gratis"
+  },
+  "Hello, wobblers": {
+    "zh_TW": "哈囉，搖搖人們",
+    "zh_CN": "你好，摇摇人们",
+    "ja": "こんにちは、ウォブラーのみなさん",
+    "fr": "Bonjour, wobblers",
+    "es": "Hola, wobblers"
+  },
+  "Hits feel crunchier: particles, trails, squash and stretch, a tiny freeze on big hits and some screen shake. Turn the shake off in Settings if your tummy says so": {
+    "zh_TW": "打擊手感更脆：粒子、拖尾、擠壓與拉伸，重擊時會稍微定格，還有些螢幕震動。如果肚子不舒服，可以在設定中關閉震動",
+    "zh_CN": "打击手感更脆：粒子、拖尾、挤压与拉伸，重击时会稍微定格，还有些屏幕震动。如果肚子不舒服，可以在设置中关闭震动",
+    "ja": "ヒットの手応えがパリッとします：パーティクル、残像、スクイッシュ＆ストレッチ、大きな一撃での一瞬のフリーズ、少しの画面の揺れ。お腹が弱いなら、設定で揺れをオフにできます",
+    "fr": "Les coups ont plus de mordant : particules, traînées, écrasement et étirement, une micro-pause sur les gros coups et un peu de tremblement d'écran. Désactiver le tremblement dans les Réglages si l'estomac proteste",
+    "es": "Los golpes se sienten más crujientes: partículas, estelas, aplastado y estiramiento, una pausa diminuta en los golpes fuertes y algo de temblor de pantalla. Desactiva el temblor en Ajustes si la barriga lo pide"
+  },
+  "Hits like a truck, swings a bit slower. Very cross": {
+    "zh_TW": "攻擊力像卡車，揮得慢一點。非常生氣",
+    "zh_CN": "攻击力像卡车，挥得慢一点。非常生气",
+    "ja": "一撃はトラック級、振りはちょっと遅めです。すごくご立腹です",
+    "fr": "Frappe comme un camion, balance un peu moins vite. Très fâché",
+    "es": "Pega como un camión, se mueve un poco más lento. Muy enfadado"
+  },
+  "Hold FIRE to shoot. Tap MELEE to shove, hold it to kick. JUMP hops over gaps. Landing is up to you.": {
+    "zh_TW": "按住射擊鍵射擊。點一下近戰鍵推擠，長按則踢。跳躍可以越過缺口。能不能安全落地，就看你了。",
+    "zh_CN": "按住射击键射击。点一下近战键推挤，长按则踢。跳跃可以越过缺口。能不能安全落地，就看你了。",
+    "ja": "射撃ボタンを押し続けて射撃。近接をタップで突き飛ばし、長押しでキック。ジャンプで隙間を越えます。着地は腕次第です。",
+    "fr": "Maintiens TIR pour tirer. Tape CORPS À CORPS pour bousculer, maintiens pour donner un coup de pied. SAUT franchit les trous. Atterrir, c'est une affaire personnelle.",
+    "es": "Mantén DISPARAR para disparar. Toca CUERPO A CUERPO para empujar, mantenlo para patear. SALTO cruza huecos. Aterrizar depende de ti."
+  },
+  "Host your own room, with Godot-only modes when everyone's on the app. If the host leaves, someone else takes over and the match goes on": {
+    "zh_TW": "建立自己的房間，大家都在 App 上時還能玩 Godot 限定模式。如果房主離開，由其他人接手，比賽繼續",
+    "zh_CN": "创建自己的房间，大家都在 App 上时还能玩 Godot 限定模式。如果房主离开，由其他人接手，比赛继续",
+    "ja": "自分のルームを作成できます。全員がアプリにいるときは、Godot限定モードも遊べます。ホストが抜けても、誰かが引き継いで試合は続きます",
+    "fr": "Héberger son propre salon, avec les modes réservés à Godot quand tout le monde est sur l'appli. Si l'hôte part, quelqu'un prend le relais et la partie continue",
+    "es": "Aloja tu propia sala, con modos exclusivos de Godot cuando todos estén en la app. Si el anfitrión se va, otro toma el mando y la partida sigue"
+  },
+  "K.O. replays": {
+    "zh_TW": "擊倒重播",
+    "zh_CN": "击倒重播",
+    "ja": "KOリプレイ",
+    "fr": "Replays des K.O.",
+    "es": "Repeticiones de K.O."
+  },
+  "Keyboard: WASD move · mouse look · click fire · right-click aim · Space jump · E shove · F kick · Q quick melee · 1-3 weapons · T G H emotes · Esc pause. Controller: sticks move and look · RT fire · LT aim · A jump · RB shove · B kick · Start pause.": {
+    "zh_TW": "鍵盤：WASD 移動 · 滑鼠視角 · 點擊射擊 · 右鍵瞄準 · 空白鍵跳躍 · E 推擠 · F 踢 · Q 快速近戰 · 1-3 武器 · T G H 表情動作 · Esc 暫停。手把：搖桿移動與視角 · RT 射擊 · LT 瞄準 · A 跳躍 · RB 推擠 · B 踢 · Start 暫停。",
+    "zh_CN": "键盘：WASD 移动 · 鼠标视角 · 点击射击 · 右键瞄准 · 空格键跳跃 · E 推挤 · F 踢 · Q 快速近战 · 1-3 武器 · T G H 表情动作 · Esc 暂停。手柄：摇杆移动与视角 · RT 射击 · LT 瞄准 · A 跳跃 · RB 推挤 · B 踢 · Start 暂停。",
+    "ja": "キーボード：WASD移動 · マウスで視点 · クリックで射撃 · 右クリックで照準 · スペースでジャンプ · E 突き飛ばし · F キック · Q クイック近接 · 1〜3 武器 · T G H エモート · Esc 一時停止。コントローラー：スティックで移動と視点 · RT 射撃 · LT 照準 · A ジャンプ · RB 突き飛ばし · B キック · Start 一時停止。",
+    "fr": "Clavier : WASD déplacer · souris regarder · clic tirer · clic droit viser · Espace sauter · E bousculer · F coup de pied · Q corps à corps rapide · 1-3 armes · T G H emotes · Échap pause. Manette : sticks déplacer et regarder · RT tirer · LT viser · A sauter · RB bousculer · B coup de pied · Start pause.",
+    "es": "Teclado: WASD mover · ratón mirar · clic disparar · clic derecho apuntar · Espacio saltar · E empujar · F patear · Q cuerpo a cuerpo rápido · 1-3 armas · T G H emotes · Esc pausa. Mando: sticks mover y mirar · RT disparar · LT apuntar · A saltar · RB empujar · B patear · Start pausa."
+  },
+  "Land your first headshot": {
+    "zh_TW": "命中你的第一次爆頭",
+    "zh_CN": "打中你的第一次爆头",
+    "ja": "初めてのヘッドショットを決めましょう",
+    "fr": "Réussir son premier tir à la tête",
+    "es": "Consigue tu primer disparo en la cabeza"
+  },
+  "Last wobbler standing": {
+    "zh_TW": "最後站著的搖搖人",
+    "zh_CN": "最后站着的摇摇人",
+    "ja": "最後まで残ったウォブラー",
+    "fr": "Le dernier wobbler debout",
+    "es": "El último wobbler en pie"
+  },
+  "Logged out. Your progress stays on this device.": {
+    "zh_TW": "已登出。你的進度會保留在這部裝置上。",
+    "zh_CN": "已退出登录。你的进度会保留在这台设备上。",
+    "ja": "ログアウトしました。進行状況はこの端末に残ります。",
+    "fr": "Déconnecté. La progression reste sur cet appareil.",
+    "es": "Sesión cerrada. Tu progreso se queda en este dispositivo."
+  },
+  "New password set. You're signed in as %s.": {
+    "zh_TW": "已設定新密碼。你目前以 %s 登入。",
+    "zh_CN": "已设置新密码。你当前以 %s 登录。",
+    "ja": "新しいパスワードを設定しました。%s としてサインインしています。",
+    "fr": "Nouveau mot de passe défini. Connecté en tant que %s.",
+    "es": "Nueva contraseña establecida. Has iniciado sesión como %s."
+  },
+  "New weapon: %s! Don't drop it": {
+    "zh_TW": "新武器：%s！別弄丟了",
+    "zh_CN": "新武器：%s！别弄丢了",
+    "ja": "新しい武器：%s！落とさないように",
+    "fr": "Nouvelle arme : %s ! À ne pas lâcher",
+    "es": "¡Nueva arma: %s! No la sueltes"
+  },
+  "The arena is growing! Room to wobble": {
+    "zh_TW": "競技場變大了！晃動空間更多",
+    "zh_CN": "竞技场变大了！晃动空间更多",
+    "ja": "アリーナが広がっています！ゆれるスペースが増えました",
+    "fr": "L'arène s'agrandit ! De la place pour vaciller",
+    "es": "¡La arena crece! Espacio para tambalearse"
+  },
+  "The game server at %s didn't answer. Check the address and that the server is running.": {
+    "zh_TW": "位於 %s 的遊戲伺服器沒有回應。請檢查位址，並確認伺服器正在執行。",
+    "zh_CN": "位于 %s 的游戏服务器没有响应。请检查地址，并确认服务器正在运行。",
+    "ja": "%s のゲームサーバーから応答がありません。アドレスと、サーバーが起動しているかを確認してください。",
+    "fr": "Le serveur de jeu à %s ne répond pas. Vérifier l'adresse et que le serveur est lancé.",
+    "es": "El servidor de juego en %s no respondió. Revisa la dirección y que el servidor esté en marcha."
+  },
+  "You're out! Spectating from the sofa.": {
+    "zh_TW": "你出局了！在沙發上觀戰。",
+    "zh_CN": "你出局了！在沙发上观战。",
+    "ja": "脱落！ソファから観戦中です。",
+    "fr": "Éliminé ! Spectateur depuis le canapé.",
+    "es": "¡Estás fuera! Viendo desde el sofá."
+  },
+  "Out": {
+    "zh_TW": "出局",
+    "zh_CN": "出局",
+    "ja": "脱落",
+    "fr": "ÉLIMINÉ",
+    "es": "Fuera"
+  },
+  "Out · %d left": {
+    "zh_TW": "出局 · 剩 %d 人",
+    "zh_CN": "出局 · 剩 %d 人",
+    "ja": "脱落 · 残り %d 人",
+    "fr": "ÉLIMINÉ · %d en jeu",
+    "es": "Fuera · quedan %d"
+  },
+  "♥ · %d left": {
+    "zh_TW": "♥ · 剩 %d 人",
+    "zh_CN": "♥ · 剩 %d 人",
+    "ja": "♥ · 残り %d 人",
+    "fr": "♥ · %d en jeu",
+    "es": "♥ · quedan %d"
+  },
+  "%d K.O.s · %d left": {
+    "zh_TW": "%d 次擊倒 · 剩 %d 人",
+    "zh_CN": "%d 次击倒 · 剩 %d 人",
+    "ja": "%d KO · 残り %d 人",
+    "fr": "%d K.O. · %d en jeu",
+    "es": "%d K.O. · quedan %d"
+  },
+  "Practice · %d K.O.s": {
+    "zh_TW": "練習 · %d 次擊倒",
+    "zh_CN": "练习 · %d 次击倒",
+    "ja": "練習 · %d KO",
+    "fr": "Entraînement · %d K.O.",
+    "es": "Práctica · %d K.O."
+  },
+  "Crate incoming: %s! Look up": {
+    "zh_TW": "補給箱來襲：%s！抬頭看！",
+    "zh_CN": "补给箱来袭：%s！抬头看！",
+    "ja": "クレート接近：%s！上を見て",
+    "fr": "Caisse en approche : %s ! Attention en haut",
+    "es": "¡Caja en camino: %s! ¡Mira arriba!"
+  },
+  "Trapped in a net! Wriggle!": {
+    "zh_TW": "被網住了！快掙脫！",
+    "zh_CN": "被网住了！快挣脱！",
+    "ja": "ネットに捕まった！もがけ！",
+    "fr": "Pris dans un filet ! Gigote !",
+    "es": "¡Atrapado en una red! ¡Retuércete!"
+  }
+}

@@ -1,0 +1,373 @@
+{
+ "Hat": {
+  "zh_TW": "帽子",
+  "zh_CN": "帽子",
+  "ja": "帽子",
+  "fr": "Chapeau",
+  "es": "Sombrero"
+ },
+ "Control": {
+  "zh_TW": "操控",
+  "zh_CN": "操控",
+  "ja": "操作",
+  "fr": "Contrôle",
+  "es": "Control"
+ },
+ "Weight": {
+  "zh_TW": "重量",
+  "zh_CN": "重量",
+  "ja": "重さ",
+  "fr": "Poids",
+  "es": "Peso"
+ },
+ "Power": {
+  "zh_TW": "力量",
+  "zh_CN": "力量",
+  "ja": "パワー",
+  "fr": "Puissance",
+  "es": "Potencia"
+ },
+ "Tech": {
+  "zh_TW": "技術",
+  "zh_CN": "技术",
+  "ja": "テクニック",
+  "fr": "Technique",
+  "es": "Técnica"
+ },
+ "Try": {
+  "zh_TW": "試穿",
+  "zh_CN": "试穿",
+  "ja": "試着",
+  "fr": "Essayer",
+  "es": "Probar"
+ },
+ "Preview": {
+  "zh_TW": "預覽",
+  "zh_CN": "预览",
+  "ja": "プレビュー",
+  "fr": "Aperçu",
+  "es": "Vista previa"
+ },
+ "Move here": {
+  "zh_TW": "移到這裡",
+  "zh_CN": "移到这里",
+  "ja": "ここに移動",
+  "fr": "Déplacer ici",
+  "es": "Mover aquí"
+ },
+ "Playing": {
+  "zh_TW": "遊玩中",
+  "zh_CN": "游玩中",
+  "ja": "使用中",
+  "fr": "En jeu",
+  "es": "Jugando"
+ },
+ "Play as": {
+  "zh_TW": "使用此角色",
+  "zh_CN": "使用此角色",
+  "ja": "このキャラで遊ぶ",
+  "fr": "Jouer comme",
+  "es": "Jugar como"
+ },
+ "Open shop": {
+  "zh_TW": "開啟商店",
+  "zh_CN": "打开商店",
+  "ja": "ショップを開く",
+  "fr": "Ouvrir la boutique",
+  "es": "Abrir la tienda"
+ },
+ "In the shop": {
+  "zh_TW": "在商店中",
+  "zh_CN": "在商店中",
+  "ja": "ショップにあり",
+  "fr": "Dans la boutique",
+  "es": "En la tienda"
+ },
+ "More outfits": {
+  "zh_TW": "更多服裝",
+  "zh_CN": "更多服装",
+  "ja": "他の衣装",
+  "fr": "Plus de tenues",
+  "es": "Más atuendos"
+ },
+ "More emotes": {
+  "zh_TW": "更多表情動作",
+  "zh_CN": "更多表情动作",
+  "ja": "他のエモート",
+  "fr": "Plus d'emotes",
+  "es": "Más emotes"
+ },
+ "You own this": {
+  "zh_TW": "你已擁有",
+  "zh_CN": "你已拥有",
+  "ja": "所持済み",
+  "fr": "Tu possèdes déjà",
+  "es": "Ya lo tienes"
+ },
+ "Developer pack": {
+  "zh_TW": "開發者套組",
+  "zh_CN": "开发者套装",
+  "ja": "開発者パック",
+  "fr": "Pack développeur",
+  "es": "Pack de desarrollador"
+ },
+ "Beta Tester pack": {
+  "zh_TW": "測試人員套組",
+  "zh_CN": "测试人员套装",
+  "ja": "ベータテスターパック",
+  "fr": "Pack bêta-testeur",
+  "es": "Pack de betatester"
+ },
+ "Save your progress to use codes.": {
+  "zh_TW": "請先儲存進度才能使用兌換碼。",
+  "zh_CN": "请先保存进度才能使用兑换码。",
+  "ja": "コードを使うには進行状況を保存してください。",
+  "fr": "Sauvegarde ta progression pour utiliser les codes.",
+  "es": "Guarda tu progreso para usar códigos."
+ },
+ "Type a code first.": {
+  "zh_TW": "請先輸入兌換碼。",
+  "zh_CN": "请先输入兑换码。",
+  "ja": "先にコードを入力してください。",
+  "fr": "Saisis d'abord un code.",
+  "es": "Escribe un código primero."
+ },
+ "That code is not valid.": {
+  "zh_TW": "此兌換碼無效。",
+  "zh_CN": "此兑换码无效。",
+  "ja": "そのコードは無効です。",
+  "fr": "Ce code n'est pas valide.",
+  "es": "Ese código no es válido."
+ },
+ "You already used that code.": {
+  "zh_TW": "你已經使用過這個兌換碼了。",
+  "zh_CN": "你已经使用过这个兑换码了。",
+  "ja": "そのコードは使用済みです。",
+  "fr": "Tu as déjà utilisé ce code.",
+  "es": "Ya usaste ese código."
+ },
+ "Codes are saved to your profile. Save your progress first, then enter the code.": {
+  "zh_TW": "兌換碼會儲存到你的帳號。請先儲存進度，再輸入兌換碼。",
+  "zh_CN": "兑换码会保存到你的账号。请先保存进度，再输入兑换码。",
+  "ja": "コードはプロフィールに保存されます。先に進行状況を保存してから、コードを入力してください。",
+  "fr": "Les codes sont enregistrés sur ton profil. Sauvegarde d'abord ta progression, puis saisis le code.",
+  "es": "Los códigos se guardan en tu perfil. Guarda primero tu progreso y luego introduce el código."
+ },
+ "Outfits are saved to your profile, so you keep them for good. Save your progress to buy this one.": {
+  "zh_TW": "服裝會儲存到你的帳號，永久保留。請先儲存進度再購買。",
+  "zh_CN": "服装会保存到你的账号，永久保留。请先保存进度再购买。",
+  "ja": "衣装はプロフィールに保存され、ずっと持ち続けられます。購入するには進行状況を保存してください。",
+  "fr": "Les tenues sont enregistrées sur ton profil, tu les gardes pour toujours. Sauvegarde ta progression pour acheter celle-ci.",
+  "es": "Los atuendos se guardan en tu perfil y son tuyos para siempre. Guarda tu progreso para comprar este."
+ },
+ "Emotes are saved to your profile, so you keep them for good. Save your progress to buy this one.": {
+  "zh_TW": "表情動作會儲存到你的帳號，永久保留。請先儲存進度再購買。",
+  "zh_CN": "表情动作会保存到你的账号，永久保留。请先保存进度再购买。",
+  "ja": "エモートはプロフィールに保存され、ずっと持ち続けられます。購入するには進行状況を保存してください。",
+  "fr": "Les emotes sont enregistrés sur ton profil, tu les gardes pour toujours. Sauvegarde ta progression pour acheter celui-ci.",
+  "es": "Los emotes se guardan en tu perfil y son tuyos para siempre. Guarda tu progreso para comprar este."
+ },
+ "+%s coins": {
+  "zh_TW": "+%s 金幣",
+  "zh_CN": "+%s 金币",
+  "ja": "+%s コイン",
+  "fr": "+%s pièces",
+  "es": "+%s monedas"
+ },
+ "+%s coins (%s)": {
+  "zh_TW": "+%s 金幣（%s）",
+  "zh_CN": "+%s 金币（%s）",
+  "ja": "+%s コイン（%s）",
+  "fr": "+%s pièces (%s)",
+  "es": "+%s monedas (%s)"
+ },
+ "match win": {
+  "zh_TW": "比賽獲勝",
+  "zh_CN": "比赛获胜",
+  "ja": "試合勝利",
+  "fr": "victoire",
+  "es": "victoria"
+ },
+ "match done": {
+  "zh_TW": "比賽完成",
+  "zh_CN": "比赛完成",
+  "ja": "試合終了",
+  "fr": "match terminé",
+  "es": "partida terminada"
+ },
+ "Buy %s to put it on a key": {
+  "zh_TW": "購買 %s 後即可設定到按鍵上",
+  "zh_CN": "购买 %s 后即可设置到按键上",
+  "ja": "%s を購入すると、キーに割り当てられます",
+  "fr": "Achète %s pour l'assigner à une touche",
+  "es": "Compra %s para ponerlo en una tecla"
+ },
+ "Put %s on a key:": {
+  "zh_TW": "將 %s 設定到按鍵：",
+  "zh_CN": "将 %s 设置到按键：",
+  "ja": "%s をキーに設定：",
+  "fr": "Mettre %s sur une touche :",
+  "es": "Poner %s en una tecla:"
+ },
+ "%s is on %s": {
+  "zh_TW": "%s 已設定在 %s",
+  "zh_CN": "%s 已设置在 %s",
+  "ja": "%s は %s に設定されました",
+  "fr": "%s est sur %s",
+  "es": "%s está en %s"
+ },
+ "%s coins added!": {
+  "zh_TW": "已加入 %s 金幣！",
+  "zh_CN": "已添加 %s 金币！",
+  "ja": "%s コイン追加！",
+  "fr": "%s pièces ajoutées !",
+  "es": "¡%s monedas añadidas!"
+ },
+ "%s unlocked: the %s outfit (now equipped) and the %s emote.": {
+  "zh_TW": "%s 已解鎖：%s 服裝（已穿上）和 %s 表情動作。",
+  "zh_CN": "%s 已解锁：%s 服装（已穿上）和 %s 表情动作。",
+  "ja": "%s を解除：%s の衣装（装備済み）と %s のエモート。",
+  "fr": "%s débloqué : la tenue %s (déjà équipée) et l'emote %s.",
+  "es": "%s desbloqueado: el atuendo %s (ya equipado) y el emote %s."
+ },
+ "🎁 Comes with the %s emote. That emote is only for this outfit and can't be bought on its own": {
+  "zh_TW": "🎁 附帶 %s 表情動作。此表情動作僅限此服裝，無法單獨購買",
+  "zh_CN": "🎁 附带 %s 表情动作。此表情动作仅限此服装，无法单独购买",
+  "ja": "🎁 %s エモート付き。このエモートはこの衣装専用で、単品では購入できません",
+  "fr": "🎁 Inclut l'emote %s. Cet emote est réservé à cette tenue et ne peut pas être acheté séparément",
+  "es": "🎁 Incluye el emote %s. Ese emote es solo para este atuendo y no se puede comprar por separado"
+ },
+ "Includes: %s": {
+  "zh_TW": "包含：%s",
+  "zh_CN": "包含：%s",
+  "ja": "含む: %s",
+  "fr": "Inclut : %s",
+  "es": "Incluye: %s"
+ },
+ "Trying %s": {
+  "zh_TW": "試穿：%s",
+  "zh_CN": "试穿：%s",
+  "ja": "試着中: %s",
+  "fr": "Essai : %s",
+  "es": "Probando %s"
+ },
+ ". Includes the %s (looks only)": {
+  "zh_TW": "。包含 %s（僅外觀）",
+  "zh_CN": "。包含 %s（仅外观）",
+  "ja": "。%s を含む（見た目のみ）",
+  "fr": ". Inclut le %s (apparence seulement)",
+  "es": ". Incluye el %s (solo apariencia)"
+ },
+ ". 🎁 Comes with the %s emote, which is only for this outfit and cannot be bought separately": {
+  "zh_TW": "。🎁 附帶 %s 表情動作，僅限此服裝，無法單獨購買",
+  "zh_CN": "。🎁 附带 %s 表情动作，仅限此服装，无法单独购买",
+  "ja": "。🎁 %s エモート付き。この衣装専用で、単品では購入できません",
+  "fr": ". 🎁 Inclut l'emote %s, réservé à cette tenue et impossible à acheter séparément",
+  "es": ". 🎁 Incluye el emote %s, solo para este atuendo y no se puede comprar por separado"
+ },
+ ". Buy it to keep it": {
+  "zh_TW": "。購買後即可保留",
+  "zh_CN": "。购买后即可保留",
+  "ja": "。購入すると持ち続けられます",
+  "fr": ". Achète-le pour le garder",
+  "es": ". Cómpralo para conservarlo"
+ },
+ ". ✨ Reactive face: it shows pain when hit and gets excited after a kill": {
+  "zh_TW": "。✨ 反應表情：被擊中會痛呼，擊倒後會興奮",
+  "zh_CN": "。✨ 反应表情：被击中会痛呼，击倒后会兴奋",
+  "ja": "。✨ リアクション顔：ヒット時に痛がり、KO後に興奮",
+  "fr": ". ✨ Visage réactif : grimace quand il est touché et s'excite après une élimination",
+  "es": ". ✨ Cara reactiva: pone cara de dolor al recibir golpes y se emociona tras una eliminación"
+ },
+ "Bought %s! Equipped.": {
+  "zh_TW": "已購買 %s！已裝備。",
+  "zh_CN": "已购买 %s！已装备。",
+  "ja": "%s を購入！装備しました。",
+  "fr": "%s acheté ! Équipé.",
+  "es": "¡%s comprado! Equipado."
+ },
+ " You also got the %s emote.": {
+  "zh_TW": " 你還獲得了 %s 表情動作。",
+  "zh_CN": " 你还获得了 %s 表情动作。",
+  "ja": " さらに %s エモートを獲得しました。",
+  "fr": " Tu as aussi obtenu l'emote %s.",
+  "es": " También obtuviste el emote %s."
+ },
+ "Bought %s!": {
+  "zh_TW": "已購買 %s！",
+  "zh_CN": "已购买 %s！",
+  "ja": "%s を購入！",
+  "fr": "%s acheté !",
+  "es": "¡%s comprado!"
+ },
+ "Includes the %s instead of the spatula": {
+  "zh_TW": "包含 %s，取代鍋鏟",
+  "zh_CN": "包含 %s，取代锅铲",
+  "ja": "%s を含み、フライ返しの代わりになります",
+  "fr": "Inclut %s à la place de la spatule",
+  "es": "Incluye %s en lugar de la espátula"
+ },
+ ". ": {
+  "zh_TW": "。",
+  "zh_CN": "。",
+  "ja": "。",
+  "fr": ". ",
+  "es": ". "
+ },
+ "✨ Reactive face: shows pain when hit and gets excited after a kill": {
+  "zh_TW": "✨ 反應表情：被擊中會痛呼，擊倒後會興奮",
+  "zh_CN": "✨ 反应表情：被击中会痛呼，击倒后会兴奋",
+  "ja": "✨ リアクション顔：ヒット時に痛がり、KO後に興奮",
+  "fr": "✨ Visage réactif : grimace quand il est touché et s'excite après une élimination",
+  "es": "✨ Cara reactiva: pone cara de dolor al recibir golpes y se emociona tras una eliminación"
+ },
+ "Your wobbler. Pick an outfit or emote to see it": {
+  "zh_TW": "這是你的搖搖人。選擇服裝或表情動作來查看",
+  "zh_CN": "这是你的摇摇人。选择服装或表情动作来查看",
+  "ja": "あなたのウォブラー。衣装かエモートを選んで確認しよう",
+  "fr": "Ton wobbler. Choisis une tenue ou un emote pour le voir",
+  "es": "Tu wobbler. Elige un atuendo o un emote para verlo"
+ },
+ "Only comes with the %s outfit. Not for sale": {
+  "zh_TW": "僅隨 %s 服裝附贈，不單獨販售",
+  "zh_CN": "仅随 %s 服装附赠，不单独出售",
+  "ja": "%s の衣装にのみ付属。販売はしていません",
+  "fr": "Inclus uniquement avec la tenue %s. Non vendu",
+  "es": "Solo viene con el atuendo %s. No está a la venta"
+ },
+ "+%s %s ammo (now %s)": {
+  "zh_TW": "+%s %s 彈藥（現有 %s）",
+  "zh_CN": "+%s %s 弹药（现有 %s）",
+  "ja": "+%s %s 弾薬（残り %s）",
+  "fr": "+%s munitions %s (maintenant %s)",
+  "es": "+%s munición de %s (ahora %s)"
+ },
+ "Picked up %s! (slot %s)": {
+  "zh_TW": "撿起 %s！（欄位 %s）",
+  "zh_CN": "捡起 %s！（栏位 %s）",
+  "ja": "%s を拾った！（スロット %s）",
+  "fr": "%s ramassé ! (emplacement %s)",
+  "es": "¡Recogiste %s! (ranura %s)"
+ },
+ "Your %s broke!": {
+  "zh_TW": "你的 %s 壞了！",
+  "zh_CN": "你的 %s 坏了！",
+  "ja": "%s が壊れた！",
+  "fr": "Ton %s est cassé !",
+  "es": "¡Tu %s se rompió!"
+ },
+ "%s is empty!": {
+  "zh_TW": "%s 沒子彈了！",
+  "zh_CN": "%s 没子弹了！",
+  "ja": "%s は弾切れ！",
+  "fr": "%s est vide !",
+  "es": "¡%s se quedó sin munición!"
+ },
+ "Back in the fight!": {
+  "zh_TW": "回到戰場！",
+  "zh_CN": "回到战场！",
+  "ja": "戦線復帰！",
+  "fr": "De retour dans la bataille !",
+  "es": "¡De vuelta a la pelea!"
+ }
+}

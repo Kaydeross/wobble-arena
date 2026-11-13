@@ -1,0 +1,37 @@
+{
+ "Just a name, no password needed. Your coins, outfits and stats are saved to it. Names nobody uses for 30 days are freed.": {
+  "zh_TW": "只需要一個名字，不需要密碼。你的金幣、服裝和數據會存在上面。30 天沒人使用的名字會被釋出。",
+  "zh_CN": "只需要一个名字，不需要密码。你的金币、服装和数据会存在上面。30 天没人使用的名字会被释放。",
+  "ja": "名前だけでOK、パスワードは不要です。コイン・衣装・記録がそこに保存されます。30日間だれも使わない名前は解放されます。",
+  "fr": "Juste un nom, pas de mot de passe. Tes pièces, tenues et statistiques y sont sauvegardées. Les noms inutilisés pendant 30 jours sont libérés.",
+  "es": "Solo un nombre, sin contraseña. Tus monedas, atuendos y estadísticas se guardan en él. Los nombres que nadie usa en 30 días se liberan."
+ },
+ "Your name (3 to 16 letters, numbers or _)": {
+  "zh_TW": "你的名字（3 到 16 個字母、數字或 _）",
+  "zh_CN": "你的名字（3 到 16 个字母、数字或 _）",
+  "ja": "あなたの名前（英数字と _ で 3～16 文字）",
+  "fr": "Ton nom (3 à 16 lettres, chiffres ou _)",
+  "es": "Tu nombre (3 a 16 letras, números o _)"
+ },
+ "Pick a name instead": {
+  "zh_TW": "改為取個名字",
+  "zh_CN": "改为取个名字",
+  "ja": "名前を決める方法に戻る",
+  "fr": "Choisir un nom à la place",
+  "es": "Elegir un nombre mejor"
+ },
+ "Picking…": {
+  "zh_TW": "處理中…",
+  "zh_CN": "处理中…",
+  "ja": "処理中…",
+  "fr": "Un instant…",
+  "es": "Un momento…"
+ },
+ "Log out of %s? This name has no password, so you can't log back in on this device later. Log out anyway?": {
+  "zh_TW": "要登出 %s 嗎？這個名字沒有密碼，之後無法在這部裝置重新登入。仍要登出嗎？",
+  "zh_CN": "要退出 %s 吗？这个名字没有密码，之后无法在这台设备重新登录。仍要退出吗？",
+  "ja": "%s からログアウトしますか？この名前にはパスワードがないため、あとでこの端末から再ログインできません。それでもログアウトしますか？",
+  "fr": "Se déconnecter de %s ? Ce nom n'a pas de mot de passe : tu ne pourras plus te reconnecter sur cet appareil. Se déconnecter quand même ?",
+  "es": "¿Cerrar sesión de %s? Este nombre no tiene contraseña, así que no podrás volver a entrar en este dispositivo. ¿Cerrar sesión igualmente?"
+ }
+}

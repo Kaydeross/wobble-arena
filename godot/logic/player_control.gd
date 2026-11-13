@@ -31,6 +31,9 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	if l > 1.0: wx /= l; wz /= l
 	if incap: wx = 0.0; wz = 0.0
 	ph.wish_x = wx; ph.wish_z = wz; ph.climb_in = f
+	if input.consume("dash") and not combat.rules.do_dash(p, wx, wz) and not ph.grounded:   # ninja dash (needs a ninja weapon in hand)
+		Skills.do_recover(p, sim, wx, wz)                      # no dash gear: the dash key recovers in the air
+	if input.consume("recover"): Skills.do_recover(p, sim, wx, wz)   # air recovery, the "boing burst" (logic/skills.gd)
 	var aiming := input.aiming()
 	var fire := input.is_held("fire")
 	squat = input.is_held("crouch") and not incap and ph.ladder.is_empty()
@@ -47,10 +50,15 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	p.face_yaw = face
 
 	# aim target: from the shoulder toward whatever the crosshair is on
+	p.aim_pt = aim_point
 	if aim_point.size() == 3:
 		var a := Combat.norm3(aim_point[0] - p.shoulder_x, aim_point[1] - p.shoulder_y, aim_point[2] - p.shoulder_z)
 		p.aim_x = a[0]; p.aim_y = a[1]; p.aim_z = a[2]
 	if not w.get("spinup", 0): p.spin = 0.0
+	if w.get("type", "") != "bow" or incap: p.draw = 0.0
+	if not w.get("throwable", false) or incap:         # trident charge state resets when it is not in hand
+		p.t_charge = -1.0; p.t_pend = -1.0
+		if p.throw_hold: p.throw_hold = false; p.throw_key = ""
 	if incap:
 		_drain_taps()
 		return
@@ -63,22 +71,28 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	for i in 3:
 		if input.consume("slot%d" % (i + 1)) and p.slots[i] != null: combat.equip_slot(p, i)
 	if input.consume("swap"): _cycle(p, combat)
-	input.consume("dash")              # ninja dash: not ported yet
 
 	key = p.weapon if p.weapon != "" else "spatula"
 	w = combat.wdata(key)
 	var t: String = w.get("type", "")
 	if t == "melee":
-		if fire and p.cool <= 0.0 and p.swing < 0.0:
+		if w.get("throwable", false):   # trident: a tap jabs someone close, holding charges a throw
+			combat.weapons.trident_tick(p, fire, dt, cam_yaw)
+		elif fire and p.cool <= 0.0 and p.swing < 0.0:
 			combat.try_melee(p, cam_yaw)
 		if p.swing >= 0.0 and combat.melee_tick(p, key, dt, cam_yaw): combat.after_swing(p)
 	elif t == "gun":
 		combat.weapons.gun_tick(p, fire, dt, aim_point)
+	elif t == "bow":                   # hold to draw, let go to shoot
+		combat.weapons.bow_tick(p, fire, dt, aim_point)
+		if fire and p.cool <= 0.0 and p.swing < 0.0 and p.get_ammo() > 0: ph.speed *= 0.75
+	elif t == "blower":
+		combat.weapons.blower_tick(p, fire, dt)
 	elif fire:
 		combat.weapons.try_fire(p, aim_point)
 
 func _drain_taps() -> void:
-	for a in ["kick", "shove", "spatula", "reload", "slot1", "slot2", "slot3", "swap", "dash"]:
+	for a in ["kick", "shove", "spatula", "reload", "slot1", "slot2", "slot3", "swap", "dash", "recover"]:
 		while input.consume(a): pass
 
 ## cycleWeapon: the next filled slot after the current one, the spatula (-1) included.

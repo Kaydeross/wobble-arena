@@ -1,7 +1,7 @@
 'use strict';
 /* Runs the web game's REAL movement code (Fighter.physics, Fighter.ladderStep, collide and updatePads, sliced out of public/index.html)
    over a scripted input and writes the trace. The Godot port must reproduce it (tools/test-physics.js compares them).
-   node tools/physics-reference.js <map> <out.json> [classId]
+   node tools/physics-reference.js <map> <out.json> [classId] [grav]   (grav = cfg.grav, e.g. 0.15 = Moon Drift)
 
    Each trace row: [px, py, pz, vx, vy, vz, grounded,  wx, wz, jump,  stunSet, downT, trapT, spdT, dashSet, dead, climbIn, tele,
                     stun, dashAirT, padCool, onLadder]
@@ -63,7 +63,7 @@ function script(map) {                                       // base run, then e
   }
   return out;
 }
-module.exports = function trace(mapId, spawn, cls) {
+module.exports = function trace(mapId, spawn, cls, grav = 1) {
   const maps = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'shared', 'maps.json'), 'utf8'));
   const map = maps[mapId];
   const solids = map.geometry.boxes.map(b => ({ minX: b.x - b.w / 2, maxX: b.x + b.w / 2, minZ: b.z - b.d / 2, maxZ: b.z + b.d / 2, top: b.y + b.h, bottom: b.y }));
@@ -80,8 +80,8 @@ module.exports = function trace(mapId, spawn, cls) {
     vel: { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; } }, wish: { x: 0, z: 0 }, speed: 7.5, cls: Object.assign({ spd: 1, acc: 1, air: 1, jump: 1 }, cls || {}), grounded: false, wantJump: false,
     dead: false, downT: 0, trapT: 0, stun: 0, spdT: 0, dashAirT: 0, padCool: 0, crouchK: 0, isPlayer: true, onLadder: null, climbIn: 0,
     armVel: { y: 0 }, lean: { kick() {} }, head: { kick() {} } };
-  const ctx = vm.createContext({ solids, ladders, pads, fighters: [f], MAPS: { m: mapFlags }, currentMap: 'm', cfg: { grav: 1 }, settings: { ice: 0.6 },
-    clamp: (v, a, b) => Math.max(a, Math.min(b, v)), rand: () => 0, puff() {}, sfx() {}, V: () => null });
+  const ctx = vm.createContext({ solids, ladders, pads, fighters: [f], MAPS: { m: mapFlags }, currentMap: 'm', cfg: { grav }, settings: { ice: 0.6 },
+    clamp: (v, a, b) => Math.max(a, Math.min(b, v)), rand: () => 0, puff() {}, sfx() {}, sfxAt() {}, V: () => null });
   vm.runInContext(code, ctx);
   f.ladderStep = ctx.ladderFn;
   const out = [];
@@ -101,8 +101,8 @@ module.exports = function trace(mapId, spawn, cls) {
   return out;
 };
 if (require.main === module) {
-  const [map, outp, clsId] = process.argv.slice(2);
-  const t = module.exports(map, [0, 0.01, 0], clsId ? JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'shared', 'classes.json'), 'utf8'))[clsId] : null);
+  const [map, outp, clsId, grav] = process.argv.slice(2);
+  const t = module.exports(map, [0, 0.01, 0], clsId ? JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'shared', 'classes.json'), 'utf8'))[clsId] : null, grav ? +grav : 1);
   fs.writeFileSync(outp, JSON.stringify(t));
   console.log('trace', t.length, 'steps; end', t[t.length - 1].slice(0, 3).map(v => v.toFixed(3)).join(','), 'ladder steps', t.filter(r => r[21]).length);
 }

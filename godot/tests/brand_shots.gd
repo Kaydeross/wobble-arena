@@ -2,7 +2,7 @@ extends SceneTree
 ## Renders the brand images (needs a real renderer, opens a window; tools/shoot-godot-brand.sh):
 ##   icon : res://icon.png, 1024x1024 opaque app icon: the real Wobbler (with a crown) on a warm yellow-to-orange
 ##          gradient with soft rays and a vignette (iOS rounds the corners itself).
-##   logo : res://ui/brand/launch_logo.png, the two-line WOBBLE / ARENA logo on transparent (boot splash + iOS
+##   logo : res://ui/brand/launch_logo.png, the two-line WOBBLERS / ARENA logo on transparent (boot splash + iOS
 ##          launch storyboard, on the #102b35 background colour).
 ## Also writes review copies to --out DIR: godot-ui-icon-1024.png, godot-ui-icon-60.png (home-screen size, corners
 ## rounded like iOS), godot-ui-launch.png (the launch screen at iPhone landscape).
@@ -41,7 +41,7 @@ func _logo() -> void:
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(vp)
 	var logo: Control = load("res://ui/logo.gd").new()
-	logo.lines = PackedStringArray(["WOBBLE", "ARENA"])
+	logo.lines = PackedStringArray(["WOBBLERS", "ARENA"])
 	logo.font_size = 290
 	vp.add_child(logo)
 	logo.size = Vector2(LOGO)

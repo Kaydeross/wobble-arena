@@ -1,0 +1,191 @@
+{
+ "Team Deathmatch": {
+  "zh_TW": "團隊死鬥",
+  "zh_CN": "团队死斗",
+  "ja": "チームデスマッチ",
+  "fr": "Match à mort par équipes",
+  "es": "Combate a muerte por equipos"
+ },
+ "Two teams, no friendly fire. First team to 30 K.O.s": {
+  "zh_TW": "兩隊對戰，不會誤傷隊友。先達到 30 次擊倒的隊伍獲勝",
+  "zh_CN": "两队对战，不会误伤队友。先达到 30 次击倒的队伍获胜",
+  "ja": "2チームで対戦、味方への攻撃なし。先に30KOしたチームの勝ち",
+  "fr": "Deux équipes, pas de tir ami. La première équipe à 30 K.O. gagne",
+  "es": "Dos equipos, sin fuego amigo. Gana el primer equipo en llegar a 30 K.O."
+ },
+ "Death Match": {
+  "zh_TW": "死鬥",
+  "zh_CN": "死斗",
+  "ja": "デスマッチ",
+  "fr": "Match à mort",
+  "es": "Combate a muerte"
+ },
+ "Free for all. First to 20 K.O.s wins": {
+  "zh_TW": "自由混戰，先達到 20 次擊倒者獲勝",
+  "zh_CN": "自由混战，先达到 20 次击倒者获胜",
+  "ja": "個人戦。先に20KOした人の勝ち",
+  "fr": "Chacun pour soi. Le premier à 20 K.O. gagne",
+  "es": "Todos contra todos. Gana quien llegue primero a 20 K.O."
+ },
+ "Sudden Death": {
+  "zh_TW": "猝死賽",
+  "zh_CN": "猝死赛",
+  "ja": "サドンデス",
+  "fr": "Mort subite",
+  "es": "Muerte súbita"
+ },
+ "One life each. A K.O. or a fall and you are out. Last one standing wins": {
+  "zh_TW": "每人只有一條命，被擊倒或掉下去就出局。最後留下的人獲勝",
+  "zh_CN": "每人只有一条命，被击倒或掉下去就出局。最后留下的人获胜",
+  "ja": "ライフは1つ。KOされるか落ちたら脱落。最後まで残った人の勝ち",
+  "fr": "Une seule vie. Un K.O. ou une chute et tu es éliminé. Le dernier debout gagne",
+  "es": "Una sola vida. Un K.O. o una caída y quedas fuera. Gana el último en pie"
+ },
+ "5 vs 5 with random events: crate rain, low gravity, knockback storms, giants. First team to 50": {
+  "zh_TW": "5 對 5，隨機事件不斷：補給箱雨、低重力、擊退風暴、巨人。先到 50 分的隊伍獲勝",
+  "zh_CN": "5 对 5，随机事件不断：补给箱雨、低重力、击退风暴、巨人。先到 50 分的队伍获胜",
+  "ja": "5対5でランダムイベント発生：クレートの雨、低重力、ノックバック嵐、巨大化。先に50に到達したチームの勝ち",
+  "fr": "5 contre 5 avec des événements aléatoires : pluie de caisses, faible gravité, tempêtes de recul, géants. La première équipe à 50 gagne",
+  "es": "5 contra 5 con eventos aleatorios: lluvia de cajas, baja gravedad, tormentas de empuje, gigantes. Gana el primer equipo en llegar a 50"
+ },
+ "Moon Drift": {
+  "zh_TW": "月球漂流",
+  "zh_CN": "月球漂流",
+  "ja": "ムーンドリフト",
+  "fr": "Dérive lunaire",
+  "es": "Deriva lunar"
+ },
+ "Dummies that stand, slide and pop back up, and a rack of weapons to try. No score": {
+  "zh_TW": "會站著、滑動、再彈起來的假人，還有一整排武器可以試用。不計分",
+  "zh_CN": "会站着、滑动、再弹起来的假人，还有一整排武器可以试用。不计分",
+  "ja": "立ったり滑ったり起き上がったりするダミーと、試せる武器ラック。スコアなし",
+  "fr": "Des mannequins qui se dressent, glissent et se relèvent, et un râtelier d'armes à essayer. Pas de score",
+  "es": "Muñecos que se mantienen en pie, se deslizan y se levantan de nuevo, y un estante de armas para probar. Sin puntuación"
+ },
+ "Team": {
+  "zh_TW": "團隊",
+  "zh_CN": "团队",
+  "ja": "チーム",
+  "fr": "Équipe",
+  "es": "Equipo"
+ },
+ "Special": {
+  "zh_TW": "特殊",
+  "zh_CN": "特殊",
+  "ja": "スペシャル",
+  "fr": "Spécial",
+  "es": "Especial"
+ },
+ "SMGs, shotguns, snipers, launchers": {
+  "zh_TW": "衝鋒槍、霰彈槍、狙擊槍、發射器",
+  "zh_CN": "冲锋枪、霰弹枪、狙击枪、发射器",
+  "ja": "SMG、ショットガン、スナイパー、ランチャー",
+  "fr": "Mitraillettes, fusils à pompe, snipers, lance-roquettes",
+  "es": "Subfusiles, escopetas, francotiradores, lanzadores"
+ },
+ "Shurikens, knives and katanas": {
+  "zh_TW": "手裡劍、小刀和武士刀",
+  "zh_CN": "手里剑、小刀和武士刀",
+  "ja": "手裏剣、ナイフ、刀",
+  "fr": "Shurikens, couteaux et katanas",
+  "es": "Shurikens, cuchillos y katanas"
+ },
+ "Rockets and grenades. Boom": {
+  "zh_TW": "火箭和手榴彈。轟！",
+  "zh_CN": "火箭和手榴弹。轰！",
+  "ja": "ロケットとグレネード。ドカン",
+  "fr": "Roquettes et grenades. Boum",
+  "es": "Cohetes y granadas. ¡Bum!"
+ },
+ "Each K.O. swaps your weapon": {
+  "zh_TW": "每次擊倒都會換一把武器",
+  "zh_CN": "每次击倒都会换一把武器",
+  "ja": "KOするたびに武器が変わる",
+  "fr": "Chaque K.O. change ton arme",
+  "es": "Cada K.O. cambia tu arma"
+ },
+ "Free for all. First to 20 K.O.s": {
+  "zh_TW": "自由混戰。先達到 20 次擊倒",
+  "zh_CN": "自由混战。先达到 20 次击倒",
+  "ja": "個人戦。先に20KO",
+  "fr": "Chacun pour soi. Premier à 20 K.O.",
+  "es": "Todos contra todos. El primero a 20 K.O."
+ },
+ "One life each. Last one standing": {
+  "zh_TW": "每人一條命。最後留下的獲勝",
+  "zh_CN": "每人一条命。最后留下的获胜",
+  "ja": "ライフは1つ。最後まで残った人の勝ち",
+  "fr": "Une seule vie. Le dernier debout",
+  "es": "Una vida cada uno. El último en pie"
+ },
+ "2 vs 2. Team score, no friendly fire": {
+  "zh_TW": "2 對 2。計團隊分數，不會誤傷隊友",
+  "zh_CN": "2 对 2。计团队分数，不会误伤队友",
+  "ja": "2対2。チームスコア、味方への攻撃なし",
+  "fr": "2 contre 2. Score d'équipe, pas de tir ami",
+  "es": "2 contra 2. Puntuación por equipo, sin fuego amigo"
+ },
+ "Two teams. First to 30 K.O.s": {
+  "zh_TW": "兩隊對戰。先達到 30 次擊倒",
+  "zh_CN": "两队对战。先达到 30 次击倒",
+  "ja": "2チーム戦。先に30KO",
+  "fr": "Deux équipes. Premier à 30 K.O.",
+  "es": "Dos equipos. El primero a 30 K.O."
+ },
+ "5 vs 5 with random events": {
+  "zh_TW": "5 對 5，隨機事件",
+  "zh_CN": "5 对 5，随机事件",
+  "ja": "5対5、ランダムイベントあり",
+  "fr": "5 contre 5 avec événements aléatoires",
+  "es": "5 contra 5 con eventos aleatorios"
+ },
+ "Double damage, 3 lives, shrinking arena": {
+  "zh_TW": "雙倍傷害、3 條命、競技場會縮小",
+  "zh_CN": "双倍伤害、3 条命、竞技场会缩小",
+  "ja": "ダメージ2倍、ライフ3つ、アリーナが縮む",
+  "fr": "Dégâts doublés, 3 vies, arène qui rétrécit",
+  "es": "Daño doble, 3 vidas, arena que se encoge"
+ },
+ "Super low gravity. Float and soar": {
+  "zh_TW": "超低重力。飄浮、翱翔",
+  "zh_CN": "超低重力。飘浮、翱翔",
+  "ja": "超低重力。ふわふわ飛び回ろう",
+  "fr": "Gravité très faible. Flotte et plane",
+  "es": "Gravedad muy baja. Flota y vuela"
+ },
+ "Start on pillars. A new weapon every 10 s": {
+  "zh_TW": "從柱子上開始。每 10 秒出現一把新武器",
+  "zh_CN": "从柱子上开始。每 10 秒出现一把新武器",
+  "ja": "柱の上からスタート。10秒ごとに新しい武器",
+  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 s",
+  "es": "Empiezas sobre pilares. Un arma nueva cada 10 s"
+ },
+ "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon every 10 seconds. Fall or die and you are out. Most K.O.s after 3 minutes wins.": {
+  "zh_TW": "從高高的柱子上開始，柱子之間太遠，跳不過去（用任何武器都能衝刺！）。每 10 秒出現一把新武器。掉落或死亡就出局。3 分鐘後擊倒最多者獲勝。",
+  "zh_CN": "从高高的柱子上开始，柱子之间太远，跳不过去（用任何武器都能冲刺！）。每 10 秒出现一把新武器。掉落或死亡就出局。3 分钟后击倒最多者获胜。",
+  "ja": "高い柱の上からスタート。柱の間は遠くてジャンプでは届きません（どの武器でもダッシュできます！）。10秒ごとに新しい武器が登場。落ちるか倒されたら脱落。3分後にKO数が最も多い人の勝ち。",
+  "fr": "Départ sur de hauts piliers trop éloignés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme toutes les 10 secondes. Tombe ou meurs et tu es éliminé. Le plus de K.O. après 3 minutes gagne.",
+  "es": "Empiezas sobre pilares altos demasiado separados para saltar (¡impúlsate con cualquier arma!). Un arma nueva cada 10 segundos. Si caes o mueres, quedas fuera. Gana quien tenga más K.O. a los 3 minutos."
+ },
+ "Tradies, hammers, live wire, air blowers": {
+  "zh_TW": "工人、鎚子、帶電電線、鼓風機",
+  "zh_CN": "工人、锤子、带电电线、鼓风机",
+  "ja": "作業員、ハンマー、電線、送風機",
+  "fr": "Ouvriers, marteaux, fils sous tension, souffleurs d'air",
+  "es": "Obreros, martillos, cables con corriente, sopladores de aire"
+ },
+ "Dummies and a rack of weapons. No score": {
+  "zh_TW": "假人和一整排武器。不計分",
+  "zh_CN": "假人和一整排武器。不计分",
+  "ja": "ダミーと武器ラック。スコアなし",
+  "fr": "Des mannequins et un râtelier d'armes. Pas de score",
+  "es": "Muñecos y un estante de armas. Sin puntuación"
+ },
+ "Build an arena with blocks, then play it": {
+  "zh_TW": "用積木建造競技場，然後在裡面玩",
+  "zh_CN": "用积木建造竞技场，然后在里面玩",
+  "ja": "ブロックでアリーナを作って、遊ぼう",
+  "fr": "Construis une arène avec des blocs, puis joues-y",
+  "es": "Construye una arena con bloques y luego juega en ella"
+ }
+}

@@ -790,7 +790,7 @@
   "tags": [
    "Ice"
   ],
-  "blurb": "Everything slides. Use the pillars!",
+  "blurb": "Everything slides. Use the pillars! Brakes are a myth.",
   "orbit": 38,
   "orbitH": 22,
   "sky": 14676991,
@@ -2967,7 +2967,7 @@
    "Stairs",
    "Tiers"
   ],
-  "blurb": "A wide stepped tower with a fighting floor on every level. Stairs on the sides, a ladder to the summit and bounce pads at the corners. King of the hill, no climbing puzzle.",
+  "blurb": "A wide stepped tower with a fighting floor on every tier. Stairs on the sides, a ladder to the summit and bounce pads at the corners. King of the hill, no climbing puzzle.",
   "sky": 13230335,
   "voidColor": 10798318,
   "hills": [
@@ -4977,7 +4977,7 @@
    "Stars",
    "Cover"
   ],
-  "blurb": "A quiet grey moon with the Earth hanging in the sky. Fight around the dome pods, the crater rings and the central launch pad.",
+  "blurb": "A quiet grey moon with the Earth hanging in the sky. Fight around the dome pods, the crater rings and the central launch pad. In space, nobody can hear you bonk.",
   "env": {
    "stars": true,
    "moonColor": 7317759,
@@ -5316,7 +5316,7 @@
    "Islands",
    "Bridges"
   ],
-  "blurb": "Four rock islands round a burning crater, joined by narrow bridges. Fall in the lava and you are out. Knock people in!",
+  "blurb": "Four rock islands round a burning crater, joined by narrow bridges. Fall in the lava and you're out. Knock people in!",
   "env": {
    "speck": "ember",
    "stars": false,
@@ -5662,7 +5662,7 @@
    "Colourful",
    "Cover"
   ],
-  "blurb": "Lollipop trees, candy-cane pillars and a giant cake in the middle. Sticky, sweet and a bit silly.",
+  "blurb": "Lollipop trees, candy-cane pillars and a giant cake in the middle. Sticky, sweet and a bit silly. Brush your teeth after.",
   "env": {
    "speck": "confetti",
    "peaks": true
@@ -6198,7 +6198,7 @@
    "Ship",
    "Bridges"
   ],
-  "blurb": "Board the big ship! Mast in the middle, a raised stern deck, rowing boats alongside and planks between. Do not fall in the sea.",
+  "blurb": "Board the big ship! Mast in the middle, a raised stern deck, rowing boats alongside and planks between. Don't fall in the sea. The parrots will laugh.",
   "env": {
    "speck": "bubble",
    "speckColor": 14677759,
@@ -6669,7 +6669,7 @@
    "Spooky",
    "Cover"
   ],
-  "blurb": "A foggy graveyard under a full moon. Hide behind tombstones, climb the crypt and watch the green wisps float by.",
+  "blurb": "A foggy graveyard under a full moon. Hide behind tombstones, climb the crypt and watch the green wisps float by. The ghosts are friendly. Mostly.",
   "env": {
    "stars": true,
    "moonColor": 16183496,
@@ -12218,7 +12218,7 @@
   "name": "Crater Dome",
   "cat": "arena",
   "tags": [
-   "Low-G",
+   "Low-g",
    "Moon",
    "Floating"
   ],
@@ -12524,7 +12524,7 @@
   "name": "Space Capsule",
   "cat": "arena",
   "tags": [
-   "Low-G",
+   "Low-g",
    "Space",
    "Windows"
   ],
@@ -12797,7 +12797,7 @@
    "Height",
    "Fall"
   ],
-  "blurb": "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or die and you are out for the match. Most K.O.s when the clock ends wins.",
+  "blurb": "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or get K.O.'d and you're out for the match. Most K.O.s when the clock ends wins.",
   "only": "pillars",
   "noCrates": true,
   "edgeGuard": true,
@@ -12847,7 +12847,7 @@
    "Cover"
   ],
   "only": "giant",
-  "blurb": "A kid's room as seen by a giant. A teddy bear in the corner, a tennis ball, dice, a toy car, building bricks, a book stack to climb, crayons for cover and bounce pads between.",
+  "blurb": "A kid's room as seen by a giant. A teddy bear in the corner, a tennis ball, dice, a toy car, building bricks, a book stack to climb, crayons for cover and bounce pads between. The teddy bear is judging you.",
   "sky": 16640200,
   "skyTop": 9421806,
   "voidColor": 12098168,
@@ -13806,7 +13806,7 @@
    "Barn",
    "Cover"
   ],
-  "blurb": "A big farm on a sunny morning. Run into the big red barn and up to its hayloft, hide behind hay bales, fight round the tractor and the coop, or race over the haystack in the middle.",
+  "blurb": "A big farm on a sunny morning. Run into the big red barn and up to its hayloft, hide behind hay bales, fight round the tractor and the coop, or race over the haystack in the middle. The chickens are watching.",
   "env": {
    "speck": "pollen",
    "peaks": true
@@ -15139,7 +15139,7 @@
    "Bounce",
    "Sweet"
   ],
-  "blurb": "A giant frosted donut with a hole in the middle. Run the ring, or take a bounce pad over the hole to the sprinkle island. Fall through the hole and you are out.",
+  "blurb": "A giant frosted donut with a hole in the middle. Run the ring, or take a bounce pad over the hole to the sprinkle island. Fall through the hole and you're out. Don't eat the sprinkles.",
   "env": {
    "speck": "confetti",
    "peaks": true
@@ -15440,7 +15440,7 @@
    "Bridges",
    "Ring-out"
   ],
-  "blurb": "Two cliffs, two narrow bridges and a small island in the chasm between them. A long, thin level that fits a phone screen. Hold the bridges, or bounce across.",
+  "blurb": "Two cliffs, two narrow bridges and a small island in the chasm between them. A long, thin arena that fits a phone screen. Hold the bridges, or bounce across.",
   "env": {
    "speck": "ember",
    "peaks": true

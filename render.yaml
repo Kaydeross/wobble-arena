@@ -6,3 +6,6 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    envVars:
+      - key: TRUST_PROXY   # Render's load balancer appends the real client address to x-forwarded-for
+        value: "1"

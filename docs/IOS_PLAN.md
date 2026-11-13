@@ -1,4 +1,4 @@
-# Wobble Arena → iOS: Review, Plan & Design
+# Wobblers Arena → iOS: Review, Plan & Design
 
 _Status: superseded by docs/ROADMAP.md (one Godot codebase for iOS, PC and web). The review in sections 2-3 is still accurate for build b76._
 
@@ -6,7 +6,7 @@ _Status: superseded by docs/ROADMAP.md (one Godot codebase for iOS, PC and web).
 
 ## 1. Executive summary
 
-Wobble Arena already has the hard part done: a fun, content-rich wobbly-physics brawler. It has about 12 modes, about 31 maps, about 29 weapons, bots with 4 difficulties, cosmetics, accounts, cloud save, online rooms and a kill-cam. The market also has a gap: **no major wobbly-physics party brawler is native on iOS yet**. Party Animals mobile is announced but has no date.
+Wobblers Arena already has the hard part done: a fun, content-rich wobbly-physics brawler. It has about 12 modes, about 31 maps, about 29 weapons, bots with 4 difficulties, cosmetics, accounts, cloud save, online rooms and a kill-cam. The market also has a gap: **no major wobbly-physics party brawler is native on iOS yet**. Party Animals mobile is announced but has no date.
 
 **It cannot ship to iOS as it is today.** Five blockers:
 
@@ -68,7 +68,7 @@ What these show:
 
 What the leaders do (sources are in the research brief, summarized here):
 
-| Pattern | Who | What it means for Wobble Arena |
+| Pattern | Who | What it means for Wobblers Arena |
 |---|---|---|
 | 2–5 minute sessions, rotating modes | Stumble Guys, Brawl Stars | Matchmaking straight from Play, a **mode-of-the-hour rotation**, rounds of 3 minutes or less |
 | Cosmetics-only, no pay-to-win | All leaders | Keep weapons free. Sell outfits, hats, emotes, KO effects, trails |
@@ -91,7 +91,7 @@ What the leaders do (sources are in the research brief, summarized here):
 ```
 Open app → (Play) → matchmade 3-min round (bots fill instantly) → KO highlights + rewards
       ↑                                                                 ↓
-  Locker / Shop ← coins, pass XP, quest progress ← trophies / level up ←┘
+  Walldrobe / Shop ← coins, pass XP, quest progress ← trophies / level up ←┘
 ```
 - **One-tap Play.** Bots fill empty seats right away, so nobody waits more than about 8 s. Humans replace bots between rounds.
 - **Round length:** 3 minutes or 5 KOs. Matches are best of 3 rounds in party mode.
@@ -119,7 +119,7 @@ These are landscape controls in the style of Brawl Stars and Stumble Guys, re-us
 
 ### 4.3 HUD and menus for a 393 pt tall screen
 - **HUD:** collapse the scoreboard into a top-centre pill (your KOs, the timer, the leader). The full table appears on hold or at round end. Cap name tags to 3 at a time and fade the far ones.
-- **Main menu:** a big **PLAY** button with the current-mode carousel at the bottom right. Coins, gems, pass and profile go along the top bar. Locker, Shop, Pass, Friends and Settings go in a left rail. That gives the menu one clear focus and stops the overlap bugs.
+- **Main menu:** a big **PLAY** button with the current-mode carousel at the bottom right. Coins, gems, pass and profile go along the top bar. Walldrobe, Shop, Pass, Friends and Settings go in a left rail. That gives the menu one clear focus and stops the overlap bugs.
 - **Guest banner:** make it a small chip instead of a full-width bar.
 - **Layout fixes:** `viewport-fit=cover`, `env(safe-area-inset-*)` padding, `100dvh`, and orientation locked to landscape in the native shell.
 

@@ -31,6 +31,27 @@ var auto_switch := false         ## settings.autoSwitch
 var spawns: Array = []           ## MAPS[map].spawns ([x, z] pairs)
 var spawn_y := 4.0               ## MAPS[map].spawnY || 4
 var solids: Array = []           ## FighterPhysics.solids_from_map()
+var grav_setting := 1.0          ## cfg.grav (Moon Drift < 0.3: lobbed things float too, projG)
+
+# --- body-part damage (shared/damage.json, docs/DAMAGE.md) ---
+const DEFAULT_DAMAGE := {"tables": {
+		"classic": {"head": 1.0, "torso": 1.0, "arms": 1.0, "legs": 1.0, "meleeHead": false},
+		"zones": {"head": 1.5, "torso": 1.0, "arms": 0.85, "legs": 0.75, "meleeHead": true}},
+	"weaponHead": {"gun": 2.0, "thrown": 1.8, "arrow": 1.8}, "geometry": {"armSide": 0.34, "legsBelow": 0.45}}
+var damage: Dictionary = DEFAULT_DAMAGE
+## "classic" = the web game (only headshots get a bonus: bit-identical to the JS); "zones" = the per-part table.
+## A bare Combat is classic (the parity tests); MatchSim switches offline matches to "zones".
+var damage_rule := "classic"
+## Online matches stay classic (web clients compute their own shots that way) unless every client knows the table.
+var net_zones := false
+
+# --- balance overlay (res://data/extra/weapon_tuning.json, docs/DAMAGE.md "Balance and cooldowns") ---
+## Weapon key -> the weapons.json entry with the overlay merged in (empty = no overlay: a bare Combat, the parity tests).
+## Used only while tuning_active(), the same gate as the zones rule, so web peers and the JS references keep the
+## shared numbers.
+var tuned_weapons := {}
+## Crate weight overrides (drops.json `base` keys), same gate.
+var tuned_drops := {}
 
 # --- net (filled by the net layer) ---
 var net_started := false
@@ -42,17 +63,20 @@ var fighters: Array = []         ## every FighterState in the match
 var rng := CombatRng.new()
 var events: Array = []
 var weapons: Weapons
+var rules: ModeRules             ## game-mode rules: K.O. limit, lives, ladder, dash, shrink (logic/mode_rules.gd)
 
 func _init() -> void:
 	weapons = Weapons.new(self)
+	rules = ModeRules.new(self)
 	set_mode("classic")
 
 ## Drop the fighter-to-fighter references (last attacker, burner, swing targets, projectiles) so nothing leaks
 ## when a match ends. Call before throwing the Combat away.
 func dispose() -> void:
 	for f: FighterState in fighters:
-		f.last_attacker = null; f.burner = null; f.swing_hit = {}
-	weapons.projectiles.clear()
+		f.last_attacker = null; f.burner = null; f.swing_hit = {}; f.trap_net = null
+	weapons.clear()
+	rules.winner = null
 	fighters.clear()
 	events.clear()
 
@@ -62,8 +86,11 @@ static func read_json(path: String) -> Variant:
 ## Load weapons/classes/modes from a folder holding copies of shared/*.json (the Content autoload will call this later).
 func load_content(dir: String = "res://data") -> void:
 	weapons_data = read_json(dir.path_join("weapons.json"))
-	classes = read_json(dir.path_join("classes.json"))
-	modes = read_json(dir.path_join("modes.json"))
+	classes = ExtraClasses.merge(read_json(dir.path_join("classes.json")))   # + the Godot-only classes (res://data/extra)
+	modes = ModeRules.merge_extra(read_json(dir.path_join("modes.json")))   # + the Godot-only modes (res://data/extra)
+	var dp := dir.path_join("damage.json")
+	var dd: Variant = read_json(dp) if FileAccess.file_exists(dp) else null
+	damage = dd if dd is Dictionary and dd.has("tables") else DEFAULT_DAMAGE
 	set_mode(mode_id)
 
 func set_mode(id: String) -> void:
@@ -71,13 +98,33 @@ func set_mode(id: String) -> void:
 	mode = modes.get(id, {})
 
 func wdata(key: String) -> Dictionary:
+	if not tuned_weapons.is_empty() and zones_active():
+		var tw: Variant = tuned_weapons.get(key)
+		if tw != null: return tw
 	return weapons_data.get(key, {})
+
+## Merge a weapon_tuning.json overlay ({weapons: {key: {field: value}}, drops: {key: weight}}) over the loaded weapons.
+## Takes effect only while tuning_active().
+func apply_tuning(t: Variant) -> void:
+	tuned_weapons = {}; tuned_drops = {}
+	if not t is Dictionary: return
+	var ws: Dictionary = t.get("weapons", {})
+	for k: String in ws:
+		if not weapons_data.has(k): continue
+		var m: Dictionary = (weapons_data[k] as Dictionary).duplicate(true)
+		m.merge(ws[k], true)
+		tuned_weapons[k] = m
+	tuned_drops = (t.get("drops", {}) as Dictionary).duplicate()
+
+## True when the balance overlay is in use: one was loaded and the zones gate is open (offline / every client knows it).
+func tuning_active() -> bool:
+	return not tuned_weapons.is_empty() and zones_active()
 
 func is_friend(a: FighterState, b: FighterState) -> bool:
 	return teams != 0 and a != null and b != null and a != b and a.team == b.team
 
 func max_hp(f: FighterState) -> float:
-	return hp_setting * (2.0 if giant else 1.0) * f.cls_hp
+	return hp_setting * (2.0 if giant or f.big_t > 0.0 else 1.0) * f.cls_hp
 
 ## Bots only hurt each other in a free-for-all brawl.
 func bots_can_hit(a: FighterState, e: FighterState) -> bool:
@@ -97,14 +144,57 @@ func push_arm(f: FighterState, x: float, y: float, z: float) -> void:
 
 # ============================== damage ==============================
 
+## True when the per-part table applies: the rule asks for it and we are offline (or every client knows the table).
+func zones_active() -> bool:
+	return damage_rule != "classic" and (not net_started or net_zones)
+
+## The multiplier row in use: {head, torso, arms, legs, meleeHead}.
+func zone_table() -> Dictionary:
+	var t: Dictionary = damage.get("tables", DEFAULT_DAMAGE["tables"])
+	var key := damage_rule if zones_active() else "classic"
+	return t.get(key, DEFAULT_DAMAGE["tables"][key] if DEFAULT_DAMAGE["tables"].has(key) else DEFAULT_DAMAGE["tables"]["classic"])
+
+## A weapon family's own headshot multiplier ("gun" -> weapon headMul or 2.0, "thrown"/"arrow" -> 1.8), or -1 = use the table.
+func weapon_head(kind: String, w: Dictionary = {}) -> float:
+	if kind == "gun" and w.get("headMul", 0): return float(w["headMul"])
+	var wh: Dictionary = damage.get("weaponHead", DEFAULT_DAMAGE["weaponHead"])
+	return float(wh[kind]) if wh.has(kind) else -1.0
+
+## Which body part of `v` the point (x, y, z) is on. `on_head` = the head hit sphere was the one touched (that decides
+## "head", exactly like the old head flag). Otherwise: below the chest by more than legsBelow -> legs; further than
+## armSide from the chest centre sideways (along the victim's right axis) -> arms; else torso. Scaled for giants.
+func body_part(v: FighterState, x: float, y: float, z: float, on_head: bool) -> String:
+	if on_head: return "head"
+	var g: Dictionary = damage.get("geometry", DEFAULT_DAMAGE["geometry"])
+	var k := 1.5 if giant else 1.0
+	if y < v.chest_y - float(g.get("legsBelow", 0.45)) * k: return "legs"
+	var side := absf(-(x - v.chest_x) * cos(v.yaw) + (z - v.chest_z) * sin(v.yaw))
+	if side > float(g.get("armSide", 0.34)) * k: return "arms"
+	return "torso"
+
+## Damage multiplier for a part. `own_head` (> 0) is the weapon's own headshot value, which wins over the table's head.
+## Classic: every non-head part is 1.0, so the damage is bit-identical to the web game.
+func part_mul(part: String, own_head: float = -1.0) -> float:
+	if part == "head" and own_head > 0.0: return own_head
+	return float(zone_table().get(part, 1.0))
+
+## The `zone` argument of hit(): which part, its multiplier and where it was struck (for the damage number and flash).
+static func zone_info(part: String, mul: float, x: float, y: float, z: float) -> Dictionary:
+	return {"part": part, "mul": mul, "x": x, "y": y, "z": z}
+
 ## Fighter.hit: damage, knockback, stun, K.O. Returns {applied, dmg, ko, light, ...}; false-y `applied` = no effect.
-func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: float, head: bool, attacker: FighterState) -> Dictionary:
+## `dmg` already includes the body-part multiplier; `zone` (zone_info(), optional) only labels the damage number /
+## hit flash with the part, its bonus % and the struck point. Splash, flame and the glove pass none (whole body).
+func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: float, head: bool, attacker: FighterState,
+		zone: Dictionary = {}) -> Dictionary:
 	var r := {"applied": false, "ko": false}
+	var part: String = zone.get("part", "head" if head else "")
+	var pct := js_round((float(zone.get("mul", 1.0)) - 1.0) * 100.0) if zone.has("mul") else 0
 	if v.is_ghost:                     # another player's wobbler: the shooter's game decides the hit and tells theirs
 		if attacker == null or attacker.is_ghost or attacker.net_slot < 0 or v.dead or v.left or v.invuln > 0.0 or not net_started:
 			return r
 		if attacker.is_player:
-			ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head}); attacker.st["hits"] += 1
+			ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head, "part": part, "pct": pct}); attacker.st["hits"] += 1
 		v.flash = 0.12
 		var msg := NetSnapshot.encode_hit(v.net_slot if v.net_human else 0, v.net_slot, attacker.net_slot, dmg, dx, dy, dz, force, head)
 		ev({"type": "net", "msg": msg})
@@ -124,12 +214,14 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		dmg *= attacker.cls_dmg
 	if attacker != null and attacker != v and attacker.rage_t > 0.0:
 		dmg *= 1.5
+	if attacker != null and attacker != v and attacker.big_t > 0.0:    # Chaos giant (Godot-only)
+		dmg *= 1.5
 	if v.shield_t > 0.0:
 		dmg *= 0.5
 	if v.down_t > 0.0 and not (v.trap_t > 0.0):
 		dmg *= 0.5
 	if attacker != null and attacker.is_player and attacker != v:
-		ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head})
+		ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head, "part": part, "pct": pct})
 	v.last_attacker = attacker; v.last_hit_time = time
 	if attacker != null and attacker != v:
 		var real := maxf(0.0, minf(dmg, v.hp))
@@ -141,7 +233,7 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		ev({"type": "hurt", "f": v, "amount": 0.35 + dmg / 90.0})
 	var light := force < 8.0           # bullets, knives: a small shove, no stun
 	var kf := 0.4 if light else 1.0
-	var fk := (kb_setting if kb_setting != 0.0 else 1.0) * 0.8 * float(mode.get("kbMul", 1.0) if mode.get("kbMul", 0) else 1.0) * v.cls_kb
+	var fk := (kb_setting if kb_setting != 0.0 else 1.0) * 0.8 * float(mode.get("kbMul", 1.0) if mode.get("kbMul", 0) else 1.0) * v.cls_kb * (0.5 if v.big_t > 0.0 else 1.0)
 	var p := v.phys
 	p.vx += dx * force * kf * fk
 	p.vz += dz * force * kf * fk
@@ -158,7 +250,9 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 	var sa := force * 0.3
 	push_arm(v, dx * sa, dy * sa, dz * sa)
 	r["applied"] = true; r["dmg"] = dmg; r["light"] = light
-	ev({"type": "hit", "f": v, "attacker": attacker, "dmg": dmg, "head": head, "force": force})
+	var he := {"type": "hit", "f": v, "attacker": attacker, "dmg": dmg, "head": head, "force": force, "part": part}
+	if zone.has("x"): he["x"] = zone["x"]; he["y"] = zone["y"]; he["z"] = zone["z"]
+	ev(he)
 	if v.hp <= 0.0:
 		v.st["streak"] = 0; v.st["multi"] = 0; v.st["deaths"] += 1
 		v.dead = true
@@ -174,17 +268,20 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 			add_ko(attacker, v)
 		else:
 			ev({"type": "ko", "killer": null, "victim": v, "weapon": ""})
+		if rules.one_life(): rules.eliminate(v, true)    # Sudden Death: out at once
 		if net_started and v.net_slot >= 0 and not v.is_ghost and (v.is_player or net_host):
 			var msg := NetSnapshot.encode_ko(attacker.net_slot if attacker != null and attacker.net_slot >= 0 else -1, v.net_slot)
 			ev({"type": "net", "msg": msg})
 		r["ko"] = true
 	return r
 
-## addKo: K.O. credit and streaks. Match-limit checks and the kill feed are the world's job (it reads the "ko" event).
+## addKo: K.O. credit and streaks, the Weapon Ladder step and the K.O. limit (ModeRules). The kill feed is the world's
+## job (it reads the "ko" event).
 func add_ko(killer: FighterState, victim: FighterState) -> void:
 	if victim != null and is_friend(killer, victim):
 		return
 	killer.ko += 1; killer.kill_t = time
+	if mode_id == "gungame": rules.gg_advance(killer)
 	var k := killer.st
 	k["streak"] += 1; k["bestStreak"] = maxi(k["bestStreak"], k["streak"])
 	k["multi"] = k["multi"] + 1 if time - float(k["lastKo"]) < 6.0 else 1
@@ -192,6 +289,7 @@ func add_ko(killer: FighterState, victim: FighterState) -> void:
 	var wn: String = wdata(killer.weapon).get("name", "Spatula") if killer.weapon != "" else "Spatula"
 	k["weps"][wn] = int(k["weps"].get(wn, 0)) + 1
 	ev({"type": "ko", "killer": killer, "victim": victim, "weapon": wn})
+	rules.check_limit(killer)
 
 ## Fall over (never longer than 1.6 s); a moment of "can't be tripped" follows getting up.
 func topple(f: FighterState, dur: float, msg: String = "") -> bool:
@@ -212,13 +310,15 @@ func topple(f: FighterState, dur: float, msg: String = "") -> bool:
 	push_arm(f, ax, 0.0, az)
 	ev({"type": "sfx", "name": "boing", "f": f})
 	if f.is_player:
-		ev({"type": "toast", "text": msg if msg != "" else "You fell over!"})
+		ev({"type": "toast", "text": msg if msg != "" else "Whoops! You fell over"})
 	return true
 
 # ============================== timers / respawn ==============================
 
-## Fighter.timers: per-step countdowns. Not ported yet: emotes (visual), ninja dash charges (dashTick).
+## Fighter.timers: per-step countdowns. Not ported: emotes (visual only).
 func timers(f: FighterState, dt: float) -> void:
+	rules.dash_tick(f, dt)
+	Skills.tick(self, f, dt)
 	tick_reload(f, dt)
 	if f.spd_t > 0.0: f.spd_t -= dt
 	if f.rage_t > 0.0: f.rage_t -= dt
@@ -235,7 +335,7 @@ func timers(f: FighterState, dt: float) -> void:
 			var b := rng.range_f(-1.4, 1.4)
 			kick_lean(f, a, b)
 		if f.trap_t <= 0.0:
-			f.trap_t = 0.0
+			f.trap_t = 0.0; f.trap_net = null
 	if f.burn > 0.0 and not f.dead:    # on fire
 		f.burn -= dt; f.burn_acc += dt
 		if f.burn_acc >= 0.4:
@@ -279,11 +379,11 @@ func respawn(f: FighterState) -> void:
 	if lives_mode:
 		f.lives -= 1
 		if f.lives <= 0:
-			f.elim = true
-			ev({"type": "eliminated", "f": f})
+			rules.eliminate(f, true)
 			return
 	var s: Array = spawns[int(floor(rng.next() * spawns.size()))] if spawns.size() > 0 else [0.0, 0.0]
-	# TODO(shrinking arenas): MAPS[id].shrinks picks a spot inside the shrink zone instead.
+	var sz := rules.shrink_spot()                 # shrinking arenas: a spot inside the floor that is left
+	if sz.size() > 0: s = sz
 	if f.home != null: s = f.home
 	place_at(f, float(s[0]), float(s[1]), 0.01 if f.home != null else spawn_y)
 	f.invuln = 0.3 if f.home != null else 2.5     # spawn protection
@@ -293,11 +393,12 @@ func respawn(f: FighterState) -> void:
 func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
-	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0
+	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null
+	Skills.reset(f)
 	clear_inventory(f); set_weapon(f, "spatula")
 	var start: Variant = mode.get("start")
 	if start is String and start != "": pickup(f, start)
-	# TODO(weapon ladder): gungame gives the current rung (ggGive).
+	if mode_id == "gungame": rules.gg_give(f)
 
 # ============================== inventory ==============================
 
@@ -312,9 +413,12 @@ func equip_slot(f: FighterState, i: int) -> bool:
 		return false
 	if f.reloading and i != f.slot:
 		cancel_reload(f, true)         # swapped away mid-reload: it finishes when you come back
+	var was := f.weapon
 	f.slot = i
 	set_weapon(f, f.slots[i]["key"] if i >= 0 else "spatula")
 	if i >= 0: auto_reload(f)
+	var scd := float(wdata(f.weapon).get("swapCd", 0.0))   # tuning: heavy weapons need a moment to draw (no swap-cancel)
+	if scd > 0.0 and f.weapon != was: f.cool = maxf(f.cool, scd)
 	return true
 
 func clear_inventory(f: FighterState) -> void:
@@ -326,7 +430,7 @@ func auto_eq(f: FighterState, i: int) -> bool:
 	if not f.is_player or auto_switch or f.slot < 0 or f.slot == i:
 		return true
 	var cur: Variant = f.slots[f.slot]
-	return cur == null or int(cur["ammo"]) <= 0
+	return cur == null or float(cur["ammo"]) <= 0.0   # float: the Air Blower drains fractional ammo
 
 func pickup(f: FighterState, key: String) -> void:
 	var w := wdata(key)
@@ -371,6 +475,7 @@ func drop_slot(f: FighterState) -> void:
 ## useAmmo: one shot spent (the Weapon Ladder never runs out of spare ammo).
 func use_ammo(f: FighterState) -> void:
 	f.st["shots"] += 1
+	Skills.burst_spend(self, f)
 	if inf:
 		return
 	if f.slot >= 0:
@@ -485,7 +590,7 @@ func kick_step(f: FighterState, dt: float) -> void:
 			hit_any = true
 		if hit_any:
 			f.kick_resolved = true
-			if rng.next() < 0.12: topple(f, 0.9, "Your own kick tripped you!")
+			if rng.next() < 0.12: topple(f, 0.9, "Your own kick tripped you! Classic")
 	if t > 0.6 and not f.kick_resolved:   # kicked thin air: easy to lose your balance
 		f.kick_resolved = true
 		var chance := 0.5 + (0.0 if f.phys.grounded else 0.3)
@@ -647,6 +752,8 @@ func melee_sweep(f: FighterState) -> void:
 			var edz := e.phys.pz - f.phys.pz
 			var touched := f.cyclone and f.swing > 0.4 and sqrt(edx * edx + edz * edz) < 3.2 and absf(e.phys.py - f.phys.py) < 2.2
 			var sph := e.spheres(giant)
+			var tp_at := [e.chest_x, e.chest_y, e.chest_z]   # where the bat touched (cyclone body contact: the chest)
+			var tp_head := false
 			for i in n:
 				if touched: break
 				for k in 3:
@@ -660,7 +767,8 @@ func melee_sweep(f: FighterState) -> void:
 						var dy: float = ay - sp[1]
 						var dz: float = az - sp[2]
 						var rr: float = sp[3] + thick
-						if dx * dx + dy * dy + dz * dz < rr * rr: touched = true; break
+						if dx * dx + dy * dy + dz * dz < rr * rr:
+							touched = true; tp_at = [ax, ay, az]; tp_head = sp[4]; break
 			if not touched: continue
 			f.swing_hit[e] = true
 			# knock them the way the weapon was moving, mixed with "away from the swinger"
@@ -678,7 +786,11 @@ func melee_sweep(f: FighterState) -> void:
 			var slam_mul := float(w.get("slamMul", 1.3)) if w.get("slamMul", 0) else 1.3
 			var dmg := float(w["dmg"]) * f.dmg_scale * (slam_mul if f.slam else (1.6 if f.cyclone else 1.0))
 			var force := float(w["force"]) * (1.1 if f.slam else (1.5 if f.cyclone else 1.0))
-			if hit(e, dmg, d[0], d[1], d[2], force, false, f)["applied"]:
+			# body part: a bat on the head only counts as a headshot when the table allows melee heads (classic: never)
+			var part := body_part(e, tp_at[0], tp_at[1], tp_at[2], tp_head and bool(zone_table().get("meleeHead", false)))
+			var pm := part_mul(part)
+			dmg *= pm
+			if hit(e, dmg, d[0], d[1], d[2], force, part == "head", f, zone_info(part, pm, tp_at[0], tp_at[1], tp_at[2]))["applied"]:
 				var tp := float(w.get("topple", 0.0))
 				if tp and rng.next() < tp: topple(e, 1.1)
 				ev({"type": "sfx", "name": w.get("hitSfx", "clink"), "f": e})

@@ -1,5 +1,5 @@
 'use strict';
-/* Renders every sound effect of the web game's synth (public/index.html: tone / noise / the SFX table) offline to a
+/* Renders every Godot sound effect (tools/sfx-recipes.js: the web game's original tone / noise SFX table) offline to a
    16-bit 44.1 kHz mono WAV in godot/audio/sfx/<name>.wav. The SFX table is sliced from the real page and run with
    sample-by-sample versions of the WebAudio nodes it uses (see docs/AUDIO.md):
      tone(f0, f1, dur, type, vol, delay): band-limited OscillatorNode (sine/triangle/square/sawtooth, Fourier series
@@ -19,10 +19,10 @@ const OUT = path.join(__dirname, '..', 'godot', 'audio', 'sfx');
 
 /** The SFX table from the web game, as {name: recipe()} taking our tone/noise. */
 function loadTable(tone, noise) {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, 'sfx-recipes.js'), 'utf8');
   const a = html.indexOf('const SFX = {');
   const b = html.indexOf('\n};', a);
-  if (a < 0 || b < 0) throw new Error('SFX table not found in public/index.html');
+  if (a < 0 || b < 0) throw new Error('SFX table not found in tools/sfx-recipes.js');
   return new Function('tone', 'noise', html.slice(a, b + 3) + '\nreturn SFX;')(tone, noise);
 }
 

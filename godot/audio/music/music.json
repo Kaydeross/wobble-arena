@@ -1,0 +1,30 @@
+{
+  "menu": {
+    "mood": "menu",
+    "intensity": 0.1,
+    "bpm": 88,
+    "bars": 4,
+    "seconds": 10.9091
+  },
+  "match_low": {
+    "mood": "match",
+    "intensity": 0.2,
+    "bpm": 118,
+    "bars": 4,
+    "seconds": 8.1356
+  },
+  "match_mid": {
+    "mood": "match",
+    "intensity": 0.5,
+    "bpm": 127,
+    "bars": 4,
+    "seconds": 7.559
+  },
+  "match_high": {
+    "mood": "match",
+    "intensity": 0.85,
+    "bpm": 137.5,
+    "bars": 4,
+    "seconds": 6.9818
+  }
+}

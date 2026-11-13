@@ -1,4 +1,4 @@
-# Wobble Arena network protocol
+# Wobblers Arena network protocol
 
 _Describes build b76 (`NET_BUILD = 'b76.0'`). Source of truth: `server.js` (layer 1) and `public/index.html` lines ~8158–8800 (layers 2–3). Written so that a second client (the Godot iOS app) can join the same rooms as the web client._
 
@@ -96,7 +96,7 @@ join   ─► joined ─┬─► (host gets peer open) ─► guest sends  toho
 host leaves ──────┴─► longest-standing guest gets promoted; the others get rehost; the new host gets peer{open} per guest
 ```
 
-Host migration: the room's `started` flag resets to false, guest cids are re-issued (the new host is cid 0, others keep their cids), and **every guest must send `hello` again**. The match in progress is not carried over. The web client handles this in `netMigrate()`.
+Host migration: the room's `started` flag resets to false, guest cids are re-issued (the new host is cid 0, others keep their cids), and **every guest must send `hello` again**. The web client does not carry the match over (`netMigrate()`); a promoted Godot client does (6.3).
 
 ---
 
@@ -211,15 +211,21 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 | Route | Method | Body | Returns |
 |---|---|---|---|
 | `/api/signup` | POST | `username` (3–16 `A-Za-z0-9_`), `email`, `password` (6–72), `data?` | `{ok, token, user, data, t, recovery}` — `recovery` is shown once, `XXXX-XXXX-XXXX-XXXX` |
+| `/api/claim` | POST | `name` (same rules as `username`; case-insensitive unique), `data?` | `{ok, token, user, data, t}` — **the easy path**: a password-less account from just a name. Same rate limit as sign-up (40 per IP per hour); 409 `username` when taken |
+| `/api/protect` | POST | `password` (6–72) | `{ok, recovery, user}` — authenticated; puts a password (and a recovery code, shown once) on a name-only account so it can use `/api/login` on another device; 409 `has` if it already has one |
 | `/api/login` | POST | `id` (username or email), `password` | `{ok, token, user, data, t}` |
-| `/api/me` | GET | – | `{ok, user, data, t, hasRecovery}`, renews the token |
+| `/api/me` | GET | – | `{ok, user, data, t, hasRecovery, hasPassword}`, renews the token |
 | `/api/save` | PUT | `data`, `base?`, `force?` | `{ok, t}`; if another device saved newer: `409 {ok:false, err:'stale', data, t}` |
 | `/api/logout` | POST | – | `{ok}` |
-| `/api/password` | POST | `old`, `next` | `{ok}` |
+| `/api/password` | POST | `old`, `next` | `{ok}` (400 `nopass` on a name-only account: use `/api/protect`) |
 | `/api/recovery` | POST | `password` | `{ok, recovery}` (new code; old one stops working) |
 | `/api/reset` | POST | `id`, `code`, `password` | `{ok, token, user, data, t, recovery}` |
-| `/api/delete` | POST | `password` | `{ok}` — **required by App Store 5.1.1(v)** |
+| `/api/delete` | POST | `password` (not needed for a name-only account) | `{ok}` — **required by App Store 5.1.1(v)** |
 | `/health` | GET | – | `{ok, rooms, players, accounts, saved}` |
+
+`user` is `{username, email, created, hasPassword}` (`email` is `''` for a name-only account).
+
+**Unused names are freed.** The server keeps a `lastSeen` per account (written by `/api/me`, `/api/save`, `/api/login` and the relay `auth` op, at most once an hour per account). A sweep at start-up and every 6 hours erases accounts whose `lastSeen` is older than `ACCOUNT_TTL_DAYS` (default 30; `0` = never), with their cloud save, tokens and email, so the name can be picked again. Accounts created before `lastSeen` existed get `lastSeen = now` the first time the sweep sees them (nobody is erased by the upgrade). The server logs counts only, never names. Clients tell players: "Names nobody uses for 30 days are freed."
 
 Error shape: `{ok:false, err, msg}` with HTTP 400/401/409/413/429/500. Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
 
@@ -260,7 +266,7 @@ Names: `name` is truncated to **12 chars** by guests' hosts (`cleanInfo`).
 
 1. **Layer 1:** connect, `auth`, `list`, `join`, `create`, `tohost`/`to`/`all`, `peer`, `promoted`/`rehost`, `leave`.
 2. **Guest role:** `hello` → `welcome` → `roster`/`start`/`slot`/`crates`, then in-match `S`, `sw`, `f`, `k`, `h`, `ko`, `take`, `pend`, `ping`.
-3. **Host role (Phase 2):** everything above plus: assigning slots, running bots, relaying guest messages, `pend`, rematch voting, host migration. This is the largest piece of work, because bots and match rules run on the host.
+3. **Host role (Phase 2, Godot: see 6.2):** everything above plus: assigning slots, running bots, relaying guest messages, `pend`, rematch voting, host migration. This is the largest piece of work, because bots and match rules run on the host.
 4. **Simulation parity:** the web game uses a hand-rolled controller (AABB collision and spring limbs). A native client must reproduce movement speeds, jump, dash, hit force and damage tables, otherwise players will see each other glide, rubber-band or take wrong damage. The numbers must come from shared data, not be re-guessed.
 5. **Version handshake:** today the room refuses guests whose `build` differs from the host's. Two clients on different release schedules cannot do that. See `proto` below.
 
@@ -270,6 +276,85 @@ Names: `name` is truncated to **12 chars** by guests' hosts (`cleanInfo`).
 - `hello` and `welcome` carry an integer `proto`. A missing `proto` means 1 (old builds).
 - The room refuses a guest only when `proto` differs. `build` stays informational; the server's room-list `build` filter is relaxed in a later PR.
 - Bump `PROTO` only for incompatible changes to layer 2.
+
+### 6.2 Godot host notes (Phase 2, `godot/net/host_session.gd` + `godot/net/host_match.gd`)
+
+A Godot client can host a room that web and Godot guests join. It speaks exactly the web host's layer 2:
+
+- **Room:** `create {pub, info}` with the same `info` as `srvInfo` (`build` = `NetClient.BUILD`), `update` when the
+  roster, the started flag or the room size changes. `info` requests are answered with `roomInfo`.
+- **Lobby:** `hello` -> `badver` if `proto` differs, else the lowest free slot (a running match also skips human
+  slots), `full` past the seat count (`max` players in the lobby, the slot count in a match), `welcome {id, name, pub,
+  proto}`, then `roster` to everybody (`max`, `bots`, `lim`, `bhv`, `diff`, `modeName`, `map`). Refused guests are
+  removed with `close` 0.4 s later.
+- **Start:** slots = the roster (human) plus, for the free seats, as many `bot` seats as the host picked and `empty`
+  for the rest (the web host fills every seat with a bot or none; an `empty` seat is just a seat a late joiner can
+  take). The `start` goes out after the host's match is set up, so bot seats carry the bots' real name / look / class.
+  `rules` = `{mode, hp, crate, wstate, grav, kb, inf, dyn, dseed, dt0?}`; `mode` through `HostSession.net_mode`
+  (= `netMode`, plus Pillars -> Classic until `pp`/`pt` are hosted); a fresh `dseed` every match and rematch;
+  `limit` 0 in lives / ladder modes.
+- **In match:** the host's own fighter and every bot in one `S` at 30 Hz (`sw`/`f`/`k` when they start an action);
+  crates spawned only by the host, announced with `crate {cid, key, spot}`; every take (host, bot or guest) as
+  `take`. Guests' messages go through `HostSession.guard` (= `netGuard`: allowed types only, `id` stamped, first `S`
+  entry only, `h.from` must be the sender and numbers clamped, `ko.to` must be the sender, `take` only for a live
+  crate) and are then handled and relayed to the other guests; `h` with `to` 0 is applied by the host, any other `h`
+  goes only to that guest. A guest joining a running match takes a bot's (or an empty) seat: `welcome`, `start` with
+  the current `dt0`, `crates`, and `slot {kind: human}` to the others; a guest leaving turns the seat back into a bot
+  (`slot {kind: bot}`) when the room has bots, else empties it.
+- **Match end:** the host's K.O. limit / last-one-standing decides and sends `pend {w}` (the web host leaves that to
+  every client except in Pillars; sending it is harmless for web guests and is what Godot guests rely on).
+- **Rematch:** `rv` votes -> `rvs {list, total}`; all humans voted, or 20 s after the first vote (once the host's
+  match is over): non-voters get `kick` and their seat becomes a bot, and a new `start` goes out.
+- **Rules:** the Host sheet's mode, K.O. limit (`limit`; -1 = the mode's own), `hp`, `grav`, `kb`, `crate`, `inf` and
+  `dyn` go out in `rules` like the web host's ruleSnap; Explosive always sends `hp` 300.
+- **App-only modes, host migration, emotes:** see 6.3. **Not yet:** chat display, the web host's Pillars (`pp`/`pt`
+  for browsers), weapon toggles (`wstate` is always `{}`).
+- **Tests:** `npm run test:godot-host` (web-protocol guest + Godot guest against a Godot host on the real server).
+
+### 6.3 Godot-only additive fields (web clients ignore them)
+
+Everything here is optional and additive: the web client never sends it and drops or ignores it on receipt (unknown
+`t` values fall through its `netHandle`, unknown `rules` / `start` / roster fields are not read, its `netGuard` drops
+unknown guest messages). `PROTO` stays 1.
+
+| Where | Field | Meaning |
+|---|---|---|
+| `hello` (guest → host) | `gd: 1` | "I am a Godot client" (capability level 1). |
+| `hello` | `pslot` | After a host migration: my slot in the old match, so a Godot host gives it back. |
+| `welcome` (host → guest) | `gd: 1` | The host is a Godot client. |
+| `welcome` | `rsm: 1` | Host migration: this host carries the running match on; keep the arena and wait for `start`. |
+| `roster` entries, `slots` entries | `gd: 1` | That player is a Godot client (a Godot host marks web players in its lobby). |
+| `roster` | `rl` | The Godot host's rules for the lobby line: `{want, mode, lim, hp, grav, kb, crate, inf, dyn, map}` (`want` = the host's pick, `mode` = what plays). |
+| `start.rules` | `gmode` | An app-only mode the Godot clients play (`mode` stays the web fallback, Classic): `tdm`, `deathmatch`, `sudden`, `chaos`, `pillars`, `lowg`, `duel`, `t2`, `t3`, `t4` (`NetMatch.GODOT_MODES`). Sent only when every guest said `gd`. |
+| `start.rules` | `gteam` | Team modes: the side (0 blue / 1 red) of every slot, `slot % 2`. |
+| `start.rules` | `pp` | Pillars: the pillar (spawn index) of every slot, a permutation, shuffled every match by the host. |
+| `start.rules` | `grav: 0.15` | Moon Drift (`gmode: lowg`). |
+| `start` | `rs`, `rsx` | Host migration: the old match's state per (new) slot `[{id, x, y, z, yaw, hp, ko, dt, lv, el, d, gg}]` (`d` = was down: starts on its spawn; `el` = eliminated) and `{pt}` (Pillars clock). `rules.dseed` / `dt0` keep the arena seed and clock. |
+
+New room messages (host → all unless noted):
+
+| `t` | Fields | Meaning |
+|---|---|---|
+| `gm` | `k: "st"`, `ko[]`, `dt[]`, `gg[]`, `pt?` | 1 Hz mode state: every slot's K.O.s, deaths and Weapon Ladder rung, the Pillars clock. Godot guests take it over (team scores are the sums of `ko` by `gteam`). |
+| `gm` | `k: "cw"` / `"cs"` / `"ce"`, `id`, `fl?`, `g?` | Chaos: an event was announced (3 s countdown) / started / ended. `id` = `crates`, `gravity`, `knockback`, `giant`, `speed`, `floor`; `fl` = the floor it forces; `g` = the giant's slot. Guests apply it (gravity, knockback, speed, giant, floor) instead of rolling their own. |
+| `emote` | `id`, `e` | guest → host → others (and the host's own): player `id` plays emote `e` (an id of `godot/data/extra/locker.json` `emotes`). The host stamps `id`, drops unknown ids and more than one per 0.4 s. |
+
+Rules a Godot host follows:
+
+- **Mode choice:** the Host sheet's pick plays when it is web-compatible (`netMode`) or every guest is a Godot client;
+  otherwise the match plays Classic, the lobby line says why ("app-only: a web player is here") and the host's status
+  names the web player. A web guest who joins a running app-only match gets `kick {msg}` with the reason.
+- **Match end:** in an app-only mode the Godot guests never end the match themselves (`ModeRules.remote`): the host's
+  K.O. limit / last one standing / Pillars clock decides and sends `pend`. Team results name the side.
+- **Determinism:** the host's random source is seeded from the arena seed (`dseed`); Chaos events, Pillars shuffles and
+  bots run on the host only and reach the guests as `gm` / `pp` / snapshots.
+- **Host migration (a Godot guest promoted):** the guest's own view of the match (positions, health, K.O.s, deaths,
+  lives, ladder rungs, Pillars clock, arena clock) becomes `rs`. It becomes slot 0, the old host's seat becomes its old
+  slot (a bot, or empty without bots), every other seat keeps its number: Godot guests reclaim it with `pslot`, web
+  guests by name. After 3 s (or as soon as everybody is back) a `start` with `rs`, the same `dseed` and `dt0` resumes
+  the match; bots keep their names. Godot guests stay in the arena ("HOST CHANGED" banner) and continue in place; web
+  guests run their normal migration and start the round from their spawn. With no running match the new host opens the
+  lobby. If the relay promotes a web client, Godot guests re-join it as before.
 
 ---
 
