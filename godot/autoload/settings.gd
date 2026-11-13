@@ -6,6 +6,11 @@ signal changed(key: String, value: Variant)
 
 const PATH := "user://settings.cfg"
 const SECTION := "settings"
+## Dev default (editor, tests, local `npm start`). Release exports use `server_default()` below instead.
+const DEV_SERVER_URL := "ws://127.0.0.1:3000/ws"
+## Production server address for release exports: {"url": "wss://play.example.com/ws"}; empty = fall back to DEV_SERVER_URL.
+## Public config, not a secret (never put tokens or keys in it). Shipped through the export's data/*.json filter.
+const SERVER_CONFIG_PATH := "res://data/extra/server.json"
 const DEFAULTS := {
 	"sens": 1.0,            # look sensitivity multiplier
 	"fov": 72.0,            # vertical field of view
@@ -29,7 +34,7 @@ const DEFAULTS := {
 	"skin": "none",         # outfit (cosmetics.json skins)
 	"hat": "none",          # hat (cosmetics.json hats)
 	"name": "Player",       # name shown to other players (12 chars on the wire)
-	"server_url": "ws://127.0.0.1:3000/ws",   # room server WebSocket (the REST API is the same host over http/https)
+	"server_url": "ws://127.0.0.1:3000/ws",   # (the real default comes from server_default()) room server WebSocket (the REST API is the same host over http/https)
 	"room_code": "",        # last room joined
 	"token": "",            # account token from /api/login (sent with the `auth` op)
 	"user": "",             # logged-in username
@@ -64,12 +69,33 @@ func _init() -> void:
 		return
 	_cfg.load(PATH)   # missing file = defaults
 
+## The server a fresh install connects to: the configured production url in release exports, else the dev address.
+## `config_path` and `release` are parameters so tests can exercise the release path in the editor.
+static func server_default(config_path: String = SERVER_CONFIG_PATH, release: bool = not OS.has_feature("editor")) -> String:
+	if release and FileAccess.file_exists(config_path):
+		var f := FileAccess.open(config_path, FileAccess.READ)
+		var j := JSON.new()
+		var d: Variant = j.data if f and j.parse(f.get_as_text()) == OK else null   # quiet on bad json
+		if d is Dictionary:
+			var u := str((d as Dictionary).get("url", "")).strip_edges()
+			if u.begins_with("ws://") or u.begins_with("wss://"):
+				return u
+	return DEV_SERVER_URL
+
+## "Using: <url> (default|custom)" for the Settings screen.
+func server_status_text() -> String:
+	var cur := str(get_value("server_url"))
+	return "Using: %s (%s)" % [cur, "default" if cur == server_default() else "custom"]
+
 func get_value(key: String, default: Variant = null) -> Variant:
 	if default == null:
-		default = DEFAULTS.get(key)
+		default = server_default() if key == "server_url" else DEFAULTS.get(key)
 	return _cfg.get_value(SECTION, key, default)
 
 func set_value(key: String, value: Variant) -> void:
+	if key == "server_url" and str(value).strip_edges() in ["", server_default()]:   # the default is never stored, so a later app update can change it
+		reset(key)
+		return
 	if _cfg.has_section_key(SECTION, key) and _cfg.get_value(SECTION, key) == value:
 		return
 	_cfg.set_value(SECTION, key, value)
