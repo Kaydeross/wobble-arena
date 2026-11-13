@@ -25,6 +25,12 @@ const TIPS := [
 	"Tip: knock other players off the edge to score.",
 	"Tip: crates drop weapons, heals and power-ups.",
 	"Tip: kick and shove work even without a weapon.",
+	"Tip: the edge of the arena is not your friend.",
+	"Tip: a dash gets you across gaps your legs can't.",
+	"Tip: Spring Glove does no damage, but it sends people flying.",
+	"Tip: hit the head for extra damage. Rude, but effective.",
+	"Tip: falling over is part of the fun. Get back up and bonk someone.",
+	"Tip: goals refresh every day. Free coins, no catch.",
 ]
 const ONLINE_SUB := "Needs internet · public rooms or a code"
 

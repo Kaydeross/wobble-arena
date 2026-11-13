@@ -13,7 +13,7 @@ extends RefCounted
 ##   {"type": "chaos_warn", "id", "name", "in"}              Chaos: an event is about to fire (banner + countdown)
 ##   {"type": "chaos", "id", "name", "dur"} / {"type": "chaos_end", "id"}   Chaos: an event started / ended
 ## Godot-only modes (res://data/extra/modes.json, merged by merge_extra): Team Deathmatch (tdm: two teams sized by the
-## Players page, team limit 30), Death Match (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
+## Players page, team limit 30), Deathmatch (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
 ## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events).
 ## Pillars (initPillars, pillarGive, updatePillars): 8 fighters on the eight pillars (PillarsMap), one life, any weapon
 ## dashes, a random weapon into everyone's inventory every 10 s (first at 1.2 s), last one standing or the most K.O.s
@@ -40,11 +40,9 @@ const PLAYABLE := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4"
 ## Offline only (the web netMode sends Sandbox and Construction matches online as Classic).
 const OFFLINE_ONLY := ["sandbox", "construction"]
 const SANDBOX_LIMIT := 10            ## a test run on your arena ends at this many K.O.s (the web Sandbox has no limit)
-## Short card text for the wizard (the web menu's BLURB, index.html ~3743), where the mode's `desc` is too long.
-const BLURB := {"pillars": "Start on pillars. A new weapon every 10 seconds. One life",
-	"explosive": "Explosives only. Always 300 health", "lowg": "Super low gravity. Float, soar and knock rivals around",
-	"practice": "Dummies to shoot and a rack of weapons. No score",
-	"sandbox": "Build your own arena with blocks, then play it with bots"}
+## Short card line per mode: data/extra/wizard.json `short` (word for word the web menu's BLURB, see docs/WRITING.md).
+const WIZARD_PATH := "res://data/extra/wizard.json"
+static var _shorts: Dictionary = {}
 ## Pillars (MODES.pillars, PIL_BAN, pillarGive): the weapons pillarGive hands out, in DROP_POOL order, with their WT
 ## weight (common 8, uncommon 6, rare 4, epic 2.5, legendary 2 by RARITY) = unique DROP_POOL minus PIL_BAN, heal and
 ## the power-ups (shared/modes.json cannot carry it: the web `allow` reads PIL_BAN, which the export does not see).
@@ -144,9 +142,16 @@ static func fixed_bots(mode_id: String, modes: Dictionary) -> int:
 	if mode_id == "practice": return 10
 	return -1
 
-## The wizard's card line for a mode (BLURB, else the mode's desc).
+## The card line for a mode (wizard.json `short`, else the mode's desc).
 static func blurb(mode_id: String, modes: Dictionary) -> String:
-	return str(BLURB.get(mode_id, modes.get(mode_id, {}).get("desc", "")))
+	if _shorts.is_empty():
+		var f := FileAccess.open(WIZARD_PATH, FileAccess.READ)
+		var d = JSON.parse_string(f.get_as_text()) if f else null
+		if d is Dictionary:
+			for k in d.get("modes", {}):
+				_shorts[k] = str(d["modes"][k].get("short", ""))
+	var s := str(_shorts.get(mode_id, ""))
+	return s if s != "" else str(modes.get(mode_id, {}).get("desc", ""))
 
 ## Players per side for `bots` bots (team modes; 0 = free for all).
 static func team_size(mode_id: String, modes: Dictionary, bots: int) -> int:

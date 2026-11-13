@@ -1,7 +1,7 @@
 {
  "classic": {
   "name": "Classic",
-  "desc": "Everything drops from the sky",
+  "desc": "Everything drops from the sky. Grab it before someone else does",
   "start": null,
   "allowWeapons": [
    "spatula",
@@ -33,7 +33,7 @@
  },
  "melee": {
   "name": "Melee Only",
-  "desc": "Bats, mallets and spring gloves",
+  "desc": "Bats, mallets and spring gloves. Get up close and personal",
   "start": null,
   "allowWeapons": [
    "bat",
@@ -44,7 +44,7 @@
  },
  "guns": {
   "name": "Guns Only",
-  "desc": "SMGs, shotguns, snipers and launchers",
+  "desc": "SMGs, shotguns, snipers and launchers. Pew pew",
   "start": "smg",
   "allowWeapons": [
    "shotgun",
@@ -64,7 +64,7 @@
  },
  "ninja": {
   "name": "Ninja",
-  "desc": "Shuriken, throwing knives, Typhoon Blades and the Ninja Katana, plus 3 dashes",
+  "desc": "Shuriken, throwing knives, Typhoon Blades and the Ninja Katana, plus 3 dashes. Very sneaky, very wobbly",
   "start": "shuriken",
   "allowWeapons": [
    "katana",
@@ -75,7 +75,7 @@
  },
  "duel": {
   "name": "1v1 Duel",
-  "desc": "You vs one bot. First to 5",
+  "desc": "You vs one bot. First to 5 K.O.s. No excuses",
   "teams": 1,
   "preset": {
    "limit": 5
@@ -147,7 +147,7 @@
  },
  "t3": {
   "name": "3v3",
-  "desc": "Squads of 3. First team to 15",
+  "desc": "Squads of 3. First team to 15 K.O.s",
   "teams": 3,
   "preset": {
    "limit": 15
@@ -183,7 +183,7 @@
  },
  "t4": {
   "name": "4v4",
-  "desc": "Big team fight. First team to 20",
+  "desc": "Big team fight. First team to 20 K.O.s. Bring snacks",
   "teams": 4,
   "preset": {
    "limit": 20
@@ -219,7 +219,7 @@
  },
  "explosive": {
   "name": "Explosive",
-  "desc": "Rockets and grenade launchers. Boom",
+  "desc": "Rockets and grenade launchers, and everyone has 300 health. Boom",
   "preset": {
    "hp": 300,
    "limit": 0,
@@ -237,7 +237,7 @@
  },
  "pillars": {
   "name": "Pillars",
-  "desc": "Start on tall pillars too far apart to jump (dash with any weapon!). Every 10 seconds a new weapon drops into your inventory. Fall or die and you are out. Most K.O.s when the 3 minutes end wins. No launchers, explosives or knockback guns",
+  "desc": "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon drops into your hands every 10 seconds. Fall or get K.O.'d and you're out. Most K.O.s after 3 minutes wins. No launchers, explosives or knockback guns",
   "pillars": true,
   "lives": 1,
   "kbMul": 0.4,
@@ -275,7 +275,7 @@
  },
  "giant": {
   "name": "Giant",
-  "desc": "Weapons are double size",
+  "desc": "Weapons are double size. Huge reach, huge hits, huge mess",
   "dmgMul": 2,
   "kbMul": 1.1,
   "preset": {
@@ -337,7 +337,7 @@
  },
  "sandbox": {
   "name": "Sandbox",
-  "desc": "Build your own arena, place blocks and mess about",
+  "desc": "Build your own arena with blocks, then play it with bots",
   "start": null,
   "allowWeapons": [
    "spatula",
@@ -369,7 +369,7 @@
  },
  "construction": {
   "name": "Construction",
-  "desc": "Tradies fight with hammers, live wire and air blowers on a worksite",
+  "desc": "Tradies fight with hammers, live wire and air blowers on a worksite. Hard hats recommended",
   "start": "hammer",
   "allowWeapons": [
    "blower",
