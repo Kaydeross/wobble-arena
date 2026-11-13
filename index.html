@@ -4425,7 +4425,7 @@ class Fighter {
       if (this.deathT <= 0) this.respawn();
     }
     if (this.kickT >= 0) this.kickStep(dt);
-    if (this.isPlayer && !this.dead && this.hp < maxHp() && simTime - this.lastHitTime > 4) this.hp = Math.min(maxHp(), this.hp + 8 * maxHp() / 100 * dt);
+    if (this.isPlayer && !this.dead && this.hp < maxHp() * 0.5 && simTime - this.lastHitTime > 6) this.hp = Math.min(maxHp() * 0.5, this.hp + 4 * maxHp() / 100 * dt); // slow, capped at 50%: hiding can not full-heal
   }
 
   respawn() {

@@ -369,8 +369,8 @@ func timers(f: FighterState, dt: float) -> void:
 		f.death_t -= dt
 		if f.death_t <= 0.0: respawn(f)
 	if f.kick_t >= 0.0: kick_step(f, dt)
-	if f.is_player and not f.dead and f.hp < max_hp(f) and time - f.last_hit_time > 4.0:
-		f.hp = minf(max_hp(f), f.hp + 8.0 * max_hp(f) / 100.0 * dt)
+	if f.is_player and not f.dead and f.hp < max_hp(f) * 0.5 and time - f.last_hit_time > 6.0:
+		f.hp = minf(max_hp(f) * 0.5, f.hp + 4.0 * max_hp(f) / 100.0 * dt)  # slow, capped at 50%: hiding can not full-heal
 
 func respawn(f: FighterState) -> void:
 	if f.elim:
