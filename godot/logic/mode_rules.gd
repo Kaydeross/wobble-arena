@@ -618,13 +618,13 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	if player == null: return ""
 	var t := ""
 	if c.mode.get("spectate", false):                       # Sudden Death: in or out, and how many are left
-		t = ("♥" if not player.elim else "Out") + " · %d left" % survivors().size()
+		t = ("Alive" if not player.elim else "Out") + " · %d left" % survivors().size()
 	elif c.mode_id == "pillars":                           # updateKoText: the K.O. count (one life, no hearts)
 		t = ("Out" if player.elim else "%d K.O.s" % player.ko) + " · %d left" % survivors().size()
 	elif not c.brawl:                                       # the Practice Range's dummies
 		t = "Practice · %d K.O.s" % player.ko
 	elif c.lives_mode:
-		t = "♥".repeat(player.lives) if player.lives > 0 else "Out"
+		t = "Lives %d" % player.lives if player.lives > 0 else "Out"
 	elif c.teams:
 		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
 			var mine := player.team
@@ -637,13 +637,13 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	elif not pil.is_empty() and not match_over:
 		extra = "%s · New weapon in %d" % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
 	elif chaos_text() != "":
-		extra = "⚡ " + chaos_text()
+		extra = "Event: " + chaos_text()
 	elif not shrink.is_empty() and not match_over:
 		var s := shrink
 		extra = "Arena %dm" % Combat.js_round(s["size"]) + (" · shrinking soon" if s["hold"] > 0.0 else (" · growing" if s["dir"] == 1 else (" · smallest" if s["size"] <= s["min"] else "")))
 	if dash_gear(player) and not player.dead:
-		extra += ("   " if extra != "" else "") + "Dash " + "◆".repeat(player.dash_n) + "◇".repeat(DASH_MAX - player.dash_n)
+		extra += ("   " if extra != "" else "") + "Dash " + "+".repeat(player.dash_n) + "-".repeat(DASH_MAX - player.dash_n)
 	var bh := Skills.burst_hud(c, player) if not player.dead else []   # weapon_tuning.json burst pool of the held weapon
 	if bh.size() > 0:
-		extra += ("   " if extra != "" else "") + "Shots " + "◆".repeat(bh[0]) + "◇".repeat(bh[1] - bh[0])
+		extra += ("   " if extra != "" else "") + "Shots " + "+".repeat(bh[0]) + "-".repeat(bh[1] - bh[0])
 	return t if extra == "" else (t + "   " + extra if t != "" else extra)
