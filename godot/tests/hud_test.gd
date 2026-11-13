@@ -40,6 +40,14 @@ func _run() -> void:
 		world.tick(FRAME)
 		_layout(world, hud, "lefty" if lefty else "right")
 	_settings().set_value("touch_lefty", false)
+	# air recovery: in the air without dash gear the context button becomes RECOVER (same slot, still <= 4 buttons)
+	var pl: FighterState = world.sim.player
+	pl.phys.place(pl.phys.px, 3.0, pl.phys.pz); pl.phys.grounded = false
+	world.touch._refresh_context()
+	check(world.touch.context_action() == "recover", "context button is recover in the air (%s)" % world.touch.context_action())
+	check(world.touch.visible_buttons().size() <= 4, "at most 4 action buttons in the air")
+	world.touch.queue_redraw()
+	await process_frame
 	# badges: shown after a key press, hidden after a touch
 	var k := InputEventKey.new(); k.keycode = KEY_A; k.pressed = true
 	root.window_input.emit(k)
@@ -220,8 +228,12 @@ func _team_layout() -> void:
 		await process_frame
 		var hud: Control = world.hud
 		hud.toast("Crate incoming: Mammoth Sniper Rifle!")
+		world.sim.combat.pickup(world.sim.player, "rocket")   # a burst weapon: the mode line also shows its "Shots" pips
 		for i in 90:
 			world.tick(FRAME)
+		var pl: FighterState = world.sim.player
+		if not pl.dead and pl.weapon == "rocket":
+			check(world.sim.combat.rules.hud_text(pl).contains("Shots"), "%s mode line shows the burst pips" % mode)
 		var vs: Vector2 = hud.get_viewport_rect().size
 		var ins: Array = SafeArea.override
 		var safe := Rect2(Vector2(ins[0], ins[1]), vs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))

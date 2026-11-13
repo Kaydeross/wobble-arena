@@ -45,6 +45,14 @@ var damage_rule := "classic"
 ## Online matches stay classic (web clients compute their own shots that way) unless every client knows the table.
 var net_zones := false
 
+# --- balance overlay (res://data/extra/weapon_tuning.json, docs/DAMAGE.md "Balance and cooldowns") ---
+## Weapon key -> the weapons.json entry with the overlay merged in (empty = no overlay: a bare Combat, the parity tests).
+## Used only while tuning_active(), the same gate as the zones rule, so web peers and the JS references keep the
+## shared numbers.
+var tuned_weapons := {}
+## Crate weight overrides (drops.json `base` keys), same gate.
+var tuned_drops := {}
+
 # --- net (filled by the net layer) ---
 var net_started := false
 var net_host := false
@@ -90,7 +98,27 @@ func set_mode(id: String) -> void:
 	mode = modes.get(id, {})
 
 func wdata(key: String) -> Dictionary:
+	if not tuned_weapons.is_empty() and zones_active():
+		var tw: Variant = tuned_weapons.get(key)
+		if tw != null: return tw
 	return weapons_data.get(key, {})
+
+## Merge a weapon_tuning.json overlay ({weapons: {key: {field: value}}, drops: {key: weight}}) over the loaded weapons.
+## Takes effect only while tuning_active().
+func apply_tuning(t: Variant) -> void:
+	tuned_weapons = {}; tuned_drops = {}
+	if not t is Dictionary: return
+	var ws: Dictionary = t.get("weapons", {})
+	for k: String in ws:
+		if not weapons_data.has(k): continue
+		var m: Dictionary = (weapons_data[k] as Dictionary).duplicate(true)
+		m.merge(ws[k], true)
+		tuned_weapons[k] = m
+	tuned_drops = (t.get("drops", {}) as Dictionary).duplicate()
+
+## True when the balance overlay is in use: one was loaded and the zones gate is open (offline / every client knows it).
+func tuning_active() -> bool:
+	return not tuned_weapons.is_empty() and zones_active()
 
 func is_friend(a: FighterState, b: FighterState) -> bool:
 	return teams != 0 and a != null and b != null and a != b and a.team == b.team
@@ -290,6 +318,7 @@ func topple(f: FighterState, dur: float, msg: String = "") -> bool:
 ## Fighter.timers: per-step countdowns. Not ported: emotes (visual only).
 func timers(f: FighterState, dt: float) -> void:
 	rules.dash_tick(f, dt)
+	Skills.tick(self, f, dt)
 	tick_reload(f, dt)
 	if f.spd_t > 0.0: f.spd_t -= dt
 	if f.rage_t > 0.0: f.rage_t -= dt
@@ -365,6 +394,7 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
 	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null
+	Skills.reset(f)
 	clear_inventory(f); set_weapon(f, "spatula")
 	var start: Variant = mode.get("start")
 	if start is String and start != "": pickup(f, start)
@@ -383,9 +413,12 @@ func equip_slot(f: FighterState, i: int) -> bool:
 		return false
 	if f.reloading and i != f.slot:
 		cancel_reload(f, true)         # swapped away mid-reload: it finishes when you come back
+	var was := f.weapon
 	f.slot = i
 	set_weapon(f, f.slots[i]["key"] if i >= 0 else "spatula")
 	if i >= 0: auto_reload(f)
+	var scd := float(wdata(f.weapon).get("swapCd", 0.0))   # tuning: heavy weapons need a moment to draw (no swap-cancel)
+	if scd > 0.0 and f.weapon != was: f.cool = maxf(f.cool, scd)
 	return true
 
 func clear_inventory(f: FighterState) -> void:
@@ -442,6 +475,7 @@ func drop_slot(f: FighterState) -> void:
 ## useAmmo: one shot spent (the Weapon Ladder never runs out of spare ammo).
 func use_ammo(f: FighterState) -> void:
 	f.st["shots"] += 1
+	Skills.burst_spend(self, f)
 	if inf:
 		return
 	if f.slot >= 0:

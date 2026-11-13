@@ -1,0 +1,14 @@
+{
+ "_note": "Godot-only balance overlay (docs/DAMAGE.md 'Balance and cooldowns'). Merged over weapons.json by MatchSim and used only while Combat.tuning_active() (offline, or online with net_zones), so the JS parity tests and web peers keep the shared numbers. Optional fields: burst {n, regen} = n shots, then one charge back every regen s; swapCd = draw time after equipping.",
+ "weapons": {
+  "mammoth": {"headMul": 8, "cooldown": 1.4, "swapCd": 0.45},
+  "meteor": {"cooldown": 3.2, "ammo": 2, "swapCd": 0.6, "burst": {"n": 1, "regen": 6}},
+  "rocket": {"cooldown": 1.8, "ammo": 3, "swapCd": 0.45, "burst": {"n": 2, "regen": 5}},
+  "glauncher": {"cooldown": 1.15, "ammo": 4, "swapCd": 0.35, "burst": {"n": 3, "regen": 4}},
+  "cluster": {"cooldown": 1.5, "ammo": 3, "swapCd": 0.35, "burst": {"n": 2, "regen": 4.5}},
+  "minigun": {"force": 1.4, "maxForce": 1.8},
+  "snow": {"force": 24},
+  "mallet": {"force": 26, "topple": 0.75}
+ },
+ "drops": {"meteor": 0.6}
+}

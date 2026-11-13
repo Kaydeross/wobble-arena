@@ -15,6 +15,7 @@ const BOT_POOL := ["Bot Wibble", "Bot Bonk", "Bot Gus", "Bot Pip", "Bot Moxie", 
 	"Bot Pickles", "Bot Doink", "Bot Muffin", "Bot Sprocket", "Bot Nugget", "Bot Tater", "Bot Blorp", "Bot Wumpus", "Bot Pogo",
 	"Bot Crumb", "Bot Zigzag"]
 const RING_OUT_Y := -25.0
+const TUNING_PATH := "res://data/extra/weapon_tuning.json"   ## Godot-only balance overlay (docs/DAMAGE.md)
 
 var combat := Combat.new()
 var pickups: Pickups
@@ -46,6 +47,7 @@ var think_us := 0
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
 	combat.damage_rule = "zones"      # per-body-part damage offline; Combat.zones_active() falls back to classic online
+	combat.apply_tuning(Combat.read_json(TUNING_PATH) if FileAccess.file_exists(TUNING_PATH) else null)   # same gate (Combat.tuning_active)
 	pickups = Pickups.new(combat, Combat.read_json(content_dir.path_join("drops.json")), Combat.read_json(content_dir.path_join("crate-rates.json")))
 
 ## The game mode (pickMode + setBotCfg): rules, teams, lives, K.O. limit (`limit` < 0 = the mode's preset). Call before

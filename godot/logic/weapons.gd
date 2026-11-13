@@ -147,7 +147,7 @@ func try_fire(f: FighterState, aim_point: Array = []) -> bool:
 		var gs: Variant = f.current_slot()
 		if gs != null and w.get("mag", 0) and int(gs["mag"]) >= 0 and not combat.inf:
 			if int(gs["mag"]) <= 0 and int(gs["ammo"]) > 0 and not f.reloading: combat.start_reload(f)   # trigger on an empty gun
-		if f.cool > 0.0 or f.swing >= 0.0 or f.reloading: return false
+		if f.cool > 0.0 or f.swing >= 0.0 or f.reloading or not Skills.burst_ready(combat, f): return false
 		f.cool = float(w["cooldown"]); fire_gun(f, f.weapon, aim_point); combat.use_ammo(f)
 		return true
 	if t == "boomerang":              # playerControl: no ammo spent here (releaseBoomerang counts the throw)
@@ -155,7 +155,7 @@ func try_fire(f: FighterState, aim_point: Array = []) -> bool:
 		f.cool = float(w["cooldown"]); throw_boomerang(f, f.weapon, aim_point)
 		return true
 	if LAUNCH.has(t):
-		if f.cool > 0.0 or f.swing >= 0.0 or (t == "typhoon" and ty_in_flight(f)): return false
+		if f.cool > 0.0 or f.swing >= 0.0 or (t == "typhoon" and ty_in_flight(f)) or not Skills.burst_ready(combat, f): return false
 		f.cool = float(w["cooldown"]); call(LAUNCH[t], f, f.weapon, aim_point); combat.use_ammo(f)
 		return true
 	push_warning("Weapons.try_fire: type '%s' not ported yet" % t)
@@ -388,7 +388,8 @@ func gun_tick(f: FighterState, held: bool, dt: float, aim_point: Array = []) -> 
 		if int(gs["mag"]) <= 0 and int(gs["ammo"]) > 0 and not f.reloading: combat.start_reload(f)
 	var spinup := float(w.get("spinup", 0.0))
 	if spinup != 0.0: f.spin = minf(spinup, f.spin + dt) if held else maxf(0.0, f.spin - dt * 2.0)
-	if held and f.cool <= 0.0 and f.swing < 0.0 and not f.reloading and (spinup == 0.0 or f.spin >= spinup):
+	if held and f.cool <= 0.0 and f.swing < 0.0 and not f.reloading and (spinup == 0.0 or f.spin >= spinup) \
+			and Skills.burst_ready(combat, f):
 		f.cool = float(w["cooldown"]); fire_gun(f, f.weapon, aim_point); combat.use_ammo(f)
 
 ## Fighter.fireGun. `aim_point` = the crosshair point for the player ([] for bots). Styles: plain hitscan (incl.

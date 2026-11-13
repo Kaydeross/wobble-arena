@@ -29,6 +29,12 @@ var gg_rung := 0                 ## Weapon Ladder rung (ModeRules.GG index)
 var dash_n := 3                  ## ninja dash charges (ModeRules.DASH_MAX)
 var dash_regen := 0.0
 var dash_cd := 0.0
+## Generic skill timers (logic/skills.gd), Godot-only and empty by default so the parity paths never see them.
+## skill_n: charges left per skill id ("recover", "b:<weapon>" = a weapon's burst pool); a missing id = full.
+## skill_cd: seconds until the next charge comes back, per skill id.
+var skill_n := {}
+var skill_cd := {}
+var recover_air_t := 0.0         ## air recovery: boosted air control while > 0 (FighterPhysics counts it down)
 
 # --- class (shared/classes.json) ---
 var class_id := "wobbler"

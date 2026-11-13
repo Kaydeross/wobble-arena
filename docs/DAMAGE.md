@@ -37,3 +37,40 @@ The multiplier is applied to the weapon damage before `Combat.hit()`; class, rag
 ## Tests
 
 `npm run test:godot-damage` (`godot/tests/damage_test.gd`): zone geometry (incl. turned and giant victims), every part on hitscan, a `headMul` gun, knife, arrow and melee under both rules, splash without a part, and the online fallback.
+
+## Balance and cooldowns
+
+Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` are untouched. `godot/data/extra/weapon_tuning.json` is an overlay that `MatchSim._init` merges (`Combat.apply_tuning`) next to `damage_rule = "zones"`. It is used only while `Combat.tuning_active()`, which is the same gate as the zones table (`zones_active()`): offline matches, or online with `net_zones`. A bare `Combat` (the JS parity tests, `combat_test`) and any match on the classic rule (`bots_parity_test`) see the shared numbers. Online, web peers keep the old numbers too; damage is computed by the attacker, so a Godot player online also uses the web numbers until `net_zones` is turned on.
+
+### Tuning table (overlay vs shared)
+
+| Weapon | Field | Shared | Tuned | Why |
+| --- | --- | --- | --- | --- |
+| Mammoth Pistol | `headMul` | 15.33 (230 head) | 8 (120 head; 144 for a Bruiser) | headshot was a one-shot at 200 HP |
+| | `cooldown` | 0.9 s | 1.4 s | |
+| | `swapCd` | - | 0.45 s | |
+| Meteor Launcher | `cooldown` / `ammo` | 2 s / 3 | 3.2 s / 2 | strongest splash in the game |
+| | `burst` / `swapCd` | - | {n 1, regen 6 s} / 0.6 s | |
+| Rocket Launcher | `cooldown` / `ammo` | 1.25 s / 4 | 1.8 s / 3 | |
+| | `burst` / `swapCd` | - | {n 2, regen 5 s} / 0.45 s | |
+| Grenade Launcher | `cooldown` / `ammo` | 0.85 s / 6 | 1.15 s / 4 | |
+| | `burst` / `swapCd` | - | {n 3, regen 4 s} / 0.35 s | |
+| Cluster Launcher | `cooldown` / `ammo` | 1.1 s / 4 | 1.5 s / 3 | |
+| | `burst` / `swapCd` | - | {n 2, regen 4.5 s} / 0.35 s | |
+| Minigun | `force` / `maxForce` | 2 / 2.6 | 1.4 / 1.8 | a held stream pushed people off ledges |
+| Snowball Cannon | `force` | 30 | 24 | |
+| Giant Mallet | `force` / `topple` | 30 / 0.85 | 26 / 0.75 | |
+| crates | Meteor weight (`drops.json` base) | 1.4 | 0.6 | `drops` in the overlay, read by `Pickups.pick_crate_key` |
+
+### Optional weapon fields (overlay only)
+
+- `burst {n, regen}`: a charge pool per weapon key (cloned from the ninja dash charges). Each shot spends a charge (`Combat.use_ammo` -> `Skills.burst_spend`); with no charge left `Weapons.try_fire` / `gun_tick` refuse to fire; one charge comes back every `regen` s. The pool survives weapon swaps (no refill by swapping) and resets on a new life. The HUD mode line shows `Shots ◆◆◇` while such a weapon is held (`ModeRules.hud_text`).
+- `swapCd`: draw time. `Combat.equip_slot` sets `cool = max(cool, swapCd)` when this weapon comes into the hand, so fire-swap-fire chains between heavy weapons are gone.
+
+### Skills (`godot/logic/skills.gd`)
+
+Per-fighter timers `FighterState.skill_n` (charges, a missing id = full) and `skill_cd` (seconds to the next charge), ticked by `Combat.timers` (`Skills.tick`), cleared by `Combat.place_at`. Nothing in `Skills` draws a random number.
+
+**Air recovery ("boing burst")**: the `recover` tap (touch: the contextual button turns into RECOVER in the air when no dash weapon is held, with a ring while the charge comes back; keyboard X; the dash key / pad left shoulder also recovers in the air without dash gear). Allowed when airborne, alive, not knocked down, not trapped, not on a ladder, at least 0.2 s after the last hit, with the charge (1; back on landing or after 6 s), and not below `ring_out_y * 0.25` (a ledge knock can be saved, a free fall cannot). Effect: stun cleared, the knock's horizontal speed x0.3 plus a 13 m/s burst toward the stick (or the arena centre with no stick), `vy = max(vy, 8)`, 0.5 s of boosted air control (`FighterState.recover_air_t`, read by `FighterPhysics.step`: air acceleration 22 toward up to 12 m/s, momentum kept with no stick; default 0 keeps the physics parity), 0.2 s invulnerability, dash puff + swing sound. Bots do not use it. No protocol change: the state snapshot already carries the velocity.
+
+Tests: `npm run test:godot-skills` (`godot/tests/skills_test.gd`).
