@@ -16,7 +16,7 @@ tools/build-ios.sh --simulator     # export + unsigned build, install/launch in 
 tools/build-ios.sh --export-only   # only the Godot export      -> build/ios/xcode/WobbleArena.xcodeproj
 tools/build-ios.sh --skip-export   # reuse the last export (e.g. after fixing signing)
 BUILD_NUMBER=60 tools/build-ios.sh # override the build number (default: git commit count)
-                                   # 0.2.0 started a new TestFlight train: its first build is BUILD_NUMBER=1, then 2, 3 ... (reset again when the version changes)
+                                   # 0.3.0 starts a new TestFlight train at BUILD_NUMBER=1: builds are named 0.3.0 (1), (2), (3) ... (0.2.0 ended at build 16; reset again when the version changes)
 SIM_DEVICE="iPhone 17e" tools/build-ios.sh --simulator
 ```
 

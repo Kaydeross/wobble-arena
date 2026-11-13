@@ -5,7 +5,7 @@ config_version=5
 config/name="Wobblers Arena"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
-config/version="0.2.0"
+config/version="0.3.0"
 config/icon="res://icon.png"
 ; Launch: the two-line logo (ui/brand/launch_logo.png, rendered by tools/shoot-godot-brand.sh) on the panel teal,
 ; matching the iOS launch storyboard and Android splash (export_presets.cfg).
