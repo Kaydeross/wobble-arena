@@ -543,6 +543,11 @@ func _difficulties() -> void:
 			var nt: float = arcs["nightmare"].enemy_hp(h, isb)
 			if not (e < nm and nm < nt and is_equal_approx(nt, h)): bad += 1; print("FAIL hp order %s %s: %.2f %.2f %.2f" % [st["id"], st["bots"][i]["name"], e, nm, nt])
 	check(bad == 0, "Easy < Normal < Nightmare health for every enemy and boss")
+	# the boss ladder climbs: Engineer < Designer < Supervisor at every difficulty
+	for k: String in ["normal", "nightmare"]:
+		var hs: Array = []
+		for i in [1, 2, 3]: hs.append(arcs[k].enemy_hp(float(stages[i]["bots"][0]["hp"]), true))
+		check(hs[0] < hs[1] and hs[1] < hs[2], "%s boss health climbs Engineer %.2f < Designer %.2f < Supervisor %.2f" % [k, hs[0], hs[1], hs[2]])
 	# the fighters really get them
 	for k: String in ["easy", "nightmare"]:
 		var w := _launch(1, false, 1.0, k)
@@ -550,6 +555,13 @@ func _difficulties() -> void:
 		var b: FighterState = w.arcade.boss
 		var h0: float = float(stages[1]["bots"][0]["hp"])
 		check(is_equal_approx(b.cls_hp, w.arcade.enemy_hp(h0, true)), "%s Engineer health multiplier %.2f" % [k, b.cls_hp])
+		var want_heal := 0.05 if k == "easy" else 0.10
+		check(is_equal_approx(b.heal_frac, want_heal), "%s: a Health Pack heals the boss %.0f %%" % [k, b.heal_frac * 100.0])
+		var mx: float = w.sim.combat.max_hp(b)
+		b.hp = mx * 0.2
+		w.sim.pickups._take(b, "heal")
+		check(absf(b.hp - mx * (0.2 + want_heal)) < 0.01, "%s: the pack really gave the boss %.0f %% (hp %.1f of %.1f)" % [k, want_heal * 100.0, b.hp, mx])
+		check(w.sim.player.heal_frac == 0.6, "the player's Health Pack stays 60 %")
 		check(is_equal_approx(w.arcade.lives, want[k][0]), "%s lives in the run" % k)
 		var ev = w.arcade.events
 		var le: Dictionary = ev.evs[0]

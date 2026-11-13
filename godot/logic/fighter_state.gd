@@ -39,6 +39,7 @@ var recover_air_t := 0.0         ## air recovery: boosted air control while > 0 
 # --- class (shared/classes.json) ---
 var class_id := "wobbler"
 var cls_hp := 1.0
+var heal_frac := 0.6            ## share of max health a Health Pack gives this fighter (Arcade enemies get less, per difficulty)
 var cls_dmg := 1.0
 var cls_kb := 1.0
 var cls_rate := 1.0
