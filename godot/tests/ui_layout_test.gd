@@ -50,14 +50,15 @@ const CASES := [
 const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
 	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
 	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1", "s2", "goals",
-	"a-guest", "a-login", "a-reset", "a-code", "a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict"]
+	"a-guest", "a-login", "a-reset", "a-code", "a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict",
+	"dlc-locked", "dlc-owned", "dlc-pre", "dlc-code"]
 const SIGNED := ["a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
 const MIN_GAP_PT := 8.0      ## pt: the least space between two interactive controls (congestion pass)
 const MAX_BAR := 4           ## the most buttons in one bar (footer, header, card row)
 ## Languages beyond English (the longest, and the shortest, text): on these screens at LANG_CASES
 const LANG_SCREENS := ["title", "online", "rooms", "w0", "w1", "w2", "w3", "w4", "l0", "l3", "s0", "goals", "set-controls", "set-graphics",
-	"set-gameplay", "set-about", "help", "pause", "pause-help", "host", "host-rules", "lobby", "a-guest"]
+	"set-gameplay", "set-about", "help", "pause", "pause-help", "host", "host-rules", "lobby", "a-guest", "dlc-locked", "dlc-owned", "dlc-pre", "dlc-code"]
 const LANG_CASES := [
 	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]], [Vector2(812, 375), [44.0, 0.0, 44.0, 21.0]], [Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
 	[Vector2(926, 428), [47.0, 0.0, 47.0, 21.0]], [Vector2(1180, 820), [0.0, 24.0, 0.0, 20.0]],
@@ -71,7 +72,7 @@ var min_pt := {}
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
 const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop",
-	"Safe/Col/Body/Home/More/Goals"]
+	"Safe/Col/Body/Home/More/Goals", "Safe/Col/Body/Home/Construction"]
 const OB := "Safe/Col/Body/Online/Box/"
 ## the online panel (back, name, the room list, join with a code, host, account, status, roster): must not overlap
 const ONLINE := [OB + "Head/Back", OB + "Head/Title", OB + "Head/Name", OB + "Main/Rooms/Head/Refresh", OB + "Main/Rooms/Scroll",
@@ -201,6 +202,17 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	elif scr == "goals":
 		main.open_goals()
 		over = main.goals; over_col = main.goals.col; over_scroll = main.goals.scroll
+	elif scr.begins_with("dlc-"):        # the Construction hub: locked, unlocked, the Classic pre-match card, the code sheet
+		var sv: Node = root.get_node("Save")
+		sv.coins = 2300
+		sv.dlc["owned"] = scr == "dlc-owned" or scr == "dlc-pre"
+		main.open_hub()
+		if scr == "dlc-pre": main.hub.open_pre()
+		if scr == "dlc-code":
+			main.hub.open_code()
+			over = main.hub.code_sheet.card; over_col = main.hub.code_sheet.card
+		else:
+			over = main.hub; over_col = main.hub.col
 	elif scr.begins_with("intro"):
 		main.intro.open()
 		main.intro.go(int(scr.substr(5)))
@@ -288,7 +300,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 		groups.append(WFRAME)
 	else:
 		var on_panel := scr in ["online", "lobby"] or scr.begins_with("rooms") or scr.begins_with("host")
-		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not (on_panel and (b.ends_with("/Tip") or b.ends_with("/Build"))))
+		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not ((on_panel and (b.ends_with("/Tip") or b.ends_with("/Build"))) or (b.ends_with("/Tip") and not main.get_node(b).visible)))
 		inside = blocks + (ONLINE if on_panel else HOME)
 		groups.append(blocks)
 		if scr == "online" or scr.begins_with("rooms"):
@@ -566,7 +578,7 @@ func _logic() -> void:
 	var names: Array = []
 	for m: String in w.modes(): names.append(m)
 	for m: String in ModeRules.PLAYABLE: check(names.has(m), "wizard offers %s" % m)
-	check(names.has("construction"), "wizard offers construction")
+	check(not names.has("construction"), "Construction is not a normal game type card (it lives behind the title banner)")
 	check(w._mode_bs.size() == names.size(), "a card per mode")
 	var in_secs: Array = []
 	for sec: Array in w.sections():

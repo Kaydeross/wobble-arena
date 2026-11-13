@@ -35,6 +35,9 @@ var ctl := {}                     ## Settings key -> its control (CheckButton / 
 var ui := {}                      ## other named controls of the current section ("help", "intro", "account", ...)
 var help: ControlsHelp
 var intro: IntroCards
+var code_sheet: DlcCodeSheet      ## the Construction code field: tap the version line 7 times in About (not in a match)
+var _ver_taps := 0
+var _ver_t := 0
 
 func _init() -> void:
 	super._init()
@@ -89,6 +92,9 @@ func _ready() -> void:
 	intro = IntroCards.new()
 	add_child(intro)
 	intro.closed.connect(_focus_tab)
+	code_sheet = DlcCodeSheet.new()
+	add_child(code_sheet)
+	code_sheet.closed.connect(_focus_tab)
 	Settings.changed.connect(_on_setting)
 	super._ready()
 	show_section(section)
@@ -103,6 +109,7 @@ func open_section(s: String) -> void:
 
 ## One step back: the controls picture or the how-to first, then the screen.
 func back() -> bool:
+	if code_sheet.visible: return code_sheet.back()
 	if intro.visible: intro.finish(); return true
 	if help.visible: help.close(); return true
 	close()
@@ -166,6 +173,10 @@ func show_section(s: String) -> void:
 				_buttons("Open", [["account", "Open account", func() -> void: account_requested.emit()]])
 		"about":
 			_info("Version", "Wobblers Arena", version_text())
+			var vl := rows.get_node_or_null("Row_Version/Words/Sub") as Label
+			if vl and not in_match:
+				vl.mouse_filter = Control.MOUSE_FILTER_STOP
+				vl.gui_input.connect(_on_version_input)
 			var links: Array = [["privacy", "Privacy policy", func() -> void: OS.shell_open(PRIVACY_URL)]]
 			if not in_match: links.insert(0, ["news", "What's new", func() -> void: news_requested.emit()])   # the patch notes (moved off the title)
 			_buttons("Links", links)
@@ -389,6 +400,19 @@ func _server_extras() -> void:
 	rows.add_child(lab)
 	ui["server_active"] = lab
 	_buttons("server_reset", [["server_reset", "Reset to default", func() -> void: Settings.reset("server_url")]])
+
+func _on_version_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: version_tap()
+
+## One tap on the version line: seven taps in a row (each within 2.5 s of the last) open the Construction code field.
+func version_tap() -> void:
+	var now := Time.get_ticks_msec()
+	if now - _ver_t > 2500: _ver_taps = 0
+	_ver_t = now
+	_ver_taps += 1
+	if _ver_taps >= 7:
+		_ver_taps = 0
+		code_sheet.open()
 
 ## A tap on a row's words flips its switch (the switch itself takes taps too).
 func _on_row_tapped(c: Control) -> void:
