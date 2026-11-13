@@ -431,6 +431,11 @@ func spawn_minion(name_hint: String = "") -> FighterState:
 		if name_hint != "" and str(s["name"]) == name_hint: spec = s
 	var f := sim.add_fighter("wobbler")
 	var spots: Array = sim.map.get("bots", []) + sim.map.get("spawns", [])
+	var sh: Dictionary = sim.combat.rules.shrink       # the Project Manager's closing floor: only spots still on it
+	if not sh.is_empty():
+		var half := float(sh["size"]) / 2.0 - 2.5
+		spots = spots.filter(func(sp: Array) -> bool: return absf(float(sp[0])) <= half and absf(float(sp[1])) <= half)
+		if spots.is_empty(): spots = [[0.0, 0.0]]
 	var best: Array = [0.0, 0.0]
 	var far := -1.0
 	for k in 6:                                # a bot spot, the farthest of a few picks from the player
