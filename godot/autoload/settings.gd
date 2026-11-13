@@ -71,6 +71,18 @@ func _init() -> void:
 		persist = false
 		return
 	_cfg.load(PATH)   # missing file = defaults
+	if migrate_server_url(_cfg, server_default()):
+		_cfg.save(PATH)
+
+## Builds before 0.2.0 (15) stored the dev address as the player's server. When this build ships a different default,
+## drop that stale localhost value so the player gets the real server. Returns true when it changed `cfg`.
+static func migrate_server_url(cfg: ConfigFile, shipped_default: String) -> bool:
+	if shipped_default == DEV_SERVER_URL or not cfg.has_section_key(SECTION, "server_url"):
+		return false
+	if str(cfg.get_value(SECTION, "server_url")).strip_edges() != DEV_SERVER_URL:
+		return false
+	cfg.erase_section_key(SECTION, "server_url")
+	return true
 
 ## The server a fresh install connects to: the configured production url in release exports, else the dev address.
 ## `config_path` and `release` are parameters so tests can exercise the release path in the editor.
