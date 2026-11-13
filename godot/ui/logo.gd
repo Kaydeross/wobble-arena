@@ -14,8 +14,17 @@ const WHITE := Color(1, 1, 1)
 const YELLOW := Color(1.0, 0.812, 0.353)
 const INK := Color(0.0627, 0.1686, 0.2078)
 
+var col_a := WHITE      ## even letters
+var col_b := YELLOW     ## odd letters
+var ink := INK          ## outline
+
 var _t := 0.0
 var _font: Font
+
+## Recolour the letters (the Construction DLC title uses hazard yellow / concrete on near-black).
+func set_palette(a: Color, b: Color, outline_col: Color) -> void:
+	col_a = a; col_b = b; ink = outline_col
+	queue_redraw()
 
 func _ready() -> void:
 	_font = UiTheme.font(700)
@@ -66,9 +75,9 @@ func _draw() -> void:
 				var c := Vector2(x + a / 2.0, base_y - asc * 0.35 + bob)
 				draw_set_transform(c, rot, Vector2.ONE)
 				var o := Vector2(-a / 2.0, asc * 0.35)
-				var fill := WHITE if idx % 2 == 0 else YELLOW
+				var fill := col_a if idx % 2 == 0 else col_b
 				draw_string_outline(_font, o + Vector2(0, font_size * 0.09), ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ow, Color(0, 0, 0, 0.35))
-				draw_string_outline(_font, o, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ow, INK)
+				draw_string_outline(_font, o, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, ow, ink)
 				draw_string(_font, o, ch, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill)
 				idx += 1
 			x += a

@@ -14,7 +14,7 @@ const CASES := [
 	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0]],
 ]
 ## Controls (paths under Main) that must not overlap each other.
-const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Body/Play", "Safe/Col/Body/Picks", "Safe/Col/Tip", "Safe/Col/Build"]
+const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Body/Play", "Safe/Col/Body/Picks", "Safe/Col/Tip", "Safe/Col/Foot/DontEnter", "Safe/Col/Foot/Build"]
 const PB := "Safe/Col/Body/Picks/Box/"
 const TABS := [PB + "Tabs/OfflineTab", PB + "Tabs/OnlineTab"]
 const OFFLINE := [PB + "Offline/ClassRow/Class", PB + "Offline/MapRow/Map", PB + "Offline/FpsRow/Fps"]
@@ -41,12 +41,13 @@ func _run() -> void:
 	for c: Array in CASES:
 		for with_insets in [false, true]:
 			for online in [false, true]:
-				await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], online)
+				for dlc in [false, true]:
+					await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], online, dlc)
 	SafeArea.override = []
 	print("UI ok" if fails == 0 else "UI layout checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
 
-func _case(win: Vector2, ins_pt: Array, online: bool) -> void:
+func _case(win: Vector2, ins_pt: Array, online: bool, dlc := false) -> void:
 	var cs := canvas_size(win)
 	var k := cs.x / win.x
 	var ins := [ins_pt[0] * k, ins_pt[1] * k, ins_pt[2] * k, ins_pt[3] * k]
@@ -58,10 +59,11 @@ func _case(win: Vector2, ins_pt: Array, online: bool) -> void:
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	vp.add_child(main)
 	main.show_tab(online)
+	if dlc: main.set_dlc(true, false)   # the Construction DLC title (wider logo text, EXIT SITE sign)
 	if online: main.get_node(PB + "Online/Roster").text = "In the room: Alice, Bob, Carol"
 	for i in 4:
 		await process_frame
-	var tag := "%dx%d%s%s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else "", " online" if online else ""]
+	var tag := "%dx%d%s%s%s" % [win.x, win.y, " safe" if ins_pt != [0.0, 0.0, 0.0, 0.0] else "", " online" if online else "", " dlc" if dlc else ""]
 	var inside: Array = TABS + (ONLINE if online else OFFLINE)
 	var safe := Rect2(Vector2(ins[0], ins[1]), cs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
 	var rects := {}

@@ -7,6 +7,7 @@ extends Control
 
 const WORLD := "res://world/world.tscn"
 const OFFLINE_MAPS := ["arena", "practice"]
+const DLC_MAPS := ["siteyard"]            ## Construction DLC: the Site Yard worksite
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
 const TIPS := [
 	"Tip: push the stick to the edge to sprint.",
@@ -14,6 +15,11 @@ const TIPS := [
 	"Tip: crates drop weapons, heals and power-ups.",
 	"Tip: kick and shove work even without a weapon.",
 	"Tip: press F3 (or tap with three fingers) to show the FPS meter.",
+]
+const DLC_TIPS := [
+	"Hard hats on. Mind the open edges: one big swing and you are off the slab.",
+	"Scaffold towers and timber stacks make good cover.",
+	"Site rule: knock fighters off the slab for a K.O.",
 ]
 
 ## Set by the world when it hands an active session back (host migration) and/or a message to show.
@@ -31,14 +37,16 @@ const P := "Safe/Col/Body/Picks/Box/"
 @onready var status: Label = get_node(P + "Online/Status")
 @onready var play: Button = $Safe/Col/Body/Play
 var class_ids: Array = []
+var dlc := false                 ## Construction DLC title showing (never saved: the app always opens on the normal title)
+var _maps: Array = OFFLINE_MAPS
+var _sign: DontEnterSign
+var _wipe: DlcTransition
+var _sub_default := ""
 var _ui := {}
 var _api: AccountApi
 
 func _ready() -> void:
-	for id in OFFLINE_MAPS:
-		map_pick.add_item(str(Content.get_map(id).get("name", id)))
-	var last := OFFLINE_MAPS.find(str(Settings.get_value("offline_map", "arena")))
-	map_pick.select(maxi(last, 0))
+	_fill_maps()
 	class_ids = Content.classes.keys()
 	for cid in class_ids:
 		class_pick.add_item(str(Content.get_class_data(cid).get("name", cid)))
@@ -57,6 +65,7 @@ func _ready() -> void:
 	add_child(_api)
 	_api.finished.connect(func(_ok: bool, msg: String) -> void: _status(msg); _refresh_login())
 	_build_online()
+	_build_dlc()
 	_status(notice if notice != "" else "Join a friend's room.")
 	if session != null:
 		_bind_session()
@@ -211,10 +220,83 @@ func _enter_match(s: Dictionary) -> void:
 
 func play_offline() -> void:
 	if session != null: session.leave("")
-	var id: String = OFFLINE_MAPS[maxi(map_pick.selected, 0)]
-	Settings.set_value("offline_map", id)
+	var id: String = _maps[maxi(map_pick.selected, 0)]
+	if not dlc: Settings.set_value("offline_map", id)
 	if class_ids.size() > 0:
 		Settings.set_value("class", class_ids[maxi(class_pick.selected, 0)])
 	var world: Node = load(WORLD).instantiate()
 	world.map_id = id
 	get_tree().change_scene_to_node(world)
+
+# ---------------- Construction DLC ----------------
+
+## Map picker for the current title: the normal arenas, or the DLC worksite.
+func _fill_maps() -> void:
+	_maps = DLC_MAPS if dlc else OFFLINE_MAPS
+	map_pick.clear()
+	for id in _maps:
+		map_pick.add_item(str(Content.get_map(id).get("name", id)))
+	var last := _maps.find(str(Settings.get_value("offline_map", "arena"))) if not dlc else 0
+	map_pick.select(maxi(last, 0))
+
+## The "DON'T ENTER" sign in the header and the tape-wipe overlay.
+func _build_dlc() -> void:
+	_sub_default = $Safe/Col/Body/Play/Stack/Sub.text
+	_sign = DontEnterSign.new()
+	_sign.name = "DontEnter"
+	_sign.pressed.connect(toggle_dlc)
+	# footer row: the sign on the left, the build label on the right (the header row has no spare width on phones)
+	var col: VBoxContainer = $Safe/Col
+	var build: Label = $Safe/Col/Build
+	var foot := HBoxContainer.new()
+	foot.name = "Foot"
+	col.add_child(foot)
+	col.move_child(foot, build.get_index())
+	build.reparent(foot, false)
+	build.size_flags_vertical = Control.SIZE_SHRINK_END
+	_sign.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	foot.add_child(_sign)
+	foot.move_child(_sign, 0)
+	var gap := Control.new()
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	foot.add_child(gap)
+	foot.move_child(gap, 1)
+	_wipe = DlcTransition.new()
+	_wipe.name = "Wipe"
+	add_child(_wipe)
+
+func toggle_dlc() -> void:
+	set_dlc(not dlc)
+
+## Switch between the normal and the Construction title. Animated: hazard tape sweeps across, the title changes
+## under it, the tape clears and the logo and PLAY button drop in.
+func set_dlc(on: bool, animated := true) -> void:
+	if on == dlc or _wipe.busy: return
+	if not animated:
+		_apply_dlc(on)
+		return
+	_wipe.banner = "CONSTRUCTION SITE" if on else "BACK TO THE ARENA"
+	_wipe.run(_apply_dlc.bind(on), _drop_in)
+
+func _apply_dlc(on: bool) -> void:
+	dlc = on
+	$Background.mix = 1.0 if on else 0.0
+	var logo: WobbleLogo = $Safe/Col/Top/Logo
+	if on: logo.set_palette(Color(0.92, 0.9, 0.84), Hazard.YELLOW, Color(0.1, 0.08, 0.06))
+	else: logo.set_palette(WobbleLogo.WHITE, WobbleLogo.YELLOW, WobbleLogo.INK)
+	_sign.label = "EXIT SITE" if on else "DON'T ENTER"
+	_sign.tooltip_text = _sign.label.capitalize()
+	$Safe/Col/Body/Play/Stack/Sub.text = "Site Yard vs bots" if on else _sub_default
+	$Safe/Col/Tip.text = (DLC_TIPS if on else TIPS)[randi() % (DLC_TIPS if on else TIPS).size()]
+	_fill_maps()
+
+## Logo and PLAY button thump in after the tape clears.
+func _drop_in() -> void:
+	for n: Control in [$Safe/Col/Top/Logo, $Safe/Col/Body/Play]:
+		n.pivot_offset = n.size / 2.0
+		n.scale = Vector2.ONE * 1.18
+		n.modulate.a = 0.0
+		var tw := n.create_tween().set_parallel(true)
+		tw.tween_property(n, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(n, "modulate:a", 1.0, 0.2)

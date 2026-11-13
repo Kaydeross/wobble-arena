@@ -23,9 +23,11 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
-	if shot == "title" or shot == "title-online":
+	if shot == "title" or shot == "title-online" or shot == "title-dlc":
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
+		if shot == "title-dlc":
+			m.set_dlc(true, false)
 		if shot == "title-online":
 			m.show_tab(true)
 			m.get_node("Safe/Col/Body/Picks/Box/Online/Roster").text = "In the room: Alice, Bob"
