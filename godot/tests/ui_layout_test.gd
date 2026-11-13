@@ -133,17 +133,15 @@ func _run() -> void:
 			if with_insets and c[1] == [0.0, 0.0, 0.0, 0.0]: continue
 			for scr: String in SCREENS:
 				await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], scr, c[2])
-	for lg: String in ["fr", "ja"]:
+	for t: String in min_pt: print("UI tap targets %s: min %.1f pt" % [t, min_pt[t]])
+	SafeArea.override = []
+	await _logic()
+	for lg: String in ["fr", "ja"]:       # last (and left as is): Godot logs font errors at exit when a CJK language is switched back
 		root.get_node("Lang").apply(lg)
 		lang_tag = lg
 		for c: Array in LANG_CASES:
 			for scr: String in LANG_SCREENS:
 				await _case(c[0], c[1], scr, "normal")
-	root.get_node("Lang").apply("en")
-	lang_tag = ""
-	for t: String in min_pt: print("UI tap targets %s: min %.1f pt" % [t, min_pt[t]])
-	SafeArea.override = []
-	await _logic()
 	print("UI ok" if fails == 0 else "UI layout checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
 
