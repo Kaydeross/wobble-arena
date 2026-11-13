@@ -67,6 +67,16 @@ Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` ar
 - `burst {n, regen}`: a charge pool per weapon key (cloned from the ninja dash charges). Each shot spends a charge (`Combat.use_ammo` -> `Skills.burst_spend`); with no charge left `Weapons.try_fire` / `gun_tick` refuse to fire; one charge comes back every `regen` s. The pool survives weapon swaps (no refill by swapping) and resets on a new life. The HUD mode line shows `Shots ◆◆◇` while such a weapon is held (`ModeRules.hud_text`).
 - `swapCd`: draw time. `Combat.equip_slot` sets `cool = max(cool, swapCd)` when this weapon comes into the hand, so fire-swap-fire chains between heavy weapons are gone.
 
+### Gun feel (overlay only)
+
+Same gate as above (`Combat.tuning_active()`), so web peers and parity tests are untouched. `npm run test:godot-gunfeel`.
+
+- **Net Gun**: `trap` 4.5 s -> 2.5 s.
+- **Scatter**: the player's gun assist is `Weapons.PLAYER_ASSIST` (0.8) instead of a perfect lock; bots keep their own `assist`. Gun `spread` is widened and damage / `force` / `maxForce` lowered (AK, SMG, Uzis, Minigun, Shotgun, Revolver, Sniper, Mammoth).
+- **Bloom**: `bloomAdd` per shot on top of `spread`, capped at `bloomMax`, cooling at `bloomDecay` per second (default 0.05). Sustained fire sprays; tap-firing stays accurate.
+- **Arm wobble**: weapons with `wobble` get random arm nudges every 0.12-0.35 s (`Weapons.climb_tick`), stronger while moving and halved when aiming. The visible arm jerks (`push_arm`) and a small part (`WOB_AIM`) reaches the shot direction.
+- **Stacked knockback**: each gun hit adds `GUN_KICK_STEP` to the victim's `gun_kick`; the next push is divided by `1 + GUN_KICK_DAMP * gun_kick`; it recovers at `GUN_KICK_RECOVER` per second. A stream of bullets no longer pins someone against a wall; damage is unchanged by the stack.
+
 ### Skills (`godot/logic/skills.gd`)
 
 Per-fighter timers `FighterState.skill_n` (charges, a missing id = full) and `skill_cd` (seconds to the next charge), ticked by `Combat.timers` (`Skills.tick`), cleared by `Combat.place_at`. Nothing in `Skills` draws a random number.
