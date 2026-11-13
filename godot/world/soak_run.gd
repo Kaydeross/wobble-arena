@@ -211,7 +211,7 @@ func _show_card() -> void:
 	path.theme_type_variation = &"MutedLabel"
 	path.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	path.add_theme_font_size_override("font_size", 14)
-	path.text = tr("Saved %s (and .txt). %s") % [csv_path.get_file(), tr(FILES_HINT)]
+	path.text = (tr("Saved %s (and .txt). %s") % [csv_path.get_file(), ""]).strip_edges()   # user files are not shared to the Files app (they hold the account token)
 	inner.add_child(path)
 	var bar := HBoxContainer.new()
 	bar.name = "Buttons"
