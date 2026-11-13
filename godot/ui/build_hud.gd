@@ -102,9 +102,9 @@ func place_now() -> int:
 	var t: Array = layout.place_target(a[0], a[1], a[2], a[3])
 	var r := layout.place(t[0], t[1], _bodies())
 	var n: int = (r["added"] as Array).size()
-	if r["why"] == "full": world._toast("That is a lot of blocks! (%d max)" % SandboxLayout.MAX_BLOCKS)
-	elif n == 0 and r["why"] == "blocked": world._toast("Someone is in the way")
-	elif n == 0: world._toast("No room there")
+	if r["why"] == "full": world._toast("Easy there! That's a lot of blocks (%d max)" % SandboxLayout.MAX_BLOCKS)
+	elif n == 0 and r["why"] == "blocked": world._toast("Someone is in the way. Rude")
+	elif n == 0: world._toast("No room there. Too snug")
 	if n > 0: _changed("clink")
 	return n
 
@@ -112,14 +112,14 @@ func remove_now() -> int:
 	var a := _aim()
 	var i := layout.remove_target(a[0], a[1], a[2], a[3])
 	var n := layout.remove(i).size()
-	if n == 0: world._toast("Aim at a block to remove it")
+	if n == 0: world._toast("Aim at a block to remove it. Then poof!")
 	else: _changed("clink")
 	return n
 
 func clear_all() -> void:
 	if layout.count() == 0: return
 	layout.clear()
-	world._toast("Blocks cleared")
+	world._toast("Blocks cleared. Fresh start")
 	_changed("")
 
 func set_color(c: int) -> void:
@@ -250,7 +250,7 @@ func _refresh() -> void:
 	var st: Button = tool_bs["style"]
 	st.icon = _swatch(layout.color, 18)
 	st.set_pressed_no_signal(panel.visible)
-	status.text = "Blocks %d / %d   ·   %d×%d, %d high" % [layout.count(), SandboxLayout.MAX_BLOCKS, layout.size, layout.size, layout.height]
+	status.text = "Blocks %d / %d · %d×%d, %d high" % [layout.count(), SandboxLayout.MAX_BLOCKS, layout.size, layout.size, layout.height]
 
 ## Palette, status and panel rects (tests): bottom of the safe area, between the stick side and the touch buttons.
 func layout_ui() -> void:

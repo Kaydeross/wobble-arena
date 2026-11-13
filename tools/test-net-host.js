@@ -235,7 +235,7 @@ async function migration(url) {
     await bad.waitLine(/^ENDED /, 20000);
     const l = bad.lines.find(x => /^ENDED /.test(x.l)).l;
     console.log('unreachable relay -> ' + l);
-    assert.match(l, /Could not reach the game server|did not answer/, 'clear error when the relay is unreachable');
+    assert.match(l, /Couldn't reach the game server|didn't answer/, 'clear error when the relay is unreachable');
     bad.p.kill();
   }
 

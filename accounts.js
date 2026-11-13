@@ -94,15 +94,15 @@ function create(store) {
     async signup(b, ctx) {
       const un = String(b.username || '').trim(), em = String(b.email || '').trim(), pw = String(b.password || '');
       if (!USER_RE.test(un)) throw new Fail(400, 'username', 'Usernames are 3 to 16 letters, numbers or underscores.');
-      if (RESERVED.has(lname(un))) throw new Fail(400, 'username', 'That username is not allowed. Pick another one.');
-      if (em.length > 100 || !EMAIL_RE.test(em)) throw new Fail(400, 'email', 'That email does not look right.');
-      if (pw.length < 6 || pw.length > 72) throw new Fail(400, 'password', 'Passwords are 6 to 72 characters.');
+      if (RESERVED.has(lname(un))) throw new Fail(400, 'username', 'That username isn\'t allowed. Pick another one.');
+      if (em.length > 100 || !EMAIL_RE.test(em)) throw new Fail(400, 'email', 'That email doesn\'t look right. Check it and try again.');
+      if (pw.length < 6 || pw.length > 72) throw new Fail(400, 'password', 'Passwords need 6 to 72 characters.');
       const s = signups.get(ctx.ip); if (s && Date.now() - s.t < 3600000 && s.n >= 40) throw new Fail(429, 'slow', 'Too many new accounts from this network. Try again in a while.');
       const l = lname(un), le = lname(em);
-      if (await store.get('user:' + l)) throw new Fail(409, 'username', 'That username is taken.');
+      if (await store.get('user:' + l)) throw new Fail(409, 'username', 'That username is taken. Pick another one.');
       const rc = newRecovery();
       const user = { u: un, e: em, p: await hashPw(pw), r: await hashPw(cleanRecovery(rc)), c: Date.now(), l: Date.now() };
-      if (!(await store.set('user:' + l, JSON.stringify(user), { nx: true }))) throw new Fail(409, 'username', 'That username is taken.');
+      if (!(await store.set('user:' + l, JSON.stringify(user), { nx: true }))) throw new Fail(409, 'username', 'That username is taken. Pick another one.');
       if (!(await store.set('email:' + le, l, { nx: true }))) { await store.del('user:' + l); throw new Fail(409, 'email', 'That email already has an account. Try logging in.'); }
       let t = 0;
       if (b.data && typeof b.data === 'object') { const j = JSON.stringify(b.data); if (j.length <= SAVE_MAX) { t = Date.now(); await store.set('data:' + l, JSON.stringify({ t, d: b.data })); } }
@@ -115,7 +115,7 @@ function create(store) {
       const l0 = id.includes('@') ? await store.get('email:' + lname(id)) : lname(id);
       if (failCount('ip:' + ctx.ip) >= 40 || failCount('acc:' + l0) >= 8) throw new Fail(429, 'slow', 'Too many wrong tries. Wait 10 minutes and try again.');
       const u = l0 ? await getUser(l0) : null;
-      if (!u || !(await checkPw(pw, u.p))) { addFail('ip:' + ctx.ip); if (l0) addFail('acc:' + l0); throw new Fail(401, 'wrong', 'Wrong username or password.'); }
+      if (!u || !(await checkPw(pw, u.p))) { addFail('ip:' + ctx.ip); if (l0) addFail('acc:' + l0); throw new Fail(401, 'wrong', 'Wrong username or password. Check them and try again.'); }
       fails.delete('acc:' + l0); u.l = Date.now(); await putUser(l0, u);
       const d = await loadData(l0);
       return { ok: true, token: await issue(l0), user: pub(u), data: d ? d.d : null, t: d ? d.t : 0 };
@@ -130,7 +130,7 @@ function create(store) {
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
       if (!b.data || typeof b.data !== 'object') throw new Fail(400, 'data', 'Nothing to save.');
       const j = JSON.stringify(b.data); if (j.length > SAVE_MAX) throw new Fail(413, 'big', 'That save is too big.');
-      const now = Date.now(), last = lastSave.get(a.l) || 0; if (now - last < 800) throw new Fail(429, 'fast', 'Saving too fast.');
+      const now = Date.now(), last = lastSave.get(a.l) || 0; if (now - last < 800) throw new Fail(429, 'fast', 'Saving too fast. Wait a moment and try again.');
       const cur = await loadData(a.l);
       if (cur && b.base !== undefined && (b.base | 0) < (cur.t | 0) && !b.force) return { ok: false, err: 'stale', msg: 'This account was saved on another device.', data: cur.d, t: cur.t };
       lastSave.set(a.l, now);
@@ -141,9 +141,9 @@ function create(store) {
     async password(b, ctx) {
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
       const np = String(b.next || '');
-      if (np.length < 6 || np.length > 72) throw new Fail(400, 'password', 'New passwords are 6 to 72 characters.');
+      if (np.length < 6 || np.length > 72) throw new Fail(400, 'password', 'Passwords need 6 to 72 characters.');
       if (failCount('acc:' + a.l) >= 8) throw new Fail(429, 'slow', 'Too many wrong tries. Wait 10 minutes and try again.');
-      if (!(await checkPw(String(b.old || ''), a.u.p))) { addFail('acc:' + a.l); throw new Fail(401, 'wrong', 'Your current password is wrong.'); }
+      if (!(await checkPw(String(b.old || ''), a.u.p))) { addFail('acc:' + a.l); throw new Fail(401, 'wrong', 'That password is wrong.'); }
       a.u.p = await hashPw(np); await putUser(a.l, a.u); return { ok: true };
     },
     async recovery(b, ctx) {                                              // make a new recovery code (needs the password); the old one stops working
@@ -156,11 +156,11 @@ function create(store) {
     async reset(b, ctx) {                                                 // forgot the password: username or email + recovery code + a new password
       const id = String(b.id || '').trim(), code = cleanRecovery(b.code), np = String(b.password || '');
       if (!id || !code) throw new Fail(400, 'missing', 'Type your username (or email) and your recovery code.');
-      if (np.length < 6 || np.length > 72) throw new Fail(400, 'password', 'New passwords are 6 to 72 characters.');
+      if (np.length < 6 || np.length > 72) throw new Fail(400, 'password', 'Passwords need 6 to 72 characters.');
       const l0 = id.includes('@') ? await store.get('email:' + lname(id)) : lname(id);
       if (failCount('ip:' + ctx.ip) >= 20 || failCount('acc:' + l0) >= 6) throw new Fail(429, 'slow', 'Too many wrong tries. Wait 10 minutes and try again.');
       const u = l0 ? await getUser(l0) : null;
-      if (!u || !u.r || !(await checkPw(code, u.r))) { addFail('ip:' + ctx.ip); if (l0) addFail('acc:' + l0); throw new Fail(401, 'wrong', 'That username and recovery code do not match. Check the code (letters and numbers, no mix-ups between O and 0).'); }
+      if (!u || !u.r || !(await checkPw(code, u.r))) { addFail('ip:' + ctx.ip); if (l0) addFail('acc:' + l0); throw new Fail(401, 'wrong', 'That username and recovery code don\'t match. Check the code (letters and numbers, no mix-ups between O and 0).'); }
       fails.delete('acc:' + l0);
       const rc = newRecovery(); u.p = await hashPw(np); u.r = await hashPw(cleanRecovery(rc)); u.l = Date.now(); await putUser(l0, u);
       const d = await loadData(l0);
@@ -182,8 +182,8 @@ function create(store) {
     return new Promise((res, rej) => {
       let n = 0, over = false; const parts = [];
       req.on('data', c => { n += c.length; if (n > 5 * 1024 * 1024) { req.destroy(); return; } if (n > SAVE_MAX + 4096) { over = true; parts.length = 0; return; } if (!over) parts.push(c); });
-      req.on('end', () => { if (over) { rej(new Fail(413, 'big', 'That save is too big.')); return; } try { res(parts.length ? JSON.parse(Buffer.concat(parts).toString('utf8')) : {}); } catch (e) { rej(new Fail(400, 'json', 'Bad request.')); } });
-      req.on('error', () => rej(new Fail(400, 'io', 'Bad request.')));
+      req.on('end', () => { if (over) { rej(new Fail(413, 'big', 'That save is too big.')); return; } try { res(parts.length ? JSON.parse(Buffer.concat(parts).toString('utf8')) : {}); } catch (e) { rej(new Fail(400, 'json', 'Couldn\'t read that request. Try again.')); } });
+      req.on('error', () => rej(new Fail(400, 'io', 'Couldn\'t read that request. Try again.')));
     });
   }
   // returns true when it handled the request

@@ -48,6 +48,7 @@ var look := DEFAULT_LOOK.duplicate()
 var stats := {}
 var hist: Array = []
 var quests := {}                     ## coin goals (logic/quests.gd), blob key "quests" (Godot only, the web ignores it)
+var last_seen_news := ""             ## newest What's new version the player has seen (ui/whats_new.gd), blob key "last_seen_news" (Godot only)
 var day_override := -1               ## tests: the day the goals use (-1 = Quests.today())
 var extra := {}                      ## blob keys this client does not use, kept for the web game
 var extra_wallet := {}
@@ -107,6 +108,7 @@ func reset() -> void:
 	hist = []
 	extra = {}; extra_wallet = {}; extra_stats = {}
 	quests = Quests.fresh()
+	last_seen_news = ""
 	match_kos = 0; match_hits = 0; match_deaths = 0; match_heads = 0; match_mkos = 0; _streak = 0
 	_quest_before = []
 	_seen_classes = []
@@ -132,6 +134,7 @@ func get_blob() -> Dictionary:
 	w["daily"] = daily.duplicate()
 	d["wallet"] = w
 	d["quests"] = quests.duplicate(true)
+	if last_seen_news != "": d["last_seen_news"] = last_seen_news
 	return d
 
 ## Loads a blob (a web save or one of ours), cleaning it like the web load(): unknown items dropped, the free outfits
@@ -140,8 +143,9 @@ func apply_blob(d: Variant) -> bool:
 	if not (d is Dictionary): return false
 	reset()
 	for k: String in d:
-		if not k in ["look", "stats", "wallet", "quests"]: extra[k] = d[k]
+		if not k in ["look", "stats", "wallet", "quests", "last_seen_news"]: extra[k] = d[k]
 	quests = Quests.clean(d.get("quests"))
+	if d.get("last_seen_news") is String: last_seen_news = (d["last_seen_news"] as String).substr(0, 24)
 	var w: Variant = d.get("wallet")
 	if w is Dictionary:
 		for k: String in w:
@@ -261,6 +265,12 @@ func save() -> bool:
 		DirAccess.remove_absolute(_abs(path))
 		err = DirAccess.rename_absolute(_abs(tmp), _abs(path))
 	return err == OK
+
+## Remembers the newest What's new version the player has seen (saved to the file; no `changed`, nothing else shows it).
+func mark_news_seen(version: String) -> void:
+	if version == last_seen_news: return
+	last_seen_news = version.substr(0, 24)
+	save()
 
 func _commit() -> void:
 	save()

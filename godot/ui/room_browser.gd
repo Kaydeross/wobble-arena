@@ -105,7 +105,7 @@ func show_rooms(r: Array, err: String = "") -> void:
 	if r.is_empty():
 		state = "empty"
 		count_l.text = "None open yet"
-		_show_message("No rooms yet: host one, or join a friend with a code.", "Host a room")
+		_show_message("No rooms yet: host one, or join a friend with a code. Be the first!", "Host a room")
 		return
 	state = "rooms"
 	var playing := 0

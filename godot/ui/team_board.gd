@@ -1,11 +1,11 @@
 class_name TeamBoard
 extends Control
 ## Team scoreboard for team modes (top centre): one chip per team with a colour block, the team name and its score; your
-## own team's chip is lit and tagged YOU. Replaces the old "Team 0 v 0 / 50" text line. Fed by world.gd every frame.
+## own team's chip is lit and tagged "You". Replaces the old "Team 0 v 0 / 50" text line. Fed by world.gd every frame.
 
 const CHIP := Vector2(158, 42)
 const GAP := 96.0
-const NAMES := ["BLUE", "RED"]
+const NAMES := ["Blue", "Red"]
 
 var scores := [0, 0]
 var mine := 0
@@ -49,8 +49,8 @@ func _draw() -> void:
 		if lit:                                                    # "YOU" tag riding the top edge
 			var pill := Rect2(Vector2(r.position.x + CHIP.x / 2.0 - 22.0, 0), Vector2(44, 18))
 			draw_style_box(UiTheme.box(col, 9, Color(1, 1, 1, 0.9), 2, 0), pill)
-			var yw := _font.get_string_size("YOU", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
-			draw_string(_font, pill.position + Vector2((pill.size.x - yw) / 2.0, 13.5), "YOU", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
+			var yw := _font.get_string_size("You", HORIZONTAL_ALIGNMENT_LEFT, -1, 12).x
+			draw_string(_font, pill.position + Vector2((pill.size.x - yw) / 2.0, 13.5), "You", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
 	var mid := "First to %d" % limit if limit > 0 else "vs"
 	var mw := _font.get_string_size(mid, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	draw_string(_font, Vector2(CHIP.x + (GAP - mw) / 2.0, 40), mid, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, UiTheme.MUTED)

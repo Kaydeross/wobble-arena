@@ -255,7 +255,7 @@ func _build_head() -> void:
 	chip.name = "Coins"
 	chip.theme_type_variation = &"ChipPanel"
 	chip.size_flags_vertical = SIZE_SHRINK_CENTER
-	chip.tooltip_text = "Your coins. Earn them from K.O.s, finished matches and Goals"
+	chip.tooltip_text = "Your coins. Earn them from K.O.s, finished matches and Goals."
 	head.add_child(chip)
 	coins_chip = chip
 	var row := HBoxContainer.new()
@@ -498,10 +498,10 @@ func _rebuild() -> void:
 	empty_l.visible = keys.is_empty()
 
 func _tab_hint() -> String:
-	if shop: return "Earn coins: K.O. +5, match +40, win +60, Goals."
+	if shop: return "Earn coins: K.O. +5, match +40, win +60, and Goals"
 	match tab:
 		"skin": return "Your outfits. Get more in the Shop."
-		"hat": return "Hats are free to wear."
+		"hat": return "Hats are free to wear"
 		"color": return "Your body colour with no outfit on. Outfits bring their own."
 		"emote": return "Tap to see it. Equip puts it on T."
 		"class": return "Your classes. Buy more in the Shop, some unlock by playing."

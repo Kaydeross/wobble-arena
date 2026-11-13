@@ -11,8 +11,8 @@
   "dropsAs": "classic"
  },
  "deathmatch": {
-  "name": "Death Match",
-  "desc": "Free for all. First to 20 K.O.s wins",
+  "name": "Deathmatch",
+  "desc": "Free for all. First to 20 K.O.s wins. Trust nobody",
   "preset": {"limit": 20, "behav": "brawl", "ffa": true},
   "start": null,
   "allowFrom": "classic",
@@ -20,7 +20,7 @@
  },
  "sudden": {
   "name": "Sudden Death",
-  "desc": "One life each. A K.O. or a fall and you are out. Last one standing wins",
+  "desc": "One life each. One K.O. or one fall and you're out. Last wobbler standing wins",
   "lives": 1,
   "spectate": true,
   "preset": {"limit": 0, "behav": "brawl", "ffa": true},
@@ -30,7 +30,7 @@
  },
  "chaos": {
   "name": "Chaos",
-  "desc": "5 vs 5 with random events: crate rain, low gravity, knockback storms, giants. First team to 50",
+  "desc": "5 vs 5 with random events: crate rain, low gravity, knockback storms, giants. First team to 50. Good luck",
   "teams": 5,
   "chaos": true,
   "preset": {"limit": 50},
@@ -40,7 +40,7 @@
  },
  "lowg": {
   "name": "Moon Drift",
-  "desc": "Super low gravity. Float, soar and knock rivals around",
+  "desc": "Super low gravity. Float, soar and bonk rivals into orbit",
   "preset": {"hp": 200, "limit": 0, "count": 3, "behav": "brawl", "ffa": true, "grav": 0.15},
   "start": "smg",
   "allowWeapons": ["shotgun", "sniper", "mammoth", "rocket", "glauncher", "cluster", "net", "ak", "smg", "uzi", "minigun", "revolver"],
@@ -48,7 +48,7 @@
  },
  "practice": {
   "name": "Practice Range",
-  "desc": "Dummies that stand, slide and pop back up, and a rack of weapons to try. No score",
+  "desc": "Dummies that stand, slide and pop back up, plus a rack of weapons to try. No score, no judgement",
   "preset": {"limit": 0, "behav": "dummy", "ffa": true},
   "start": null,
   "allowFrom": "classic",
