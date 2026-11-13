@@ -15,8 +15,8 @@ static func clean(v: Variant) -> Dictionary:
 	var out := fresh()
 	if not (v is Dictionary): return out
 	var d: Dictionary = v
-	out["owned"] = d.get("owned") == true
-	out["bonus"] = d.get("bonus") == true
+	out["owned"] = d.get("owned") is bool and d["owned"]
+	out["bonus"] = d.get("bonus") is bool and d["bonus"]
 	var b: Variant = d.get("arcade_best")
 	if (b is int or b is float) and is_finite(float(b)): out["arcade_best"] = clampi(int(b), 0, 99)
 	var c: Variant = d.get("arcade_clears")
