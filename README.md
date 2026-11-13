@@ -5,7 +5,7 @@
 <p align="center">
   <b>Bonk your friends off floating arenas.</b><br>
   A chaotic, wobbly-physics party brawler. Play free in your browser today.<br>
-  iPhone & PC apps coming soon — same rooms, same chaos.
+  iOS, Android & PC apps coming soon — same rooms, same chaos.
 </p>
 
 <p align="center">
@@ -76,7 +76,8 @@ Play solo against bots, practise weapons, or jump into online rooms with up to 8
 |---|---|
 | **Browser** | Playable now |
 | **iPhone** | Offline + guest online ready. TestFlight next |
-| **PC** | After iPhone |
+| **Android** | Offline + guest online ready. APK build script in `tools/build-android.sh` |
+| **PC** | After mobile |
 | **Godot web** | Coming once native reaches parity |
 
 ## Play It
