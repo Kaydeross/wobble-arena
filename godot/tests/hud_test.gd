@@ -29,6 +29,8 @@ func _run() -> void:
 	world.bot_count = 5
 	world.rng_seed = 99
 	root.add_child(world)
+	_settings().set_value("perf_overlay", true)    # the device readout (ui/perf_overlay.gd) is laid out with the HUD below
+	await process_frame
 	await process_frame
 	var hud: Control = world.hud
 	check(world.touch.visible, "touch layer on")
@@ -133,7 +135,34 @@ func _layout(world: Node, hud: Control, tag: String) -> void:
 	check(touch.visible_buttons().size() <= 4, "%s still at most 4 action buttons" % tag)
 	var hb: Control = hud.get_node("Hotbar")
 	check(hb.scale.x >= 0.6, "%s hotbar readable (scale %.2f)" % [tag, hb.scale.x])
+	_perf_layout(world, hud, safe, rects, er, tag)
 	print("HUD layout %s checked" % tag)
+
+## The performance readout (Settings `perf_overlay`): inside the safe area, clear of every HUD panel, the pause and emote
+## buttons, the touch buttons, the mode line and team board, the toast and the centre message.
+func _perf_layout(world: Node, hud: Control, safe: Rect2, rects: Dictionary, er: Rect2, tag: String) -> void:
+	var ov: PerfOverlay = root.get_node_or_null("PerfOverlay")
+	check(ov != null, "%s perf readout exists" % tag)
+	if ov == null: return
+	ov.label.text = PerfOverlay.format({"fps": 60.0, "frame_ms_avg": 16.7, "frame_ms_p95": 17.2, "cpu_ms": 4.1, "gpu_ms": 6.2, "draws": 612, "objects": 1234,
+		"tier": "MID", "thermal": "n/a", "mem_mb": 310.0}, "Soak 12:34 / 15:00")     # the widest text it shows
+	ov.place()
+	var r := ov.rect()
+	check(safe.grow(0.5).encloses(r), "%s perf readout %s inside safe %s" % [tag, r, safe])
+	for n: String in rects:
+		check(not r.intersects(rects[n]), "%s perf readout %s overlaps %s %s" % [tag, r, n, rects[n]])
+	var touch: Control = world.touch
+	check(not r.intersects(touch.pause_rect()), "%s perf readout clear of pause" % tag)
+	check(not r.intersects(er), "%s perf readout clear of the emote button" % tag)
+	for b: Array in touch.BUTTONS:
+		var c: Array = touch.button_rect(b)
+		check(not r.intersects(Rect2(c[0] - Vector2(c[1], c[1]), Vector2(c[1], c[1]) * 2.0)), "%s perf readout clear of %s" % [tag, b[0]])
+	for sib: String in ["Feed", "Toast", "Center", "Hint"]:
+		var c: Control = hud.get_node_or_null(sib)
+		if c != null and c.visible: check(not r.intersects(Rect2(c.position, c.size * c.scale)), "%s perf readout clear of %s" % [tag, sib])
+	for sib: String in ["ModeLine", "TeamBoard"]:
+		var c: Control = world.get_node("UI").get_node_or_null(sib)
+		if c != null and c.visible: check(not r.intersects(Rect2(c.position, c.size * c.scale)), "%s perf readout clear of %s" % [tag, sib])
 
 func _fps() -> void:
 	var ov: CanvasLayer = root.get_node("FpsOverlay")
