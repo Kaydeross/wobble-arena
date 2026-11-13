@@ -102,7 +102,7 @@ func place_now() -> int:
 	var t: Array = layout.place_target(a[0], a[1], a[2], a[3])
 	var r := layout.place(t[0], t[1], _bodies())
 	var n: int = (r["added"] as Array).size()
-	if r["why"] == "full": world._toast("Easy there! That's a lot of blocks (%d max)" % SandboxLayout.MAX_BLOCKS)
+	if r["why"] == "full": world._toast(tr("Easy there! That's a lot of blocks (%d max)") % SandboxLayout.MAX_BLOCKS)
 	elif n == 0 and r["why"] == "blocked": world._toast("Someone is in the way. Rude")
 	elif n == 0: world._toast("No room there. Too snug")
 	if n > 0: _changed("clink")
@@ -182,7 +182,7 @@ func _build_ui() -> void:
 	for t: Array in TOOLS:
 		var b := _button(t[1], TOOL)
 		b.name = t[0]
-		b.tooltip_text = "%s (%s)" % [t[1], t[2]]
+		b.tooltip_text = tr("%s (%s)") % [tr(t[1]), t[2]]
 		b.pressed.connect(_tool.bind(t[0]))
 		bar.add_child(b)
 		tool_bs[t[0]] = b
@@ -250,7 +250,7 @@ func _refresh() -> void:
 	var st: Button = tool_bs["style"]
 	st.icon = _swatch(layout.color, 18)
 	st.set_pressed_no_signal(panel.visible)
-	status.text = "Blocks %d / %d · %d×%d, %d high" % [layout.count(), SandboxLayout.MAX_BLOCKS, layout.size, layout.size, layout.height]
+	status.text = tr("Blocks %d / %d · %d×%d, %d high") % [layout.count(), SandboxLayout.MAX_BLOCKS, layout.size, layout.size, layout.height]
 
 ## Palette, status and panel rects (tests): bottom of the safe area, between the stick side and the touch buttons.
 func layout_ui() -> void:

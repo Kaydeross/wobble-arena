@@ -2,12 +2,13 @@ class_name AccountSheet
 extends Control
 ## The Account sheet (opened from the title's "Guest" / "Signed in as NAME" chip): a dimmed backdrop and one card that
 ## shows one page at a time, all driven by AccountApi (Save.cloud):
-##   guest     playing as a guest -> Create account / Log in
-##   signup    username, email, password (this device's progress becomes the account's first cloud save)
+##   guest     "Pick a name": one field + Play (claims the name, no password); "I have a password" opens log in
 ##   login     username or email, password, "Forgot password?"
 ##   reset     username or email, recovery code, new password
 ##   code      the recovery code, shown once, with Copy
-##   signed    who you are, the sync line ("Saved to cloud 2 min ago"), Change password, Log out, Delete account
+##   signed    who you are, the sync line ("Saved to cloud 2 min ago"), Protect my name with a password (name-only
+##             accounts) or Change password, Log out, Delete account
+##   protect   a new password for a name-only account (a recovery code follows)
 ##   password  current + new password
 ##   delete    password + type DELETE to confirm (App Store 5.1.1(v): in-app account deletion)
 ##   conflict  this device and the cloud differ: Keep this device / Use cloud
@@ -15,7 +16,7 @@ extends Control
 
 signal closed
 
-const PAGES := ["guest", "signup", "login", "reset", "code", "signed", "password", "delete", "conflict"]
+const PAGES := ["guest", "login", "reset", "code", "signed", "protect", "password", "delete", "conflict"]
 const ROW_H := 62.0                  ## canvas px: 45 pt on an iPhone in landscape (Apple asks 44)
 const CONFIRM_WORD := "DELETE"
 
@@ -29,6 +30,7 @@ var ui := {}                        ## "page/Name" -> Control
 var code := ""                      ## the recovery code on the code page
 var _after_code := ""               ## page to show after "I saved it"
 var _sync_t := 0.0
+var _logout_armed := false          ## a name-only account was asked "log out anyway?"
 
 func _init() -> void:
 	name = "Account"
@@ -59,7 +61,7 @@ func _process(dt: float) -> void:
 func _build() -> void:
 	var dim := ColorRect.new()
 	dim.name = "Dim"
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0.02, 0.06, 0.08, 0.86)   # strong enough that the title behind never reads through
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.gui_input.connect(func(e: InputEvent) -> void:
 		if (e is InputEventMouseButton or e is InputEventScreenTouch) and e.pressed and page in ["guest", "signed"]: close())
@@ -95,15 +97,16 @@ func _build() -> void:
 	box.add_child(msg_l)
 
 	var p := _page(holder, "guest")
-	_text(p, "Info", "You're playing as a guest. Your coins, outfits and stats are saved on this device only. Create an account to keep them safe and use them on the web too.")
-	_row(p, "Row", [_btn("guest", "Login", "Log in", false, open.bind("login")), _btn("guest", "Signup", "Create account", true, open.bind("signup"))])
-	_row(p, "Row2", [_btn("guest", "Close", "Close", false, close)])
-
-	p = _page(holder, "signup")
-	_field(p, "signup", "User", "Username (3 to 16 letters or numbers)", false)
-	_field(p, "signup", "Email", "Email (for your account, never shown)", false)
-	_field(p, "signup", "Pass", "Password (6 or more characters)", true)
-	_row(p, "Row", [_btn("signup", "Back", "Back", false, open.bind("guest")), _btn("signup", "Go", "Create account", true, _do_signup)])
+	_text(p, "Info", "Pick a name to play online and keep your coins, outfits and stats in the cloud. No password needed.")
+	_field(p, "guest", "Name", "Your name (3 to 16 letters or numbers)", false)
+	_row(p, "Row", [_btn("guest", "Close", "Close", false, close), _btn("guest", "Go", "Play", true, _do_claim)])
+	var have := _btn("guest", "Login", "I have a password", false, open.bind("login"))
+	have.flat = true
+	have.add_theme_color_override("font_color", UiTheme.MUTED)
+	p.add_child(have)
+	var keep := _text(p, "Note", "Names nobody uses for 30 days are freed.")
+	keep.add_theme_color_override("font_color", UiTheme.MUTED)
+	keep.add_theme_font_size_override("font_size", 16)
 
 	p = _page(holder, "login")
 	_field(p, "login", "User", "Username or email", false)
@@ -142,11 +145,18 @@ func _build() -> void:
 	p.add_child(who)
 	ui["signed/Who"] = who
 	_text(p, "Sync", "")
+	var pb := _btn("signed", "Protect", "Protect my name with a password", true, open.bind("protect"))
+	pb.tooltip_text = "No password yet: this name only works on this device."
+	p.add_child(pb)
 	_row(p, "Row", [_btn("signed", "Password", "Change password", false, open.bind("password")), _btn("signed", "Logout", "Log out", false, _do_logout)])
 	var del := _btn("signed", "Delete", "Delete account", false, open.bind("delete"))
 	del.add_theme_color_override("font_color", UiTheme.BAD)
 	del.add_theme_color_override("font_hover_color", UiTheme.BAD)
 	_row(p, "Row2", [del, _btn("signed", "Close", "Close", true, close)])
+
+	p = _page(holder, "protect")
+	_field(p, "protect", "Pass", "New password (6 or more characters)", true)
+	_row(p, "Row", [_btn("protect", "Back", "Back", false, open.bind("signed")), _btn("protect", "Go", "Set password", true, _do_protect)])
 
 	p = _page(holder, "password")
 	_field(p, "password", "Old", "Current password", true)
@@ -156,7 +166,7 @@ func _build() -> void:
 	p = _page(holder, "delete")
 	_text(p, "Info", "")
 	_field(p, "delete", "Pass", "Your password", true)
-	_field(p, "delete", "Confirm", "Type %s to confirm" % CONFIRM_WORD, false)
+	_field(p, "delete", "Confirm", tr("Type %s to confirm") % CONFIRM_WORD, false)
 	var dg := _btn("delete", "Go", "Delete account", false, _do_delete)
 	dg.add_theme_color_override("font_color", UiTheme.BAD)
 	dg.add_theme_color_override("font_hover_color", UiTheme.BAD)
@@ -173,7 +183,7 @@ func _build() -> void:
 func _page(holder: Control, n: String) -> VBoxContainer:
 	var p := VBoxContainer.new()
 	p.name = n.capitalize()
-	p.add_theme_constant_override("separation", 10)
+	p.add_theme_constant_override("separation", UiTheme.SP_3)
 	p.visible = false
 	holder.add_child(p)
 	pages[n] = p
@@ -224,7 +234,7 @@ func _btn(pg: String, n: String, t: String, primary: bool, cb: Callable) -> Butt
 func _row(p: Control, n: String, items: Array) -> HBoxContainer:
 	var r := HBoxContainer.new()
 	r.name = n
-	r.add_theme_constant_override("separation", 10)
+	r.add_theme_constant_override("separation", UiTheme.SP_3)
 	for c: Control in items: r.add_child(c)
 	p.add_child(r)
 	return r
@@ -236,10 +246,11 @@ func open(pg := "") -> void:
 	if pg == "":
 		pg = "conflict" if api and not api.pending.is_empty() else ("signed" if api and api.signed_in() else "guest")
 	if page != pg: msg_l.text = ""
+	_logout_armed = false
 	page = pg
 	visible = true
 	for k: String in pages: pages[k].visible = k == pg
-	title_l.text = {"guest": "Account", "signup": "Create account", "login": "Log in", "reset": "Forgot password",
+	title_l.text = {"guest": "Pick a name", "login": "Log in", "protect": "Protect my name", "reset": "Forgot password",
 		"code": "Recovery code", "signed": "Account", "password": "Change password", "delete": "Delete account",
 		"conflict": "Which progress?"}[pg]
 	if pg == "delete":
@@ -261,9 +272,9 @@ func close() -> void:
 func back() -> bool:
 	match page:
 		"guest", "signed": close()
-		"signup", "login": open("guest")
+		"login": open("guest")
 		"reset": open("login")
-		"password", "delete": open("signed")
+		"protect", "password", "delete": open("signed")
 	return true
 
 func _unhandled_input(e: InputEvent) -> void:
@@ -279,15 +290,17 @@ func _first_field(n: Node) -> Control:
 ## Texts that follow the account state (who, sync line, conflict summaries, delete warning).
 func refresh() -> void:
 	if api == null or pages.is_empty(): return
-	(ui["signed/Who"] as Label).text = "Signed in as " + api.user()
+	(ui["signed/Who"] as Label).text = tr("Signed in as %s") % api.user()
+	(ui["signed/Protect"] as Control).visible = not api.has_password
+	(ui["signed/Password"] as Control).visible = api.has_password
 	var sync := api.sync_text()
 	var em := api.email()
-	(ui["signed/Sync"] as Label).text = (em + "\n" if em != "" else "") + (sync if sync != "" else "Saved on this device")
-	(ui["delete/Info"] as Label).text = "This deletes the account %s and its cloud save for good. It can't be undone. This device starts again as a new guest." % api.user()
+	(ui["signed/Sync"] as Label).text = (em + "\n" if em != "" else "") + (sync if sync != "" else tr("Saved on this device"))
+	(ui["delete/Info"] as Label).text = tr("This deletes the account %s and its cloud save for good. It can't be undone. This device starts again as a new guest.") % api.user()
 	var ci := api.conflict_info()
 	if not ci.is_empty():
-		(ui["conflict/Local"] as Label).text = "This device: " + str(ci["local"])
-		(ui["conflict/Cloud"] as Label).text = "Cloud: " + str(ci["cloud"])
+		(ui["conflict/Local"] as Label).text = tr("This device: %s") % str(ci["local"])
+		(ui["conflict/Cloud"] as Label).text = tr("Cloud: %s") % str(ci["cloud"])
 	if page == "signed" and not api.signed_in(): open("guest")
 	elif page == "guest" and api.signed_in(): open("signed")
 	_delete_ready()
@@ -305,7 +318,8 @@ func _busy(on: bool) -> void:
 
 func _submit(pg: String) -> void:
 	match pg:
-		"signup": _do_signup()
+		"guest": _do_claim()
+		"protect": _do_protect()
 		"login": _do_login()
 		"reset": _do_reset()
 		"password": _do_password()
@@ -313,8 +327,11 @@ func _submit(pg: String) -> void:
 func _txt(k: String) -> String:
 	return (ui[k] as LineEdit).text
 
-func _do_signup() -> void:
-	_busy(true); api.signup(_txt("signup/User"), _txt("signup/Email"), _txt("signup/Pass"))
+func _do_claim() -> void:
+	_busy(true); api.claim(_txt("guest/Name"))
+
+func _do_protect() -> void:
+	_busy(true); api.protect(_txt("protect/Pass"))
 
 func _do_login() -> void:
 	_busy(true); api.login(_txt("login/User"), _txt("login/Pass"))
@@ -326,6 +343,10 @@ func _do_password() -> void:
 	_busy(true); api.change_password(_txt("password/Old"), _txt("password/New"))
 
 func _do_logout() -> void:
+	if not api.has_password and not _logout_armed:         # a name with no password can't be logged back in: ask once more
+		_logout_armed = true
+		msg_l.text = "No password yet. If you log out, this name is lost to you. Tap Log out again to leave it, or protect it first."
+		return
 	_busy(true); api.logout()
 
 func _do_delete() -> void:
@@ -353,16 +374,19 @@ func _on_recovery(c: String) -> void:
 
 func _on_done(op: String, ok: bool, m: String) -> void:
 	_busy(false)
-	for k in ["signup/Pass", "login/Pass", "reset/Pass", "password/Old", "password/New", "delete/Pass"]:
+	for k in ["protect/Pass", "login/Pass", "reset/Pass", "password/Old", "password/New", "delete/Pass"]:
 		if ok: (ui[k] as LineEdit).text = ""
 	if not visible: return                # (the online panel's login: its status line says it; a conflict opens the sheet)
 	if ok:
 		match op:
-			"signup", "login", "reset":
+			"claim", "login", "reset":
 				_after_code = "conflict" if not api.pending.is_empty() else "signed"
 				if code != "": open("code")
 				else: open(_after_code)
 			"recovery": open("code")
+			"protect":
+				_after_code = "signed"
+				open("code" if code != "" else "signed")
 			"password": open("signed")
 			"logout", "delete": open("guest")
 	msg_l.text = m

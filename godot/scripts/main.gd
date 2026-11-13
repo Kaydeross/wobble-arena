@@ -54,7 +54,7 @@ var locker_b: Button
 var shop_b: Button
 var goals_b: Button
 var goals: GoalsScreen              ## the Goals screen (title: Goals)
-var news_b: Button
+var news_dot: Control
 var news: WhatsNew                  ## the What's new card (patch notes; opens once per new version)
 var settings: SettingsScreen        ## the Settings screen (gear)
 var intro: IntroCards               ## the first-run how-to (also Settings > Controls)
@@ -98,7 +98,11 @@ func _ready() -> void:
 		if Tier.is_pc(): goals_b.grab_focus.call_deferred())
 	news = WhatsNew.new()
 	add_child(news)
-	news.closed.connect(func() -> void: if Tier.is_pc(): news_b.grab_focus.call_deferred())
+	news.closed.connect(func() -> void:
+		_news_dot()
+		if Tier.is_pc() and not settings.visible: gear.grab_focus.call_deferred())
+	settings.news_requested.connect(open_news)
+	_news_dot()
 	_build_host_sheet()
 	_build_lobby()
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
@@ -111,10 +115,10 @@ func _ready() -> void:
 	Save.cloud.changed.connect(_refresh_login)
 	_build_chip()
 	_build_online()
-	_status(notice if notice != "" else "Pick a room, or join a friend with their code.")
+	_status(tr(notice) if notice != "" else tr("Pick a room, or join a friend with their code."))
 	if session != null:
 		_bind_session()
-		_status((notice + "  " if notice != "" else "") + session.status)
+		_status((tr(notice) + "  " if notice != "" else "") + session.status)
 		_on_roster(session.roster)
 	var join := ""
 	for a in OS.get_cmdline_user_args():
@@ -152,9 +156,9 @@ func _ready() -> void:
 func go_back() -> bool:
 	if intro.visible: return intro.back()
 	if account.visible: return account.back()
+	if news.visible: return news.back()      # (opened from Settings > About: it sits on top of Settings)
 	if settings.visible: return settings.back()
 	if goals.visible: return goals.back()
-	if news.visible: return news.back()
 	if lobby.visible:
 		if session: session.leave("You left the room.")
 		show_lobby(false)
@@ -190,9 +194,9 @@ func _build_more() -> void:
 	var more := HBoxContainer.new()
 	more.name = "More"
 	more.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	more.add_theme_constant_override("separation", 12)   # four buttons now: still fit the narrowest canvas (960 wide)
+	more.add_theme_constant_override("separation", UiTheme.SP_4)   # three cards: What's new moved up beside the account chip
 	home.add_child(more)
-	home.add_theme_constant_override("separation", 12)   # one more row: a little tighter, so the column still fits a phone
+	home.add_theme_constant_override("separation", UiTheme.SP_3)
 	locker_b = _small_button("Walldrobe", "What you own")
 	locker_b.name = "Locker"
 	locker_b.pressed.connect(open_locker.bind(false))
@@ -203,17 +207,28 @@ func _build_more() -> void:
 	goals_b = _small_button("Goals", "")
 	goals_b.pressed.connect(open_goals)
 	more.add_child(goals_b)
-	news_b = _small_button("What's new", "Patch notes")
-	news_b.name = "News"
-	news_b.pressed.connect(open_news)
-	more.add_child(news_b)
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
+
+## A gold dot on the gear while the newest patch notes are unseen (What's new lives in Settings > About, one button fewer on the title).
+func _news_dot() -> void:
+	if news_dot == null:
+		news_dot = Control.new()
+		news_dot.name = "Dot"
+		news_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		news_dot.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+		news_dot.offset_left = -20; news_dot.offset_right = -6; news_dot.offset_top = 6; news_dot.offset_bottom = 20
+		news_dot.draw.connect(func() -> void:
+			news_dot.draw_circle(Vector2(7, 7), 8.0, UiTheme.INK)
+			news_dot.draw_circle(Vector2(7, 7), 6.0, UiTheme.ACCENT))
+		gear.add_child(news_dot)
+	var newest := WhatsNew.newest_version()
+	news_dot.visible = newest != "" and newest != Save.last_seen_news
 
 func _small_button(big: String, sub: String) -> Button:
 	var b := Button.new()
 	b.name = big
-	b.custom_minimum_size = Vector2(212, 60)
+	b.custom_minimum_size = Vector2(240, 60)
 	var st := VBoxContainer.new()
 	st.name = "Stack"
 	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -241,11 +256,11 @@ func _small_button(big: String, sub: String) -> Button:
 	return b
 
 func _coins_sub() -> void:
-	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = "You have %d coins" % Save.coins
+	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = tr("You have %d coins") % Save.coins
 	if goals_b:
 		var n := Save.goals_to_claim()
 		var sl := goals_b.get_node("Stack/Sub") as Label
-		sl.text = ("%d to claim" % n) if n > 0 else "Daily coin goals"
+		sl.text = (tr("%d to claim") % n) if n > 0 else tr("Daily coin goals")
 		sl.add_theme_color_override("font_color", UiTheme.GOOD if n > 0 else UiTheme.MUTED)
 
 ## The Goals screen over the title.
@@ -276,7 +291,9 @@ func close_locker() -> void:
 func show_tab(online: bool) -> void:
 	browser.url = str(Settings.get_value("server_url"))
 	home.visible = not online
+	($Safe/Col/Top/Logo as WobbleLogo).font_size = 46 if online else 68     # a compact header: the room list needs the height
 	online_panel.visible = online
+	$Safe/Col/Build.visible = not online      # (the version line waits for the title: the room list needs the height)
 	$Safe/Col/Tip.visible = not online    # the room list needs the height
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
 	elif not online and Tier.is_pc(): online_b.grab_focus.call_deferred()
@@ -295,7 +312,7 @@ func close_wizard() -> void:
 
 ## Play keeps one plain sub line; the last setup is its tooltip (the wizard opens on it anyway).
 func _play_sub() -> void:
-	play.tooltip_text = "Last time: " + wizard.summary_line()
+	play.tooltip_text = tr("Last time: %s") % wizard.summary_line()
 
 func show_settings(on: bool, section := "") -> void:
 	if on:
@@ -326,7 +343,7 @@ func _status(t: String) -> void:
 	status.tooltip_text = t
 	var on := session != null and session.is_active()
 	var sub: Label = $Safe/Col/Body/Home/Online/Stack/Sub
-	sub.text = ("Connected · " + t) if on else ONLINE_SUB
+	sub.text = (tr("Connected · %s") % t) if on else tr(ONLINE_SUB)
 	sub.tooltip_text = sub.text
 
 ## Safe-area insets (notch, home indicator) plus our own padding.
@@ -340,7 +357,13 @@ func apply_safe_area() -> void:
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
 	play.custom_minimum_size.y = 140.0 if short else 176.0
-	col.add_theme_constant_override("separation", 8 if short else 14)
+	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
+		var cc := get_node_or_null(sheet + "/Center") as Control
+		if cc:
+			cc.offset_left = float(i[0]); cc.offset_top = float(i[1]); cc.offset_right = -float(i[2]); cc.offset_bottom = -float(i[3])
+	var hint := get_node_or_null("HostSheet/Center/Card/Box/Hint")
+	if hint: hint.visible = get_viewport_rect().size.y >= 500.0      # on the shortest canvases the arena hint gives way (it is in the tooltip too)
+	col.add_theme_constant_override("separation", UiTheme.SP_3 if short else UiTheme.SP_4)
 
 # ---------------- online ----------------
 
@@ -372,7 +395,7 @@ func _build_online() -> void:
 	ab.add_theme_font_size_override("font_size", 18)
 	ab.clip_text = true
 	ab.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	ab.pressed.connect(func() -> void: open_account("" if Save.cloud.signed_in() else "login"))
+	ab.pressed.connect(func() -> void: open_account())
 	side.add_child(ab)
 	_ui["acct"] = ab
 	browser = RoomBrowser.new()
@@ -408,11 +431,11 @@ func open_account(pg := "") -> void:
 func _refresh_login() -> void:
 	var u := Save.cloud.user()
 	var logged := Save.cloud.signed_in()
-	_ui["acct"].text = ("Signed in as " + u) if logged else "Log in to host"
-	_ui["acct"].tooltip_text = "Your account" if logged else "Hosting a room needs an account. Joining works as a guest."
-	who.text = ("Signed in as " + u.substr(0, 12)) if logged and u != "" else "Guest"
+	_ui["acct"].text = (tr("Signed in as %s") % u) if logged else tr("Pick a name to host")
+	_ui["acct"].tooltip_text = tr("Your account") if logged else tr("Hosting a room needs a name. Joining works as a guest.")
+	who.text = (tr("Signed in as %s") % u.substr(0, 12)) if logged and u != "" else tr("Guest")
 	var sync := Save.cloud.sync_text()
-	who.tooltip_text = ("Account: sign up or log in to save to the cloud" if not logged else "Signed in: " + u) + ("\n" + sync if sync != "" else "")
+	who.tooltip_text = ((tr("Account: pick a name to save to the cloud") if not logged else tr("Signed in: %s") % u) + ("\n" + sync if sync != "" else ""))
 	chip.tooltip_text = who.tooltip_text
 
 func _refresh_buttons() -> void:
@@ -476,7 +499,7 @@ func _on_ended(_reason: String) -> void:
 func _on_roster(r: Array) -> void:
 	var names: Array = []
 	for e: Dictionary in r: names.append(e["name"])
-	_ui["roster"].text = "In the room: " + ", ".join(names)
+	_ui["roster"].text = tr("In the room: %s") % ", ".join(names)
 	if session != null and session.is_active() and (session.slot >= 0 or session.is_host()) and not session.started:
 		_fill_lobby()
 		show_lobby(true)
@@ -514,7 +537,7 @@ func _sheet_frame(sheet_name: String, title: String, min_w: float) -> VBoxContai
 	add_child(sh)
 	var dim := ColorRect.new()
 	dim.name = "Dim"
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0.02, 0.06, 0.08, 0.86)   # strong enough that the panel behind never reads through
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sh.add_child(dim)
 	var cc := CenterContainer.new()
@@ -542,7 +565,7 @@ func _sheet_frame(sheet_name: String, title: String, min_w: float) -> VBoxContai
 func _pill_row(box: Control, row_name: String, label: String, keys: Array, names: Array, prefix: String, on_pick: Callable, label_w := 110.0) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.name = row_name
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
 	row.size_flags_horizontal = SIZE_EXPAND_FILL
 	box.add_child(row)
 	var l := Label.new()
@@ -581,7 +604,7 @@ const HOST_TABS := ["Room", "Mode", "Rules"]
 func _build_host_sheet() -> void:
 	var box := _sheet_frame("HostSheet", "Host a room", 640)
 	host_sheet = get_node("HostSheet")
-	box.add_theme_constant_override("separation", 8)
+	box.add_theme_constant_override("separation", UiTheme.SP_3)
 	var h: Variant = Settings.get_value("host_opts", {})
 	if h is Dictionary:
 		for k in _host.keys():
@@ -606,7 +629,7 @@ func _build_host_sheet() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.name = "Tabs"
 	tabs.size_flags_horizontal = SIZE_EXPAND_FILL
-	tabs.add_theme_constant_override("separation", 6)
+	tabs.add_theme_constant_override("separation", UiTheme.SP_3)
 	head.add_child(tabs)
 	var tg := ButtonGroup.new()
 	for t: String in HOST_TABS:
@@ -622,7 +645,7 @@ func _build_host_sheet() -> void:
 	for t: String in HOST_TABS:
 		var pg := VBoxContainer.new()
 		pg.name = t
-		pg.add_theme_constant_override("separation", 8)
+		pg.add_theme_constant_override("separation", UiTheme.SP_3)
 		box.add_child(pg)
 	var room: VBoxContainer = box.get_node("Room")
 	var nm := LineEdit.new()
@@ -639,7 +662,7 @@ func _build_host_sheet() -> void:
 	var mode: VBoxContainer = box.get_node("Mode")
 	var mr := HBoxContainer.new()
 	mr.name = "Game"
-	mr.add_theme_constant_override("separation", 6)
+	mr.add_theme_constant_override("separation", UiTheme.SP_3)
 	mode.add_child(mr)
 	var ml := Label.new()
 	ml.name = "Label"; ml.text = "Game"
@@ -675,7 +698,7 @@ func _build_host_sheet() -> void:
 	_pill_row(rules, "Hp", "Health", HostSession.HPS, HostSession.HPS, "hp_", func(k: int) -> void: _host["hp"] = k)
 	var pair := HBoxContainer.new()
 	pair.name = "Pair"
-	pair.add_theme_constant_override("separation", 14)
+	pair.add_theme_constant_override("separation", UiTheme.SP_4)
 	rules.add_child(pair)
 	_pill_row(pair, "Grav", "Gravity", [0, 1, 2], ["Low", "Normal", "High"], "grav_", func(i: int) -> void: _host["grav"] = HostSession.GRAVS[i])
 	_pill_row(pair, "Inf", "Ammo", [0, 1], ["Normal", "Infinite"], "inf_", func(i: int) -> void: _host["inf"] = i == 1, 64.0)
@@ -690,7 +713,7 @@ func _build_host_sheet() -> void:
 	box.add_child(hint)
 	var row := HBoxContainer.new()
 	row.name = "Buttons"
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
 	box.add_child(row)
 	var cancel := Button.new()
 	cancel.name = "Cancel"; cancel.text = "Cancel"
@@ -741,10 +764,10 @@ func set_host_mode(m: String) -> void:
 func _show_host_mode() -> void:
 	var box := host_sheet.get_node("Center/Card/Box/Mode")
 	var m := str(_host["mode"])
-	(box.get_node("Game/Name") as Button).text = HostSession.mode_name(m) + ("  (app)" if HostSession.app_only(m) else "")
-	var blurb := ModeRules.blurb(m, HostSession.all_modes())
-	var t := blurb + ("." if blurb != "" and not blurb.ends_with(".") else "")
-	t += (" " if t != "" else "") + ("App only: a web player in the room makes it Classic." if HostSession.app_only(m) else "Web and app players.")
+	(box.get_node("Game/Name") as Button).text = tr(HostSession.mode_name(m)) + (tr("  (app)") if HostSession.app_only(m) else "")
+	var blurb := tr(ModeRules.blurb(m, HostSession.all_modes()))
+	var t := blurb + ("." if blurb != "" and not blurb.ends_with(".") and not blurb.ends_with("。") else "")
+	t += (" " if t != "" else "") + (tr("App only: a web player in the room makes it Classic.") if HostSession.app_only(m) else tr("Web and app players."))
 	(box.get_node("ModeHint") as Label).text = t
 	_host_hint()
 
@@ -753,7 +776,7 @@ func _host_hint() -> void:
 	if host_sheet == null: return
 	var hint: Label = host_sheet.get_node("Center/Card/Box/Hint")
 	var mp := _host_map(str(_host["mode"]))
-	hint.text = "Arena: %s (from your last Play setup)." % str(Content.get_map(mp).get("name", mp))
+	hint.text = tr("Arena: %s (from your last Play setup).") % str(Content.get_map(mp).get("name", mp))
 
 ## The arena for game type `mode`: the last Play setup's if allowed online, else the mode's first one.
 func _host_map(mode: String) -> String:
@@ -765,7 +788,7 @@ func _host_map(mode: String) -> String:
 func show_host(on: bool) -> void:
 	host_sheet.visible = on
 	if on:
-		if str(_ui["rname"].text) == "": _ui["rname"].text = (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player") + "'s room"
+		if str(_ui["rname"].text) == "": _ui["rname"].text = tr("%s's room") % (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player")
 		show_host_tab("Room")
 		if Tier.is_pc(): (_ui["rname"] as LineEdit).grab_focus.call_deferred()
 
@@ -814,8 +837,8 @@ func _build_lobby() -> void:
 	var grid := GridContainer.new()
 	grid.name = "Players"
 	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 16)
-	grid.add_theme_constant_override("v_separation", 4)
+	grid.add_theme_constant_override("h_separation", UiTheme.SP_4)
+	grid.add_theme_constant_override("v_separation", UiTheme.SP_1)
 	box.add_child(grid)
 	var info := Label.new()
 	info.name = "Info"
@@ -832,7 +855,7 @@ func _build_lobby() -> void:
 	box.add_child(rl)
 	var row := HBoxContainer.new()
 	row.name = "Buttons"
-	row.add_theme_constant_override("separation", 10)
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
 	box.add_child(row)
 	var lv := Button.new()
 	lv.name = "Leave"; lv.text = "Leave"
@@ -858,22 +881,26 @@ func _fill_lobby() -> void:
 	var box := lobby.get_node("Center/Card/Box")
 	var hs: HostSession = session as HostSession if session is HostSession else null
 	var roster: Array = session.roster if session != null else []
-	(box.get_node("Title") as Label).text = (session.room_name if session != null and session.room_name != "" else "Lobby").substr(0, 24)
+	(box.get_node("Title") as Label).text = (session.room_name if session != null and session.room_name != "" else tr("Lobby")).substr(0, 24)
 	var code: Label = box.get_node("Code")
 	if session == null: code.text = ""
-	elif hs != null: code.text = ("Public room · " if hs.pub else "Room code ") + hs.room_code
-	else: code.text = "Room code " + session.room_code.to_upper()
+	elif hs != null: code.text = (tr("Public room · %s") % hs.room_code) if hs.pub else (tr("Room code %s") % hs.room_code)
+	else: code.text = tr("Room code %s") % session.room_code.to_upper()
 	var grid: GridContainer = box.get_node("Players")
 	for c in grid.get_children(): c.queue_free()
 	for r: Dictionary in roster:
 		var l := Label.new()
 		l.add_theme_font_size_override("font_size", 20)
-		l.text = "%s%s%s" % [r.get("name", "?"), "  (host)" if int(r.get("id", -1)) == 0 else "", "  (web)" if hs != null and int(r.get("id", -1)) != 0 and not r.has("gd") else ""]
+		l.custom_minimum_size.x = 250
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.clip_text = true
+		l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		l.text = "%s%s%s" % [r.get("name", "?"), tr("  (host)") if int(r.get("id", -1)) == 0 else "", tr("  (web)") if hs != null and int(r.get("id", -1)) != 0 and not r.has("gd") else ""]
 		grid.add_child(l)
 	var seats := hs.opt_max if hs != null else int(session.lobby.get("max", 0)) if session != null else 0
 	var info: Label = box.get_node("Info")
-	info.text = "%d / %d players" % [roster.size(), seats] + (" · empty seats get bots" if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
-		+ ("" if hs != null else " · waiting for the host to start")
+	info.text = tr("%d / %d players") % [roster.size(), seats] + (tr(" · empty seats get bots") if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
+		+ ("" if hs != null else tr(" · waiting for the host to start"))
 	var rl: Label = box.get_node("Rules")
 	if hs != null: rl.text = HostSession.rules_text(hs.rules_list())
 	elif session != null and session.lobby.get("rl") is Dictionary: rl.text = HostSession.rules_text(session.lobby["rl"])

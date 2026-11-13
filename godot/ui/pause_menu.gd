@@ -49,7 +49,7 @@ func _ready() -> void:
 	cc.add_child(card)
 	box = VBoxContainer.new()
 	box.name = "Box"
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", UiTheme.SP_3)
 	card.add_child(box)
 	var t := Label.new()
 	t.name = "Label"
@@ -119,11 +119,11 @@ func _btn(n: String, text: String, primary: bool, cb: Callable) -> Button:
 	return b
 
 func _texts() -> void:
-	quit_b.text = "Leave room" if online else "Quit to title"
-	confirm_l.text = "Leave the room? You'll leave this match and go back to the title." if online \
-		else "Quit this match? It won't count, and you'll go back to the title."
-	stay_b.text = "Keep playing"
-	go_b.text = "Leave room" if online else "Quit match"
+	quit_b.text = tr("Leave room") if online else tr("Quit to title")
+	confirm_l.text = tr("Leave the room? You'll leave this match and go back to the title.") if online \
+		else tr("Quit this match? It won't count, and you'll go back to the title.")
+	stay_b.text = tr("Keep playing")
+	go_b.text = tr("Leave room") if online else tr("Quit match")
 
 ## Shown by the world when it pauses: always the menu first.
 func open() -> void:

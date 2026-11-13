@@ -272,7 +272,7 @@ func slot_changed(s: int, kind: String, info: Dictionary) -> FighterState:
 	g.set_class(info["cls"], combat.classes.get(info["cls"], {}))
 	g.name = info["name"]
 	sim.looks[g] = look_of(info)
-	combat.ev({"type": "toast", "text": info["name"] + (" joined!" if kind == "human" else " (bot) is back")})
+	combat.ev({"type": "toast", "text": (tr("%s joined!") if kind == "human" else tr("%s (bot) is back")) % info["name"]})
 	return g
 
 # ============================== ghosts (ghostEquip / ghostFire) ==============================
@@ -446,9 +446,9 @@ func handle(m: Dictionary) -> void:
 			if not over:
 				over = true; winner = w
 				var f := slot_fighter(w)
-				var nm := "You" if f == sim.player else (f.name if f else "?")
+				var nm := tr("You") if f == sim.player else (f.name if f else "?")
 				if combat.teams and f != null and f.team >= 0:      # team modes: the side wins
-					nm = "You" if f.team == sim.player.team else ("Blue team" if f.team == 0 else "Red team")
+					nm = tr("You") if f.team == sim.player.team else (tr("Blue team") if f.team == 0 else tr("Red team"))
 				combat.ev({"type": "match_end", "w": w, "name": nm})
 		"gm":
 			_mode_message(m)

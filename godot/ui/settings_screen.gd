@@ -6,15 +6,16 @@ extends UiPage
 ##             mouse / controller, invert up-down look, aim hold or toggle (mouse / controller), the controls picture
 ##             (ui/controls_help.gd) and the how-to cards again (ui/intro_cards.gd)
 ##   Camera    Manual / Auto-centre, distance, field of view
-##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS
+##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS, performance readout, 15-minute soak test (world/soak_run.gd)
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
-##   Gameplay  knock-out replays (kill cam), damage numbers
+##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), knock-out replays (kill cam), damage numbers
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
 ##   About     version and build, privacy policy, credits, the game server address (advanced)
 ## Every control writes its Settings key at once (Settings persists it and emits `changed`, the game applies it live)
 ## and follows `changed` from elsewhere (F3 toggles the FPS, for example).
 
 signal account_requested
+signal news_requested
 
 const SECTIONS := ["controls", "camera", "graphics", "audio", "gameplay", "account", "about"]
 const NAMES := {"controls": "Controls", "camera": "Camera", "graphics": "Graphics", "audio": "Audio", "gameplay": "Gameplay",
@@ -49,7 +50,7 @@ func _ready() -> void:
 	tab_box = HBoxContainer.new()
 	tab_box.name = "Tabs"
 	tab_box.size_flags_horizontal = SIZE_EXPAND_FILL
-	tab_box.add_theme_constant_override("separation", 6)
+	tab_box.add_theme_constant_override("separation", UiTheme.SP_3)
 	tscroll.add_child(tab_box)
 	var g := ButtonGroup.new()
 	for s: String in SECTIONS:
@@ -61,8 +62,12 @@ func _ready() -> void:
 		b.button_group = g
 		b.custom_minimum_size = Vector2(0, TOUCH)
 		b.size_flags_horizontal = SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 19)
+		b.add_theme_font_size_override("font_size", 17)
 		b.pressed.connect(show_section.bind(s))
+		for state: String in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:      # slimmer side padding: seven tabs share one row, even in French / Japanese
+			var sb := b.get_theme_stylebox(state).duplicate() as StyleBoxFlat
+			sb.content_margin_left = 8; sb.content_margin_right = 8
+			b.add_theme_stylebox_override(state, sb)
 		tab_box.add_child(b)
 		tabs[s] = b
 	var page := PanelContainer.new()
@@ -75,7 +80,7 @@ func _ready() -> void:
 	rows = VBoxContainer.new()
 	rows.name = "Rows"
 	rows.size_flags_horizontal = SIZE_EXPAND_FILL
-	rows.add_theme_constant_override("separation", 4)
+	rows.add_theme_constant_override("separation", UiTheme.SP_3)
 	scroll.add_child(rows)
 	scroll.tapped.connect(_on_row_tapped)
 	help = ControlsHelp.new()
@@ -111,7 +116,7 @@ func _focus_tab() -> void:
 func show_section(s: String) -> void:
 	if not tabs.has(s): return
 	section = s
-	(tabs[s] as Button).set_pressed_no_signal(true)
+	for t: String in tabs: (tabs[t] as Button).set_pressed_no_signal(t == s)   # exactly one lit tab (a jump from the code left the old one gold)
 	for c in rows.get_children():
 		rows.remove_child(c)
 		c.queue_free()
@@ -133,18 +138,23 @@ func show_section(s: String) -> void:
 			_slider("fov", "Field of view", "", 60.0, 90.0, 1.0, func(v: float) -> String: return "%d°" % int(v))
 		"graphics":
 			var auto_n: String = ["Low", "Medium", "High"][MapBuilder.gfx_q()]
-			_choice("effects", "Effects", "Particles, trails and flashes in a match. Auto follows this device (%s)." % auto_n,
+			_choice("effects", "Effects", tr("Particles, trails and flashes in a match. Auto follows this device (%s).") % tr(auto_n),
 				["auto", "low", "medium", "high"], ["Auto", "Low", "Medium", "High"])
 			_choice("ui_scale", "Text and button size", "Menus, HUD and touch buttons. Auto keeps buttons finger-sized on this screen.",
 				UiScale.MODES, ["Auto", "Small", "Normal", "Large"])
 			_toggle("screen_shake", "Screen shake", "The camera shakes on big hits and explosions")
 			_toggle("show_fps", "Show frame rate (FPS)", "F3 or a three-finger tap also toggles it")
+			_toggle("perf_overlay", "Performance readout", "Top-left: fps, frame time, CPU / GPU, draws, thermal. For testing on a device.")
+			if not in_match:
+				_info("soak", "15-minute soak test", "An offline Chaos 5v5 bot match logs the frame rate every second. Leave the phone alone: the screen stays on. At the end, tap Copy summary to share the result.")
+				_buttons("Soak", [["soak", "Start soak test", func() -> void: SoakRun.launch(get_tree())]])
 		"audio":
 			_toggle("muted", "Sound", "", true)
 			_slider("volume", "Main volume", "", 0.0, 1.0, 0.05, _pct)
 			_slider("sfx_volume", "Sound effects", "", 0.0, 1.0, 0.05, _pct)
 			_slider("music_volume", "Music", "", 0.0, 1.0, 0.05, _pct)
 		"gameplay":
+			_language()
 			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
 		"account":
@@ -156,7 +166,9 @@ func show_section(s: String) -> void:
 				_buttons("Open", [["account", "Open account", func() -> void: account_requested.emit()]])
 		"about":
 			_info("Version", "Wobblers Arena", version_text())
-			_buttons("Links", [["privacy", "Privacy policy", func() -> void: OS.shell_open(PRIVACY_URL)]])
+			var links: Array = [["privacy", "Privacy policy", func() -> void: OS.shell_open(PRIVACY_URL)]]
+			if not in_match: links.insert(0, ["news", "What's new", func() -> void: news_requested.emit()])   # the patch notes (moved off the title)
+			_buttons("Links", links)
 			_info("Credits", "Credits", "Made by Kaydeross. Built with the Godot Engine (godotengine.org). Font: Fredoka (SIL Open Font License).")
 			_field("server_url", "Game server (advanced)", "Only change this if a friend runs their own server")
 			_server_extras()
@@ -171,14 +183,14 @@ static func version_text() -> String:
 	if cfg.load("res://build_info.cfg") == OK:
 		version = str(cfg.get_value("build", "version", version))
 		build = str(cfg.get_value("build", "number", build))
-	return "Version %s, build %s" % [version, build]
+	return TranslationServer.translate("Version %s, build %s") % [version, build]
 
 func _account_line() -> Array:
 	var sv := get_node_or_null("/root/Save")
 	var cloud: Variant = sv.get("cloud") if sv else null
 	if cloud != null and cloud.signed_in():
 		var sync: String = cloud.sync_text()
-		return ["Signed in as " + str(cloud.user()), sync if sync != "" else "Your progress is saved to your account"]
+		return [tr("Signed in as %s") % str(cloud.user()), sync if sync != "" else "Your progress is saved to your account"]
 	return ["Playing as a guest", "Your progress is saved on this device only. Create an account to keep it safe."]
 
 func open_help() -> void:
@@ -269,13 +281,43 @@ func _slider(key: String, title: String, sub: String, lo: float, hi: float, step
 	s.set_meta("fmt", fmt)
 	ctl[key] = s
 
+## The language row: one drop-down, every language in its own name (never translated) so it can always be found.
+func _language() -> void:
+	var r := _row("Row_lang", "Language", "Auto follows this device")
+	var ob := OptionButton.new()
+	ob.name = "Field"
+	ob.custom_minimum_size = Vector2(CTRL_W, TOUCH)
+	ob.size_flags_vertical = SIZE_SHRINK_CENTER
+	ob.add_theme_font_size_override("font_size", 19)
+	ob.auto_translate_mode = Node.AUTO_TRANSLATE_MODE_DISABLED   # the names are already in their own language
+	var pf := FontVariation.new()                                 # 繁體中文 / 简体中文 / 日本語 need CJK glyphs whatever the game's language is
+	pf.base_font = UiTheme.font(700)
+	pf.fallbacks = Lang.cjk_fonts()
+	ob.add_theme_font_override("font", pf)
+	ob.get_popup().add_theme_font_override("font", pf)
+	var items: Array = [["auto", tr("Auto") + " (" + _lang_name(Lang.resolve("auto")) + ")"]]
+	for l: Array in Lang.list(): items.append([l[0], l[1]])
+	var cur := str(Settings.get_value("lang"))
+	for i in items.size():
+		ob.add_item(items[i][1], i)
+		ob.set_item_metadata(i, items[i][0])
+		if items[i][0] == cur: ob.select(i)
+	ob.item_selected.connect(func(i: int) -> void: Settings.set_value("lang", str(ob.get_item_metadata(i))))
+	r.add_child(ob)
+	ctl["lang"] = ob
+
+static func _lang_name(c: String) -> String:
+	for l: Array in Lang.list():
+		if l[0] == c: return l[1]
+	return "English"
+
 ## A row of pills (one pick). `off`: value -> true to disable that pill (not available on this device).
 func _choice(key: String, title: String, sub: String, values: Array, names: Array, off: Dictionary = {}) -> void:
 	var r := _row("Row_" + key, title, sub)
 	var h := HBoxContainer.new()
 	h.name = "Ctl"
 	h.custom_minimum_size = Vector2(CTRL_W, 0)
-	h.add_theme_constant_override("separation", 6)
+	h.add_theme_constant_override("separation", UiTheme.SP_3)
 	r.add_child(h)
 	var g := ButtonGroup.new()
 	var by := {}
@@ -356,6 +398,9 @@ func _on_row_tapped(c: Control) -> void:
 
 ## Keep the controls in step when a setting changes elsewhere.
 func _on_setting(key: String, v: Variant) -> void:
+	if key == "lang":
+		if visible: show_section.call_deferred(section)   # sentences built in code (tr) are redone in the new language
+		return
 	if key == "server_url" and is_instance_valid(ui.get("server_active")): (ui["server_active"] as Label).text = Settings.server_status_text()
 	if not ctl.has(key): return
 	var c: Variant = ctl[key]

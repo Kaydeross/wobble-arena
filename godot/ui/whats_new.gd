@@ -103,20 +103,32 @@ func _entry(e: Dictionary, open_it: bool) -> void:
 	body.name = "Notes_" + key
 	body.size_flags_horizontal = SIZE_EXPAND_FILL
 	body.mouse_filter = Control.MOUSE_FILTER_PASS
-	body.add_theme_constant_override("separation", 6)
+	body.add_theme_constant_override("separation", UiTheme.SP_3)   # one note per paragraph, with air between
 	body.visible = open_it
 	rows.add_child(body)
 	bodies[v] = body
 	for n: String in e["notes"]:
+		var row := HBoxContainer.new()     # a hanging bullet: wrapped lines line up under the text, not under the dot
+		row.name = "NoteRow"
+		row.add_theme_constant_override("separation", UiTheme.SP_2)
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
+		body.add_child(row)
+		var dot := Label.new()
+		dot.text = "•"
+		dot.add_theme_font_size_override("font_size", 20)
+		dot.add_theme_color_override("font_color", UiTheme.ACCENT)
+		dot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(dot)
 		var l := Label.new()
 		l.name = "Note"
-		l.text = "• " + n
+		l.text = n
 		l.add_theme_font_size_override("font_size", 20)
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		l.custom_minimum_size = Vector2(160, 0)
 		l.size_flags_horizontal = SIZE_EXPAND_FILL
 		l.mouse_filter = Control.MOUSE_FILTER_PASS
-		body.add_child(l)
+		row.add_child(l)
 	h.pressed.connect(toggle.bind(v))
 
 ## Folds an entry open or shut (its heading button).

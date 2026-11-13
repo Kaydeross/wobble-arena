@@ -1,0 +1,1864 @@
+{
+ "Save your progress": {
+  "zh_TW": "儲存你的進度",
+  "zh_CN": "保存你的进度",
+  "ja": "進行状況を保存",
+  "fr": "Enregistrer la progression",
+  "es": "Guarda tu progreso"
+ },
+ "Username": {
+  "zh_TW": "使用者名稱",
+  "zh_CN": "用户名",
+  "ja": "ユーザー名",
+  "fr": "Nom d'utilisateur",
+  "es": "Nombre de usuario"
+ },
+ "Email": {
+  "zh_TW": "電子郵件",
+  "zh_CN": "电子邮件",
+  "ja": "メール",
+  "fr": "E-mail",
+  "es": "Correo electrónico"
+ },
+ "Show password": {
+  "zh_TW": "顯示密碼",
+  "zh_CN": "显示密码",
+  "ja": "パスワードを表示",
+  "fr": "Afficher le mot de passe",
+  "es": "Mostrar contraseña"
+ },
+ "SAVE PROGRESS": {
+  "zh_TW": "儲存進度",
+  "zh_CN": "保存进度",
+  "ja": "進行状況を保存",
+  "fr": "ENREGISTRER",
+  "es": "GUARDAR PROGRESO"
+ },
+ "Copy code": {
+  "zh_TW": "複製代碼",
+  "zh_CN": "复制代码",
+  "ja": "コードをコピー",
+  "fr": "Copier le code",
+  "es": "Copiar código"
+ },
+ "Write it down or screenshot it. If you ever forget your password, this code is the only way back in, because there is no email reset. It works once, then you get a new one.": {
+  "zh_TW": "請寫下來或截圖保存。如果你忘記密碼，這組代碼是唯一的回復方式，因為無法用電子郵件重設。它只能用一次，之後會給你新的代碼。",
+  "zh_CN": "请写下来或截图保存。如果你忘记密码，这组代码是唯一的找回方式，因为无法通过电子邮件重置。它只能用一次，之后会给你新的代码。",
+  "ja": "書き留めるか、スクリーンショットを撮ってください。パスワードを忘れた場合、このコードだけがログインする方法です。メールでのリセットはありません。1回だけ使えて、その後は新しいコードになります。",
+  "fr": "Notez-le ou faites une capture d'écran. Si vous oubliez votre mot de passe, ce code est le seul moyen de revenir, car il n'y a pas de réinitialisation par e-mail. Il ne fonctionne qu'une fois, puis vous en recevez un nouveau.",
+  "es": "Anótalo o haz una captura de pantalla. Si alguna vez olvidas tu contraseña, este código es la única forma de volver a entrar, porque no hay restablecimiento por correo. Funciona una sola vez; después recibirás uno nuevo."
+ },
+ "I SAVED IT, LET'S PLAY": {
+  "zh_TW": "我已儲存，開始遊戲",
+  "zh_CN": "我已保存，开始游戏",
+  "ja": "保存したので遊ぶ",
+  "fr": "C'EST NOTÉ, JOUONS",
+  "es": "LO GUARDÉ, A JUGAR"
+ },
+ "Forgot password?": {
+  "zh_TW": "忘記密碼？",
+  "zh_CN": "忘记密码？",
+  "ja": "パスワードを忘れた？",
+  "fr": "Mot de passe oublié ?",
+  "es": "¿Olvidaste la contraseña?"
+ },
+ "KILL CAM": {
+  "zh_TW": "擊倒回放",
+  "zh_CN": "击倒回放",
+  "ja": "キルカム",
+  "fr": "CAM DE K.O.",
+  "es": "CÁMARA DE K.O."
+ },
+ "Respawning in a moment…": {
+  "zh_TW": "稍後重生…",
+  "zh_CN": "稍后重生…",
+  "ja": "まもなく復活…",
+  "fr": "Réapparition imminente…",
+  "es": "Reapareciendo en un momento…"
+ },
+ "K.O.s:": {
+  "zh_TW": "擊倒數：",
+  "zh_CN": "击倒数：",
+  "ja": "KO数：",
+  "fr": "K.O. :",
+  "es": "K.O.:"
+ },
+ "YOU'RE OUT · spectating · press Esc for the menu or a new match": {
+  "zh_TW": "你已出局 · 觀戰中 · 按 Esc 開啟選單或開始新比賽",
+  "zh_CN": "你已出局 · 观战中 · 按 Esc 打开菜单或开始新比赛",
+  "ja": "脱落しました · 観戦中 · Esc でメニュー、または新しい試合",
+  "fr": "VOUS ÊTES ÉLIMINÉ · spectateur · Échap pour le menu ou un nouveau match",
+  "es": "ESTÁS FUERA · observando · pulsa Esc para el menú o una nueva partida"
+ },
+ "Say something. Enter sends, Esc cancels. /mute name": {
+  "zh_TW": "說點什麼。Enter 送出，Esc 取消。/mute 名字",
+  "zh_CN": "说点什么。Enter 发送，Esc 取消。/mute 名字",
+  "ja": "何か話す。Enter で送信、Esc でキャンセル。/mute 名前",
+  "fr": "Dites quelque chose. Entrée envoie, Échap annule. /mute nom",
+  "es": "Escribe algo. Intro envía, Esc cancela. /mute nombre"
+ },
+ "Your coins. Earn them from K.O.s and finished matches": {
+  "zh_TW": "你的金幣。從擊倒和完成的比賽中獲得",
+  "zh_CN": "你的金币。从击倒和完成的比赛中获得",
+  "ja": "あなたのコイン。KOや完了した試合で獲得",
+  "fr": "Vos pièces. Gagnez-en avec les K.O. et les matchs terminés",
+  "es": "Tus monedas. Ganalas con K.O.s y partidas terminadas"
+ },
+ "Build 76": {
+  "zh_TW": "版本 76",
+  "zh_CN": "版本 76",
+  "ja": "ビルド 76",
+  "fr": "Version 76",
+  "es": "Versión 76"
+ },
+ "Build 76 · Esc opens the menu any time": {
+  "zh_TW": "版本 76 · 隨時按 Esc 開啟選單",
+  "zh_CN": "版本 76 · 随时按 Esc 打开菜单",
+  "ja": "ビルド 76 · いつでも Esc でメニューを開けます",
+  "fr": "Version 76 · Échap ouvre le menu à tout moment",
+  "es": "Versión 76 · Esc abre el menú en cualquier momento"
+ },
+ "ONLINE ROOM · code": {
+  "zh_TW": "線上房間 · 代碼",
+  "zh_CN": "联机房间 · 代码",
+  "ja": "オンラインルーム · コード",
+  "fr": "SALON EN LIGNE · code",
+  "es": "SALA EN LÍNEA · código"
+ },
+ "Guest mode": {
+  "zh_TW": "訪客模式",
+  "zh_CN": "访客模式",
+  "ja": "ゲストモード",
+  "fr": "Mode invité",
+  "es": "Modo invitado"
+ },
+ "Save your progress to keep your coins and play online.": {
+  "zh_TW": "儲存你的進度，保留金幣並可線上遊玩。",
+  "zh_CN": "保存你的进度，保留金币并可联机游玩。",
+  "ja": "進行状況を保存すると、コインを保ったままオンラインで遊べます。",
+  "fr": "Enregistrez votre progression pour garder vos pièces et jouer en ligne.",
+  "es": "Guarda tu progreso para conservar tus monedas y jugar en línea."
+ },
+ "Save progress": {
+  "zh_TW": "儲存進度",
+  "zh_CN": "保存进度",
+  "ja": "進行状況を保存",
+  "fr": "Enregistrer la progression",
+  "es": "Guardar progreso"
+ },
+ "⚠ Online match: the game does not pause. Other players can still hit you while this menu is open, so be quick!": {
+  "zh_TW": "⚠ 線上比賽：遊戲不會暫停。開啟這個選單時其他玩家仍然可以打你，動作要快！",
+  "zh_CN": "⚠ 联机比赛：游戏不会暂停。打开此菜单时其他玩家仍能攻击你，请快一点！",
+  "ja": "⚠ オンライン対戦：ゲームは一時停止しません。このメニューを開いていても他のプレイヤーに攻撃されるので、素早く！",
+  "fr": "⚠ Partie en ligne : le jeu ne se met pas en pause. Les autres joueurs peuvent encore vous toucher pendant que ce menu est ouvert, alors faites vite !",
+  "es": "⚠ Partida en línea: el juego no se pausa. Otros jugadores pueden seguir golpeándote mientras este menú está abierto, ¡así que date prisa!"
+ },
+ "RESUME": {
+  "zh_TW": "繼續遊戲",
+  "zh_CN": "继续游戏",
+  "ja": "再開",
+  "fr": "REPRENDRE",
+  "es": "REANUDAR"
+ },
+ "NEW MATCH": {
+  "zh_TW": "新比賽",
+  "zh_CN": "新比赛",
+  "ja": "新しい試合",
+  "fr": "NOUVEAU MATCH",
+  "es": "NUEVA PARTIDA"
+ },
+ "You are out. Start again": {
+  "zh_TW": "你已出局。重新開始",
+  "zh_CN": "你已出局。重新开始",
+  "ja": "脱落しました。もう一度始めます",
+  "fr": "Vous êtes éliminé. Recommencer",
+  "es": "Estás fuera. Empieza de nuevo"
+ },
+ "MAIN MENU": {
+  "zh_TW": "主選單",
+  "zh_CN": "主菜单",
+  "ja": "メインメニュー",
+  "fr": "MENU PRINCIPAL",
+  "es": "MENÚ PRINCIPAL"
+ },
+ "Leave this match": {
+  "zh_TW": "離開這場比賽",
+  "zh_CN": "离开这场比赛",
+  "ja": "この試合を離れる",
+  "fr": "Quitter ce match",
+  "es": "Salir de esta partida"
+ },
+ "Match stats": {
+  "zh_TW": "比賽統計",
+  "zh_CN": "比赛统计",
+  "ja": "試合の統計",
+  "fr": "Statistiques du match",
+  "es": "Estadísticas de la partida"
+ },
+ "Wobbly low-poly brawls. Bring your friends (and a bat).": {
+  "zh_TW": "搖搖晃晃的低多邊形亂鬥。帶上朋友（和一根球棒）。",
+  "zh_CN": "摇摇晃晃的低多边形乱斗。带上朋友（和一根球棒）。",
+  "ja": "ぐらぐら揺れる低ポリゴンのバトル。友だちとバットを持って集まろう。",
+  "fr": "Des mêlées low-poly bringuebalantes. Amenez vos amis (et une batte).",
+  "es": "Peleas low-poly tambaleantes. Trae a tus amigos (y un bate)."
+ },
+ "PLAY ONLINE": {
+  "zh_TW": "線上遊玩",
+  "zh_CN": "联机游戏",
+  "ja": "オンラインで遊ぶ",
+  "fr": "JOUER EN LIGNE",
+  "es": "JUGAR EN LÍNEA"
+ },
+ "PROFILE NEEDED": {
+  "zh_TW": "需要帳號",
+  "zh_CN": "需要账号",
+  "ja": "プロフィールが必要",
+  "fr": "PROFIL REQUIS",
+  "es": "PERFIL NECESARIO"
+ },
+ "Quick play, open rooms and friends": {
+  "zh_TW": "快速開始、公開房間與朋友",
+  "zh_CN": "快速开始、公开房间与朋友",
+  "ja": "クイックプレイ、公開ルーム、フレンド",
+  "fr": "Partie rapide, salons publics et amis",
+  "es": "Partida rápida, salas públicas y amigos"
+ },
+ "PLAY OFFLINE": {
+  "zh_TW": "離線遊玩",
+  "zh_CN": "离线游戏",
+  "ja": "オフラインで遊ぶ",
+  "fr": "JOUER HORS LIGNE",
+  "es": "JUGAR SIN CONEXIÓN"
+ },
+ "Pick a mode, a level and your rules": {
+  "zh_TW": "選擇模式、關卡與規則",
+  "zh_CN": "选择模式、关卡和规则",
+  "ja": "モード、ステージ、ルールを選ぶ",
+  "fr": "Choisir un mode, un niveau et ses règles",
+  "es": "Elige modo, nivel y reglas"
+ },
+ "QUICK PLAY": {
+  "zh_TW": "快速遊戲",
+  "zh_CN": "快速游戏",
+  "ja": "クイックプレイ",
+  "fr": "PARTIE RAPIDE",
+  "es": "PARTIDA RÁPIDA"
+ },
+ "Random mode and level": {
+  "zh_TW": "隨機模式與關卡",
+  "zh_CN": "随机模式和关卡",
+  "ja": "ランダムなモードとステージ",
+  "fr": "Mode et niveau au hasard",
+  "es": "Modo y nivel al azar"
+ },
+ "OFFLINE": {
+  "zh_TW": "離線",
+  "zh_CN": "离线",
+  "ja": "オフライン",
+  "fr": "HORS LIGNE",
+  "es": "SIN CONEXIÓN"
+ },
+ "PRACTICE": {
+  "zh_TW": "練習",
+  "zh_CN": "练习",
+  "ja": "練習",
+  "fr": "ENTRAÎNEMENT",
+  "es": "PRÁCTICA"
+ },
+ "Dummies and a weapon rack": {
+  "zh_TW": "假人與武器架",
+  "zh_CN": "假人和武器架",
+  "ja": "ダミーと武器ラック",
+  "fr": "Mannequins et râtelier d'armes",
+  "es": "Maniquíes y un expositor de armas"
+ },
+ "LOCKER": {
+  "zh_TW": "置物櫃",
+  "zh_CN": "储物柜",
+  "ja": "ロッカー",
+  "fr": "VESTIAIRE",
+  "es": "CASILLERO"
+ },
+ "Your wobbler and emotes": {
+  "zh_TW": "你的搖搖人與表情",
+  "zh_CN": "你的摇摇人与表情",
+  "ja": "自分のウォブラーとエモート",
+  "fr": "Le wobbler et les emotes",
+  "es": "Tu wobbler y tus emotes"
+ },
+ "SHOP": {
+  "zh_TW": "商店",
+  "zh_CN": "商店",
+  "ja": "ショップ",
+  "fr": "BOUTIQUE",
+  "es": "TIENDA"
+ },
+ "Outfits and emotes": {
+  "zh_TW": "服裝與表情動作",
+  "zh_CN": "服装和表情动作",
+  "ja": "衣装とエモート",
+  "fr": "Tenues et emotes",
+  "es": "Atuendos y emotes"
+ },
+ "Settings & controls": {
+  "zh_TW": "設定與操作",
+  "zh_CN": "设置与操作",
+  "ja": "設定と操作",
+  "fr": "Paramètres et commandes",
+  "es": "Ajustes y controles"
+ },
+ "Test guns": {
+  "zh_TW": "測試武器",
+  "zh_CN": "测试武器",
+  "ja": "武器テスト",
+  "fr": "Tester les armes",
+  "es": "Probar armas"
+ },
+ "My wobbler": {
+  "zh_TW": "我的搖搖人",
+  "zh_CN": "我的摇摇人",
+  "ja": "マイ・ウォブラー",
+  "fr": "Mon wobbler",
+  "es": "Mi wobbler"
+ },
+ "● LIVE": {
+  "zh_TW": "● 在線",
+  "zh_CN": "● 在线",
+  "ja": "● ライブ",
+  "fr": "● EN DIRECT",
+  "es": "● EN VIVO"
+ },
+ "Rookie": {
+  "zh_TW": "新手",
+  "zh_CN": "新手",
+  "ja": "ルーキー",
+  "fr": "Débutant",
+  "es": "Novato"
+ },
+ "DAILY GIFT": {
+  "zh_TW": "每日禮物",
+  "zh_CN": "每日礼物",
+  "ja": "デイリーギフト",
+  "fr": "CADEAU DU JOUR",
+  "es": "REGALO DIARIO"
+ },
+ "CLAIM": {
+  "zh_TW": "領取",
+  "zh_CN": "领取",
+  "ja": "受け取る",
+  "fr": "RÉCUPÉRER",
+  "es": "RECLAMAR"
+ },
+ "TODAY'S LEVEL": {
+  "zh_TW": "今日關卡",
+  "zh_CN": "今日关卡",
+  "ja": "今日のステージ",
+  "fr": "NIVEAU DU JOUR",
+  "es": "NIVEL DE HOY"
+ },
+ "PLAY": {
+  "zh_TW": "開始",
+  "zh_CN": "开始",
+  "ja": "プレイ",
+  "fr": "JOUER",
+  "es": "JUGAR"
+ },
+ "Level of the day": {
+  "zh_TW": "今日關卡",
+  "zh_CN": "今日关卡",
+  "ja": "今日のステージ",
+  "fr": "Niveau du jour",
+  "es": "Nivel del día"
+ },
+ "Play this level": {
+  "zh_TW": "遊玩此關卡",
+  "zh_CN": "玩这个关卡",
+  "ja": "このステージで遊ぶ",
+  "fr": "Jouer ce niveau",
+  "es": "Jugar este nivel"
+ },
+ "Profile": {
+  "zh_TW": "個人資料",
+  "zh_CN": "个人资料",
+  "ja": "プロフィール",
+  "fr": "Profil",
+  "es": "Perfil"
+ },
+ "Stats": {
+  "zh_TW": "統計",
+  "zh_CN": "统计",
+  "ja": "統計",
+  "fr": "Stats",
+  "es": "Estadísticas"
+ },
+ "Badges": {
+  "zh_TW": "徽章",
+  "zh_CN": "徽章",
+  "ja": "バッジ",
+  "fr": "Badges",
+  "es": "Insignias"
+ },
+ "Recent matches": {
+  "zh_TW": "最近比賽",
+  "zh_CN": "最近比赛",
+  "ja": "最近の試合",
+  "fr": "Matchs récents",
+  "es": "Partidas recientes"
+ },
+ "Security": {
+  "zh_TW": "安全性",
+  "zh_CN": "安全",
+  "ja": "セキュリティ",
+  "fr": "Sécurité",
+  "es": "Seguridad"
+ },
+ "Your name": {
+  "zh_TW": "你的名字",
+  "zh_CN": "你的名字",
+  "ja": "名前",
+  "fr": "Nom",
+  "es": "Tu nombre"
+ },
+ "This is the name other players see in matches and rooms.": {
+  "zh_TW": "這是其他玩家在比賽和房間中看到的名字。",
+  "zh_CN": "这是其他玩家在比赛和房间中看到的名字。",
+  "ja": "これは対戦や部屋で他のプレイヤーに表示される名前です。",
+  "fr": "C'est le nom que les autres joueurs voient dans les parties et les salons.",
+  "es": "Es el nombre que otros jugadores ven en las partidas y salas."
+ },
+ "Level 1": {
+  "zh_TW": "等級 1",
+  "zh_CN": "等级 1",
+  "ja": "レベル 1",
+  "fr": "Niveau 1",
+  "es": "Nivel 1"
+ },
+ "Outfits owned": {
+  "zh_TW": "已擁有服裝",
+  "zh_CN": "已拥有服装",
+  "ja": "所持している衣装",
+  "fr": "Tenues possédées",
+  "es": "Atuendos obtenidos"
+ },
+ "Open Locker": {
+  "zh_TW": "開啟置物櫃",
+  "zh_CN": "打开储物柜",
+  "ja": "ロッカーを開く",
+  "fr": "Ouvrir le vestiaire",
+  "es": "Abrir casillero"
+ },
+ "Open Shop": {
+  "zh_TW": "開啟商店",
+  "zh_CN": "打开商店",
+  "ja": "ショップを開く",
+  "fr": "Ouvrir la boutique",
+  "es": "Abrir tienda"
+ },
+ "Redeem a code": {
+  "zh_TW": "兌換代碼",
+  "zh_CN": "兑换代码",
+  "ja": "コードを引き換える",
+  "fr": "Utiliser un code",
+  "es": "Canjear un código"
+ },
+ "Best streak": {
+  "zh_TW": "最佳連勝",
+  "zh_CN": "最佳连胜",
+  "ja": "最高連続",
+  "fr": "Meilleure série",
+  "es": "Mejor racha"
+ },
+ "Match wins": {
+  "zh_TW": "比賽勝場",
+  "zh_CN": "比赛胜场",
+  "ja": "勝利数",
+  "fr": "Victoires",
+  "es": "Victorias"
+ },
+ "Time played": {
+  "zh_TW": "遊戲時間",
+  "zh_CN": "游戏时间",
+  "ja": "プレイ時間",
+  "fr": "Temps de jeu",
+  "es": "Tiempo jugado"
+ },
+ "Matches played": {
+  "zh_TW": "已玩比賽",
+  "zh_CN": "已玩比赛",
+  "ja": "プレイした試合",
+  "fr": "Matchs joués",
+  "es": "Partidas jugadas"
+ },
+ "Win rate": {
+  "zh_TW": "勝率",
+  "zh_CN": "胜率",
+  "ja": "勝率",
+  "fr": "Taux de victoire",
+  "es": "Tasa de victorias"
+ },
+ "K.O.s per match": {
+  "zh_TW": "每場擊倒數",
+  "zh_CN": "每场击倒数",
+  "ja": "1試合あたりのKO数",
+  "fr": "K.O. par match",
+  "es": "K.O. por partida"
+ },
+ "Online matches": {
+  "zh_TW": "線上比賽",
+  "zh_CN": "联机比赛",
+  "ja": "オンライン試合",
+  "fr": "Matchs en ligne",
+  "es": "Partidas en línea"
+ },
+ "Lets you reset your password if you forget it (there is no email reset). Making a new one cancels the old one. Accounts made before build 70 do not have one yet.": {
+  "zh_TW": "讓你在忘記密碼時可以重設（沒有電子郵件重設功能）。製作新代碼會讓舊代碼失效。第 70 版之前建立的帳號尚未有這組代碼。",
+  "zh_CN": "让你在忘记密码时可以重置（没有电子邮件重置功能）。生成新代码会使旧代码失效。第 70 版之前创建的账号还没有这组代码。",
+  "ja": "パスワードを忘れたときにリセットできます（メールでのリセットはありません）。新しいコードを作ると古いコードは無効になります。ビルド70より前に作ったアカウントにはまだありません。",
+  "fr": "Permet de réinitialiser votre mot de passe si vous l'oubliez (il n'y a pas de réinitialisation par e-mail). En créer un nouveau annule l'ancien. Les comptes créés avant la version 70 n'en ont pas encore.",
+  "es": "Permite restablecer tu contraseña si la olvidas (no hay restablecimiento por correo). Crear uno nuevo cancela el anterior. Las cuentas creadas antes de la versión 70 todavía no tienen uno."
+ },
+ "Make a new recovery code": {
+  "zh_TW": "製作新的復原代碼",
+  "zh_CN": "生成新的找回码",
+  "ja": "新しい回復コードを作る",
+  "fr": "Créer un nouveau code de récupération",
+  "es": "Crear un código de recuperación nuevo"
+ },
+ "This permanently deletes your account and everything saved to it. You can make a new one afterwards with the same username.": {
+  "zh_TW": "這會永久刪除你的帳號和其中儲存的所有資料。之後你可以用相同的使用者名稱建立新帳號。",
+  "zh_CN": "这将永久删除你的账号及其中保存的所有数据。之后你可以用相同的用户名创建新账号。",
+  "ja": "アカウントと保存されたすべてのデータが完全に削除されます。その後、同じユーザー名で新しく作ることができます。",
+  "fr": "Cela supprime définitivement votre compte et tout ce qui y est enregistré. Vous pourrez en créer un nouveau ensuite avec le même nom d'utilisateur.",
+  "es": "Esto elimina de forma permanente tu cuenta y todo lo guardado en ella. Después podrás crear una nueva con el mismo nombre de usuario."
+ },
+ "Delete my account": {
+  "zh_TW": "刪除我的帳號",
+  "zh_CN": "删除我的账号",
+  "ja": "アカウントを削除する",
+  "fr": "Supprimer mon compte",
+  "es": "Eliminar mi cuenta"
+ },
+ "Open last match analysis": {
+  "zh_TW": "開啟上一場比賽分析",
+  "zh_CN": "打开上一场比赛分析",
+  "ja": "前回の試合の分析を開く",
+  "fr": "Ouvrir l'analyse du dernier match",
+  "es": "Abrir análisis de la última partida"
+ },
+ "Versus: how many on each team?": {
+  "zh_TW": "對抗：每隊幾人？",
+  "zh_CN": "对抗：每队几人？",
+  "ja": "対戦：各チーム何人？",
+  "fr": "Versus : combien par équipe ?",
+  "es": "Versus: ¿cuántos por equipo?"
+ },
+ "You are on the blue team. Bots fill every other seat.": {
+  "zh_TW": "你在藍隊。其他座位由電腦玩家補上。",
+  "zh_CN": "你在蓝队。其他位置由电脑玩家补上。",
+  "ja": "あなたは青チームです。残りの席はボットが埋めます。",
+  "fr": "Vous êtes dans l'équipe bleue. Les bots remplissent les autres places.",
+  "es": "Estás en el equipo azul. Los bots ocupan los demás puestos."
+ },
+ "Pick a game mode": {
+  "zh_TW": "選擇遊戲模式",
+  "zh_CN": "选择游戏模式",
+  "ja": "ゲームモードを選ぶ",
+  "fr": "Choisir un mode de jeu",
+  "es": "Elige un modo de juego"
+ },
+ "Pick a level": {
+  "zh_TW": "選擇關卡",
+  "zh_CN": "选择关卡",
+  "ja": "ステージを選ぶ",
+  "fr": "Choisir un niveau",
+  "es": "Elige un nivel"
+ },
+ "Pause or resume the spin": {
+  "zh_TW": "暫停或繼續旋轉",
+  "zh_CN": "暂停或继续旋转",
+  "ja": "回転を一時停止または再開",
+  "fr": "Mettre en pause ou reprendre la rotation",
+  "es": "Pausar o reanudar el giro"
+ },
+ "❚❚ Spinning": {
+  "zh_TW": "❚❚ 旋轉中",
+  "zh_CN": "❚❚ 旋转中",
+  "ja": "❚❚ 回転中",
+  "fr": "❚❚ En rotation",
+  "es": "❚❚ Girando"
+ },
+ "drag to turn": {
+  "zh_TW": "拖曳以旋轉",
+  "zh_CN": "拖动以旋转",
+  "ja": "ドラッグで回転",
+  "fr": "glisser pour tourner",
+  "es": "arrastra para girar"
+ },
+ "Build your own level": {
+  "zh_TW": "建立你自己的關卡",
+  "zh_CN": "建造你自己的关卡",
+  "ja": "自分のステージを作る",
+  "fr": "Créer son propre niveau",
+  "es": "Crea tu propio nivel"
+ },
+ "Obstacles": {
+  "zh_TW": "障礙物",
+  "zh_CN": "障碍物",
+  "ja": "障害物",
+  "fr": "Obstacles",
+  "es": "Obstáculos"
+ },
+ "Climbing platforms": {
+  "zh_TW": "可攀爬平台",
+  "zh_CN": "可攀爬平台",
+  "ja": "登れるプラットフォーム",
+  "fr": "Plateformes à escalader",
+  "es": "Plataformas para escalar"
+ },
+ "Bounce pads": {
+  "zh_TW": "彈跳墊",
+  "zh_CN": "弹跳垫",
+  "ja": "バウンスパッド",
+  "fr": "Tremplins",
+  "es": "Trampolines"
+ },
+ "Seed": {
+  "zh_TW": "種子碼",
+  "zh_CN": "种子",
+  "ja": "シード",
+  "fr": "Graine",
+  "es": "Semilla"
+ },
+ "Icy floor": {
+  "zh_TW": "冰面地板",
+  "zh_CN": "冰面地板",
+  "ja": "凍った床",
+  "fr": "Sol glacé",
+  "es": "Suelo helado"
+ },
+ "In game:": {
+  "zh_TW": "遊戲中：",
+  "zh_CN": "游戏中：",
+  "ja": "ゲーム中：",
+  "fr": "En jeu :",
+  "es": "En partida:"
+ },
+ "places a block where you aim,": {
+  "zh_TW": "在瞄準處放置方塊，",
+  "zh_CN": "在瞄准处放置方块，",
+  "ja": "狙った場所にブロックを置き、",
+  "fr": "place un bloc là où vous visez,",
+  "es": "coloca un bloque donde apuntas,"
+ },
+ "removes one. Blocks are saved with the level.": {
+  "zh_TW": "移除一個。方塊會與關卡一起儲存。",
+  "zh_CN": "移除一个。方块会与关卡一起保存。",
+  "ja": "1つ消します。ブロックはステージと一緒に保存されます。",
+  "fr": "retire un bloc. Les blocs sont enregistrés avec le niveau.",
+  "es": "quita uno. Los bloques se guardan con el nivel."
+ },
+ "Clear my blocks": {
+  "zh_TW": "清除我的方塊",
+  "zh_CN": "清除我的方块",
+  "ja": "自分のブロックを消す",
+  "fr": "Effacer mes blocs",
+  "es": "Borrar mis bloques"
+ },
+ "Modifiers": {
+  "zh_TW": "規則修改",
+  "zh_CN": "规则修改",
+  "ja": "ルール変更",
+  "fr": "Modificateurs",
+  "es": "Modificadores"
+ },
+ "Match": {
+  "zh_TW": "比賽",
+  "zh_CN": "比赛",
+  "ja": "試合",
+  "fr": "Match",
+  "es": "Partida"
+ },
+ "Free play": {
+  "zh_TW": "自由遊玩",
+  "zh_CN": "自由游玩",
+  "ja": "フリープレイ",
+  "fr": "Jeu libre",
+  "es": "Juego libre"
+ },
+ "No end": {
+  "zh_TW": "無限制",
+  "zh_CN": "无限制",
+  "ja": "終わりなし",
+  "fr": "Sans fin",
+  "es": "Sin fin"
+ },
+ "First to 5": {
+  "zh_TW": "先到 5",
+  "zh_CN": "先到 5",
+  "ja": "5 KO先取",
+  "fr": "Premier à 5",
+  "es": "Primero en 5"
+ },
+ "First to 10": {
+  "zh_TW": "先到 10",
+  "zh_CN": "先到 10",
+  "ja": "10 KO先取",
+  "fr": "Premier à 10",
+  "es": "Primero en 10"
+ },
+ "First to 20": {
+  "zh_TW": "先到 20",
+  "zh_CN": "先到 20",
+  "ja": "20 KO先取",
+  "fr": "Premier à 20",
+  "es": "Primero en 20"
+ },
+ "How many": {
+  "zh_TW": "數量",
+  "zh_CN": "数量",
+  "ja": "人数",
+  "fr": "Nombre",
+  "es": "Cantidad"
+ },
+ "Dummies": {
+  "zh_TW": "假人",
+  "zh_CN": "假人",
+  "ja": "ダミー",
+  "fr": "Mannequins",
+  "es": "Maniquíes"
+ },
+ "Wander about, barely fight": {
+  "zh_TW": "四處走動，幾乎不戰鬥",
+  "zh_CN": "四处走动，几乎不战斗",
+  "ja": "うろうろして、ほぼ戦わない",
+  "fr": "Errent sans vraiment combattre",
+  "es": "Deambulan y apenas luchan"
+ },
+ "Brawlers": {
+  "zh_TW": "鬥士",
+  "zh_CN": "斗士",
+  "ja": "ブロウラー",
+  "fr": "Brutes",
+  "es": "Luchadores"
+ },
+ "They hunt you down": {
+  "zh_TW": "會追著你打",
+  "zh_CN": "会追着你打",
+  "ja": "あなたを追いかけて攻撃",
+  "fr": "Ils vous traquent",
+  "es": "Te persiguen"
+ },
+ "Slow and sloppy": {
+  "zh_TW": "慢而粗糙",
+  "zh_CN": "慢而粗糙",
+  "ja": "のろくて雑",
+  "fr": "Lents et maladroits",
+  "es": "Lentos y torpes"
+ },
+ "Fair fight": {
+  "zh_TW": "公平對戰",
+  "zh_CN": "公平对战",
+  "ja": "公平な戦い",
+  "fr": "Combat équilibré",
+  "es": "Combate justo"
+ },
+ "Fast, hits hard": {
+  "zh_TW": "快速，攻擊力強",
+  "zh_CN": "快速，攻击力强",
+  "ja": "速くて強烈",
+  "fr": "Rapides, frappent fort",
+  "es": "Rápidos, golpean fuerte"
+ },
+ "Good luck": {
+  "zh_TW": "祝你好運",
+  "zh_CN": "祝你好运",
+  "ja": "健闘を祈る",
+  "fr": "Bonne chance",
+  "es": "Mucha suerte"
+ },
+ "Team Wobble": {
+  "zh_TW": "團隊搖擺",
+  "zh_CN": "团队摇摆",
+  "ja": "チーム・ウォブル",
+  "fr": "Équipe Wobble",
+  "es": "Equipo Wobble"
+ },
+ "Bots only go after you": {
+  "zh_TW": "電腦玩家只追你",
+  "zh_CN": "电脑玩家只追你",
+  "ja": "ボットはあなただけを狙う",
+  "fr": "Les bots ne visent que vous",
+  "es": "Los bots solo van a por ti"
+ },
+ "Free-for-all": {
+  "zh_TW": "大亂鬥",
+  "zh_CN": "大乱斗",
+  "ja": "全員敵",
+  "fr": "Chacun pour soi",
+  "es": "Todos contra todos"
+ },
+ "Bots fight each other too": {
+  "zh_TW": "電腦玩家也會互相攻擊",
+  "zh_CN": "电脑玩家也会互相攻击",
+  "ja": "ボット同士も戦う",
+  "fr": "Les bots se battent aussi entre eux",
+  "es": "Los bots también se pelean entre ellos"
+ },
+ "Super floaty": {
+  "zh_TW": "超級飄浮",
+  "zh_CN": "超级飘浮",
+  "ja": "ふわふわ",
+  "fr": "Très flottant",
+  "es": "Muy flotante"
+ },
+ "Floaty": {
+  "zh_TW": "飄浮",
+  "zh_CN": "飘浮",
+  "ja": "ふわふわ",
+  "fr": "Flottant",
+  "es": "Flotante"
+ },
+ "Heavy": {
+  "zh_TW": "沉重",
+  "zh_CN": "沉重",
+  "ja": "重い",
+  "fr": "Lourde",
+  "es": "Pesada"
+ },
+ "Short jumps": {
+  "zh_TW": "跳得短",
+  "zh_CN": "跳得短",
+  "ja": "ジャンプが低い",
+  "fr": "Sauts courts",
+  "es": "Saltos cortos"
+ },
+ "Yeet": {
+  "zh_TW": "超強擊飛",
+  "zh_CN": "超强击飞",
+  "ja": "ぶっ飛ばし",
+  "fr": "Yeet",
+  "es": "Yeet"
+ },
+ "Maximum": {
+  "zh_TW": "最大",
+  "zh_CN": "最大",
+  "ja": "最大",
+  "fr": "Maximum",
+  "es": "Máximo"
+ },
+ "Infinite ammo": {
+  "zh_TW": "無限彈藥",
+  "zh_CN": "无限弹药",
+  "ja": "無限弾",
+  "fr": "Munitions infinies",
+  "es": "Munición infinita"
+ },
+ "Solid ground": {
+  "zh_TW": "堅實地面",
+  "zh_CN": "坚实地面",
+  "ja": "しっかりした地面",
+  "fr": "Sol stable",
+  "es": "Suelo sólido"
+ },
+ "Surprise me": {
+  "zh_TW": "給你驚喜",
+  "zh_CN": "给你惊喜",
+  "ja": "お楽しみ",
+  "fr": "Surprise",
+  "es": "Sorpresa"
+ },
+ "Rolling waves": {
+  "zh_TW": "滾動的波浪",
+  "zh_CN": "滚动的波浪",
+  "ja": "転がる波",
+  "fr": "Vagues qui roulent",
+  "es": "Olas que ruedan"
+ },
+ "See-saw": {
+  "zh_TW": "翹翹板",
+  "zh_CN": "跷跷板",
+  "ja": "シーソー",
+  "fr": "Bascule",
+  "es": "Balancín"
+ },
+ "Holes open": {
+  "zh_TW": "地面裂開",
+  "zh_CN": "地面裂开",
+  "ja": "穴が開く",
+  "fr": "Des trous s'ouvrent",
+  "es": "Se abren agujeros"
+ },
+ "Platforms slide": {
+  "zh_TW": "平台滑動",
+  "zh_CN": "平台滑动",
+  "ja": "足場が滑る",
+  "fr": "Plateformes coulissantes",
+  "es": "Plataformas deslizantes"
+ },
+ "The floor stays still": {
+  "zh_TW": "地板保持靜止",
+  "zh_CN": "地板保持静止",
+  "ja": "床は動かない",
+  "fr": "Le sol reste immobile",
+  "es": "El suelo se mantiene quieto"
+ },
+ "A different moving arena every match": {
+  "zh_TW": "每場比賽都是不同的移動競技場",
+  "zh_CN": "每场比赛都是不同的移动竞技场",
+  "ja": "試合ごとに動くアリーナが変わる",
+  "fr": "Une arène mobile différente à chaque match",
+  "es": "Una arena móvil distinta en cada partida"
+ },
+ "A slow wave rolls across the floor tiles": {
+  "zh_TW": "緩慢的波浪滾過地板方塊",
+  "zh_CN": "缓慢的波浪滚过地板方块",
+  "ja": "ゆっくりした波が床のタイルを横切る",
+  "fr": "Une vague lente traverse les dalles du sol",
+  "es": "Una ola lenta recorre las baldosas del suelo"
+ },
+ "The floor rocks like a see-saw on a turning axis": {
+  "zh_TW": "地板像翹翹板一樣繞著旋轉軸傾斜",
+  "zh_CN": "地板像跷跷板一样绕着旋转轴倾斜",
+  "ja": "床が回転軸を中心にシーソーのように揺れる",
+  "fr": "Le sol bascule comme une balançoire autour d'un axe",
+  "es": "El suelo se balancea como un balancín sobre un eje que gira"
+ },
+ "Every 12-18 s the ground shakes and a few tiles drop away for 3 s": {
+  "zh_TW": "每 12 到 18 秒地面就會搖晃，部分方塊會消失 3 秒",
+  "zh_CN": "每 12 到 18 秒地面就会晃动，部分方块会消失 3 秒",
+  "ja": "12〜18秒ごとに地面が揺れ、いくつかのタイルが3秒間消える",
+  "fr": "Toutes les 12 à 18 s le sol tremble et quelques dalles disparaissent pendant 3 s",
+  "es": "Cada 12-18 s el suelo tiembla y algunas baldosas caen durante 3 s"
+ },
+ "Free-standing blocks and platforms slide back and forth": {
+  "zh_TW": "獨立的方塊和平台會來回滑動",
+  "zh_CN": "独立的方块和平台会来回滑动",
+  "ja": "独立したブロックと足場が前後に滑る",
+  "fr": "Les blocs et plateformes isolés glissent d'avant en arrière",
+  "es": "Los bloques y plataformas sueltos se deslizan de un lado a otro"
+ },
+ "Weapons & crates": {
+  "zh_TW": "武器與補給箱",
+  "zh_CN": "武器与补给箱",
+  "ja": "武器とクレート",
+  "fr": "Armes et caisses",
+  "es": "Armas y cajas"
+ },
+ "Crate speed": {
+  "zh_TW": "補給箱速度",
+  "zh_CN": "补给箱速度",
+  "ja": "クレートの出現速度",
+  "fr": "Vitesse des caisses",
+  "es": "Velocidad de cajas"
+ },
+ "Slow crates": {
+  "zh_TW": "慢速補給",
+  "zh_CN": "慢速补给",
+  "ja": "ゆっくり",
+  "fr": "Caisses lentes",
+  "es": "Cajas lentas"
+ },
+ "Fast": {
+  "zh_TW": "快速",
+  "zh_CN": "快速",
+  "ja": "速い",
+  "fr": "Rapide",
+  "es": "Rápida"
+ },
+ "Which weapons drop": {
+  "zh_TW": "哪些武器會掉落",
+  "zh_CN": "哪些武器会掉落",
+  "ja": "出現する武器",
+  "fr": "Armes qui apparaissent",
+  "es": "Qué armas aparecen"
+ },
+ "All normal": {
+  "zh_TW": "全部一般",
+  "zh_CN": "全部一般",
+  "ja": "すべて通常",
+  "fr": "Tout en normal",
+  "es": "Todas normales"
+ },
+ "All off": {
+  "zh_TW": "全部關閉",
+  "zh_CN": "全部关闭",
+  "ja": "すべてオフ",
+  "fr": "Tout désactiver",
+  "es": "Todas desactivadas"
+ },
+ "Click a weapon to cycle: Off, Rare, Normal, Often.": {
+  "zh_TW": "點選武器循環切換：關閉、稀有、一般、常見。",
+  "zh_CN": "点击武器循环切换：关闭、稀有、一般、常见。",
+  "ja": "武器をクリックして切り替え：オフ、レア、通常、よく出る。",
+  "fr": "Cliquez sur une arme pour changer : désactivé, rare, normal, fréquent.",
+  "es": "Haz clic en un arma para cambiar: Desactivada, Rara, Normal, Frecuente."
+ },
+ "Match analysis": {
+  "zh_TW": "比賽分析",
+  "zh_CN": "比赛分析",
+  "ja": "試合の分析",
+  "fr": "Analyse du match",
+  "es": "Análisis de la partida"
+ },
+ "Playing as": {
+  "zh_TW": "目前身分",
+  "zh_CN": "当前身份",
+  "ja": "プレイヤー名",
+  "fr": "Joue en tant que",
+  "es": "Jugando como"
+ },
+ "change": {
+  "zh_TW": "更改",
+  "zh_CN": "更改",
+  "ja": "変更",
+  "fr": "changer",
+  "es": "cambiar"
+ },
+ "Quick play": {
+  "zh_TW": "快速遊戲",
+  "zh_CN": "快速游戏",
+  "ja": "クイックプレイ",
+  "fr": "Partie rapide",
+  "es": "Partida rápida"
+ },
+ "Pick a mode and drop straight into a game": {
+  "zh_TW": "選擇模式，直接進入遊戲",
+  "zh_CN": "选择模式，直接进入游戏",
+  "ja": "モードを選ぶと、すぐに試合に参加",
+  "fr": "Choisir un mode et entrer directement dans une partie",
+  "es": "Elige un modo y entra directo en una partida"
+ },
+ "Browse rooms": {
+  "zh_TW": "瀏覽房間",
+  "zh_CN": "浏览房间",
+  "ja": "ルームを探す",
+  "fr": "Parcourir les salons",
+  "es": "Explorar salas"
+ },
+ "See the games other players opened": {
+  "zh_TW": "查看其他玩家開啟的遊戲",
+  "zh_CN": "查看其他玩家开启的游戏",
+  "ja": "他のプレイヤーが開いた試合を見る",
+  "fr": "Voir les parties ouvertes par d'autres joueurs",
+  "es": "Ver las partidas que abrieron otros jugadores"
+ },
+ "Create a room": {
+  "zh_TW": "建立房間",
+  "zh_CN": "创建房间",
+  "ja": "ルームを作る",
+  "fr": "Créer un salon",
+  "es": "Crear una sala"
+ },
+ "Host your own, public or just for friends": {
+  "zh_TW": "自己當房主，公開或只給朋友",
+  "zh_CN": "自己当房主，公开或只给朋友",
+  "ja": "自分でホストになる。公開でも友だちだけでも",
+  "fr": "Héberger le sien, public ou réservé aux amis",
+  "es": "Crea tu propia sala, pública o solo para amigos"
+ },
+ "Join with a code": {
+  "zh_TW": "輸入代碼加入",
+  "zh_CN": "输入代码加入",
+  "ja": "コードで参加",
+  "fr": "Rejoindre avec un code",
+  "es": "Unirse con un código"
+ },
+ "Got a code from a friend?": {
+  "zh_TW": "朋友給你代碼了嗎？",
+  "zh_CN": "朋友给你代码了吗？",
+  "ja": "友だちからコードをもらった？",
+  "fr": "Un code d'un ami ?",
+  "es": "¿Tienes un código de un amigo?"
+ },
+ "Why can't I connect?": {
+  "zh_TW": "為什麼連不上？",
+  "zh_CN": "为什么连不上？",
+  "ja": "接続できない理由",
+  "fr": "Pourquoi je ne peux pas me connecter ?",
+  "es": "¿Por qué no puedo conectarme?"
+ },
+ "Pick a mode. You join a game that is already running, or start one. Bots fill the empty spots and one steps out every time a player joins.": {
+  "zh_TW": "選擇模式。你會加入已經在進行的遊戲，或開始新的遊戲。空位由電腦玩家補上，每有玩家加入就會離開一個。",
+  "zh_CN": "选择模式。你会加入正在进行的游戏，或开始新游戏。空位由电脑玩家补上，每有玩家加入就会离开一个。",
+  "ja": "モードを選ぶと、進行中の試合に参加するか、新しく始めます。空いた枠はボットが埋め、プレイヤーが参加するたびに1体抜けます。",
+  "fr": "Choisissez un mode. Vous rejoignez une partie déjà en cours ou en lancez une. Les bots remplissent les places vides, et l'un d'eux sort à chaque arrivée d'un joueur.",
+  "es": "Elige un modo. Te unes a una partida que ya está en marcha o empiezas una. Los bots ocupan los huecos, y uno se retira cada vez que entra un jugador."
+ },
+ "Open rooms": {
+  "zh_TW": "公開房間列表",
+  "zh_CN": "公开房间列表",
+  "ja": "公開ルーム",
+  "fr": "Salons ouverts",
+  "es": "Salas abiertas"
+ },
+ "Who can see it": {
+  "zh_TW": "誰能看到",
+  "zh_CN": "谁能看到",
+  "ja": "公開範囲",
+  "fr": "Visibilité",
+  "es": "Quién puede verla"
+ },
+ "Shows in the room list": {
+  "zh_TW": "顯示在房間列表中",
+  "zh_CN": "显示在房间列表中",
+  "ja": "ルーム一覧に表示",
+  "fr": "Visible dans la liste des salons",
+  "es": "Aparece en la lista de salas"
+ },
+ "Private": {
+  "zh_TW": "私人",
+  "zh_CN": "私人",
+  "ja": "非公開",
+  "fr": "Privé",
+  "es": "Privada"
+ },
+ "Friends join with a code": {
+  "zh_TW": "朋友輸入代碼加入",
+  "zh_CN": "朋友输入代码加入",
+  "ja": "友だちはコードで参加",
+  "fr": "Les amis rejoignent avec un code",
+  "es": "Los amigos se unen con un código"
+ },
+ "NEXT": {
+  "zh_TW": "下一步",
+  "zh_CN": "下一步",
+  "ja": "次へ",
+  "fr": "SUIVANT",
+  "es": "SIGUIENTE"
+ },
+ "Next you pick the mode and the level, then the room opens.": {
+  "zh_TW": "接著選擇模式與關卡，然後房間就會開啟。",
+  "zh_CN": "接着选择模式和关卡，然后房间就会开启。",
+  "ja": "次にモードとステージを選ぶと、ルームが開きます。",
+  "fr": "Choisissez ensuite le mode et le niveau, puis le salon s'ouvre.",
+  "es": "Después eliges el modo y el nivel, y se abre la sala."
+ },
+ "Ask the host for the 5-letter code. It is on the big screen in their lobby.": {
+  "zh_TW": "向房主索取 5 個字母的代碼，它顯示在大廳的大螢幕上。",
+  "zh_CN": "向房主索取 5 个字母的代码，它显示在大厅的大屏幕上。",
+  "ja": "ホストに5文字のコードを聞いてください。ロビーの大きな画面に表示されています。",
+  "fr": "Demandez à l'hôte le code à 5 lettres. Il s'affiche sur le grand écran de son salon d'attente.",
+  "es": "Pide al anfitrión el código de 5 letras. Está en la pantalla grande de su sala de espera."
+ },
+ "CODE": {
+  "zh_TW": "代碼",
+  "zh_CN": "代码",
+  "ja": "コード",
+  "fr": "CODE",
+  "es": "CÓDIGO"
+ },
+ "JOIN ROOM": {
+  "zh_TW": "加入房間",
+  "zh_CN": "加入房间",
+  "ja": "ルームに参加",
+  "fr": "REJOINDRE",
+  "es": "UNIRSE A LA SALA"
+ },
+ "Room code": {
+  "zh_TW": "房間代碼",
+  "zh_CN": "房间代码",
+  "ja": "ルームコード",
+  "fr": "Code du salon",
+  "es": "Código de la sala"
+ },
+ "Match settings": {
+  "zh_TW": "比賽設定",
+  "zh_CN": "比赛设置",
+  "ja": "試合の設定",
+  "fr": "Réglages du match",
+  "es": "Ajustes de la partida"
+ },
+ "Change settings": {
+  "zh_TW": "更改設定",
+  "zh_CN": "更改设置",
+  "ja": "設定を変更",
+  "fr": "Modifier les réglages",
+  "es": "Cambiar ajustes"
+ },
+ "START MATCH": {
+  "zh_TW": "開始比賽",
+  "zh_CN": "开始比赛",
+  "ja": "試合を開始",
+  "fr": "LANCER LE MATCH",
+  "es": "EMPEZAR PARTIDA"
+ },
+ "Empty spots are filled with bots. Friends can still join later.": {
+  "zh_TW": "空位由電腦玩家補上。朋友之後仍可加入。",
+  "zh_CN": "空位由电脑玩家补上。朋友之后仍可加入。",
+  "ja": "空いた枠はボットが埋めます。友だちは後からでも参加できます。",
+  "fr": "Les places vides sont remplies par des bots. Les amis peuvent toujours rejoindre plus tard.",
+  "es": "Los huecos se llenan con bots. Los amigos aún pueden unirse más tarde."
+ },
+ "CLICK TO JOIN THE MATCH": {
+  "zh_TW": "點擊加入比賽",
+  "zh_CN": "点击加入比赛",
+  "ja": "クリックして試合に参加",
+  "fr": "CLIQUER POUR REJOINDRE LE MATCH",
+  "es": "HAZ CLIC PARA UNIRTE A LA PARTIDA"
+ },
+ "Test range": {
+  "zh_TW": "測試場",
+  "zh_CN": "测试场",
+  "ja": "テスト射撃場",
+  "fr": "Terrain d'essai",
+  "es": "Campo de pruebas"
+ },
+ "Tap the guns you want laid out on the floor, then jump in. Flat arena, still dummies, no crates.": {
+  "zh_TW": "點選想要在地上擺放的武器，然後跳進去。平坦場地、假人不動、沒有補給箱。",
+  "zh_CN": "点选想要在地上摆放的武器，然后跳进去。平坦场地、假人不动、没有补给箱。",
+  "ja": "床に並べたい武器をタップしてから飛び込みます。平らなアリーナ、動かないダミー、クレートなし。",
+  "fr": "Touchez les armes à disposer au sol, puis lancez-vous. Arène plate, mannequins immobiles, pas de caisses.",
+  "es": "Toca las armas que quieras en el suelo y entra. Arena plana, maniquíes quietos, sin cajas."
+ },
+ "All on": {
+  "zh_TW": "全部開啟",
+  "zh_CN": "全部开启",
+  "ja": "すべてオン",
+  "fr": "Tout activer",
+  "es": "Todas activadas"
+ },
+ "JUMP IN!": {
+  "zh_TW": "跳進去！",
+  "zh_CN": "跳进去！",
+  "ja": "飛び込む！",
+  "fr": "PLONGER !",
+  "es": "¡ENTRA!"
+ },
+ "Search settings...": {
+  "zh_TW": "搜尋設定...",
+  "zh_CN": "搜索设置...",
+  "ja": "設定を検索...",
+  "fr": "Rechercher dans les paramètres...",
+  "es": "Buscar en ajustes..."
+ },
+ "Nothing matches that. Try another word.": {
+  "zh_TW": "沒有符合的項目，請試試其他字。",
+  "zh_CN": "没有符合的项目，请试试其他词。",
+  "ja": "一致する項目がありません。別の言葉で試してください。",
+  "fr": "Aucun résultat. Essayez un autre mot.",
+  "es": "No hay coincidencias. Prueba con otra palabra."
+ },
+ "Controls at a glance": {
+  "zh_TW": "操作一覽",
+  "zh_CN": "操作一览",
+  "ja": "操作の一覧",
+  "fr": "Aperçu des commandes",
+  "es": "Resumen de controles"
+ },
+ "Aiming": {
+  "zh_TW": "瞄準",
+  "zh_CN": "瞄准",
+  "ja": "照準",
+  "fr": "Visée",
+  "es": "Apuntado"
+ },
+ "Mouse sensitivity": {
+  "zh_TW": "滑鼠靈敏度",
+  "zh_CN": "鼠标灵敏度",
+  "ja": "マウス感度",
+  "fr": "Sensibilité de la souris",
+  "es": "Sensibilidad del ratón"
+ },
+ "Invert Y (up/down)": {
+  "zh_TW": "反轉 Y 軸（上下）",
+  "zh_CN": "反转 Y 轴（上下）",
+  "ja": "Y軸を反転（上下）",
+  "fr": "Inverser Y (haut/bas)",
+  "es": "Invertir Y (arriba/abajo)"
+ },
+ "Auto-switch to a weapon when you pick it up": {
+  "zh_TW": "拾取時自動切換到該武器",
+  "zh_CN": "拾取时自动切换到该武器",
+  "ja": "拾ったときに武器を自動で切り替え",
+  "fr": "Passer automatiquement à une arme quand on la ramasse",
+  "es": "Cambiar automáticamente a un arma al recogerla"
+ },
+ "Off: a new pickup goes into a slot and you keep what you are holding, unless it is empty or you only have the spatula.": {
+  "zh_TW": "關閉：新拾取的武器會放進欄位，你仍保持手上的武器，除非手上是空的或只有鍋鏟。",
+  "zh_CN": "关闭：新拾取的武器会放进栏位，你仍保持手上的武器，除非手上是空的或只有锅铲。",
+  "ja": "オフ：新しく拾った武器はスロットに入り、今持っている武器はそのままです。ただし、手が空のときやフライ返ししか持っていないときは例外です。",
+  "fr": "Désactivé : une nouvelle arme va dans un emplacement et on garde celle qu'on tient, sauf si l'on n'a plus rien en main ou seulement la spatule.",
+  "es": "Desactivado: un arma nueva va a una casilla y sigues con la que tienes, salvo que estés sin armas o solo tengas la espátula."
+ },
+ "Keys": {
+  "zh_TW": "按鍵",
+  "zh_CN": "按键",
+  "ja": "キー",
+  "fr": "Touches",
+  "es": "Teclas"
+ },
+ "(click one, then press the new key. Esc cancels)": {
+  "zh_TW": "（點一個，再按下新按鍵。Esc 取消）",
+  "zh_CN": "（点一个，再按下新按键。Esc 取消）",
+  "ja": "（一つクリックしてから新しいキーを押す。Esc でキャンセル）",
+  "fr": "(cliquez sur une touche, puis appuyez sur la nouvelle. Échap annule)",
+  "es": "(haz clic en una, luego pulsa la nueva tecla. Esc cancela)"
+ },
+ "Allow 2 keys per action": {
+  "zh_TW": "每個動作允許 2 個按鍵",
+  "zh_CN": "每个动作允许 2 个按键",
+  "ja": "1つの動作に2つのキーを許可",
+  "fr": "Autoriser 2 touches par action",
+  "es": "Permitir 2 teclas por acción"
+ },
+ "Allow one key for several actions": {
+  "zh_TW": "允許一個按鍵用於多個動作",
+  "zh_CN": "允许一个按键用于多个动作",
+  "ja": "1つのキーを複数の動作に許可",
+  "fr": "Autoriser une touche pour plusieurs actions",
+  "es": "Permitir una tecla para varias acciones"
+ },
+ "Reset keys to default": {
+  "zh_TW": "將按鍵重設為預設",
+  "zh_CN": "将按键重置为默认",
+  "ja": "キーを初期設定に戻す",
+  "fr": "Rétablir les touches par défaut",
+  "es": "Restablecer teclas predeterminadas"
+ },
+ "Scope mode": {
+  "zh_TW": "瞄準鏡模式",
+  "zh_CN": "瞄准镜模式",
+  "ja": "スコープモード",
+  "fr": "Mode de visée",
+  "es": "Modo de mira"
+ },
+ "Scoped while held": {
+  "zh_TW": "按住時開鏡",
+  "zh_CN": "按住时开镜",
+  "ja": "押している間だけスコープ",
+  "fr": "Visée tant qu'on maintient",
+  "es": "Con mira mientras se mantiene"
+ },
+ "Tap to switch": {
+  "zh_TW": "點一下切換",
+  "zh_CN": "点一下切换",
+  "ja": "タップで切り替え",
+  "fr": "Appuyer pour changer",
+  "es": "Pulsa para cambiar"
+ },
+ "Right mouse also scopes. Hold the scope key, then use left click to shoot.": {
+  "zh_TW": "滑鼠右鍵也能開鏡。按住開鏡鍵，然後用左鍵射擊。",
+  "zh_CN": "鼠标右键也能开镜。按住开镜键，然后用左键射击。",
+  "ja": "右クリックでもスコープできます。スコープキーを押したまま左クリックで射撃します。",
+  "fr": "Le clic droit vise aussi. Maintenez la touche de visée, puis cliquez à gauche pour tirer.",
+  "es": "El clic derecho también apunta. Mantén la tecla de mira y usa clic izquierdo para disparar."
+ },
+ "Sound & screen": {
+  "zh_TW": "聲音與畫面",
+  "zh_CN": "声音与画面",
+  "ja": "サウンドと画面",
+  "fr": "Son et écran",
+  "es": "Sonido y pantalla"
+ },
+ "Volume": {
+  "zh_TW": "音量",
+  "zh_CN": "音量",
+  "ja": "音量",
+  "fr": "Volume",
+  "es": "Volumen"
+ },
+ "Menu click sounds": {
+  "zh_TW": "選單點擊音效",
+  "zh_CN": "菜单点击音效",
+  "ja": "メニューのクリック音",
+  "fr": "Sons de clic des menus",
+  "es": "Sonidos de clic en menús"
+ },
+ "Kill feed": {
+  "zh_TW": "擊倒紀錄",
+  "zh_CN": "击倒记录",
+  "ja": "キルログ",
+  "fr": "Journal des K.O.",
+  "es": "Historial de K.O.s"
+ },
+ "Map (mini-map) · press N in game": {
+  "zh_TW": "地圖（小地圖）· 遊戲中按 N",
+  "zh_CN": "地图（小地图）· 游戏中按 N",
+  "ja": "マップ（ミニマップ）· ゲーム中は N",
+  "fr": "Carte (mini-carte) · appuyez sur N en jeu",
+  "es": "Mapa (minimapa) · pulsa N en partida"
+ },
+ "Show chat messages (online, no word filter)": {
+  "zh_TW": "顯示聊天訊息（線上，無文字過濾）",
+  "zh_CN": "显示聊天消息（联机，无文字过滤）",
+  "ja": "チャットを表示（オンライン・NGワードフィルターなし）",
+  "fr": "Afficher les messages du chat (en ligne, sans filtre de mots)",
+  "es": "Mostrar mensajes del chat (en línea, sin filtro de palabras)"
+ },
+ "Reduce motion (calmer menus, no screen wobble)": {
+  "zh_TW": "減少動態效果（選單較平靜，畫面不搖晃）",
+  "zh_CN": "减少动态效果（菜单更平静，画面不晃动）",
+  "ja": "動きを減らす（メニューが落ち着き、画面が揺れない）",
+  "fr": "Réduire les animations (menus plus calmes, pas de tremblement d'écran)",
+  "es": "Reducir movimiento (menús más tranquilos, sin temblor de pantalla)"
+ },
+ "Fastest, no shadows": {
+  "zh_TW": "最快，無陰影",
+  "zh_CN": "最快，无阴影",
+  "ja": "最速、影なし",
+  "fr": "Le plus rapide, sans ombres",
+  "es": "Lo más rápido, sin sombras"
+ },
+ "Balanced": {
+  "zh_TW": "平衡",
+  "zh_CN": "平衡",
+  "ja": "バランス",
+  "fr": "Équilibré",
+  "es": "Equilibrado"
+ },
+ "Prettiest": {
+  "zh_TW": "最漂亮",
+  "zh_CN": "最漂亮",
+  "ja": "最高画質",
+  "fr": "Le plus beau",
+  "es": "El más bonito"
+ },
+ "Smoothness": {
+  "zh_TW": "流暢度",
+  "zh_CN": "流畅度",
+  "ja": "滑らかさ",
+  "fr": "Fluidité",
+  "es": "Fluidez"
+ },
+ "Unlimited": {
+  "zh_TW": "不限制",
+  "zh_CN": "不限制",
+  "ja": "無制限",
+  "fr": "Illimité",
+  "es": "Sin límite"
+ },
+ "Max speed": {
+  "zh_TW": "最高速度",
+  "zh_CN": "最高速度",
+  "ja": "最高速度",
+  "fr": "Vitesse max",
+  "es": "Velocidad máxima"
+ },
+ "Saves battery": {
+  "zh_TW": "節省電量",
+  "zh_CN": "省电",
+  "ja": "電池を節約",
+  "fr": "Économise la batterie",
+  "es": "Ahorra batería"
+ },
+ "Smooth": {
+  "zh_TW": "流暢",
+  "zh_CN": "流畅",
+  "ja": "なめらか",
+  "fr": "Fluide",
+  "es": "Fluido"
+ },
+ "Fast screens": {
+  "zh_TW": "適合高刷螢幕",
+  "zh_CN": "适合高刷屏幕",
+  "ja": "高速ディスプレイ向け",
+  "fr": "Pour écrans rapides",
+  "es": "Para pantallas rápidas"
+ },
+ "Auto resolution (drops sharpness a little when the game lags)": {
+  "zh_TW": "自動解析度（遊戲卡頓時稍微降低清晰度）",
+  "zh_CN": "自动分辨率（游戏卡顿时稍微降低清晰度）",
+  "ja": "自動解像度（ゲームが重いとき少し画質を下げる）",
+  "fr": "Résolution auto (baisse un peu la netteté quand le jeu rame)",
+  "es": "Resolución automática (reduce un poco la nitidez cuando el juego va lento)"
+ },
+ "Scenery": {
+  "zh_TW": "風景",
+  "zh_CN": "风景",
+  "ja": "背景の景色",
+  "fr": "Décor",
+  "es": "Escenario"
+ },
+ "Scenery (clouds, birds, drifting specks)": {
+  "zh_TW": "風景（雲、鳥、飄動的光點）",
+  "zh_CN": "风景（云、鸟、飘动的光点）",
+  "ja": "背景の景色（雲、鳥、漂う粒子）",
+  "fr": "Décor (nuages, oiseaux, particules flottantes)",
+  "es": "Escenario (nubes, pájaros, motas flotantes)"
+ },
+ "Sky effects (haze, aurora, lightning)": {
+  "zh_TW": "天空特效（霧氣、極光、閃電）",
+  "zh_CN": "天空特效（雾气、极光、闪电）",
+  "ja": "空のエフェクト（霞、オーロラ、雷）",
+  "fr": "Effets du ciel (brume, aurore, éclairs)",
+  "es": "Efectos del cielo (neblina, aurora, relámpagos)"
+ },
+ "Bot battle behind the menu": {
+  "zh_TW": "選單後方的電腦對戰",
+  "zh_CN": "菜单后方的电脑对战",
+  "ja": "メニュー背後のボット対戦",
+  "fr": "Combat de bots derrière le menu",
+  "es": "Batalla de bots tras el menú"
+ },
+ "FPS counter": {
+  "zh_TW": "FPS 計數器",
+  "zh_CN": "FPS 计数器",
+  "ja": "FPS表示",
+  "fr": "Compteur d'IPS",
+  "es": "Contador de FPS"
+ },
+ "Kill cam (replay of how you got K.O.'d)": {
+  "zh_TW": "擊倒回放（重播你被擊倒的過程）",
+  "zh_CN": "击倒回放（重播你被击倒的过程）",
+  "ja": "キルカム（やられた場面を再生）",
+  "fr": "Caméra de K.O. (rejoue comment vous avez été éliminé)",
+  "es": "Cámara de K.O. (repite cómo te eliminaron)"
+ },
+ "Crosshair": {
+  "zh_TW": "準星",
+  "zh_CN": "准星",
+  "ja": "照準",
+  "fr": "Viseur",
+  "es": "Mira"
+ },
+ "Crosshair size": {
+  "zh_TW": "準星大小",
+  "zh_CN": "准星大小",
+  "ja": "照準のサイズ",
+  "fr": "Taille du viseur",
+  "es": "Tamaño de la mira"
+ },
+ "Redeem code": {
+  "zh_TW": "兌換代碼",
+  "zh_CN": "兑换代码",
+  "ja": "コードを引き換え",
+  "fr": "Utiliser un code",
+  "es": "Canjear código"
+ },
+ "Enter a code": {
+  "zh_TW": "輸入代碼",
+  "zh_CN": "输入代码",
+  "ja": "コードを入力",
+  "fr": "Saisir un code",
+  "es": "Introduce un código"
+ },
+ "Redeem": {
+  "zh_TW": "兌換",
+  "zh_CN": "兑换",
+  "ja": "引き換え",
+  "fr": "Utiliser",
+  "es": "Canjear"
+ },
+ "Help & tools": {
+  "zh_TW": "說明與工具",
+  "zh_CN": "帮助与工具",
+  "ja": "ヘルプとツール",
+  "fr": "Aide et outils",
+  "es": "Ayuda y herramientas"
+ },
+ "Copy bug report": {
+  "zh_TW": "複製錯誤回報",
+  "zh_CN": "复制错误报告",
+  "ja": "バグ報告をコピー",
+  "fr": "Copier le rapport de bug",
+  "es": "Copiar informe de error"
+ },
+ "Developer panel": {
+  "zh_TW": "開發者面板",
+  "zh_CN": "开发者面板",
+  "ja": "開発者パネル",
+  "fr": "Panneau développeur",
+  "es": "Panel de desarrollador"
+ },
+ "Something broke? Press the button and paste the text to whoever makes the game. It has no passwords or personal info.": {
+  "zh_TW": "出了問題？按下按鈕，把文字貼給遊戲製作者。內容沒有密碼或個人資訊。",
+  "zh_CN": "出问题了？点按钮，把文字粘贴给游戏制作者。内容没有密码或个人信息。",
+  "ja": "不具合が起きたら、ボタンを押して文章を開発者に貼り付けてください。パスワードや個人情報は含まれていません。",
+  "fr": "Un bug ? Appuyez sur le bouton et collez le texte à la personne qui fait le jeu. Il ne contient ni mot de passe ni information personnelle.",
+  "es": "¿Algo se rompió? Pulsa el botón y pega el texto a quien hace el juego. No tiene contraseñas ni datos personales."
+ },
+ "Reset ALL settings to default": {
+  "zh_TW": "將所有設定重設為預設",
+  "zh_CN": "将所有设置重置为默认",
+  "ja": "すべての設定を初期化",
+  "fr": "Rétablir TOUS les réglages par défaut",
+  "es": "Restablecer TODOS los ajustes"
+ },
+ "Defaults:": {
+  "zh_TW": "預設：",
+  "zh_CN": "默认：",
+  "ja": "初期設定：",
+  "fr": "Par défaut :",
+  "es": "Predeterminado:"
+ },
+ "Click": {
+  "zh_TW": "點擊",
+  "zh_CN": "点击",
+  "ja": "クリック",
+  "fr": "Clic",
+  "es": "Clic"
+ },
+ "Right click / scope key": {
+  "zh_TW": "右鍵 / 開鏡鍵",
+  "zh_CN": "右键 / 开镜键",
+  "ja": "右クリック / スコープキー",
+  "fr": "Clic droit / touche de visée",
+  "es": "Clic derecho / tecla de mira"
+ },
+ "move ·": {
+  "zh_TW": "移動 ·",
+  "zh_CN": "移动 ·",
+  "ja": "移動 ·",
+  "fr": "déplacer ·",
+  "es": "mover ·"
+ },
+ "sprint ·": {
+  "zh_TW": "疾跑 ·",
+  "zh_CN": "疾跑 ·",
+  "ja": "ダッシュ ·",
+  "fr": "courir ·",
+  "es": "correr ·"
+ },
+ "jump ·": {
+  "zh_TW": "跳躍 ·",
+  "zh_CN": "跳跃 ·",
+  "ja": "ジャンプ ·",
+  "fr": "sauter ·",
+  "es": "saltar ·"
+ },
+ "squat ·": {
+  "zh_TW": "蹲下 ·",
+  "zh_CN": "蹲下 ·",
+  "ja": "しゃがむ ·",
+  "fr": "s'accroupir ·",
+  "es": "agacharse ·"
+ },
+ "attack ·": {
+  "zh_TW": "攻擊 ·",
+  "zh_CN": "攻击 ·",
+  "ja": "攻撃 ·",
+  "fr": "attaquer ·",
+  "es": "atacar ·"
+ },
+ "aim ·": {
+  "zh_TW": "瞄準 ·",
+  "zh_CN": "瞄准 ·",
+  "ja": "照準 ·",
+  "fr": "viser ·",
+  "es": "apuntar ·"
+ },
+ "weapons": {
+  "zh_TW": "武器",
+  "zh_CN": "武器",
+  "ja": "武器",
+  "fr": "armes",
+  "es": "armas"
+ },
+ "quick spatula hit ·": {
+  "zh_TW": "快速鍋鏟攻擊 ·",
+  "zh_CN": "快速锅铲攻击 ·",
+  "ja": "フライ返しで素早く攻撃 ·",
+  "fr": "coup de spatule rapide ·",
+  "es": "golpe rápido con espátula ·"
+ },
+ "shove ·": {
+  "zh_TW": "推擠 ·",
+  "zh_CN": "推挤 ·",
+  "ja": "突き飛ばし ·",
+  "fr": "bousculer ·",
+  "es": "empujar ·"
+ },
+ "kick ·": {
+  "zh_TW": "踢 ·",
+  "zh_CN": "踢 ·",
+  "ja": "キック ·",
+  "fr": "donner un coup de pied ·",
+  "es": "patear ·"
+ },
+ "taunt ·": {
+  "zh_TW": "嘲諷 ·",
+  "zh_CN": "嘲讽 ·",
+  "ja": "挑発 ·",
+  "fr": "provoquer ·",
+  "es": "provocar ·"
+ },
+ "mute ·": {
+  "zh_TW": "靜音 ·",
+  "zh_CN": "静音 ·",
+  "ja": "ミュート ·",
+  "fr": "couper le son ·",
+  "es": "silenciar ·"
+ },
+ "place / remove a block (Build Your Own level) ·": {
+  "zh_TW": "放置／移除方塊（自建關卡）·",
+  "zh_CN": "放置／移除方块（自建关卡）·",
+  "ja": "ブロックを置く／消す（自分のステージ作成）·",
+  "fr": "poser / retirer un bloc (créer son niveau) ·",
+  "es": "colocar / quitar bloque (crear tu nivel) ·"
+ },
+ "walk into a ladder to climb,": {
+  "zh_TW": "走進梯子即可攀爬，",
+  "zh_CN": "走进梯子即可攀爬，",
+  "ja": "はしごに入ると登れます。",
+  "fr": "marcher dans une échelle pour grimper,",
+  "es": "camina hacia una escalera para subir,"
+ },
+ "to jump off": {
+  "zh_TW": "按跳躍跳下",
+  "zh_CN": "按跳跃跳下",
+  "ja": "ジャンプで飛び降ります",
+  "fr": "pour sauter",
+  "es": "para saltar"
+ },
+ "The game pauses while this menu is open.": {
+  "zh_TW": "開啟此選單時遊戲會暫停。",
+  "zh_CN": "打开此菜单时游戏会暂停。",
+  "ja": "このメニューを開いている間、ゲームは一時停止します。",
+  "fr": "Le jeu se met en pause pendant que ce menu est ouvert.",
+  "es": "El juego se pausa mientras este menú está abierto."
+ },
+ "← Back": {
+  "zh_TW": "← 返回",
+  "zh_CN": "← 返回",
+  "ja": "← 戻る",
+  "fr": "← Retour",
+  "es": "← Atrás"
+ },
+ "Next →": {
+  "zh_TW": "下一步 →",
+  "zh_CN": "下一步 →",
+  "ja": "次へ →",
+  "fr": "Suivant →",
+  "es": "Siguiente →"
+ },
+ "START!": {
+  "zh_TW": "開始！",
+  "zh_CN": "开始！",
+  "ja": "スタート！",
+  "fr": "COMMENCER !",
+  "es": "¡EMPEZAR!"
+ },
+ "★ Save your progress": {
+  "zh_TW": "★ 儲存你的進度",
+  "zh_CN": "★ 保存你的进度",
+  "ja": "★ 進行状況を保存",
+  "fr": "★ Enregistrer la progression",
+  "es": "★ Guarda tu progreso"
+ },
+ "Already saved? Log in": {
+  "zh_TW": "已經儲存過？登入",
+  "zh_CN": "已经保存过？登录",
+  "ja": "保存済み？ログイン",
+  "fr": "Déjà enregistré ? Se connecter",
+  "es": "¿Ya guardaste? Inicia sesión"
+ },
+ "Not you? Log out": {
+  "zh_TW": "不是你？登出",
+  "zh_CN": "不是你？退出登录",
+  "ja": "あなたではない？ログアウト",
+  "fr": "Ce n'est pas vous ? Se déconnecter",
+  "es": "¿No eres tú? Cerrar sesión"
+ },
+ "Loading…": {
+  "zh_TW": "載入中…",
+  "zh_CN": "加载中…",
+  "ja": "読み込み中…",
+  "fr": "Chargement…",
+  "es": "Cargando…"
+ },
+ "Play online": {
+  "zh_TW": "線上遊玩",
+  "zh_CN": "联机游戏",
+  "ja": "オンラインプレイ",
+  "fr": "Jouer en ligne",
+  "es": "Jugar en línea"
+ },
+ "Outfit": {
+  "zh_TW": "服裝",
+  "zh_CN": "服装",
+  "ja": "衣装",
+  "fr": "Tenue",
+  "es": "Atuendo"
+ },
+ "Colour (Classic only) and hat": {
+  "zh_TW": "顏色（僅經典模式）與帽子",
+  "zh_CN": "颜色（仅经典模式）与帽子",
+  "ja": "カラー（クラシックのみ）と帽子",
+  "fr": "Couleur (Classique uniquement) et chapeau",
+  "es": "Color (solo Clásico) y sombrero"
+ },
+ "Everyday outfits for your wobbler. In team matches the top, hat and headband turn the team's red or blue.": {
+  "zh_TW": "你的搖搖人的日常服裝。團隊比賽時，上衣、帽子和頭帶會變成隊伍的紅色或藍色。",
+  "zh_CN": "你的摇摇人的日常服装。团队比赛时，上衣、帽子和头带会变成队伍的红色或蓝色。",
+  "ja": "ウォブラーの普段着です。チーム戦では、トップス、帽子、ヘアバンドがチームの赤か青に変わります。",
+  "fr": "Tenues de tous les jours pour votre wobbler. En matchs par équipe, le haut, le chapeau et le bandeau prennent la couleur rouge ou bleue de l'équipe.",
+  "es": "Atuendos del día a día para tu wobbler. En partidas por equipos, la parte de arriba, el sombrero y la cinta toman el rojo o azul del equipo."
+ },
+ "You start with a": {
+  "zh_TW": "你一開始持有",
+  "zh_CN": "你一开始持有",
+  "ja": "最初に持っているのは",
+  "fr": "Vous commencez avec une",
+  "es": "Empiezas con una"
+ },
+ ". Weapon crates fall from the sky: walk into one to grab it. You can carry": {
+  "zh_TW": "。武器補給箱會從天上掉下來，走進去即可拿取。你最多可攜帶",
+  "zh_CN": "。武器补给箱会从天上掉下来，走进去即可拾取。你最多可携带",
+  "ja": "。武器のクレートが空から落ちてくるので、触れると取得できます。持てるのは",
+  "fr": ". Des caisses d'armes tombent du ciel : passez dessus pour les prendre. Vous pouvez en porter",
+  "es": ". Las cajas de armas caen del cielo: entra en una para cogerla. Puedes llevar"
+ },
+ "(keys 1 2 3).": {
+  "zh_TW": "（按鍵 1 2 3）。",
+  "zh_CN": "（按键 1 2 3）。",
+  "ja": "個まで（キー 1 2 3）。",
+  "fr": "(touches 1 2 3).",
+  "es": "(teclas 1 2 3)."
+ },
+ "Hats are free. Pick one to wear it in every match.": {
+  "zh_TW": "帽子免費。選一頂，每場比賽都會戴著。",
+  "zh_CN": "帽子免费。选一顶，每场比赛都会戴着。",
+  "ja": "帽子は無料です。選ぶと、どの試合でも着用されます。",
+  "fr": "Les chapeaux sont gratuits. Choisissez-en un pour le porter dans chaque match.",
+  "es": "Los sombreros son gratis. Elige uno para llevarlo en cada partida."
+ },
+ "Pick who you play as. It changes your stats in every match, and your friends see it too.": {
+  "zh_TW": "選擇你要扮演的角色。它會改變你每場比賽的數值，朋友也看得到。",
+  "zh_CN": "选择你要扮演的角色。它会改变你每场比赛的数值，朋友也看得到。",
+  "ja": "プレイするキャラクターを選びます。すべての試合でステータスが変わり、友だちにも見えます。",
+  "fr": "Choisissez votre personnage. Il change vos stats dans chaque match, et vos amis le voient aussi.",
+  "es": "Elige con quién juegas. Cambia tus estadísticas en cada partida, y tus amigos también lo ven."
+ },
+ "Your wobbler. Pick an outfit or emote to see it": {
+  "zh_TW": "你的搖搖人。選一套服裝或表情動作來預覽",
+  "zh_CN": "你的摇摇人。选一套服装或表情动作来预览",
+  "ja": "あなたのウォブラー。衣装かエモートを選ぶと表示されます",
+  "fr": "Votre wobbler. Choisissez une tenue ou un emote pour le voir",
+  "es": "Tu wobbler. Elige un atuendo o emote para verlo"
+ },
+ "Pick a slot, then pick one of your emotes to put in it. In a match press the slot's key.": {
+  "zh_TW": "選一個欄位，再選一個你的表情動作放進去。比賽中按下該欄位的按鍵即可使用。",
+  "zh_CN": "选一个栏位，再选一个你的表情动作放进去。比赛中按下该栏位的按键即可使用。",
+  "ja": "スロットを選び、持っているエモートを1つ入れます。試合中はスロットのキーを押します。",
+  "fr": "Choisissez un emplacement, puis un de vos emotes à y mettre. En match, appuyez sur la touche de l'emplacement.",
+  "es": "Elige una casilla y luego uno de tus emotes para ponerlo. En partida, pulsa la tecla de la casilla."
+ },
+ "Press Try to see an outfit or emote on your wobbler": {
+  "zh_TW": "按「試穿」即可在你的搖搖人身上預覽服裝或表情動作",
+  "zh_CN": "点「试穿」即可在你的摇摇人身上预览服装或表情动作",
+  "ja": "「試着」を押すと、ウォブラーに衣装かエモートを試せます",
+  "fr": "Appuyez sur Essayer pour voir une tenue ou un emote sur votre wobbler",
+  "es": "Pulsa Probar para ver un atuendo o emote en tu wobbler"
+ },
+ "Earn coins from K.O.s (+5 each) and finished matches (+40, and +60 more for a win).": {
+  "zh_TW": "從擊倒（每次 +5）和完成的比賽（+40，獲勝再 +60）獲得金幣。",
+  "zh_CN": "从击倒（每次 +5）和完成的比赛（+40，获胜再 +60）获得金币。",
+  "ja": "KO（1回につき +5）と完了した試合（+40、勝利でさらに +60）でコインを獲得。",
+  "fr": "Gagnez des pièces avec les K.O. (+5 chacun) et les matchs terminés (+40, et +60 de plus pour une victoire).",
+  "es": "Gana monedas con K.O.s (+5 cada uno) y partidas terminadas (+40, y +60 más por victoria)."
+ },
+ "Auto follows your browser.": {
+  "zh_TW": "自動會跟隨你的瀏覽器。",
+  "zh_CN": "自动会跟随你的浏览器。",
+  "ja": "自動はブラウザの言語に合わせます。",
+  "fr": "Auto suit la langue de votre navigateur.",
+  "es": "Automático sigue el idioma de tu navegador."
+ },
+ "spatula": {
+  "zh_TW": "鍋鏟",
+  "zh_CN": "锅铲",
+  "ja": "フライ返し",
+  "fr": "spatule",
+  "es": "espátula"
+ }
+}

@@ -102,8 +102,85 @@ Before this pass (main, same bench): HIGH 609-816 draws / 41-83k prims (2 cascad
 cascade), LOW 578-779 / 40-71k, CPU 1.4-1.7 ms on every tier.
 
 What is not measured here: GPU time on a phone and thermals (ROADMAP: 15 min on an iPhone 12 without throttling); that
-needs a TestFlight build. Fill rate is the MID risk: the vignette and the cloud layer are two blended layers (the
+needs a TestFlight build and the soak below ("Measuring on device"). Fill rate is the MID risk: the vignette and the cloud layer are two blended layers (the
 clouds cover the sky only), MSAA 2x.
+
+## Measuring on device
+
+The Phase 3 / 4 exit criterion is "60 fps on an iPhone 12 for 15 minutes without thermal throttling". Two tools in
+Settings > Graphics make it one play session. The Mac numbers above are only a proxy; this is the real check.
+
+What iOS lets Godot 4.7 see (checked against the engine's API dump):
+
+| Number | Source | On iPhone |
+|---|---|---|
+| fps, frame ms avg / p95 | frame deltas | yes |
+| CPU ms | `Performance.TIME_PROCESS` | yes |
+| GPU ms | `RenderingServer.viewport_get_measured_render_time_gpu` | yes on the Mobile renderer (Metal), shown `n/a` where the renderer cannot time (Compatibility / web, headless) |
+| draws, objects | `Performance.RENDER_TOTAL_*_IN_FRAME` | yes |
+| memory | static + video memory Godot tracks | yes (not the iOS footprint: use Xcode's memory gauge for that) |
+| thermal state | `ProcessInfo.thermalState` | **no**: Godot has no API for it, and none for battery temperature |
+
+Thermal is therefore `n/a` in the readout and the CSV. A native plugin could provide it, but it needs an Objective-C
+static library and `.gdip` wired into the Xcode project, which `tools/build-ios.sh` (export-only project, no manual Xcode
+steps) does not do today, so none was added. The code is ready for one: if a plugin registers an engine singleton
+`WobbleThermal` with `state() -> String` (nominal / fair / serious / critical), `PerfProbe.thermal_state()` picks it up,
+the CSV records it, and the summary counts changes and fails a run that reaches serious. Until then throttling shows up
+as a falling frame rate: the summary compares the first and last third of the run and flags a drop of more than 10 %.
+For the actual thermal state, run the same soak with the phone attached to Xcode and watch its Thermal State
+instrument (Product > Profile > Activity Monitor / Thermal State) next to the CSV.
+
+### Performance readout
+
+Settings > Graphics > Performance readout (default off). Four small lines top-left, under the score panel (nothing
+else lives there; `hud_test.gd` checks it never overlaps the HUD, touch buttons, pause / emote buttons, mode line or
+toast at every phone size), refreshed once a second:
+
+```
+60 fps  16.7 ms  p95 17.2        fps (1 s average), frame ms average and 95th percentile
+CPU 4.1  GPU 6.2 ms              process ms, GPU frame ms
+612 draws  1.2k obj              draw calls and objects per frame
+MID  thermal n/a  310 MB         graphics tier, thermal state, engine memory
+```
+
+The node exists only while the setting is on, so there is no cost when off. (The older "Show frame rate" pill, F3 or
+a three-finger tap, is separate and unchanged.)
+
+### 15-minute soak
+
+Settings > Graphics > Start soak test (title screen only). It starts an offline **Chaos 5v5** (10 fighters, random floor
+events, no K.O. limit, fixed seed) on **Arena XL, then Colosseum, then Farm**, five minutes each, at whatever tier the
+device runs (MID on a phone). The player is a bot that wanders, shoots and jumps, so you can put the phone down. The
+screen stays awake. Once a second a row goes to `user://soak/<date>_<time>.csv`:
+
+`t, map, fps, frames, slow_frames, frame_ms_avg, frame_ms_p95, frame_ms_max, cpu_ms, gpu_ms, draws, objects, tier, thermal, mem_mb`
+
+A frame is "slow" over 17.5 ms (the 16.7 ms budget plus 0.8 ms of timer jitter). At the end the match stops and a card
+shows: average fps (frames / seconds), % slow frames, worst minute, frame p95 (mean / worst), fps of the first and last
+third of the run, thermal changes, median CPU / GPU ms, and a verdict. **PASS** needs average fps >= 58, <= 5 % slow
+frames, no throttling drop and no serious thermal state; otherwise it lists why. A `.txt` with the same summary is saved
+next to the CSV. Pausing the match pauses the soak clock; Quit to title abandons it (the CSV so far stays).
+
+### Steps on the iPhone 12
+
+1. Install the TestFlight build. Charge to at least 50 %, close other apps and turn off Low Power Mode (it caps the game
+   at 30 fps). Do the first run unplugged (how people play), a second one plugged in (charging adds heat). The soak
+   keeps the screen on by itself.
+2. Settings > Graphics: turn **Performance readout** on and look at it in a normal match for a minute (it should read
+   ~60 fps, MID, GPU under ~12 ms).
+3. Settings > Graphics > **Start soak test**. Leave the phone propped up for 15 minutes without touching it. Do not
+   switch apps (a backgrounded run is invalid).
+4. When the card appears, tap **Copy summary** and paste it into a message or note (that is the number to send back).
+5. The full CSV stays inside the app (`user://soak/<date>_<time>.csv` and `.txt`). The app's files are **not** shared
+   to the Files app, because they include `settings.cfg` with the account token. To get the CSV, run the soak from Xcode
+   (Window > Devices and Simulators > the app > Download Container) or use the Copy summary text.
+6. For the exit criterion read the card: PASS with the worst minute near 60 fps and last third equal to the first third.
+   Compare the CSV's `fps` and `frame_ms_p95` columns by minute to see where it dips; `draws` / `objects` per map show
+   which arena is heaviest. Run it once more right after to see a warm-phone result.
+
+Tests: `npm run test:godot-perf` (stats maths, readout on/off, a 10 s soak with CSV columns and the summary card) and
+`npm run test:godot-ui` (readout vs HUD layout). Code: `logic/perf_stats.gd`, `ui/perf_probe.gd`,
+`ui/perf_overlay.gd`, `world/soak_run.gd`.
 
 ## Effects (Phase 4 part 2: motion polish and particles)
 

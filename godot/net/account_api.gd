@@ -4,7 +4,8 @@ extends Node
 ## `acct` / api / cloudPush / verifyLogin (public/index.html ~8666-8720). One instance lives under the Save autoload
 ## (`Save.cloud`); the title's Account sheet (ui/account_sheet.gd) and the Play online panel's login fields both use it.
 ##
-## Calls: signup (username, email, password; the reply's recovery code is shown once), login (username or email),
+## Calls: claim (just a name: the easy path, a password-less account), protect (add a password to it; the reply's recovery
+## code is shown once), signup (username, email, password; also with a recovery code), login (username or email),
 ## logout, change_password, new_recovery, reset (forgot password: recovery code + new password), delete_account.
 ## Each one ends with `done(op, ok, msg)`; `msg` is plain words for the UI.
 ##
@@ -39,6 +40,7 @@ var base_override := ""            ## the API's http(s) base; "" = from Settings
 var push_delay := PUSH_DELAY
 var retry_delay := RETRY_DELAY
 
+var has_password := true           ## false: a name-only account (claim) that can't log in on another device yet; see protect()
 var stale := false                 ## another device saved since: waiting for keep_device() / use_cloud()
 var busy := false                  ## a push is on its way
 var offline := false               ## the last push could not reach the server
@@ -123,7 +125,7 @@ func call_api(method: int, path: String, body: Variant, token: String, cb: Calla
 			r = r.duplicate()
 			r["status"] = code
 			if not r.has("ok"): r["ok"] = false
-			if not r["ok"] and not r.has("msg"): r["msg"] = "The server had a problem (%d). Try again in a moment." % code
+			if not r["ok"] and not r.has("msg"): r["msg"] = tr("The server had a problem (%d). Try again in a moment.") % code
 		cb.call(r))
 	var err := h.request(api_base() + path, headers, method, "" if body == null else JSON.stringify(body))
 	if err != OK:
@@ -137,6 +139,30 @@ func _finish(op: String, ok: bool, msg: String) -> void:
 
 # ============================== account calls ==============================
 
+## Pick a name: a password-less account (POST /api/claim). This device's profile becomes its first cloud save. Names
+## nobody uses for 30 days are freed by the server.
+func claim(username: String) -> void:
+	var data: Variant = profile.get_blob() if profile else null
+	call_api(HTTPClient.METHOD_POST, "/api/claim", {"name": username.strip_edges(), "data": data}, "",
+		func(r: Dictionary) -> void:
+			if not r["ok"]: _finish("claim", false, str(r.get("msg", "Couldn't claim that name. Try again in a moment."))); return
+			_signed_in(r)
+			setv("cloud_user", user().to_lower())
+			t = int(r.get("t", 0)); dirty = false; last_saved = Time.get_unix_time_from_system(); offline = false
+			if int(r.get("t", 0)) == 0: _mark_dirty(0.0)
+			_finish("claim", true, tr("Welcome, %s! Your name is yours.") % user()))
+
+## Put a password on a name-only account so the name can log in on another device. A recovery code comes with `recovery`.
+func protect(password: String) -> void:
+	if password.length() < 6: _finish("protect", false, "Passwords are 6 to 72 characters."); return
+	call_api(HTTPClient.METHOD_POST, "/api/protect", {"password": password}, str(getv("token")),
+		func(r: Dictionary) -> void:
+			if _auth_failed(r): _finish("protect", false, str(r["msg"])); return
+			if not r["ok"]: _finish("protect", false, str(r.get("msg", "Couldn't set a password. Try again in a moment."))); return
+			has_password = true
+			if r.get("recovery") is String: recovery.emit(r["recovery"])
+			_finish("protect", true, "Password set. This name now works on other devices."))
+
 ## Create an account; this device's profile becomes its first cloud save. The recovery code comes with `recovery`.
 func signup(username: String, mail: String, password: String) -> void:
 	var data: Variant = profile.get_blob() if profile else null
@@ -148,7 +174,7 @@ func signup(username: String, mail: String, password: String) -> void:
 			t = int(r.get("t", 0)); dirty = false; last_saved = Time.get_unix_time_from_system(); offline = false
 			if r.get("recovery") is String: recovery.emit(r["recovery"])
 			if int(r.get("t", 0)) == 0: _mark_dirty(0.0)
-			_finish("signup", true, "Account created. You're signed in as %s." % user()))
+			_finish("signup", true, tr("Account created. You're signed in as %s.") % user()))
 
 ## Log in with a username or email. `ws_url` (optional) also becomes the server for everything else.
 func login(id: String, password: String, ws_url := "") -> void:
@@ -158,7 +184,7 @@ func login(id: String, password: String, ws_url := "") -> void:
 			if not r["ok"]: _finish("login", false, str(r.get("msg", "Couldn't log in. Check your username and password."))); return
 			_signed_in(r)
 			_merge(r.get("data"), int(r.get("t", 0)))
-			_finish("login", true, "Signed in as %s." % user()))
+			_finish("login", true, tr("Signed in as %s.") % user()))
 
 ## Forgot the password: username or email + recovery code + a new password. Signs in and shows a new recovery code.
 func reset(id: String, code: String, password: String, ws_url := "") -> void:
@@ -169,7 +195,7 @@ func reset(id: String, code: String, password: String, ws_url := "") -> void:
 			_signed_in(r)
 			_merge(r.get("data"), int(r.get("t", 0)))
 			if r.get("recovery") is String: recovery.emit(r["recovery"])
-			_finish("reset", true, "New password set. You're signed in as %s." % user()))
+			_finish("reset", true, tr("New password set. You're signed in as %s.") % user()))
 
 ## Sign out (the last changes are pushed first when possible). The profile stays on this device as a guest.
 func logout() -> void:
@@ -225,6 +251,7 @@ func verify() -> void:
 		if int(r.get("status", 0)) == 401: _expire(); return
 		if not r["ok"]: return
 		if r.get("user") is Dictionary: setv("email", str(r["user"].get("email", "")))
+		has_password = bool(r.get("hasPassword", true))
 		_merge(r.get("data"), int(r.get("t", 0)))
 		changed.emit())
 
@@ -238,11 +265,12 @@ func _signed_in(r: Dictionary) -> void:
 	setv("token", str(r.get("token", "")))
 	setv("user", str(u.get("username", "")) if u is Dictionary else str(u))
 	setv("email", str(u.get("email", "")) if u is Dictionary else "")
+	has_password = bool(u.get("hasPassword", true)) if u is Dictionary else true
 	expired = false; stale = false; pending = {}; offline = false
 
 func _clear_login() -> void:
 	setv("token", ""); setv("user", ""); setv("email", "")
-	setv("cloud_user", ""); dirty = false; t = 0
+	setv("cloud_user", ""); dirty = false; t = 0; has_password = true
 	stale = false; pending = {}; busy = false; offline = false; _push_in = -1.0
 
 func _auth_failed(r: Dictionary) -> bool:
@@ -268,22 +296,22 @@ func sync_text() -> String:
 	if dirty: return "Saved on this device. Cloud save in a moment."
 	var last := maxf(last_saved, t / 1000.0)
 	if last <= 0.0: return "Saved on this device"
-	return "Saved to cloud " + ago(Time.get_unix_time_from_system() - last)
+	return tr("Saved to cloud %s") % ago(Time.get_unix_time_from_system() - last)
 
 static func ago(s: float) -> String:
-	if s < 60.0: return "just now"
-	if s < 3600.0: return "%d min ago" % floori(s / 60.0)
-	if s < 86400.0: return "%d h ago" % floori(s / 3600.0)
+	if s < 60.0: return TranslationServer.translate("just now")
+	if s < 3600.0: return TranslationServer.translate("%d min ago") % floori(s / 60.0)
+	if s < 86400.0: return TranslationServer.translate("%d h ago") % floori(s / 3600.0)
 	var d := floori(s / 86400.0)
-	return "%d day%s ago" % [d, "" if d == 1 else "s"]
+	return (TranslationServer.translate("%d day ago") if d == 1 else TranslationServer.translate("%d days ago")) % d
 
 ## "1,234 coins · 12 matches · 5 outfits" for a blob (the conflict choice).
 static func summary(d: Variant) -> String:
-	if not (d is Dictionary): return "nothing saved"
+	if not (d is Dictionary): return TranslationServer.translate("nothing saved")
 	var w: Dictionary = d.get("wallet") if d.get("wallet") is Dictionary else {}
 	var s: Dictionary = d.get("stats") if d.get("stats") is Dictionary else {}
 	var sk: int = (w["skins"] as Array).size() - 1 if w.get("skins") is Array else 0
-	return "%d coins · %d matches · %d K.O.s · %d outfits" % [int(w.get("coins", 0)), int(s.get("matches", 0)), int(s.get("kos", 0)), maxi(0, sk)]
+	return TranslationServer.translate("%d coins · %d matches · %d K.O.s · %d outfits") % [int(w.get("coins", 0)), int(s.get("matches", 0)), int(s.get("kos", 0)), maxi(0, sk)]
 
 func _on_profile_changed() -> void:
 	if _applying or not signed_in() or stale: return

@@ -20,6 +20,7 @@ boot_splash/use_filter=true
 Tier="*res://autoload/tier.gd"
 Content="*res://autoload/content.gd"
 Settings="*res://autoload/settings.gd"
+Lang="*res://autoload/lang.gd"
 FpsOverlay="*res://ui/fps_overlay.gd"
 Sfx="*res://autoload/audio.gd"
 Music="*res://autoload/music.gd"

@@ -33,6 +33,12 @@ const FEED_TIME := 5.0
 ## instead of the score / radar / health / hotbar. Its Play saves and reloads the arena as a Sandbox match with bots.
 @export var build_mode := false
 var build_hud: BuildHud = null
+## Soak test (world/soak_run.gd): > 0 = a scripted-player performance run of this many seconds over `soak_maps`, logged to
+## `soak_dir`. Built by SoakRun.make_world; the sim, combat and physics play as usual.
+@export var soak_duration := 0.0
+var soak_maps: Array = []
+var soak_dir := ""
+var soak: SoakRun = null
 
 @onready var env_node: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $Sun
@@ -126,6 +132,10 @@ func _ready() -> void:
 		_bind_net()
 		pause_menu.online = true
 	load_map(map_id)
+	if soak_duration > 0.0:
+		soak = SoakRun.new()
+		soak.name = "Soak"
+		add_child(soak)
 
 func _exit_tree() -> void:
 	if net_match:
@@ -367,14 +377,14 @@ func _drain_events() -> void:
 				if _crates.has(c2["id"]):
 					_crates[c2["id"]].queue_free(); _crates.erase(c2["id"])
 				if e["type"] == "crate_take" and e["f"] == sim.player:
-					_toast("Got " + sim.pickups.label(c2["key"]))
+					_toast(tr("Got %s") % tr(sim.pickups.label(c2["key"])))
 			"toast":
 				_toast(str(e["text"]))
 			"match_end":
 				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
 			"match_over":
-				_show_banner(str(e["title"]), str(e["sub"]), bool(e["won"]))
+				_show_banner(tr(str(e["title"])), tr(str(e["sub"])), bool(e["won"]))
 				if session == null:
 					_reward = Save.finish_match(bool(e["won"]), str(sim.combat.mode.get("name", sim.combat.mode_id)), str(map_node.map.get("name", map_id)), false, sim.combat.mode_id)
 			"match_finished":
@@ -383,16 +393,16 @@ func _drain_events() -> void:
 			"eliminated":
 				if f:
 					hud.add_feed(null, f, "", false)
-					_toast("You're out! Big wobble" if f == sim.player else "%s is out!" % f.name)
+					_toast("You're out! Big wobble" if f == sim.player else tr("%s is out!") % f.name)
 			"relook":
 				_relook(f)
 			"emote":                         # another player's emote (online)
 				if views.has(f): views[f].wobbler.play_emote(str(e["id"]))
 			"chaos_warn":
-				_show_banner(str(e["name"]).to_upper() + "!", "in %d…" % ceili(float(e["in"])), true, float(e["in"]))
+				_show_banner(tr("%s!") % tr(str(e["name"])).to_upper(), tr("in %d…") % ceili(float(e["in"])), true, float(e["in"]))
 			"chaos":
-				if e["id"] == "giant" and f: _toast("You're a giant! Mind the furniture" if f == sim.player else "%s is a giant! Run!" % f.name)
-				else: _toast(str(e["name"]) + "!")
+				if e["id"] == "giant" and f: _toast("You're a giant! Mind the furniture" if f == sim.player else tr("%s is a giant! Run!") % f.name)
+				else: _toast(tr("%s!") % tr(str(e["name"])))
 			"chaos_end":
 				if e["id"] != "crates": _toast("Back to normal")
 	evs.clear()
@@ -620,23 +630,23 @@ func _update_mode_ui(delta: float) -> void:
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
-	var top := float(ins[1]) + 44.0                  # under the crate toast (hud.gd keeps that at the very top)
+	var top := float(ins[1]) + MatchHud.TOP_STACK     # under the toast (hud.gd keeps that at the very top), with a gap
 	_team_board.visible = board
 	if board:
 		var rules := sim.combat.rules
 		_team_board.set_data(rules.team_ko(0), rules.team_ko(1), maxi(sim.player.team, 0), rules.limit)
 		_team_board.position = Vector2(vs.x / 2.0 - _team_board.size.x / 2.0, top + 4.0)
-		top += _team_board.size.y + 4.0
+		top += _team_board.size.y + 10.0
 	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
 	if spectating != null:                      # spectator line: who, how many left, how to switch
-		_mode_l.text = "Spectating %s · %d left · tap to switch" % [spectating.name, sim.combat.rules.survivors().size()]
+		_mode_l.text = tr("Spectating %s · %d left · tap to switch") % [spectating.name, sim.combat.rules.survivors().size()]
 		_mode_l.visible = true
 		_mode_l.reset_size()
-		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)
+		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + MatchHud.TOP_STACK)
 	if _banner.visible:
 		var ct := sim.combat.rules.chaos
 		if not ct.is_empty() and float(ct.get("warn", 0.0)) > 0.0:   # the Chaos countdown ticks in the banner
-			_banner.text = "%s!\nin %d…" % [sim.combat.rules.chaos_name(ct["id"]).to_upper(), ceili(float(ct["warn"]))]
+			_banner.text = tr("%s!\nin %d…") % [tr(sim.combat.rules.chaos_name(ct["id"])).to_upper(), ceili(float(ct["warn"]))]
 		_banner_t -= delta
 		_banner.reset_size()
 		_banner.position = Vector2(vs.x / 2.0 - _banner.size.x / 2.0, vs.y * 0.3)
@@ -719,7 +729,7 @@ func _unhandled_input(e: InputEvent) -> void:
 ## (Tests that step the world by hand, auto_run = false, get no replay unless they set `kill_cam_in_tests`: their
 ## match clocks must not stop.)
 func kill_cam_enabled() -> bool:
-	return session == null and (auto_run or kill_cam_in_tests) and bool(Settings.get_value("kill_cam", true)) and sim != null and sim.combat.teams == 0
+	return session == null and soak_duration <= 0.0 and (auto_run or kill_cam_in_tests) and bool(Settings.get_value("kill_cam", true)) and sim != null and sim.combat.teams == 0
 
 func start_kill_cam() -> void:
 	if not kill_cam.start(): return
@@ -741,7 +751,7 @@ func start_kill_cam() -> void:
 		$UI.add_child(_kc_l)
 		$UI.move_child(_kc_l, pause_menu.get_index())
 	var v: FighterState = kill_cam.views[kill_cam.vi].state
-	_kc_l.text = "Replay · you K.O.'d %s · tap to skip" % v.name
+	_kc_l.text = tr("Replay · you K.O.'d %s · tap to skip") % v.name
 	var top := SafeArea.insets(get_viewport())[1] as float
 	_kc_l.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - _kc_l.get_minimum_size().x / 2.0, top + 14.0)
 	_kc_l.size = _kc_l.get_minimum_size()
@@ -777,13 +787,13 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	l.add_theme_color_override("font_color", UiTheme.ACCENT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var teams := sim.combat.teams != 0
-	l.text = ("Your team wins!" if won else "Enemy team wins!") if teams else ("You win!" if won else winner_name + " wins!")
+	l.text = ("Your team wins!" if won else "Enemy team wins!") if teams else ("You win!" if won else tr("%s wins!") % winner_name)
 	box.add_child(l)
 	var info := Label.new()
 	info.theme_type_variation = &"MutedLabel"
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var deaths := int(sim.player.st["deaths"])
-	info.text = "%s · %d K.O.%s · %d death%s" % [str(sim.combat.mode.get("name", sim.combat.mode_id)), sim.player.ko, "" if sim.player.ko == 1 else "s", deaths, "" if deaths == 1 else "s"]
+	info.text = tr("%s · %d K.O.s · %d deaths") % [tr(str(sim.combat.mode.get("name", sim.combat.mode_id))), sim.player.ko, deaths]
 	box.add_child(info)
 	box.add_child(ResultsRewards.make(_reward))
 	var again := Button.new(); again.text = "Play again"; again.custom_minimum_size = Vector2(0, 58)
@@ -802,8 +812,25 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	$UI.add_child(p)
 	$UI.move_child(p, pause_menu.get_index())
 	_results = p
+	_dim_behind(p)
 	touch.release_all()
 	input.release_mouse()
+
+## A dimmed backdrop right under the results panel: the HUD and touch buttons behind it stay as quiet context, never a second
+## set of controls competing with Play again / Quit; it goes away with the panel. The HUD toast is cleared (see MatchHud.toast).
+func _dim_behind(p: Control) -> void:
+	var dim := ColorRect.new()
+	dim.name = "ResultsDim"
+	dim.color = Color(0.02, 0.06, 0.08, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	$UI.add_child(dim)
+	$UI.move_child(dim, p.get_index())
+	p.tree_exited.connect(dim.queue_free)
+	hud.clear_toast()
+
+## True while the end-of-match panel is up.
+func results_open() -> bool:
+	return _results != null
 
 ## The shrinking floor: the map's first box is drawn by its own mesh, scaled to ModeRules.shrink every frame.
 func _build_shrink_view() -> void:
@@ -850,7 +877,7 @@ func _resume_state() -> Dictionary:
 
 ## The host left and another player hosts now: the arena stays until their `start` (or `rehosted` ends it).
 func _on_net_host_changing(old_host: String) -> void:
-	_show_banner("HOST CHANGED", "%s left. Waiting for the new host…" % old_host, true, 4.0)
+	_show_banner(tr("HOST CHANGED"), tr("%s left. Waiting for the new host…") % old_host, true, 4.0)
 
 ## The relay made me the host: the HostSession carries the match on (its `start` rebuilds the arena) or, with no
 ## match running, the lobby takes over.
@@ -859,7 +886,7 @@ func _on_net_promoted(hs: GuestSession) -> void:
 	session = hs
 	_bind_net()
 	if (hs as HostSession).resuming():
-		_show_banner("HOST CHANGED", "%s left. You're the host now!" % str(hs.get("migrated")), true, 4.0)
+		_show_banner(tr("HOST CHANGED"), tr("%s left. You're the host now!") % str(hs.get("migrated")), true, 4.0)
 	elif not hs.started:
 		_to_title(hs.status)
 
@@ -921,7 +948,7 @@ func _show_results(winner: String) -> void:
 	l.theme_type_variation = &"TitleLabel"
 	l.add_theme_color_override("font_color", UiTheme.ACCENT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.text = ("You win!" if winner == "You" else winner + " wins!")
+	l.text = ("You win!" if winner == "You" else tr("%s wins!") % winner)
 	box.add_child(l)
 	var votes := Label.new()
 	votes.theme_type_variation = &"MutedLabel"
@@ -943,9 +970,10 @@ func _show_results(winner: String) -> void:
 	$UI.add_child(p)
 	$UI.move_child(p, pause_menu.get_index())   # under the pause menu, over the HUD and touch layer
 	_results = p
+	_dim_behind(p)
 
 func _on_net_votes(list: Array, total: int) -> void:
-	if _results: (_results.find_child("Votes", true, false) as Label).text = "Rematch votes: %d / %d" % [list.size(), total]
+	if _results: (_results.find_child("Votes", true, false) as Label).text = tr("Rematch votes: %d / %d") % [list.size(), total]
 
 func _toggle_pause() -> void:
 	paused = not paused
@@ -965,3 +993,5 @@ func _toggle_pause() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_PAUSED and not paused and auto_run:
 		_toggle_pause()   # phones: app sent to background
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_toggle_pause()   # Android: back button opens/closes pause menu

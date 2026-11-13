@@ -10,6 +10,7 @@ const PAD := 14.0
 const FEED_TIME := 5.0
 const FEED_MAX := 4
 const TOAST_TIME := 2.2
+const TOP_STACK := 70.0           ## what hangs under the toast (team board, mode line, spectator line) starts this far below the top inset
 
 var world: Node
 var sim: MatchSim
@@ -175,7 +176,12 @@ func _lbl(parent: Node, fs: int, c: Color) -> Label:
 
 # ---------------- events from World ----------------
 
+func clear_toast() -> void:
+	_toast_t = 0.0
+	_toast.visible = false
+
 func toast(t: String) -> void:
+	if world != null and world.has_method("results_open") and world.results_open(): return   # the results panel has the stage
 	_toast_l.text = t
 	_toast_t = TOAST_TIME
 	_toast.visible = true
@@ -203,8 +209,8 @@ func add_feed(killer: FighterState, victim: FighterState, weapon: String, fell: 
 	item.add_child(row)
 	if killer != null:
 		_lbl(row, 15, _who_color(killer)).text = _who(killer)
-		var wl := _lbl(row, 12, UiTheme.INK)
-		wl.text = weapon if weapon != "" else "K.O."
+		var wl := _lbl(row, UiTheme.MIN_FONT, UiTheme.INK)
+		wl.text = tr(weapon) if weapon != "" else "K.O."
 		var ws := UiTheme.box(Color(1, 1, 1, 0.8), 6, Color(0, 0, 0, 0), 0, 0)
 		ws.content_margin_left = 5; ws.content_margin_right = 5; ws.content_margin_top = 0; ws.content_margin_bottom = 0
 		wl.add_theme_stylebox_override("normal", ws)
@@ -252,7 +258,7 @@ func update(delta: float) -> void:
 	for f: FighterState in sim.fighters:
 		if f.ko > 0 and (lead == null or f.ko > lead.ko): lead = f
 	_crown.visible = lead != null
-	_leader.text = ("You lead with %d" % lead.ko if lead == p else "%s  %d" % [lead.name, lead.ko]) if lead else "No leader yet. Be first!"
+	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [lead.name, lead.ko]) if lead else "No leader yet. Be first!"
 	_leader.add_theme_color_override("font_color", UiTheme.ACCENT if lead == p else UiTheme.MUTED)
 	# keep clear of the touch layer's pause button
 	var pause_r := Rect2()
@@ -284,7 +290,7 @@ func update(delta: float) -> void:
 	var mx := sim.combat.max_hp(p)
 	var k := clampf(p.hp / mx, 0.0, 1.0) if not p.dead else 0.0
 	_health.set_value(k, "%d / %d" % [ceili(maxf(p.hp, 0.0)) if not p.dead else 0, roundi(mx)],
-		str(sim.combat.classes.get(p.class_id, {}).get("name", p.class_id)))
+		tr(str(sim.combat.classes.get(p.class_id, {}).get("name", p.class_id))))
 	_health.tick(delta)
 	var hy := safe.end.y - _health.size.y
 	_health.position = Vector2(safe.end.x - _health.size.x if lefty else safe.position.x, hy)
@@ -344,7 +350,7 @@ func _fill_hotbar(p: FighterState) -> void:
 	for i in 3:
 		var s: Variant = p.slots[i] if i < p.slots.size() else null
 		if s == null:
-			out.append({"name": "empty", "ammo": "", "sub": "", "low": false, "empty": true, "active": false, "reload": -1.0})
+			out.append({"name": tr("empty"), "ammo": "", "sub": "", "low": false, "empty": true, "active": false, "reload": -1.0})
 			continue
 		var w := sim.combat.wdata(str(s["key"]))
 		var ammo := ""        # the big number: bullets in the magazine (or uses left)
@@ -363,9 +369,9 @@ func _fill_hotbar(p: FighterState) -> void:
 		var active := p.slot == i and not p.dead
 		var rl := -1.0
 		if active and p.reloading and p.rl_dur > 0.0: rl = p.rl_t / p.rl_dur
-		out.append({"name": str(w.get("name", s["key"])), "ammo": ammo, "sub": sub, "low": low, "empty": false, "active": active, "reload": rl})
+		out.append({"name": tr(str(w.get("name", s["key"]))), "ammo": ammo, "sub": sub, "low": low, "empty": false, "active": active, "reload": rl})
 	var sp := sim.combat.wdata("spatula")
-	out.append({"name": str(sp.get("name", "Spatula")), "ammo": "", "sub": "", "low": false, "empty": false, "active": p.slot < 0 and not p.dead, "reload": -1.0})
+	out.append({"name": tr(str(sp.get("name", "Spatula"))), "ammo": "", "sub": "", "low": false, "empty": false, "active": p.slot < 0 and not p.dead, "reload": -1.0})
 	_hotbar.slots = out
 
 func _draw_cross() -> void:

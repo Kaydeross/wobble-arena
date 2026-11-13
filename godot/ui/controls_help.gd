@@ -16,11 +16,42 @@ func _init() -> void:
 
 func _ready() -> void:
 	build_frame("Controls")
+	var mid := HBoxContainer.new()       # the picture on the left (names only), the how-to lines on the right
+	mid.name = "Mid"
+	mid.size_flags_vertical = SIZE_EXPAND_FILL
+	mid.add_theme_constant_override("separation", UiTheme.SP_4)
+	col.add_child(mid)
 	pic = Picture.new()
 	pic.name = "Picture"
 	pic.size_flags_vertical = SIZE_EXPAND_FILL
+	pic.size_flags_horizontal = SIZE_EXPAND_FILL
+	pic.size_flags_stretch_ratio = 3.0
 	pic.custom_minimum_size = Vector2(0, 220)
-	col.add_child(pic)
+	mid.add_child(pic)
+	var how := VBoxContainer.new()
+	how.name = "How"
+	how.size_flags_horizontal = SIZE_EXPAND_FILL
+	how.size_flags_stretch_ratio = 2.0
+	how.alignment = BoxContainer.ALIGNMENT_CENTER
+	how.add_theme_constant_override("separation", UiTheme.SP_3)
+	mid.add_child(how)
+	for r: Array in [["Move", "Drag anywhere on the left side"], ["Look", "Drag on the right side · double-tap to aim"],
+			["Melee", "Tap to shove · hold to kick"], ["Weapons", "Tap a slot to switch"]]:
+		var one := VBoxContainer.new()
+		one.add_theme_constant_override("separation", 0)
+		how.add_child(one)
+		var t := Label.new()
+		t.text = r[0]
+		t.add_theme_font_size_override("font_size", 20)
+		t.add_theme_color_override("font_color", UiTheme.ACCENT)
+		one.add_child(t)
+		var d := Label.new()
+		d.text = r[1]
+		d.theme_type_variation = &"MutedLabel"
+		d.add_theme_font_size_override("font_size", 16)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		d.custom_minimum_size = Vector2(120, 0)
+		one.add_child(d)
 	keys_l = Label.new()
 	keys_l.name = "Keys"
 	keys_l.text = KEYS
@@ -65,8 +96,8 @@ class Picture extends Control:
 		draw_style_box(UiTheme.box(Color(0.02, 0.07, 0.09, 1.0), 26, Color(1, 1, 1, 0.25), 3), sr.grow(6))
 		var mid := sr.position.x + sr.size.x * 0.45
 		draw_line(Vector2(mid, sr.position.y + 12), Vector2(mid, sr.end.y - 12), Color(1, 1, 1, 0.12), 2.0)
-		var fs := clampi(int(26.0 * k), 12, 26)
-		var fs2 := clampi(int(20.0 * k), 11, 20)
+		var fs := clampi(int(30.0 * k), UiTheme.MIN_FONT + 1, 26)
+		var fs2 := UiTheme.MIN_FONT
 		var lefty := bool(Settings.get_value("touch_lefty", false))
 		var u := TouchControls.UNIT
 		var labels: Array = []   ## [anchor point, side (-1 left of it, 1 right), title, sub]
@@ -76,14 +107,14 @@ class Picture extends Control:
 		draw_circle(sc, TouchControls.STICK_R * u * k, Color(1, 1, 1, 0.12))
 		draw_arc(sc, TouchControls.STICK_R * u * k, 0, TAU, 40, Color(1, 1, 1, 0.5), 2.0, true)
 		draw_circle(sc, TouchControls.STICK_R * u * k * 0.45, Color(1, 1, 1, 0.55))
-		labels.append([sc + Vector2(0, -TouchControls.STICK_R * u * k - 8), 0, "Move", "Drag anywhere on the left side"])
+		labels.append([sc + Vector2(0, -TouchControls.STICK_R * u * k - 8), 0, "Move", ""])
 		# look area
 		var lc := _p(sr, Vector2(VS.x * 0.6, VS.y * 0.33))
 		_arrows(lc, 60.0 * k)
-		labels.append([lc + Vector2(0, 60.0 * k + fs * 1.2), 0, "Look", "Drag on the right side · double-tap to aim"])
+		labels.append([lc + Vector2(0, 60.0 * k + 8.0), 2, "Look", ""])
 		# action buttons
 		var cols := {"fire": UiTheme.ACCENT, "jump": Color(0.22, 0.71, 0.66), "melee": Color(0.94, 0.45, 0.35), "context": Color(1, 1, 1, 0.6)}
-		var words := {"fire": ["Fire (hold)", ""], "jump": ["Jump", ""], "melee": ["Melee", "Tap to shove · hold to kick"], "context": ["Dash / Reload", ""]}
+		var words := {"fire": ["Fire (hold)", ""], "jump": ["Jump", ""], "melee": ["Melee", ""], "context": ["Dash / Reload", ""]}
 		var place := {"fire": 2, "jump": -1, "melee": 0, "context": -1}   ## where each label goes: below, left, above
 		for b: Array in TouchControls.BUTTONS:
 			var br := _btn(b)
@@ -118,7 +149,7 @@ class Picture extends Control:
 		for i in 3:
 			var rr := Rect2(hc + Vector2((i - 1.5) * (hw + 8) * k, -hw * 0.5 * k), Vector2(hw, hw) * k)
 			draw_style_box(UiTheme.box(Color(1, 1, 1, 0.12 if i else 0.3), int(10 * k), Color(1, 1, 1, 0.4), 2), rr)
-		labels.append([hc + Vector2(0, -hw * 0.5 * k - 6), 0, "Weapons", "Tap a slot to switch"])
+		labels.append([hc + Vector2(0, -hw * 0.5 * k - 6), 0, "Weapons", ""])
 		_sr = sr
 		for l: Array in labels: _label(l[0], int(l[1]), str(l[2]), str(l[3]), fs, fs2)
 
@@ -134,6 +165,8 @@ class Picture extends Control:
 	## A title (and a smaller sub line) next to `at`: side -1 = to its left, 1 = to its right, 0 = centred above,
 	## 2 = centred below; kept inside the screen picture.
 	func _label(at: Vector2, side: int, title: String, sub: String, fs: int, fs2: int) -> void:
+		title = tr(title)   # drawn with draw_string, so it does not translate itself
+		sub = tr(sub)
 		var w1 := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var w2 := font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x if sub != "" else 0.0
 		var h := fs + (fs2 + 2 if sub != "" else 0)

@@ -1,0 +1,1325 @@
+{
+ "Press a key or click...": {
+  "zh_TW": "請按下按鍵或點擊...",
+  "zh_CN": "请按下按键或点击...",
+  "ja": "キーを押すかクリック...",
+  "fr": "Appuie sur une touche ou clique...",
+  "es": "Pulsa una tecla o haz clic..."
+ },
+ "Unbind: this action is bound to nothing": {
+  "zh_TW": "解除綁定：此動作未綁定任何按鍵",
+  "zh_CN": "解除绑定：此动作未绑定任何按键",
+  "ja": "割り当て解除：この操作には何も割り当てられていません",
+  "fr": "Dissocier : cette action n'est liée à rien",
+  "es": "Desvincular: esta acción no está asignada a nada"
+ },
+ "Map on / off": {
+  "zh_TW": "地圖開關",
+  "zh_CN": "地图开关",
+  "ja": "マップ表示 切替",
+  "fr": "Carte activée / désactivée",
+  "es": "Mapa sí / no"
+ },
+ "Chat (online)": {
+  "zh_TW": "聊天（線上）",
+  "zh_CN": "聊天（在线）",
+  "ja": "チャット（オンライン）",
+  "fr": "Chat (en ligne)",
+  "es": "Chat (en línea)"
+ },
+ "Move forward": {
+  "zh_TW": "向前移動",
+  "zh_CN": "向前移动",
+  "ja": "前進",
+  "fr": "Avancer",
+  "es": "Avanzar"
+ },
+ "Move back": {
+  "zh_TW": "向後移動",
+  "zh_CN": "向后移动",
+  "ja": "後退",
+  "fr": "Reculer",
+  "es": "Retroceder"
+ },
+ "Move left": {
+  "zh_TW": "向左移動",
+  "zh_CN": "向左移动",
+  "ja": "左へ移動",
+  "fr": "Aller à gauche",
+  "es": "Ir a la izquierda"
+ },
+ "Move right": {
+  "zh_TW": "向右移動",
+  "zh_CN": "向右移动",
+  "ja": "右へ移動",
+  "fr": "Aller à droite",
+  "es": "Ir a la derecha"
+ },
+ "Sprint": {
+  "zh_TW": "疾跑",
+  "zh_CN": "疾跑",
+  "ja": "スプリント",
+  "fr": "Sprint",
+  "es": "Correr"
+ },
+ "Squat": {
+  "zh_TW": "蹲下",
+  "zh_CN": "蹲下",
+  "ja": "しゃがみ",
+  "fr": "Accroupir",
+  "es": "Agacharse"
+ },
+ "Attack / fire": {
+  "zh_TW": "攻擊 / 射擊",
+  "zh_CN": "攻击 / 射击",
+  "ja": "攻撃 / 発射",
+  "fr": "Attaquer / tirer",
+  "es": "Atacar / disparar"
+ },
+ "Aim / scope (mouse)": {
+  "zh_TW": "瞄準 / 準星（滑鼠）",
+  "zh_CN": "瞄准 / 准星（鼠标）",
+  "ja": "照準 / スコープ（マウス）",
+  "fr": "Viser / lunette (souris)",
+  "es": "Apuntar / mira (ratón)"
+ },
+ "Scope / aim (key)": {
+  "zh_TW": "準星 / 瞄準（按鍵）",
+  "zh_CN": "准星 / 瞄准（按键）",
+  "ja": "スコープ / 照準（キー）",
+  "fr": "Lunette / viser (touche)",
+  "es": "Mira / apuntar (tecla)"
+ },
+ "Next weapon": {
+  "zh_TW": "下一把武器",
+  "zh_CN": "下一把武器",
+  "ja": "次の武器",
+  "fr": "Arme suivante",
+  "es": "Siguiente arma"
+ },
+ "Previous weapon": {
+  "zh_TW": "上一把武器",
+  "zh_CN": "上一把武器",
+  "ja": "前の武器",
+  "fr": "Arme précédente",
+  "es": "Arma anterior"
+ },
+ "Swap to last weapon": {
+  "zh_TW": "切換到上一把武器",
+  "zh_CN": "切换到上一把武器",
+  "ja": "直前の武器に切り替え",
+  "fr": "Passer à la dernière arme",
+  "es": "Cambiar a la última arma"
+ },
+ "Quick spatula": {
+  "zh_TW": "快速鏟子",
+  "zh_CN": "快速铲子",
+  "ja": "すぐスパチュラ",
+  "fr": "Spatule rapide",
+  "es": "Espátula rápida"
+ },
+ "Shove": {
+  "zh_TW": "推擠",
+  "zh_CN": "推挤",
+  "ja": "突き飛ばし",
+  "fr": "Bousculade",
+  "es": "Empujón"
+ },
+ "Kick": {
+  "zh_TW": "踢",
+  "zh_CN": "踢",
+  "ja": "キック",
+  "fr": "Coup de pied",
+  "es": "Patada"
+ },
+ "Emote 1": {
+  "zh_TW": "表情動作 1",
+  "zh_CN": "表情动作 1",
+  "ja": "エモート 1",
+  "fr": "Emote 1",
+  "es": "Emote 1"
+ },
+ "Emote 2": {
+  "zh_TW": "表情動作 2",
+  "zh_CN": "表情动作 2",
+  "ja": "エモート 2",
+  "fr": "Emote 2",
+  "es": "Emote 2"
+ },
+ "Emote 3": {
+  "zh_TW": "表情動作 3",
+  "zh_CN": "表情动作 3",
+  "ja": "エモート 3",
+  "fr": "Emote 3",
+  "es": "Emote 3"
+ },
+ "Dash (Ninja mode)": {
+  "zh_TW": "衝刺（忍者模式）",
+  "zh_CN": "冲刺（忍者模式）",
+  "ja": "ダッシュ（忍者モード）",
+  "fr": "Dash (mode Ninja)",
+  "es": "Impulso (modo Ninja)"
+ },
+ "Weapon slot 1": {
+  "zh_TW": "武器欄 1",
+  "zh_CN": "武器栏 1",
+  "ja": "武器スロット 1",
+  "fr": "Emplacement d'arme 1",
+  "es": "Ranura de arma 1"
+ },
+ "Weapon slot 2": {
+  "zh_TW": "武器欄 2",
+  "zh_CN": "武器栏 2",
+  "ja": "武器スロット 2",
+  "fr": "Emplacement d'arme 2",
+  "es": "Ranura de arma 2"
+ },
+ "Weapon slot 3": {
+  "zh_TW": "武器欄 3",
+  "zh_CN": "武器栏 3",
+  "ja": "武器スロット 3",
+  "fr": "Emplacement d'arme 3",
+  "es": "Ranura de arma 3"
+ },
+ "Reload": {
+  "zh_TW": "換彈",
+  "zh_CN": "换弹",
+  "ja": "リロード",
+  "fr": "Recharger",
+  "es": "Recargar"
+ },
+ "map on / off": {
+  "zh_TW": "地圖開關",
+  "zh_CN": "地图开关",
+  "ja": "マップ表示 切替",
+  "fr": "carte activée / désactivée",
+  "es": "mapa sí / no"
+ },
+ "chat (online)": {
+  "zh_TW": "聊天（線上）",
+  "zh_CN": "聊天（在线）",
+  "ja": "チャット（オンライン）",
+  "fr": "chat (en ligne)",
+  "es": "chat (en línea)"
+ },
+ "move forward": {
+  "zh_TW": "向前移動",
+  "zh_CN": "向前移动",
+  "ja": "前進",
+  "fr": "avancer",
+  "es": "avanzar"
+ },
+ "move back": {
+  "zh_TW": "向後移動",
+  "zh_CN": "向后移动",
+  "ja": "後退",
+  "fr": "reculer",
+  "es": "retroceder"
+ },
+ "move left": {
+  "zh_TW": "向左移動",
+  "zh_CN": "向左移动",
+  "ja": "左へ移動",
+  "fr": "aller à gauche",
+  "es": "ir a la izquierda"
+ },
+ "move right": {
+  "zh_TW": "向右移動",
+  "zh_CN": "向右移动",
+  "ja": "右へ移動",
+  "fr": "aller à droite",
+  "es": "ir a la derecha"
+ },
+ "jump": {
+  "zh_TW": "跳躍",
+  "zh_CN": "跳跃",
+  "ja": "ジャンプ",
+  "fr": "sauter",
+  "es": "saltar"
+ },
+ "sprint": {
+  "zh_TW": "疾跑",
+  "zh_CN": "疾跑",
+  "ja": "スプリント",
+  "fr": "sprint",
+  "es": "correr"
+ },
+ "squat": {
+  "zh_TW": "蹲下",
+  "zh_CN": "蹲下",
+  "ja": "しゃがみ",
+  "fr": "accroupir",
+  "es": "agacharse"
+ },
+ "attack / fire": {
+  "zh_TW": "攻擊 / 射擊",
+  "zh_CN": "攻击 / 射击",
+  "ja": "攻撃 / 発射",
+  "fr": "attaquer / tirer",
+  "es": "atacar / disparar"
+ },
+ "aim / scope (mouse)": {
+  "zh_TW": "瞄準 / 準星（滑鼠）",
+  "zh_CN": "瞄准 / 准星（鼠标）",
+  "ja": "照準 / スコープ（マウス）",
+  "fr": "viser / lunette (souris)",
+  "es": "apuntar / mira (ratón)"
+ },
+ "scope / aim (key)": {
+  "zh_TW": "準星 / 瞄準（按鍵）",
+  "zh_CN": "准星 / 瞄准（按键）",
+  "ja": "スコープ / 照準（キー）",
+  "fr": "lunette / viser (touche)",
+  "es": "mira / apuntar (tecla)"
+ },
+ "next weapon": {
+  "zh_TW": "下一把武器",
+  "zh_CN": "下一把武器",
+  "ja": "次の武器",
+  "fr": "arme suivante",
+  "es": "siguiente arma"
+ },
+ "previous weapon": {
+  "zh_TW": "上一把武器",
+  "zh_CN": "上一把武器",
+  "ja": "前の武器",
+  "fr": "arme précédente",
+  "es": "arma anterior"
+ },
+ "swap to last weapon": {
+  "zh_TW": "切換到上一把武器",
+  "zh_CN": "切换到上一把武器",
+  "ja": "直前の武器に切り替え",
+  "fr": "passer à la dernière arme",
+  "es": "cambiar a la última arma"
+ },
+ "quick spatula": {
+  "zh_TW": "快速鏟子",
+  "zh_CN": "快速铲子",
+  "ja": "すぐスパチュラ",
+  "fr": "spatule rapide",
+  "es": "espátula rápida"
+ },
+ "shove": {
+  "zh_TW": "推擠",
+  "zh_CN": "推挤",
+  "ja": "突き飛ばし",
+  "fr": "bousculade",
+  "es": "empujón"
+ },
+ "kick": {
+  "zh_TW": "踢",
+  "zh_CN": "踢",
+  "ja": "キック",
+  "fr": "coup de pied",
+  "es": "patada"
+ },
+ "emote 1": {
+  "zh_TW": "表情動作 1",
+  "zh_CN": "表情动作 1",
+  "ja": "エモート 1",
+  "fr": "emote 1",
+  "es": "emote 1"
+ },
+ "emote 2": {
+  "zh_TW": "表情動作 2",
+  "zh_CN": "表情动作 2",
+  "ja": "エモート 2",
+  "fr": "emote 2",
+  "es": "emote 2"
+ },
+ "emote 3": {
+  "zh_TW": "表情動作 3",
+  "zh_CN": "表情动作 3",
+  "ja": "エモート 3",
+  "fr": "emote 3",
+  "es": "emote 3"
+ },
+ "dash (ninja mode)": {
+  "zh_TW": "衝刺（忍者模式）",
+  "zh_CN": "冲刺（忍者模式）",
+  "ja": "ダッシュ（忍者モード）",
+  "fr": "dash (mode ninja)",
+  "es": "impulso (modo ninja)"
+ },
+ "weapon slot 1": {
+  "zh_TW": "武器欄 1",
+  "zh_CN": "武器栏 1",
+  "ja": "武器スロット 1",
+  "fr": "emplacement d'arme 1",
+  "es": "ranura de arma 1"
+ },
+ "weapon slot 2": {
+  "zh_TW": "武器欄 2",
+  "zh_CN": "武器栏 2",
+  "ja": "武器スロット 2",
+  "fr": "emplacement d'arme 2",
+  "es": "ranura de arma 2"
+ },
+ "weapon slot 3": {
+  "zh_TW": "武器欄 3",
+  "zh_CN": "武器栏 3",
+  "ja": "武器スロット 3",
+  "fr": "emplacement d'arme 3",
+  "es": "ranura de arma 3"
+ },
+ "reload": {
+  "zh_TW": "換彈",
+  "zh_CN": "换弹",
+  "ja": "リロード",
+  "fr": "recharger",
+  "es": "recargar"
+ },
+ "That is already used for %s": {
+  "zh_TW": "此按鍵已用於%s。",
+  "zh_CN": "此按键已用于%s。",
+  "ja": "そのキーは既に%sに使われています。",
+  "fr": "Cette touche est déjà utilisée pour %s.",
+  "es": "Esa tecla ya se usa para %s."
+ },
+ "Allow the same key to do several actions at once (like sprint and squat on one key)? Pressing it will trigger all of them. Are you sure?": {
+  "zh_TW": "允許同一個按鍵同時執行多個動作（例如在同一鍵上設定衝刺和蹲下）？按下時會觸發全部動作。確定嗎？",
+  "zh_CN": "允许同一个按键同时执行多个动作（例如在同一键上设置冲刺和蹲下）？按下时会触发全部动作。确定吗？",
+  "ja": "同じキーで複数の操作を同時に行えるようにしますか？（例：ダッシュとしゃがみを同じキーに）押すとすべて発動します。よろしいですか？",
+  "fr": "Autoriser la même touche à effectuer plusieurs actions à la fois (par ex. sprint et accroupi sur une même touche) ? Appuyer dessus déclenchera toutes les actions. Confirmer ?",
+  "es": "¿Permitir que la misma tecla haga varias acciones a la vez (como correr y agacharse en una sola tecla)? Al pulsarla se activarán todas. ¿Seguro?"
+ },
+ "Go back to one action per key? Keys that are already shared stay as they are until you change them. Are you sure?": {
+  "zh_TW": "改回每個按鍵只對應一個動作？已共用的按鍵會保持不變，直到你更改為止。確定嗎？",
+  "zh_CN": "改回每个按键只对应一个动作？已共用的按键会保持不变，直到你更改为止。确定吗？",
+  "ja": "1つのキーに1つの操作だけの設定に戻しますか？共有中のキーは変更するまでそのままです。よろしいですか？",
+  "fr": "Revenir à une seule action par touche ? Les touches déjà partagées restent telles quelles tant que vous ne les modifiez pas. Confirmer ?",
+  "es": "¿Volver a una acción por tecla? Las teclas que ya están compartidas se mantendrán así hasta que las cambies. ¿Seguro?"
+ },
+ "Turn on two keys per action? Each action gets a second key slot, and a key can only be used for one thing at a time. Are you sure?": {
+  "zh_TW": "開啟每個動作兩個按鍵？每個動作會多一個按鍵欄位，且一個按鍵一次只能用於一件事。確定嗎？",
+  "zh_CN": "开启每个动作两个按键？每个动作会多一个按键栏位，且一个按键一次只能用于一件事。确定吗？",
+  "ja": "1つの操作に2つのキーを割り当てますか？各操作に2つ目のキー欄が追加され、1つのキーは同時に1つの操作にしか使えません。よろしいですか？",
+  "fr": "Activer deux touches par action ? Chaque action aura un second emplacement de touche, et une touche ne peut servir qu'à une chose à la fois. Confirmer ?",
+  "es": "¿Activar dos teclas por acción? Cada acción tendrá una segunda ranura de tecla, y una tecla solo puede usarse para una cosa a la vez. ¿Seguro?"
+ },
+ "Go back to one key per action? Your second keys are kept but stop working until you turn this back on. Are you sure?": {
+  "zh_TW": "改回每個動作一個按鍵？第二個按鍵會保留，但在重新開啟前不會生效。確定嗎？",
+  "zh_CN": "改回每个动作一个按键？第二个按键会保留，但在重新开启前不会生效。确定吗？",
+  "ja": "1つの操作に1つのキーの設定に戻しますか？2つ目のキーは残りますが、再度有効にするまで機能しません。よろしいですか？",
+  "fr": "Revenir à une touche par action ? Vos secondes touches sont conservées mais ne fonctionnent plus tant que vous ne réactivez pas cette option. Confirmer ?",
+  "es": "¿Volver a una tecla por acción? Tus segundas teclas se guardan, pero dejan de funcionar hasta que vuelvas a activar esto. ¿Seguro?"
+ },
+ "%s move · %s sprint · %s jump · %s squat · %s attack · %s or %s aim · %s %s %s weapons · %s spatula · %s shove · %s kick · %s taunt · M mute": {
+  "zh_TW": "%s 移動 · %s 衝刺 · %s 跳躍 · %s 蹲下 · %s 攻擊 · %s 或 %s 瞄準 · %s %s %s 武器 · %s 鏟子 · %s 推擠 · %s 踢 · %s 表情動作 · M 靜音",
+  "zh_CN": "%s 移动 · %s 冲刺 · %s 跳跃 · %s 蹲下 · %s 攻击 · %s 或 %s 瞄准 · %s %s %s 武器 · %s 铲子 · %s 推挤 · %s 踢 · %s 表情动作 · M 静音",
+  "ja": "%s 移動 · %s ダッシュ · %s ジャンプ · %s しゃがみ · %s 攻撃 · %s または %s 照準 · %s %s %s 武器 · %s スパチュラ · %s 突き飛ばし · %s キック · %s エモート · M ミュート",
+  "fr": "%s avancer · %s sprint · %s sauter · %s accroupir · %s attaquer · %s ou %s viser · %s %s %s armes · %s spatule · %s bousculer · %s coup de pied · %s emote · M muet",
+  "es": "%s moverse · %s correr · %s saltar · %s agacharse · %s atacar · %s o %s apuntar · %s %s %s armas · %s espátula · %s empujar · %s patada · %s emote · M silenciar"
+ },
+ "That is a lot of blocks!": {
+  "zh_TW": "方塊太多了！",
+  "zh_CN": "方块太多了！",
+  "ja": "ブロックが多すぎます！",
+  "fr": "C'est beaucoup de blocs !",
+  "es": "¡Son demasiados bloques!"
+ },
+ "Grass": {
+  "zh_TW": "草地",
+  "zh_CN": "草地",
+  "ja": "草原",
+  "fr": "Herbe",
+  "es": "Hierba"
+ },
+ "Desert": {
+  "zh_TW": "沙漠",
+  "zh_CN": "沙漠",
+  "ja": "砂漠",
+  "fr": "Désert",
+  "es": "Desierto"
+ },
+ "Snow": {
+  "zh_TW": "雪地",
+  "zh_CN": "雪地",
+  "ja": "雪原",
+  "fr": "Neige",
+  "es": "Nieve"
+ },
+ "Candy": {
+  "zh_TW": "糖果",
+  "zh_CN": "糖果",
+  "ja": "キャンディ",
+  "fr": "Bonbon",
+  "es": "Caramelo"
+ },
+ "Welcome back, %s!": {
+  "zh_TW": "歡迎回來，%s！",
+  "zh_CN": "欢迎回来，%s！",
+  "ja": "おかえりなさい、%sさん！",
+  "fr": "Bon retour, %s !",
+  "es": "¡Bienvenido de nuevo, %s!"
+ },
+ "Keep what I earned this session (%d coins, %d outfits)": {
+  "zh_TW": "保留本次遊戲獲得的內容（%d 金幣，%d 套服裝）",
+  "zh_CN": "保留本次游戏获得的内容（%d 金币，%d 套服装）",
+  "ja": "今回の進行を引き継ぐ（コイン %d、衣装 %d）",
+  "fr": "Garder ce que j'ai gagné cette session (%d pièces, %d tenues)",
+  "es": "Conservar lo que gané en esta sesión (%d monedas, %d atuendos)"
+ },
+ "Bring over the progress saved on this device (%d coins, %d outfits)": {
+  "zh_TW": "帶入此裝置上儲存的進度（%d 金幣，%d 套服裝）",
+  "zh_CN": "带入此设备上保存的进度（%d 金币，%d 套服装）",
+  "ja": "この端末に保存された進行を引き継ぐ（コイン %d、衣装 %d）",
+  "fr": "Reprendre la progression enregistrée sur cet appareil (%d pièces, %d tenues)",
+  "es": "Traer el progreso guardado en este dispositivo (%d monedas, %d atuendos)"
+ },
+ "Save your progress": {
+  "zh_TW": "儲存你的進度",
+  "zh_CN": "保存你的进度",
+  "ja": "進行状況を保存",
+  "fr": "Enregistrer la progression",
+  "es": "Guarda tu progreso"
+ },
+ "Free. Your coins, outfits, controls and stats are saved to it, so they follow you to any device.": {
+  "zh_TW": "免費。你的金幣、服裝、按鍵設定和數據都會儲存在帳號中，可在任何裝置上使用。",
+  "zh_CN": "免费。你的金币、服装、按键设置和数据都会保存在账号中，可在任何设备上使用。",
+  "ja": "無料。コイン、衣装、操作設定、統計はアカウントに保存され、どの端末でも引き継げます。",
+  "fr": "Gratuit. Les pièces, tenues, commandes et statistiques y sont enregistrées et te suivent sur tous les appareils.",
+  "es": "Gratis. Tus monedas, atuendos, controles y estadísticas se guardan en la cuenta y te siguen a cualquier dispositivo."
+ },
+ "Welcome back! Your progress loads as soon as you are in.": {
+  "zh_TW": "歡迎回來！登入後會立即載入你的進度。",
+  "zh_CN": "欢迎回来！登录后会立即加载你的进度。",
+  "ja": "おかえりなさい！ログインすると進行状況がすぐに読み込まれます。",
+  "fr": "Bon retour ! La progression se charge dès la connexion.",
+  "es": "¡Bienvenido de nuevo! Tu progreso se carga en cuanto entres."
+ },
+ "Reset your password": {
+  "zh_TW": "重設密碼",
+  "zh_CN": "重置密码",
+  "ja": "パスワードを再設定",
+  "fr": "Réinitialiser le mot de passe",
+  "es": "Restablecer tu contraseña"
+ },
+ "Type your username (or email), the recovery code you were shown when you signed up, and a new password.": {
+  "zh_TW": "輸入你的帳號（或電子郵件）、註冊時顯示的復原碼，以及新密碼。",
+  "zh_CN": "输入你的账号（或邮箱）、注册时显示的恢复码，以及新密码。",
+  "ja": "ユーザー名（またはメール）、登録時に表示された復旧コード、新しいパスワードを入力してください。",
+  "fr": "Saisir le nom d'utilisateur (ou l'e-mail), le code de récupération affiché à l'inscription et un nouveau mot de passe.",
+  "es": "Escribe tu usuario (o correo), el código de recuperación que se te mostró al registrarte y una contraseña nueva."
+ },
+ "Username (3 to 16 letters, numbers or _)": {
+  "zh_TW": "帳號（3 至 16 個字母、數字或 _）",
+  "zh_CN": "账号（3 至 16 个字母、数字或 _）",
+  "ja": "ユーザー名（英字・数字・_ を 3〜16 文字）",
+  "fr": "Nom d'utilisateur (3 à 16 lettres, chiffres ou _)",
+  "es": "Usuario (de 3 a 16 letras, números o _)"
+ },
+ "RESET PASSWORD": {
+  "zh_TW": "重設密碼",
+  "zh_CN": "重置密码",
+  "ja": "パスワードを再設定",
+  "fr": "RÉINITIALISER LE MOT DE PASSE",
+  "es": "RESTABLECER CONTRASEÑA"
+ },
+ "LOG IN": {
+  "zh_TW": "登入",
+  "zh_CN": "登录",
+  "ja": "ログイン",
+  "fr": "SE CONNECTER",
+  "es": "INICIAR SESIÓN"
+ },
+ "SAVE PROGRESS": {
+  "zh_TW": "儲存進度",
+  "zh_CN": "保存进度",
+  "ja": "進行状況を保存",
+  "fr": "ENREGISTRER",
+  "es": "GUARDAR PROGRESO"
+ },
+ "I already saved before": {
+  "zh_TW": "我之前已經儲存過",
+  "zh_CN": "我之前已经保存过",
+  "ja": "以前に保存済みです",
+  "fr": "J'ai déjà enregistré avant",
+  "es": "Ya guardé antes"
+ },
+ "Back to log in": {
+  "zh_TW": "返回登入",
+  "zh_CN": "返回登录",
+  "ja": "ログインに戻る",
+  "fr": "Retour à la connexion",
+  "es": "Volver a iniciar sesión"
+ },
+ "Save your progress instead": {
+  "zh_TW": "改為儲存進度",
+  "zh_CN": "改为保存进度",
+  "ja": "代わりに進行状況を保存",
+  "fr": "Enregistrer la progression à la place",
+  "es": "Guardar tu progreso en cambio"
+ },
+ "Your recovery code": {
+  "zh_TW": "你的復原碼",
+  "zh_CN": "你的恢复码",
+  "ja": "復旧コード",
+  "fr": "Ton code de récupération",
+  "es": "Tu código de recuperación"
+ },
+ "Account made! Keep this code somewhere safe.": {
+  "zh_TW": "帳號已建立！請妥善保管這組代碼。",
+  "zh_CN": "账号已创建！请妥善保管这组代码。",
+  "ja": "アカウントを作成しました！このコードは安全な場所に保管してください。",
+  "fr": "Compte créé ! Garde ce code en lieu sûr.",
+  "es": "¡Cuenta creada! Guarda este código en un lugar seguro."
+ },
+ "Copied!": {
+  "zh_TW": "已複製！",
+  "zh_CN": "已复制！",
+  "ja": "コピーしました！",
+  "fr": "Copié !",
+  "es": "¡Copiado!"
+ },
+ "Selected: press Ctrl+C": {
+  "zh_TW": "已選取：請按 Ctrl+C",
+  "zh_CN": "已选中：请按 Ctrl+C",
+  "ja": "選択しました：Ctrl+C を押してください",
+  "fr": "Sélectionné : appuie sur Ctrl+C",
+  "es": "Seleccionado: pulsa Ctrl+C"
+ },
+ "Your browser would not let the game remember you. Check that cookies and site data are allowed.": {
+  "zh_TW": "瀏覽器無法讓遊戲記住你。請確認已允許 Cookie 與網站資料。",
+  "zh_CN": "浏览器无法让游戏记住你。请确认已允许 Cookie 和网站数据。",
+  "ja": "ブラウザがゲームのログイン情報を保存できません。Cookie とサイトデータを許可してください。",
+  "fr": "Ton navigateur ne permet pas au jeu de te mémoriser. Vérifie que les cookies et les données de site sont autorisés.",
+  "es": "Tu navegador no deja que el juego te recuerde. Revisa que las cookies y los datos del sitio estén permitidos."
+ },
+ "Pick a username.": {
+  "zh_TW": "請選擇帳號。",
+  "zh_CN": "请选择账号。",
+  "ja": "ユーザー名を決めてください。",
+  "fr": "Choisir un nom d'utilisateur.",
+  "es": "Elige un usuario."
+ },
+ "Type your username or email.": {
+  "zh_TW": "請輸入帳號或電子郵件。",
+  "zh_CN": "请输入账号或邮箱。",
+  "ja": "ユーザー名かメールを入力してください。",
+  "fr": "Saisir le nom d'utilisateur ou l'e-mail.",
+  "es": "Escribe tu usuario o correo."
+ },
+ "Usernames are 3 to 16 letters, numbers or underscores.": {
+  "zh_TW": "帳號為 3 至 16 個字母、數字或底線。",
+  "zh_CN": "账号为 3 至 16 个字母、数字或下划线。",
+  "ja": "ユーザー名は英字・数字・アンダースコアの 3〜16 文字です。",
+  "fr": "Les noms d'utilisateur font de 3 à 16 lettres, chiffres ou tirets bas.",
+  "es": "Los usuarios tienen de 3 a 16 letras, números o guiones bajos."
+ },
+ "Type your email (it is only used for your account).": {
+  "zh_TW": "請輸入電子郵件（僅用於你的帳號）。",
+  "zh_CN": "请输入邮箱（仅用于你的账号）。",
+  "ja": "メールアドレスを入力してください（アカウントのためだけに使います）。",
+  "fr": "Saisir l'e-mail (il ne sert qu'à ton compte).",
+  "es": "Escribe tu correo (solo se usa para tu cuenta)."
+ },
+ "Type your recovery code.": {
+  "zh_TW": "請輸入復原碼。",
+  "zh_CN": "请输入恢复码。",
+  "ja": "復旧コードを入力してください。",
+  "fr": "Saisir le code de récupération.",
+  "es": "Escribe tu código de recuperación."
+ },
+ "Type a new password.": {
+  "zh_TW": "請輸入新密碼。",
+  "zh_CN": "请输入新密码。",
+  "ja": "新しいパスワードを入力してください。",
+  "fr": "Saisir un nouveau mot de passe.",
+  "es": "Escribe una contraseña nueva."
+ },
+ "Type your password.": {
+  "zh_TW": "請輸入密碼。",
+  "zh_CN": "请输入密码。",
+  "ja": "パスワードを入力してください。",
+  "fr": "Saisir le mot de passe.",
+  "es": "Escribe tu contraseña."
+ },
+ "Passwords need at least 6 characters.": {
+  "zh_TW": "密碼至少需要 6 個字元。",
+  "zh_CN": "密码至少需要 6 个字符。",
+  "ja": "パスワードは 6 文字以上にしてください。",
+  "fr": "Le mot de passe doit comporter au moins 6 caractères.",
+  "es": "La contraseña necesita al menos 6 caracteres."
+ },
+ "Creating…": {
+  "zh_TW": "建立中…",
+  "zh_CN": "创建中…",
+  "ja": "作成中…",
+  "fr": "Création…",
+  "es": "Creando…"
+ },
+ "Resetting…": {
+  "zh_TW": "重設中…",
+  "zh_CN": "重置中…",
+  "ja": "再設定中…",
+  "fr": "Réinitialisation…",
+  "es": "Restableciendo…"
+ },
+ "Logging in…": {
+  "zh_TW": "登入中…",
+  "zh_CN": "登录中…",
+  "ja": "ログイン中…",
+  "fr": "Connexion…",
+  "es": "Iniciando sesión…"
+ },
+ "Something went wrong. Try again.": {
+  "zh_TW": "出了點問題，請再試一次。",
+  "zh_CN": "出了点问题，请再试一次。",
+  "ja": "問題が発生しました。もう一度お試しください。",
+  "fr": "Une erreur s'est produite. Réessaie.",
+  "es": "Algo salió mal. Inténtalo de nuevo."
+ },
+ "Logging out…": {
+  "zh_TW": "登出中…",
+  "zh_CN": "退出中…",
+  "ja": "ログアウト中…",
+  "fr": "Déconnexion…",
+  "es": "Cerrando sesión…"
+ },
+ "Your latest progress could not be saved (no connection). If you log out now it will be lost. Log out anyway?": {
+  "zh_TW": "你最新的進度無法儲存（無連線）。現在登出的話會遺失。仍要登出嗎？",
+  "zh_CN": "你最新的进度无法保存（无连接）。现在退出的话会丢失。仍要退出吗？",
+  "ja": "最新の進行状況を保存できませんでした（接続なし）。今ログアウトすると失われます。それでもログアウトしますか？",
+  "fr": "Ta dernière progression n'a pas pu être enregistrée (pas de connexion). Si tu te déconnectes maintenant, elle sera perdue. Te déconnecter quand même ?",
+  "es": "Tu último progreso no se pudo guardar (sin conexión). Si cierras sesión ahora, se perderá. ¿Cerrar sesión de todos modos?"
+ },
+ "Log out of %s? Everything is saved to your account, so you can log back in any time.": {
+  "zh_TW": "要登出 %s 嗎？所有內容都已儲存在帳號中，隨時可以再登入。",
+  "zh_CN": "要退出 %s 吗？所有内容都已保存在账号中，随时可以再登录。",
+  "ja": "%s からログアウトしますか？内容はすべてアカウントに保存されているので、いつでも再ログインできます。",
+  "fr": "Se déconnecter de %s ? Tout est enregistré dans ton compte, tu peux te reconnecter à tout moment.",
+  "es": "¿Cerrar sesión de %s? Todo se guarda en tu cuenta, así que puedes volver a entrar cuando quieras."
+ },
+ "Saved to your account just now.": {
+  "zh_TW": "剛剛已儲存到你的帳號。",
+  "zh_CN": "刚刚已保存到你的账号。",
+  "ja": "たった今アカウントに保存しました。",
+  "fr": "Enregistré dans ton compte à l'instant.",
+  "es": "Guardado en tu cuenta hace un momento."
+ },
+ "Saved to your account.": {
+  "zh_TW": "已儲存到你的帳號。",
+  "zh_CN": "已保存到你的账号。",
+  "ja": "アカウントに保存しました。",
+  "fr": "Enregistré dans ton compte.",
+  "es": "Guardado en tu cuenta."
+ },
+ "Not saving: this account was saved on another device. Reload.": {
+  "zh_TW": "未儲存：此帳號已在其他裝置上儲存。請重新載入。",
+  "zh_CN": "未保存：此账号已在其他设备上保存。请刷新。",
+  "ja": "保存されていません：このアカウントは別の端末で保存されました。再読み込みしてください。",
+  "fr": "Non enregistré : ce compte a été enregistré sur un autre appareil. Recharge la page.",
+  "es": "No se guarda: esta cuenta se guardó en otro dispositivo. Recarga."
+ },
+ "You are playing as a guest": {
+  "zh_TW": "你目前以訪客身分遊玩",
+  "zh_CN": "你目前以访客身份游玩",
+  "ja": "ゲストとしてプレイ中です",
+  "fr": "Tu joues en tant qu'invité",
+  "es": "Estás jugando como invitado"
+ },
+ "Save your progress to keep your stuff and play online.": {
+  "zh_TW": "儲存進度，保留你的物品並可線上遊玩。",
+  "zh_CN": "保存进度，保留你的物品并可在线游玩。",
+  "ja": "進行状況を保存すると、持ち物を保てて、オンラインでも遊べます。",
+  "fr": "Enregistrer la progression pour garder ses objets et jouer en ligne.",
+  "es": "Guarda tu progreso para conservar tus cosas y jugar en línea."
+ },
+ "Save progress": {
+  "zh_TW": "儲存進度",
+  "zh_CN": "保存进度",
+  "ja": "進行状況を保存",
+  "fr": "Enregistrer",
+  "es": "Guardar progreso"
+ },
+ "Type your current password and a new one (6 or more characters).": {
+  "zh_TW": "請輸入目前密碼和新密碼（6 個字元以上）。",
+  "zh_CN": "请输入当前密码和新密码（6 个字符以上）。",
+  "ja": "現在のパスワードと新しいパスワード（6 文字以上）を入力してください。",
+  "fr": "Saisis ton mot de passe actuel et un nouveau (6 caractères ou plus).",
+  "es": "Escribe tu contraseña actual y una nueva (6 caracteres o más)."
+ },
+ "Changing…": {
+  "zh_TW": "變更中…",
+  "zh_CN": "更改中…",
+  "ja": "変更中…",
+  "fr": "Modification…",
+  "es": "Cambiando…"
+ },
+ "Type your password first.": {
+  "zh_TW": "請先輸入你的密碼。",
+  "zh_CN": "请先输入你的密码。",
+  "ja": "先にパスワードを入力してください。",
+  "fr": "Saisis d'abord ton mot de passe.",
+  "es": "Escribe primero tu contraseña."
+ },
+ "Making it…": {
+  "zh_TW": "製作中…",
+  "zh_CN": "生成中…",
+  "ja": "作成中…",
+  "fr": "Création…",
+  "es": "Generando…"
+ },
+ "Type your password to confirm.": {
+  "zh_TW": "請輸入密碼以確認。",
+  "zh_CN": "请输入密码以确认。",
+  "ja": "確認のためパスワードを入力してください。",
+  "fr": "Saisis ton mot de passe pour confirmer.",
+  "es": "Escribe tu contraseña para confirmar."
+ },
+ "Delete the account %s for good? Your coins, outfits and stats will be gone.": {
+  "zh_TW": "要永久刪除帳號 %s 嗎？你的金幣、服裝和數據都會消失。",
+  "zh_CN": "要永久删除账号 %s 吗？你的金币、服装和数据都会消失。",
+  "ja": "アカウント %s を完全に削除しますか？コイン、衣装、統計はすべて失われます。",
+  "fr": "Supprimer définitivement le compte %s ? Tes pièces, tenues et statistiques seront perdues.",
+  "es": "¿Eliminar la cuenta %s para siempre? Tus monedas, atuendos y estadísticas se perderán."
+ },
+ "Deleting…": {
+  "zh_TW": "刪除中…",
+  "zh_CN": "删除中…",
+  "ja": "削除中…",
+  "fr": "Suppression…",
+  "es": "Eliminando…"
+ },
+ "Often": {
+  "zh_TW": "經常",
+  "zh_CN": "经常",
+  "ja": "多め",
+  "fr": "Souvent",
+  "es": "Frecuente"
+ },
+ "Launchers & explosives": {
+  "zh_TW": "發射器與爆裂物",
+  "zh_CN": "发射器与爆炸物",
+  "ja": "ランチャーと爆発物",
+  "fr": "Lanceurs et explosifs",
+  "es": "Lanzadores y explosivos"
+ },
+ "Throwing & ranged (not guns)": {
+  "zh_TW": "投擲與遠程（非槍械）",
+  "zh_CN": "投掷与远程（非枪械）",
+  "ja": "投擲・遠距離（銃以外）",
+  "fr": "Lancers et distance (hors armes à feu)",
+  "es": "Lanzamiento y distancia (sin armas de fuego)"
+ },
+ "Ninja mode only": {
+  "zh_TW": "僅忍者模式",
+  "zh_CN": "仅忍者模式",
+  "ja": "忍者モードのみ",
+  "fr": "Mode Ninja uniquement",
+  "es": "Solo modo Ninja"
+ },
+ "Construction mode only": {
+  "zh_TW": "僅建造模式",
+  "zh_CN": "仅建造模式",
+  "ja": "建設モードのみ",
+  "fr": "Mode Construction uniquement",
+  "es": "Solo modo Construcción"
+ },
+ "Power-ups": {
+  "zh_TW": "強化道具",
+  "zh_CN": "强化道具",
+  "ja": "パワーアップ",
+  "fr": "Bonus",
+  "es": "Potenciadores"
+ },
+ "More": {
+  "zh_TW": "更多",
+  "zh_CN": "更多",
+  "ja": "その他",
+  "fr": "Autres",
+  "es": "Más"
+ },
+ "all on": {
+  "zh_TW": "全部開",
+  "zh_CN": "全部开",
+  "ja": "すべてオン",
+  "fr": "tout activer",
+  "es": "todo activado"
+ },
+ "all off": {
+  "zh_TW": "全部關",
+  "zh_CN": "全部关",
+  "ja": "すべてオフ",
+  "fr": "tout désactiver",
+  "es": "todo desactivado"
+ },
+ "Classic wobbler": {
+  "zh_TW": "經典 Wobbler",
+  "zh_CN": "经典 Wobbler",
+  "ja": "クラシックなウォブラー",
+  "fr": "Wobbler classique",
+  "es": "Wobbler clásico"
+ },
+ "%s outfit!": {
+  "zh_TW": "%s 服裝！",
+  "zh_CN": "%s 服装！",
+  "ja": "%s の衣装！",
+  "fr": "Tenue %s !",
+  "es": "¡Atuendo %s!"
+ },
+ "Reset ALL settings (keys, sensitivity, camera, graphics, crosshair) back to the defaults? Your name and stats stay.": {
+  "zh_TW": "要將所有設定（按鍵、靈敏度、鏡頭、畫質、準星）恢復為預設值嗎？你的名字和數據會保留。",
+  "zh_CN": "要将所有设置（按键、灵敏度、镜头、画质、准星）恢复为默认值吗？你的名字和数据会保留。",
+  "ja": "すべての設定（キー、感度、カメラ、画質、照準線）を初期値に戻しますか？名前と統計はそのまま残ります。",
+  "fr": "Rétablir TOUS les réglages (touches, sensibilité, caméra, graphismes, viseur) par défaut ? Ton nom et tes statistiques sont conservés.",
+  "es": "¿Restablecer TODOS los ajustes (teclas, sensibilidad, cámara, gráficos, mira) a los predeterminados? Tu nombre y tus estadísticas se mantienen."
+ },
+ "Settings reset": {
+  "zh_TW": "設定已重設",
+  "zh_CN": "设置已重置",
+  "ja": "設定を初期化しました",
+  "fr": "Réglages rétablis",
+  "es": "Ajustes restablecidos"
+ },
+ "Your login ran out. Please log in again.": {
+  "zh_TW": "登入已過期。請重新登入。",
+  "zh_CN": "登录已过期。请重新登录。",
+  "ja": "ログインの期限が切れました。もう一度ログインしてください。",
+  "fr": "Ta connexion a expiré. Reconnecte-toi.",
+  "es": "Tu sesión caducó. Vuelve a iniciarla."
+ },
+ "Your login ran out, so nothing is being saved. Log in again to keep playing with your account.": {
+  "zh_TW": "登入已過期，因此目前不會儲存任何內容。請重新登入，以便用你的帳號繼續遊玩。",
+  "zh_CN": "登录已过期，因此目前不会保存任何内容。请重新登录，以便用你的账号继续游玩。",
+  "ja": "ログインの期限が切れたため、今は何も保存されません。アカウントで遊び続けるには、もう一度ログインしてください。",
+  "fr": "Ta connexion a expiré, donc rien n'est enregistré. Reconnecte-toi pour continuer à jouer avec ton compte.",
+  "es": "Tu sesión caducó, así que no se guarda nada. Vuelve a iniciar sesión para seguir jugando con tu cuenta."
+ },
+ "No game server found, so accounts are not available right now.": {
+  "zh_TW": "找不到遊戲伺服器，因此目前無法使用帳號功能。",
+  "zh_CN": "找不到游戏服务器，因此目前无法使用账号功能。",
+  "ja": "ゲームサーバーが見つからないため、今はアカウントを利用できません。",
+  "fr": "Aucun serveur de jeu trouvé, les comptes ne sont donc pas disponibles pour le moment.",
+  "es": "No se encontró ningún servidor de juego, así que las cuentas no están disponibles ahora."
+ },
+ "Can't reach the game server. Check your internet and try again.": {
+  "zh_TW": "無法連線到遊戲伺服器。請檢查網路後再試一次。",
+  "zh_CN": "无法连接到游戏服务器。请检查网络后再试一次。",
+  "ja": "ゲームサーバーに接続できません。インターネット接続を確認して、もう一度お試しください。",
+  "fr": "Impossible de joindre le serveur de jeu. Vérifie ta connexion et réessaie.",
+  "es": "No se puede conectar con el servidor de juego. Revisa tu conexión e inténtalo de nuevo."
+ },
+ "This account was saved on another device since you last loaded it. Reload to get the newest save? (Your changes from this session will be replaced.)": {
+  "zh_TW": "自你上次載入後，此帳號已在另一台裝置上儲存。要重新載入以取得最新存檔嗎？（本次的變更將被取代。）",
+  "zh_CN": "自你上次加载后，此账号已在另一台设备上保存。要重新加载以获取最新存档吗？（本次的更改将被替换。）",
+  "ja": "前回読み込んでから、このアカウントは別の端末で保存されました。最新のセーブデータを読み込み直しますか？（今回の変更は置き換えられます。）",
+  "fr": "Ce compte a été enregistré sur un autre appareil depuis ton dernier chargement. Recharger pour obtenir la sauvegarde la plus récente ? (Tes modifications de cette session seront remplacées.)",
+  "es": "Esta cuenta se guardó en otro dispositivo desde la última vez que la cargaste. ¿Recargar para obtener el guardado más reciente? (Tus cambios de esta sesión se reemplazarán.)"
+ },
+ "Could not load the connection library (the internet or a school/work network may be blocking it).": {
+  "zh_TW": "無法載入連線程式庫（可能是網路或學校／公司網路擋住了）。",
+  "zh_CN": "无法加载连接库（可能是网络或学校／公司网络阻止了）。",
+  "ja": "接続ライブラリを読み込めませんでした（インターネットまたは学校・職場のネットワークがブロックしている可能性があります）。",
+  "fr": "Impossible de charger la bibliothèque de connexion (Internet ou un réseau scolaire/professionnel la bloque peut-être).",
+  "es": "No se pudo cargar la biblioteca de conexión (puede que internet o una red del colegio o del trabajo la esté bloqueando)."
+ },
+ "Can't reach the room server (%s). A school or work network is probably blocking it. Try a phone hotspot, or press \"Why can't I connect?\" below.": {
+  "zh_TW": "無法連線到房間伺服器（%s）。可能是學校或公司網路擋住了。請試試手機熱點，或按下方的「為什麼無法連線？」。",
+  "zh_CN": "无法连接到房间服务器（%s）。可能是学校或公司网络阻止了。请试试手机热点，或点击下方的「为什么无法连接？」。",
+  "ja": "ルームサーバーに接続できません（%s）。学校や職場のネットワークがブロックしている可能性があります。スマホのテザリングを試すか、下の「接続できない理由」を押してください。",
+  "fr": "Impossible de joindre le serveur de salons (%s). Un réseau scolaire ou professionnel le bloque probablement. Essaie un partage de connexion mobile, ou appuie sur « Pourquoi je ne peux pas me connecter ? » ci-dessous.",
+  "es": "No se puede conectar con el servidor de salas (%s). Probablemente lo bloquea una red del colegio o del trabajo. Prueba con el punto de acceso del móvil o pulsa «¿Por qué no puedo conectarme?» abajo."
+ },
+ "This browser can't do online play (no WebRTC). Try Chrome or Edge.": {
+  "zh_TW": "此瀏覽器無法進行線上遊戲（不支援 WebRTC）。請試試 Chrome 或 Edge。",
+  "zh_CN": "此浏览器无法进行在线游戏（不支持 WebRTC）。请试试 Chrome 或 Edge。",
+  "ja": "このブラウザではオンラインプレイができません（WebRTC 非対応）。Chrome か Edge をお試しください。",
+  "fr": "Ce navigateur ne permet pas le jeu en ligne (pas de WebRTC). Essaie Chrome ou Edge.",
+  "es": "Este navegador no permite jugar en línea (sin WebRTC). Prueba con Chrome o Edge."
+ },
+ "The direct link between you two failed (webrtc). Try again, or use a phone hotspot.": {
+  "zh_TW": "你們兩人之間的直接連線失敗（webrtc）。請再試一次，或使用手機熱點。",
+  "zh_CN": "你们两人之间的直接连接失败（webrtc）。请再试一次，或使用手机热点。",
+  "ja": "2人の間の直接接続に失敗しました（webrtc）。もう一度試すか、スマホのテザリングを使ってください。",
+  "fr": "La liaison directe entre vous deux a échoué (webrtc). Réessaie, ou utilise un partage de connexion mobile.",
+  "es": "Falló la conexión directa entre los dos (webrtc). Inténtalo de nuevo o usa el punto de acceso del móvil."
+ },
+ "Connection problem (%s). Try again.": {
+  "zh_TW": "連線問題（%s）。請再試一次。",
+  "zh_CN": "连接问题（%s）。请再试一次。",
+  "ja": "接続の問題（%s）。もう一度お試しください。",
+  "fr": "Problème de connexion (%s). Réessaie.",
+  "es": "Problema de conexión (%s). Inténtalo de nuevo."
+ },
+ "Connection library: loaded": {
+  "zh_TW": "連線程式庫：已載入",
+  "zh_CN": "连接库：已加载",
+  "ja": "接続ライブラリ：読み込み済み",
+  "fr": "Bibliothèque de connexion : chargée",
+  "es": "Biblioteca de conexión: cargada"
+ },
+ "Connection library: not loaded yet": {
+  "zh_TW": "連線程式庫：尚未載入",
+  "zh_CN": "连接库：尚未加载",
+  "ja": "接続ライブラリ：まだ読み込まれていません",
+  "fr": "Bibliothèque de connexion : pas encore chargée",
+  "es": "Biblioteca de conexión: aún no cargada"
+ },
+ "Connection library: BLOCKED (couldn't download it)": {
+  "zh_TW": "連線程式庫：遭封鎖（無法下載）",
+  "zh_CN": "连接库：被阻止（无法下载）",
+  "ja": "接続ライブラリ：ブロック（ダウンロードできません）",
+  "fr": "Bibliothèque de connexion : BLOQUÉE (téléchargement impossible)",
+  "es": "Biblioteca de conexión: BLOQUEADA (no se pudo descargar)"
+ },
+ "Connection library: OK": {
+  "zh_TW": "連線程式庫：正常",
+  "zh_CN": "连接库：正常",
+  "ja": "接続ライブラリ：OK",
+  "fr": "Bibliothèque de connexion : OK",
+  "es": "Biblioteca de conexión: OK"
+ },
+ "Room server: OK": {
+  "zh_TW": "房間伺服器：正常",
+  "zh_CN": "房间服务器：正常",
+  "ja": "ルームサーバー：OK",
+  "fr": "Serveur de salons : OK",
+  "es": "Servidor de salas: OK"
+ },
+ "Room server: BLOCKED": {
+  "zh_TW": "房間伺服器：遭封鎖",
+  "zh_CN": "房间服务器：被阻止",
+  "ja": "ルームサーバー：ブロック",
+  "fr": "Serveur de salons : BLOQUÉ",
+  "es": "Servidor de salas: BLOQUEADO"
+ },
+ "Room server: timed out (probably blocked)": {
+  "zh_TW": "房間伺服器：逾時（可能遭封鎖）",
+  "zh_CN": "房间服务器：超时（可能被阻止）",
+  "ja": "ルームサーバー：タイムアウト（ブロックの可能性）",
+  "fr": "Serveur de salons : délai dépassé (probablement bloqué)",
+  "es": "Servidor de salas: tiempo agotado (probablemente bloqueado)"
+ },
+ "Room server: failed": {
+  "zh_TW": "房間伺服器：失敗",
+  "zh_CN": "房间服务器：失败",
+  "ja": "ルームサーバー：失敗",
+  "fr": "Serveur de salons : échec",
+  "es": "Servidor de salas: fallido"
+ },
+ "Verdict: this network is blocking online play. Try a phone hotspot or home Wi-Fi.": {
+  "zh_TW": "結論：這個網路擋住了線上遊戲。請試試手機熱點或家用 Wi-Fi。",
+  "zh_CN": "结论：这个网络阻止了在线游戏。请试试手机热点或家用 Wi-Fi。",
+  "ja": "判定：このネットワークはオンラインプレイをブロックしています。スマホのテザリングか自宅の Wi-Fi をお試しください。",
+  "fr": "Verdict : ce réseau bloque le jeu en ligne. Essaie un partage de connexion mobile ou le Wi-Fi de la maison.",
+  "es": "Conclusión: esta red bloquea el juego en línea. Prueba con el punto de acceso del móvil o el Wi-Fi de casa."
+ },
+ "Verdict: the network looks fine. If joining still fails, double-check the code and try again.": {
+  "zh_TW": "結論：網路看起來正常。如果仍無法加入，請再確認代碼並重試。",
+  "zh_CN": "结论：网络看起来正常。如果仍无法加入，请再确认代码并重试。",
+  "ja": "判定：ネットワークは問題なさそうです。それでも参加できない場合は、コードを確認してもう一度お試しください。",
+  "fr": "Verdict : le réseau semble correct. Si la connexion échoue encore, vérifie le code et réessaie.",
+  "es": "Conclusión: la red parece bien. Si aun así no puedes entrar, revisa el código e inténtalo de nuevo."
+ },
+ "Still can't reach the room server after 15 seconds. A school or work network is probably blocking it. Try a phone hotspot, or press \"Why can't I connect?\" below.": {
+  "zh_TW": "15 秒後仍無法連線到房間伺服器。可能是學校或公司網路擋住了。請試試手機熱點，或按下方的「為什麼無法連線？」。",
+  "zh_CN": "15 秒后仍无法连接到房间服务器。可能是学校或公司网络阻止了。请试试手机热点，或点击下方的「为什么无法连接？」。",
+  "ja": "15 秒たっても、ルームサーバーに接続できません。学校や職場のネットワークがブロックしている可能性があります。スマホのテザリングを試すか、下の「接続できない理由」を押してください。",
+  "fr": "Toujours impossible de joindre le serveur de salons après 15 secondes. Un réseau scolaire ou professionnel le bloque probablement. Essaie un partage de connexion mobile, ou appuie sur « Pourquoi je ne peux pas me connecter ? » ci-dessous.",
+  "es": "Sigue sin poder conectar con el servidor de salas tras 15 segundos. Probablemente lo bloquea una red del colegio o del trabajo. Prueba con el punto de acceso del móvil o pulsa «¿Por qué no puedo conectarme?» abajo."
+ },
+ "Every public room slot is taken right now. Try the room list, or make a private room.": {
+  "zh_TW": "目前所有公開房間位置都已滿。請試試房間列表，或建立私人房間。",
+  "zh_CN": "目前所有公开房间位置都已满。请试试房间列表，或创建私人房间。",
+  "ja": "今は公開ルームの空きがありません。ルーム一覧を見るか、非公開ルームを作ってください。",
+  "fr": "Tous les emplacements de salons publics sont pris. Essaie la liste des salons ou crée un salon privé.",
+  "es": "Todas las salas públicas están ocupadas ahora. Prueba la lista de salas o crea una sala privada."
+ },
+ "Lost the connection to the room server, reconnecting…": {
+  "zh_TW": "與房間伺服器的連線中斷，正在重新連線…",
+  "zh_CN": "与房间服务器的连接中断，正在重新连接…",
+  "ja": "ルームサーバーとの接続が切れました。再接続しています…",
+  "fr": "Connexion au serveur de salons perdue, reconnexion…",
+  "es": "Se perdió la conexión con el servidor de salas, reconectando…"
+ },
+ "Log in to play online. Open Account to save your progress or log in.": {
+  "zh_TW": "請登入後再線上遊玩。開啟「帳號」以儲存進度或登入。",
+  "zh_CN": "请登录后再在线游玩。打开「账号」以保存进度或登录。",
+  "ja": "オンラインでプレイするにはログインしてください。「アカウント」を開いて進行状況を保存するか、ログインしてください。",
+  "fr": "Connecte-toi pour jouer en ligne. Ouvre Compte pour enregistrer ta progression ou te connecter.",
+  "es": "Inicia sesión para jugar en línea. Abre Cuenta para guardar tu progreso o iniciar sesión."
+ },
+ "Your room is open. It shows up in everyone's room list.": {
+  "zh_TW": "房間已開啟，會顯示在所有人的房間列表中。",
+  "zh_CN": "房间已开启，会显示在所有人的房间列表中。",
+  "ja": "ルームが開きました。全員のルーム一覧に表示されます。",
+  "fr": "Ton salon est ouvert. Il apparaît dans la liste de tout le monde.",
+  "es": "Tu sala está abierta. Aparece en la lista de salas de todos."
+ },
+ "Room ready! Tell your friend the code. Friends can join any time, even after the match starts.": {
+  "zh_TW": "房間已就緒！把代碼告訴你的朋友。朋友隨時都能加入，即使比賽已經開始。",
+  "zh_CN": "房间已就绪！把代码告诉你的朋友。朋友随时都能加入，即使比赛已经开始。",
+  "ja": "ルームの準備ができました！コードを友達に伝えてください。試合が始まった後でも、いつでも参加できます。",
+  "fr": "Salon prêt ! Donne le code à ton ami. Les amis peuvent rejoindre à tout moment, même après le début de la partie.",
+  "es": "¡Sala lista! Dile el código a tu amigo. Los amigos pueden unirse en cualquier momento, incluso después de que empiece la partida."
+ },
+ "That room is running a different version of the game. Refresh the page to get the newest one.": {
+  "zh_TW": "該房間運行的是不同版本的遊戲。請重新整理頁面以取得最新版本。",
+  "zh_CN": "该房间运行的是不同版本的游戏。请刷新页面以获取最新版本。",
+  "ja": "そのルームは別バージョンのゲームで動いています。ページを再読み込みして最新版を入手してください。",
+  "fr": "Ce salon utilise une autre version du jeu. Actualise la page pour obtenir la plus récente.",
+  "es": "Esa sala usa otra versión del juego. Recarga la página para obtener la más reciente."
+ },
+ "Connected! Waiting for the host to start…": {
+  "zh_TW": "已連線！等待房主開始…",
+  "zh_CN": "已连接！等待房主开始…",
+  "ja": "接続しました！ホストの開始を待っています…",
+  "fr": "Connecté ! En attente du lancement par l'hôte…",
+  "es": "¡Conectado! Esperando a que el anfitrión empiece…"
+ },
+ "Public room": {
+  "zh_TW": "公開房間",
+  "zh_CN": "公开房间",
+  "ja": "公開ルーム",
+  "fr": "Salon public",
+  "es": "Sala pública"
+ },
+ "Room code": {
+  "zh_TW": "房間代碼",
+  "zh_CN": "房间代码",
+  "ja": "ルームコード",
+  "fr": "Code du salon",
+  "es": "Código de sala"
+ },
+ "Private": {
+  "zh_TW": "私人",
+  "zh_CN": "私人",
+  "ja": "非公開",
+  "fr": "Privé",
+  "es": "Privada"
+ },
+ "Host": {
+  "zh_TW": "房主",
+  "zh_CN": "房主",
+  "ja": "ホスト",
+  "fr": "Hôte",
+  "es": "Anfitrión"
+ },
+ "Bot": {
+  "zh_TW": "電腦玩家",
+  "zh_CN": "电脑玩家",
+  "ja": "ボット",
+  "fr": "Bot",
+  "es": "Bot"
+ },
+ "you": {
+  "zh_TW": "你",
+  "zh_CN": "你",
+  "ja": "あなた",
+  "fr": "toi",
+  "es": "tú"
+ },
+ "Open seat": {
+  "zh_TW": "空位",
+  "zh_CN": "空位",
+  "ja": "空席",
+  "fr": "Place libre",
+  "es": "Plaza libre"
+ },
+ "a player replaces it": {
+  "zh_TW": "由玩家接手",
+  "zh_CN": "由玩家接手",
+  "ja": "プレイヤーが入ると置き換わる",
+  "fr": "un joueur la remplace",
+  "es": "un jugador la reemplaza"
+ },
+ "waiting for a player": {
+  "zh_TW": "等待玩家加入",
+  "zh_CN": "等待玩家加入",
+  "ja": "プレイヤーを待っています",
+  "fr": "en attente d'un joueur",
+  "es": "esperando a un jugador"
+ },
+ "Waiting…": {
+  "zh_TW": "等待中…",
+  "zh_CN": "等待中…",
+  "ja": "待機中…",
+  "fr": "En attente…",
+  "es": "Esperando…"
+ },
+ "%d of %d player": {
+  "zh_TW": "%d／%d 名玩家",
+  "zh_CN": "%d／%d 名玩家",
+  "ja": "%d／%d 人",
+  "fr": "%d sur %d joueur",
+  "es": "%d de %d jugador"
+ },
+ "%d of %d players": {
+  "zh_TW": "%d／%d 名玩家",
+  "zh_CN": "%d／%d 名玩家",
+  "ja": "%d／%d 人",
+  "fr": "%d sur %d joueurs",
+  "es": "%d de %d jugadores"
+ },
+ "%d player": {
+  "zh_TW": "%d 名玩家",
+  "zh_CN": "%d 名玩家",
+  "ja": "%d 人",
+  "fr": "%d joueur",
+  "es": "%d jugador"
+ },
+ "%d players": {
+  "zh_TW": "%d 名玩家",
+  "zh_CN": "%d 名玩家",
+  "ja": "%d 人",
+  "fr": "%d joueurs",
+  "es": "%d jugadores"
+ },
+ "Waiting for the host to start the match. %s.": {
+  "zh_TW": "等待房主開始比賽。%s。",
+  "zh_CN": "等待房主开始比赛。%s。",
+  "ja": "ホストが試合を開始するのを待っています。%s。",
+  "fr": "En attente du lancement de la partie par l'hôte. %s.",
+  "es": "Esperando a que el anfitrión empiece la partida. %s."
+ },
+ "up to %d": {
+  "zh_TW": "最多 %d",
+  "zh_CN": "最多 %d",
+  "ja": "最大 %d",
+  "fr": "jusqu'à %d",
+  "es": "hasta %d"
+ },
+ "%s, %s": {
+  "zh_TW": "%s，%s",
+  "zh_CN": "%s，%s",
+  "ja": "%s、%s",
+  "fr": "%s, %s",
+  "es": "%s, %s"
+ },
+ "none (players only)": {
+  "zh_TW": "無（僅玩家）",
+  "zh_CN": "无（仅玩家）",
+  "ja": "なし（プレイヤーのみ）",
+  "fr": "aucun (joueurs seulement)",
+  "es": "ninguno (solo jugadores)"
+ },
+ "by itself": {
+  "zh_TW": "自動結束",
+  "zh_CN": "自动结束",
+  "ja": "自動で終了",
+  "fr": "automatique",
+  "es": "automático"
+ },
+ "free play": {
+  "zh_TW": "自由遊玩",
+  "zh_CN": "自由游玩",
+  "ja": "フリープレイ",
+  "fr": "partie libre",
+  "es": "juego libre"
+ },
+ "Fighters": {
+  "zh_TW": "戰士",
+  "zh_CN": "战士",
+  "ja": "ファイター",
+  "fr": "Combattants",
+  "es": "Luchadores"
+ },
+ "Ends": {
+  "zh_TW": "結束條件",
+  "zh_CN": "结束条件",
+  "ja": "終了条件",
+  "fr": "Fin",
+  "es": "Fin"
+ },
+ "ends %s": {
+  "zh_TW": "結束：%s",
+  "zh_CN": "结束：%s",
+  "ja": "終了：%s",
+  "fr": "fin : %s",
+  "es": "fin: %s"
+ },
+ "%s fighters": {
+  "zh_TW": "%s 名戰士",
+  "zh_CN": "%s 名战士",
+  "ja": "%s 人のファイター",
+  "fr": "%s combattants",
+  "es": "%s luchadores"
+ },
+ "%s bots": {
+  "zh_TW": "%s 個電腦玩家",
+  "zh_CN": "%s 个电脑玩家",
+  "ja": "%s 体のボット",
+  "fr": "%s bots",
+  "es": "%s bots"
+ },
+ "Dummies": {
+  "zh_TW": "假人",
+  "zh_CN": "假人",
+  "ja": "ダミー",
+  "fr": "Mannequins",
+  "es": "Maniquíes"
+ },
+ "Brawlers": {
+  "zh_TW": "格鬥型",
+  "zh_CN": "格斗型",
+  "ja": "ブロウラー",
+  "fr": "Brawlers",
+  "es": "Peleadores"
+ },
+ "Online · %d playing": {
+  "zh_TW": "線上 · %d 人遊玩中",
+  "zh_CN": "在线 · %d 人游玩中",
+  "ja": "オンライン · %d 人がプレイ中",
+  "fr": "En ligne · %d joueurs",
+  "es": "En línea · %d jugando"
+ },
+ "Online": {
+  "zh_TW": "線上",
+  "zh_CN": "在线",
+  "ja": "オンライン",
+  "fr": "En ligne",
+  "es": "En línea"
+ },
+ "Direct mode": {
+  "zh_TW": "直連模式",
+  "zh_CN": "直连模式",
+  "ja": "直接接続モード",
+  "fr": "Mode direct",
+  "es": "Modo directo"
+ },
+ "%d online": {
+  "zh_TW": "%d 人線上",
+  "zh_CN": "%d 人在线",
+  "ja": "%d 人オンライン",
+  "fr": "%d en ligne",
+  "es": "%d en línea"
+ },
+ "%d in the lobby": {
+  "zh_TW": "%d 人在大廳",
+  "zh_CN": "%d 人在大厅",
+  "ja": "ロビーに %d 人",
+  "fr": "%d dans le salon d'attente",
+  "es": "%d en la sala de espera"
+ },
+ " · %s ms": {
+  "zh_TW": " · %s 毫秒",
+  "zh_CN": " · %s 毫秒",
+  "ja": " · %s ミリ秒",
+  "fr": " · %s ms",
+  "es": " · %s ms"
+ },
+ "ROOM CODE %s": {
+  "zh_TW": "房間代碼 %s",
+  "zh_CN": "房间代码 %s",
+  "ja": "ルームコード %s",
+  "fr": "CODE DU SALON %s",
+  "es": "CÓDIGO DE SALA %s"
+ },
+ " · %d players": {
+  "zh_TW": " · %d 名玩家",
+  "zh_CN": " · %d 名玩家",
+  "ja": " · %d 人",
+  "fr": " · %d joueurs",
+  "es": " · %d jugadores"
+ },
+ " · first to %s": {
+  "zh_TW": " · 先到 %s 勝",
+  "zh_CN": " · 先到 %s 胜",
+  "ja": " · 先に %s 勝",
+  "fr": " · premier à %s",
+  "es": " · primero en %s"
+ }
+}

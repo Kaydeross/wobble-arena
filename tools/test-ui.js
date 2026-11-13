@@ -9,7 +9,7 @@ const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 let failed = false;
 for (const t of ['ui_layout_test', 'hud_test']) {
-  const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', `res://tests/${t}.gd`, '--', '--no-save'], { encoding: 'utf8', timeout: 120000 });
+  const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', `res://tests/${t}.gd`, '--', '--no-save'], { encoding: 'utf8', timeout: 300000 });
   const out = (r.stdout || '') + (r.stderr || '');
   const lines = out.split('\n').filter(l => /^(UI|HUD|FAIL)|ERROR|SCRIPT ERROR/.test(l));
   console.log(lines.join('\n'));

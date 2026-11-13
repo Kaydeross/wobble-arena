@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Wobblers Arena</title>
+<script src="i18n-data.js"></script>
+<script src="i18n.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Wobblers Arena: wobbly low-poly brawls with bots and friends. Free, plays in your browser.">
 <meta name="theme-color" content="#102b35">
@@ -12,6 +14,14 @@
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#bfe3f2;font-family:system-ui,-apple-system,Segoe UI,sans-serif;user-select:none}
   canvas{display:block}
+  /* Chinese and Japanese: small bundled fonts (public/fonts, built by tools/subset-fonts.py), the page language picks which comes first */
+  @font-face{font-family:"WA TC";src:url(fonts/NotoSansTC-Subset.woff2) format("woff2");font-weight:700;font-display:swap;unicode-range:U+2190-21FF,U+2500-27BF,U+2E80-33FF,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FE30-FE4F,U+FF00-FFEF}
+  @font-face{font-family:"WA SC";src:url(fonts/NotoSansSC-Subset.woff2) format("woff2");font-weight:700;font-display:swap;unicode-range:U+2190-21FF,U+2500-27BF,U+2E80-33FF,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FE30-FE4F,U+FF00-FFEF}
+  @font-face{font-family:"WA JP";src:url(fonts/NotoSansJP-Subset.woff2) format("woff2");font-weight:700;font-display:swap;unicode-range:U+2190-21FF,U+2500-27BF,U+2E80-33FF,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FE30-FE4F,U+FF00-FFEF}
+  html,body{font-family:"WA TC","WA SC","WA JP",system-ui,-apple-system,Segoe UI,sans-serif}
+  html:lang(zh-Hans),html:lang(zh-Hans) body{font-family:"WA SC","WA TC","WA JP",system-ui,-apple-system,Segoe UI,sans-serif}
+  html:lang(ja),html:lang(ja) body{font-family:"WA JP","WA TC","WA SC",system-ui,-apple-system,Segoe UI,sans-serif}
+  button,input,select,textarea{font-family:inherit}
   #hud{position:fixed;inset:0;pointer-events:none;color:#0d2a35;display:none}
   #fade{position:fixed;inset:0;background:#05121a;opacity:0;pointer-events:none;z-index:35;transition:opacity .9s ease}
   #flash{position:absolute;inset:0;background:#fff3d6;opacity:0}
@@ -886,7 +896,7 @@ body.tplay #chat{display:none}
     <label class="fld" id="au-f-user"><span id="au-userl">Username</span><input id="au-user" type="text" maxlength="100" autocomplete="username" autocapitalize="off" spellcheck="false"></label>
     <label class="fld" id="au-f-email"><span>Email</span><input id="au-email" type="email" maxlength="100" autocomplete="email" spellcheck="false"></label>
     <label class="fld" id="au-f-code"><span>Recovery code</span><input id="au-code-in" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX"></label>
-    <label class="fld"><span id="au-passl">Password</span><input id="au-pass" type="password" maxlength="72" autocomplete="current-password"></label>
+    <label class="fld" id="au-f-pass"><span id="au-passl">Password</span><input id="au-pass" type="password" maxlength="72" autocomplete="current-password"></label>
     <label class="chk"><input type="checkbox" id="au-show"><span>Show password</span></label>
     <label class="chk" id="au-f-carry"><input type="checkbox" id="au-carry" checked><span id="au-carryt"></span></label>
     <div id="au-err"></div>
@@ -1360,7 +1370,10 @@ body.tplay #chat{display:none}
           <label>Crosshair size <b id="csize-v"></b> <input id="csize" type="range" min="0.6" max="1.8" step="0.1" value="1"></label>
           </div>
         <div class="grp" data-tab="more">
-          <h3>Redeem code</h3>
+          <h3>Language</h3>
+          <div class="row" style="gap:8px"><select id="lang-sel" aria-label="Language" style="flex:1"></select></div>
+          <small class="help">Auto follows your browser.</small>
+          <h3 style="margin-top:14px">Redeem code</h3>
           <div class="row" style="gap:8px"><input id="code-in" type="text" placeholder="Enter a code" autocomplete="off" spellcheck="false" style="flex:1;padding:10px 12px;border-radius:12px;border:2px solid rgba(255,255,255,.3);background:rgba(0,0,0,.25);color:#fff;font:inherit;min-width:0"><button class="opt" id="code-go">Redeem</button></div>
           <small class="help" id="code-msg" style="margin-top:4px"></small>
           <h3 style="margin-top:14px">Help &amp; tools</h3>
@@ -1472,9 +1485,9 @@ let toastT = null, hurtFlash = 0;
 const MULTI = ['', 'K.O.!', 'DOUBLE K.O.!', 'TRIPLE K.O.!', 'QUAD K.O.!', 'PENTA K.O.!', 'RAMPAGE!'];
 function koPop(victim, label) {
   if (player.dead || kcActive || kcPending) return;                       // no kill pop-ups while you're dead or watching the replay
-  const m = player.st.multi, tag = label.includes('SNAKE') ? label.replace('K.O.!', '') + (m >= 2 ? MULTI[Math.min(m, 6)] : 'K.O.!') : MULTI[Math.min(Math.max(m, 1), 6)];
+  const m = player.st.multi, tag = label.includes('SNAKE') ? tf('🐍 SNAKE %s', t(m >= 2 ? MULTI[Math.min(m, 6)] : 'K.O.!')) : t(MULTI[Math.min(Math.max(m, 1), 6)]);
   const sk = '\u{1F480}'.repeat(clamp(m, 1, 5)), sg = player.st.streak;
-  const sub = nameOf(victim) + (sg >= 2 ? ' · ' + sg + ' K.O. streak' : ' is out!');
+  const sub = sg >= 2 ? tf('%s · %d K.O. streak', nameOf(victim), sg) : tf('%s is out!', nameOf(victim));
   el('kopop').innerHTML = '<div class="kp' + (m >= 2 ? ' multi m' + Math.min(m, 6) : '') + '"><span class="sk">' + sk + '</span>' + tag + '<span class="sk">' + sk + '</span><small>' + sub + '</small></div>';
   sfx('pickup'); if (m >= 2) sfx('boing'); flashV = Math.max(flashV, 0.18 + 0.05 * m); cam.shake = Math.max(cam.shake, 0.12 + 0.03 * m);
 }
@@ -4056,7 +4069,7 @@ renderModeButtons();
 el('row-vs').innerHTML = VS.map(k => '<button id="vs-' + k + '">' + modeIco(k) + MODES[k].name + '<small>' + modeSmall(k) + '</small></button>').join('');
 const tcase = t => t.replace(/(^|[\s(\/-])([a-z])/g, (m, a, b) => a + b.toUpperCase());          // every word starts with a capital
 for (const k in WEAPONS) WEAPONS[k].name = tcase(WEAPONS[k].name);
-const wnames = (keys) => keys.filter(k => WEAPONS[k]).map(k => WEAPONS[k].name).join(', ');
+const wnames = (keys) => keys.filter(k => WEAPONS[k]).map(k => t(WEAPONS[k].name)).join(', ');
 const wallowed = m => Object.keys(WEAPONS).filter(k => k !== 'spatula' && MODES[m].allow(k));
 MODES.melee.allow = (old => k => k !== 'trident' && old(k))(MODES.melee.allow);          // the trident is not a melee-only weapon
 const BLURB = { // the card line under each mode: keep it word for word the same as godot/data/extra/wizard.json `short`
@@ -4081,10 +4094,10 @@ MODES.explosive.ex = 'Exclusive gun: Meteor Launcher';
 for (const m of ['classic', 'duel', 't2', 't3', 't4']) MODES[m].wl = 'All guns and weapons';
 MODES.sandbox.wl = 'Fully customisable: modifiers, arena and guns';
 MODES.construction.wl = 'Claw Hammer, Live Wire, Air Blower';
-for (const id in MAPS) { const o = MAPS[id].only; if (o && MODES[o] && o !== 'sandbox') MODES[o].ex = (MODES[o].ex ? MODES[o].ex + ' · ' : '') + 'Exclusive map: ' + MAPS[id].name; }   // modes with their own map say so
+for (const id in MAPS) { const o = MAPS[id].only; if (o && MODES[o] && o !== 'sandbox') MODES[o].ex = (MODES[o].ex ? MODES[o].ex + ' · ' : '') + tf('Exclusive map: %s', t(MAPS[id].name)); }   // modes with their own map say so
 MODES.lowg.ex = 'Exclusive maps: Crater Dome, Space Capsule · Exclusive gravity: Drift';
 renderModeButtons(); el('row-vs').innerHTML = VS.map(k => '<button id="vs-' + k + '">' + modeIco(k) + MODES[k].name + '<small>' + modeSmall(k) + '</small></button>').join('');
-function GG_NAMES() { return ['smg', 'ak', 'uzi', 'shotgun', 'revolver', 'sniper', 'bow', 'shuriken', 'knife', 'glauncher', 'bat', 'spatula'].map(k => WEAPONS[k].name).join(', '); }
+function GG_NAMES() { return ['smg', 'ak', 'uzi', 'shotgun', 'revolver', 'sniper', 'bow', 'shuriken', 'knife', 'glauncher', 'bat', 'spatula'].map(k => t(WEAPONS[k].name)).join(', '); }
 const giantOn = () => { if (cfg.mode !== 'giant') return false; try { return ui === 'play' || (ui === 'lobby' && inMatch && !matchOver && page !== 'shop' && page !== 'locker' && page !== 'me'); } catch (e) { return true; } };   // giant only while a giant match is on, so the menus, shop and locker show you normal size
 const HEAL_META = { name: 'Health Pack', color: 0x5be37a };
 const PU_META = { speed: { name: 'Speed Boost', color: 0x4fd8ff, msg: 'Speed boost! Zoom zoom (12s)' }, rage: { name: 'Damage Boost', color: 0xff6a3c, msg: 'Damage boost! Bonk harder (12s)' }, shield: { name: 'Shield', color: 0x8fb4ff, msg: 'Shield! Half damage (12s)' } };
@@ -5140,7 +5153,7 @@ const EMOTES = {
 const SKIN_EMOTES = {};                                   // outfit -> the emotes that only come with it (never sold on their own)
 for (const k of Object.keys(EMOTES)) if (EMOTES[k].skin) (SKIN_EMOTES[EMOTES[k].skin] = SKIN_EMOTES[EMOTES[k].skin] || []).push(k);
 const wallet = { coins: 500, owned: ['wobble'], slots: ['wobble', null, null], skins: ['none'].concat(FREE_SKINS), codes: [], daily: { d: 0, s: 0 } };
-function addCoins(n, why) { wallet.coins += n; if (why) toast('+' + n + ' coins' + (why === true ? '' : ' (' + why + ')')); updateCoins(); }
+function addCoins(n, why) { wallet.coins += n; if (why) toast(why === true ? tf('+%s coins', n) : tf('+%s coins (%s)', n, t(why))); updateCoins(); }
 function updateCoins() { const c = el('coinn'); if (c) c.textContent = wallet.coins; const s2 = el('shopcoins'); if (s2) s2.textContent = '\u{1FA99} ' + wallet.coins; const s3 = el('lockcoins'); if (s3) s3.textContent = '\u{1FA99} ' + wallet.coins; }
 function playEmote(f, id) {
   const E = EMOTES[id]; if (!E || f.dead || f.downT > 0 || f.trapT > 0 || f.swing >= 0 || f.kickT >= 0) return false;
@@ -5257,14 +5270,14 @@ function renderBind() {                                    // under the try-on p
   const b = el('shopbind'); if (!b) return;
   if (!shopEmote || shopTab !== 'emotes' || !EMOTES[shopEmote]) { b.style.display = 'none'; b.innerHTML = ''; return; }
   const E = EMOTES[shopEmote], own = wallet.owned.includes(shopEmote); b.style.display = 'block';
-  if (!own) { b.innerHTML = '<small class="help">Buy ' + E.name + ' to put it on a key</small>'; return; }
-  b.innerHTML = '<small class="help">Put ' + E.name + ' on a key:</small><div class="eslots">' + [0, 1, 2].map(i => '<button class="' + (wallet.slots[i] === shopEmote ? 'on' : '') + '" data-s="' + i + '">' + emoteKeyOf(i) + '<small>' + (wallet.slots[i] ? EMOTES[wallet.slots[i]].name : 'empty') + '</small></button>').join('') + '</div>';
+  if (!own) { b.innerHTML = '<small class="help">' + tf('Buy %s to put it on a key', t(E.name)) + '</small>'; return; }
+  b.innerHTML = '<small class="help">' + tf('Put %s on a key:', t(E.name)) + '</small><div class="eslots">' + [0, 1, 2].map(i => '<button class="' + (wallet.slots[i] === shopEmote ? 'on' : '') + '" data-s="' + i + '">' + emoteKeyOf(i) + '<small>' + (wallet.slots[i] ? EMOTES[wallet.slots[i]].name : 'empty') + '</small></button>').join('') + '</div>';
   for (const x of sub(b, 'button')) x.onclick = () => bindEmote(shopEmote, +x.dataset.s);
 }
 function bindEmote(k, i) {
   if (!wallet.owned.includes(k) || i < 0 || i > 2) return false;
   const old = wallet.slots.indexOf(k); if (old >= 0) wallet.slots[old] = wallet.slots[i];
-  wallet.slots[i] = k; save(); toast(EMOTES[k].name + ' is on ' + emoteKeyOf(i)); renderBind(); return true;
+  wallet.slots[i] = k; save(); toast(tf('%s is on %s', t(EMOTES[k].name), emoteKeyOf(i))); renderBind(); return true;
 }
 const RAR_RANK = { mythic: 0, legendary: 1, epic: 2, rare: 3, uncommon: 4, common: 5 };
 const byRarity = (rar) => (a, b) => (RAR_RANK[rar(a)] ?? 9) - (RAR_RANK[rar(b)] ?? 9);        // rarest first, otherwise keep the order they were bought in
@@ -5276,18 +5289,18 @@ function redeem(raw) {
   if (!acct.user) { needAcct('Codes are saved to your profile. Save your progress first, then enter the code.'); return 'Save your progress to use codes.'; }
   const k = String(raw || '').trim().toLowerCase(), c = CODES[k];
   if (!k) return 'Type a code first.';
-  { const m = /^coins_(\d{1,4})$/.exec(k); if (m && +m[1] > 0) { addCoins(+m[1]); save(); sfx('pickup'); return +m[1] + ' coins added!'; } }      // coins_### gives that many coins, as often as you like
+  { const m = /^coins_(\d{1,4})$/.exec(k); if (m && +m[1] > 0) { addCoins(+m[1]); save(); sfx('pickup'); return tf('%s coins added!', +m[1]); } }      // coins_### gives that many coins, as often as you like
   if (!c) return 'That code isn\'t valid.';
   if (wallet.codes.includes(k)) return 'You already used that code.';
   wallet.codes.push(k); if (!wallet.skins.includes(c.skin)) wallet.skins.push(c.skin);
   if (!wallet.owned.includes(c.emote)) { wallet.owned.push(c.emote); const free = wallet.slots.indexOf(null); if (free >= 0) wallet.slots[free] = c.emote; }
   look.skin = c.skin; applyLook(); save(); sfx('pickup');
-  return c.name + ' unlocked: the ' + SKINS[c.skin].name + ' outfit (now equipped) and the ' + EMOTES[c.emote].name + ' emote.';
+  return tf('%s unlocked: the %s outfit (now equipped) and the %s emote.', t(c.name), t(SKINS[c.skin].name), t(EMOTES[c.emote].name));
 }
 const SKIN_SPAT = { wizard: 'wand', knight: 'sword', samurai: 'katana', vampire: 'cane', jester: 'sceptre', pharaoh: 'crook', hero: 'comet', dev: 'neon', beta: 'wrench', tripleT: 'tung', ballerina: 'princess', assassino: 'espresso', thunder: 'bolt' };   // epic and better outfits swap the plain spatula for one that matches (looks only, same moves)
 const SPAT_NAME = { wand: 'Star Wand', sword: 'Silver Sword', katana: 'Crimson Katana', cane: 'Ruby Cane', sceptre: 'Jester Sceptre', crook: 'Golden Crook', comet: 'Comet Blade', neon: 'Neon Blade', wrench: 'Golden Wrench', tung: 'Tung Bat', princess: 'Princess Wand', espresso: 'Espresso Katana', bolt: 'Storm Bolt' };
 const REACTIVE = { tripleT: true, ballerina: true, assassino: true };
-const emoteTag = k => (SKIN_EMOTES[k] || []).map(id => '<small class="inc">\u{1F381} Comes with the ' + EMOTES[id].name + ' emote. That emote is only for this outfit and can\'t be bought on its own</small>').join('');
+const emoteTag = k => (SKIN_EMOTES[k] || []).map(id => '<small class="inc">' + tf('\u{1F381} Comes with the %s emote. That emote is only for this outfit and can\'t be bought on its own', t(EMOTES[id].name)) + '</small>').join('');
 const reactTag = k => REACTIVE[k] ? '<small class="react">\u2728 Reactive face \u2728</small>' : '';
 const spatOf = k => SKIN_SPAT[k] ? SPAT_NAME[SKIN_SPAT[k]] : null;
 const skinName = k => SKINS[k] ? SKINS[k].name : 'Classic';
@@ -5299,7 +5312,7 @@ function renderShop() {
   let h = '';
   if (shopTab === 'skins') h = Object.keys(SKIN_SHOP).sort((a, b) => skinPrice(a) - skinPrice(b)).map(k => {
     const own = wallet.skins.includes(k), can = wallet.coins >= skinPrice(k);
-    return '<div class="ecard r-' + skinRar(k) + '"><span class="rl">' + RAR_LABEL[skinRar(k)] + '</span><span class="ei">' + skinIcon(k) + '</span><b>' + skinName(k) + '</b><small>' + (own ? 'You own this' : '\u{1FA99} ' + skinPrice(k)) + '</small>' + (spatOf(k) ? '<small class="inc">Includes: ' + spatOf(k) + '</small>' : '') + emoteTag(k) + reactTag(k) +
+    return '<div class="ecard r-' + skinRar(k) + '"><span class="rl">' + RAR_LABEL[skinRar(k)] + '</span><span class="ei">' + skinIcon(k) + '</span><b>' + skinName(k) + '</b><small>' + (own ? 'You own this' : '\u{1FA99} ' + skinPrice(k)) + '</small>' + (spatOf(k) ? '<small class="inc">' + tf('Includes: %s', t(spatOf(k))) + '</small>' : '') + emoteTag(k) + reactTag(k) +
       '<button class="opt try" data-k="' + k + '">Try</button>' + (own ? '<button class="opt" disabled>Owned</button>' : '<button class="opt buy" data-k="' + k + '"' + (can ? '' : ' disabled') + '>Buy</button>') + '</div>';
   }).join('');
   else h = Object.keys(EMOTES).filter(k => EMOTES[k].price > 0).sort((a, b) => EMOTES[a].price - EMOTES[b].price).map(k => {
@@ -5310,8 +5323,8 @@ function renderShop() {
   el('eshop').innerHTML = h; renderBind();
   for (const b of sub(el('eshop'), '.buy')) b.onclick = () => buySkin(b.dataset.k);
   for (const b of sub(el('eshop'), '.buyE')) b.onclick = () => buyEmote(b.dataset.k);
-  for (const b of sub(el('eshop'), '.try')) b.onclick = () => { previewSkin(b.dataset.k); el('shoptry').textContent = 'Trying ' + skinName(b.dataset.k) + (spatOf(b.dataset.k) ? '. Includes the ' + spatOf(b.dataset.k) + ' (looks only)' : '') + (REACTIVE[b.dataset.k] ? '. \u2728 Reactive face: it shows pain when hit and gets excited after a K.O.' : '') + (SKIN_EMOTES[b.dataset.k] ? '. \u{1F381} Comes with the ' + SKIN_EMOTES[b.dataset.k].map(id => EMOTES[id].name).join(', ') + ' emote, which is only for this outfit and can\'t be bought separately' : '') + (wallet.skins.includes(b.dataset.k) ? '' : '. Buy it to keep it'); shopEmote = null; renderBind(); };
-  for (const b of sub(el('eshop'), '.tryE')) b.onclick = () => { previewEmote(b.dataset.k); shopEmote = b.dataset.k; el('shoptry').textContent = 'Trying ' + EMOTES[b.dataset.k].name; renderBind(); };
+  for (const b of sub(el('eshop'), '.try')) b.onclick = () => { previewSkin(b.dataset.k); el('shoptry').textContent = tf('Trying %s', t(skinName(b.dataset.k))) + (spatOf(b.dataset.k) ? tf('. Includes the %s (looks only)', t(spatOf(b.dataset.k))) : '') + (REACTIVE[b.dataset.k] ? t('. \u2728 Reactive face: it shows pain when hit and gets excited after a K.O.') : '') + (SKIN_EMOTES[b.dataset.k] ? tf('. \u{1F381} Comes with the %s emote, which is only for this outfit and can\'t be bought separately', SKIN_EMOTES[b.dataset.k].map(id => t(EMOTES[id].name)).join(', ')) : '') + (wallet.skins.includes(b.dataset.k) ? '' : t('. Buy it to keep it')); shopEmote = null; renderBind(); };
+  for (const b of sub(el('eshop'), '.tryE')) b.onclick = () => { previewEmote(b.dataset.k); shopEmote = b.dataset.k; el('shoptry').textContent = tf('Trying %s', t(EMOTES[b.dataset.k].name)); renderBind(); };
 }
 function grantSkinEmotes(k) {                         // an outfit that comes with its own emote(s): they are yours as long as you own the outfit
   const got = [];
@@ -5321,14 +5334,14 @@ function grantSkinEmotes(k) {                         // an outfit that comes wi
 function buySkin(k) {
   if (!needAcct('Outfits are saved to your profile, so you keep them for good. Save your progress to buy this one.')) return false;
   const pr = skinPrice(k); if (!SKINS[k] || !SKIN_SHOP[k] || wallet.skins.includes(k) || wallet.coins < pr) return false;
-  wallet.coins -= pr; wallet.skins.push(k); const got = grantSkinEmotes(k); look.skin = k; applyLook(); sfx('pickup'); toast('Bought ' + skinName(k) + '! Equipped.' + (got.length ? ' You also got the ' + got.join(', ') + ' emote.' : '')); save(); updateCoins(); renderShop(); return true;
+  wallet.coins -= pr; wallet.skins.push(k); const got = grantSkinEmotes(k); look.skin = k; applyLook(); sfx('pickup'); toast(tf('Bought %s! Equipped.', t(skinName(k))) + (got.length ? tf(' You also got the %s emote.', got.map(n => t(n)).join(', ')) : '')); save(); updateCoins(); renderShop(); return true;
 }
 function buyEmote(k) {
   if (!needAcct('Emotes are saved to your profile, so you keep them for good. Save your progress to buy this one.')) return false;
   const E = EMOTES[k]; if (!E || E.code || E.skin || wallet.owned.includes(k) || wallet.coins < E.price) return false;
   wallet.coins -= E.price; wallet.owned.push(k);
   const free = wallet.slots.indexOf(null); if (free >= 0) wallet.slots[free] = k;          // goes straight into an empty slot
-  sfx('pickup'); toast('Bought ' + E.name + '!'); shopEmote = k; save(); updateCoins(); renderShop(); return true;
+  sfx('pickup'); toast(tf('Bought %s!', t(E.name))); shopEmote = k; save(); updateCoins(); renderShop(); return true;
 }
 const CLS_BARS = [['hp', 'Health'], ['spd', 'Speed'], ['acc', 'Control', c => (c.acc + c.air) / 2], ['kb', 'Weight', c => 2 - c.kb], ['dmg', 'Power'], ['rate', 'Tech', c => (c.rate + 1 / c.reload + c.ammo) / 3]];
 const CLS_THUMB = {};
@@ -5355,7 +5368,7 @@ function classCard(k) {
 }
 function renderLocker() {
   updateCoins();                                                  // the coin counts must show on every page, not only after the Shop has been opened
-  el('lockname').textContent = skinName(look.skin); { const li = el('lockinc'); if (li) li.textContent = (spatOf(look.skin) ? 'Includes the ' + spatOf(look.skin) + ' instead of the spatula' : '') + (REACTIVE[look.skin] ? (spatOf(look.skin) ? '. ' : '') + '\u2728 Reactive face: shows pain when hit and gets excited after a K.O.' : '') || 'Your wobbler. Pick an outfit or emote to see it'; }
+  el('lockname').textContent = skinName(look.skin); { const li = el('lockinc'); if (li) li.textContent = (spatOf(look.skin) ? tf('Includes the %s instead of the spatula', t(spatOf(look.skin))) : '') + (REACTIVE[look.skin] ? (spatOf(look.skin) ? t('. ') : '') + t('\u2728 Reactive face: shows pain when hit and gets excited after a K.O.') : '') || t('Your wobbler. Pick an outfit or emote to see it'); }
   el('locktab-skins').classList.toggle('on', lockTab === 'skins'); el('locktab-emotes').classList.toggle('on', lockTab === 'emotes');
   el('lock-skins').style.display = lockTab === 'skins' ? 'block' : 'none'; el('lock-emotes').style.display = lockTab === 'emotes' ? 'block' : 'none';
   el('locktab-class').classList.toggle('on', lockTab === 'class'); el('lock-class').style.display = lockTab === 'class' ? 'block' : 'none';
@@ -5364,13 +5377,13 @@ function renderLocker() {
   el('locktab-hats').classList.toggle('on', lockTab === 'hats'); el('lock-hats').style.display = lockTab === 'hats' ? 'block' : 'none';
   el('lhats').innerHTML = HATS.map(h => '<div class="ecard r-common' + (look.hat === h ? ' sel' : '') + '"><span class="ei">' + (HAT_ICON[h] || '\u{1F3A9}') + '</span><b>' + HAT_LABEL[h] + '</b><small>Hat</small><button class="opt hatwear" data-h="' + h + '">' + (look.hat === h ? 'Wearing' : 'Wear') + '</button></div>').join('');
   for (const b of sub(el('lhats'), '.hatwear')) b.onclick = () => { look.hat = b.dataset.h; applyLook(); save(); try { player.setHat(look.hat); pvSettle(2); } catch (e) { /* cosmetic */ } renderLocker(); };
-  el('lskins').innerHTML = wallet.skins.slice().sort(byRarity(skinRar)).map(k => '<div class="ecard r-' + skinRar(k) + (look.skin === k ? ' sel' : '') + '"><span class="ei">' + skinIcon(k) + '</span><b>' + skinName(k) + '</b><small>' + RAR_LABEL[skinRar(k)] + '</small>' + (spatOf(k) ? '<small class="inc">Includes: ' + spatOf(k) + '</small>' : '') + emoteTag(k) + reactTag(k) + '<button class="opt wear" data-k="' + k + '">' + (look.skin === k ? 'Wearing' : 'Wear') + '</button></div>').join('')
+  el('lskins').innerHTML = wallet.skins.slice().sort(byRarity(skinRar)).map(k => '<div class="ecard r-' + skinRar(k) + (look.skin === k ? ' sel' : '') + '"><span class="ei">' + skinIcon(k) + '</span><b>' + skinName(k) + '</b><small>' + RAR_LABEL[skinRar(k)] + '</small>' + (spatOf(k) ? '<small class="inc">' + tf('Includes: %s', t(spatOf(k))) + '</small>' : '') + emoteTag(k) + reactTag(k) + '<button class="opt wear" data-k="' + k + '">' + (look.skin === k ? 'Wearing' : 'Wear') + '</button></div>').join('')
     + (Object.keys(SKIN_SHOP).some(k => !wallet.skins.includes(k)) ? '<div class="ecard"><span class="ei">\u{1F6D2}</span><b>More outfits</b><small>In the Shop</small><button class="opt" id="lk-shop">Open Shop</button></div>' : '');
   for (const b of sub(el('lskins'), '.wear')) b.onclick = () => { look.skin = b.dataset.k; applyLook(); save(); previewSkin(look.skin); renderLocker(); };
   const keyOf = i => keyName(settings.binds[['taunt', 'emote2', 'emote3'][i]]).replace('Key', '');
   el('eslots').innerHTML = [0, 1, 2].map(i => '<button class="' + (lockerSel === i ? 'on' : '') + '" data-s="' + i + '">' + keyOf(i) + '<small>' + (wallet.slots[i] ? EMOTES[wallet.slots[i]].name : 'empty') + '</small></button>').join('');
   for (const b of sub(el('eslots'), 'button')) b.onclick = () => { lockerSel = +b.dataset.s; renderLocker(); };
-  el('elocker').innerHTML = wallet.owned.slice().sort(byRarity(k => EMOTES[k].rar)).map(k => { const E = EMOTES[k]; return '<div class="ecard r-' + E.rar + (wallet.slots[lockerSel] === k ? ' sel' : '') + '"><span class="ei">' + E.ico + '</span><b>' + E.name + '</b><small>' + E.blurb + '</small>' + (E.skin ? '<small class="inc">Only comes with the ' + skinName(E.skin) + ' outfit. Not for sale</small>' : '') + '<button class="opt eq" data-e="' + k + '">' + (wallet.slots.includes(k) ? 'Move here' : 'Equip') + '</button><button class="opt tryE" data-k="' + k + '">Preview</button></div>'; }).join('')
+  el('elocker').innerHTML = wallet.owned.slice().sort(byRarity(k => EMOTES[k].rar)).map(k => { const E = EMOTES[k]; return '<div class="ecard r-' + E.rar + (wallet.slots[lockerSel] === k ? ' sel' : '') + '"><span class="ei">' + E.ico + '</span><b>' + E.name + '</b><small>' + E.blurb + '</small>' + (E.skin ? '<small class="inc">' + tf('Only comes with the %s outfit. Not for sale', t(skinName(E.skin))) + '</small>' : '') + '<button class="opt eq" data-e="' + k + '">' + (wallet.slots.includes(k) ? 'Move here' : 'Equip') + '</button><button class="opt tryE" data-k="' + k + '">Preview</button></div>'; }).join('')
     + (Object.keys(EMOTES).some(k => EMOTES[k].price > 0 && !wallet.owned.includes(k)) ? '<div class="ecard"><span class="ei">\u{1F6D2}</span><b>More emotes</b><small>In the Shop</small><button class="opt" id="lk-shop2">Open Shop</button></div>' : '');
   for (const b of sub(el('elocker'), '.eq')) b.onclick = () => { const k = b.dataset.e, old = wallet.slots.indexOf(k); if (old >= 0) wallet.slots[old] = wallet.slots[lockerSel]; wallet.slots[lockerSel] = k; save(); renderLocker(); };
   for (const b of sub(el('elocker'), '.tryE')) b.onclick = () => previewEmote(b.dataset.k);
@@ -5826,7 +5839,7 @@ class Fighter {
     if (i >= 0) {
       this.slots[i].ammo += Math.round(w.ammo * this.cls.ammo);
       if (this.slot !== i && this.autoEq(i)) this.equipSlot(i);
-      if (this.isPlayer) { toast('+' + Math.round(w.ammo * this.cls.ammo) + ' ' + w.name + ' ammo (now ' + this.slots[i].ammo + ')'); sfx('pickup'); }
+      if (this.isPlayer) { toast(tf('+%s %s ammo (now %s)', Math.round(w.ammo * this.cls.ammo), t(w.name), this.slots[i].ammo)); sfx('pickup'); }
       return;
     }
     if (i < 0) i = this.slots.findIndex(s => !s);                 // first free slot
@@ -5840,14 +5853,14 @@ class Fighter {
     }
     this.slots[i] = { key, ammo: Math.round(w.ammo * this.cls.ammo), mag: w.mag ? Math.min(w.mag, w.ammo) : undefined };
     if (this.autoEq(i)) this.equipSlot(i);
-    if (this.isPlayer) { toast('Picked up ' + w.name + '! (slot ' + (i + 1) + ')'); sfx('pickup'); }
+    if (this.isPlayer) { toast(tf('Picked up %s! (slot %s)', t(w.name), i + 1)); sfx('pickup'); }
   }
 
   dropSlot() {
     const s = this.slots[this.slot];
     if (!s) return;
     const w = WEAPONS[s.key];
-    if (this.isPlayer) toast(w.type === 'melee' ? 'Your ' + w.name + ' broke!' : w.name + ' is empty!');
+    if (this.isPlayer) toast(w.type === 'melee' ? tf('Your %s broke!', t(w.name)) : tf('%s is empty!', t(w.name)));
     this.cancelReload(false);
     this.slots[this.slot] = null;
     const next = this.slots.findIndex(x => x);
@@ -6863,7 +6876,7 @@ function spawnDrop(forceKey, at, spotOverride) {
     net.set(1); prev.scale.setScalar(1); beam.scale.set(0.45, 0.07, 0.45); beam.position.y = 1.4;
     return p;
   }
-  if (!player.downT) toast('Crate incoming: ' + w.name + '!');     // don't bury the "you fell over" message
+  if (!player.downT) toast(tf('Crate incoming: %s!', t(w.name)));     // don't bury the "you fell over" message
   sfxAt('drop', V(p.x, p.gy, p.z));
   return p;
 }
@@ -7542,7 +7555,7 @@ function landNet(n, x, y, z, onFighter) {
     if (Math.hypot(f.pos.x - x, f.pos.z - z) > w.radius || Math.abs(f.pos.y - gy) > 2.6) continue;
     f.trapT = w.trap; f.trapNet = net; f.vel.x = f.vel.z = 0; f.wantJump = false; f.trapX = f.pos.x; f.trapZ = f.pos.z; f.faceYaw = f.yaw; f.lieSide = Math.random() < 0.5 ? -1 : 1;
     net.victims.push(f); if (o && o.st) o.st.hits++;
-    if (f.isPlayer) toast('Trapped in a net! Wriggle!'); else if (o && o.isPlayer) { toast('Got ' + nameOf(f) + ' in your net!'); hitMarker(); }
+    if (f.isPlayer) toast(t('Trapped in a net! Wriggle!')); else if (o && o.isPlayer) { toast(tf('Got %s in your net!', nameOf(f))); hitMarker(); }
   }
   if (!net.victims.length) net.life = 1.4;
   // one big sheet of net lying on the ground, weighted at the rim, bulging up over whoever is lying under it
@@ -7822,7 +7835,7 @@ function tweenNum(id, to) {                        // numbers count up when you 
 }
 function statsText() {
   tweenNum('st-kos', stats.kos); tweenNum('st-best', stats.best); tweenNum('st-wins', stats.wins); tweenNum('st-matches', stats.matches); tweenNum('st-online', stats.onl);
-  const m = Math.floor(stats.secs / 60); el('st-time').textContent = m >= 60 ? Math.floor(m / 60) + 'h ' + (m % 60) + 'm' : m + 'm';
+  const m = Math.floor(stats.secs / 60); el('st-time').textContent = m >= 60 ? tf('%dh %dm', Math.floor(m / 60), m % 60) : tf('%dm', m);
   el('st-rate').textContent = stats.matches ? Math.round(stats.wins / stats.matches * 100) + '%' : '-';
   el('st-kd').textContent = stats.matches ? (stats.kos / stats.matches).toFixed(1) : '-';
 }
@@ -7855,12 +7868,12 @@ function renderAccount() {
   el('ac-name').value = settings.name || '';
   el('ac-av').style.background = '#' + (SKINS[look.skin] ? SKINS[look.skin].col : look.color).toString(16).padStart(6, '0');
   const xp = xpOf(), lv = lvOf(xp), lo = 60 * (lv - 1) * (lv - 1), hi = 60 * lv * lv;
-  el('ac-lvl').textContent = 'Level ' + lv; el('ac-title').textContent = LV_TITLES[Math.min(lv - 1, LV_TITLES.length - 1)];
-  el('ac-xp').style.width = Math.round((xp - lo) / (hi - lo) * 100) + '%'; el('ac-xpt').textContent = (hi - xp) + ' XP to level ' + (lv + 1) + '. You earn XP from K.O.s, matches, wins and time played.';
+  el('ac-lvl').textContent = tf('Level %d', lv); el('ac-title').textContent = LV_TITLES[Math.min(lv - 1, LV_TITLES.length - 1)];
+  el('ac-xp').style.width = Math.round((xp - lo) / (hi - lo) * 100) + '%'; el('ac-xpt').textContent = tf('%d XP to level %d. You earn XP from K.O.s, matches, wins and time played.', hi - xp, lv + 1);
   el('ac-coins').textContent = wallet.coins; el('ac-owned').textContent = wallet.skins.length;
   const got = BADGES.filter(b => b[3]()).length; el('ac-badgen').textContent = got + '/' + BADGES.length;
   el('badge-list').innerHTML = BADGES.map(b => { const on = b[3](); return '<div class="badge' + (on ? ' got' : '') + '"><i>' + b[0] + '</i><b>' + b[1] + '</b><small>' + b[2] + '</small></div>'; }).join('');
-  el('hist-list').innerHTML = stats.hist.length ? stats.hist.map(h => '<div class="hrow2' + (h.w ? ' won' : '') + '"><b>' + (h.w ? 'Win' : 'Played') + '</b><span>' + escH(h.m) + (h.map ? ' · ' + escH(h.map) : '') + (h.o ? ' · online' : '') + '</span><em>' + h.ko + ' K.O.s · ' + h.d + ' deaths</em></div>').join('') : '<div class="rm0">No finished matches yet. Play one and it shows up here.</div>';
+  el('hist-list').innerHTML = stats.hist.length ? stats.hist.map(h => '<div class="hrow2' + (h.w ? ' won' : '') + '"><b>' + (h.w ? 'Win' : 'Played') + '</b><span>' + escH(t(h.m)) + (h.map ? ' · ' + escH(t(h.map)) : '') + (h.o ? ' · ' + t('online') : '') + '</span><em>' + tf('%d K.O.s · %d deaths', h.ko, h.d) + '</em></div>').join('') : '<div class="rm0">No finished matches yet. Play one and it shows up here.</div>';
   acShow(acTab); statsText();
 }
 const colOf = f => cfg.teams && f.team >= 0 ? '#' + TEAM_COL[f.team].toString(16).padStart(6, '0') : '#' + (SKINS[f.skinKey] ? SKINS[f.skinKey].col : f.isPlayer ? 0x39b5a8 : f.botColor).toString(16).padStart(6, '0');
@@ -7897,7 +7910,7 @@ function ggAdvance(killer) {
   if (killer.ggRung >= GG.length) { killer.ggRung = GG.length - 1; endMatch(killer); return; }
   if (killer.isGhost) return;                                    // an online player's own machine swaps their weapon
   if (!killer.dead) { ggGive(killer); killer.invuln = Math.max(killer.invuln, 1.0); }          // a short white spawn-style shield while the weapon swaps
-  if (killer.isPlayer) { toast('Weapon ' + (killer.ggRung + 1) + ' of ' + GG.length + ': ' + (WEAPONS[GG[killer.ggRung]] || { name: 'Spatula' }).name); sfx('pickup'); }
+  if (killer.isPlayer) { toast(tf('Weapon %d of %d: %s', killer.ggRung + 1, GG.length, t((WEAPONS[GG[killer.ggRung]] || { name: 'Spatula' }).name))); sfx('pickup'); }
 }
 function initLadder() { for (const f of fighters) { f.ggRung = 0; if (cfg.mode === 'gungame' && !f.isGhost) ggGive(f); } }
 let pil = null;
@@ -7915,7 +7928,7 @@ function updatePillars(dt) {
   if (!pil || matchOver) return;
   pil.t -= dt; pil.next -= dt;
   if (pil.next <= 0) { pil.next = 10; for (const f of fighters) if (!f.dead && !f.elim && !f.isGhost && f.root.visible) pillarGive(f); if (!pil.first) pil.first = true; }
-  const t = Math.max(0, Math.ceil(pil.t)); el('piltime').textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); el('pilnext').textContent = 'New weapon in ' + Math.max(0, Math.ceil(pil.next));
+  const t = Math.max(0, Math.ceil(pil.t)); el('piltime').textContent = Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0'); el('pilnext').textContent = tf('New weapon in %d', Math.max(0, Math.ceil(pil.next)));
   if (pil.t <= 0 && !(net && net.started && !net.host)) {            // online, only the host calls time (everybody else is told)
     let w = null;
     if (net && net.started) { for (const f of fighters) if (!f.left && (!w || f.ko > w.ko || (f.ko === w.ko && (!f.elim && w.elim || f.elim === w.elim && f.netSlot < w.netSlot)))) w = f; }       // online: every game picks the same winner (most K.O.s, then still standing, then slot)
@@ -7971,11 +7984,11 @@ function updateShrink(dt) {
   for (let i = pickups.length - 1; i >= 0; i--) { const q = pickups[i]; if (Math.abs(q.x) > s.size / 2 || Math.abs(q.z) > hd) { scene.remove(q.g); pickups.splice(i, 1); } }   // crates on the collapsed edge go with it
 }
 function updateModeHud() {
-  let t = '';
-  if (pot && !matchOver) t = pot.holder ? '\u{1F4A3} ' + (pot.holder.isPlayer ? 'YOU HAVE THE BOMB! Hit someone! ' : nameOf(pot.holder) + ' has the bomb ') + Math.max(0, pot.fuse).toFixed(1) : '\u{1F4A3} Get ready…';
-  else if (cfg.mode === 'gungame' && !matchOver) t = 'Weapon ' + ((player.ggRung || 0) + 1) + ' of ' + GG.length + ' \u00b7 ' + (WEAPONS[GG[player.ggRung || 0]] || { name: 'Spatula' }).name;
-  else if (shrink && MAPS[currentMap].shrinks && !matchOver) t = 'Arena ' + Math.round(shrink.size) + 'm' + (shrink.hold > 0 ? ' · shrinking soon' : shrink.dir === 1 ? ' · growing' : shrink.size <= shrink.min ? ' · smallest' : '');
-  const m = el('modehud'); if (m.textContent !== t) m.textContent = t; m.style.display = t ? 'block' : 'none';
+  let txt = '';                                      // (not "t": that name is the translate function)
+  if (pot && !matchOver) txt = pot.holder ? (pot.holder.isPlayer ? tf('\u{1F4A3} YOU HAVE THE BOMB! Hit someone! %s', Math.max(0, pot.fuse).toFixed(1)) : tf('\u{1F4A3} %s has the bomb %s', nameOf(pot.holder), Math.max(0, pot.fuse).toFixed(1))) : t('\u{1F4A3} Get ready…');
+  else if (cfg.mode === 'gungame' && !matchOver) txt = tf('Weapon %d of %d \u00b7 %s', (player.ggRung || 0) + 1, GG.length, t((WEAPONS[GG[player.ggRung || 0]] || { name: 'Spatula' }).name));
+  else if (shrink && MAPS[currentMap].shrinks && !matchOver) { const st = shrink.hold > 0 ? 'shrinking soon' : shrink.dir === 1 ? 'growing' : shrink.size <= shrink.min ? 'smallest' : ''; txt = st ? tf('Arena %dm \u00b7 %s', Math.round(shrink.size), t(st)) : tf('Arena %dm', Math.round(shrink.size)); }
+  const m = el('modehud'); if (m._txt !== txt) { m._txt = txt; m.textContent = txt; } m.style.display = txt ? 'block' : 'none';
 }
 function feedAdd(killer, victim) {
   const v = '<span style="color:' + colOf(victim) + '">' + nameOf(victim) + '</span>';
@@ -8015,7 +8028,7 @@ function finishMatch() {
 function updateEnding(dt) {
   if (endT <= 0) return;
   endT -= dt;
-  if (endT < 2.1 && !endMsg) { endMsg = true; el('kopop').innerHTML = '<div class="kp win"><span class="sk">\u{1F3C6}</span>' + (cfg.teams ? (endWinner.team === player.team ? 'YOUR TEAM WINS!' : 'ENEMY TEAM WINS!') : endWinner.isPlayer ? 'YOU WIN!' : nameOf(endWinner) + ' WINS!') + '<span class="sk">\u{1F3C6}</span><small>' + (cfg.lives ? 'Last one standing' : 'First ' + (cfg.teams ? 'team ' : '') + 'to ' + cfg.limit + ' K.O.s') + '</small></div>'; sfx('pickup'); }
+  if (endT < 2.1 && !endMsg) { endMsg = true; el('kopop').innerHTML = '<div class="kp win"><span class="sk">\u{1F3C6}</span>' + (cfg.teams ? (endWinner.team === player.team ? 'YOUR TEAM WINS!' : 'ENEMY TEAM WINS!') : endWinner.isPlayer ? 'YOU WIN!' : tf('%s WINS!', nameOf(endWinner))) + '<span class="sk">\u{1F3C6}</span><small>' + (cfg.lives ? 'Last one standing' : cfg.teams ? tf('First team to %d K.O.s', cfg.limit) : tf('First to %d K.O.s', cfg.limit)) + '</small></div>'; sfx('pickup'); }
   el('fade').style.opacity = endT < 1 ? Math.min(1, (1 - endT) / 0.9).toFixed(2) : '0';
   if (endT <= 0) finishMatch();
 }
@@ -8049,7 +8062,7 @@ function setBotCfg(patch) {
   on('ffa-off', !cfg.ffa); on('ffa-on', cfg.ffa);
   for (const k of Object.keys(MODES)) if (el('mode-' + k)) on('mode-' + k, cfg.mode === k);
   on('mode-versus', VS.includes(cfg.mode)); for (const k of VS) on('vs-' + k, cfg.mode === k);
-  el('modedesc').textContent = MODES[cfg.mode].desc + (MODES[cfg.mode].ex ? '. ' + MODES[cfg.mode].ex : '');
+  el('modedesc').textContent = MODES[cfg.mode].ex ? tf('%s. %s', t(MODES[cfg.mode].desc), t(MODES[cfg.mode].ex)) : t(MODES[cfg.mode].desc);
   el('bn').disabled = !!cfg.teams;
   { const rc = cfgReal(); el('bn').value = rc.count; el('bn-val').textContent = rc.count; syncRanges();
   for (const n of [0, 5, 10, 20]) on('match-' + n, rc.limit === n);
@@ -8452,7 +8465,7 @@ function showPage(pg) {
   el('next').style.display = nextOf(pg) ? 'block' : 'none';
   el('play').style.display = pg === 'mods' || pg === 'result' ? 'block' : 'none'; el('play').textContent = pg === 'result' ? (matchOver ? (net && net.started ? 'Rematch' : 'Play again') : 'Back to the match') : 'Start!';
   const steps = vsFlow() ? ['mode', 'vs', 'map', 'mods'] : ['mode', 'map', 'mods'], stepI = steps.indexOf(pg);
-  el('crumbs').innerHTML = stepI >= 0 ? '<span class="dots">' + steps.map((_, i) => '<i class="' + (i <= stepI ? 'on' : '') + (i === stepI ? ' cur' : '') + '"></i>').join('') + '</span><span>Step ' + (stepI + 1) + ' of ' + steps.length + ' · ' + PAGE_NAME[pg] + '</span>' : PAGE_NAME[pg];
+  el('crumbs').innerHTML = stepI >= 0 ? '<span class="dots">' + steps.map((_, i) => '<i class="' + (i <= stepI ? 'on' : '') + (i === stepI ? ' cur' : '') + '"></i>').join('') + '</span><span>' + tf('Step %d of %d · %s', stepI + 1, steps.length, t(PAGE_NAME[pg])) + '</span>' : PAGE_NAME[pg];
   if (pg === 'home') refreshHome();
   if (pg === 'map') updateMapList();
   netBannerUpdate();
@@ -8479,17 +8492,17 @@ function applyPauseUi() {                            // while a game is paused: 
   const po = el('pz-online'); if (po) po.style.display = p && net && net.started ? 'block' : 'none';
   for (const id of ['homemain', 'go-account', 'go-test']) { const e = el(id); if (e) e.style.display = p ? 'none' : ''; }
   try { el('menu').classList.toggle('homefx', page === 'home' && !p); el('menu').classList.toggle('storefx', (page === 'shop' || page === 'locker') && !p); } catch (e) { /* cosmetic */ }
-  const sm = el('pz-sum'); if (sm) sm.textContent = MODES[cfg.mode].name + ' \u00b7 ' + MAPS[currentMap].name;
+  const sm = el('pz-sum'); if (sm) sm.textContent = tf('%s \u00b7 %s', t(MODES[cfg.mode].name), t(MAPS[currentMap].name));
 }
 const TIPS = ['Hold the scope key and left-click: you can shoot while scoped.', 'Spring Glove does no damage, but it sends people flying off the edge.', 'Boomerangs come back for the catch, but every throw uses one of your 5, even a miss.', 'Shuriken: both hands throw, and the stars curve into your target.', 'Try Build Your Own: B places a block, N removes one.', 'Turn the radar on in Settings to see who is above or below you.', 'Underground arenas are dark: use the pillars as cover.', 'Free for all makes the bots fight each other too. Grab some popcorn.', 'Gravity and knockback can be changed in Modifiers.', 'The edge of the arena is not your friend.', 'Hit the head for extra damage. Rude, but effective.', 'Falling over is part of the fun. Get back up and bonk someone.'];
 function refreshHome() {
-  el('greet').textContent = (acct.user ? 'Welcome back' : 'Hi') + (settings.name ? ', ' + settings.name : '') + '!';
+  el('greet').textContent = settings.name ? tf(acct.user ? 'Welcome back, %s!' : 'Hi, %s!', settings.name) : acct.user ? 'Welcome back!' : 'Hi!';
   statsText(); srvConnect(() => netPill());
   el('guestbar').style.display = acct.user || !acct.guest ? 'none' : 'flex'; el('go-online').classList.toggle('lockd', !acct.user);
   const ids = Object.keys(MAPS).filter(i => i !== 'test' && i !== 'practice' && !MAPS[i].only), fid = ids[Math.floor(Date.now() / 86400000) % ids.length], im = el('mimg-' + fid);
   el('feat-name').textContent = MAPS[fid].name; el('feat-blurb').textContent = MAPS[fid].blurb; if (im && im.src) el('feat-img').src = im.src;
   el('feat-go').onclick = () => { const m = Object.keys(MODES).find(k => k !== 'sandbox' && k !== 'construction' && (!MODES[k].maps || MODES[k].maps.includes(fid))) || 'classic'; if (!mapAllowed(fid) || cfg.mode === 'sandbox' || cfg.mode === 'construction') setBotCfg({ mode: m }); loadMap(fid); showPage('mods'); };
-  el('tip').textContent = 'Tip: ' + TIPS[Math.floor(Math.random() * TIPS.length)];
+  el('tip').textContent = tf('Tip: %s', t(TIPS[Math.floor(Math.random() * TIPS.length)]));
   try { homePanels(fid, im); } catch (e) { devLog('home', 'panels: ' + (e && e.message)); }
 }
 /* ---- the home screen: name plate, daily gift, level of the day, stage ---- */
@@ -8502,14 +8515,14 @@ function claimDaily() {
   if (!needAcct('Daily gifts are saved to your profile. Save your progress to claim yours.')) return false;
   const i = dailyInfo(); if (!i.can) return false;
   wallet.daily = { d: dayNum(), s: i.streak }; addCoins(i.reward); save(); sfx('pickup');
-  toast('Daily gift: +' + i.reward + ' coins! ' + i.streak + (i.streak > 1 ? ' days in a row' : ' day so far')); refreshHome(); return true;
+  toast(i.streak > 1 ? tf('Daily gift: +%d coins! %d days in a row', i.reward, i.streak) : tf('Daily gift: +%d coins! %d day so far', i.reward, i.streak)); refreshHome(); return true;
 }
 function homePanels(fid, im) {
   const xp = xpOf(), lv = lvOf(xp), lo = 60 * (lv - 1) * (lv - 1), hi = 60 * lv * lv;
   el('hp-name').textContent = settings.name || acct.user || 'Player'; el('hp-badge').textContent = lv;
   el('hp-title').textContent = LV_TITLES[Math.min(lv - 1, LV_TITLES.length - 1)]; el('hp-xpb').style.width = Math.max(3, Math.round((xp - lo) / (hi - lo) * 100)) + '%';
   const d = dailyInfo(), b = el('hd-go'), c = el('hc-daily');
-  el('hd-txt').textContent = d.can ? '+' + d.reward + ' coins' + (d.streak > 1 ? ' · day ' + d.streak : '') : 'Back tomorrow · ' + d.streak + ' day' + (d.streak === 1 ? '' : 's') + ' in a row';
+  el('hd-txt').textContent = d.can ? (d.streak > 1 ? tf('+%d coins · day %d', d.reward, d.streak) : tf('+%d coins', d.reward)) : d.streak === 1 ? tf('Back tomorrow · %d day in a row', d.streak) : tf('Back tomorrow · %d days in a row', d.streak);
   b.disabled = !d.can; b.textContent = d.can ? 'CLAIM' : 'DONE'; c.classList.toggle('ready', d.can);
   el('hl-name').textContent = MAPS[fid].name; if (im && im.src) el('hl-img').src = im.src;
   el('hl-go').onclick = el('feat-go').onclick;
@@ -8527,21 +8540,21 @@ el('quick').onclick = () => {
   leaveTest();
   const modes = Object.keys(MODES).filter(k => k !== 'sandbox' && k !== 'construction'), m = modes[Math.floor(Math.random() * modes.length)];
   setBotCfg({ mode: m }); const ok = Object.keys(MAPS).filter(mapAllowed); loadMap(ok[Math.floor(Math.random() * ok.length)]);
-  toast(MODES[m].name + ' on ' + MAPS[currentMap].name); el('play').onclick();
+  toast(tf('%s on %s', t(MODES[m].name), t(MAPS[currentMap].name))); el('play').onclick();
 };
 function computeAwards(fs, rank) {
   const mx = (fn) => Math.max(...fs.map(fn)), acc = f => f.st.shots ? f.st.hits / f.st.shots : 0, used = new Set(), out = new Map();
   const cands = [
-    ['\u{1F52B}', 'Trigger Happy', f => f.st.shots >= 20 && f.st.shots === mx(g => g.st.shots), f => f.st.shots + ' shots fired'],
+    ['\u{1F52B}', 'Trigger Happy', f => f.st.shots >= 20 && f.st.shots === mx(g => g.st.shots), f => tf('%d shots fired', f.st.shots)],
     ['\u{1F6E1}\uFE0F', 'Survivor', f => f.st.deaths === 0 && f.ko > 0, f => '0 deaths'],
-    ['\u{1F3AF}', 'Sharpshooter', f => f.st.shots >= 12 && acc(f) >= 0.35 && acc(f) === mx(acc), f => Math.round(acc(f) * 100) + '% accuracy'],
-    ['\u{1F9E0}', 'Headhunter', f => f.st.heads >= 3 && f.st.heads === mx(g => g.st.heads), f => f.st.heads + ' headshots'],
-    ['\u{1F4A5}', 'Big Hitter', f => f.st.dmg > 0 && f.st.dmg === mx(g => g.st.dmg), f => Math.round(f.st.dmg) + ' damage dealt'],
-    ['\u{1FA82}', 'Gravity Fan', f => f.st.falls >= 2 && f.st.falls === mx(g => g.st.falls), f => 'fell off ' + f.st.falls + ' times'],
-    ['\u{1F525}', 'Streak Machine', f => f.st.bestStreak >= 3 && f.st.bestStreak === mx(g => g.st.bestStreak), f => f.st.bestStreak + ' K.O.s without dying'],
-    ['\u{1F480}', 'Multi-K.O. Maniac', f => f.st.bestMulti >= 2 && f.st.bestMulti === mx(g => g.st.bestMulti), f => (MULTI[Math.min(f.st.bestMulti, 6)] || '').replace('!', '').toLowerCase()],
-    ['\u{1F94A}', 'Punching Bag', f => f.st.taken > 0 && f.st.taken === mx(g => g.st.taken), f => Math.round(f.st.taken) + ' damage taken'],
-    ['\u{1F635}', 'Professional Victim', f => f.st.deaths >= 2 && f.st.deaths === mx(g => g.st.deaths), f => f.st.deaths + ' deaths'],
+    ['\u{1F3AF}', 'Sharpshooter', f => f.st.shots >= 12 && acc(f) >= 0.35 && acc(f) === mx(acc), f => tf('%d%% accuracy', Math.round(acc(f) * 100))],
+    ['\u{1F9E0}', 'Headhunter', f => f.st.heads >= 3 && f.st.heads === mx(g => g.st.heads), f => tf('%d headshots', f.st.heads)],
+    ['\u{1F4A5}', 'Big Hitter', f => f.st.dmg > 0 && f.st.dmg === mx(g => g.st.dmg), f => tf('%d damage dealt', Math.round(f.st.dmg))],
+    ['\u{1FA82}', 'Gravity Fan', f => f.st.falls >= 2 && f.st.falls === mx(g => g.st.falls), f => tf('fell off %d times', f.st.falls)],
+    ['\u{1F525}', 'Streak Machine', f => f.st.bestStreak >= 3 && f.st.bestStreak === mx(g => g.st.bestStreak), f => tf('%d K.O.s without dying', f.st.bestStreak)],
+    ['\u{1F480}', 'Multi-K.O. Maniac', f => f.st.bestMulti >= 2 && f.st.bestMulti === mx(g => g.st.bestMulti), f => t(MULTI[Math.min(f.st.bestMulti, 6)] || '').replace('!', '').toLowerCase()],
+    ['\u{1F94A}', 'Punching Bag', f => f.st.taken > 0 && f.st.taken === mx(g => g.st.taken), f => tf('%d damage taken', Math.round(f.st.taken))],
+    ['\u{1F635}', 'Professional Victim', f => f.st.deaths >= 2 && f.st.deaths === mx(g => g.st.deaths), f => tf('%d deaths', f.st.deaths)],
     ['\u262E\uFE0F', 'Peaceful Soul', f => f.ko === 0, f => '0 K.O.s, still smiling'],
     ['\u{1F308}', 'Just Vibing', () => true, () => 'showed up'],
   ];
@@ -8550,25 +8563,26 @@ function computeAwards(fs, rank) {
 }
 function renderResult() {
   const fs = [player, ...bots], esc = t => String(t).replace(/</g, '&lt;');
-  const fav = f => { const e = Object.entries(f.st.weps).sort((a, b) => b[1] - a[1])[0]; return e ? e[0] + ' (' + e[1] + ')' : '-'; };
+  const fav = f => { const e = Object.entries(f.st.weps).sort((a, b) => b[1] - a[1])[0]; return e ? t(e[0]) + ' (' + e[1] + ')' : '-'; };
   const rank = fs.slice().sort((a, b) => b.ko - a.ko || b.st.dmg - a.st.dmg);
   const top = (fn) => fs.slice().sort((a, b) => fn(b) - fn(a))[0];
   const mins = Math.max(0, simTime - matchStart), dur = Math.floor(mins / 60) + ':' + String(Math.floor(mins % 60)).padStart(2, '0');
   const mx = Math.max(1, ...fs.map(f => f.ko));
   el('res-title').textContent = matchOver ? 'Match analysis' : 'Match so far';
   const hi = [['MVP', rank[0]], ['Most damage', top(f => f.st.dmg)], ['Longest streak', top(f => f.st.bestStreak)], ['Best combo', top(f => f.st.bestMulti)], ['Tankiest', top(f => -f.st.taken)]];
-  const hv = { 'MVP': f => f.ko + ' K.O.s', 'Most damage': f => Math.round(f.st.dmg) + ' dmg', 'Longest streak': f => f.st.bestStreak + ' in a row', 'Best combo': f => (MULTI[Math.min(Math.max(f.st.bestMulti, 1), 6)] || '-').replace('!', ''), 'Tankiest': f => Math.round(f.st.taken) + ' taken' };
+  const hv = { 'MVP': f => tf('%d K.O.s', f.ko), 'Most damage': f => tf('%d dmg', Math.round(f.st.dmg)), 'Longest streak': f => tf('%d in a row', f.st.bestStreak), 'Best combo': f => t(MULTI[Math.min(Math.max(f.st.bestMulti, 1), 6)] || '-').replace('!', ''), 'Tankiest': f => tf('%d taken', Math.round(f.st.taken)) };
   const me = player, aw = computeAwards(fs, rank);
   const colOf2 = f => cfg.teams ? colOf(f) : '#' + (SKINS[f.skinKey] ? SKINS[f.skinKey].col : f.isPlayer ? look.color : f.botColor).toString(16).padStart(6, '0');
-  const slot = (f, place) => !f ? '' : '<div class="pod p' + place + '"><div class="pav" style="background:' + colOf2(f) + '">' + (place === 1 ? '<span class="crown">\u{1F451}</span>' : '') + '</div><b>' + esc(nameOf(f)) + '</b><small>' + f.ko + ' K.O.s</small>' +
+  const slot = (f, place) => !f ? '' : '<div class="pod p' + place + '"><div class="pav" style="background:' + colOf2(f) + '">' + (place === 1 ? '<span class="crown">\u{1F451}</span>' : '') + '</div><b>' + esc(nameOf(f)) + '</b><small>' + tf('%d K.O.s', f.ko) + '</small>' +
     '<div class="pbl"><span>' + place + '</span></div><div class="pawd"><i>' + aw.get(f).ic + '</i><b>' + aw.get(f).t + '</b><em>' + aw.get(f).d + '</em></div></div>';
   const podium = '<div class="podium">' + slot(rank[1], 2) + slot(rank[0], 1) + slot(rank[2], 3) + '</div>';
-  const tmRow = cfg.teams ? '<div class="rme"><b>Team score:</b> Blue ' + teamKo(0) + ' – Red ' + teamKo(1) + (matchOver ? (teamKo(0) > teamKo(1) ? ' · your team won!' : teamKo(0) < teamKo(1) ? ' · enemy team won' : ' · draw') : '') + '</div>' : '';
+  const tmRes = !matchOver ? '' : teamKo(0) > teamKo(1) ? ' · ' + t('your team won!') : teamKo(0) < teamKo(1) ? ' · ' + t('enemy team won') : ' · ' + t('draw');
+  const tmRow = cfg.teams ? '<div class="rme"><b>' + t('Team score:') + '</b> ' + tf('Blue %d – Red %d', teamKo(0), teamKo(1)) + tmRes + '</div>' : '';
   el('res').innerHTML = tmRow + podium +
     '<div class="rhi">' + hi.map(([n, f]) => '<div><small>' + n + '</small><b>' + esc(nameOf(f)) + '</b><span>' + hv[n](f) + '</span></div>').join('') + '</div>' +
     '<table class="rt"><tr><th></th><th>Player</th><th>K.O.s</th><th>Deaths</th><th>K/D</th><th>Damage</th><th>Streak</th><th>Multi</th><th>Fav weapon</th><th>Award</th></tr>' +
-    rank.map((f, i) => '<tr' + (f.isPlayer ? ' class="me"' : '') + '><td>' + (i === 0 ? '\u{1F451}' : i + 1) + '</td><td>' + esc(nameOf(f)) + '</td><td><div class="bar"><i style="width:' + (f.ko / mx * 100) + '%"></i><b>' + f.ko + '</b></div></td><td>' + f.st.deaths + '</td><td>' + (f.st.deaths ? (f.ko / f.st.deaths).toFixed(1) : f.ko.toFixed(1)) + '</td><td>' + Math.round(f.st.dmg) + '</td><td>' + f.st.bestStreak + '</td><td>' + f.st.bestMulti + '</td><td>' + esc(fav(f)) + '</td><td>' + aw.get(f).ic + ' ' + aw.get(f).t + '</td></tr>').join('') + '</table>' +
-    '<div class="rme"><b>Your game:</b> ' + me.ko + ' K.O.s, ' + me.st.deaths + ' deaths, ' + Math.round(me.st.dmg) + ' damage dealt, ' + Math.round(me.st.taken) + ' taken, ' + me.st.heads + ' headshots · match time ' + dur + '</div>';
+    rank.map((f, i) => '<tr' + (f.isPlayer ? ' class="me"' : '') + '><td>' + (i === 0 ? '\u{1F451}' : i + 1) + '</td><td>' + esc(nameOf(f)) + '</td><td><div class="bar"><i style="width:' + (f.ko / mx * 100) + '%"></i><b>' + f.ko + '</b></div></td><td>' + f.st.deaths + '</td><td>' + (f.st.deaths ? (f.ko / f.st.deaths).toFixed(1) : f.ko.toFixed(1)) + '</td><td>' + Math.round(f.st.dmg) + '</td><td>' + f.st.bestStreak + '</td><td>' + f.st.bestMulti + '</td><td>' + esc(fav(f)) + '</td><td>' + aw.get(f).ic + ' ' + t(aw.get(f).t) + '</td></tr>').join('') + '</table>' +
+    '<div class="rme"><b>' + t('Your game:') + '</b> ' + tf('%d K.O.s, %d deaths, %d damage dealt, %d taken, %d headshots · match time %s', me.ko, me.st.deaths, Math.round(me.st.dmg), Math.round(me.st.taken), me.st.heads, dur) + '</div>';
 }
 let testSel = null, testPrev = null;
 const testPool = () => WCATS.flatMap(c => c[1]).filter(k => DROP_BASE[k] && WEAPONS[k]);
@@ -8613,7 +8627,7 @@ function updateMapList() {
   if (catFilter !== 'all' && !ok.some(id => MAPS[id].cat === catFilter)) catFilter = 'all';
   for (const [c] of CATS) { el('cat-' + c).classList.toggle('on', c === catFilter); el('cat-' + c).style.display = c === 'all' || ok.some(id => MAPS[id].cat === c) ? '' : 'none'; }
   for (const id of Object.keys(MAPS)) el('map-' + id).classList.toggle('hide', !mapAllowed(id) || (catFilter !== 'all' && MAPS[id].cat !== catFilter));
-  el('mapnote').textContent = ok.length + ' arenas in ' + MODES[cfg.mode].name;
+  el('mapnote').textContent = tf('%d arenas in %s', ok.length, t(MODES[cfg.mode].name));
   updateHero();
 }
 function applyCat(k) { catFilter = k; updateMapList(); }
@@ -8629,9 +8643,10 @@ function syncRules() {
   tog('inf-tog', cfg.inf);
   for (const k of DYN_KINDS) el('dyn-' + k).classList.toggle('on', (cfg.dyn || 'off') === k);
   const dm = MAPS[currentMap], sup = dyn.support, want = cfg.dyn || 'off';
-  el('dyn-note').textContent = want === 'off' ? 'The floor stays put.' : !dynMapAllowed(currentMap, dm) ? (dm ? dm.name : 'This arena') + ' always stays steady.'
-    : want === 'random' ? (sup.tile || sup.drift ? 'Picked from the kinds ' + (dm ? dm.name : 'this arena') + ' supports, new every match.' : (dm ? dm.name : 'This arena') + ' stays steady.')
-    : (want === 'drift' ? sup.drift : sup.tile) ? 'Starts gently over the first 4 seconds.' : (dm ? dm.name : 'This arena') + ' can\'t do ' + DYN_NAMES[want] + ': it stays steady.';
+  const dmN = dm ? t(dm.name) : t('This arena'), dmL = dm ? t(dm.name) : t('this arena');
+  el('dyn-note').textContent = want === 'off' ? 'The floor stays put.' : !dynMapAllowed(currentMap, dm) ? tf('%s always stays steady.', dmN)
+    : want === 'random' ? (sup.tile || sup.drift ? tf('Picked from the kinds %s supports, new every match.', dmL) : tf('%s stays steady.', dmN))
+    : (want === 'drift' ? sup.drift : sup.tile) ? 'Starts gently over the first 4 seconds.' : tf('%s can\'t do %s: it stays steady.', dmN, t(DYN_NAMES[want]));
 }
 for (const v of [0.15, 0.5, 1, 1.5]) el('grav-' + v).onclick = () => { cfg.grav = v; syncRules(); };
 for (const v of [0.5, 1, 1.5, 2, 3]) el('kb-' + v).onclick = () => { cfg.kb = v; syncRules(); };
@@ -8666,9 +8681,9 @@ el('confirm-yes').onclick = () => { el('confirm').style.display = 'none'; const 
 el('confirm-no').onclick = () => { el('confirm').style.display = 'none'; confirmYes = null; };
 function keyName(c) {
   if (!c) return '-';
-  if (c === 'None') return 'None';
-  if (c.startsWith('Mouse')) return ({ Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse 4 (side)', Mouse4: 'Mouse 5 (side)' })[c] || 'Mouse ' + (+c.slice(5) + 1);
-  if (c === 'WheelUp') return 'Wheel up'; if (c === 'WheelDown') return 'Wheel down';
+  if (c === 'None') return t('None');
+  if (c.startsWith('Mouse')) return t(({ Mouse0: 'Left click', Mouse1: 'Middle click', Mouse2: 'Right click', Mouse3: 'Mouse 4 (side)', Mouse4: 'Mouse 5 (side)' })[c]) || tf('Mouse %d', +c.slice(5) + 1);
+  if (c === 'WheelUp') return t('Wheel up'); if (c === 'WheelDown') return t('Wheel down');
   if (c.startsWith('Key')) return c.slice(3);
   if (c.startsWith('Digit')) return c.slice(5);
   return ({ Space: 'Space', ShiftLeft: 'L-Shift', ShiftRight: 'R-Shift', ControlLeft: 'L-Ctrl', ControlRight: 'R-Ctrl', AltLeft: 'L-Alt', AltRight: 'R-Alt', Tab: 'Tab', Backquote: '`', ArrowUp: 'Up', ArrowDown: 'Down', ArrowLeft: 'Left', ArrowRight: 'Right', CapsLock: 'Caps' })[c] || c.replace('Numpad', 'Num ');
@@ -8676,7 +8691,7 @@ function keyName(c) {
 function refRows() {
   const B = settings.binds, kn = a => keyName(B[a]);
   const mv = ['forward', 'left', 'back', 'right'].every(a => B[a] === DEF_BINDS[a]) ? 'WASD' : ['forward', 'left', 'back', 'right'].map(kn).join('/');
-  return [['Move', mv], ['Sprint', kn('sprint')], ['Jump', kn('jump')], ['Squat', kn('squat')], ['Attack', kn('attack')], ['Aim / scope', kn('aim') + ' or ' + kn('scope')], ['Weapons', kn('slot1') + ' ' + kn('slot2') + ' ' + kn('slot3')], ['Cycle weapon', kn('cycle') + ' / ' + kn('cycleBack')], ['Quick spatula', kn('spatula')], ['Shove', kn('shove')], ['Kick', kn('kick')], ['Reload', kn('reload')], ['Emotes', kn('taunt') + ' ' + kn('emote2') + ' ' + kn('emote3')], ['Dash (Ninja)', kn('dash')], ['Mute', 'M'], ['Pause', 'Esc']];
+  return [['Move', mv], ['Sprint', kn('sprint')], ['Jump', kn('jump')], ['Squat', kn('squat')], ['Attack', kn('attack')], ['Aim / scope', tf('%s or %s', kn('aim'), kn('scope'))], ['Weapons', kn('slot1') + ' ' + kn('slot2') + ' ' + kn('slot3')], ['Cycle weapon', kn('cycle') + ' / ' + kn('cycleBack')], ['Quick spatula', kn('spatula')], ['Shove', kn('shove')], ['Kick', kn('kick')], ['Reload', kn('reload')], ['Emotes', kn('taunt') + ' ' + kn('emote2') + ' ' + kn('emote3')], ['Dash (Ninja)', kn('dash')], ['Mute', 'M'], ['Pause', 'Esc']];
 }
 function refreshRef() {
   try { const pn = el('pz-new'); if (pn) pn.style.display = cfg.mode === 'pillars' && player.elim && !matchOver && !(net && net.started) ? 'block' : 'none'; } catch (e) { /* cosmetic */ }
@@ -8685,7 +8700,7 @@ function refreshRef() {
 function hintText() {
   const B = settings.binds, kn = a => keyName(B[a]);
   const mv = ['forward', 'left', 'back', 'right'].every(a => B[a] === DEF_BINDS[a]) ? 'WASD' : ['forward', 'left', 'back', 'right'].map(kn).join('/');
-  return mv + ' move · ' + kn('sprint') + ' sprint · ' + kn('jump') + ' jump · ' + kn('squat') + ' squat · ' + kn('attack') + ' attack · ' + kn('aim') + ' or ' + kn('scope') + ' aim · ' + kn('slot1') + ' ' + kn('slot2') + ' ' + kn('slot3') + ' weapons · ' + kn('spatula') + ' spatula · ' + kn('shove') + ' shove · ' + kn('kick') + ' kick · ' + kn('taunt') + ' taunt · M mute';
+  return tf('%s move · %s sprint · %s jump · %s squat · %s attack · %s or %s aim · %s %s %s weapons · %s spatula · %s shove · %s kick · %s taunt · M mute', mv, kn('sprint'), kn('jump'), kn('squat'), kn('attack'), kn('aim'), kn('scope'), kn('slot1'), kn('slot2'), kn('slot3'), kn('spatula'), kn('shove'), kn('kick'), kn('taunt'));
 }
 function renderBinds() {
   tog('multi-tog', settings.multi); tog('shared-tog', settings.shared);
@@ -8709,7 +8724,7 @@ function applyBind(code) {                              // the next key, mouse b
   const cur = second ? settings.binds2 : settings.binds, old = cur[a];
   const clash = settings.shared ? null : Object.keys(DEF_BINDS).find(k => k !== a && (settings.binds[k] === code || (settings.multi && settings.binds2[k] === code)));
   if (settings.multi || second) {                                   // two keys per action: no clashes unless sharing is allowed
-    if (clash) { toast('That\'s already used for ' + BIND_LABELS.find(x => x[0] === clash)[1].toLowerCase()); rebinding = null; renderBinds(); return; }
+    if (clash) { toast(tf('That\'s already used for %s', t(BIND_LABELS.find(x => x[0] === clash)[1].toLowerCase()))); rebinding = null; renderBinds(); return; }
     if (settings.binds[a] === code || settings.binds2[a] === code) { rebinding = null; renderBinds(); return; }
   } else if (clash) {                                               // one key per action: swap with whatever had it
     if (settings.binds[clash] === code) settings.binds[clash] = old || 'None'; else if (settings.binds2[clash] === code) settings.binds2[clash] = old;
@@ -8800,7 +8815,7 @@ document.addEventListener('keydown', e => {
 function titleState() {                                              // Play is always there; the big Sign up button only shows until you have an account
   const inn = !!acct.user;
   el('tt-auth').style.display = inn ? 'none' : 'flex'; el('tt-out').style.display = inn ? '' : 'none';
-  el('tt-hi').textContent = inn ? 'Welcome back, ' + (settings.name || acct.user) + '!' : '';
+  el('tt-hi').textContent = inn ? tf('Welcome back, %s!', settings.name || acct.user) : '';
 }
 function startGame() {
   if (!acct.user && !acct.guest) { acct.guest = true; if (!settings.name) settings.name = 'Guest' + (100 + Math.floor(Math.random() * 900)); }
@@ -8817,22 +8832,22 @@ let auMode = 'signup', auBusy = false;
 const guestWorth = () => stats.matches > 0 || stats.kos > 0 || wallet.coins !== 500 || wallet.skins.length > 1 + FREE_SKINS.length;
 function legacyBlob() { try { const t = localStorage.getItem('wobbleArena'); const d = t ? JSON.parse(t) : null; return d && typeof d === 'object' ? d : null; } catch (e) { return null; } }
 function carrySource() {                                             // the progress a new account can start with
-  if (acct.guest && guestWorth()) return { d: snapshot(), t: 'Keep what I earned this session (' + wallet.coins + ' coins, ' + wallet.skins.length + ' outfits)' };
-  const d = legacyBlob(); if (d && d.wallet) return { d, t: 'Bring over the progress saved on this device (' + ((d.wallet && d.wallet.coins) | 0) + ' coins, ' + ((d.wallet && d.wallet.skins ? d.wallet.skins.length : 1)) + ' outfits)' };
+  if (acct.guest && guestWorth()) return { d: snapshot(), t: tf('Keep what I earned this session (%d coins, %d outfits)', wallet.coins, wallet.skins.length) };
+  const d = legacyBlob(); if (d && d.wallet) return { d, t: tf('Bring over the progress saved on this device (%d coins, %d outfits)', (d.wallet && d.wallet.coins) | 0, (d.wallet && d.wallet.skins ? d.wallet.skins.length : 1)) };
   return null;
 }
 function openAuth(mode, why) {
   auMode = mode; auBusy = false; const ov = el('authov'); ov.style.display = 'flex';
-  const T = { signup: ['Save your progress', 'Free. Your coins, outfits, controls and stats are saved to it, so they follow you to any device.'], login: ['Log in', 'Welcome back! Your progress loads as soon as you\'re in.'], reset: ['Reset your password', 'Type your username (or email), the recovery code you were shown when you signed up, and a new password.'] }[mode] || ['Save your progress', ''];
+  const T = { signup: ['Pick a name', 'Just a name, no password needed. Your coins, outfits and stats are saved to it. Names nobody uses for 30 days are freed.'], login: ['Log in', 'Welcome back! Your progress loads as soon as you\'re in.'], reset: ['Reset your password', 'Type your username (or email), the recovery code you were shown when you signed up, and a new password.'] }[mode] || ['Save your progress', ''];
   el('au-title').textContent = T[0]; el('au-sub').textContent = why || T[1];
   const su = mode === 'signup', rs = mode === 'reset';
   el('au-form').style.display = 'block'; el('au-rec').style.display = 'none';
-  el('au-f-email').style.display = su ? 'block' : 'none'; el('au-f-code').style.display = rs ? 'block' : 'none';
-  el('au-userl').textContent = su ? 'Username (3 to 16 letters, numbers or _)' : 'Username or email'; el('au-passl').textContent = rs ? 'New password (6 to 72 characters)' : 'Password';
+  el('au-f-email').style.display = 'none'; el('au-f-pass').style.display = su ? 'none' : 'block'; el('au-f-code').style.display = rs ? 'block' : 'none';
+  el('au-userl').textContent = su ? 'Your name (3 to 16 letters, numbers or _)' : 'Username or email'; el('au-passl').textContent = rs ? 'New password (6 to 72 characters)' : 'Password';
   el('au-pass').autocomplete = su || rs ? 'new-password' : 'current-password';
-  el('au-go').textContent = su ? 'Save progress' : rs ? 'Reset password' : 'Log in';
+  el('au-go').textContent = su ? 'Play' : rs ? 'Reset password' : 'Log in';
   const cs = su ? carrySource() : null; el('au-f-carry').style.display = cs ? 'flex' : 'none'; if (cs) { el('au-carryt').textContent = cs.t; el('au-carry').checked = true; }
-  el('au-alt').style.display = ''; el('au-alt').textContent = su ? 'I already saved before' : rs ? 'Back to log in' : 'Save your progress instead';
+  el('au-alt').style.display = ''; el('au-alt').textContent = su ? 'I have a password' : rs ? 'Back to log in' : 'Pick a name instead';
   el('au-forgot').style.display = mode === 'login' ? 'inline-block' : 'none'; el('au-close').style.display = '';
   el('au-err').textContent = ''; el('au-pass').value = ''; el('au-pass').type = el('au-show').checked ? 'text' : 'password';
   setTimeout(() => { try { el('au-user').focus(); } catch (e) { /* x */ } }, 50);
@@ -8867,15 +8882,14 @@ function authSuccess(r, carried) {                                   // we are i
 el('au-form').onsubmit = async e => {
   e.preventDefault(); if (auBusy) return;
   const su = auMode === 'signup', rs = auMode === 'reset', id = String(el('au-user').value || '').trim(), em = String(el('au-email').value || '').trim(), pw = String(el('au-pass').value || ''), code = String(el('au-code-in').value || '').trim(), err = t => { el('au-err').textContent = t; };
-  const label = su ? 'Save progress' : rs ? 'Reset password' : 'Log in';
+  const label = su ? 'Play' : rs ? 'Reset password' : 'Log in';
   if (!id) return err(su ? 'Pick a username.' : 'Type your username or email.');
   if (su && !/^[A-Za-z0-9_]{3,16}$/.test(id)) return err('Usernames are 3 to 16 letters, numbers or underscores.');
-  if (su && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return err('Type your email (it\'s only used for your account).');
   if (rs && !code) return err('Type your recovery code.');
-  if (!pw) return err(rs ? 'Type a new password.' : 'Type your password.'); if ((su || rs) && pw.length < 6) return err('Passwords need 6 to 72 characters.');
-  auBusy = true; el('au-go').disabled = true; err(''); el('au-go').textContent = su ? 'Creating…' : rs ? 'Resetting…' : 'Logging in…';
+  if (!su && !pw) return err(rs ? 'Type a new password.' : 'Type your password.'); if (rs && pw.length < 6) return err('Passwords need 6 to 72 characters.');
+  auBusy = true; el('au-go').disabled = true; err(''); el('au-go').textContent = su ? 'Picking…' : rs ? 'Resetting…' : 'Logging in…';
   let r;
-  if (su) { const cs = el('au-carry').checked ? carrySource() : null; const data = cs ? cs.d : undefined; if (data && !(data.set && data.set.name && !/^Guest\d{3}$/.test(data.set.name))) { data.set = Object.assign({}, data.set || {}, { name: id.slice(0, 12) }); } r = await api('POST', '/api/signup', { username: id, email: em, password: pw, data }); }
+  if (su) { const cs = el('au-carry').checked ? carrySource() : null; const data = cs ? cs.d : undefined; if (data && !(data.set && data.set.name && !/^Guest\d{3}$/.test(data.set.name))) { data.set = Object.assign({}, data.set || {}, { name: id.slice(0, 12) }); } r = await api('POST', '/api/claim', { name: id, data }); }
   else if (rs) r = await api('POST', '/api/reset', { id, code, password: pw });
   else r = await api('POST', '/api/login', { id, password: pw });
   auBusy = false; el('au-go').disabled = false; el('au-go').textContent = label;
@@ -8890,7 +8904,7 @@ async function doLogout() {
     finish();
   };
   const finish = async () => { try { await api('POST', '/api/logout', {}, acct.token, 4000); } catch (e) { /* offline is fine */ } try { localStorage.removeItem('wobbleAuth'); rmSave(); sessionStorage.removeItem('waSkip'); } catch (e) { /* x */ } location.reload(); };
-  askConfirm('Log out of ' + acct.user + '? Everything is saved to your account, so you can log back in any time.', go);
+  askConfirm(acct.nopw ? tf('Log out of %s? This name has no password, so you can\'t log back in on this device later. Log out anyway?', acct.user) : tf('Log out of %s? Everything is saved to your account, so you can log back in any time.', acct.user), go);
 }
 el('tt-out').onclick = doLogout;
 function acctSyncText() {
@@ -8916,7 +8930,7 @@ el('sc-rec').onclick = async () => {
 };
 el('sc-delete').onclick = () => {
   const m = el('sc-msg2'), pw = el('sc-del').value; if (!pw) { m.textContent = 'Type your password to confirm.'; m.className = 'scmsg bad'; return; }
-  askConfirm('Delete the account ' + acct.user + ' for good? Your coins, outfits and stats will be gone.', async () => {
+  askConfirm(tf('Delete the account %s for good? Your coins, outfits and stats will be gone.', acct.user), async () => {
     m.textContent = 'Deleting…'; m.className = 'scmsg good'; const r = await api('POST', '/api/delete', { password: pw }, acct.token);
     if (!r.ok) { m.textContent = r.msg || 'Couldn\'t delete your account. Try again in a moment.'; m.className = 'scmsg bad'; return; }
     try { localStorage.removeItem('wobbleAuth'); rmSave(); } catch (e) { /* x */ } location.reload();
@@ -8932,7 +8946,7 @@ async function verifyLogin() {                                       // at start
   if (r.err === 'net') { if (acct.dirty) setTimeout(() => cloudPush(), 8000); return; }                 // offline: carry on with this device's copy
   if (r.status === 401) { authExpired(); return; }
   if (!r.ok) return;
-  acct.email = r.user.email; authKeep();
+  acct.email = r.user.email; acct.nopw = r.hasPassword === false; authKeep();
   if (r.data && (r.t | 0) > (acct.t | 0)) { try { localStorage.setItem('wobbleArena', JSON.stringify(r.data)); acct.t = r.t; acct.dirty = false; authKeep(); sessionStorage.setItem('waSkip', '1'); } catch (e) { /* x */ } location.reload(); return; }
   if (acct.dirty) cloudPush();
 }
@@ -8992,7 +9006,7 @@ function applyLook() {
 }
 el('swatches').innerHTML = SWATCH.map((c, i) => '<button class="sw" id="sw' + i + '" style="background:#' + c.toString(16).padStart(6, '0') + '"></button>').join('');
 el('skins').innerHTML = ['none', ...SKIN_KEYS].map(k => '<button class="skinb" id="skin-' + k + '"><span>' + (SKINS[k] ? SKINS[k].icon : '\u{1F9CD}') + '</span>' + (SKINS[k] ? SKINS[k].name : 'Classic') + '</button>').join('');
-['none', ...SKIN_KEYS].forEach(k => { el('skin-' + k).onclick = () => { look.skin = k; applyLook(); save(); toast(k === 'none' ? 'Classic wobbler' : SKINS[k].name + ' outfit!'); }; });
+['none', ...SKIN_KEYS].forEach(k => { el('skin-' + k).onclick = () => { look.skin = k; applyLook(); save(); toast(k === 'none' ? 'Classic wobbler' : tf('%s outfit!', t(SKINS[k].name))); }; });
 el('hats').innerHTML = HATS.map(h => '<button class="hatb" id="hat-' + h + '">' + HAT_LABEL[h] + '</button>').join('');
 SWATCH.forEach((c, i) => { el('sw' + i).onclick = () => { look.color = c; applyLook(); save(); }; });
 HATS.forEach(h => { el('hat-' + h).onclick = () => { look.hat = h; applyLook(); save(); }; });
@@ -9161,13 +9175,13 @@ const makePeer = id => { const o = { config: { iceServers: NET_ICE }, debug: 0 }
 function netErrText(e) {
   const t = e && e.type;
   if (t === 'peer-unavailable') return 'No room with that code. Check the letters, and make sure the host still has the room open.';
-  if (t === 'network' || t === 'socket-error' || t === 'socket-closed' || t === 'server-error') return 'Can\'t reach the room server (' + t + '). A school or work network is probably blocking it. Try a phone hotspot, or press "Why can\'t I connect?" below.';
+  if (t === 'network' || t === 'socket-error' || t === 'socket-closed' || t === 'server-error') return tf('Can\'t reach the room server (%s). A school or work network is probably blocking it. Try a phone hotspot, or press "Why can\'t I connect?" below.', t);
   if (t === 'browser-incompatible') return 'This browser can\'t do online play (no WebRTC). Try Chrome or Edge.';
   if (t === 'webrtc') return 'The direct link between you two failed (webrtc). Try again, or use a phone hotspot.';
   return 'Connection problem (' + (t || 'unknown') + '). Try again.';
 }
 function netDiag() {                               // works out which step is failing and says so in plain words
-  const out = []; const show = () => netStatus(out.join('  \u2022  '));
+  const out = []; const show = () => netStatus(out.map(t).join('  \u2022  '));
   out.push(window.Peer ? 'Connection library: loaded' : 'Connection library: not loaded yet'); show();
   const sockTest = (label, url, ms) => new Promise(res => { let done = false, ws; const fin = r => { if (done) return; done = true; try { ws.close(); } catch (e) { /* x */ } out.push(label + ': ' + r); show(); res(); };
     try { ws = new WebSocket(url); ws.onopen = () => fin('OK'); ws.onerror = () => fin('BLOCKED'); setTimeout(() => fin('timed out (probably blocked)'), ms); } catch (e) { fin('failed'); } });
@@ -9194,9 +9208,9 @@ const BHV_NAME = { dummy: 'Dummies', brawl: 'Brawlers' }, DIFF_NAME = { easy: 'E
 function roomOpts() { const pil = netMode(cfg.mode) === 'pillars', c = cfg.count; return { max: pil ? 8 : c > 0 ? Math.max(2, Math.min(8, c + 1)) : 4, bots: pil || c > 0, lim: !MODES[netMode(cfg.mode)].ladder && [0, 5, 10, 20].includes(cfg.limit) ? cfg.limit : 0, bhv: cfg.behav === 'dummy' ? 'dummy' : 'brawl' }; }
 function roomSumParts() {
   const sc = netMode(cfg.mode), self = MODES[sc].lives || MODES[sc].ladder || sc === 'pillars', diff = net.host ? cfg.diff : (net.hdiff || 'normal'), bhv = net.bhv || 'brawl';
-  return [['Fighters', 'up to ' + net.optMax], ['Bots', net.optBots ? BHV_NAME[bhv] + (bhv === 'brawl' ? ', ' + DIFF_NAME[diff] : '') : 'none (players only)'], ['Ends', self ? 'by itself' : net.optLim ? 'first to ' + net.optLim : 'free play']];
+  return [['Fighters', tf('up to %d', net.optMax)], ['Bots', net.optBots ? (bhv === 'brawl' ? tf('%s, %s', t(BHV_NAME[bhv]), t(DIFF_NAME[diff])) : t(BHV_NAME[bhv])) : t('none (players only)')], ['Ends', self ? t('by itself') : net.optLim ? tf('first to %d', net.optLim) : t('free play')]];
 }
-const roomSumText = () => roomSumParts().map(([k, v]) => k.toLowerCase() === 'ends' ? 'ends ' + v : v + (k === 'Fighters' ? ' fighters' : k === 'Bots' ? ' bots' : '')).join(', ');
+const roomSumText = () => roomSumParts().map(([k, v]) => k.toLowerCase() === 'ends' ? tf('ends %s', v) : k === 'Fighters' ? tf('%s fighters', v) : k === 'Bots' ? tf('%s bots', v) : v).join(', ');
 const roomSumHtml = () => roomSumParts().map(([k, v]) => '<div><span>' + k + '</span><b>' + escH(v) + '</b></div>').join('');
 function applyRoomOpts() { if (!net || !net.host || net.started) return; const o = roomOpts(); net.optMax = o.max; net.optBots = o.bots; net.optLim = o.lim; net.bhv = o.bhv; netAllConns(rosterMsg()); netShowLobby(); }
 function rosterMsg() { const sc = netMode(cfg.mode), mp = MAPS[currentMap]; return { t: 'roster', roster: net.roster, max: net.optMax, bots: net.optBots, lim: net.optLim, bhv: net.bhv || 'brawl', diff: net.host ? cfg.diff : undefined, modeName: modeLabel(sc), map: mp ? mp.name : '' }; }
@@ -9216,16 +9230,16 @@ function netShowLobby() {
   el('on-chips').innerHTML = [modeName, mapName, pubr ? 'Public' : 'Private'].filter((t, i, a) => t && a.indexOf(t) === i).map(t => '<i>' + escH(t) + '</i>').join('');
   const list = st && net.slots ? net.slots.map((r, i) => Object.assign({}, r, { id: i, bot: net.slotKind[i] === 'bot', empty: net.slotKind[i] === 'empty' })).filter(r => !r.empty) : net.roster;
   const cap = st && net.slots ? net.slots.length : net.optMax, nHum = humanCount();
-  const seat = r => { const th = classThumb(clsOf(r.cls), SKINS[r.skin] ? r.skin : 'none', r.hat, r.color); return '<div class="seat' + (r.id === net.id ? ' me' : '') + '">' + (th ? '<img class="av avc" alt="" src="' + th + '">' : '<i class="av" style="background:#' + (SKINS[r.skin] ? SKINS[r.skin].col : r.color).toString(16).padStart(6, '0') + '"></i>') + '<span class="t"><b>' + escH(r.name) + '</b><small>' + (r.id === 0 ? 'Host' : r.bot ? 'Bot' : 'Player') + (r.id === net.id ? ' · you' : '') + ' · ' + CLASSES[clsOf(r.cls)].name + '</small></span></div>'; };
+  const seat = r => { const th = classThumb(clsOf(r.cls), SKINS[r.skin] ? r.skin : 'none', r.hat, r.color); return '<div class="seat' + (r.id === net.id ? ' me' : '') + '">' + (th ? '<img class="av avc" alt="" src="' + th + '">' : '<i class="av" style="background:#' + (SKINS[r.skin] ? SKINS[r.skin].col : r.color).toString(16).padStart(6, '0') + '"></i>') + '<span class="t"><b>' + escH(r.name) + '</b><small>' + (r.id === 0 ? t('Host') : r.bot ? t('Bot') : t('Player')) + (r.id === net.id ? ' · ' + t('you') : '') + ' · ' + t(CLASSES[clsOf(r.cls)].name) + '</small></span></div>'; };
   let html = list.map(seat).join('');
   if (!st) for (let i = list.length; i < cap; i++) html += '<div class="seat empty"><i class="av"></i><span class="t"><b>' + (net.optBots ? 'Bot' : 'Open seat') + '</b><small>' + (net.optBots ? 'a player replaces it' : 'waiting for a player') + '</small></span></div>';
   el('on-roster').innerHTML = html || '<div class="seat empty"><span class="t"><b>Waiting…</b></span></div>';
-  el('on-count2').textContent = nHum + (cap ? ' of ' + cap : '') + ' ' + (nHum === 1 ? 'player' : 'players');
+  el('on-count2').textContent = cap ? (nHum === 1 ? tf('%d of %d player', nHum, cap) : tf('%d of %d players', nHum, cap)) : (nHum === 1 ? tf('%d player', nHum) : tf('%d players', nHum));
   const setup = host && !st;
   el('on-opts').style.display = setup ? 'block' : 'none';
   el('on-start').style.display = setup ? 'block' : 'none';
   const wait = el('on-info'); wait.style.display = !host && !st ? 'block' : 'none';
-  wait.textContent = 'Waiting for the host to start the match. ' + roomSumText() + '.';
+  wait.textContent = tf('Waiting for the host to start the match. %s.', roomSumText());
   el('on-sum').innerHTML = roomSumHtml();
   el('on-go').style.display = st ? 'block' : 'none';
   el('netinfo').style.display = st ? 'block' : 'none';
@@ -9233,9 +9247,9 @@ function netShowLobby() {
 }
 function netInfoText() {
   if (!net) return;
-  el('nb-info').textContent = (net.started ? net.slotKind.filter(k => k === 'human').length + ' players' : net.roster.length + ' in the lobby') + (!net.host && net.ping !== undefined ? ' \u00b7 ' + net.ping + ' ms' : '');
+  el('nb-info').textContent = (net.started ? tf('%d players', net.slotKind.filter(k => k === 'human').length) : tf('%d in the lobby', net.roster.length)) + (!net.host && net.ping !== undefined ? tf(' \u00b7 %s ms', net.ping) : '');
   if (!net.started) return;
-  el('netinfo').textContent = (net.pub ? net.roomName : 'Room code ' + net.code) + ' \u00b7 ' + net.slotKind.filter(k => k === 'human').length + ' players' + (!net.host && net.ping !== undefined ? ' \u00b7 ' + net.ping + ' ms' : '') + (net.limit ? ' \u00b7 first to ' + net.limit : '');
+  el('netinfo').textContent = (net.pub ? net.roomName : tf('Room code %s', net.code)) + tf(' \u00b7 %d players', net.slotKind.filter(k => k === 'human').length) + (!net.host && net.ping !== undefined ? tf(' \u00b7 %s ms', net.ping) : '') + (net.limit ? tf(' \u00b7 first to %s', net.limit) : '');
 }
 /* ---- the game server: one WebSocket to our own server (it keeps the room list and passes messages along). With no server reachable the game falls back to direct peer-to-peer ---- */
 const SERVER_URL = '';        // your server, like 'wss://wobble.example.com/ws'. Leave empty when the server also serves this page (it is found by itself)
@@ -9251,9 +9265,9 @@ function srvUrls() {
 }
 function netPill() {                                                  // small status light on the Online pages
   const b = el('on-pill'); if (!b) return;
-  const t = srvOk === true ? 'Online' + (srvOnline > 1 ? ' · ' + srvOnline + ' playing' : '') : srvOk === false ? 'Direct mode' : 'Connecting…';
+  const t = srvOk === true ? (srvOnline > 1 ? tf('Online · %d playing', srvOnline) : 'Online') : srvOk === false ? 'Direct mode' : 'Connecting…';
   b.textContent = t; b.className = 'pill ' + (srvOk === true ? 'good' : srvOk === false ? 'warn' : '');
-  const hp = el('home-pill'); if (hp) { hp.textContent = srvOk === true ? (srvOnline > 1 ? srvOnline + ' online' : 'Online') : ''; hp.style.display = srvOk === true ? '' : 'none'; }
+  const hp = el('home-pill'); if (hp) { hp.textContent = srvOk === true ? (srvOnline > 1 ? tf('%d online', srvOnline) : 'Online') : ''; hp.style.display = srvOk === true ? '' : 'none'; }
   const ow = el('on-who'); if (ow) ow.textContent = settings.name || 'Player';
   b.title = srvOk === true ? 'Connected to the game server' : srvOk === false ? 'No game server found, so the game connects players directly (peer-to-peer)' : 'Looking for the game server';
 }
@@ -9394,8 +9408,8 @@ function hostRecv(c, m) {
       c.send({ t: 'start', slots: net.slots, map: net.map, custom: cfg.custom, limit: net.limit, rules: Object.assign(ruleSnap(), pil && !matchOver ? { pt: Math.round(pil.t) } : {}) });
       c.send({ t: 'crates', list: pickups.filter(p => p.cid).map(p => ({ cid: p.cid, key: p.key, spot: p.spot })) });
       netAllConns({ t: 'slot', slot: id, kind: 'human', info }, c);
-      toast(info.name + ' joined, a bot made room!');
-    } else { netAllConns(rosterMsg()); netStatus(info.name + ' joined!'); }
+      toast(tf('%s joined, a bot made room!', info.name));
+    } else { netAllConns(rosterMsg()); netStatus(tf('%s joined!', info.name)); }
     netShowLobby(); return;
   }
   if (c._nid === undefined) return;
@@ -9433,7 +9447,7 @@ function hostDrop(c) {
     else { netRemoveGhost(id); net.slotKind[id] = 'empty'; net.slots[id] = { kind: 'empty', id, name: '', skin: 'none', hat: 'none', color: 0 }; netAllConns({ t: 'slot', slot: id, kind: 'empty', info: net.slots[id] }); }
   }
   else netAllConns(rosterMsg());
-  if (r) toast(r.name + ' left' + (net.started && net.optBots ? ', a bot took their place' : '')); netShowLobby();
+  if (r) toast(net.started && net.optBots ? tf('%s left, a bot took their place', r.name) : tf('%s left', r.name)); netShowLobby();
 }
 function netJoinPeer(code, jo) {
   jo = jo || {};
@@ -9452,7 +9466,7 @@ function netJoinPeer(code, jo) {
         const pc = c.peerConnection;
         if (done) { clearInterval(poll); return; }
         if (pc && pc.iceConnectionState === 'failed') { clearInterval(poll); netStatus('The direct link to the host failed (ICE failed). The network is blocking device-to-device connections. Try a phone hotspot on one of you, or put both devices on the same Wi-Fi.'); return; }
-        if (pc) netStatus('Linking up… (' + pc.iceConnectionState + ')');
+        if (pc) netStatus(tf('Linking up… (%s)', pc.iceConnectionState));
       }, 1000);
       setTimeout(() => clearInterval(poll), 40000);
       c.on('open', () => {
@@ -9472,7 +9486,7 @@ function clientRecv(m) {
   if (!net) return;
   if (net.id < 0 && !['welcome', 'full', 'badver', 'kick'].includes(m.t)) return;          // nothing counts until the host has welcomed me
   if (m.t === 'welcome') { net.id = m.id; if (m.name) net.roomName = String(m.name).slice(0, 24); net.pub = !!m.pub; netShowLobby(); return; }
-  if (m.t === 'roster') { if (!Array.isArray(m.roster)) return; net.roster = m.roster.slice(0, NET_MAX).map(r => Object.assign({ id: r && r.id | 0 }, cleanInfo(r || {}, r && r.id | 0))); if (net.migrated && m.roster[0]) { toast(m.roster[0].name + ' is now the host.'); netStatus(m.roster[0].name + ' is now the host.'); net.migrated = null; } if (m.max) { net.optMax = m.max | 0; net.optBots = !!m.bots; net.optLim = m.lim | 0; net.bhv = m.bhv === 'dummy' ? 'dummy' : 'brawl'; net.hdiff = DIFFS[m.diff] ? m.diff : 'normal'; net.hinfo = { modeName: String(m.modeName || '').slice(0, 24), map: String(m.map || '').slice(0, 24) }; } netShowLobby(); return; }
+  if (m.t === 'roster') { if (!Array.isArray(m.roster)) return; net.roster = m.roster.slice(0, NET_MAX).map(r => Object.assign({ id: r && r.id | 0 }, cleanInfo(r || {}, r && r.id | 0))); if (net.migrated && m.roster[0]) { toast(tf('%s is now the host.', m.roster[0].name)); netStatus(tf('%s is now the host.', m.roster[0].name)); net.migrated = null; } if (m.max) { net.optMax = m.max | 0; net.optBots = !!m.bots; net.optLim = m.lim | 0; net.bhv = m.bhv === 'dummy' ? 'dummy' : 'brawl'; net.hdiff = DIFFS[m.diff] ? m.diff : 'normal'; net.hinfo = { modeName: String(m.modeName || '').slice(0, 24), map: String(m.map || '').slice(0, 24) }; } netShowLobby(); return; }
   if (m.t === 'full') { const q = net.quick, tr = net.tries + 1, pre = net.prevCfg; netLeave('That room is full.'); if (q && tr < 3) setTimeout(() => netQuickPlay(q, tr, pre), 400); return; }
   if (m.t === 'badver') { netLeave('That room is running a different version of the game. Refresh the page to get the newest one.'); return; }
   if (m.t === 'kick') { netLeave(m.msg || 'You were removed from the room.'); showPage('online'); return; }
@@ -9512,7 +9526,7 @@ function netSlotChanged(slot, kind, info) {                // everyone else: tha
   if (g && kind === 'empty') { netRemoveGhost(slot); netShowLobby(); return; }
   if (g && g.left) { g.left = false; g.root.visible = true; g.arm.visible = true; g.dead = false; g.hp = hpOf(g); g.ns = null; g.weapon = null; ghostEquip(g, 'spatula'); }
   if (g) { g.setClass(info.cls); g.botName = info.name; g.setHat(info.hat); g.setSkin(info.skin); g.botColor = SKINS[info.skin] ? SKINS[info.skin].col : info.color; g.recolor(g.botColor, false); }
-  netShowLobby(); toast(info.name + (kind === 'human' ? ' joined!' : ' (bot) is back'));
+  netShowLobby(); toast(kind === 'human' ? tf('%s joined!', info.name) : tf('%s (bot) is back', info.name));
 }
 const netMode = m => MODES[m] && !MODES[m].teams && m !== 'sandbox' && m !== 'construction' ? m : 'classic';          // team modes, Sandbox and Construction are not online yet
 function cfgReal() { return SHOW.on && SHOW.saved ? Object.assign({}, cfg, SHOW.saved.cfg) : cfg; }      // the player's own settings, not the menu battle's
@@ -9575,7 +9589,7 @@ function netLeave(msg) {
   try { if (!SHOW.on) setBotCfg({ count: MODE_DEFAULTS.count, hp: MODE_DEFAULTS.hp, grav: 1, kb: 1, inf: false, crate: 'normal' }); else if (SHOW.saved) Object.assign(SHOW.saved.cfg, { count: MODE_DEFAULTS.count, hp: MODE_DEFAULTS.hp, grav: 1, kb: 1, inf: false, crate: 'normal' }); } catch (e) { /* x */ }     // back to normal rules, 3 bots
 }
 function netMigrate(me) {                                            // the host left but the room lives on: the longest-standing player (me = true) takes over, everybody else re-joins them
-  const o = net, oldHost = ((o.roster || []).find(r => r.id === 0) || {}).name || 'The host';
+  const o = net, oldHost = ((o.roster || []).find(r => r.id === 0) || {}).name || t('The host');
   netUnlock(); clearInterval(o.pingTimer); if (o.rvTimer) clearTimeout(o.rvTimer);
   const wasMatch = !!o.started; net = null;
   netResetLocal(o, me);                                              // the new host keeps the room's rules and level; the others go back to their own
@@ -9583,13 +9597,13 @@ function netMigrate(me) {                                            // the host
   const nn = { srv: true, peer: null, started: false, ghosts: {}, ai: {}, slotKind: ['human', 'bot', 'bot', 'bot'], slots: null, sendT: 0, cid: 0, optMax: o.optMax, optBots: o.optBots, optLim: o.optLim, bhv: o.bhv, hdiff: o.hdiff, limit: 0, pub: o.pub, roomName: o.roomName, code: o.code, prevCfg: o.prevCfg, rv: new Set(), rvList: [], rvTotal: 0, migrated: oldHost };
   if (me) {
     net = Object.assign(nn, { host: true, id: 0, vc: {}, conns: {}, roster: [Object.assign({ id: 0 }, cleanInfo(myInfo(), 0))], out: hostOut, lastInfo: '' });
-    toast(oldHost + ' left. You\'re now the host!'); netStatus('You\'re now the host. ' + (o.pub ? 'The room is still open to everyone.' : 'The room code is still ' + o.code + '.'));
+    toast(tf('%s left. You\'re now the host!', oldHost)); netStatus(o.pub ? t('You\'re now the host. The room is still open to everyone.') : tf('You\'re now the host. The room code is still %s.', o.code));
   } else {
     const c = { open: true, send: x => srvTx({ op: 'tohost', m: x }), close: () => srvTx({ op: 'leave' }) };
     net = Object.assign(nn, { host: false, id: -1, conn: c, roster: [] });
     net.pingTimer = setInterval(() => net && net.conn && net.conn.open && netSend({ t: 'ping', ts: performance.now() }), 1500);
     net.out = x => c.send(x);
-    c.send(Object.assign({ t: 'hello', build: NET_BUILD, proto: NET_PROTO }, myInfo())); toast(oldHost + ' left. Finding the new host\u2026'); netStatus('The host left. Joining the new host\u2026');
+    c.send(Object.assign({ t: 'hello', build: NET_BUILD, proto: NET_PROTO }, myInfo())); toast(tf('%s left. Finding the new host\u2026', oldHost)); netStatus('The host left. Joining the new host\u2026');
   }
   el('netinfo').style.display = 'none'; netShowLobby(); netPushInfo();
 }
@@ -9662,7 +9676,7 @@ function chatTick() {
 function chatSend(txt) {
   txt = String(txt || '').trim().slice(0, 140); if (!txt || !net || !net.started) return;
   const cm = /^\/(un)?mute\s+(.+)$/i.exec(txt);
-  if (cm) { const nm = cm[2].trim().toLowerCase(); if (cm[1]) chatMuted.delete(nm); else chatMuted.add(nm); chatAdd('', (cm[1] ? 'Unmuted ' : 'Muted ') + cm[2].trim() + ' (only for you)', false, true); return; }
+  if (cm) { const nm = cm[2].trim().toLowerCase(); if (cm[1]) chatMuted.delete(nm); else chatMuted.add(nm); chatAdd('', cm[1] ? tf('Unmuted %s (only for you)', cm[2].trim()) : tf('Muted %s (only for you)', cm[2].trim()), false, true); return; }
   const now = performance.now(); if (now - chatLast < 500) return; chatLast = now;
   chatAdd(settings.name || 'You', txt, true); netSend({ t: 'chat', id: net.id, txt });
 }
@@ -9759,16 +9773,16 @@ function renderRooms(list, msg) {
   const box = el('on-rooms'); if (!box) return;
   const cn = el('on-count');
   if (msg) { box.innerHTML = '<div class="rm0">' + escH(msg) + '</div>'; if (cn) cn.textContent = msg; return; }
-  if (cn) cn.textContent = list.length ? list.length + (list.length === 1 ? ' room' : ' rooms') + ' · ' + list.reduce((a, r) => a + (r.n | 0), 0) + ' playing' : 'Nobody has opened a room yet';
+  if (cn) cn.textContent = list.length ? (list.length === 1 ? tf('%d room · %d playing', 1, list.reduce((a, r) => a + (r.n | 0), 0)) : tf('%d rooms · %d playing', list.length, list.reduce((a, r) => a + (r.n | 0), 0))) : t('Nobody has opened a room yet');
   if (!list.length) { box.innerHTML = '<div class="rm0 empty"><b>No open rooms right now</b><span>Be the first: start a Quick play game and other players will see it here.</span><button class="opt" data-go="onquick">Quick play</button></div>'; }
   else box.innerHTML = list.map(r => { const full = r.n >= r.max, bad = r.build && r.build !== NET_BUILD;
-    return '<div class="rm"><div class="rmi"><em class="rmode">' + escH(r.modeName) + '</em><b>' + escH(r.name) + '</b><small>Host: ' + escH(r.host) + (r.map ? ' · ' + escH(r.map) : '') + (r.started ? ' · playing' : ' · in the lobby') + '</small></div><div class="rmn">' + (r.n | 0) + '/' + (r.max | 0) + '</div><button class="opt" data-code="' + escH(r.code) + '"' + (full || bad ? ' disabled' : '') + '>' + (bad ? 'OLD VERSION' : full ? 'FULL' : 'JOIN') + '</button></div>'; }).join('');
+    return '<div class="rm"><div class="rmi"><em class="rmode">' + escH(r.modeName) + '</em><b>' + escH(r.name) + '</b><small>' + tf('Host: %s', escH(r.host)) + (r.map ? ' · ' + escH(r.map) : '') + (r.started ? ' · ' + t('playing') : ' · ' + t('in the lobby')) + '</small></div><div class="rmn">' + (r.n | 0) + '/' + (r.max | 0) + '</div><button class="opt" data-code="' + escH(r.code) + '"' + (full || bad ? ' disabled' : '') + '>' + (bad ? 'OLD VERSION' : full ? 'FULL' : 'JOIN') + '</button></div>'; }).join('');
   if (box.querySelectorAll) { box.querySelectorAll('button[data-code]').forEach(b => { b.onclick = () => netJoin(b.getAttribute('data-code')); }); box.querySelectorAll('button[data-go]').forEach(b => { b.onclick = () => showPage(b.getAttribute('data-go')); }); }
 }
 function onLive(list) {                                              // "3 playing" badges on the mode cards and the Browse card
   const by = {}; for (const r of list) by[r.mode] = (by[r.mode] | 0) + (r.n | 0);
-  for (const k of MODE_ORDER) { const e = el('onl-' + k); if (e) e.textContent = by[k] ? by[k] + ' playing' : ''; }
-  const hn = el('oh-roomsn'); if (hn) hn.textContent = list.length ? list.length + (list.length === 1 ? ' room' : ' rooms') + ' open · ' + list.reduce((a, r) => a + (r.n | 0), 0) + ' playing' : 'No open rooms yet. Start one!';
+  for (const k of MODE_ORDER) { const e = el('onl-' + k); if (e) e.textContent = by[k] ? tf('%d playing', by[k]) : ''; }
+  const hn = el('oh-roomsn'), nPlaying = list.reduce((a, r) => a + (r.n | 0), 0); if (hn) hn.textContent = !list.length ? t('No open rooms yet. Start one!') : list.length === 1 ? tf('%d room open · %d playing', 1, nPlaying) : tf('%d rooms open · %d playing', list.length, nPlaying);
 }
 function netRefreshRooms(manual) {
   if (roomsBusy || net) return;
@@ -9778,12 +9792,12 @@ function netRefreshRooms(manual) {
 function netQuickPlay(mode, tries, pre) {                            // click a mode: join the fullest game of it, or start one
   if (net || !MODES[mode] || !netLock()) return;
   tries = tries | 0; pre = pre || netCfgSnap();
-  netStatus('Looking for a ' + MODES[mode].name + ' game…');
+  netStatus(tf('Looking for a %s game…', t(MODES[mode].name)));
   netBrowse((list, err) => {
     netUnlock(); if (net) return;
     if (err) { netStatus(err); return; }
     const cand = list.filter(r => r.mode === mode && r.n < r.max && (!r.build || r.build === NET_BUILD)).sort((a, b) => b.n - a.n);
-    if (cand.length && tries < 3) { netStatus('Joining ' + cand[0].name + '…'); netJoin(cand[0].code, { quick: mode, tries, pre }); return; }
+    if (cand.length && tries < 3) { netStatus(tf('Joining %s…', cand[0].name)); netJoin(cand[0].code, { quick: mode, tries, pre }); return; }
     netHostQuick(mode, pre);
   });
 }
@@ -9819,7 +9833,7 @@ function netRematchStart() {
 function netRematchUi() {
   if (!(net && net.started && page === 'result' && matchOver)) return;
   const n = net.rvList.length, t = net.rvTotal;
-  el('play').textContent = net.myVote ? 'Waiting for players… ' + n + '/' + t : n ? 'Rematch (' + n + '/' + t + ' ready)' : 'Rematch';
+  el('play').textContent = net.myVote ? tf('Waiting for players… %d/%d', n, t) : n ? tf('Rematch (%d/%d ready)', n, t) : 'Rematch';
 }
 function netEnterMatch() { setUi('lobby'); showPage('online'); try { el('play').onclick(); } catch (e) { /* the browser wants a click first: the big button is on screen */ } }
 { const ti = setInterval(() => { if (ONL.includes(page) && page !== 'onlobby' && !net && !document.hidden) netRefreshRooms(); }, 10000); if (ti && ti.unref) ti.unref(); }
@@ -9845,7 +9859,7 @@ el('on-go').onclick = () => el('play').onclick();
 el('on-leave').onclick = () => netLeave('You left the room.');
 el('on-copy').onclick = () => el('nb-copy').onclick();
 el('nb-leave').onclick = () => { if (net) { netLeave('You left the room.'); try { netBannerUpdate(); } catch (e) { /* x */ } } };
-el('nb-copy').onclick = () => { if (!net) return; try { navigator.clipboard.writeText(net.code).then(() => toast('Code copied: ' + net.code)).catch(() => toast('Room code: ' + net.code)); } catch (e) { toast('Room code: ' + net.code); } };
+el('nb-copy').onclick = () => { if (!net) return; try { navigator.clipboard.writeText(net.code).then(() => toast(tf('Code copied: %s', net.code))).catch(() => toast(tf('Room code: %s', net.code))); } catch (e) { toast(tf('Room code: %s', net.code)); } };
 el('on-edit').onclick = () => { if (!net || !net.host || net.started) return; editFlow = true; showPage('mods'); };
 // your name lives in the Account page; the online hub just shows it
 el('on-chg').onclick = () => showPage('account');
@@ -9947,7 +9961,7 @@ function touchAssist() {                                                        
 }
 function touchPill(rows) {                                                                   // compact scoreboard for small screens: your K.O.s, who leads, and the clock
   const p = el('tpill'); if (!p) return; const s = Math.max(0, Math.floor(simTime - TOUCH.t0)), top = rows[0];
-  const h = 'K.O. <b>' + (player.ko | 0) + '</b>' + (top && top.ko > 0 ? ' &middot; ' + (top === player ? 'You lead' : '👑 ' + top.botName + ' ' + top.ko) : '') + ' &middot; ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  const h = t('K.O.') + ' <b>' + (player.ko | 0) + '</b>' + (top && top.ko > 0 ? ' &middot; ' + (top === player ? t('You lead') : '👑 ' + top.botName + ' ' + top.ko) : '') + ' &middot; ' + Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
   if (p._h !== h) { p._h = h; p.innerHTML = h; }
 }
 touchBuild();
@@ -10260,7 +10274,7 @@ function showLoad(sc) {
   try { SHOW.bd = mapBounds(); const bd = SHOW.bd; SHOW.roofs = solidMeshes.filter(m => { const pr = m.geometry && m.geometry.parameters; return pr && m.visible !== false && pr.width * pr.depth > bd.area * 0.3 && pr.height < 2.5 && m.position.y - pr.height / 2 >= 6; }); } catch (e) { SHOW.roofs = []; } SHOW.last = sc.map + '/' + (sc.mode || '');
   SHOW.label = MAPS[sc.map] ? MAPS[sc.map].name : '';
   showHidePlayer();
-  const lv = el('hlive'); if (lv) lv.textContent = '● LIVE: ' + SHOW.label;
+  const lv = el('hlive'); if (lv) lv.textContent = tf('● LIVE: %s', t(SHOW.label));
 }
 function showHidePlayer() { player.elim = true; player.root.visible = false; player.arm.visible = false; player.pos.set(900, -50, 900); player.vel.set(0, 0, 0); }
 function showSceneFor(id) {
@@ -10614,7 +10628,7 @@ function updateHud(dt) {
     el('scopeov').style.display = sc ? 'block' : 'none'; el('cross').style.visibility = sc ? 'hidden' : 'visible'; }
   { const db = el('dashbar'), on = !player.dead && dashGear(player);      // ninja dashes (only shown while holding a ninja weapon): 3 charges, each refills on its own
     if (on) {
-      let h = '<span>DASH' + (TOUCH.on ? '' : ' [' + keyName(settings.binds.dash).replace('Key', '') + ']') + '</span>'; for (let i = 0; i < 3; i++) h += i < player.dashN ? '<i class="full"></i>' : '<i style="--f:' + (i === player.dashN ? (player.dashRegen / DASH_REGEN).toFixed(2) : 0) + '"></i>';
+      let h = '<span>' + t('DASH') + (TOUCH.on ? '' : ' [' + keyName(settings.binds.dash).replace('Key', '') + ']') + '</span>'; for (let i = 0; i < 3; i++) h += i < player.dashN ? '<i class="full"></i>' : '<i style="--f:' + (i === player.dashN ? (player.dashRegen / DASH_REGEN).toFixed(2) : 0) + '"></i>';
       if (db._h !== h) { db._h = h; db.innerHTML = h; }
       db.style.display = 'flex';
     } else db.style.display = 'none';
@@ -10643,7 +10657,7 @@ function updateHud(dt) {
     el('weapon').innerHTML = html;
     const hpc = Math.min(100, hp / hpOf(player) * 100);
     el('hpfill').style.width = hpc + '%';
-    { const pb = el('pubuffs'), P = player, parts = []; for (const [t, nm, col] of [[P.spdT, 'Speed', '#4fd8ff'], [P.rageT, 'Damage', '#ff7a4c'], [P.shieldT, 'Shield', '#8fb4ff']]) if (t > 0 && !P.dead) parts.push('<div class="pu" style="color:' + col + '"><span style="color:#fff">' + nm + ' ' + Math.ceil(t) + 's</span><i style="width:' + Math.min(100, t / 12 * 100) + '%"></i></div>'); const h = parts.join(''); if (pb._h !== h) { pb._h = h; pb.innerHTML = h; } }
+    { const pb = el('pubuffs'), P = player, parts = []; for (const [tl, nm, col] of [[P.spdT, 'Speed', '#4fd8ff'], [P.rageT, 'Damage', '#ff7a4c'], [P.shieldT, 'Shield', '#8fb4ff']]) if (tl > 0 && !P.dead) parts.push('<div class="pu" style="color:' + col + '"><span style="color:#fff">' + tf('%s %ds', t(nm), Math.ceil(tl)) + '</span><i style="width:' + Math.min(100, tl / 12 * 100) + '%"></i></div>'); const h = parts.join(''); if (pb._h !== h) { pb._h = h; pb.innerHTML = h; } }
     if (hp < lastHpShown) { const h = el('hp'); h.classList.remove('hit'); void h.offsetWidth; h.classList.add('hit'); } lastHpShown = hp;
     el('hpfill').style.background = hpc > 50 ? '#4bd18a' : hpc > 25 ? '#f5b942' : '#ef5350';
     el('hptxt').textContent = hp;
@@ -10713,7 +10727,7 @@ function startKillCam() {
   player.deathT = Math.min(player.deathT, 1.3);      // a moment to take it in after the replay, then you respawn
   clearInputs();
   kcActive = true;
-  el('kc-who').textContent = nameOf(pend.attacker) + ' \u00b7 ' + pend.wn; el('kc-cap').textContent = kc.segs[0].cap;
+  el('kc-who').textContent = nameOf(pend.attacker) + ' \u00b7 ' + t(pend.wn); el('kc-cap').textContent = kc.segs[0].cap;
   { const kp = el('kopop'); if (kp) kp.innerHTML = ''; } el('killcam').classList.add('on'); el('killcam').classList.toggle('slow', !!kc.segs[0].slow); el('hud').classList.add('kc');
 }
 function endKillCam() {
@@ -10849,7 +10863,7 @@ function perfTick(ms, now) {                                        // frame tim
     if (PERF.lowN >= 2 && PERF.scale > 0.55) { PERF.scale = Math.max(0.55, +(PERF.scale - 0.1).toFixed(2)); PERF.lowN = 0; applyScale(); devLog('perf', 'resolution ' + Math.round(PERF.scale * 100) + '%'); }
     else if (PERF.hiN >= 8 && PERF.scale < 1) { PERF.scale = Math.min(1, +(PERF.scale + 0.1).toFixed(2)); PERF.hiN = 0; applyScale(); devLog('perf', 'resolution ' + Math.round(PERF.scale * 100) + '%'); }
   } else if (!settings.autoRes && PERF.scale !== 1) { PERF.scale = 1; applyScale(); }
-  try { if (page === 'controls') { const n = el('autores-note'); if (n) n.textContent = settings.autoRes ? 'Sharpness now: ' + Math.round(PERF.scale * 100) + '% · ' + Math.round(PERF.fps) + ' FPS' : ''; } } catch (e) { /* cosmetic */ }
+  try { if (page === 'controls') { const n = el('autores-note'); if (n) n.textContent = settings.autoRes ? tf('Sharpness now: %d%% · %d FPS', Math.round(PERF.scale * 100), Math.round(PERF.fps)) : ''; } } catch (e) { /* cosmetic */ }
 }
 try {
   renderer.domElement.addEventListener('webglcontextlost', e => { e.preventDefault(); ctxLost = true; devLog('gl', 'context lost'); const c = el('crash'); if (c) c.style.display = 'flex'; });
@@ -10913,7 +10927,7 @@ function syncPro() {
   for (const n of [0, 30, 60, 120]) { const b = el('fc-' + n); if (b) b.classList.toggle('on', settings.fpsCap === n); }
   tog('autores-tog', settings.autoRes); tog('skyfx-tog', settings.skyFx); tog('mb-tog', settings.menuBattle); tog('uisnd-tog', settings.uiSounds); tog('rm-tog', settings.reduceMotion);
   try { document.documentElement.classList.toggle('rm', !!settings.reduceMotion); } catch (e) { /* cosmetic */ }
-  const bn = el('build-note'); if (bn) bn.textContent = 'Build ' + NET_BUILD.slice(1, 3) + ' · ' + (acct.user ? 'saved to your account' : 'guest (nothing is saved)');
+  const bn = el('build-note'); if (bn) bn.textContent = tf('Build %s · %s', NET_BUILD.slice(1, 3), acct.user ? t('saved to your account') : t('guest (nothing is saved)'));
   try { for (const r of document.querySelectorAll('input[type=range]')) r.style.setProperty('--p', ((+r.value - +r.min) / ((+r.max - +r.min) || 1) * 100).toFixed(1) + '%'); } catch (e) { /* cosmetic */ }
 }
 for (const n of [0, 30, 60, 120]) el('fc-' + n).onclick = () => { settings.fpsCap = n; syncPro(); save(); };
@@ -10922,6 +10936,15 @@ el('skyfx-tog').onclick = () => { settings.skyFx = !settings.skyFx; syncPro(); s
 el('mb-tog').onclick = () => { settings.menuBattle = !settings.menuBattle; syncPro(); save(); showSync(); };
 el('uisnd-tog').onclick = () => { settings.uiSounds = !settings.uiSounds; if (settings.uiSounds) { initAudio(); sfx('click'); } syncPro(); save(); };
 el('rm-tog').onclick = () => { settings.reduceMotion = !settings.reduceMotion; syncPro(); save(); };
+{ const sel = el('lang-sel');                                                                // settings > More: language (public/i18n.js)
+  if (sel && window.I18N) {
+    const opt = (v, label) => { const o = document.createElement('option'); o.value = v; o.textContent = label; sel.appendChild(o); return o; };
+    opt('auto', 'Auto');
+    for (const l of I18N.LANGS) { const o = opt(l.code, l.name); o.setAttribute('translate', 'no'); }   // each language in its own name
+    sel.value = I18N.setting;
+    sel.onchange = () => I18N.setLang(sel.value);
+    I18N.onChange(() => { try { syncSettings(); } catch (e) { /* cosmetic */ } });
+  } }
 try { document.addEventListener('input', e => { const r = e.target; if (r && r.type === 'range' && r.style) r.style.setProperty('--p', ((+r.value - +r.min) / ((+r.max - +r.min) || 1) * 100).toFixed(1) + '%'); }); } catch (e) { /* cosmetic */ }
 
 /* ---- settings page: tabs + search ---- */
@@ -10933,13 +10956,13 @@ function initSettingsUi() {
   tabs.innerHTML = T.map(([k, n]) => '<button id="st-' + k + '">' + n + '</button>').join('');
   let curTab = 'controls';
   const show = k => { curTab = k; pg.setAttribute('data-sv', k); for (const [id] of T) el('st-' + id).classList.toggle('on', id === k); try { localStorage.setItem('wobbleSetTab', k); } catch (e) { /* ok */ } };
-  const rows = [...pg.querySelectorAll('.grp .tog, .grp label, .grp .brow')].map(r => ({ r, t: (r.textContent || '').toLowerCase() }));
-  const grps = [...pg.querySelectorAll('.grp[data-tab]')].map(g => ({ g, h: ((g.querySelector('h3') || {}).textContent || '').toLowerCase() }));
+  const rows = [...pg.querySelectorAll('.grp .tog, .grp label, .grp .brow')].map(r => ({ r }));       // text is read when searching, so it follows the language
+  const grps = [...pg.querySelectorAll('.grp[data-tab]')].map(g => ({ g, get h() { return ((g.querySelector('h3') || {}).textContent || '').toLowerCase(); } }));
   setSearch = q => {
     q = String(q || '').trim().toLowerCase(); pg.classList.toggle('searching', !!q);
     for (const [id] of T) el('st-' + id).classList.toggle('on', !q && id === curTab);
     let any = !q;
-    for (const { r, t } of rows) r.style.display = !q || t.includes(q) ? '' : 'none';
+    for (const { r } of rows) r.style.display = !q || (r.textContent || '').toLowerCase().includes(q) ? '' : 'none';
     for (const { g, h } of grps) {
       if (!q) { g.style.display = ''; continue; }
       const hit = h.includes(q) || [...g.querySelectorAll('.tog, label, .brow')].some(r => (r.textContent || '').toLowerCase().includes(q));
@@ -11234,7 +11257,7 @@ function heroTick(now) {                           // called from the main frame
     cv.style.display = 'block';
   } catch (er) { /* the plain image underneath still works */ }
 }
-el('herospin').onclick = e => { e.stopPropagation(); heroSpin = !heroSpin; el('herospin').innerHTML = heroSpin ? '&#10074;&#10074; Spinning' : '&#9654; Paused'; };
+el('herospin').onclick = e => { e.stopPropagation(); heroSpin = !heroSpin; el('herospin').innerHTML = heroSpin ? '&#10074;&#10074; ' + t('Spinning') : '&#9654; ' + t('Paused'); };
 if (el('maphero').addEventListener) {
   el('maphero').addEventListener('pointerdown', e => { if (e.target && e.target.closest && e.target.closest('button')) return; heroDrag = { x: e.clientX, p: heroPos }; try { el('maphero').setPointerCapture(e.pointerId); } catch (er) { /* fine */ } el('maphero').classList.add('drag'); });
   el('maphero').addEventListener('pointermove', e => { if (heroDrag) heroPos = heroDrag.p - (e.clientX - heroDrag.x) / 7; });
@@ -11245,7 +11268,7 @@ const BOOT = [['Building the arenas…', () => {            // all the little le
   for (const id of Object.keys(MAPS)) { loadMap(id); const url = shot3d(560, 300, TT_A0, 0.82) || drawThumb(id); if (url) el('mimg-' + id).src = url; }
 }]];
 BOOT.push(['Warming up the weapons…', () => { for (const k of Object.keys(WEAPONS)) { makeWeaponMesh(k); weaponIcon(k); } }]);
-for (const [id, wait] of [['arena', 2500], ['temple', 2500], ['rooftops', 2500]]) if (MAPS[id]) BOOT.push(['Setting up ' + MAPS[id].name + '…', () => { bootTour = true; if (!SHOW.on) showStart(); showLoad({ map: id, mode: 'classic', theme: 'def' }); }, wait]);   // a slow tour of three levels behind the loading bar
+for (const [id, wait] of [['arena', 2500], ['temple', 2500], ['rooftops', 2500]]) if (MAPS[id]) BOOT.push([tf('Setting up %s…', t(MAPS[id].name)), () => { bootTour = true; if (!SHOW.on) showStart(); showLoad({ map: id, mode: 'classic', theme: 'def' }); }, wait]);   // a slow tour of three levels behind the loading bar
 BOOT.push(['Waking up the bots…', () => { bootTour = false; if (SHOW.on) showStop(false); loadMap(MAPS[savedMap] ? savedMap : 'arena'); }]);
 const savedMap = currentMap;
 function bootStep(i) {

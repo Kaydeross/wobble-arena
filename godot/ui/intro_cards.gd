@@ -108,7 +108,7 @@ func go(i: int) -> void:
 	pic.queue_redraw()
 	title_l.text = str(c[1])
 	body_l.text = str(c[2] if touch else c[3])
-	dots_l.text = "%d of %d" % [page + 1, CARDS.size()]
+	dots_l.text = tr("%d of %d") % [page + 1, CARDS.size()]
 	next_b.text = "Let's play" if page == CARDS.size() - 1 else "Next"
 	if Tier.is_pc(): next_b.grab_focus.call_deferred()
 
