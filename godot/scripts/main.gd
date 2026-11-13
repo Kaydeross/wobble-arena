@@ -54,11 +54,15 @@ var locker_b: Button
 var shop_b: Button
 var goals_b: Button
 var goals: GoalsScreen              ## the Goals screen (title: Goals)
+var news_b: Button
+var news: WhatsNew                  ## the What's new card (patch notes; opens once per new version)
 var settings: SettingsScreen        ## the Settings screen (gear)
 var intro: IntroCards               ## the first-run how-to (also Settings > Controls)
 var browser: RoomBrowser            ## public rooms in the online panel
 ## true / false: show the how-to on start or not; null = when it was never seen (not in tests: they run with --no-save)
 var auto_intro: Variant = null
+## true / false: open the What's new card on start when the newest notes are unseen or not; null = when unseen (not in tests)
+var auto_news: Variant = null
 var _ui := {}
 var account: AccountSheet           ## the Account sheet (title chip)
 var chip: PanelContainer
@@ -92,6 +96,9 @@ func _ready() -> void:
 	goals.closed.connect(func() -> void:
 		_coins_sub()
 		if Tier.is_pc(): goals_b.grab_focus.call_deferred())
+	news = WhatsNew.new()
+	add_child(news)
+	news.closed.connect(func() -> void: if Tier.is_pc(): news_b.grab_focus.call_deferred())
 	_build_host_sheet()
 	_build_lobby()
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
@@ -132,7 +139,13 @@ func _ready() -> void:
 	add_child(intro)
 	intro.closed.connect(func() -> void: if Tier.is_pc(): play.grab_focus.call_deferred())
 	var first: bool = auto_intro if auto_intro is bool else (Settings.persist and not bool(Settings.get_value("seen_intro", false)))
-	if first and session == null and join == "" and notice == "": intro.open()
+	var quiet := session == null and join == "" and notice == ""
+	if first and quiet: intro.open()
+	else:
+		var newest := WhatsNew.newest_version()
+		var unseen: bool = auto_news if auto_news is bool else (Save.persist and newest != "" and newest != Save.last_seen_news)
+		if unseen and quiet and not first: news.open()
+		elif first and Save.persist: Save.mark_news_seen(newest)   # a brand-new player does not need the old notes
 
 ## Back (Escape / controller B via ui_cancel, Android's back gesture): close the top thing. The wizard and the Walldrobe
 ## handle ui_cancel themselves; the back gesture reaches them through here. On the bare title nothing happens.
@@ -141,6 +154,7 @@ func go_back() -> bool:
 	if account.visible: return account.back()
 	if settings.visible: return settings.back()
 	if goals.visible: return goals.back()
+	if news.visible: return news.back()
 	if lobby.visible:
 		if session: session.leave("You left the room.")
 		show_lobby(false)
@@ -176,7 +190,7 @@ func _build_more() -> void:
 	var more := HBoxContainer.new()
 	more.name = "More"
 	more.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	more.add_theme_constant_override("separation", 16)
+	more.add_theme_constant_override("separation", 12)   # four buttons now: still fit the narrowest canvas (960 wide)
 	home.add_child(more)
 	home.add_theme_constant_override("separation", 12)   # one more row: a little tighter, so the column still fits a phone
 	locker_b = _small_button("Walldrobe", "What you own")
@@ -189,6 +203,10 @@ func _build_more() -> void:
 	goals_b = _small_button("Goals", "")
 	goals_b.pressed.connect(open_goals)
 	more.add_child(goals_b)
+	news_b = _small_button("What's new", "Patch notes")
+	news_b.name = "News"
+	news_b.pressed.connect(open_news)
+	more.add_child(news_b)
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
 
@@ -233,6 +251,10 @@ func _coins_sub() -> void:
 ## The Goals screen over the title.
 func open_goals() -> void:
 	goals.open()
+
+## The What's new card over the title.
+func open_news() -> void:
+	news.open()
 
 ## The Walldrobe (shop = false) or the Shop instead of the title column.
 func open_locker(shop_mode: bool = false, tab: String = "") -> void:
