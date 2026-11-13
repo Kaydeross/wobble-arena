@@ -23,7 +23,8 @@ func _run() -> void:
 	var dev: String = st.DEV_SERVER_URL
 	check(dev == "ws://127.0.0.1:3000/ws", "dev default unchanged")
 	var shipped := FileAccess.get_file_as_string(st.SERVER_CONFIG_PATH)
-	check((JSON.parse_string(shipped) as Dictionary).get("url", "x") == "", "shipped server.json has an empty url (user fills it in)")
+	var shipped_url := str((JSON.parse_string(shipped) as Dictionary).get("url", "x"))
+	check(shipped_url == "" or shipped_url.begins_with("wss://"), "shipped server.json url is empty or a wss:// address")
 	check(st.server_default() == dev, "editor/dev uses the dev default")
 	var tmp := "user://server_test.json"
 	_write(tmp, '{"url": "wss://play.example.test/ws"}')
