@@ -1,15 +1,17 @@
 'use strict';
 /*
-  Translations for the Godot client (docs/I18N.md).
+  Translations (docs/I18N.md): the Godot client and the web game.
 
-  The sources are godot/i18n/src/*.json: { "English text": { "zh_TW": "...", "zh_CN": "...", "ja": "...", "fr": "...", "es": "..." } }.
-  The game loads one merged file, godot/i18n/strings.json (autoload Lang).
+  Sources: godot/i18n/src/*.json (both games) and web-i18n/src/*.json (web-only text):
+    { "English text": { "zh_TW": "...", "zh_CN": "...", "ja": "...", "fr": "...", "es": "..." } }
+  Built files (commit them):
+    godot/i18n/strings.json   godot sources                    (autoload Lang)
+    public/i18n-data.js       godot sources + web sources      (window.I18N_DATA, public/i18n.js)
 
-  node tools/i18n.js           merge src/*.json -> strings.json (and validate)
-  node tools/i18n.js --check   exit 1 if strings.json is out of date or an entry is invalid (part of npm test)
-  node tools/i18n.js --file=NAME.json   validate one source file only (no output written)
-  node tools/i18n.js --scan    list text in the code that has no translation yet (advisory; exit 0)
-  node tools/i18n.js --scan --strict   the same, but exit 1 when a tr("...") / TranslationServer.translate("...") key is missing
+  node tools/i18n.js                    merge and validate, write both built files
+  node tools/i18n.js --check            exit 1 if a built file is out of date or an entry is invalid (part of npm test)
+  node tools/i18n.js --file=NAME.json   validate one source file (godot/i18n/src or web-i18n/src) only, write nothing
+  node tools/i18n.js --scan [--web]     list text in the code with no translation yet; --strict exits 1 when a tr()/t() key is missing
 */
 const fs = require('fs');
 const path = require('path');
@@ -17,22 +19,26 @@ const ROOT = path.join(__dirname, '..');
 const GODOT = path.join(ROOT, 'godot');
 const SRC = path.join(GODOT, 'i18n', 'src');
 const OUT = path.join(GODOT, 'i18n', 'strings.json');
+const WEB_SRC = path.join(ROOT, 'web-i18n', 'src');
+const WEB_OUT = path.join(ROOT, 'public', 'i18n-data.js');
+const WEB_HTML = path.join(ROOT, 'public', 'index.html');
 const LANGS = ['zh_TW', 'zh_CN', 'ja', 'fr', 'es'];
 const args = process.argv.slice(2);
-const check = args.includes('--check'), scan = args.includes('--scan'), strict = args.includes('--strict');
+const check = args.includes('--check'), scan = args.includes('--scan'), strict = args.includes('--strict'), web = args.includes('--web');
+const only = (args.find(a => a.startsWith('--file=')) || '').slice(7);
 
-// printf-style placeholders in order ("%d", "%s", "%.1f", "%02d", "%%"); GDScript's % operator is positional, so every
-// language must keep them in the same order.
+// printf-style placeholders in order ("%d", "%s", "%.1f", "%02d", "%%"); both games fill them in order, so every language
+// must keep them in the same order.
 const holes = s => (s.match(/%[-+ 0#]*\d*(?:\.\d+)?[sdfxXc%]/g) || []).filter(h => h !== '%%');
 const braces = s => (s.match(/\{[A-Za-z_][A-Za-z0-9_]*\}/g) || []).sort();
 
-function load() {
+function load(dir, onlyFile) {
   const merged = {}, errors = [], dupes = [];
-  const only = (args.find(a => a.startsWith('--file=')) || '').slice(7);
-  const files = only ? [only] : fs.existsSync(SRC) ? fs.readdirSync(SRC).filter(f => f.endsWith('.json')).sort() : [];
+  let files = fs.existsSync(dir) ? fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort() : [];
+  if (onlyFile) files = files.filter(f => f === onlyFile);
   for (const f of files) {
     let d;
-    try { d = JSON.parse(fs.readFileSync(path.join(SRC, f), 'utf8')); } catch (e) { errors.push(`${f}: ${e.message}`); continue; }
+    try { d = JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')); } catch (e) { errors.push(`${f}: ${e.message}`); continue; }
     for (const [k, v] of Object.entries(d)) {
       if (k in merged) { if (JSON.stringify(merged[k]) !== JSON.stringify(v)) dupes.push(`${f}: "${k}" is also in an earlier file (that one wins)`); continue; }
       merged[k] = v;
@@ -52,11 +58,13 @@ function load() {
   return { merged, errors, files, dupes };
 }
 
-function serialise(merged) {
+function sorted(merged) {
   const out = {};
   for (const k of Object.keys(merged).sort()) { out[k] = {}; for (const l of LANGS) out[k][l] = merged[k][l]; }
-  return JSON.stringify(out, null, 1) + '\n';
+  return out;
 }
+const serialise = merged => JSON.stringify(sorted(merged), null, 1) + '\n';
+const serialiseWeb = merged => '/* Built by tools/i18n.js from godot/i18n/src and web-i18n/src. Do not edit. */\nwindow.I18N_DATA=' + JSON.stringify(sorted(merged)) + ';\n';
 
 function gdFiles(dir, acc = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -69,14 +77,13 @@ function gdFiles(dir, acc = []) {
 const unesc = s => s.replace(/\\(.)/g, (m, c) => ({ n: '\n', t: '\t', '"': '"', "'": "'", '\\': '\\' }[c] ?? c));
 const STR = '"((?:[^"\\\\\\n]|\\\\.)*)"';
 
-function doScan(merged) {
+function doScanGodot(merged) {
   const missingKeys = [], missingText = [];
   const keyRe = new RegExp('(?:\\btr|\\batr|TranslationServer\\.translate)\\(\\s*' + STR, 'g');
   const textRe = new RegExp('\\b(?:text|tooltip_text|placeholder_text|title)\\s*=\\s*' + STR, 'g');
   for (const f of gdFiles(GODOT)) {
     const rel = path.relative(GODOT, f);
-    const lines = fs.readFileSync(f, 'utf8').split('\n');
-    lines.forEach((line, i) => {
+    fs.readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
       const code = line.replace(/\s#.*$/, '');
       for (const m of code.matchAll(keyRe)) { const k = unesc(m[1]); if (!(k in merged)) missingKeys.push(`${rel}:${i + 1}  ${JSON.stringify(k)}`); }
       for (const m of code.matchAll(textRe)) {
@@ -86,34 +93,60 @@ function doScan(merged) {
       }
     });
   }
-  if (missingKeys.length) console.log(`tr() keys with no translation (${missingKeys.length}):\n  ` + missingKeys.join('\n  '));
-  if (missingText.length) console.log(`.text literals with no translation (${missingText.length}, advisory):\n  ` + missingText.join('\n  '));
-  if (!missingKeys.length && !missingText.length) console.log('every tr() key and text literal has a translation');
-  return missingKeys.length;
+  return [missingKeys, missingText];
 }
 
-const { merged, errors, files, dupes } = load();
-if (dupes.length) console.warn(dupes.join('\n'));
-if (errors.length) { console.error(errors.slice(0, 60).join('\n') + (errors.length > 60 ? `\n... and ${errors.length - 60} more` : '')); }
-if (scan) {
-  const n = doScan(merged);
-  process.exit(strict && (n || errors.length) ? 1 : 0);
+// web: t('...') / tf('...', ...) keys in public/index.html (single, double or back-tick quotes, no ${} inside)
+function doScanWeb(merged) {
+  const missingKeys = [];
+  const re = /(?<![\w.$])tf?\(\s*(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)"|`([^`$\n]*)`)/g;
+  fs.readFileSync(WEB_HTML, 'utf8').split('\n').forEach((line, i) => {
+    for (const m of line.matchAll(re)) {
+      const raw = m[1] ?? m[2] ?? m[3];
+      const k = unesc(raw);
+      if (!(k in merged)) missingKeys.push(`public/index.html:${i + 1}  ${JSON.stringify(k)}`);
+    }
+  });
+  return [missingKeys, []];
 }
-if (args.some(a => a.startsWith('--file='))) {
+
+function report(missingKeys, missingText) {
+  if (missingKeys.length) console.log(`translation keys with no translation (${missingKeys.length}):\n  ` + missingKeys.join('\n  '));
+  if (missingText.length) console.log(`.text literals with no translation (${missingText.length}, advisory):\n  ` + missingText.join('\n  '));
+  if (!missingKeys.length && !missingText.length) console.log('every translation key and text literal has a translation');
+}
+
+const G = load(SRC, args.some(a => a.startsWith('--file=')) && fs.existsSync(path.join(SRC, only)) ? only : '');
+const W = load(WEB_SRC, args.some(a => a.startsWith('--file=')) && fs.existsSync(path.join(WEB_SRC, only)) ? only : '');
+const errors = [...G.errors, ...W.errors];
+const dupes = [...G.dupes, ...W.dupes];
+if (dupes.length) console.warn(dupes.join('\n'));
+if (errors.length) console.error(errors.slice(0, 60).join('\n') + (errors.length > 60 ? `\n... and ${errors.length - 60} more` : ''));
+const webMerged = Object.assign({}, W.merged, G.merged);   // a godot entry wins on the (rare) shared key: one wording for both games
+
+if (scan) {
+  const [mk, mt] = web ? doScanWeb(webMerged) : doScanGodot(G.merged);
+  report(mk, mt);
+  process.exit(strict && (mk.length || errors.length) ? 1 : 0);
+}
+if (only) {
   if (errors.length) process.exit(1);
-  console.log(`${args.find(a => a.startsWith('--file='))}: ${Object.keys(merged).length} strings ok`);
+  console.log(`--file=${only}: ${Object.keys(G.merged).length + Object.keys(W.merged).length} strings ok`);
   process.exit(0);
 }
-const text = serialise(merged);
+const gText = serialise(G.merged), wText = serialiseWeb(webMerged);
 if (check) {
-  let cur = ''; try { cur = fs.readFileSync(OUT, 'utf8'); } catch (e) { /* missing */ }
   let bad = errors.length;
-  if (cur !== text) { console.error('godot/i18n/strings.json is out of date. Run: npm run i18n'); bad++; }
+  for (const [file, text, label] of [[OUT, gText, 'godot/i18n/strings.json'], [WEB_OUT, wText, 'public/i18n-data.js']]) {
+    let cur = ''; try { cur = fs.readFileSync(file, 'utf8'); } catch (e) { /* missing */ }
+    if (cur !== text) { console.error(`${label} is out of date. Run: npm run i18n`); bad++; }
+  }
   if (bad) process.exit(1);
-  console.log(`translations ok: ${Object.keys(merged).length} strings x ${LANGS.length} languages (${files.length} files)`);
+  console.log(`translations ok: ${Object.keys(G.merged).length} godot + ${Object.keys(W.merged).length} web-only strings x ${LANGS.length} languages`);
 } else {
   if (errors.length) process.exit(1);
   fs.mkdirSync(path.dirname(OUT), { recursive: true });
-  fs.writeFileSync(OUT, text);
-  console.log(`wrote godot/i18n/strings.json: ${Object.keys(merged).length} strings x ${LANGS.length} languages`);
+  fs.writeFileSync(OUT, gText);
+  fs.writeFileSync(WEB_OUT, wText);
+  console.log(`wrote godot/i18n/strings.json (${Object.keys(G.merged).length}) and public/i18n-data.js (${Object.keys(webMerged).length}) x ${LANGS.length} languages`);
 }

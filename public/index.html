@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <title>Wobblers Arena</title>
+<script src="i18n-data.js"></script>
+<script src="i18n.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Wobblers Arena: wobbly low-poly brawls with bots and friends. Free, plays in your browser.">
 <meta name="theme-color" content="#102b35">
@@ -1360,7 +1362,10 @@ body.tplay #chat{display:none}
           <label>Crosshair size <b id="csize-v"></b> <input id="csize" type="range" min="0.6" max="1.8" step="0.1" value="1"></label>
           </div>
         <div class="grp" data-tab="more">
-          <h3>Redeem code</h3>
+          <h3>Language</h3>
+          <div class="row" style="gap:8px"><select id="lang-sel" aria-label="Language" style="flex:1"></select></div>
+          <small class="help">Auto follows your browser.</small>
+          <h3 style="margin-top:14px">Redeem code</h3>
           <div class="row" style="gap:8px"><input id="code-in" type="text" placeholder="Enter a code" autocomplete="off" spellcheck="false" style="flex:1;padding:10px 12px;border-radius:12px;border:2px solid rgba(255,255,255,.3);background:rgba(0,0,0,.25);color:#fff;font:inherit;min-width:0"><button class="opt" id="code-go">Redeem</button></div>
           <small class="help" id="code-msg" style="margin-top:4px"></small>
           <h3 style="margin-top:14px">Help &amp; tools</h3>
@@ -10908,6 +10913,15 @@ el('skyfx-tog').onclick = () => { settings.skyFx = !settings.skyFx; syncPro(); s
 el('mb-tog').onclick = () => { settings.menuBattle = !settings.menuBattle; syncPro(); save(); showSync(); };
 el('uisnd-tog').onclick = () => { settings.uiSounds = !settings.uiSounds; if (settings.uiSounds) { initAudio(); sfx('click'); } syncPro(); save(); };
 el('rm-tog').onclick = () => { settings.reduceMotion = !settings.reduceMotion; syncPro(); save(); };
+{ const sel = el('lang-sel');                                                                // settings > More: language (public/i18n.js)
+  if (sel && window.I18N) {
+    const opt = (v, label) => { const o = document.createElement('option'); o.value = v; o.textContent = label; sel.appendChild(o); return o; };
+    opt('auto', 'Auto');
+    for (const l of I18N.LANGS) { const o = opt(l.code, l.name); o.setAttribute('translate', 'no'); }   // each language in its own name
+    sel.value = I18N.setting;
+    sel.onchange = () => I18N.setLang(sel.value);
+    I18N.onChange(() => { try { syncSettings(); } catch (e) { /* cosmetic */ } });
+  } }
 try { document.addEventListener('input', e => { const r = e.target; if (r && r.type === 'range' && r.style) r.style.setProperty('--p', ((+r.value - +r.min) / ((+r.max - +r.min) || 1) * 100).toFixed(1) + '%'); }); } catch (e) { /* cosmetic */ }
 
 /* ---- settings page: tabs + search ---- */
