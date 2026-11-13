@@ -797,6 +797,13 @@
   "fr": "Une longue crête en sept marches, basse aux deux bouts et haute au milieu. Combats en montée, pousse les autres en descente et tiens le sommet. Les tremplins au pied font sauter sur la première marche.",
   "es": "Una larga cresta en siete escalones, baja en los dos extremos y alta en el medio. Lucha cuesta arriba, empuja cuesta abajo y mantén la cima. Los trampolines al pie te catapultan al primer escalón."
  },
+ "A new building site every time: a fenced yard with a crane, an excavator, a bulldozer, spoil heaps, containers, scaffold towers and a trench with a bounce pad. Climb ladders, jump from machine to machine, and mind the open gates.": {
+  "zh_TW": "每次都是全新的建築工地：圍欄工地裡有吊車、挖土機、推土機、土堆、貨櫃、鷹架塔和附彈跳墊的壕溝。爬梯子、在機器之間跳躍，小心敞開的大門。",
+  "zh_CN": "每次都是全新的建筑工地：围栏工地里有塔吊、挖掘机、推土机、土堆、集装箱、脚手架塔和带弹跳垫的沟渠。爬梯子、在机器之间跳跃，小心敞开的大门。",
+  "ja": "毎回新しい建設現場：フェンスで囲まれた敷地にクレーン、ショベルカー、ブルドーザー、土の山、コンテナ、足場タワー、バウンドパッド付きの溝。はしごを登り、機械から機械へジャンプ。開いたゲートに注意。",
+  "fr": "Un nouveau chantier à chaque fois : une cour clôturée avec une grue, une pelleteuse, un bulldozer, des tas de terre, des conteneurs, des tours d'échafaudage et une tranchée avec un tremplin. Grimpez aux échelles, sautez de machine en machine et méfiez-vous des portails ouverts.",
+  "es": "Una obra nueva cada vez: un recinto vallado con grúa, excavadora, bulldozer, montones de tierra, contenedores, torres de andamio y una zanja con trampolín. Sube escaleras, salta de máquina en máquina y cuidado con las puertas abiertas."
+ },
  "A plus-shaped street high above the city. Four arms, a raised hub and nothing but sky in the corners, so every shove can be the last. Bounce pads fling you back toward the middle.": {
   "zh_TW": "高懸於城市之上的十字形街道。四條臂、一個高起的中心，四角只有天空，所以每一次推擠都可能是最後一次。彈跳墊會把你彈回中間。",
   "zh_CN": "高悬于城市之上的十字形街道。四条臂、一个高起的中心，四角只有天空，所以每一次推挤都可能是最后一次。弹跳垫会把你弹回中间。",
@@ -1622,6 +1629,13 @@
   "ja": "ビルダー",
   "fr": "Bricoleur",
   "es": "Constructor"
+ },
+ "Building Site": {
+  "zh_TW": "建築工地",
+  "zh_CN": "建筑工地",
+  "ja": "建設現場",
+  "fr": "Chantier de construction",
+  "es": "Obra en construcción"
  },
  "Built for Moon Drift. A lunar crater under a glass dome with Earth hanging in the sky. Leap off the moon rocks and float up to the drifting asteroid platforms, and bounce off the glass.": {
   "zh_TW": "為月球漂移而建。玻璃穹頂下的月球隕石坑，天空中懸掛著地球。從月岩上跳起，飄向漂移的小行星平台，並在玻璃上反彈。",
@@ -3611,6 +3625,13 @@
   "fr": "Difficile",
   "es": "Difícil"
  },
+ "Hard Hat": {
+  "zh_TW": "安全帽",
+  "zh_CN": "安全帽",
+  "ja": "ヘルメット",
+  "fr": "Casque de chantier",
+  "es": "Casco de obra"
+ },
  "Hats": {
   "zh_TW": "帽子",
   "zh_CN": "帽子",
@@ -4975,6 +4996,13 @@
   "ja": "オレンジ",
   "fr": "Orange",
   "es": "Naranja"
+ },
+ "Orange Hard Hat": {
+  "zh_TW": "橘色安全帽",
+  "zh_CN": "橙色安全帽",
+  "ja": "オレンジのヘルメット",
+  "fr": "Casque orange",
+  "es": "Casco naranja"
  },
  "Out": {
   "zh_TW": "出局",
@@ -7698,6 +7726,13 @@
   "ja": "ホワイト",
   "fr": "Blanc",
   "es": "Blanco"
+ },
+ "White Hard Hat": {
+  "zh_TW": "白色安全帽",
+  "zh_CN": "白色安全帽",
+  "ja": "白いヘルメット",
+  "fr": "Casque blanc",
+  "es": "Casco blanco"
  },
  "Who can join": {
   "zh_TW": "誰能加入",

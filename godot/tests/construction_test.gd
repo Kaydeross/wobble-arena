@@ -54,7 +54,7 @@ func _title() -> void:
 	for m: String in w.modes(): names.append(w.mode_name(m))
 	check(names.has("Classic") and not names.has("Construction"), "wizard modes %s (Construction lives behind the banner)" % [names])
 	check(w.maps_for("classic").has("arena") and w.maps_for("classic").has("practice") and not w.maps_for("classic").has("siteyard"), "classic maps %s" % [w.maps_for("classic")])
-	check(w.maps_for("construction") == ["siteyard"], "construction maps %s" % [w.maps_for("construction")])
+	check(w.maps_for("construction") == ["siteyard", "sitegen"], "construction maps %s" % [w.maps_for("construction")])
 	check(main.get_node("Safe/Col/Body/Home/Construction") != null, "the title has the Construction banner")
 	print("TITLE modes=%s" % [names])
 	vp.queue_free()

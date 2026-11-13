@@ -45,6 +45,7 @@ static func build(map_id: String) -> MapNode:
 	if map.is_empty():
 		push_error("MapBuilder: unknown map " + map_id)
 	if PillarsMap.IDS.has(map_id): map = PillarsMap.complete(map)   # its pillars and spots are not in the web export
+	if map_id == SiteMap.ID: map = SiteMap.generate(SiteMap.current_seed)   # Construction DLC: a Building Site generated from the seed
 	return build_from(map_id, map)
 
 ## Build from a map Dictionary (one entry of maps.json).
@@ -272,6 +273,7 @@ static var _shaders: Dictionary = {}
 static func look(id: String) -> Dictionary:
 	if id == "":
 		return {}
+	if id == SiteMap.ID: id = "siteyard"          # the generated Building Site wears the Site Yard's sky, fog, sun and backdrop
 	if _look.is_empty() and FileAccess.file_exists(LOOK_PATH):
 		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(LOOK_PATH))
 		if v is Dictionary:
@@ -601,6 +603,7 @@ static func _add_backdrop(root: Node3D, map: Dictionary) -> void:
 
 ## Which decor file a map uses: its own, or none for a custom level in a theme other than grass (its hills differ).
 static func _decor_id(map_id: String, map: Dictionary) -> String:
+	if map_id == SiteMap.ID: return "siteyard"
 	if map_id == "custom":
 		return "custom" if str(map.get("theme", "grass")) == "grass" else ""
 	return map_id
