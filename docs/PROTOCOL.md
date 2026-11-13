@@ -211,15 +211,21 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 | Route | Method | Body | Returns |
 |---|---|---|---|
 | `/api/signup` | POST | `username` (3–16 `A-Za-z0-9_`), `email`, `password` (6–72), `data?` | `{ok, token, user, data, t, recovery}` — `recovery` is shown once, `XXXX-XXXX-XXXX-XXXX` |
+| `/api/claim` | POST | `name` (same rules as `username`; case-insensitive unique), `data?` | `{ok, token, user, data, t}` — **the easy path**: a password-less account from just a name. Same rate limit as sign-up (40 per IP per hour); 409 `username` when taken |
+| `/api/protect` | POST | `password` (6–72) | `{ok, recovery, user}` — authenticated; puts a password (and a recovery code, shown once) on a name-only account so it can use `/api/login` on another device; 409 `has` if it already has one |
 | `/api/login` | POST | `id` (username or email), `password` | `{ok, token, user, data, t}` |
-| `/api/me` | GET | – | `{ok, user, data, t, hasRecovery}`, renews the token |
+| `/api/me` | GET | – | `{ok, user, data, t, hasRecovery, hasPassword}`, renews the token |
 | `/api/save` | PUT | `data`, `base?`, `force?` | `{ok, t}`; if another device saved newer: `409 {ok:false, err:'stale', data, t}` |
 | `/api/logout` | POST | – | `{ok}` |
-| `/api/password` | POST | `old`, `next` | `{ok}` |
+| `/api/password` | POST | `old`, `next` | `{ok}` (400 `nopass` on a name-only account: use `/api/protect`) |
 | `/api/recovery` | POST | `password` | `{ok, recovery}` (new code; old one stops working) |
 | `/api/reset` | POST | `id`, `code`, `password` | `{ok, token, user, data, t, recovery}` |
-| `/api/delete` | POST | `password` | `{ok}` — **required by App Store 5.1.1(v)** |
+| `/api/delete` | POST | `password` (not needed for a name-only account) | `{ok}` — **required by App Store 5.1.1(v)** |
 | `/health` | GET | – | `{ok, rooms, players, accounts, saved}` |
+
+`user` is `{username, email, created, hasPassword}` (`email` is `''` for a name-only account).
+
+**Unused names are freed.** The server keeps a `lastSeen` per account (written by `/api/me`, `/api/save`, `/api/login` and the relay `auth` op, at most once an hour per account). A sweep at start-up and every 6 hours erases accounts whose `lastSeen` is older than `ACCOUNT_TTL_DAYS` (default 30; `0` = never), with their cloud save, tokens and email, so the name can be picked again. Accounts created before `lastSeen` existed get `lastSeen = now` the first time the sweep sees them (nobody is erased by the upgrade). The server logs counts only, never names. Clients tell players: "Names nobody uses for 30 days are freed."
 
 Error shape: `{ok:false, err, msg}` with HTTP 400/401/409/413/429/500. Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
 

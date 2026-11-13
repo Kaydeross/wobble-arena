@@ -896,7 +896,7 @@ body.tplay #chat{display:none}
     <label class="fld" id="au-f-user"><span id="au-userl">Username</span><input id="au-user" type="text" maxlength="100" autocomplete="username" autocapitalize="off" spellcheck="false"></label>
     <label class="fld" id="au-f-email"><span>Email</span><input id="au-email" type="email" maxlength="100" autocomplete="email" spellcheck="false"></label>
     <label class="fld" id="au-f-code"><span>Recovery code</span><input id="au-code-in" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="XXXX-XXXX-XXXX"></label>
-    <label class="fld"><span id="au-passl">Password</span><input id="au-pass" type="password" maxlength="72" autocomplete="current-password"></label>
+    <label class="fld" id="au-f-pass"><span id="au-passl">Password</span><input id="au-pass" type="password" maxlength="72" autocomplete="current-password"></label>
     <label class="chk"><input type="checkbox" id="au-show"><span>Show password</span></label>
     <label class="chk" id="au-f-carry"><input type="checkbox" id="au-carry" checked><span id="au-carryt"></span></label>
     <div id="au-err"></div>
@@ -8838,16 +8838,16 @@ function carrySource() {                                             // the prog
 }
 function openAuth(mode, why) {
   auMode = mode; auBusy = false; const ov = el('authov'); ov.style.display = 'flex';
-  const T = { signup: ['Save your progress', 'Free. Your coins, outfits, controls and stats are saved to it, so they follow you to any device.'], login: ['Log in', 'Welcome back! Your progress loads as soon as you\'re in.'], reset: ['Reset your password', 'Type your username (or email), the recovery code you were shown when you signed up, and a new password.'] }[mode] || ['Save your progress', ''];
+  const T = { signup: ['Pick a name', 'Just a name, no password needed. Your coins, outfits and stats are saved to it. Names nobody uses for 30 days are freed.'], login: ['Log in', 'Welcome back! Your progress loads as soon as you\'re in.'], reset: ['Reset your password', 'Type your username (or email), the recovery code you were shown when you signed up, and a new password.'] }[mode] || ['Save your progress', ''];
   el('au-title').textContent = T[0]; el('au-sub').textContent = why || T[1];
   const su = mode === 'signup', rs = mode === 'reset';
   el('au-form').style.display = 'block'; el('au-rec').style.display = 'none';
-  el('au-f-email').style.display = su ? 'block' : 'none'; el('au-f-code').style.display = rs ? 'block' : 'none';
-  el('au-userl').textContent = su ? 'Username (3 to 16 letters, numbers or _)' : 'Username or email'; el('au-passl').textContent = rs ? 'New password (6 to 72 characters)' : 'Password';
+  el('au-f-email').style.display = 'none'; el('au-f-pass').style.display = su ? 'none' : 'block'; el('au-f-code').style.display = rs ? 'block' : 'none';
+  el('au-userl').textContent = su ? 'Your name (3 to 16 letters, numbers or _)' : 'Username or email'; el('au-passl').textContent = rs ? 'New password (6 to 72 characters)' : 'Password';
   el('au-pass').autocomplete = su || rs ? 'new-password' : 'current-password';
-  el('au-go').textContent = su ? 'Save progress' : rs ? 'Reset password' : 'Log in';
+  el('au-go').textContent = su ? 'Play' : rs ? 'Reset password' : 'Log in';
   const cs = su ? carrySource() : null; el('au-f-carry').style.display = cs ? 'flex' : 'none'; if (cs) { el('au-carryt').textContent = cs.t; el('au-carry').checked = true; }
-  el('au-alt').style.display = ''; el('au-alt').textContent = su ? 'I already saved before' : rs ? 'Back to log in' : 'Save your progress instead';
+  el('au-alt').style.display = ''; el('au-alt').textContent = su ? 'I have a password' : rs ? 'Back to log in' : 'Pick a name instead';
   el('au-forgot').style.display = mode === 'login' ? 'inline-block' : 'none'; el('au-close').style.display = '';
   el('au-err').textContent = ''; el('au-pass').value = ''; el('au-pass').type = el('au-show').checked ? 'text' : 'password';
   setTimeout(() => { try { el('au-user').focus(); } catch (e) { /* x */ } }, 50);
@@ -8882,15 +8882,14 @@ function authSuccess(r, carried) {                                   // we are i
 el('au-form').onsubmit = async e => {
   e.preventDefault(); if (auBusy) return;
   const su = auMode === 'signup', rs = auMode === 'reset', id = String(el('au-user').value || '').trim(), em = String(el('au-email').value || '').trim(), pw = String(el('au-pass').value || ''), code = String(el('au-code-in').value || '').trim(), err = t => { el('au-err').textContent = t; };
-  const label = su ? 'Save progress' : rs ? 'Reset password' : 'Log in';
+  const label = su ? 'Play' : rs ? 'Reset password' : 'Log in';
   if (!id) return err(su ? 'Pick a username.' : 'Type your username or email.');
   if (su && !/^[A-Za-z0-9_]{3,16}$/.test(id)) return err('Usernames are 3 to 16 letters, numbers or underscores.');
-  if (su && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)) return err('Type your email (it\'s only used for your account).');
   if (rs && !code) return err('Type your recovery code.');
-  if (!pw) return err(rs ? 'Type a new password.' : 'Type your password.'); if ((su || rs) && pw.length < 6) return err('Passwords need 6 to 72 characters.');
-  auBusy = true; el('au-go').disabled = true; err(''); el('au-go').textContent = su ? 'Creating…' : rs ? 'Resetting…' : 'Logging in…';
+  if (!su && !pw) return err(rs ? 'Type a new password.' : 'Type your password.'); if (rs && pw.length < 6) return err('Passwords need 6 to 72 characters.');
+  auBusy = true; el('au-go').disabled = true; err(''); el('au-go').textContent = su ? 'Picking…' : rs ? 'Resetting…' : 'Logging in…';
   let r;
-  if (su) { const cs = el('au-carry').checked ? carrySource() : null; const data = cs ? cs.d : undefined; if (data && !(data.set && data.set.name && !/^Guest\d{3}$/.test(data.set.name))) { data.set = Object.assign({}, data.set || {}, { name: id.slice(0, 12) }); } r = await api('POST', '/api/signup', { username: id, email: em, password: pw, data }); }
+  if (su) { const cs = el('au-carry').checked ? carrySource() : null; const data = cs ? cs.d : undefined; if (data && !(data.set && data.set.name && !/^Guest\d{3}$/.test(data.set.name))) { data.set = Object.assign({}, data.set || {}, { name: id.slice(0, 12) }); } r = await api('POST', '/api/claim', { name: id, data }); }
   else if (rs) r = await api('POST', '/api/reset', { id, code, password: pw });
   else r = await api('POST', '/api/login', { id, password: pw });
   auBusy = false; el('au-go').disabled = false; el('au-go').textContent = label;
@@ -8905,7 +8904,7 @@ async function doLogout() {
     finish();
   };
   const finish = async () => { try { await api('POST', '/api/logout', {}, acct.token, 4000); } catch (e) { /* offline is fine */ } try { localStorage.removeItem('wobbleAuth'); rmSave(); sessionStorage.removeItem('waSkip'); } catch (e) { /* x */ } location.reload(); };
-  askConfirm(tf('Log out of %s? Everything is saved to your account, so you can log back in any time.', acct.user), go);
+  askConfirm(acct.nopw ? tf('Log out of %s? This name has no password, so you can\'t log back in on this device later. Log out anyway?', acct.user) : tf('Log out of %s? Everything is saved to your account, so you can log back in any time.', acct.user), go);
 }
 el('tt-out').onclick = doLogout;
 function acctSyncText() {
@@ -8947,7 +8946,7 @@ async function verifyLogin() {                                       // at start
   if (r.err === 'net') { if (acct.dirty) setTimeout(() => cloudPush(), 8000); return; }                 // offline: carry on with this device's copy
   if (r.status === 401) { authExpired(); return; }
   if (!r.ok) return;
-  acct.email = r.user.email; authKeep();
+  acct.email = r.user.email; acct.nopw = r.hasPassword === false; authKeep();
   if (r.data && (r.t | 0) > (acct.t | 0)) { try { localStorage.setItem('wobbleArena', JSON.stringify(r.data)); acct.t = r.t; acct.dirty = false; authKeep(); sessionStorage.setItem('waSkip', '1'); } catch (e) { /* x */ } location.reload(); return; }
   if (acct.dirty) cloudPush();
 }
