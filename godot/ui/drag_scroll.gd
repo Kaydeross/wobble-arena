@@ -29,6 +29,7 @@ var _last_t := 0.0
 var _start_scroll := 0.0
 var _stopped_fling := false
 var _scroll_f := 0.0            ## sub-pixel scroll position while flinging
+var _cards: Array = []          ## every card added (they may sit in grids and sections below the content)
 
 func _init() -> void:
 	horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -42,6 +43,7 @@ func _ready() -> void:
 
 ## A card the container picks on tap. Hover still works; presses come here.
 func add_card(b: BaseButton) -> void:
+	_cards.append(b)
 	b.button_mask = 0
 	b.mouse_filter = Control.MOUSE_FILTER_PASS
 
@@ -128,12 +130,12 @@ func _release(gp: Vector2) -> void:
 			(card as BaseButton).pressed.emit()
 		tapped.emit(card)
 
-## The card (a direct child of the content) under a global point, or null.
+## The card (added with add_card, wherever it sits below the content) under a global point, or null.
 func card_at(gp: Vector2) -> Control:
-	var content := _content()
-	if content == null or not get_global_rect().has_point(gp): return null
-	for c in content.get_children():
-		if c is Control and (c as Control).visible and (c as Control).get_global_rect().has_point(gp): return c
+	if not get_global_rect().has_point(gp): return null
+	_cards = _cards.filter(func(c: Variant) -> bool: return is_instance_valid(c) and not (c as Node).is_queued_for_deletion())
+	for c: Control in _cards:
+		if c.is_visible_in_tree() and c.get_global_rect().has_point(gp): return c
 	return null
 
 func _process(dt: float) -> void:

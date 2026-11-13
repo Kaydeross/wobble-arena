@@ -15,6 +15,8 @@ signal baked_one(id: String)
 const SIZE := Vector2i(300, 380)
 const SPIN := 0.7               ## rad/s for the selected card
 const IDLE_YAW := 0.45          ## baked cards look a little to the side
+const FIT_MARGIN := 1.12        ## room around the fitted bounds
+const FIT_LIFT := 0.22          ## camera height above the bounds' middle, per unit of distance (looks a little down)
 
 var baked := {}                 ## class id -> ImageTexture (or null when headless)
 var current := ""
@@ -24,6 +26,8 @@ var _wob: Wobbler
 var _baking := false
 var _spin := 0.0
 var _want := ""                 ## the class live() asked for (applied after a bake)
+var min_radius := 0.0            ## fit_camera keeps at least this much width in the shot (the wizard frames the whole pedestal)
+var _frame := "body"            ## what fit_camera frames: "body", or "head" (LockerStage hat cards)
 
 func _init() -> void:
 	name = "CharacterStage"
@@ -101,8 +105,59 @@ func pose(id: String, yaw: float) -> void:
 	_wob.set_weapon("")
 	_wob.apply_state({"pos": Vector3.ZERO, "vel": Vector3.ZERO, "yaw": 0.0, "grounded": true, "aim": Vector3(0, -0.4, 1)})
 	for i in 90: _wob.animate(1.0 / 60.0)
+	_pivot.rotation.y = 0.0
+	fit_camera()
 	_pivot.rotation.y = yaw
 	current = id
+
+func _set_frame(f: String) -> void:
+	_frame = f
+
+## The visible meshes' bounds in pivot space: [min y, max y, radius around the turning axis]. Frame "head": only
+## the head and what sits on it (hat cards), unless nothing there is visible (an outfit that replaces the head).
+func model_bounds(frame: String = "") -> Array:
+	if frame == "": frame = _frame
+	var roots: Array = [_wob]
+	if frame == "head": roots = [_wob.neck]
+	var out := _bounds(roots)
+	if out.is_empty() and frame == "head": out = _bounds([_wob])
+	return out if not out.is_empty() else [0.0, 2.4, 0.8]
+
+func _bounds(roots: Array) -> Array:
+	var inv := _pivot.global_transform.affine_inverse()
+	var lo := INF
+	var hi := -INF
+	var rad := 0.0
+	for r: Node in roots:
+		var list: Array = r.find_children("*", "MeshInstance3D", true, false)
+		if r is MeshInstance3D: list.append(r)
+		for mi: MeshInstance3D in list:
+			if not mi.is_visible_in_tree() or mi.mesh == null: continue
+			var xf := inv * mi.global_transform
+			var bb := mi.mesh.get_aabb()
+			for k in 8:
+				var c := xf * bb.get_endpoint(k)
+				lo = minf(lo, c.y)
+				hi = maxf(hi, c.y)
+				rad = maxf(rad, Vector2(c.x, c.z).length())
+	return [] if lo > hi else [lo, hi, rad]
+
+## Places the camera so the whole look fits the viewport whichever way it faces (it turns on the stage).
+func fit_camera() -> void:
+	if not has_node("Cam") or not is_inside_tree(): return
+	var cam := get_node("Cam") as Camera3D
+	var b := model_bounds()
+	var lo: float = b[0]
+	if _frame != "head": lo = minf(lo, -0.14)          # keep the pedestal in the shot
+	var hi: float = b[1]
+	var half_h := (hi - lo) * 0.5 * FIT_MARGIN
+	var half_w := maxf(float(b[2]), min_radius if _frame != "head" else 0.0) * FIT_MARGIN
+	var tan_v := tan(deg_to_rad(cam.fov * 0.5))
+	var aspect := float(size.x) / float(maxi(1, size.y))
+	var d := maxf(half_h / tan_v, half_w / (tan_v * aspect)) + float(b[2]) * 0.6
+	d = maxf(d, 1.5)
+	var mid := Vector3(0, (lo + hi) * 0.5, 0)
+	cam.look_at_from_position(mid + Vector3(0, d * FIT_LIFT, d), mid, Vector3.UP)
 
 ## Renders every class once into `baked` (one frame each), then goes back to the live class.
 func bake(ids: Array) -> void:

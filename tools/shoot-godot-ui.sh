@@ -16,7 +16,7 @@ SUFFIX="${1:-}"
 RES="${RES:-852x393}"
 mkdir -p "$OUT"
 timeout 120 "$GODOT" --headless --path godot --import >/dev/null 2>&1 || true
-for s in ${@:-title title-online title-settings wizard-mode wizard-arena wizard-players wizard-character wizard-start match touch touch-lefty fps pause}; do
+for s in ${@:-title title-online title-settings wizard-mode wizard-team wizard-arena wizard-players wizard-character wizard-start match touch touch-lefty fps pause}; do
 	case "$s" in wizard-*|locker-*) name="godot-$s${SUFFIX:+-$SUFFIX}.png" ;; shop*|emote-wheel|results) name="godot-locker-$s${SUFFIX:+-$SUFFIX}.png" ;;
 		account-*) name="godot-$s${SUFFIX:+-$SUFFIX}.png" ;; killcam) name="godot-account-killcam${SUFFIX:+-$SUFFIX}.png" ;; *) name="godot-ui-$s${SUFFIX:+-$SUFFIX}.png" ;; esac
 	timeout 120 "$GODOT" --path godot --resolution "$RES" --script res://tests/ui_shots.gd -- --no-save --shot "$s" --out "$OUT/$name" 2>&1 | grep -E '^SHOT|SCRIPT ERROR' || { echo "FAIL $s"; exit 1; }

@@ -1,13 +1,16 @@
 class_name SetupWizard
 extends VBoxContainer
 ## Offline match setup, one choice per page (title screen Play opens it):
-##   1 Game type (cards for ModeRules.PLAYABLE + Construction, read from code, and the Moving floor row: Settings "dyn"),
-##   2 Arena (cards for the maps that game type allows), 3 Players (you + 1..7 bots, team modes fix the count; bot
+##   1 Game type (cards for ModeRules.PLAYABLE + Construction, read from code),
+##   2 Arena (cards for the maps that game type allows, and the Moving floor row: Settings "dyn"), 3 Players (you + 1..7 bots, team modes fix the count; bot
 ##   skill), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
 ##   of the four picks, each row jumps back to its page, and the big Start button).
 ## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, class), so the next Play
 ## starts where the last one ended. Game types restrict arenas: when the remembered arena is not allowed in the new
 ## game type, the wizard moves to the nearest allowed one and says so in one line (`note`).
+## Game types are grouped in labelled sections (Classic / Team / Special, data/extra/wizard.json: also each card's short
+## line, colour and drawn icon; the selected card's full text shows in a detail line under the grid). The Moving floor
+## row lives on the Arena page. Character cards show the class parameters as bars (logic/class_stats.gd).
 ## Card grids scroll with DragScroll (drag + fling, a tap picks, a drag never does; wheel on PC) inside a frame that
 ## fades the edge where more cards are hidden; opening a page scrolls its selected card into view.
 ## Built in code (no .tscn) in the UiTheme look; scenes/main.tscn adds it under Safe. Header: title + step + note;
@@ -24,9 +27,11 @@ const BOT_MIN := 1
 const BOT_MAX := 7
 const DIFFS := ["easy", "normal", "hard", "insane"]
 const GAP := 12
-const MAP_CARD := Vector2(220, 140)
-const MODE_CARD := Vector2(220, 104)
-const CLASS_CARD := Vector2(172, 250)
+const MAP_CARD := Vector2(220, 148)
+const MODE_CARD := Vector2(220, 108)
+const CLASS_CARD := Vector2(172, 282)
+const PAD := 8                  ## room round a card grid inside its scroll area, so a card's ring / shadow is never clipped
+const TEXT_PATH := "res://data/extra/wizard.json"
 
 var page := 0
 var map_id := "arena"
@@ -48,7 +53,10 @@ var step_bs: Array = []
 var players_l: Label
 var players_hint: Label
 var stage: CharacterStage   ## the shared 3D stage for the character cards
-var _grids := {}            ## page index -> [DragScroll, GridContainer, card width, EdgeFade]
+var _grids := {}            ## page index -> [DragScroll, first GridContainer, card width, EdgeFade, [every GridContainer]]
+var detail_l: Label         ## the selected game type's full text (under the grid)
+var _checks := {}           ## card Button -> its selected tick
+static var _text: Dictionary = {}
 var _map_bs := {}
 var _mode_bs := {}
 var _class_bs := {}
@@ -118,6 +126,44 @@ static func mode_name(m: String) -> String:
 
 static func map_name(id: String) -> String:
 	return str(Content.get_map(id).get("name", id))
+
+## Godot-only display text (data/extra/wizard.json): sections, short card lines, colours, icons.
+static func text_data() -> Dictionary:
+	if _text.is_empty():
+		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(TEXT_PATH)) if FileAccess.file_exists(TEXT_PATH) else null
+		_text = v if v is Dictionary else {"sections": [], "modes": {}}
+	return _text
+
+static func mode_info(m: String) -> Dictionary:
+	var d: Variant = text_data().get("modes", {}).get(m)
+	return d if d is Dictionary else {}
+
+## The short card line of a game type (never truncated: tests measure it).
+static func mode_short(m: String) -> String:
+	return str(mode_info(m).get("short", ModeRules.blurb(m, Content.modes)))
+
+## The full text of a game type (the detail line).
+static func mode_long(m: String) -> String:
+	return str(mode_info(m).get("long", Content.modes.get(m, {}).get("desc", mode_short(m))))
+
+static func mode_color(m: String) -> Color:
+	return Color(str(mode_info(m).get("col", "#ffcf5a")))
+
+## [[section name, [mode ids]], ...] over `modes()`; a mode the data does not place goes to the last section.
+static func sections() -> Array:
+	var out: Array = []
+	var seen: Array = []
+	var all := modes()
+	for s: Dictionary in text_data().get("sections", []):
+		var ids: Array = []
+		for m: String in s.get("modes", []):
+			if all.has(m) and not seen.has(m): ids.append(m); seen.append(m)
+		if not ids.is_empty(): out.append([str(s.get("name", "")), ids])
+	var rest: Array = all.filter(func(m: String) -> bool: return not seen.has(m))
+	if not rest.is_empty():
+		if out.is_empty(): out.append(["Game types", rest])
+		else: (out[-1][1] as Array).append_array(rest)
+	return out
 
 ## Classes you own (Save autoload; the Godot-only ones need coins or an unlock, ExtraClasses). Headless helpers without
 ## the autoload treat every class as owned.
@@ -225,6 +271,7 @@ func _sync_classes() -> void:
 	var want := str(Settings.get_value("class", cls))
 	if want != cls and Content.classes.has(want) and owns_class(want): cls = want
 	for id: String in _class_bs: (_class_bs[id] as Control).visible = owns_class(id)
+	if _grids.has(P_CHAR): _reflow(P_CHAR)
 
 func next() -> void:
 	if page >= pages.size() - 1:
@@ -276,6 +323,8 @@ func _ready() -> void:
 	_make_styles()
 	if not _loaded: load_settings()
 	stage = CharacterStage.new()
+	stage.size = Vector2i(300, 300)     # the card art is about as wide as it is tall
+	stage.min_radius = 0.95             # the whole pedestal stays in the card
 	add_child(stage)
 	stage.baked_one.connect(func(_id: String) -> void: _show_class_art())
 	_build_head()
@@ -395,7 +444,8 @@ func _build_foot() -> void:
 	next_b.pressed.connect(next)
 	foot.add_child(next_b)
 
-## A card grid that scrolls by drag (DragScroll) inside a frame with edge fades; the column count re-flows to the width.
+## A card page that scrolls by drag (DragScroll) inside a frame with edge fades. The scroll holds a padded column
+## (`Body`) of one or more card grids (`new_grid`); the column count re-flows to the width. Returns the first grid.
 func _grid_page(p: Control, k: int, card_w: float) -> GridContainer:
 	var frame := Control.new()
 	frame.name = "Frame"
@@ -406,13 +456,20 @@ func _grid_page(p: Control, k: int, card_w: float) -> GridContainer:
 	sc.name = "Scroll"
 	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	frame.add_child(sc)
-	var g := GridContainer.new()
-	g.name = "Grid"
-	g.size_flags_horizontal = SIZE_EXPAND_FILL
-	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	g.add_theme_constant_override("h_separation", GAP)
-	g.add_theme_constant_override("v_separation", GAP)
-	sc.add_child(g)
+	var pad := MarginContainer.new()
+	pad.name = "Pad"
+	pad.size_flags_horizontal = SIZE_EXPAND_FILL
+	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pad.add_theme_constant_override("margin_top", PAD)
+	pad.add_theme_constant_override("margin_bottom", PAD)
+	pad.add_theme_constant_override("margin_left", 4)
+	pad.add_theme_constant_override("margin_right", 4)
+	sc.add_child(pad)
+	var body := VBoxContainer.new()
+	body.name = "Body"
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_theme_constant_override("separation", 8)
+	pad.add_child(body)
 	var fade := EdgeFade.new(sc)
 	fade.name = "Fade"
 	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -420,31 +477,81 @@ func _grid_page(p: Control, k: int, card_w: float) -> GridContainer:
 	sc.tapped.connect(func(c: Control) -> void:
 		var j := c.get_node_or_null("Juicy")
 		if j: j._release())
-	_grids[k] = [sc, g, card_w, fade]
+	_grids[k] = [sc, null, card_w, fade, []]
 	sc.resized.connect(_reflow.bind(k))
+	var g := new_grid(k)
+	_grids[k][1] = g
 	return g
+
+## Another card grid in page `k`'s column (a game type section), after an optional section header.
+func new_grid(k: int, header := "", col := Color(1, 0.812, 0.353)) -> GridContainer:
+	var body: VBoxContainer = (_grids[k][0] as Control).get_node("Pad/Body")
+	if header != "":
+		body.add_child(_section_head(header, col))
+	var g := GridContainer.new()
+	g.name = "Grid"
+	g.size_flags_horizontal = SIZE_EXPAND_FILL
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	g.add_theme_constant_override("h_separation", GAP)
+	g.add_theme_constant_override("v_separation", GAP)
+	body.add_child(g)
+	(_grids[k][4] as Array).append(g)
+	return g
+
+## "CLASSIC ────────": a small heavy caption in the section colour, then a hairline.
+func _section_head(text: String, col: Color) -> Control:
+	var h := HBoxContainer.new()
+	h.name = "Head_" + text
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_theme_constant_override("separation", 10)
+	var dot := ColorRect.new()
+	dot.color = col
+	dot.custom_minimum_size = Vector2(6, 20)
+	dot.size_flags_vertical = SIZE_SHRINK_CENTER
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(dot)
+	var l := _label(text.to_upper(), 18)
+	l.name = "Caption"
+	l.add_theme_font_override("font", _heavy)
+	l.add_theme_color_override("font_color", col)
+	h.add_child(l)
+	var line := ColorRect.new()
+	line.color = Color(1, 1, 1, 0.14)
+	line.custom_minimum_size = Vector2(0, 2)
+	line.size_flags_horizontal = SIZE_EXPAND_FILL
+	line.size_flags_vertical = SIZE_SHRINK_CENTER
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(line)
+	return h
 
 func _reflow(k: int) -> void:
 	var e: Array = _grids[k]
 	var sc: DragScroll = e[0]
-	var w := sc.size.x - 16.0   # room for the scroll bar
-	var g: GridContainer = e[1]
+	var w := sc.size.x - 16.0 - 8.0   # room for the scroll bar and the side padding
+	var grids: Array = e[4]
+	var most := 1
+	for g: GridContainer in grids: most = maxi(most, g.get_child_count())
 	# never more columns than cards, so a short row (5 characters) spreads over the width
-	g.columns = clampi(int((w + GAP) / (float(e[2]) + GAP)), 1, maxi(1, g.get_child_count()))
+	var cols := clampi(int((w + GAP) / (float(e[2]) + GAP)), 1, most)
+	for g: GridContainer in grids: g.columns = cols
 	if k == P_CHAR:   # character cards: one row fills the page height (bigger renders), more rows keep the base size
-		var rows := ceili(g.get_child_count() / float(g.columns))
-		var h := CLASS_CARD.y if rows > 1 else clampf(sc.size.y - 2.0, CLASS_CARD.y, 380.0)
+		var g: GridContainer = grids[0]
+		var shown := g.get_children().filter(func(c: Control) -> bool: return c.visible).size()   # (classes you do not own are hidden)
+		var rows := ceili(maxi(1, shown) / float(g.columns))
+		var h := CLASS_CARD.y if rows > 1 else clampf(sc.size.y - 2.0 * PAD - 2.0, CLASS_CARD.y, 400.0)
 		for c: Control in g.get_children(): c.custom_minimum_size.y = h
 	(e[3] as Control).queue_redraw()
 
-## A selectable card: optional art on top, a heavy title, a muted line or two.
-func _card(title: String, sub: String, size: Vector2, art: Control = null) -> Button:
+## A selectable card: optional art on top (or a small icon beside the title), a heavy title, a muted line or two, and a
+## tick in the corner while it is the pick.
+func _card(title: String, sub: String, size: Vector2, art: Control = null, icon: Control = null) -> Button:
 	var b := Button.new()
 	b.toggle_mode = true
 	b.custom_minimum_size = size
 	b.size_flags_horizontal = SIZE_EXPAND_FILL
 	for k in _styles: b.add_theme_stylebox_override(k, _styles[k])
 	var m := MarginContainer.new()
+	m.name = "Margin"
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for s in ["left", "right"]: m.add_theme_constant_override("margin_" + s, 12)
@@ -452,6 +559,7 @@ func _card(title: String, sub: String, size: Vector2, art: Control = null) -> Bu
 	m.add_theme_constant_override("margin_bottom", 12)
 	b.add_child(m)
 	var v := VBoxContainer.new()
+	v.name = "Col"
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_theme_constant_override("separation", 4)
 	m.add_child(v)
@@ -462,7 +570,22 @@ func _card(title: String, sub: String, size: Vector2, art: Control = null) -> Bu
 	var t := _label(title, 22, "", true)
 	t.name = "Name"
 	t.add_theme_font_override("font", _heavy)
-	v.add_child(t)
+	t.size_flags_horizontal = SIZE_EXPAND_FILL
+	if icon:
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var row := HBoxContainer.new()
+		row.name = "Title"
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_theme_constant_override("separation", 8)
+		v.add_child(row)
+		row.add_child(icon)
+		t.size_flags_vertical = SIZE_SHRINK_CENTER
+		row.add_child(t)
+		t.add_theme_constant_override("line_spacing", 0)
+		t.custom_minimum_size.x = 40
+		t.add_theme_font_size_override("font_size", 21)
+	else:
+		v.add_child(t)
 	if sub != "":
 		var s := _label(sub, 15, "MutedLabel")
 		s.name = "Sub"
@@ -473,7 +596,24 @@ func _card(title: String, sub: String, size: Vector2, art: Control = null) -> Bu
 			s.max_lines_visible = 2
 			s.size_flags_vertical = SIZE_EXPAND_FILL
 		v.add_child(s)
+	t.resized.connect(_fit_title.bind(t, 21 if icon else 22))
+	var tick := Tick.new()
+	tick.name = "Check"
+	tick.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	tick.offset_left = -Tick.SIZE - 6; tick.offset_right = -6; tick.offset_top = 6; tick.offset_bottom = Tick.SIZE + 6
+	tick.visible = false
+	b.add_child(tick)
+	_checks[b] = tick
 	return b
+
+## A card title never trims: the font shrinks (down to 15) until the name fits the width it got.
+func _fit_title(l: Label, base: int) -> void:
+	if l.size.x < 8.0: return
+	var f := l.get_theme_font("font")
+	var fs := base
+	while fs > 15 and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x:
+		fs -= 1
+	if l.get_theme_font_size("font_size") != fs: l.add_theme_font_size_override("font_size", fs)
 
 ## A row of pill toggles (one ButtonGroup) after a muted label.
 func _pills(parent: Control, row_name: String, label: String, keys: Array, names: Array, store: Dictionary, on_pick: Callable, min_w := 0.0) -> HBoxContainer:
@@ -502,22 +642,43 @@ func _pills(parent: Control, row_name: String, label: String, keys: Array, names
 	return row
 
 func _build_mode(p: Control) -> void:
-	var g := _grid_page(p, P_MODE, MODE_CARD.x)
+	_grid_page(p, P_MODE, MODE_CARD.x)
+	var secs := sections()
 	var grp := ButtonGroup.new()
-	for m: String in modes():
-		var b := _card(mode_name(m), ModeRules.blurb(m, Content.modes), MODE_CARD)
-		b.name = m
-		b.button_group = grp
-		b.pressed.connect(set_mode.bind(m))
-		g.add_child(b)
-		scroll_of(P_MODE).add_card(b)
-		_mode_bs[m] = b
+	var first := true
+	for sec: Array in secs:
+		var ids: Array = sec[1]
+		var g: GridContainer = _grids[P_MODE][1] if first else null
+		var sc_col := mode_color(ids[0])
+		if first:   # the grid made with the page gets the first section's header in front of it
+			var body: VBoxContainer = scroll_of(P_MODE).get_node("Pad/Body")
+			body.add_child(_section_head(sec[0], sc_col))
+			body.move_child(body.get_child(body.get_child_count() - 1), 0)
+		else:
+			g = new_grid(P_MODE, sec[0], sc_col)
+		first = false
+		for m: String in ids:
+			var b := _card(mode_name(m), mode_short(m), MODE_CARD, null, ModeIcon.new(str(mode_info(m).get("icon", "crate")), mode_color(m)))
+			b.name = m
+			b.button_group = grp
+			b.tooltip_text = mode_long(m)
+			b.pressed.connect(set_mode.bind(m))
+			g.add_child(b)
+			scroll_of(P_MODE).add_card(b)
+			_mode_bs[m] = b
+	detail_l = _label("", 17, "MutedLabel")
+	detail_l.name = "Detail"
+	detail_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_l.max_lines_visible = 2
+	detail_l.custom_minimum_size.y = 46
+	detail_l.size_flags_vertical = SIZE_SHRINK_END
+	p.add_child(detail_l)
+
+func _build_arena(p: Control) -> void:
 	var names: Array = []
 	for k: String in Dynamics.KINDS: names.append(Dynamics.NAMES[k])
 	var row := _pills(p, "Floor", "Moving floor", Dynamics.KINDS, names, _dyn_bs, set_dyn)
 	row.tooltip_text = "Does the arena floor move? Random = a different moving floor every match"
-
-func _build_arena(p: Control) -> void:
 	_grid_page(p, P_ARENA, MAP_CARD.x)
 	_rebuild_maps()
 
@@ -530,7 +691,7 @@ func _rebuild_maps() -> void:
 	for id: String in maps_for(mode_id):
 		var m := Content.get_map(id)
 		var tags: Array = m.get("tags", [])
-		var b := _card(map_name(id), " · ".join(tags.slice(0, 3)), MAP_CARD, MapThumb.new(m, id))
+		var b := _card(map_name(id), " · ".join(tags.slice(0, 2)), MAP_CARD, MapThumb.new(m, id))
 		b.name = id
 		b.button_group = grp
 		b.tooltip_text = str(m.get("blurb", ""))
@@ -563,20 +724,45 @@ func _build_class(p: Control) -> void:
 	var g := _grid_page(p, P_CHAR, CLASS_CARD.x)
 	var grp := ButtonGroup.new()
 	for id: String in Content.classes:
-		var c := Content.get_class_data(id)
 		var art := TextureRect.new()
 		art.name = "Render"
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		art.custom_minimum_size = Vector2(0, 120)
-		var b := _card(class_name_of(id), str(c.get("tag", "")), CLASS_CARD, art)
+		art.custom_minimum_size = Vector2(0, 84)
+		var b := _card(class_name_of(id), "", CLASS_CARD, art)
 		b.name = id
 		b.button_group = grp
+		b.tooltip_text = "%s\n%s" % [str(Content.get_class_data(id).get("tag", "")), ClassStats.describe(Content.get_class_data(id))]
 		b.pressed.connect(set_class.bind(id))
+		b.get_node("Margin/Col").add_child(_stat_grid(id))
 		g.add_child(b)
 		scroll_of(P_CHAR).add_card(b)
 		_class_bs[id] = b
 		_class_art[id] = art
+
+## The class parameters as bars: two columns of (tiny label over a bar), one cell per ClassStats entry.
+func _stat_grid(id: String) -> GridContainer:
+	var g := GridContainer.new()
+	g.name = "Stats"
+	g.columns = 2
+	g.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	g.add_theme_constant_override("h_separation", 10)
+	g.add_theme_constant_override("v_separation", 3)
+	for st: Array in ClassStats.bars(Content.get_class_data(id)):
+		var cell := VBoxContainer.new()
+		cell.name = str(st[0])
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.size_flags_horizontal = SIZE_EXPAND_FILL
+		cell.add_theme_constant_override("separation", 1)
+		var l := _label(str(st[0]), 15, "MutedLabel")
+		l.name = "Label"
+		l.clip_text = false
+		cell.add_child(l)
+		var bar := StatBar.new(float(st[1]), float(st[2]))
+		bar.name = "Bar"
+		cell.add_child(bar)
+		g.add_child(cell)
+	return g
 
 func _build_start(p: Control) -> void:
 	p.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -631,6 +817,7 @@ func _refresh() -> void:
 		(step_bs[k] as Button).set_pressed_no_signal(k == page)
 	_select(_map_bs, map_id)
 	_select(_mode_bs, mode_id)
+	if detail_l: detail_l.text = "%s: %s" % [mode_name(mode_id), mode_long(mode_id)]
 	_select(_dyn_bs, dyn)
 	_select(_class_bs, cls)
 	_select(_diff_bs, diff)
@@ -651,14 +838,17 @@ func _refresh() -> void:
 		elif ModeRules.fixed_bots(mode_id, Content.modes) >= 0: players_hint.text = "%s fills every pillar: you + %d bots, one life each." % [mode_name(mode_id), total]
 		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
 	if _sum_vals.size() == 4:
-		_sum_vals[0].text = "%s · Floor: %s" % [mode_name(mode_id), Dynamics.NAMES.get(dyn, dyn)]
-		_sum_vals[1].text = map_name(map_id)
+		_sum_vals[0].text = mode_name(mode_id)
+		_sum_vals[1].text = "%s · Floor: %s" % [map_name(map_id), Dynamics.NAMES.get(dyn, dyn)]
 		_sum_vals[2].text = "%s · %s" % [_players_text(), diff.capitalize()]
 		_sum_vals[3].text = class_name_of(cls)
 
 func _select(store: Dictionary, key: Variant) -> void:
 	for k in store:
-		(store[k] as Button).set_pressed_no_signal(k == key)
+		var b := store[k] as Button
+		b.set_pressed_no_signal(k == key)
+		var t: Control = _checks.get(b)
+		if t and is_instance_valid(t): t.visible = k == key
 
 # ---------------- scroll edge hint ----------------
 
@@ -737,3 +927,161 @@ class MapThumb extends Control:
 		draw_colored_polygon(PackedVector2Array([Vector2(w * 0.18, h), Vector2(w * 0.3, h * 0.72), Vector2(w * 0.7, h * 0.72), Vector2(w * 0.82, h)]), floor_c)
 		draw_rect(Rect2(Vector2.ZERO, size), Color(1, 1, 1, 0.12), false, 2.0)
 
+
+
+## A class parameter bar: a dark track, the value in the accent colour and a small tick where the Wobbler sits.
+class StatBar extends Control:
+	var v: float
+	var base: float
+
+	func _init(value: float, baseline: float) -> void:
+		v = value
+		base = baseline
+		custom_minimum_size = Vector2(0, 10)
+		size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		var track := StyleBoxFlat.new()
+		track.bg_color = Color(0, 0, 0, 0.38)
+		track.set_corner_radius_all(4)
+		draw_style_box(track, r)
+		var fill := StyleBoxFlat.new()
+		fill.bg_color = UiTheme.ACCENT if v >= base - 0.02 else UiTheme.WARN.darkened(0.15)
+		fill.set_corner_radius_all(4)
+		draw_style_box(fill, Rect2(0, 0, maxf(8.0, size.x * v), size.y))
+		draw_rect(Rect2(size.x * base - 1.0, -1.0, 2.0, size.y + 2.0), Color(1, 1, 1, 0.85))
+
+## The corner tick of the picked card.
+class Tick extends Control:
+	const SIZE := 24.0
+
+	func _init() -> void:
+		custom_minimum_size = Vector2(SIZE, SIZE)
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		draw_circle(size * 0.5, size.x * 0.5, UiTheme.ACCENT)
+		var u := size.x
+		draw_polyline(PackedVector2Array([Vector2(0.27, 0.52) * u, Vector2(0.44, 0.69) * u, Vector2(0.75, 0.32) * u]), UiTheme.INK, 3.0, true)
+
+## A game type's small vector icon on a tinted badge: no assets, drawn from rects, circles and polygons.
+class ModeIcon extends Control:
+	var kind: String
+	var col: Color
+	const INK := Color(0.0627, 0.1686, 0.2078)
+
+	func _init(k: String, c: Color) -> void:
+		kind = k
+		col = c
+		custom_minimum_size = Vector2(36, 36)
+		size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _p(x: float, y: float) -> Vector2:
+		return Vector2(x, y) * size.x
+
+	func _poly(pts: Array, c: Color) -> void:
+		var a := PackedVector2Array()
+		for q: Vector2 in pts: a.append(_p(q.x, q.y))
+		draw_colored_polygon(a, c)
+
+	func _rect(x: float, y: float, w: float, h: float, c: Color) -> void:
+		draw_rect(Rect2(_p(x, y), _p(w, h)), c)
+
+	func _star(n: int, r0: float, r1: float, c: Color, at := Vector2(0.5, 0.5)) -> void:
+		var pts: Array = []
+		for i in n * 2:
+			var a := PI * i / n - PI / 2.0
+			var r := r0 if i % 2 == 0 else r1
+			pts.append(at + Vector2(cos(a), sin(a)) * r)
+		_poly(pts, c)
+
+	func _person(x: float, y: float, s: float, c: Color) -> void:
+		draw_circle(_p(x, y - 0.17 * s), size.x * 0.09 * s, c)
+		_poly([Vector2(x - 0.13 * s, y + 0.22 * s), Vector2(x - 0.1 * s, y - 0.05 * s), Vector2(x + 0.1 * s, y - 0.05 * s), Vector2(x + 0.13 * s, y + 0.22 * s)], c)
+
+	func _draw() -> void:
+		var bg := StyleBoxFlat.new()
+		bg.bg_color = col.darkened(0.6)
+		bg.bg_color.a = 0.9
+		bg.border_color = col
+		bg.set_border_width_all(2)
+		bg.set_corner_radius_all(int(size.x * 0.28))
+		draw_style_box(bg, Rect2(Vector2.ZERO, size))
+		var g := col.lightened(0.25)
+		var u := size.x
+		match kind:
+			"crate":
+				_rect(0.22, 0.3, 0.56, 0.5, g)
+				_rect(0.17, 0.24, 0.66, 0.12, col)
+				_rect(0.22, 0.52, 0.56, 0.07, INK)
+				_rect(0.46, 0.3, 0.08, 0.5, INK)
+			"bat":
+				draw_line(_p(0.3, 0.72), _p(0.68, 0.32), g, u * 0.12)
+				draw_circle(_p(0.7, 0.3), u * 0.11, g)
+			"gun":
+				_rect(0.2, 0.36, 0.58, 0.15, g)
+				_rect(0.74, 0.39, 0.1, 0.09, g)
+				_poly([Vector2(0.3, 0.5), Vector2(0.46, 0.5), Vector2(0.4, 0.74), Vector2(0.27, 0.74)], g)
+			"star":
+				_star(4, 0.32, 0.1, g)
+				draw_circle(_p(0.5, 0.5), u * 0.06, INK)
+			"bomb":
+				draw_circle(_p(0.46, 0.58), u * 0.22, g)
+				draw_line(_p(0.6, 0.4), _p(0.72, 0.27), g, u * 0.05)
+				draw_circle(_p(0.74, 0.25), u * 0.06, UiTheme.ORANGE)
+			"ladder":
+				draw_line(_p(0.34, 0.2), _p(0.34, 0.8), g, u * 0.06)
+				draw_line(_p(0.66, 0.2), _p(0.66, 0.8), g, u * 0.06)
+				for y in [0.3, 0.45, 0.6, 0.74]: draw_line(_p(0.34, y), _p(0.66, y), g, u * 0.05)
+			"swords":
+				draw_line(_p(0.26, 0.26), _p(0.74, 0.74), g, u * 0.09)
+				draw_line(_p(0.74, 0.26), _p(0.26, 0.74), g, u * 0.09)
+			"bolt":
+				_poly([Vector2(0.56, 0.16), Vector2(0.3, 0.54), Vector2(0.47, 0.54), Vector2(0.4, 0.84), Vector2(0.7, 0.44), Vector2(0.53, 0.44), Vector2(0.64, 0.16)], g)
+			"p1v1":
+				_person(0.3, 0.55, 1.1, Color("#8fd1ff"))
+				_person(0.7, 0.55, 1.1, Color("#ff8f6f"))
+			"p2":
+				for x in [0.32, 0.68]: _person(x, 0.55, 1.1, g)
+			"p3":
+				for x in [0.22, 0.5, 0.78]: _person(x, 0.56, 0.9, g)
+			"p4":
+				for x in [0.16, 0.39, 0.61, 0.84]: _person(x, 0.58, 0.72, g)
+			"tdm":
+				for x in [0.17, 0.36]: _person(x, 0.56, 0.8, Color("#8fd1ff"))
+				for x in [0.64, 0.83]: _person(x, 0.56, 0.8, Color("#ff8f6f"))
+			"burst":
+				_star(8, 0.36, 0.18, g)
+			"giant":
+				draw_circle(_p(0.4, 0.54), u * 0.26, g)
+				draw_circle(_p(0.76, 0.68), u * 0.1, g)
+			"moon":
+				draw_circle(_p(0.5, 0.5), u * 0.3, g)
+				draw_circle(_p(0.62, 0.4), u * 0.26, col.darkened(0.6))
+				draw_circle(_p(0.76, 0.72), u * 0.04, g)
+			"pillars":
+				_rect(0.2, 0.5, 0.17, 0.3, g)
+				_rect(0.42, 0.28, 0.17, 0.52, g)
+				_rect(0.64, 0.4, 0.17, 0.4, g)
+			"hat":
+				var pts: Array = []
+				for i in 13:
+					var a := PI + PI * i / 12.0
+					pts.append(Vector2(0.5, 0.62) + Vector2(cos(a), sin(a)) * 0.3)
+				_poly(pts, g)
+				_rect(0.15, 0.62, 0.7, 0.1, g)
+				_rect(0.46, 0.3, 0.08, 0.3, INK)
+			"target":
+				draw_circle(_p(0.5, 0.5), u * 0.32, g)
+				draw_circle(_p(0.5, 0.5), u * 0.22, INK)
+				draw_circle(_p(0.5, 0.5), u * 0.13, g)
+				draw_circle(_p(0.5, 0.5), u * 0.05, INK)
+			"blocks":
+				_rect(0.2, 0.52, 0.29, 0.29, g)
+				_rect(0.51, 0.52, 0.29, 0.29, g)
+				_rect(0.36, 0.22, 0.29, 0.29, col)
+			_:
+				draw_circle(_p(0.5, 0.5), u * 0.25, g)

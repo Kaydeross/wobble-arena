@@ -1,7 +1,7 @@
 extends SceneTree
 ## Renders UI screenshots for visual review (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot match --out FILE.png
-## Shots: title (scenes/main.tscn), title-online (its Play online panel), title-settings (the gear sheet), wizard-mode /
+## Shots: title (scenes/main.tscn), title-online (its Play online panel), title-settings (the gear sheet), wizard-mode / wizard-team (a Team section pick) /
 ## wizard-arena / wizard-players / wizard-character / wizard-start (the five offline setup wizard pages in order,
 ## ui/setup_wizard.gd; the character page waits for its 3D renders), match (offline world with the HUD), touch (same with the touch layer forced on and
 ## a few fingers down), touch-lefty (the same in left-handed mode), fps (match with the FPS overlay on), pause (the pause menu), title-construction (the title with the
@@ -97,7 +97,7 @@ func _start() -> void:
 	if shot == "modes2-mode": shot = "newmodes-mode2"
 	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
 		if shot.begins_with("wizard") or shot.begins_with("newmodes"):   # a fixed setup so the shots are comparable
-			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm", "newmodes-mode2": "pillars"}.get(shot, "classic")
+			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm", "newmodes-mode2": "pillars", "wizard-team": "tdm"}.get(shot, "classic")
 			for kv in [["offline_map", "pillars" if md == "pillars" else "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
 				_settings().set_value(kv[0], kv[1])
 		var m: Node = load("res://scenes/main.tscn").instantiate()
@@ -108,7 +108,7 @@ func _start() -> void:
 		elif shot == "title-settings":
 			m.show_settings(true)
 		elif shot.begins_with("wizard"):
-			m.open_wizard(["wizard-mode", "wizard-arena", "wizard-players", "wizard-character", "wizard-start"].find(shot))
+			m.open_wizard(maxi(0, ["wizard-mode", "wizard-arena", "wizard-players", "wizard-character", "wizard-start"].find(shot)))   # (wizard-team: Team Deathmatch picked, its section scrolled into view)
 		elif shot.begins_with("newmodes"):
 			m.open_wizard(2 if shot == "newmodes-players" else 0)
 			if shot != "newmodes-players": _scroll_wizard = m.wizard
