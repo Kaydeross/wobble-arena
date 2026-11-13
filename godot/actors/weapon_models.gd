@@ -12,6 +12,12 @@ const KEYS: Array[String] = ["katana", "spatula", "bat", "shotgun", "sniper", "t
 	"minigun", "revolver", "bow", "shuriken", "flame", "boomerang", "blower", "hammer", "wirewhip"]
 
 
+## The Construction DLC tools (godot/data/extra/construction/weapons.json): built by build() like the shared weapons, kept out of
+## KEYS because KEYS mirrors shared/weapons.json (tests/weapon_models_test.gd).
+const DLC_KEYS: Array[String] = ["pipewrench", "nailgun", "jackhammer", "spiritlevel", "tapemeasure", "cementbucket",
+	"conelauncher", "anglegrinder", "drill"]
+
+
 static func make_mat(c: int) -> Material:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color.hex(c << 8 | 0xff)
@@ -84,6 +90,15 @@ static func build(key: String, mat_fn: Callable = Callable()) -> Node3D:
 		"blower": _blower(b)
 		"hammer": _hammer(b)
 		"wirewhip": _wirewhip(b)
+		"pipewrench": _pipewrench(b)          # the Construction DLC tools (DLC_KEYS)
+		"nailgun": _nailgun(b)
+		"jackhammer": _jackhammer(b)
+		"spiritlevel": _spiritlevel(b)
+		"tapemeasure": _tapemeasure(b)
+		"cementbucket": _cementbucket(b)
+		"conelauncher": _conelauncher(b)
+		"anglegrinder": _anglegrinder(b)
+		"drill": _drill(b)
 		_:
 			b.bx(0.14, 0.7, 0.18, 0x5a6270, 0, -0.3, -0.05)
 			b.bx(0.1, 0.12, 0.22, 0x3a3f4a, 0, -0.02, 0.12)
@@ -202,6 +217,111 @@ static func _blower(b: _B) -> void:
 	b.cy(0.2, 0.2, 0.7, 0x4aa3d8, 0, -0.35, 0, 8)
 	b.mi(null, LowPoly.cone(0.42, 0.6, 8), 0xdff3fb, Vector3(0, -0.95, 0))
 	b.bx(0.14, 0.3, 0.16, 0x2a3640, 0, 0.1, 0.18)
+
+
+# ---------------------------------------------------------------- Construction DLC tools (same scale as the hammer: the hand is the origin, -Y is the business end)
+static func _pipewrench(b: _B) -> void:       # red-handled pipe wrench: long handle, a hooked head with toothed jaws and the adjusting wheel
+	b.cy(0.062, 0.078, 1.4, 0xc0392b, 0, -0.5, 0, 6)
+	b.cy(0.09, 0.09, 0.1, 0x2a2f36, 0, 0.2, 0, 6)
+	b.bx(0.22, 0.5, 0.17, 0x9aa3ab, 0, -1.4, 0)
+	b.bx(0.3, 0.15, 0.17, 0x8a949c, 0.1, -1.66, 0)                                  # the hook jaw
+	b.bx(0.2, 0.13, 0.16, 0x9aa3ab, 0.2, -1.2, 0, 0, 0, 0.18)                       # the moving jaw
+	for k in 3:
+		b.bx(0.05, 0.05, 0.18, 0x4a4f55, 0.1 + k * 0.09, -1.262, 0)                 # teeth on the moving jaw
+		b.bx(0.05, 0.05, 0.18, 0x4a4f55, 0.1 + k * 0.09, -1.588, 0)                 # and on the hook jaw
+	b.mi(null, LowPoly.cyl(0.14, 0.14, 0.1, 8), 0x2f343a, Vector3(0.0, -1.1, 0.0), Vector3(PI / 2, 0, 0))   # the adjusting wheel
+
+
+static func _nailgun(b: _B) -> void:          # orange body, long strip magazine, grip and an air hose
+	b.bx(0.2, 0.8, 0.22, 0xff8000, 0, -0.3, -0.02)
+	b.bx(0.14, 0.34, 0.14, 0xe06a00, 0, 0.3, -0.04)
+	b.bx(0.12, 0.35, 0.12, 0x9aa3ab, 0, -0.85, 0)                                   # nose
+	b.bx(0.05, 0.28, 0.05, 0x4a4f55, 0, -1.1, 0)
+	b.bx(0.1, 0.26, 0.2, 0x2a2f36, 0, 0.08, 0.16, -0.2)                             # grip
+	b.bx(0.03, 0.14, 0.04, 0x2a2f36, 0, -0.02, 0.1)                                 # trigger
+	var mg := _mag(b, "Mag")
+	b.bx(0.1, 0.1, 0.62, 0x9aa3ab, 0, -0.62, 0.38, 0.28, 0, 0, mg)                  # angled strip magazine
+	for k in 4:
+		b.bx(0.05, 0.05, 0.1, 0xe3c35a, 0, -0.56 - k * 0.0, 0.2 + k * 0.14, 0.28, 0, 0, mg)    # nails along it
+	b.cy(0.04, 0.04, 0.5, 0x2a2f36, 0, 0.55, 0.0, 5)                                # air hose
+
+
+static func _jackhammer(b: _B) -> void:       # yellow breaker: a T handle, a fat body, a chisel and a hose
+	b.bx(0.76, 0.08, 0.1, 0x2a2f36, 0, 0.12, 0)
+	b.cy(0.05, 0.05, 0.2, 0x2a2f36, -0.3, 0.12, 0, 6)
+	b.cy(0.05, 0.05, 0.2, 0x2a2f36, 0.3, 0.12, 0, 6)
+	b.cy(0.14, 0.17, 0.75, 0xf0b800, 0, -0.38, 0, 8)
+	b.cy(0.19, 0.19, 0.1, 0x2a2f36, 0, -0.82, 0, 8)
+	b.cy(0.07, 0.07, 0.3, 0x9aa3ab, 0, -1.0, 0, 6)
+	b.cy(0.045, 0.045, 0.7, 0xb8c2c9, 0, -1.5, 0, 6)                                # the chisel
+	b.mi(null, LowPoly.cone(0.06, 0.2, 4), 0xdfe5ea, Vector3(0, -1.95, 0), Vector3(PI, 0, 0))
+	b.cy(0.035, 0.035, 0.6, 0x2a2f36, 0.2, -0.1, 0.1, 5)                            # hose
+
+
+static func _spiritlevel(b: _B) -> void:      # yellow aluminium bar with three bubble vials and black end caps
+	b.bx(0.12, 2.15, 0.22, 0xe3c32a, 0, -0.95, 0)
+	b.bx(0.14, 0.3, 0.1, 0x2a2f36, 0, -0.05, 0)                                     # the hand hole
+	b.bx(0.14, 0.1, 0.24, 0x2a2f36, 0, 0.14, 0)
+	b.bx(0.14, 0.1, 0.24, 0x2a2f36, 0, -2.04, 0)
+	for y in [-0.6, -1.0, -1.4]:
+		b.bx(0.15, 0.26, 0.13, 0xbfeaf2, 0, y, 0)                                   # vial windows, both faces
+		b.bx(0.16, 0.08, 0.07, 0xb7ff4a, 0, y, 0)                                   # the bubble
+	for y in [-0.25, -0.35, -0.45, -0.75, -0.85, -1.15, -1.25, -1.6, -1.7, -1.8]:
+		b.bx(0.13, 0.025, 0.08, 0x4a4f55, 0, y, 0.09)                               # ruler ticks
+
+
+static func _tapemeasure(b: _B) -> void:      # a yellow tape case in the fist and a long stiff yellow blade with a hook
+	b.mi(null, LowPoly.cyl(0.36, 0.36, 0.32, 8), 0xf2c230, Vector3(0, -0.12, 0), Vector3(PI / 2, 0, 0))
+	b.mi(null, LowPoly.cyl(0.16, 0.16, 0.34, 8), 0x2a2f36, Vector3(0, -0.12, 0), Vector3(PI / 2, 0, 0))
+	b.bx(0.2, 0.12, 0.34, 0x2a2f36, 0, -0.5, 0)                                     # the mouth
+	b.bx(0.08, 0.2, 0.1, 0xc0392b, 0, 0.18, 0.16)                                   # lock button
+	b.bx(0.16, 2.1, 0.025, 0xf5d020, 0, -1.55, 0)                                   # the blade
+	for k in 9:
+		b.bx(0.1, 0.025, 0.03, 0x2a2f36, -0.025, -0.85 - k * 0.22, 0)
+	b.bx(0.22, 0.07, 0.05, 0x9aa3ab, 0.03, -2.63, 0)                                # the end hook
+
+
+static func _cementbucket(b: _B) -> void:     # white plastic bucket of wet cement with an orange rim and a wire handle
+	b.cy(0.4, 0.3, 0.62, 0xe9ecee, 0, -0.58, 0, 8)
+	b.cy(0.43, 0.43, 0.07, 0xe07a1f, 0, -0.27, 0, 8)
+	b.cy(0.37, 0.37, 0.04, 0x8b8f93, 0, -0.29, 0, 8)                                # the cement
+	b.ico(0.1, 0, 0x7d848b, 0.08, -0.27, 0.06)
+	b.mi(null, LowPoly.torus(0.4, 0.025, 4, 10, PI), 0x2a2f36, Vector3(0, -0.27, 0))
+	b.bx(0.5, 0.06, 0.04, 0xc0392b, 0, -0.62, 0.35)                                 # a stripe on the bucket
+
+
+static func _conelauncher(b: _B) -> void:     # a traffic cone as a bazooka: tip forward, white bands, a base plate and a grip
+	b.mi(null, LowPoly.cone(0.36, 1.2, 8), 0xff7a1a, Vector3(0, -0.62, 0), Vector3(PI, 0, 0))
+	b.cy(0.25, 0.22, 0.18, 0xffffff, 0, -0.36, 0, 8)                               # reflective bands
+	b.cy(0.15, 0.12, 0.14, 0xffffff, 0, -0.74, 0, 8)
+	b.bx(0.78, 0.07, 0.78, 0x2a2f36, 0, 0.0, 0)                                     # base plate
+	b.bx(0.1, 0.4, 0.12, 0x2a2f36, 0, 0.26, 0.28)                                   # grip behind the plate
+	b.bx(0.06, 0.16, 0.06, 0x2a2f36, 0, 0.0, 0.2)
+	b.ico(0.08, 0, 0xff7a1a, 0, -1.28, 0)
+
+
+static func _anglegrinder(b: _B) -> void:     # blue motor body, a black gear head, a guard and a bright disc on the side
+	b.cy(0.13, 0.13, 0.85, 0x1f6fb5, 0, -0.3, 0, 8)
+	b.cy(0.14, 0.14, 0.14, 0x2a2f36, 0, 0.18, 0, 8)
+	b.bx(0.24, 0.3, 0.3, 0x2a2f36, 0, -0.85, 0)
+	b.bx(0.06, 0.32, 0.1, 0x14171b, 0, -0.3, 0.17)                                  # switch
+	b.bx(0.07, 0.5, 0.07, 0x2a2f36, 0.22, -0.55, 0, 0, 0, 0.0)                      # side handle
+	b.bx(0.3, 0.06, 0.52, 0xf0b800, 0, -0.98, 0)                                    # yellow guard
+	b.mi(null, LowPoly.cyl(0.46, 0.46, 0.035, 12), 0xc9d1d8, Vector3(0, -1.08, 0), Vector3(0, 0, PI / 2))   # the disc
+	b.mi(null, LowPoly.cyl(0.1, 0.1, 0.07, 6), 0x4a4f55, Vector3(0, -1.08, 0), Vector3(0, 0, PI / 2))
+	_tip(b, 0, -1.55, 0)                                                            # where the sparks fly from
+
+
+static func _drill(b: _B) -> void:            # cordless drill: green-black body, a battery pack, a chuck and a bit
+	b.bx(0.2, 0.46, 0.24, 0x2f9a5a, 0, -0.18, -0.02)
+	b.bx(0.22, 0.2, 0.32, 0x2a2f36, 0, -0.5, -0.02)                                 # motor housing
+	b.bx(0.12, 0.34, 0.18, 0x2a2f36, 0, 0.1, 0.18, -0.2)                            # grip
+	b.bx(0.18, 0.16, 0.34, 0x2a2f36, 0, 0.3, 0.2)                                   # battery
+	b.bx(0.04, 0.06, 0.2, 0xe3c35a, 0.0, 0.3, 0.2)
+	b.cy(0.1, 0.12, 0.2, 0x9aa3ab, 0, -0.72, -0.02, 6)                              # chuck
+	b.cy(0.025, 0.025, 0.5, 0xb8c2c9, 0, -1.07, -0.02, 6)                           # the bit
+	b.cy(0.04, 0.04, 0.5, 0xb8c2c9, 0, -1.07, -0.02, 4)
+	b.bx(0.03, 0.12, 0.05, 0xc0392b, 0, -0.1, 0.1)
 
 
 # ---------------------------------------------------------------- guns

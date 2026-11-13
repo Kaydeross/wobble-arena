@@ -31,8 +31,19 @@ static func data(name: String) -> Dictionary:
 		push_error("WobblerLooks: cannot read %s" % path)
 		d = {}
 	if name == "classes": ExtraClasses.merge(d)          # + the Godot-only classes (res://data/extra/classes.json)
+	if name == "cosmetics": _merge_extra_hats(d)         # + the Construction DLC hard hats (res://data/extra/locker.json extra_hats)
 	_json[name] = d
 	return d
+
+
+const LOCKER_PATH := "res://data/extra/locker.json"
+
+## Adds the Godot-only hats (locker.json `extra_hats`) to cosmetics' `hats`, so the Locker lists them and Settings accepts them.
+static func _merge_extra_hats(cos: Dictionary) -> void:
+	var v = JSON.parse_string(FileAccess.get_file_as_string(LOCKER_PATH)) if FileAccess.file_exists(LOCKER_PATH) else null
+	if not (v is Dictionary) or not (cos.get("hats") is Array): return
+	for h in v.get("extra_hats", []):
+		if not (cos["hats"] as Array).has(h): (cos["hats"] as Array).append(h)
 
 
 static func class_def(id: String) -> Dictionary:
@@ -127,6 +138,31 @@ const HATS := {
 		["hat", ["cone", 0.31, 0.62, 8], 0xd32f2f, [-0.04, 0.3, 0], [0, 0, 0.25]],
 		["hat", ["cyl", 0.34, 0.34, 0.12, 8], 0xffffff, [0, 0.02, 0]],
 		["hat", ["ico", 0.09, 0], 0xffffff, [0.13, 0.55, 0]]],
+	## Construction DLC hard hats (free, common): the web Builder's yellow helmet (dome, brim, front peak, ridge) in three colours.
+	"hardhat": [
+		["hat", ["sph", 0.4, 8, 5, 0, TAU, 0, PI / 2], 0xffd33d, [0, -0.08, 0], [0, 0, 0], [1, 0.85, 1.05]],
+		["hat", ["cyl", 0.45, 0.45, 0.04, 10], 0xffd33d, [0, -0.09, 0]],
+		["hat", ["box", 0.42, 0.04, 0.3], 0xffd33d, [0, -0.09, 0.5]],
+		["hat", ["box", 0.08, 0.06, 0.64], 0xe6b800, [0, 0.27, 0]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xe6b800, [-0.2, 0.2, 0], [0, 0, 0.45]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xe6b800, [0.2, 0.2, 0], [0, 0, -0.45]],
+		["hat", ["box", 0.14, 0.09, 0.04], 0xf4f4ee, [0, 0.1, 0.42], [0.35, 0, 0]]],
+	"hardhat_white": [
+		["hat", ["sph", 0.4, 8, 5, 0, TAU, 0, PI / 2], 0xf3f3ee, [0, -0.08, 0], [0, 0, 0], [1, 0.85, 1.05]],
+		["hat", ["cyl", 0.45, 0.45, 0.04, 10], 0xf3f3ee, [0, -0.09, 0]],
+		["hat", ["box", 0.42, 0.04, 0.3], 0xf3f3ee, [0, -0.09, 0.5]],
+		["hat", ["box", 0.08, 0.06, 0.64], 0xd2d2ca, [0, 0.27, 0]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd2d2ca, [-0.2, 0.2, 0], [0, 0, 0.45]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd2d2ca, [0.2, 0.2, 0], [0, 0, -0.45]],
+		["hat", ["box", 0.14, 0.09, 0.04], 0xf4f4ee, [0, 0.1, 0.42], [0.35, 0, 0]]],
+	"hardhat_orange": [
+		["hat", ["sph", 0.4, 8, 5, 0, TAU, 0, PI / 2], 0xff8a1f, [0, -0.08, 0], [0, 0, 0], [1, 0.85, 1.05]],
+		["hat", ["cyl", 0.45, 0.45, 0.04, 10], 0xff8a1f, [0, -0.09, 0]],
+		["hat", ["box", 0.42, 0.04, 0.3], 0xff8a1f, [0, -0.09, 0.5]],
+		["hat", ["box", 0.08, 0.06, 0.64], 0xd9690a, [0, 0.27, 0]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd9690a, [-0.2, 0.2, 0], [0, 0, 0.45]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd9690a, [0.2, 0.2, 0], [0, 0, -0.45]],
+		["hat", ["box", 0.14, 0.09, 0.04], 0xf4f4ee, [0, 0.1, 0.42], [0.35, 0, 0]]],
 }
 
 
@@ -209,7 +245,7 @@ static func class_parts(id: String, arm: float, deep: float) -> Array:
 # ---------------------------------------------------------------- outfits (buildSkinParts, ~4022)
 ## Outfits with a part builder below. The rest of cosmetics.json skins fall back to colours only (top/tone/pants/shoes)
 ## until their builders are ported.
-const SKIN_BUILDERS := ["hoodie", "skater", "chef", "suit", "sporty", "tripleT", "ballerina", "assassino", "thunder"]
+const SKIN_BUILDERS := ["hoodie", "skater", "chef", "suit", "builder", "sporty", "tripleT", "ballerina", "assassino", "thunder"]
 
 const T := [1.0, 0.0]
 const T8 := [0.85, 0.0]
@@ -226,6 +262,21 @@ static func _faces(out: Array, y: float, w: float, h: float, d: float, spec: Var
 	var r := _r_at(y)
 	for sg in [-1.0, 1.0]:
 		out.append(["body", ["box", w, h, d], spec, [sg * 0.433 * r + sg * 0.5 * off, y, 0.75 * r + 0.866 * off], [0, sg * PI / 6, 0]])
+
+
+## The Builder's hi-vis vest: two silver reflective bands round the torso (same hexagon, a hair wider) and two braces up
+## the chest and the back, over the orange of the outfit.
+const REFLECTIVE := 0xd7dde3
+static func _hi_vis(out: Array) -> void:
+	for y: float in [0.3, 0.58]:
+		var r := _r_at(y) + 0.028
+		out.append(["body", ["cyl", r, r, 0.07, 6], REFLECTIVE, [0, y, 0]])
+	var y := 0.62
+	var r := _r_at(y)
+	for sg in [-1.0, 1.0]:
+		out.append(["body", ["box", 0.075, 0.5, 0.035], REFLECTIVE, [sg * 0.433 * r + sg * 0.0225, y, 0.75 * r + 0.866 * 0.045], [0, sg * PI / 6, 0]])
+		out.append(["body", ["box", 0.075, 0.5, 0.035], REFLECTIVE, [sg * 0.433 * r + sg * 0.0225, y, -(0.75 * r + 0.866 * 0.045)], [0, sg * PI * 5.0 / 6.0, 0]])
+	out.append(["body", ["box", 0.2, 0.05, 0.05], 0xe08a1c, [0, 0.855, _r_at(0.85) * 0.5]])             # collar piping at the neck
 
 
 static func _cap(out: Array, col: Variant, y: float = 0.5, z: float = -0.06, sy: float = 0.55) -> void:
@@ -274,6 +325,9 @@ static func skin_parts(key: String) -> Array:
 			p.append(["body", ["box", 0.1, 0.1, 0.04], T6, [0, 0.8, _r_at(0.8) + 0.03]])
 			_faces(p, 0.66, 0.08, 0.34, 0.04, [1.0, 0.2], 0.035)
 			p.append(["body", ["box", 0.05, 0.05, 0.03], 0xd9c27a, [-0.12, 0.3, _r_at(0.3)]])
+		"builder":                              # hi-vis vest: the orange torso with silver reflective bands and braces front and back
+			_hi_vis(p)
+			p.append(["body", ["box", 0.1, 0.1, 0.04], 0xdfe5ea, [0.2, 0.18, _r_at(0.18) - 0.04]])     # (the web's badge on the belt)
 		"sporty":
 			_cap(p, 0xe8c872, 0.5, -0.06)
 			p.append(["neck", ["cyl", 0.375, 0.375, 0.07, 10], T, [0, 0.47, 0]])

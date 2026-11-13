@@ -30,6 +30,7 @@ func _run() -> void:
 	for id: String in ids:
 		var m: Dictionary = MapBuilder.custom_map({}) if id == "custom" else content.get_map(id)
 		if PillarsMap.IDS.has(id): m = PillarsMap.complete(m)        # built from MAPS.pillars (the export has no boxes)
+		if id == SiteMap.ID: m = SiteMap.generate(SiteMap.current_seed)   # generated (Construction DLC), like MapBuilder.build
 		_audit(id, m)
 	_custom_ref()
 	_pillars_ref()

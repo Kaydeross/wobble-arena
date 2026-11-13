@@ -79,13 +79,13 @@ const NEW_ARENAS := ["moonbase", "volcano", "candy", "pirate", "haunted", "beach
 const BIG_ARENAS := ["arenaxl", "rinkxl", "colosseum", "fortress"]
 const MODE_MAPS := {"melee": ["arena", "park", "ice", "rooftops", "cloud", "tower", "brawlpit"] + NEW_ARENAS + BIG_ARENAS,
 	"guns": ["arena", "temple", "rooftops", "gunrange"] + NEW_ARENAS + BIG_ARENAS,
-	"ninja": ["dojo", "temple", "cloud", "rooftops", "tower", "arenaxl", "fortress"], "sandbox": ["custom"], "construction": ["siteyard"],
+	"ninja": ["dojo", "temple", "cloud", "rooftops", "tower", "arenaxl", "fortress"], "sandbox": ["custom"], "construction": ["siteyard", "sitegen"],
 	"mega": ["shrink", "squeeze"], "pillars": ["pillars", "pillars2"], "lowg": ["craterdome", "capsule"],
 	"giant": ["playroom"] + BIG_ARENAS, "explosive": ["blast", "arena", "park", "ice"] + BIG_ARENAS,
 	"duel": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS, "t2": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS,
 	"t3": TEAM_MAPS + BIG_ARENAS, "t4": TEAM_MAPS + BIG_ARENAS, "chaos": CHAOS_MAPS, "practice": ["practice", "test"]}
 ## MAP_ORDER (index.html ~3725): big open arenas first, then rooms and sky levels, the odd one-offs last. Arena lists follow it.
-const MAP_ORDER := ["test", "practice", "dojo", "blast", "gunrange", "brawlpit", "siteyard", "craterdome", "capsule", "playroom",
+const MAP_ORDER := ["test", "practice", "dojo", "blast", "gunrange", "brawlpit", "siteyard", "sitegen", "craterdome", "capsule", "playroom",
 	"arena", "park", "ice", "arenaxl", "rinkxl", "colosseum", "fortress", "temple", "farm", "rooftops", "tower", "shrink", "squeeze",
 	"crossroads", "donut", "chasm", "summit", "moonbase", "candy", "haunted", "beach", "volcano", "pirate", "pillars", "pillars2", "custom"]
 ## The shrinking floors (MAPS.shrink / MAPS.squeeze build(): `shrink = {...}`); the floor is the map's first box.
