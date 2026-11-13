@@ -9,13 +9,14 @@ signal language_changed(code: String)
 
 const STRINGS_PATH := "res://i18n/strings.json"
 const FONT_PATH := "res://ui/fonts/Fredoka-Variable.ttf"
-## code -> {name: shown in the picker, always in the language itself (never translated), fonts: system fonts for the
-## glyphs Fredoka does not have, best match for that language first (Han characters differ between zh_TW, zh_CN and ja)}
+## code -> {name: shown in the picker, always in the language itself (never translated), bundled: the game's own CJK font
+## (ui/fonts, Noto Sans CJK Bold cut down to the characters the translations use: tools/subset-fonts.py), fonts: the
+## device's fonts, tried after it for anything else (names players type), best match for that language first}
 const LANGS := [
 	{"code": "en", "name": "English", "fonts": []},
-	{"code": "zh_TW", "name": "繁體中文", "fonts": ["PingFang TC", "Noto Sans CJK TC", "Noto Sans TC", "Microsoft JhengHei", "Source Han Sans TC", "Droid Sans Fallback"]},
-	{"code": "zh_CN", "name": "简体中文", "fonts": ["PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", "Source Han Sans SC", "Droid Sans Fallback"]},
-	{"code": "ja", "name": "日本語", "fonts": ["Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", "Meiryo", "Source Han Sans JP", "Droid Sans Fallback"]},
+	{"code": "zh_TW", "name": "繁體中文", "bundled": "res://ui/fonts/NotoSansTC-Subset.otf", "fonts": ["PingFang TC", "Noto Sans CJK TC", "Noto Sans TC", "Microsoft JhengHei", "Source Han Sans TC", "Droid Sans Fallback"]},
+	{"code": "zh_CN", "name": "简体中文", "bundled": "res://ui/fonts/NotoSansSC-Subset.otf", "fonts": ["PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei", "Source Han Sans SC", "Droid Sans Fallback"]},
+	{"code": "ja", "name": "日本語", "bundled": "res://ui/fonts/NotoSansJP-Subset.otf", "fonts": ["Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", "Meiryo", "Source Han Sans JP", "Droid Sans Fallback"]},
 	{"code": "fr", "name": "Français", "fonts": []},
 	{"code": "es", "name": "Español", "fonts": []},
 ]
@@ -97,21 +98,42 @@ func apply(setting: String) -> void:
 	code = c
 	if changed: language_changed.emit(c)
 
-## Fredoka has Latin letters only. CJK glyphs come from the device's own fonts (the best one for this language first),
-## at a heavy weight so they match the rounded UI font.
+## Fredoka has Latin letters only. In a CJK language the UI font gets the bundled Noto Sans CJK subset for that language first,
+## then the other two, then the device's own fonts for any other character (names players type). In en / fr / es there are no
+## fallbacks at all: every fallback costs shaping time on every label, and the language picker (the only CJK text left) gets
+## its own font, see cjk_fonts(). The subsets report Fredoka's line metrics (tools/subset-fonts.py), so no line gets taller.
 func _set_fonts(c: String) -> void:
 	var base: FontFile = load(FONT_PATH)
 	if base == null: return
-	var names: Array = []
+	var def: Dictionary = {}
 	for l: Dictionary in LANGS:
-		if l.code == c: names = l.fonts
+		if l.code == c: def = l
 	var fb: Array[Font] = []
-	if not names.is_empty():
-		var sys := SystemFont.new()
-		sys.font_names = PackedStringArray(names)
-		sys.font_weight = 600
-		fb.append(sys)
+	if def.has("bundled"):
+		var order: Array = [str(def.bundled)]
+		for l: Dictionary in LANGS:
+			if l.has("bundled") and not order.has(l.bundled): order.append(l.bundled)
+		for path: String in order:
+			if ResourceLoader.exists(path):
+				var f := load(path) as Font
+				if f != null: fb.append(f)
+		var names: Array = def.get("fonts", [])
+		if not names.is_empty():
+			var sys := SystemFont.new()
+			sys.font_names = PackedStringArray(names)
+			sys.font_weight = 700
+			fb.append(sys)
 	base.fallbacks = fb
+
+## The three bundled CJK fonts (a glyph missing in one is taken from the next), for text that shows CJK whatever the language is:
+## the language picker's own names.
+static func cjk_fonts() -> Array[Font]:
+	var out: Array[Font] = []
+	for l: Dictionary in LANGS:
+		if l.has("bundled") and ResourceLoader.exists(l.bundled):
+			var f := load(l.bundled) as Font
+			if f != null: out.append(f)
+	return out
 
 ## (code, native name) of every language, for pickers.
 static func list() -> Array:
