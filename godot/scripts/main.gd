@@ -18,6 +18,11 @@ extends Control
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
 const WORLD := "res://world/world.tscn"
+const DLC_TIPS := [
+	"Hard hats on. Mind the open edges: one big swing and you are off the slab.",
+	"Scaffold towers and timber stacks make good cover.",
+	"Site rule: knock fighters off the slab for a K.O.",
+]
 const TIP_MIN_H := 600.0           ## canvas px: the tip line needs a taller title than the iPhone landscape canvas has
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
 const COMPACT_H := 530.0                  ## safe height (canvas px) below which the title tightens up
@@ -56,7 +61,10 @@ var shop_b: Button
 var goals_b: Button
 var goals: GoalsScreen              ## the Goals screen (title: Goals)
 var hub: ConstructionHub            ## the Construction DLC hub (the yellow banner under the cards row)
-var dlc_b: Button                   ## the Construction banner
+var dlc_b: Button                   ## the DON'T ENTER sign (node "Construction"): starts the tape wipe into the Construction title
+var dlc := false                    ## the Construction title is showing (never saved: the app always opens on the normal title)
+var _wipe: DlcTransition
+var _play_sub_default := ""
 var news_dot: Control
 var news: WhatsNew                  ## the What's new card (patch notes; opens once per new version)
 var settings: SettingsScreen        ## the Settings screen (gear)
@@ -85,7 +93,7 @@ func _ready() -> void:
 	safe.add_child(locker)
 	locker.closed.connect(close_locker)
 	_build_more()
-	play.pressed.connect(open_wizard)
+	play.pressed.connect(func() -> void: if dlc: open_hub() else: open_wizard())   # on the Construction title Play opens the hub
 	online_b.pressed.connect(show_tab.bind(true))
 	(get_node(O + "Head/Back") as Button).pressed.connect(show_tab.bind(false))
 	gear.icon = _gear_icon()
@@ -223,57 +231,19 @@ func _build_more() -> void:
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
 
-## The Construction DLC entry: its own wide hazard-tape banner under the cards row (drawn in code, no images).
+## The DLC entry: a wide hazard-tape "DON'T ENTER" sign under the cards row. Pressing it plays the tape wipe into the
+## Construction title (and, once inside, "EXIT SITE" wipes back). Drawn in code, no images.
 func _build_dlc_banner() -> void:
-	var b := Button.new()
+	var b := DontEnterSign.new()
 	b.name = "Construction"
 	b.custom_minimum_size = Vector2(752, 62)
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	b.add_theme_stylebox_override("normal", ConstructionStyle.tape_box(ConstructionStyle.YELLOW))
-	b.add_theme_stylebox_override("hover", ConstructionStyle.tape_box(ConstructionStyle.YELLOW_HI))
-	b.add_theme_stylebox_override("pressed", ConstructionStyle.tape_box(ConstructionStyle.YELLOW_DK, 2))
-	b.add_theme_stylebox_override("hover_pressed", ConstructionStyle.tape_box(ConstructionStyle.YELLOW_DK, 2))
-	var focus := ConstructionStyle.tape_box(Color(0, 0, 0, 0), 0)
-	focus.border_color = Color.WHITE
-	focus.draw_center = false
-	focus.shadow_size = 0
-	b.add_theme_stylebox_override("focus", focus)
-	for side: String in ["Left", "Right"]:
-		var t := ConstructionStyle.Hazard.new()
-		t.name = "Tape" + side
-		t.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		t.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE if side == "Left" else Control.PRESET_RIGHT_WIDE)
-		t.offset_top = 10; t.offset_bottom = -16
-		if side == "Left": t.offset_left = 12; t.offset_right = 70
-		else: t.offset_left = -70; t.offset_right = -12
-		b.add_child(t)
-	var st := VBoxContainer.new()
-	st.name = "Stack"
-	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	st.offset_left = 82; st.offset_right = -82; st.offset_bottom = -4
-	st.alignment = BoxContainer.ALIGNMENT_CENTER
-	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	st.add_theme_constant_override("separation", -4)
-	b.add_child(st)
-	var bl := Label.new()
-	bl.name = "Big"
-	bl.text = "Construction"
-	bl.add_theme_font_size_override("font_size", 26)
-	bl.add_theme_font_override("font", UiTheme.font(700))
-	bl.add_theme_color_override("font_color", ConstructionStyle.BLACK)
-	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	st.add_child(bl)
-	var sl := Label.new()
-	sl.name = "Sub"
-	sl.add_theme_font_size_override("font_size", 16)
-	sl.add_theme_color_override("font_color", Color(0.2, 0.15, 0.02))
-	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sl.clip_text = true
-	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	st.add_child(sl)
-	b.pressed.connect(open_hub)
+	b.pressed.connect(toggle_dlc)
 	home.add_child(b)
 	dlc_b = b
+	_wipe = DlcTransition.new()
+	_wipe.name = "Wipe"
+	add_child(_wipe)
 
 ## A gold dot on the gear while the newest patch notes are unseen (What's new lives in Settings > About, one button fewer on the title).
 func _news_dot() -> void:
@@ -321,8 +291,6 @@ func _small_button(big: String, sub: String) -> Button:
 	return b
 
 func _coins_sub() -> void:
-	if dlc_b:
-		(dlc_b.get_node("Stack/Sub") as Label).text = tr("Build site brawls") if DlcUnlock.owned() else tr("Build site brawls · %d coins") % DlcUnlock.price()
 	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = tr("You have %d coins") % Save.coins
 	if goals_b:
 		var n := Save.goals_to_claim()
@@ -1001,3 +969,41 @@ func _fill_lobby() -> void:
 	else: rl.text = ""
 	rl.visible = rl.text != ""
 	(box.get_node("Buttons/Start") as Button).visible = hs != null
+
+# ---------------- Construction title (the DON'T ENTER wipe) ----------------
+
+func toggle_dlc() -> void:
+	set_dlc(not dlc)
+
+## Switch between the normal and the Construction title. Animated: hazard tape sweeps across, the title changes under
+## it, the tape clears and the logo and Play button drop in. Play on the Construction title opens the hub.
+func set_dlc(on: bool, animated := true) -> void:
+	if on == dlc or _wipe.busy: return
+	if not animated:
+		_apply_dlc(on)
+		return
+	_wipe.banner = tr("CONSTRUCTION SITE") if on else tr("BACK TO THE ARENA")
+	_wipe.run(_apply_dlc.bind(on), _drop_in)
+
+func _apply_dlc(on: bool) -> void:
+	dlc = on
+	$Background.mix = 1.0 if on else 0.0
+	var logo: WobbleLogo = $Safe/Col/Top/Logo
+	if on: logo.set_palette(Color(0.92, 0.9, 0.84), HazardTape.YELLOW, Color(0.1, 0.08, 0.06))
+	else: logo.set_palette(WobbleLogo.WHITE, WobbleLogo.YELLOW, WobbleLogo.INK)
+	(dlc_b as DontEnterSign).label = tr("EXIT SITE") if on else tr("DON'T ENTER")
+	var sub := play.get_node("Stack/Sub") as Label
+	if on: _play_sub_default = sub.text
+	sub.text = tr("Construction · Classic or Arcade") if on else _play_sub_default
+	var tip := $Safe/Col/Tip as Label
+	tip.text = tr((DLC_TIPS if on else TIPS)[randi() % (DLC_TIPS if on else TIPS).size()])
+
+## Logo and Play button thump in after the tape clears.
+func _drop_in() -> void:
+	for n: Control in [$Safe/Col/Top/Logo, play]:
+		n.pivot_offset = n.size / 2.0
+		n.scale = Vector2.ONE * 1.18
+		n.modulate.a = 0.0
+		var tw := n.create_tween().set_parallel(true)
+		tw.tween_property(n, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(n, "modulate:a", 1.0, 0.2)
