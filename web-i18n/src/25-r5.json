@@ -1,0 +1,779 @@
+{
+ "Can't reach the room server after 15 seconds. A school or work network is probably blocking it. Try a phone hotspot, or press \"Why can't I connect?\" below.": {
+  "zh_TW": "15 秒後仍連不上房間伺服器。學校或公司網路可能擋住了連線。請試試手機熱點，或按下方的「為什麼連不上？」。",
+  "zh_CN": "15 秒后仍连不上房间服务器。学校或公司网络可能挡住了连接。请试试手机热点，或点击下方的“为什么连不上？”。",
+  "ja": "15秒たってもルームサーバーに接続できません。学校や職場のネットワークがブロックしている可能性があります。スマホのテザリングを試すか、下の「接続できない理由」を押してください。",
+  "fr": "Impossible de joindre le serveur de salle après 15 secondes. Un réseau scolaire ou professionnel bloque sans doute la connexion. Essayez un partage de connexion mobile, ou appuyez sur « Pourquoi je ne peux pas me connecter ? » ci-dessous.",
+  "es": "No se puede conectar con el servidor de la sala tras 15 segundos. Probablemente una red de la escuela o del trabajo lo bloquea. Prueba con el punto de acceso del móvil o pulsa «¿Por qué no puedo conectarme?» más abajo."
+ },
+ "The direct link to the host failed (ICE failed). The network is blocking device-to-device connections. Try a phone hotspot on one of you, or put both devices on the same Wi-Fi.": {
+  "zh_TW": "與房主的直接連線失敗（ICE 失敗）。網路阻擋了裝置之間的直接連線。請讓其中一方改用手機熱點，或讓兩台裝置連同一個 Wi-Fi。",
+  "zh_CN": "与房主的直接连接失败（ICE 失败）。网络阻止了设备之间的直连。请让其中一方改用手机热点，或让两台设备连接同一个 Wi-Fi。",
+  "ja": "ホストへの直接接続に失敗しました（ICE 失敗）。ネットワークが端末同士の直接通信をブロックしています。どちらか一方でテザリングを使うか、2台を同じWi-Fiに接続してください。",
+  "fr": "La liaison directe avec l'hôte a échoué (ICE). Le réseau bloque les connexions d'appareil à appareil. Utilisez un partage de connexion mobile sur l'un des deux appareils, ou mettez les deux sur le même Wi-Fi.",
+  "es": "Falló la conexión directa con el anfitrión (ICE fallido). La red bloquea las conexiones entre dispositivos. Usa el punto de acceso del móvil en uno de los dos, o conectad ambos dispositivos a la misma Wi-Fi."
+ },
+ "Found the room server but couldn't link up with that room. Check the code, and ask the host to keep the page open. If it still fails, one of you is on a strict network: try a phone hotspot.": {
+  "zh_TW": "找到了房間伺服器，但無法連上這個房間。請確認代碼，並請房主保持頁面開啟。若仍失敗，代表其中一方的網路限制較嚴，請試試手機熱點。",
+  "zh_CN": "找到了房间服务器，但无法连上这个房间。请确认代码，并请房主保持页面打开。若仍失败，说明其中一方网络限制较严，请试试手机热点。",
+  "ja": "ルームサーバーは見つかりましたが、このルームに接続できませんでした。コードを確認し、ホストにページを開いたままにしてもらってください。それでもだめなら、どちらかが制限の厳しいネットワークにいます。テザリングを試してください。",
+  "fr": "Serveur trouvé, mais impossible de rejoindre cette salle. Vérifiez le code et demandez à l'hôte de garder la page ouverte. Si ça échoue encore, l'un de vous est sur un réseau très restrictif : essayez un partage de connexion mobile.",
+  "es": "Se encontró el servidor de la sala, pero no se pudo unir a esa sala. Revisa el código y pide al anfitrión que mantenga la página abierta. Si sigue fallando, uno de los dos está en una red muy restrictiva: prueba con el punto de acceso del móvil."
+ },
+ "Connected! Waiting for the host to start…": {
+  "zh_TW": "已連線！等待房主開始…",
+  "zh_CN": "已连接！等待房主开始…",
+  "ja": "接続しました！ホストの開始を待っています…",
+  "fr": "Connecté ! En attente du lancement par l'hôte…",
+  "es": "¡Conectado! Esperando a que el anfitrión empiece…"
+ },
+ "That room is running a different version of the game. Refresh the page to get the newest one.": {
+  "zh_TW": "這個房間使用的是不同版本的遊戲。請重新整理頁面以取得最新版本。",
+  "zh_CN": "这个房间使用的是不同版本的游戏。请刷新页面以获取最新版本。",
+  "ja": "このルームは別バージョンのゲームで動いています。ページを再読み込みして最新版を取得してください。",
+  "fr": "Cette salle utilise une autre version du jeu. Actualisez la page pour obtenir la dernière version.",
+  "es": "Esa sala usa otra versión del juego. Recarga la página para obtener la más reciente."
+ },
+ "You did not click Rematch, so you left the room.": {
+  "zh_TW": "你沒有按下再戰，所以離開了房間。",
+  "zh_CN": "你没有点击再来一局，所以离开了房间。",
+  "ja": "リマッチを押さなかったので、ルームを退出しました。",
+  "fr": "Vous n'avez pas cliqué sur Revanche, vous avez donc quitté la salle.",
+  "es": "No pulsaste Revancha, así que saliste de la sala."
+ },
+ "Type the 5-letter code your friend sees.": {
+  "zh_TW": "請輸入朋友看到的 5 位代碼。",
+  "zh_CN": "请输入朋友看到的 5 位代码。",
+  "ja": "友達に表示されている5文字のコードを入力してください。",
+  "fr": "Saisissez le code à 5 lettres affiché chez votre ami.",
+  "es": "Escribe el código de 5 letras que ve tu amigo."
+ },
+ "The host left. Joining the new host…": {
+  "zh_TW": "房主已離開。正在加入新房主…",
+  "zh_CN": "房主已离开。正在加入新房主…",
+  "ja": "ホストが退出しました。新しいホストに参加しています…",
+  "fr": "L'hôte est parti. Connexion au nouvel hôte…",
+  "es": "El anfitrión se fue. Uniéndote al nuevo anfitrión…"
+ },
+ "The host": {
+  "zh_TW": "房主",
+  "zh_CN": "房主",
+  "ja": "ホスト",
+  "fr": "L'hôte",
+  "es": "El anfitrión"
+ },
+ "You are now the host. The room is still open to everyone.": {
+  "zh_TW": "你現在是房主。房間仍然對所有人開放。",
+  "zh_CN": "你现在是房主。房间仍然对所有人开放。",
+  "ja": "あなたがホストになりました。ルームは引き続き誰でも参加できます。",
+  "fr": "Vous êtes maintenant l'hôte. La salle reste ouverte à tous.",
+  "es": "Ahora eres el anfitrión. La sala sigue abierta para todos."
+ },
+ "You are now the host. The room code is still %s.": {
+  "zh_TW": "你現在是房主。房間代碼仍是 %s。",
+  "zh_CN": "你现在是房主。房间代码仍是 %s。",
+  "ja": "あなたがホストになりました。ルームコードは %s のままです。",
+  "fr": "Vous êtes maintenant l'hôte. Le code de la salle reste %s.",
+  "es": "Ahora eres el anfitrión. El código de la sala sigue siendo %s."
+ },
+ "%s left. You are now the host!": {
+  "zh_TW": "%s 已離開。你現在是房主！",
+  "zh_CN": "%s 已离开。你现在是房主！",
+  "ja": "%s が退出しました。あなたがホストです！",
+  "fr": "%s est parti. Vous êtes maintenant l'hôte !",
+  "es": "¡%s se fue. Ahora eres el anfitrión!"
+ },
+ "%s left. Finding the new host…": {
+  "zh_TW": "%s 已離開。正在尋找新房主…",
+  "zh_CN": "%s 已离开。正在寻找新房主…",
+  "ja": "%s が退出しました。新しいホストを探しています…",
+  "fr": "%s est parti. Recherche du nouvel hôte…",
+  "es": "%s se fue. Buscando al nuevo anfitrión…"
+ },
+ "%s is now the host.": {
+  "zh_TW": "%s 現在是房主。",
+  "zh_CN": "%s 现在是房主。",
+  "ja": "%s がホストになりました。",
+  "fr": "%s est maintenant l'hôte.",
+  "es": "%s es ahora el anfitrión."
+ },
+ "Looking for a %s game…": {
+  "zh_TW": "正在尋找%s遊戲…",
+  "zh_CN": "正在寻找%s游戏…",
+  "ja": "%s の対戦を探しています…",
+  "fr": "Recherche d'une partie %s…",
+  "es": "Buscando una partida de %s…"
+ },
+ "Linking up… (%s)": {
+  "zh_TW": "連線中…（%s）",
+  "zh_CN": "连接中…（%s）",
+  "ja": "接続中…（%s）",
+  "fr": "Connexion… (%s)",
+  "es": "Conectando… (%s)"
+ },
+ "The game server did not answer.": {
+  "zh_TW": "遊戲伺服器沒有回應。",
+  "zh_CN": "游戏服务器没有响应。",
+  "ja": "ゲームサーバーから応答がありません。",
+  "fr": "Le serveur de jeu n'a pas répondu.",
+  "es": "El servidor del juego no respondió."
+ },
+ "Could not start the room search.": {
+  "zh_TW": "無法開始搜尋房間。",
+  "zh_CN": "无法开始搜索房间。",
+  "ja": "ルームの検索を開始できませんでした。",
+  "fr": "Impossible de lancer la recherche de salles.",
+  "es": "No se pudo iniciar la búsqueda de salas."
+ },
+ "No open rooms right now": {
+  "zh_TW": "目前沒有開放的房間",
+  "zh_CN": "目前没有开放的房间",
+  "ja": "今は公開ルームがありません",
+  "fr": "Aucune salle ouverte pour le moment",
+  "es": "No hay salas abiertas ahora mismo"
+ },
+ "Be the first: start a Quick play game and other players will see it here.": {
+  "zh_TW": "搶先一步：開始一場快速遊戲，其他玩家就會在這裡看到。",
+  "zh_CN": "抢先一步：开始一场快速游戏，其他玩家就会在这里看到。",
+  "ja": "最初の一人になろう：クイックプレイを始めると、他のプレイヤーにここが表示されます。",
+  "fr": "Soyez le premier : lancez une Partie rapide, les autres joueurs la verront ici.",
+  "es": "Sé el primero: empieza una partida rápida y otros jugadores la verán aquí."
+ },
+ "Quick play": {
+  "zh_TW": "快速遊戲",
+  "zh_CN": "快速游戏",
+  "ja": "クイックプレイ",
+  "fr": "Partie rapide",
+  "es": "Partida rápida"
+ },
+ "OLD VERSION": {
+  "zh_TW": "版本不同",
+  "zh_CN": "版本不同",
+  "ja": "旧バージョン",
+  "fr": "ANCIENNE VERSION",
+  "es": "VERSIÓN ANTIGUA"
+ },
+ "FULL": {
+  "zh_TW": "已滿",
+  "zh_CN": "已满",
+  "ja": "満員",
+  "fr": "COMPLET",
+  "es": "LLENA"
+ },
+ "JOIN": {
+  "zh_TW": "加入",
+  "zh_CN": "加入",
+  "ja": "参加",
+  "fr": "REJOINDRE",
+  "es": "UNIRSE"
+ },
+ "Nobody has opened a room yet": {
+  "zh_TW": "還沒有人開房間",
+  "zh_CN": "还没有人开房间",
+  "ja": "まだ誰もルームを開いていません",
+  "fr": "Personne n'a encore ouvert de salle",
+  "es": "Nadie ha abierto una sala todavía"
+ },
+ "playing": {
+  "zh_TW": "進行中",
+  "zh_CN": "进行中",
+  "ja": "プレイ中",
+  "fr": "en jeu",
+  "es": "jugando"
+ },
+ "in the lobby": {
+  "zh_TW": "在大廳",
+  "zh_CN": "在大厅",
+  "ja": "ロビー中",
+  "fr": "dans la salle d'attente",
+  "es": "en la sala de espera"
+ },
+ "%d playing": {
+  "zh_TW": "%d 人遊戲中",
+  "zh_CN": "%d 人游戏中",
+  "ja": "%d 人プレイ中",
+  "fr": "%d en jeu",
+  "es": "%d jugando"
+ },
+ "%d room · %d playing": {
+  "zh_TW": "%d 個房間 · %d 人遊戲中",
+  "zh_CN": "%d 个房间 · %d 人游戏中",
+  "ja": "%d ルーム · %d 人プレイ中",
+  "fr": "%d salle · %d en jeu",
+  "es": "%d sala · %d jugando"
+ },
+ "%d rooms · %d playing": {
+  "zh_TW": "%d 個房間 · %d 人遊戲中",
+  "zh_CN": "%d 个房间 · %d 人游戏中",
+  "ja": "%d ルーム · %d 人プレイ中",
+  "fr": "%d salles · %d en jeu",
+  "es": "%d salas · %d jugando"
+ },
+ "%d room open · %d playing": {
+  "zh_TW": "%d 個房間開放中 · %d 人遊戲中",
+  "zh_CN": "%d 个房间开放中 · %d 人游戏中",
+  "ja": "%d ルーム公開中 · %d 人プレイ中",
+  "fr": "%d salle ouverte · %d en jeu",
+  "es": "%d sala abierta · %d jugando"
+ },
+ "%d rooms open · %d playing": {
+  "zh_TW": "%d 個房間開放中 · %d 人遊戲中",
+  "zh_CN": "%d 个房间开放中 · %d 人游戏中",
+  "ja": "%d ルーム公開中 · %d 人プレイ中",
+  "fr": "%d salles ouvertes · %d en jeu",
+  "es": "%d salas abiertas · %d jugando"
+ },
+ "No open rooms yet. Start one!": {
+  "zh_TW": "還沒有開放的房間。開一間吧！",
+  "zh_CN": "还没有开放的房间。开一间吧！",
+  "ja": "公開ルームはまだありません。作ってみよう！",
+  "fr": "Aucune salle ouverte pour l'instant. Lancez-en une !",
+  "es": "Aún no hay salas abiertas. ¡Crea una!"
+ },
+ "Rematch!": {
+  "zh_TW": "再戰！",
+  "zh_CN": "再来一局！",
+  "ja": "リマッチ！",
+  "fr": "Revanche !",
+  "es": "¡Revancha!"
+ },
+ "Online match!": {
+  "zh_TW": "線上對戰開始！",
+  "zh_CN": "联机对战开始！",
+  "ja": "オンライン対戦開始！",
+  "fr": "Partie en ligne !",
+  "es": "¡Partida en línea!"
+ },
+ "REMATCH": {
+  "zh_TW": "再戰",
+  "zh_CN": "再来一局",
+  "ja": "リマッチ",
+  "fr": "REVANCHE",
+  "es": "REVANCHA"
+ },
+ "WAITING FOR PLAYERS… %d/%d": {
+  "zh_TW": "等待其他玩家… %d/%d",
+  "zh_CN": "等待其他玩家… %d/%d",
+  "ja": "プレイヤーを待っています… %d/%d",
+  "fr": "EN ATTENTE DES JOUEURS… %d/%d",
+  "es": "ESPERANDO JUGADORES… %d/%d"
+ },
+ "REMATCH (%d/%d ready)": {
+  "zh_TW": "再戰（%d/%d 人已準備）",
+  "zh_CN": "再来一局（%d/%d 人已准备）",
+  "ja": "リマッチ（%d/%d 人準備完了）",
+  "fr": "REVANCHE (%d/%d prêts)",
+  "es": "REVANCHA (%d/%d listos)"
+ },
+ "Code copied: %s": {
+  "zh_TW": "已複製代碼：%s",
+  "zh_CN": "已复制代码：%s",
+  "ja": "コードをコピーしました：%s",
+  "fr": "Code copié : %s",
+  "es": "Código copiado: %s"
+ },
+ "Room code: %s": {
+  "zh_TW": "房間代碼：%s",
+  "zh_CN": "房间代码：%s",
+  "ja": "ルームコード：%s",
+  "fr": "Code de la salle : %s",
+  "es": "Código de la sala: %s"
+ },
+ "Online play needs a saved profile, so every player has a name that is theirs. It is free and takes ten seconds.": {
+  "zh_TW": "線上對戰需要儲存的帳號，讓每位玩家都有自己的名字。免費，只要十秒鐘。",
+  "zh_CN": "联机对战需要保存的账号，让每位玩家都有自己的名字。免费，只要十秒钟。",
+  "ja": "オンライン対戦には保存済みのプロフィールが必要です。全員が自分の名前を持てるようにするためです。無料で、10秒ほどで済みます。",
+  "fr": "Le jeu en ligne demande un profil enregistré, pour que chaque joueur ait son propre nom. C'est gratuit et ça prend dix secondes.",
+  "es": "Jugar en línea necesita un perfil guardado, para que cada jugador tenga su propio nombre. Es gratis y tarda diez segundos."
+ },
+ "Muted %s (only for you)": {
+  "zh_TW": "已靜音 %s（僅對你有效）",
+  "zh_CN": "已屏蔽 %s（仅对你有效）",
+  "ja": "%s をミュートしました（自分だけ）",
+  "fr": "%s est masqué (pour vous seulement)",
+  "es": "%s silenciado (solo para ti)"
+ },
+ "Unmuted %s (only for you)": {
+  "zh_TW": "已取消靜音 %s（僅對你有效）",
+  "zh_CN": "已取消屏蔽 %s（仅对你有效）",
+  "ja": "%s のミュートを解除しました（自分だけ）",
+  "fr": "%s n'est plus masqué (pour vous seulement)",
+  "es": "%s ya no está silenciado (solo para ti)"
+ },
+ "Map on": {
+  "zh_TW": "小地圖開啟",
+  "zh_CN": "小地图开启",
+  "ja": "マップ表示",
+  "fr": "Carte affichée",
+  "es": "Mapa visible"
+ },
+ "Map off": {
+  "zh_TW": "小地圖關閉",
+  "zh_CN": "小地图关闭",
+  "ja": "マップ非表示",
+  "fr": "Carte masquée",
+  "es": "Mapa oculto"
+ },
+ "Sound on": {
+  "zh_TW": "聲音開啟",
+  "zh_CN": "声音开启",
+  "ja": "サウンド オン",
+  "fr": "Son activé",
+  "es": "Sonido activado"
+ },
+ "Sound off": {
+  "zh_TW": "聲音關閉",
+  "zh_CN": "声音关闭",
+  "ja": "サウンド オフ",
+  "fr": "Son coupé",
+  "es": "Sonido desactivado"
+ },
+ "SPATULA": {
+  "zh_TW": "鍋鏟",
+  "zh_CN": "锅铲",
+  "ja": "フライ返し",
+  "fr": "SPATULE",
+  "es": "ESPÁTULA"
+ },
+ "BAT": {
+  "zh_TW": "球棒",
+  "zh_CN": "球棒",
+  "ja": "バット",
+  "fr": "BATTE",
+  "es": "BATE"
+ },
+ "MALLET": {
+  "zh_TW": "木槌",
+  "zh_CN": "木槌",
+  "ja": "木づち",
+  "fr": "MAILLET",
+  "es": "MAZO"
+ },
+ "SNOWBALL": {
+  "zh_TW": "雪球砲",
+  "zh_CN": "雪球炮",
+  "ja": "雪玉砲",
+  "fr": "CANON NEIGE",
+  "es": "CAÑÓN NIEVE"
+ },
+ "SNAKE": {
+  "zh_TW": "蛇槍",
+  "zh_CN": "蛇枪",
+  "ja": "スネーク",
+  "fr": "SERPENT",
+  "es": "SERPIENTE"
+ },
+ "BLOWER": {
+  "zh_TW": "吹風機",
+  "zh_CN": "吹风机",
+  "ja": "送風機",
+  "fr": "SOUFFLEUR",
+  "es": "SOPLADOR"
+ },
+ "HAMMER": {
+  "zh_TW": "羊角錘",
+  "zh_CN": "羊角锤",
+  "ja": "クローハンマー",
+  "fr": "MARTEAU",
+  "es": "MARTILLO"
+ },
+ "LIVE WIRE": {
+  "zh_TW": "電線鞭",
+  "zh_CN": "电线鞭",
+  "ja": "ライブワイヤー",
+  "fr": "FIL ÉLECTRIQUE",
+  "es": "CABLE VIVO"
+ },
+ "KNIVES": {
+  "zh_TW": "飛刀",
+  "zh_CN": "飞刀",
+  "ja": "投げナイフ",
+  "fr": "COUTEAUX",
+  "es": "CUCHILLOS"
+ },
+ "SHURIKEN": {
+  "zh_TW": "手裡劍",
+  "zh_CN": "手里剑",
+  "ja": "手裏剣",
+  "fr": "SHURIKEN",
+  "es": "SHURIKEN"
+ },
+ "BOOMERANG": {
+  "zh_TW": "回力鏢",
+  "zh_CN": "回旋镖",
+  "ja": "ブーメラン",
+  "fr": "BOOMERANG",
+  "es": "BUMERÁN"
+ },
+ "DUAL UZIS": {
+  "zh_TW": "雙槍 UZI",
+  "zh_CN": "双枪 UZI",
+  "ja": "デュアルUZI",
+  "fr": "UZI DOUBLE",
+  "es": "UZI DOBLE"
+ },
+ "GLOVE": {
+  "zh_TW": "彈簧手套",
+  "zh_CN": "弹簧手套",
+  "ja": "スプリンググローブ",
+  "fr": "GANT",
+  "es": "GUANTE"
+ },
+ "NET GUN": {
+  "zh_TW": "網槍",
+  "zh_CN": "网枪",
+  "ja": "ネットガン",
+  "fr": "PISTOLET FILET",
+  "es": "PISTOLA RED"
+ },
+ "BOW": {
+  "zh_TW": "弓",
+  "zh_CN": "弓",
+  "ja": "弓",
+  "fr": "ARC",
+  "es": "ARCO"
+ },
+ "SHOTGUN": {
+  "zh_TW": "霰彈槍",
+  "zh_CN": "霰弹枪",
+  "ja": "ショットガン",
+  "fr": "FUSIL À POMPE",
+  "es": "ESCOPETA"
+ },
+ "REVOLVER": {
+  "zh_TW": "左輪手槍",
+  "zh_CN": "左轮手枪",
+  "ja": "リボルバー",
+  "fr": "REVOLVER",
+  "es": "REVÓLVER"
+ },
+ "FLAMER": {
+  "zh_TW": "火焰噴射器",
+  "zh_CN": "火焰喷射器",
+  "ja": "火炎放射器",
+  "fr": "LANCE-FLAMMES",
+  "es": "LANZALLAMAS"
+ },
+ "GRENADER": {
+  "zh_TW": "榴彈發射器",
+  "zh_CN": "榴弹发射器",
+  "ja": "グレネード",
+  "fr": "LANCE-GRENADES",
+  "es": "LANZAGRANADAS"
+ },
+ "CLUSTER": {
+  "zh_TW": "集束發射器",
+  "zh_CN": "集束发射器",
+  "ja": "クラスター",
+  "fr": "LANCEUR GROUPÉ",
+  "es": "LANZADOR CLUSTER"
+ },
+ "TYPHOON": {
+  "zh_TW": "颱風刃",
+  "zh_CN": "台风刃",
+  "ja": "タイフーン",
+  "fr": "LAMES TYPHON",
+  "es": "CUCHILLAS TIFÓN"
+ },
+ "KATANA": {
+  "zh_TW": "忍者刀",
+  "zh_CN": "忍者刀",
+  "ja": "カタナ",
+  "fr": "KATANA",
+  "es": "KATANA"
+ },
+ "SNIPER": {
+  "zh_TW": "狙擊槍",
+  "zh_CN": "狙击枪",
+  "ja": "スナイパー",
+  "fr": "SNIPER",
+  "es": "FRANCOTIRADOR"
+ },
+ "MINIGUN": {
+  "zh_TW": "加特林",
+  "zh_CN": "加特林",
+  "ja": "ミニガン",
+  "fr": "MINIGUN",
+  "es": "MINIGUN"
+ },
+ "ROCKET": {
+  "zh_TW": "火箭筒",
+  "zh_CN": "火箭筒",
+  "ja": "ロケット",
+  "fr": "LANCE-ROQUETTES",
+  "es": "LANZACOHETES"
+ },
+ "METEOR": {
+  "zh_TW": "隕石發射器",
+  "zh_CN": "陨石发射器",
+  "ja": "メテオ",
+  "fr": "LANCE-MÉTÉORE",
+  "es": "LANZA METEORO"
+ },
+ "MAMMOTH": {
+  "zh_TW": "猛瑪手槍",
+  "zh_CN": "猛犸手枪",
+  "ja": "マンモス",
+  "fr": "MAMMOUTH",
+  "es": "MAMUT"
+ },
+ "TRIDENT": {
+  "zh_TW": "三叉戟",
+  "zh_CN": "三叉戟",
+  "ja": "トライデント",
+  "fr": "TRIDENT",
+  "es": "TRIDENTE"
+ },
+ "DASH": {
+  "zh_TW": "衝刺",
+  "zh_CN": "冲刺",
+  "ja": "ダッシュ",
+  "fr": "DASH",
+  "es": "IMPULSO"
+ },
+ "FIRE": {
+  "zh_TW": "開火",
+  "zh_CN": "开火",
+  "ja": "発射",
+  "fr": "TIR",
+  "es": "DISPARAR"
+ },
+ "JUMP": {
+  "zh_TW": "跳躍",
+  "zh_CN": "跳跃",
+  "ja": "ジャンプ",
+  "fr": "SAUT",
+  "es": "SALTAR"
+ },
+ "AIM": {
+  "zh_TW": "瞄準",
+  "zh_CN": "瞄准",
+  "ja": "照準",
+  "fr": "VISÉE",
+  "es": "APUNTAR"
+ },
+ "SWAP": {
+  "zh_TW": "換槍",
+  "zh_CN": "换枪",
+  "ja": "武器切替",
+  "fr": "CHANGER",
+  "es": "CAMBIAR"
+ },
+ "RELOAD": {
+  "zh_TW": "換彈",
+  "zh_CN": "换弹",
+  "ja": "リロード",
+  "fr": "RECHARGER",
+  "es": "RECARGAR"
+ },
+ "SHOVE": {
+  "zh_TW": "推擠",
+  "zh_CN": "推挤",
+  "ja": "突き飛ばし",
+  "fr": "BOUSCULER",
+  "es": "EMPUJAR"
+ },
+ "KICK": {
+  "zh_TW": "踢",
+  "zh_CN": "踢",
+  "ja": "キック",
+  "fr": "COUP DE PIED",
+  "es": "PATADA"
+ },
+ "Menu": {
+  "zh_TW": "選單",
+  "zh_CN": "菜单",
+  "ja": "メニュー",
+  "fr": "Menu",
+  "es": "Menú"
+ },
+ "You lead": {
+  "zh_TW": "你領先",
+  "zh_CN": "你领先",
+  "ja": "トップはあなた",
+  "fr": "Vous êtes en tête",
+  "es": "Vas primero"
+ },
+ "KNOCKED OFF": {
+  "zh_TW": "被擊落",
+  "zh_CN": "被击落",
+  "ja": "場外へ",
+  "fr": "ÉJECTÉ",
+  "es": "EXPULSADO"
+ },
+ "REPLAY": {
+  "zh_TW": "重播",
+  "zh_CN": "重播",
+  "ja": "リプレイ",
+  "fr": "REPLAY",
+  "es": "REPETICIÓN"
+ },
+ "● LIVE: %s": {
+  "zh_TW": "● 直播中：%s",
+  "zh_CN": "● 直播中：%s",
+  "ja": "● LIVE：%s",
+  "fr": "● EN DIRECT : %s",
+  "es": "● EN VIVO: %s"
+ },
+ "Spinning": {
+  "zh_TW": "旋轉中",
+  "zh_CN": "旋转中",
+  "ja": "回転中",
+  "fr": "Rotation",
+  "es": "Girando"
+ },
+ "Setting up %s…": {
+  "zh_TW": "正在準備%s…",
+  "zh_CN": "正在准备%s…",
+  "ja": "%s を準備中…",
+  "fr": "Préparation de %s…",
+  "es": "Preparando %s…"
+ },
+ "Building the levels…": {
+  "zh_TW": "正在建造關卡…",
+  "zh_CN": "正在建造关卡…",
+  "ja": "ステージを作成中…",
+  "fr": "Construction des niveaux…",
+  "es": "Construyendo los niveles…"
+ },
+ "Warming up the weapons…": {
+  "zh_TW": "正在準備武器…",
+  "zh_CN": "正在准备武器…",
+  "ja": "武器を準備中…",
+  "fr": "Préparation des armes…",
+  "es": "Calentando las armas…"
+ },
+ "Waking up the bots…": {
+  "zh_TW": "正在喚醒電腦玩家…",
+  "zh_CN": "正在唤醒电脑玩家…",
+  "ja": "ボットを起動中…",
+  "fr": "Réveil des bots…",
+  "es": "Despertando a los bots…"
+ },
+ "Ready!": {
+  "zh_TW": "準備完成！",
+  "zh_CN": "准备完成！",
+  "ja": "準備完了！",
+  "fr": "Prêt !",
+  "es": "¡Listo!"
+ },
+ "Touch controls": {
+  "zh_TW": "觸控操作",
+  "zh_CN": "触控操作",
+  "ja": "タッチ操作",
+  "fr": "Commandes tactiles",
+  "es": "Controles táctiles"
+ },
+ "Touch controls (Auto = on phones and tablets)": {
+  "zh_TW": "觸控操作（自動 = 手機和平板開啟）",
+  "zh_CN": "触控操作（自动 = 手机和平板开启）",
+  "ja": "タッチ操作（自動 = スマホとタブレットで有効）",
+  "fr": "Commandes tactiles (Auto = sur téléphones et tablettes)",
+  "es": "Controles táctiles (Auto = en móviles y tabletas)"
+ },
+ "Left-handed layout": {
+  "zh_TW": "左手配置",
+  "zh_CN": "左手布局",
+  "ja": "左利き配置",
+  "fr": "Disposition gauche",
+  "es": "Diseño para zurdos"
+ },
+ "Aim assist toward the nearest enemy": {
+  "zh_TW": "瞄準輔助：朝最近的敵人",
+  "zh_CN": "瞄准辅助：朝最近的敌人",
+  "ja": "最寄りの敵への照準補助",
+  "fr": "Aide à la visée vers l'ennemi le plus proche",
+  "es": "Ayuda para apuntar al enemigo más cercano"
+ },
+ "Left thumb: move (push to the edge to sprint). Right side: hold FIRE and drag to aim, drag anywhere else to look, tap the weapon tiles to swap.": {
+  "zh_TW": "左拇指：移動（推到邊緣即衝刺）。右側：按住開火並拖曳來瞄準，在其他地方拖曳來轉視角，點按武器格來換槍。",
+  "zh_CN": "左拇指：移动（推到边缘即冲刺）。右侧：按住开火并拖动来瞄准，在其他地方拖动来转视角，点按武器格来换枪。",
+  "ja": "左の親指：移動（端まで押すとダッシュ）。右側：発射を押したままドラッグで照準、それ以外をドラッグで視点移動、武器の枠をタップで武器切替。",
+  "fr": "Pouce gauche : se déplacer (pousser jusqu'au bord pour courir). À droite : maintenez TIR et glissez pour viser, glissez ailleurs pour regarder autour, touchez les cases d'arme pour changer.",
+  "es": "Pulgar izquierdo: moverse (empuja hasta el borde para correr). Lado derecho: mantén DISPARAR y arrastra para apuntar, arrastra en cualquier otro sitio para mirar, toca las casillas de arma para cambiar."
+ },
+ "Always on": {
+  "zh_TW": "一律開啟",
+  "zh_CN": "始终开启",
+  "ja": "常にオン",
+  "fr": "Toujours activé",
+  "es": "Siempre activado"
+ },
+ "Video": {
+  "zh_TW": "影像",
+  "zh_CN": "画面",
+  "ja": "映像",
+  "fr": "Vidéo",
+  "es": "Vídeo"
+ },
+ "Audio & HUD": {
+  "zh_TW": "聲音與介面",
+  "zh_CN": "声音与界面",
+  "ja": "音声とHUD",
+  "fr": "Audio et HUD",
+  "es": "Audio y HUD"
+ },
+ "More": {
+  "zh_TW": "更多",
+  "zh_CN": "更多",
+  "ja": "その他",
+  "fr": "Plus",
+  "es": "Más"
+ },
+ "Sharpness now: %d%% · %d FPS": {
+  "zh_TW": "目前清晰度：%d%% · %d FPS",
+  "zh_CN": "当前清晰度：%d%% · %d FPS",
+  "ja": "現在の鮮明度：%d%% · %d FPS",
+  "fr": "Netteté actuelle : %d%% · %d FPS",
+  "es": "Nitidez actual: %d%% · %d FPS"
+ },
+ "Build %s · %s": {
+  "zh_TW": "版本 %s · %s",
+  "zh_CN": "版本 %s · %s",
+  "ja": "ビルド %s · %s",
+  "fr": "Build %s · %s",
+  "es": "Build %s · %s"
+ },
+ "saved to your account": {
+  "zh_TW": "已儲存到你的帳號",
+  "zh_CN": "已保存到你的账号",
+  "ja": "アカウントに保存されます",
+  "fr": "enregistré sur votre compte",
+  "es": "guardado en tu cuenta"
+ },
+ "guest (nothing is saved)": {
+  "zh_TW": "訪客（不會儲存任何內容）",
+  "zh_CN": "访客（不会保存任何内容）",
+  "ja": "ゲスト（何も保存されません）",
+  "fr": "invité (rien n'est enregistré)",
+  "es": "invitado (no se guarda nada)"
+ },
+ "Copied! Paste it in a message to whoever makes the game.": {
+  "zh_TW": "已複製！把它貼到訊息裡傳給遊戲製作者。",
+  "zh_CN": "已复制！把它粘贴到消息里发给游戏制作者。",
+  "ja": "コピーしました！ゲームの作者にメッセージで貼り付けて送ってください。",
+  "fr": "Copié ! Collez-le dans un message à la personne qui fait le jeu.",
+  "es": "¡Copiado! Pégalo en un mensaje a quien hace el juego."
+ },
+ "Could not copy. Try again, or send a screenshot instead.": {
+  "zh_TW": "無法複製。請再試一次，或改傳截圖。",
+  "zh_CN": "无法复制。请再试一次，或改发截图。",
+  "ja": "コピーできませんでした。もう一度試すか、スクリーンショットを送ってください。",
+  "fr": "Copie impossible. Réessayez, ou envoyez plutôt une capture d'écran.",
+  "es": "No se pudo copiar. Inténtalo de nuevo o envía una captura de pantalla."
+ },
+ "Graphics are back!": {
+  "zh_TW": "畫面已恢復！",
+  "zh_CN": "画面已恢复！",
+  "ja": "描画が戻りました！",
+  "fr": "L'affichage est revenu !",
+  "es": "¡Los gráficos han vuelto!"
+ },
+ "Something glitched, but the game kept going. (Settings > More > Copy bug report)": {
+  "zh_TW": "出了點小狀況，但遊戲仍在繼續。（設定 > 更多 > 複製錯誤回報）",
+  "zh_CN": "出了点小状况，但游戏仍在继续。（设置 > 更多 > 复制错误报告）",
+  "ja": "不具合が起きましたが、ゲームは続いています。（設定 > その他 > バグレポートをコピー）",
+  "fr": "Un petit bug s'est produit, mais le jeu continue. (Paramètres > Plus > Copier le rapport de bug)",
+  "es": "Algo falló, pero el juego sigue. (Ajustes > Más > Copiar informe de error)"
+ }
+}
