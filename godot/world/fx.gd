@@ -9,7 +9,7 @@ extends Node3D
 ## recycled), a small pool of Label3D damage numbers, and the ambient specks.
 ##   bits     little icosahedra: puffs, dust, sparks, footsteps (opaque, shrink out)
 ##   chips    tumbling flat boxes: KO confetti, debris, shell casings
-##   blobs    soft alpha spheres: fireballs, smoke, flames, muzzle flashes
+##   blobs    faceted alpha masses: fireballs, smoke, flames, muzzle flashes
 ##   rings    flat ground rings (shaders/fx_ring.gdshader): shockwaves, landings, bounce pads, K.O.s
 ##   streaks  stretched alpha boxes along a direction: dash streaks, spark streaks, tracers
 ## Level (Settings "effects": auto = the Tier, low / medium / high): LOW minimal (small caps, fewer particles, no
@@ -33,6 +33,10 @@ const DUST := Color(0.95, 0.91, 0.83)
 ## The same colours tint the impact sparks (one look for "where it struck").
 const PART_COL := {"head": Color(1, 0.35, 0.25), "torso": Color(1, 0.95, 0.4), "arms": Color(0.55, 0.85, 1), "legs": Color(0.75, 0.8, 0.9)}
 const PART_SIZE := {"head": 56, "torso": 44, "arms": 40, "legs": 38}
+const HOT := Color(1.0, 0.94, 0.62, 1.0)
+const SOOT := Color(0.13, 0.16, 0.18, 1.0)
+const EMBER := Color(0.95, 0.24, 0.08, 1.0)
+const DAMAGE_FLASH_SHADER := "res://shaders/hit_vignette.gdshader"
 ## web SPECKS: kind -> [colour, rise speed (negative falls), sideways drift]
 const SPECKS := {
 	"pollen": [0xfff2a8, 0.35, 0.6], "snow": [0xffffff, -2.2, 0.4], "ember": [0xff8a2e, 2.4, 0.5], "petal": [0xffb3c8, -0.9, 1.3],
@@ -49,6 +53,8 @@ var _labels: Array = []             ## {node, life, vel}
 var _label_i := 0
 var _watch := {}                    ## FighterState -> {g, vy, sp, vx, vz, foot}
 var _specks: Specks
+var _damage_flash := 0.0
+var _damage_mat: ShaderMaterial
 
 ## The effects level: Settings "effects" (auto | low | medium | high), auto = the graphics tier.
 static func level() -> int:
@@ -74,9 +80,22 @@ func _init(p_level := -1) -> void:
 	quad.orientation = PlaneMesh.FACE_Y
 	pools["bits"] = Pool.new(self, CAPS["bits"][lv], Pool.BITS, LowPoly.ico(0.5, 0), opaque)
 	pools["chips"] = Pool.new(self, CAPS["chips"][lv], Pool.CHIPS, LowPoly.box(1.0, 0.14, 0.62), _material(false, true))
-	pools["blobs"] = Pool.new(self, CAPS["blobs"][lv], Pool.BLOBS, LowPoly.ico(1.0, 1), alpha)
+	# Facet detail 0 is deliberate: the old detail-1 spheres read as smooth blobs at explosion scale.
+	pools["blobs"] = Pool.new(self, CAPS["blobs"][lv], Pool.BLOBS, LowPoly.ico(1.0, 0), alpha)
 	pools["rings"] = Pool.new(self, CAPS["rings"][lv], Pool.RINGS, quad, ring)
 	pools["streaks"] = Pool.new(self, CAPS["streaks"][lv], Pool.STREAKS, LowPoly.box(1.0, 1.0, 1.0), alpha)
+	_damage_mat = ShaderMaterial.new()
+	_damage_mat.shader = load(DAMAGE_FLASH_SHADER)
+	var damage_layer := CanvasLayer.new()
+	damage_layer.name = "DamageFlash"
+	damage_layer.layer = 0
+	var damage_rect := ColorRect.new()
+	damage_rect.name = "Rect"
+	damage_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	damage_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	damage_rect.material = _damage_mat
+	damage_layer.add_child(damage_rect)
+	add_child(damage_layer)
 	for i in LABELS[lv]:
 		var l := Label3D.new()
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -108,6 +127,8 @@ func clear() -> void:
 	for x: Dictionary in _labels:
 		x["life"] = 0.0; (x["node"] as Label3D).visible = false
 	_watch.clear()
+	_damage_flash = 0.0
+	if _damage_mat: _damage_mat.set_shader_parameter("intensity", 0.0)
 
 func setup_map(id: String, map: Dictionary) -> void:
 	if _specks == null: return
@@ -177,6 +198,30 @@ func blob(at: Vector3, vel: Vector3, life: float, s0: float, s1: float, c0: Colo
 func streak(at: Vector3, dir: Vector3, len: float, w: float, col: Color, life: float, vel := Vector3.ZERO) -> void:
 	(pools["streaks"] as Pool).add(at, vel, life, len, w, col, col, 0.0, 0.0, dir)
 
+## A compact, angular contact burst. The hot centre reads first; dark chips give it a physical
+## silhouette without turning the impact into a soft cloud.
+func impact(at: Vector3, dir: Vector3, col: Color, dmg: float, force: float) -> void:
+	if dir.length_squared() < 1e-4: dir = Vector3.UP
+	dir = dir.normalized()
+	var heat := col.lerp(HOT, 0.55)
+	var shard_n: int = [3, 6, 10][lv]
+	var bits: Pool = pools["bits"]
+	for i in shard_n:
+		var spread := Vector3(rng.randf_range(-0.75, 0.75), rng.randf_range(-0.45, 0.8), rng.randf_range(-0.75, 0.75))
+		var d := (dir * 1.7 + spread).normalized()
+		bits.add(at, d * (3.5 + force * 0.28), rng.randf_range(0.18, 0.34),
+			0.075 + minf(dmg, 55.0) * 0.0018, 0.012, heat if i % 3 else col, col, 10.0, 2.2)
+	if lv >= 1:
+		var shard_cols := [SOOT, Color.hex(0x6b5140ff), col]
+		chips(at - dir * 0.12, shard_cols, [0, 3, 6][lv], force * 0.55 + 4.0,
+			0.09 + minf(dmg, 45.0) * 0.0012, 0.4, 15.0, 1.0)
+		for i in [0, 2, 4][lv]:
+			var d2 := (dir + _rv(0.7, -0.1).normalized() * 0.65).normalized()
+			streak(at + d2 * 0.12, d2, 0.26 + minf(dmg, 40.0) * 0.012, 0.025,
+				Color(1, 0.96, 0.78, 0.95), 0.11, d2 * (5.0 + force * 0.3))
+	blob(at, Vector3.ZERO, 0.11, 0.09, 0.24 + minf(force, 16.0) * 0.009,
+		heat, Color(col.r, col.g * 0.55, col.b * 0.35, 0.3))
+
 ## Tumbling flat chips (confetti, debris, shells): `cols` picked in turn.
 func chips(at: Vector3, cols: Array, n: int, spd: float, size: float, life: float, grav: float, drag := 1.5) -> void:
 	var p: Pool = pools["chips"]
@@ -200,11 +245,17 @@ func sparks(at: Vector3, col: Color, dmg: float, force: float) -> void:
 
 ## The K.O. pop: a shockwave ring and colourful sparkles (koBurst), plus the death puffs.
 func ko_burst(at: Vector3) -> void:
-	puff(at + Vector3(0, 1.6, 0), Color(1, 0.89, 0.48), 12, 6.0)
-	puff(at + Vector3(0, 1.0, 0), Color.WHITE, 6, 4.0)
-	ring(at + Vector3(0, 0.1, 0), Color.hex(0xfff1b8ff), 3.2)
+	puff(at + Vector3(0, 1.55, 0), Color(1, 0.82, 0.22), 16, 7.0)
+	puff(at + Vector3(0, 1.0, 0), Color.WHITE, 8, 4.8)
+	ring(at + Vector3(0, 0.1, 0), Color.hex(0xfff1b8ff), 3.2, 0.42, 0.9)
+	if lv >= 1: ring(at + Vector3(0, 0.08, 0), EMBER, 2.2, 0.28, 0.72)
 	for c: int in [0xff6fb5, 0x6fe3ff, 0xfff176, 0xb48cff]:
 		puff(at + Vector3(0, 1.3, 0), Color.hex((c << 8) | 0xff), 3, 7.0)
+	for i in [4, 8, 10][lv]:
+		var a: float = TAU * i / float([4, 8, 10][lv])
+		var d := Vector3(cos(a), 0.25 + (i % 3) * 0.12, sin(a)).normalized()
+		streak(at + Vector3(0, 1.15, 0) + d * 0.45, d, 0.85, 0.045,
+			Color(1, 0.88, 0.25, 0.95), 0.24, d * 5.0)
 
 ## K.O. confetti in the killer's colour (with lighter / darker tones and white).
 func confetti(at: Vector3, col: Color) -> void:
@@ -214,27 +265,35 @@ func confetti(at: Vector3, col: Color) -> void:
 
 ## explode(): white core, orange middle, red outside, a ground shockwave, rising smoke, debris and sparks.
 func explosion(pos: Vector3, gy: float, rad: float) -> void:
-	for i in [2, 5, 9][lv]:                       # smoke rising and swelling (first: the pool draws in spawn order,
-		var off := Vector3(rng.randf_range(-1, 1) * rad * 0.3, rng.randf_range(0.3, 0.9), rng.randf_range(-1, 1) * rad * 0.3)   # the fire on top)
-		blob(pos + off, Vector3(rng.randf_range(-1, 1) * 1.2, rng.randf_range(2.5, 4.5), rng.randf_range(-1, 1) * 1.2),
-			rng.randf_range(1.0, 1.7), rad * 0.08, rad * 0.5, Color(0.42, 0.46, 0.5, 0.42), Color(0.3, 0.32, 0.35, 0.3), -0.6)
-	var layers := [[0xfff6c8, 0.95, 0.2, 0.55], [0xffb13b, 0.85, 0.42, 0.9], [0xff5a1f, 0.6, 0.6, 1.05]]
-	if lv == 0: layers = [layers[1], layers[2]]
-	for b: Array in layers:
-		var c := Color.hex((int(b[0]) << 8) | 0xff); c.a = b[1]
-		blob(pos, Vector3.ZERO, b[2], rad * b[3] * 0.2, rad * b[3], c, Color(c.r, c.g * 0.6, c.b * 0.4, c.a))
-	if lv == 2:                                   # a few offset fireballs: a lumpier blast
-		for i in 4:
-			var o := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.2, 0.8), rng.randf_range(-1, 1)) * rad * 0.35
-			blob(pos + o, o * 1.5, rng.randf_range(0.3, 0.45), rad * 0.15, rad * 0.5, Color(1, 0.7, 0.25, 0.8), Color(0.55, 0.2, 0.08, 0.6))
-	ring(Vector3(pos.x, gy + 0.08, pos.z), Color.hex(0xffe9b0ff), rad * 1.25, 0.5, 0.85)
-	if lv >= 1: ring(Vector3(pos.x, gy + 0.1, pos.z), Color.hex(0xffffffff), rad * 0.8, 0.25, 0.6)
-	chips(pos, [Color.hex(0x3a3f48ff), Color.hex(0x5a4a3aff), Color.hex(0x2a2a2eff)], [4, 8, 14][lv], 9.0, 0.2, 1.1, 18.0, 0.6)
-	puff(pos, Color.hex(0xffd27aff), 14, 11.0)
-	if lv >= 1:
-		for i in [0, 6, 10][lv]:
-			var d := _rv(1.0, -0.2).normalized()
-			streak(pos + d * rad * 0.3, d, rng.randf_range(0.6, 1.2), 0.05, Color(1, 0.85, 0.45, 0.9), 0.18, d * 14.0)
+	# Dark faceted shells create the silhouette; hot lobes sit inside them so the blast does not
+	# become one pale sphere covering the fight.
+	for i in [2, 4, 6][lv]:
+		var off := Vector3(rng.randf_range(-1, 1), rng.randf_range(-0.3, 1), rng.randf_range(-1, 1)) * rad * 0.24
+		blob(pos + off, off * 0.8 + Vector3(0, rng.randf_range(0.3, 0.8), 0),
+			rng.randf_range(0.42, 0.72), rad * 0.12, rad * rng.randf_range(0.34, 0.48),
+			Color(0.16, 0.18, 0.2, 0.55), Color(0.28, 0.27, 0.25, 0.35), -0.5)
+	var lobes := [Vector3(-0.22, 0.05, -0.12), Vector3(0.24, -0.02, 0.1), Vector3(0.02, 0.24, 0)]
+	for i in (1 if lv == 0 else lobes.size()):
+		var o: Vector3 = lobes[i] * rad
+		blob(pos + o, Vector3(0, 0.25, 0), rng.randf_range(0.28, 0.42),
+			rad * 0.12, rad * (0.4 if lv == 0 else 0.5),
+			Color(1.0, 0.52, 0.12, 0.76), Color(0.58, 0.09, 0.035, 0.34))
+	blob(pos, Vector3.ZERO, 0.22, rad * 0.1, rad * 0.32,
+		Color(1, 0.94, 0.6, 0.95), Color(1, 0.55, 0.12, 0.3))
+	# One bright polygonal ground wave and one darker echo read as a deliberate graphic ring.
+	ring(Vector3(pos.x, gy + 0.08, pos.z), Color(1, 0.78, 0.24, 1), rad * 1.14, 0.38, 0.92)
+	if lv >= 1: ring(Vector3(pos.x, gy + 0.06, pos.z), EMBER, rad * 0.78, 0.26, 0.72)
+	# Heavy angular debris, then embers thrown on straight radial paths.
+	chips(pos, [SOOT, Color.hex(0x563c2cff), Color.hex(0xff7a22ff)],
+		[5, 10, 16][lv], 10.0, 0.22, 0.78, 20.0, 0.45)
+	var ray_n: int = [4, 8, 11][lv]
+	for i in ray_n:
+		var a: float = TAU * i / ray_n + rng.randf_range(-0.09, 0.09)
+		var d := Vector3(cos(a), rng.randf_range(-0.05, 0.28), sin(a)).normalized()
+		streak(pos + d * rad * 0.16, d, rng.randf_range(0.9, 1.5), 0.05,
+			Color(1, 0.78, 0.25, 0.9), 0.2, d * rng.randf_range(12.0, 17.0))
+	puff(pos, Color.hex(0xff8e2aff), [8, 14, 20][lv], 9.5)
+	if lv >= 1: puff(pos + Vector3(0, 0.25, 0), SOOT, 5, 4.0)
 
 ## flameFx: yellow, then orange, then dark red, swelling and drifting up as it burns out.
 func flame(pos: Vector3, vel: Vector3, life: float) -> void:
@@ -301,6 +360,8 @@ func on_event(e: Dictionary) -> void:
 			if f: dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), float(e["dmg"]), String(e.get("part", "head" if e["head"] else "")), int(e.get("pct", 0)))
 		"hit":
 			if f: _on_hit(e, f)
+		"hurt":
+			_damage_flash = maxf(_damage_flash, clampf(float(e.get("amount", 0.5)), 0.35, 1.0))
 		"ko_burst":
 			if f: ko_burst(Vector3(f.phys.px, f.phys.py, f.phys.pz))
 		"ko":
@@ -328,7 +389,6 @@ func on_event(e: Dictionary) -> void:
 				var d := Vector3(f.arm_x, f.arm_y, f.arm_z)
 				if d.length_squared() < 1e-4: d = Vector3(sin(f.yaw), 0, cos(f.yaw))
 				muzzle(Vector3(f.hand_x, f.hand_y, f.hand_z) + d.normalized() * 0.55, d.normalized(), str(e.get("key", "")))
-
 func _dash_dir(e: Dictionary) -> Vector3:
 	if e.has("dx"): return Vector3(float(e["dx"]), 0, float(e["dz"]))
 	if world == null: return Vector3.ZERO
@@ -346,13 +406,18 @@ func _on_hit(e: Dictionary, f: FighterState) -> void:
 	var part := String(e.get("part", ""))
 	var col: Color = PART_COL.get(part, Color(1, 0.95, 0.8))
 	var at := Vector3(e["x"], e["y"], e["z"]) if e.has("x") else Vector3(f.chest_x, f.chest_y, f.chest_z)
-	puff(Vector3(f.chest_x, f.chest_y, f.chest_z), Color(1, 0.95, 0.8), 4, 3.0)
+	var attacker: FighterState = e.get("attacker") if e.get("attacker") is FighterState else null
+	var dir := Vector3.UP
+	if attacker != null:
+		dir = at - Vector3(attacker.shoulder_x, attacker.shoulder_y, attacker.shoulder_z)
+		if dir.length_squared() < 1e-4: dir = Vector3(sin(attacker.yaw), 0.2, cos(attacker.yaw))
+	impact(at, dir, col, dmg, force)
+	puff(Vector3(f.chest_x, f.chest_y, f.chest_z), Color(1, 0.95, 0.8), 3, 2.8)
 	sparks(at, col, dmg, force)
-	if part == "head" and lv >= 1:
-		ring(at, col, 0.9, 0.2, 0.8)
+	if part == "head" and lv >= 1: ring(at, col, 0.72, 0.17, 0.8)
 	if world == null: return
 	var me: FighterState = world.sim.player
-	var a: FighterState = e.get("attacker") if e.get("attacker") is FighterState else null
+	var a := attacker
 	if f == me or a == me:
 		if dmg >= 6.0: world.hitstop(2 if dmg < 20.0 else (3 if dmg < 40.0 else 4))
 		var s := 0.0
@@ -369,7 +434,9 @@ func _on_ko(e: Dictionary) -> void:
 	var col := Color(1, 0.85, 0.3)
 	if world != null and k != null and world.views.has(k):
 		col = Color.hex((int(world.views[k].look.get("color", 0xffd23f)) << 8) | 0xff)
-	confetti(Vector3(v.phys.px, v.phys.py + 1.3, v.phys.pz), col)
+	var at := Vector3(v.phys.px, v.phys.py + 1.3, v.phys.pz)
+	impact(at, Vector3.UP, Color(1, 0.76, 0.2), 34.0, 14.0)
+	confetti(at, col)
 	if world != null and (k == world.sim.player or v == world.sim.player):
 		world.add_shake(0.18)
 		if k == world.sim.player: world.hitstop(4)
@@ -431,6 +498,9 @@ func update(dt: float, cam_pos: Vector3) -> void:
 		l.modulate.a = clampf(x["life"] / DMG_LIFE * 1.5, 0.0, 1.0)
 		l.position += x["vel"] * dt
 	if _specks: _specks.update(dt, cam_pos)
+	if _damage_flash > 0.0:
+		_damage_flash = maxf(0.0, _damage_flash - dt * 3.6)
+		if _damage_mat: _damage_mat.set_shader_parameter("intensity", _damage_flash)
 
 
 ## One MultiMesh pool simulated on the CPU (see the class header). Live particles are packed at the front

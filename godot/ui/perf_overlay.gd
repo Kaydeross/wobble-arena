@@ -76,4 +76,9 @@ func place() -> void:
 	if _hud != null and _hud.is_visible_in_tree() and _hud.has_node("Score"):
 		var s: Control = _hud.get_node("Score")
 		pos = Vector2(s.position.x, s.position.y + s.size.y * s.scale.y + 6.0)
+	var fps := get_tree().root.get_node_or_null("FpsOverlay")
+	if fps != null and fps.visible and fps.has_method("rect"):
+		var r: Rect2 = fps.rect()
+		if r.has_area():
+			pos.y = maxf(pos.y, r.end.y + 4.0)
 	panel.position = pos

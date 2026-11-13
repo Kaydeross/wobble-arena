@@ -443,17 +443,17 @@ func _draw() -> void:
 			"fire":
 				fill = Color(yel.r, yel.g, yel.b, 0.9 * op); icon_c = Color(ink.r, ink.g, ink.b, op)
 			"jump":
-				fill = Color(0.16, 0.42, 0.47, 0.82 * op)
+				fill = Color(0.08, 0.31, 0.36, 0.9 * op)
 			_:
-				fill = Color(ink.r, ink.g, ink.b, 0.62 * op)
+				fill = Color(ink.r, ink.g, ink.b, 0.76 * op)
 		fill = fill.lerp(Color(1, 1, 1, fill.a), 0.3 * a)        # brighter while pressed
 		draw_circle(c + Vector2(0, 3.0 * (1.0 - a)), rad, Color(0, 0, 0, 0.22 * op))   # soft drop shadow
 		if a > 0.01:
 			draw_circle(c, rad + 6.0 * a, Color(yel.r, yel.g, yel.b, 0.25 * a * op))  # press glow
 		draw_circle(c, rad, fill)
 		draw_arc(c + Vector2(0, -rad * 0.08), rad * 0.82, PI * 1.15, PI * 1.85, 24, Color(1, 1, 1, 0.16 * op), rad * 0.12, true)   # top sheen
-		var edge := Color(ink.r, ink.g, ink.b, 0.5 * op) if id == "fire" else Color(1, 1, 1, 0.55 * op)
-		draw_arc(c, rad - 1.0, 0, TAU, 48, edge, 2.5, true)
+		var edge := Color(ink.r, ink.g, ink.b, 0.76 * op) if id == "fire" else Color(1, 1, 1, 0.78 * op)
+		draw_arc(c, rad - 1.0, 0, TAU, 48, edge, 3.5, true)
 		match id:
 			"fire":
 				_icon("fire", c, rad * 0.5, icon_c)

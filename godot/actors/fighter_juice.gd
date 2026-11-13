@@ -15,6 +15,8 @@ const C := 13.0                      ## damping (1/s)
 var sq := 0.0                        ## + = squashed (shorter, wider), - = stretched
 var sq_v := 0.0
 var hit_k := 0.0
+var hit_x := 0.0
+var hit_y := 0.0
 var was_g := true
 var prev_vy := 0.0
 var _nodes: Array[Node3D] = []
@@ -31,6 +33,8 @@ func restore() -> void:
 ## A blow's lean kick (Combat `lean` a / b).
 func kick(a: float, b: float) -> void:
 	hit_k = maxf(hit_k, clampf(Vector2(a, b).length() * 0.035, 0.0, 0.2))
+	hit_x = clampf(hit_x + a * 0.018, -0.2, 0.2)
+	hit_y = clampf(hit_y + b * 0.018, -0.2, 0.2)
 
 func apply(w: Wobbler, dt: float, frozen: bool) -> void:
 	if _nodes.is_empty():
@@ -49,6 +53,8 @@ func apply(w: Wobbler, dt: float, frozen: bool) -> void:
 		sq += sq_v * dt
 		sq = clampf(sq, -0.22, 0.32)
 		hit_k = maxf(0.0, hit_k - dt * 1.6)
+		hit_x = move_toward(hit_x, 0.0, dt * 2.8)
+		hit_y = move_toward(hit_y, 0.0, dt * 2.8)
 	var air := 0.0 if w.grounded else clampf(w.vel.y * 0.006, -0.05, 0.06)
 	var s := sq - air + hit_k * 0.6
 	if not frozen:
@@ -66,3 +72,6 @@ func apply(w: Wobbler, dt: float, frozen: bool) -> void:
 	var sy := 1.0 - s
 	var sxz := 1.0 + s * 0.55
 	w.rig.basis = w.rig.basis.scaled_local(Vector3(sxz, sy, sxz))
+	if hit_k > 0.003:
+		w.rig.basis = w.rig.basis.rotated(Vector3.RIGHT, hit_x * hit_k) \
+			.rotated(Vector3.BACK, hit_y * hit_k)

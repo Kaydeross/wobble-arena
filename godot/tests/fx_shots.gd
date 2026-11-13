@@ -2,7 +2,7 @@ extends SceneTree
 ## In-match screenshots of the combat effects (docs/style/godot-fx-*.png, tools/shoot-godot-fx.sh). Needs a real
 ## renderer (opens a window for a moment):
 ##   godot --path godot --resolution 1280x720 --script res://tests/fx_shots.gd -- --no-save --shot NAME --out FILE.png
-## NAME: explosion | confetti | dash | melee | dust. The effect is triggered in front of the player (the effects API or
+## NAME: explosion | confetti | dash | melee | impact | dust. The effect is triggered in front of the player (the effects API or
 ## a real swing / landing), the frame is grabbed a few frames in.
 
 const FRAME := 1.0 / 60.0
@@ -39,7 +39,7 @@ func _start() -> void:
 	root.add_child(world)
 	world.touch.visible = false
 	world.hud.visible = false
-	grab_at = 99999 if shot == "dust" else WARM + {"explosion": 5, "confetti": 9, "dash": 4, "melee": 12}.get(shot, 4)
+	grab_at = 99999 if shot == "dust" else WARM + {"explosion": 5, "confetti": 9, "dash": 4, "melee": 12, "impact": 4}.get(shot, 4)
 	process_frame.connect(_frame)
 
 func _front(d: float, up := 0.0, side := 0.0) -> Vector3:
@@ -71,6 +71,11 @@ func _frame() -> void:
 				sim.combat.pickup(me, "katana")
 				sim.combat.set_weapon(me, "katana")
 				sim.combat.melee_begin(me, "katana", me.face_yaw)
+			"impact":
+				var at3 := _front(4.4, 1.25, -1.1)
+				var hit_dir := at3 - Vector3(me.hand_x, me.hand_y, me.hand_z)
+				fx.impact(at3, hit_dir, FxSystem.PART_COL["head"], 28.0, 12.0)
+				fx.on_event({"type": "hurt", "amount": 0.78})
 			"dust":
 				me.phys.py = 5.0; me.phys.vy = -14.0; me.phys.grounded = false
 				world.cam.yaw += 0.6
