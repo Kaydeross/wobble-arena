@@ -80,6 +80,13 @@ func step(dt: float, solids: Array, st: FighterState) -> void:
 	if st.dash_air_t > 0.0:            # Pillars: a dash in the air carries you across the gap
 		st.dash_air_t -= dt
 		if not grounded: acc = 3.0
+	if st.recover_air_t > 0.0:         # air recovery (Skills.do_recover): steer hard without losing the burst
+		st.recover_air_t -= dt
+		if not grounded and not incap:
+			if hypot(wish_x, wish_z) < 0.05: acc = 0.0
+			else:
+				var cap := maxf(speed * speed_mul * spm, Skills.RECOVER_AIR_SPEED)
+				tx = wish_x * cap; tz = wish_z * cap; acc = Skills.RECOVER_AIR_ACC * air_mul
 	if st.down_t > 0.0: acc = 18.0     # slide along the floor a bit
 	if st.stun > 0.0:
 		acc *= 0.12; st.stun -= dt

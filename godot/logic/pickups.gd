@@ -52,10 +52,11 @@ func pick_crate_key() -> String:
 	var allow: Array = al.get(combat.mode_id, combat.mode["dropAllow"] if combat.mode.get("dropAllow") is Array else al.get(str(combat.mode.get("dropsAs", "")), []))   # Godot-only modes borrow a pool
 	var base: Dictionary = drops.get("base", {})
 	var mult: Dictionary = drops.get("mult", {})
+	var tuned: Dictionary = combat.tuned_drops if combat.tuning_active() else {}   # weapon_tuning.json crate weights
 	for k: String in base:
 		if not allow.has(k): continue
 		if ported_only and not usable(k): continue
-		var w := float(base[k]) * float(mult.get(wstate.get(k, "normal"), 1.0))
+		var w := float(tuned.get(k, base[k])) * float(mult.get(wstate.get(k, "normal"), 1.0))
 		if combat.mode_id == "ninja":   # Ninja: fewer shuriken, more of the other ninja weapons
 			w *= float({"shuriken": 0.4, "knife": 1.3, "katana": 1.5, "typhoon": 1.5}.get(k, 1.0))
 		if w > 0.0:

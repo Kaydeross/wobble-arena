@@ -31,7 +31,9 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	if l > 1.0: wx /= l; wz /= l
 	if incap: wx = 0.0; wz = 0.0
 	ph.wish_x = wx; ph.wish_z = wz; ph.climb_in = f
-	if input.consume("dash"): combat.rules.do_dash(p, wx, wz)      # ninja dash (needs a ninja weapon in hand)
+	if input.consume("dash") and not combat.rules.do_dash(p, wx, wz) and not ph.grounded:   # ninja dash (needs a ninja weapon in hand)
+		Skills.do_recover(p, sim, wx, wz)                      # no dash gear: the dash key recovers in the air
+	if input.consume("recover"): Skills.do_recover(p, sim, wx, wz)   # air recovery, the "boing burst" (logic/skills.gd)
 	var aiming := input.aiming()
 	var fire := input.is_held("fire")
 	squat = input.is_held("crouch") and not incap and ph.ladder.is_empty()
@@ -90,7 +92,7 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 		combat.weapons.try_fire(p, aim_point)
 
 func _drain_taps() -> void:
-	for a in ["kick", "shove", "spatula", "reload", "slot1", "slot2", "slot3", "swap", "dash"]:
+	for a in ["kick", "shove", "spatula", "reload", "slot1", "slot2", "slot3", "swap", "dash", "recover"]:
 		while input.consume(a): pass
 
 ## cycleWeapon: the next filled slot after the current one, the spatula (-1) included.

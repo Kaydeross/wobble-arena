@@ -8,8 +8,9 @@ extends Control
 ##           Shows a yellow ring + scope badge while the scope (aim) is on.
 ##   JUMP    teal, held.
 ##   MELEE   tap = shove; hold (HOLD_KICK s) or flick (FLICK px) = kick. A ring fills while held, the icon turns into a boot.
-##   context only while it applies: DASH (ninja weapon in hand, with charge pips) or else RELOAD (gun with a magazine
-##           and spare ammo; shows the reload progress).
+##   context only while it applies: DASH (ninja weapon in hand, with charge pips), else RECOVER when knocked into the air (the "boing
+##           burst", logic/skills.gd; a ring shows the charge coming back), else RELOAD (gun with a magazine and spare
+##           ammo; shows the reload progress).
 ##   AIM     double-tap the look area to toggle the scope (tap again twice to leave it).
 ##   weapons tap a hotbar slot to equip it (the Spatula slot is the quick melee, like Q); tap the slot already in hand to
 ##           swap back to the last weapon; swipe sideways across the hotbar to cycle.
@@ -70,7 +71,7 @@ var _look_tap := [-100000, Vector2.ZERO]   ## last quick tap on the look area: [
 var _hb := {"i": -1, "p0": Vector2.ZERO}   ## hotbar touch: slot under the finger, start position
 var _flash_slot := -1         ## hotbar slot flashing after a tap (visual only)
 var _prev_slot := -1           ## hotbar slot in hand before the last slot tap (swap back)
-var _ctx := ""                 ## "dash" | "reload" | "" (hidden)
+var _ctx := ""                 ## "dash" | "recover" | "reload" | "" (hidden)
 var _ctx_sig := ""
 
 func _ready() -> void:
@@ -133,7 +134,7 @@ func pause_rect() -> Rect2:
 	var x: float = (8.0 * UNIT + _insets[0]) if lefty else (vs.x - 8.0 * UNIT - _insets[2] - s)
 	return Rect2(x, top, s, s)
 
-## What the contextual button does right now: "dash", "reload" or "" (hidden).
+## What the contextual button does right now: "dash", "recover", "reload" or "" (hidden).
 func context_action() -> String:
 	return _ctx
 
@@ -241,7 +242,7 @@ func _touch_down(i: int, p: Vector2) -> void:
 				"melee":
 					_melee = {"t": 0.0, "p0": p, "kicked": false}
 				"context":
-					if _ctx == "reload" and sim and sim.player.reloading:
+					if (_ctx == "reload" and sim and sim.player.reloading) or (_ctx == "recover" and sim and Skills.recover_n(sim.player) <= 0):
 						pass
 					else:
 						state.press(_ctx)
@@ -365,6 +366,9 @@ func _refresh_context() -> void:
 		if sim.combat.rules.dash_gear(p):
 			id = "dash"
 			sig = "dash%d" % p.dash_n
+		elif Skills.recover_offer(p, sim):
+			id = "recover"
+			sig = "recover%d" % int(Skills.recover_ready_k(p) * 30.0)
 		else:
 			var s: Variant = p.current_slot()
 			var w := sim.combat.wdata(p.weapon) if p.weapon != "" else {}
@@ -472,9 +476,13 @@ func _draw() -> void:
 					draw_arc(bc, rad * 0.32, 0, TAU, 24, Color(1, 1, 1, 0.5 * op), 1.5, true)
 					_icon("kick", bc, rad * 0.17, Color(1, 1, 1, 0.9 * op))
 			"context":
-				var cid := _ctx if _ctx != "" else ("dash" if _ctx_sig.begins_with("dash") else "reload")
+				var cid := _ctx if _ctx != "" else ("dash" if _ctx_sig.begins_with("dash") else ("recover" if _ctx_sig.begins_with("recover") else "reload"))
 				var p: FighterState = sim.player if sim else null
-				if cid == "reload" and p != null and p.reloading and p.rl_dur > 0.0:
+				var rk := Skills.recover_ready_k(p) if p != null and cid == "recover" else 1.0
+				if cid == "recover" and rk < 1.0:   # charge used: dim icon + a ring filling back up
+					_icon("recover", c, rad * 0.5, Color(1, 1, 1, 0.4 * op))
+					draw_arc(c, rad + 3.0, -PI / 2.0, -PI / 2.0 + TAU * rk, 40, Color(yel.r, yel.g, yel.b, 0.95 * op), 4.0, true)
+				elif cid == "reload" and p != null and p.reloading and p.rl_dur > 0.0:
 					_icon("reload", c, rad * 0.5, Color(1, 1, 1, 0.45 * op))
 					draw_arc(c, rad + 3.0, -PI / 2.0, -PI / 2.0 + TAU * clampf(p.rl_t / p.rl_dur, 0.0, 1.0), 40, Color(yel.r, yel.g, yel.b, 0.95 * op), 4.0, true)
 				else:
@@ -590,6 +598,14 @@ func _icon(id: String, c: Vector2, s: float, col: Color) -> void:
 			draw_colored_polygon(boot, col)
 			_cap(Vector2(-0.6, 0.78) * s * 0.9, Vector2(0.62, 0.78) * s * 0.9, w * 0.5, col)   # sole
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		"recover":   # a spring under an up chevron (boing)
+			_cap(c + Vector2(-s * 0.6, -s * 0.25), c + Vector2(0, -s * 0.85), w, col)
+			_cap(c + Vector2(0, -s * 0.85), c + Vector2(s * 0.6, -s * 0.25), w, col)
+			var zz := PackedVector2Array()
+			for k in 5:
+				zz.append(c + Vector2((-0.45 if k % 2 == 0 else 0.45) * s, (0.0 + k * 0.22) * s))
+			draw_polyline(zz, col, w * 0.7, true)
+			_cap(c + Vector2(-s * 0.6, s * 0.98), c + Vector2(s * 0.6, s * 0.98), w * 0.7, col)
 		"dash":   # speed lines + chevron
 			_cap(c + Vector2(-s * 0.95, -s * 0.4), c + Vector2(-s * 0.35, -s * 0.4), w * 0.6, col)
 			_cap(c + Vector2(-s * 1.05, 0), c + Vector2(-s * 0.2, 0), w * 0.6, col)

@@ -638,4 +638,7 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 		extra = "Arena %dm" % Combat.js_round(s["size"]) + (" · shrinking soon" if s["hold"] > 0.0 else (" · growing" if s["dir"] == 1 else (" · smallest" if s["size"] <= s["min"] else "")))
 	if dash_gear(player) and not player.dead:
 		extra += ("   " if extra != "" else "") + "Dash " + "◆".repeat(player.dash_n) + "◇".repeat(DASH_MAX - player.dash_n)
+	var bh := Skills.burst_hud(c, player) if not player.dead else []   # weapon_tuning.json burst pool of the held weapon
+	if bh.size() > 0:
+		extra += ("   " if extra != "" else "") + "Shots " + "◆".repeat(bh[0]) + "◇".repeat(bh[1] - bh[0])
 	return t if extra == "" else (t + "   " + extra if t != "" else extra)

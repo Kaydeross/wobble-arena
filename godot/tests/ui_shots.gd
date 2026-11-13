@@ -17,6 +17,8 @@ extends SceneTree
 ## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
 ## after the first weapon handout), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
 ## modes2-practice (the Practice Range: the player with a rack AK shooting down the range at the dummies).
+## recover (touch layer on, a rocket launcher with its burst pips, knocked into the air and mid "boing burst": the
+## RECOVER context button refilling, logic/skills.gd).
 
 const FRAME := 1.0 / 60.0
 
@@ -113,7 +115,7 @@ func _start() -> void:
 		frames = 40
 		process_frame.connect(_wait)
 		return
-	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel"
+	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel" or shot == "recover"
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
 	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
@@ -244,6 +246,7 @@ func _frame() -> void:
 	if i == 2:
 		sim.combat.pickup(p, "katana")
 		sim.combat.pickup(p, "smg")      # the last pickup is the active slot
+		if shot == "recover": sim.combat.pickup(p, "rocket")
 		if not shot.begins_with("touch"): world.hud.last_touch = false
 	var go := Vector2.ZERO
 	var fire := false
@@ -270,6 +273,13 @@ func _frame() -> void:
 		e.index = 7; e.position = Vector2(sx + 40, vs.y * 0.62 - 50)
 		world.touch._input(e)
 		_touch(8, world.touch.button_rect(world.touch.button("fire"))[0], true)
+	if shot == "recover" and i >= 300 and i < 344 and p.weapon != "rocket":   # rocket in hand (no dash gear)
+		for k in 3:
+			if p.slots[k] != null and p.slots[k]["key"] == "rocket": sim.combat.equip_slot(p, k)
+	if shot == "recover" and i == 334 and not p.dead:   # knocked up and away, then the context button (RECOVER)
+		p.phys.vy = 11.0; p.phys.vx = 9.0; p.phys.grounded = false; p.last_hit_time = sim.combat.time
+	if shot == "recover" and i == 344:
+		_touch(9, world.touch.button_rect(world.touch.button("context"))[0], true)
 	if shot == "emote-wheel" and i == 300:
 		var sv: Node = root.get_node("Save")
 		sv.add_coins(3000)
