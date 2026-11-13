@@ -415,6 +415,7 @@ func equip_slot(f: FighterState, i: int) -> bool:
 		cancel_reload(f, true)         # swapped away mid-reload: it finishes when you come back
 	var was := f.weapon
 	f.slot = i
+	f.spatula_lock = i < 0 and f.is_player
 	set_weapon(f, f.slots[i]["key"] if i >= 0 else "spatula")
 	if i >= 0: auto_reload(f)
 	var scd := float(wdata(f.weapon).get("swapCd", 0.0))   # tuning: heavy weapons need a moment to draw (no swap-cancel)
@@ -423,10 +424,11 @@ func equip_slot(f: FighterState, i: int) -> bool:
 
 func clear_inventory(f: FighterState) -> void:
 	cancel_reload(f, false)
-	f.slots = [null, null, null]; f.slot = -1; f.return_slot = -1
+	f.slots = [null, null, null]; f.slot = -1; f.return_slot = -1; f.spatula_lock = false
 
 ## Should a freshly picked-up weapon go straight into the hand?
 func auto_eq(f: FighterState, i: int) -> bool:
+	if f.spatula_lock and f.slot < 0 and tuning_active(): return false   # you picked the spatula: it stays in hand
 	if not f.is_player or auto_switch or f.slot < 0 or f.slot == i:
 		return true
 	var cur: Variant = f.slots[f.slot]
@@ -471,6 +473,7 @@ func drop_slot(f: FighterState) -> void:
 	for n in 3:
 		if f.slots[n] != null: nxt = n; break
 	equip_slot(f, nxt)
+	f.spatula_lock = false         # the weapon ran out; that was not a choice
 
 ## useAmmo: one shot spent (the Weapon Ladder never runs out of spare ammo).
 func use_ammo(f: FighterState) -> void:
