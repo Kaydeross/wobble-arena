@@ -166,15 +166,25 @@ func _flow() -> void:
 	# the banner
 	var banner := main.get_node_or_null("Safe/Col/Body/Home/Construction") as Button
 	check(banner != null and banner.is_visible_in_tree(), "the title has the Construction banner")
-	check((banner.get_node("Stack/Big") as Label).text == "Construction", "banner says Construction")
-	check((banner.get_node("Stack/Sub") as Label).text.contains("1500"), "locked banner sub names the price (%s)" % (banner.get_node("Stack/Sub") as Label).text)
+	check((banner as DontEnterSign).label == "DON'T ENTER", "the sign says DON'T ENTER")
 	var hub = main.hub
 	check(hub != null and not hub.visible, "the hub waits behind the banner")
-	banner.pressed.emit()
-	check(hub.visible, "the banner opens the hub")
+	main.open_hub()
+	check(hub.visible, "the hub opens")
 	check(main.go_back() and not hub.visible, "go_back() closes the hub")
-	# locked hub
+	# the DON'T ENTER wipe: the title turns into the Construction title, whose Play opens the hub
+	main.set_dlc(true, false)
+	check(main.dlc and (banner as DontEnterSign).label == "EXIT SITE", "the Construction title shows EXIT SITE")
+	main.play.pressed.emit()
+	check(hub.visible and not main.wizard.visible, "Play on the Construction title opens the hub")
+	check(main.go_back() and not hub.visible, "go_back() closes the hub again")
+	main.set_dlc(false, false)
+	check(not main.dlc and (banner as DontEnterSign).label == "DON'T ENTER", "EXIT SITE returns to the normal title")
 	banner.pressed.emit()
+	check(main._wipe.busy, "the sign starts the tape wipe")
+	main._wipe.busy = false; main._wipe.visible = false   # (the tween finishes on its own; this test does not wait for it)
+	# locked hub
+	main.open_hub()
 	check(hub.classic_b.disabled and hub.arcade_b.disabled, "locked: both cards disabled")
 	check(hub.buy_row.visible and hub.buy_b.disabled and hub.buy_b.text.contains("900"), "short of coins: the button says how many more (%s)" % hub.buy_b.text)
 	check(hub.code_b.visible and hub.code_b.text == "Enter code", "locked: Enter code")
@@ -204,7 +214,6 @@ func _flow() -> void:
 	var pads2 := 0
 	for l: Control in hub._locks: if l.visible: pads2 += 1
 	check(pads2 == 0, "unlocked: no padlocks")
-	check(not (banner.get_node("Stack/Sub") as Label).text.contains("1500"), "unlocked banner sub drops the price")
 	# Arcade: "Coming soon" until unit D's manager exists
 	var ready: bool = CH.arcade_ready()
 	check(hub.arcade_b.disabled == not ready, "Arcade is %s" % ("on" if ready else "off until arcade_manager.gd exists"))
