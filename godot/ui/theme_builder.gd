@@ -26,6 +26,15 @@ const BAD := Color(0.937, 0.325, 0.314)                  ## #ef5350
 const SHADOW := Color(0, 0, 0, 0.32)
 const RADIUS := 14
 const BORDER := 2
+## Spacing scale (canvas px; the layouts use these, never ad-hoc numbers): 4 hairline, 8 inside a control group, 12 between
+## controls (>= 8 pt at the 44 pt UI scale: the gap tests/ui_layout_test.gd demands), 16 between groups, 24 between sections.
+const SP_1 := 4
+const SP_2 := 8
+const SP_3 := 12
+const SP_4 := 16
+const SP_5 := 24
+const MIN_FONT := 14           ## smallest label font (canvas px, about 10 pt on an iPhone); the layout test enforces it
+const MIN_GAP := 11.0          ## smallest gap between two controls (canvas px at the 44 pt scale = 8 pt)
 
 func _initialize() -> void:
 	var t := build()

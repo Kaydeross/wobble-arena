@@ -24,7 +24,7 @@ func _init() -> void:
 func build_frame(title: String) -> void:
 	var bg := ColorRect.new()
 	bg.name = "Bg"
-	bg.color = Color(0.035, 0.11, 0.137, 0.97)
+	bg.color = Color(0.035, 0.11, 0.137, 1.0)   # opaque: the title's logo never ghosts through
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(bg)
 	safe = MarginContainer.new()
@@ -33,7 +33,7 @@ func build_frame(title: String) -> void:
 	add_child(safe)
 	col = VBoxContainer.new()
 	col.name = "Col"
-	col.add_theme_constant_override("separation", 10)
+	col.add_theme_constant_override("separation", UiTheme.SP_3)
 	safe.add_child(col)
 	head = HBoxContainer.new()
 	head.name = "Head"

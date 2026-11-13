@@ -167,7 +167,7 @@ size_flags_vertical = 3
 
 [node name="Box" type="VBoxContainer" parent="Safe/Col/Body/Online"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
 [node name="Head" type="HBoxContainer" parent="Safe/Col/Body/Online/Box"]
 layout_mode = 2
@@ -209,7 +209,7 @@ theme_override_constants/separation = 16
 [node name="Side" type="VBoxContainer" parent="Safe/Col/Body/Online/Box/Main"]
 custom_minimum_size = Vector2(330, 0)
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
 [node name="CodeL" type="Label" parent="Safe/Col/Body/Online/Box/Main/Side"]
 layout_mode = 2
@@ -219,7 +219,7 @@ text = "Join with a code"
 
 [node name="CodeRow" type="HBoxContainer" parent="Safe/Col/Body/Online/Box/Main/Side"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
 [node name="Room" type="LineEdit" parent="Safe/Col/Body/Online/Box/Main/Side/CodeRow"]
 custom_minimum_size = Vector2(120, 62)

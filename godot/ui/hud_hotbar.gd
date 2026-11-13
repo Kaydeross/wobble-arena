@@ -60,22 +60,31 @@ func _draw() -> void:
 		draw_style_box(sb, r)
 		var name: String = s["name"]
 		var fs := _fit(name, slot_w - 14, 19)
-		var tw := _font.get_string_size(name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var lines: Array = [name]
+		if fs < UiTheme.MIN_FONT and name.contains(" "):     # a long name wraps to two lines instead of shrinking to nothing
+			var cut := name.rfind(" ", name.length() / 2 + 2)
+			if cut <= 0: cut = name.find(" ")
+			lines = [name.substr(0, cut), name.substr(cut + 1)]
+			fs = UiTheme.MIN_FONT
+			for ln: String in lines: fs = mini(fs, _fit(ln, slot_w - 12, UiTheme.MIN_FONT))
 		var tc := Color(1, 1, 1, 0.4) if empty else Color.WHITE
-		var tp := Vector2(r.position.x + (slot_w - tw) / 2.0, r.end.y - 13)
-		if not empty:
-			draw_string_outline(_font, tp, name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.35))
-		draw_string(_font, tp, name, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
+		for li in lines.size():
+			var ln: String = lines[li]
+			var tw := _font.get_string_size(ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var tp := Vector2(r.position.x + (slot_w - tw) / 2.0, r.end.y - 13 - (lines.size() - 1 - li) * (fs + 1))
+			if not empty:
+				draw_string_outline(_font, tp, ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, 4, Color(0, 0, 0, 0.35))
+			draw_string(_font, tp, ln, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, tc)
 		var ammo: String = s["ammo"]
 		if ammo != "":
 			var sub: String = s.get("sub", "")
 			var low: bool = s.get("low", false)
-			var afs := 30 if g > 0.5 else 24                               # the number that matters is big and easy to read
+			var afs := (22 if lines.size() > 1 else 30) if g > 0.5 else (20 if lines.size() > 1 else 24)                               # the number that matters is big and easy to read
 			var main_c := Color(1.0, 0.42, 0.36) if low else (Color.WHITE if g > 0.5 else Color(1, 1, 1, 0.75))
 			var aw := _font.get_string_size(ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, afs).x
 			var sw := _font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, 15).x if sub != "" else 0.0
 			var ax := r.end.x - 9 - aw - sw
-			var ay := r.position.y + 31
+			var ay := r.position.y + (24 if lines.size() > 1 else 31)
 			draw_string_outline(_font, Vector2(ax, ay), ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, afs, 5, Color(0, 0, 0, 0.5))
 			draw_string(_font, Vector2(ax, ay), ammo, HORIZONTAL_ALIGNMENT_LEFT, -1, afs, main_c)
 			if sub != "":

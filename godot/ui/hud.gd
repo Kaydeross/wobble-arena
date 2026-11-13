@@ -10,6 +10,7 @@ const PAD := 14.0
 const FEED_TIME := 5.0
 const FEED_MAX := 4
 const TOAST_TIME := 2.2
+const TOP_STACK := 70.0           ## what hangs under the toast (team board, mode line, spectator line) starts this far below the top inset
 
 var world: Node
 var sim: MatchSim
@@ -175,7 +176,12 @@ func _lbl(parent: Node, fs: int, c: Color) -> Label:
 
 # ---------------- events from World ----------------
 
+func clear_toast() -> void:
+	_toast_t = 0.0
+	_toast.visible = false
+
 func toast(t: String) -> void:
+	if world != null and world.has_method("results_open") and world.results_open(): return   # the results panel has the stage
 	_toast_l.text = t
 	_toast_t = TOAST_TIME
 	_toast.visible = true
@@ -203,7 +209,7 @@ func add_feed(killer: FighterState, victim: FighterState, weapon: String, fell: 
 	item.add_child(row)
 	if killer != null:
 		_lbl(row, 15, _who_color(killer)).text = _who(killer)
-		var wl := _lbl(row, 12, UiTheme.INK)
+		var wl := _lbl(row, UiTheme.MIN_FONT, UiTheme.INK)
 		wl.text = tr(weapon) if weapon != "" else "K.O."
 		var ws := UiTheme.box(Color(1, 1, 1, 0.8), 6, Color(0, 0, 0, 0), 0, 0)
 		ws.content_margin_left = 5; ws.content_margin_right = 5; ws.content_margin_top = 0; ws.content_margin_bottom = 0

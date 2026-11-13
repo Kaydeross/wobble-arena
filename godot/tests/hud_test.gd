@@ -4,7 +4,9 @@ extends SceneTree
 ## the touch buttons (both hands), the keybind badges hide after a touch, nameplates show at most 3, the kill feed
 ## and toasts appear, and the FPS overlay follows Settings `show_fps`, F3 and a three-finger tap. Then the same layout
 ## checks at phone / tablet sizes with the UI scale applied (root window resized, Tier.apply_ui_scale) and every touch
-## target (action buttons, pause, emote, hotbar slots) at least 44 pt.
+## target (action buttons, pause, emote, hotbar slots) at least 44 pt. Congestion guardrails (docs/UI_REVIEW.md): no HUD label
+## below UiTheme.MIN_FONT, the stack under the top edge (toast, team board, mode / spectator line) keeps a gap, and the
+## results panel clears the toast and dims the HUD behind it.
 ##   godot --headless --path godot --script res://tests/hud_test.gd -- --no-save   (npm run test:godot-ui)
 
 const FRAME := 1.0 / 60.0
@@ -75,8 +77,16 @@ func _run() -> void:
 	hud._toast_t = 0.01
 	world.tick(FRAME)
 	check(not hud.get_node("Toast").visible, "toast hides when its time is up")
+	_fonts(hud)
 	await _sizes(world, hud)
 	_fps()
+	# results: the toast goes away (and stays away) and the panel has a dimmed backdrop over the HUD
+	hud.toast("K.O.!")
+	world._show_offline_results(true, "")
+	check(not hud.get_node("Toast").visible, "the results panel clears the HUD toast")
+	hud.toast("late toast")
+	check(not hud.get_node("Toast").visible, "no toast while the results panel is up")
+	check(world.get_node("UI").get_node_or_null("ResultsDim") != null, "the results panel dims the HUD behind it")
 	world.free()
 	await process_frame
 	await _team_layout()
@@ -84,6 +94,14 @@ func _run() -> void:
 	SafeArea.override = []
 	print("HUD ok" if fails == 0 else "HUD checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
+
+## No HUD label is smaller than UiTheme.MIN_FONT.
+func _fonts(n: Node) -> void:
+	for c in n.get_children():
+		if c is Label and (c as Label).text != "":
+			var fs: int = (c as Label).get_theme_font_size("font_size")
+			check(fs >= UiTheme.MIN_FONT, "HUD label '%s' font %d is below %d" % [(c as Label).text, fs, UiTheme.MIN_FONT])
+		_fonts(c)
 
 func _layout(world: Node, hud: Control, tag: String) -> void:
 	var vs: Vector2 = hud.get_viewport_rect().size
@@ -115,7 +133,7 @@ func _layout(world: Node, hud: Control, tag: String) -> void:
 		check(safe.grow(0.5).encloses(br), "%s button %s %s inside safe %s" % [tag, b[0], br, safe])
 		check(not br.intersects(touch.pause_rect()), "%s button %s clear of pause" % [tag, b[0]])
 		for o: Array in circles:
-			check(r[0].distance_to(o[0]) >= r[1] + o[1] + 6.0, "%s button %s apart from the others" % [tag, b[0]])
+			check(r[0].distance_to(o[0]) >= r[1] + o[1] + 8.0, "%s button %s apart from the others" % [tag, b[0]])
 		circles.append(r)
 	for i in 4:
 		var sr: Rect2 = touch.hotbar_slot_rect(i)
@@ -278,6 +296,9 @@ func _team_layout() -> void:
 		if ml.visible: rects["ModeLine"] = Rect2(ml.position, ml.size)
 		rects["Pause"] = world.touch.pause_rect()
 		rects["Emote"] = world.emote_wheel.button_rect()
+		# the stack under the top edge: toast, then the team board, then the mode line, each with a gap
+		if rects.has("Toast"): check(rects["TeamBoard"].position.y - rects["Toast"].end.y >= 6.0, "%s the team board hangs %.0f px under the toast (need 6)" % [mode, rects["TeamBoard"].position.y - rects["Toast"].end.y])
+		if rects.has("ModeLine"): check(rects["ModeLine"].position.y - rects["TeamBoard"].end.y >= 2.0, "%s the mode line keeps clear of the team board" % mode)
 		var keys := rects.keys()
 		for k: String in keys:
 			if k != "Pause" and k != "Toast" or k == "Emote":
