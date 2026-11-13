@@ -87,8 +87,8 @@ func _refresh_head() -> void:
 	coins_l.text = str(Save.coins)
 	var n := int(Save.quests.get("streak", {}).get("n", 0))
 	var on := int(Save.quests.get("streak", {}).get("last", -1)) >= Save.quest_day() - 1
-	streak_l.text = "Play streak: %d day%s. First win of the day pays a bonus" % [n, "" if n == 1 else "s"] if on and n > 0 \
-		else "Win a match each day to build a streak"
+	streak_l.text = "Play streak: %d day%s. First win of the day pays a bonus. Roll on!" % [n, "" if n == 1 else "s"] if on and n > 0 \
+		else "Win a match each day to build a streak. Wobble daily!"
 	streak_l.tooltip_text = streak_l.text
 
 func _section(t: String) -> void:

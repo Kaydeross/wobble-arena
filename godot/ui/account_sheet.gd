@@ -95,7 +95,7 @@ func _build() -> void:
 	box.add_child(msg_l)
 
 	var p := _page(holder, "guest")
-	_text(p, "Info", "You are playing as a guest. Your coins, outfits and stats are saved on this device only. Make an account to keep them safe and use them on the web too.")
+	_text(p, "Info", "You're playing as a guest. Your coins, outfits and stats are saved on this device only. Create an account to keep them safe and use them on the web too.")
 	_row(p, "Row", [_btn("guest", "Login", "Log in", false, open.bind("login")), _btn("guest", "Signup", "Create account", true, open.bind("signup"))])
 	_row(p, "Row2", [_btn("guest", "Close", "Close", false, close)])
 
@@ -121,7 +121,7 @@ func _build() -> void:
 	_row(p, "Row", [_btn("reset", "Back", "Back", false, open.bind("login")), _btn("reset", "Go", "Set new password", true, _do_reset)])
 
 	p = _page(holder, "code")
-	_text(p, "Info", "Your recovery code. Write it down or copy it somewhere safe: if you forget your password it is the only way back in. It is shown only once.")
+	_text(p, "Info", "Your recovery code. Write it down or copy it somewhere safe: if you forget your password, it's the only way back in. It's shown only once.")
 	var cl := Label.new()
 	cl.name = "Code"
 	cl.add_theme_font_size_override("font_size", 34)
@@ -282,8 +282,8 @@ func refresh() -> void:
 	(ui["signed/Who"] as Label).text = "Signed in as " + api.user()
 	var sync := api.sync_text()
 	var em := api.email()
-	(ui["signed/Sync"] as Label).text = (em + "\n" if em != "" else "") + (sync if sync != "" else "Saved on this device.")
-	(ui["delete/Info"] as Label).text = "This deletes the account %s and its cloud save for good. It cannot be undone. This device starts again as a new guest." % api.user()
+	(ui["signed/Sync"] as Label).text = (em + "\n" if em != "" else "") + (sync if sync != "" else "Saved on this device")
+	(ui["delete/Info"] as Label).text = "This deletes the account %s and its cloud save for good. It can't be undone. This device starts again as a new guest." % api.user()
 	var ci := api.conflict_info()
 	if not ci.is_empty():
 		(ui["conflict/Local"] as Label).text = "This device: " + str(ci["local"])

@@ -510,7 +510,7 @@ func _section_head(text: String, col: Color) -> Control:
 	dot.size_flags_vertical = SIZE_SHRINK_CENTER
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(dot)
-	var l := _label(text.to_upper(), 18)
+	var l := _label(text, 18)
 	l.name = "Caption"
 	l.add_theme_font_override("font", _heavy)
 	l.add_theme_color_override("font_color", col)

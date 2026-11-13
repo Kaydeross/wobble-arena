@@ -116,7 +116,7 @@ func call_api(method: int, path: String, body: Variant, token: String, cb: Calla
 		h.queue_free()
 		var r := {}
 		if result != HTTPRequest.RESULT_SUCCESS:
-			r = {"ok": false, "status": 0, "err": "net", "msg": "Could not reach the server. Check your internet."}
+			r = {"ok": false, "status": 0, "err": "net", "msg": "Couldn't reach the server. Check your internet and try again."}
 		else:
 			var js := JSON.new()
 			if js.parse(raw.get_string_from_utf8()) == OK and js.data is Dictionary: r = js.data
@@ -128,7 +128,7 @@ func call_api(method: int, path: String, body: Variant, token: String, cb: Calla
 	var err := h.request(api_base() + path, headers, method, "" if body == null else JSON.stringify(body))
 	if err != OK:
 		h.queue_free()
-		cb.call_deferred({"ok": false, "status": 0, "err": "net", "msg": "Could not reach the server. Check your internet."})
+		cb.call_deferred({"ok": false, "status": 0, "err": "net", "msg": "Couldn't reach the server. Check your internet and try again."})
 
 ## (`done` is emitted deferred: a call that ends at once still reaches a caller that awaits it right after calling.)
 func _finish(op: String, ok: bool, msg: String) -> void:
@@ -142,20 +142,20 @@ func signup(username: String, mail: String, password: String) -> void:
 	var data: Variant = profile.get_blob() if profile else null
 	call_api(HTTPClient.METHOD_POST, "/api/signup", {"username": username.strip_edges(), "email": mail.strip_edges(), "password": password, "data": data}, "",
 		func(r: Dictionary) -> void:
-			if not r["ok"]: _finish("signup", false, str(r.get("msg", "Could not make the account."))); return
+			if not r["ok"]: _finish("signup", false, str(r.get("msg", "Couldn't make your account. Try again in a moment."))); return
 			_signed_in(r)
 			setv("cloud_user", user().to_lower())
 			t = int(r.get("t", 0)); dirty = false; last_saved = Time.get_unix_time_from_system(); offline = false
 			if r.get("recovery") is String: recovery.emit(r["recovery"])
 			if int(r.get("t", 0)) == 0: _mark_dirty(0.0)
-			_finish("signup", true, "Account made. You are signed in as %s." % user()))
+			_finish("signup", true, "Account created. You're signed in as %s." % user()))
 
 ## Log in with a username or email. `ws_url` (optional) also becomes the server for everything else.
 func login(id: String, password: String, ws_url := "") -> void:
 	_set_server(ws_url)
 	call_api(HTTPClient.METHOD_POST, "/api/login", {"id": id.strip_edges(), "password": password}, "",
 		func(r: Dictionary) -> void:
-			if not r["ok"]: _finish("login", false, str(r.get("msg", "Login failed."))); return
+			if not r["ok"]: _finish("login", false, str(r.get("msg", "Couldn't log in. Check your username and password."))); return
 			_signed_in(r)
 			_merge(r.get("data"), int(r.get("t", 0)))
 			_finish("login", true, "Signed in as %s." % user()))
@@ -165,11 +165,11 @@ func reset(id: String, code: String, password: String, ws_url := "") -> void:
 	_set_server(ws_url)
 	call_api(HTTPClient.METHOD_POST, "/api/reset", {"id": id.strip_edges(), "code": code, "password": password}, "",
 		func(r: Dictionary) -> void:
-			if not r["ok"]: _finish("reset", false, str(r.get("msg", "Could not reset the password."))); return
+			if not r["ok"]: _finish("reset", false, str(r.get("msg", "Couldn't reset your password. Check your recovery code and try again."))); return
 			_signed_in(r)
 			_merge(r.get("data"), int(r.get("t", 0)))
 			if r.get("recovery") is String: recovery.emit(r["recovery"])
-			_finish("reset", true, "New password set. You are signed in as %s." % user()))
+			_finish("reset", true, "New password set. You're signed in as %s." % user()))
 
 ## Sign out (the last changes are pushed first when possible). The profile stays on this device as a guest.
 func logout() -> void:
@@ -177,7 +177,7 @@ func logout() -> void:
 	var out := func() -> void:
 		if tok != "": call_api(HTTPClient.METHOD_POST, "/api/logout", {}, tok, func(_r: Dictionary) -> void: pass)
 		_clear_login()
-		_finish("logout", true, "Signed out. Your progress stays on this device.")
+		_finish("logout", true, "Logged out. Your progress stays on this device.")
 	if signed_in() and dirty and not stale and not expired:
 		push(func(_ok: bool) -> void: out.call())
 	else:
@@ -188,7 +188,7 @@ func change_password(old: String, next: String) -> void:
 	call_api(HTTPClient.METHOD_POST, "/api/password", {"old": old, "next": next}, str(getv("token")),
 		func(r: Dictionary) -> void:
 			if _auth_failed(r): _finish("password", false, str(r["msg"])); return
-			_finish("password", bool(r["ok"]), "Password changed." if r["ok"] else str(r.get("msg", "Could not change it."))))
+			_finish("password", bool(r["ok"]), "Password changed." if r["ok"] else str(r.get("msg", "Couldn't change your password. Try again in a moment."))))
 
 ## A new recovery code (needs the password); the old one stops working.
 func new_recovery(password: String) -> void:
@@ -196,14 +196,14 @@ func new_recovery(password: String) -> void:
 		func(r: Dictionary) -> void:
 			if _auth_failed(r): _finish("recovery", false, str(r["msg"])); return
 			if r["ok"] and r.get("recovery") is String: recovery.emit(r["recovery"])
-			_finish("recovery", bool(r["ok"]), "Save this code now. It will not be shown again." if r["ok"] else str(r.get("msg", "Could not make one."))))
+			_finish("recovery", bool(r["ok"]), "Save this code now. It won't be shown again." if r["ok"] else str(r.get("msg", "Couldn't make a recovery code. Try again in a moment."))))
 
 ## Delete the account and its cloud save for good (App Store 5.1.1(v)). This device starts again as a fresh guest.
 func delete_account(password: String) -> void:
 	call_api(HTTPClient.METHOD_POST, "/api/delete", {"password": password}, str(getv("token")),
 		func(r: Dictionary) -> void:
 			if _auth_failed(r): _finish("delete", false, str(r["msg"])); return
-			if not r["ok"]: _finish("delete", false, str(r.get("msg", "Could not delete it."))); return
+			if not r["ok"]: _finish("delete", false, str(r.get("msg", "Couldn't delete your account. Try again in a moment."))); return
 			_clear_login()
 			if profile:
 				_applying = true
@@ -212,7 +212,7 @@ func delete_account(password: String) -> void:
 				if profile.has_method("save"): profile.save()
 				profile.changed.emit()
 				_applying = false
-			_finish("delete", true, "Account deleted. You are playing as a guest."))
+			_finish("delete", true, "Account deleted. You're playing as a guest."))
 
 ## At start-up (web verifyLogin): is the saved login still good, and is the cloud save newer than this device's copy?
 func verify() -> void:
@@ -264,10 +264,10 @@ func sync_text() -> String:
 	if not signed_in(): return ""
 	if stale: return "Not saved to the cloud: this account changed on another device."
 	if busy: return "Saving…"
-	if offline: return "Saved on this device. Cloud save when you are online."
+	if offline: return "Saved on this device. Cloud save when you're online."
 	if dirty: return "Saved on this device. Cloud save in a moment."
 	var last := maxf(last_saved, t / 1000.0)
-	if last <= 0.0: return "Saved on this device."
+	if last <= 0.0: return "Saved on this device"
 	return "Saved to cloud " + ago(Time.get_unix_time_from_system() - last)
 
 static func ago(s: float) -> String:

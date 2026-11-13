@@ -31,7 +31,7 @@ const NOJOIN_TEXT := {
 	"auth": "Log in to play online (or run the server with REQUIRE_LOGIN=0).",
 	"build": "That room is running a different version of the game.",
 	"full": "That room is full.",
-	"inroom": "You are already in a room.",
+	"inroom": "You're already in a room.",
 	"none": "No room with that code. Check the letters, and make sure the host still has the room open.",
 }
 
@@ -87,7 +87,7 @@ func begin(p_url: String, p_room: String, info: Dictionary, token: String = "") 
 	phase = Phase.CONNECTING
 	_set_status("Connecting…")
 	if net.connect_to_server(url) != OK:
-		_finish("Could not open %s" % url); return false
+		_finish("Couldn't open %s. Check the address and try again." % url); return false
 	return true
 
 func is_active() -> bool:
@@ -170,9 +170,9 @@ func _on_connected() -> void:
 
 func _on_disconnected() -> void:
 	if phase == Phase.CONNECTING:
-		_finish("Could not reach the game server at %s." % url)
+		_finish("Couldn't reach the game server at %s. Check the address and that the server is running." % url)
 	elif phase != Phase.CLOSED and phase != Phase.IDLE:
-		_finish("Lost the connection to the game server.")
+		_finish("Lost the connection to the game server. Try again in a moment.")
 
 func _on_join_failed(reason: String) -> void:
 	# The server compares `build` strings; the web game bumps NET_BUILD every release while the room protocol stays
@@ -181,7 +181,7 @@ func _on_join_failed(reason: String) -> void:
 		_build_retry = true
 		net.join_room(room_code, "")
 		return
-	_finish(NOJOIN_TEXT.get(reason, "Could not join (%s)." % reason))
+	_finish(NOJOIN_TEXT.get(reason, "Couldn't join the room (%s). Try again." % reason))
 
 func _on_server(m: Dictionary) -> void:
 	match str(m.get("op", "")):

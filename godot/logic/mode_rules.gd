@@ -62,7 +62,7 @@ const CHAOS_EVENTS := {
 	"crates": {"name": "Crate rain", "dur": 0.0},
 	"gravity": {"name": "Low gravity", "dur": 8.0},
 	"knockback": {"name": "Knockback storm", "dur": 10.0},
-	"giant": {"name": "Giant", "dur": 12.0},
+	"giant": {"name": "Giant time", "dur": 12.0},
 	"speed": {"name": "Speed surge", "dur": 8.0},
 	"floor": {"name": "Floor quake", "dur": 9.0},
 }
@@ -270,7 +270,7 @@ func end_match(w: FighterState) -> void:
 	var title := ""
 	if combat.teams: title = "YOUR TEAM WINS!" if won else "ENEMY TEAM WINS!"
 	else: title = "YOU WIN!" if w.is_player else "%s WINS!" % w.name.to_upper()
-	var sub := "Most K.O.s when the clock ran out" if pil.get("timeout", false) else "Last one standing" if combat.lives_mode else ("Finished the Weapon Ladder" if combat.mode.get("ladder", false) else
+	var sub := "Most K.O.s when the clock ran out" if pil.get("timeout", false) else "Last wobbler standing" if combat.lives_mode else ("Finished the Weapon Ladder" if combat.mode.get("ladder", false) else
 		"First %sto %d K.O.s" % ["team " if combat.teams else "", limit])
 	combat.ev({"type": "match_over", "winner": w, "won": won, "title": title, "sub": sub})
 
@@ -290,7 +290,7 @@ func eliminate(f: FighterState, counted: bool) -> void:
 		if not x.elim and not x.left: alive.append(x)
 	var online := c.net_started
 	var spect := c.mode_id == "pillars" or online or bool(c.mode.get("spectate", false))    # the player watches the rest play on
-	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": "You're out! Spectating."})
+	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": "You're out! Spectating from the sofa."})
 	if not match_over and not remote and c.lives_mode and (alive.size() <= 1 or (f.is_player and not spect)):
 		var best: FighterState = null                          # alive.sort((a, b) => b.lives - a.lives || b.ko - a.ko)[0] (stable)
 		for x: FighterState in alive:
@@ -336,7 +336,7 @@ func pillar_give(f: FighterState) -> void:
 	var prev := f.slot
 	c.pickup(f, key)
 	if prev >= 0 and f.slots[prev] != null and f.slot != prev: c.equip_slot(f, prev)
-	if f.is_player: c.ev({"type": "toast", "text": "New weapon: " + str(c.wdata(key).get("name", key))})
+	if f.is_player: c.ev({"type": "toast", "text": "New weapon: " + str(c.wdata(key).get("name", key)) + "! Don't drop it"})
 
 ## updatePillars: the weapon handout every 10 s and the clock (online only the host calls time).
 func update_pillars(dt: float) -> void:
@@ -416,12 +416,12 @@ func update_shrink(dt: float, pickups: Pickups = null) -> void:
 		s["size"] = maxf(s["min"], s["size"] - (s["start"] - s["min"]) / s["rate"] * dt)
 	elif _all_down():                       # everyone fell: bring the arena back at half the original size
 		s["cycle"] += 1; s["start"] = maxf(14.0, float(Combat.js_round(s["S0"] * 0.5))); s["size"] = s["start"]; s["hold"] = 4.0
-		combat.ev({"type": "toast", "text": "Arena reset at half size!"})
+		combat.ev({"type": "toast", "text": "Arena reset at half size! Cosy"})
 	else:                                   # at its smallest: a short breather, then it starts growing again
 		s["rest"] = (5.0 if s["rest"] < 0.0 else s["rest"]) - dt
 		if s["rest"] <= 0.0:
 			s["rest"] = -1.0; s["dir"] = 1
-			combat.ev({"type": "toast", "text": "The arena is growing!"})
+			combat.ev({"type": "toast", "text": "The arena is growing! Room to wobble"})
 	var hd: float = s["size"] / 2.0 if s["both"] else s["D"] / 2.0
 	var b: Dictionary = s["box"]
 	b["minX"] = -s["size"] / 2.0; b["maxX"] = s["size"] / 2.0; b["minZ"] = -hd; b["maxZ"] = hd
@@ -618,13 +618,13 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	if player == null: return ""
 	var t := ""
 	if c.mode.get("spectate", false):                       # Sudden Death: in or out, and how many are left
-		t = ("♥" if not player.elim else "OUT") + "  ·  %d left" % survivors().size()
+		t = ("♥" if not player.elim else "Out") + " · %d left" % survivors().size()
 	elif c.mode_id == "pillars":                           # updateKoText: the K.O. count (one life, no hearts)
-		t = ("OUT" if player.elim else "%d K.O.s" % player.ko) + "  ·  %d left" % survivors().size()
+		t = ("Out" if player.elim else "%d K.O.s" % player.ko) + " · %d left" % survivors().size()
 	elif not c.brawl:                                       # the Practice Range's dummies
-		t = "Practice  ·  %d K.O.s" % player.ko
+		t = "Practice · %d K.O.s" % player.ko
 	elif c.lives_mode:
-		t = "♥".repeat(player.lives) if player.lives > 0 else "OUT"
+		t = "♥".repeat(player.lives) if player.lives > 0 else "Out"
 	elif c.teams:
 		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
 			var mine := player.team
@@ -635,7 +635,7 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	if c.mode_id == "gungame" and not match_over:
 		extra = "Weapon %d of %d · %s" % [player.gg_rung + 1, GG.size(), c.wdata(GG[player.gg_rung]).get("name", "Spatula")]
 	elif not pil.is_empty() and not match_over:
-		extra = "%s  ·  New weapon in %d" % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
+		extra = "%s · New weapon in %d" % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
 	elif chaos_text() != "":
 		extra = "⚡ " + chaos_text()
 	elif not shrink.is_empty() and not match_over:
