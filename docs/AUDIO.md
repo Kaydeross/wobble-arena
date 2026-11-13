@@ -1,10 +1,11 @@
 # Godot sound effects
 
-The web game has no audio files: `public/index.html` synthesizes every effect with WebAudio (`initAudio`, `tone`,
-`noise`, the `SFX` table; `docs/CODEMAP.md` section 2). The Godot client plays the same 21 effects.
+The web game has no audio files: `public/index.html` synthesizes every effect and its music at runtime with the
+layered `SoundManager` (WebAudio; `docs/CODEMAP.md` section 2). The Godot client plays 21 pre-rendered effects made
+from the web game's original, simpler `tone` / `noise` recipes, frozen in `tools/sfx-recipes.js`.
 
 ## Approach: pre-rendered WAVs
-`tools/render-sfx.js` (`npm run sfx`) slices the real `SFX` table out of `public/index.html`, runs each recipe with an
+`tools/render-sfx.js` (`npm run sfx`) slices the `SFX` table out of `tools/sfx-recipes.js`, runs each recipe with an
 offline, sample-by-sample version of the WebAudio nodes it uses and writes `godot/audio/sfx/<name>.wav` (16-bit,
 44.1 kHz mono, ~550 KB for all 21, imported as uncompressed PCM).
 
@@ -22,7 +23,7 @@ Fidelity is not a problem because the renderer models the nodes directly:
 - Mixed through the master gain 0.9 (the JS `0.9 * settings.vol`; the volume part is applied by Godot) and clamped
   to +-1 like the browser's output (nothing clips; the loudest, `boom`, peaks at 0.70).
 
-Change a recipe in the web game -> run `npm run sfx` and commit the WAVs; `npm run test:godot-audio` fails until then.
+Change a recipe in `tools/sfx-recipes.js` -> run `npm run sfx` and commit the WAVs; `npm run test:godot-audio` fails until then.
 
 ## Runtime: autoload `Sfx` (`godot/autoload/audio.gd`)
 - `Sfx.play(name, volume := 1.0)`: 12 pre-made `AudioStreamPlayer`s, round robin over idle ones, the oldest is cut
