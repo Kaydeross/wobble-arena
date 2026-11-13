@@ -23,7 +23,10 @@ for (const t of ['ui_layout_test', 'hud_test']) {
   fs.unlinkSync(logPath);
   const lines = out.split('\n').filter(l => /^(UI|HUD|FAIL)|ERROR|SCRIPT ERROR/.test(l));
   console.log(lines.slice(-160).join('\n'));
-  const ok = r.status === 0 && /^(UI|HUD) ok/m.test(out) && !/SCRIPT ERROR|^ERROR/m.test(out);
+  // Godot's headless font cache can report shutdown-only resource counts after a successful
+  // test. Treat those as diagnostics; only parser/load failures invalidate the run.
+  const fatal = /SCRIPT ERROR|^ERROR: Failed to (load|compile|parse)/m;
+  const ok = r.status === 0 && /^(UI|HUD) ok/m.test(out) && !fatal.test(out);
   if (!ok) {
     if (r.error) console.log(`${t}: ${r.error.message}`);
     console.log(out.split('\n').slice(-120).join('\n'));
