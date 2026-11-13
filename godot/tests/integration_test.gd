@@ -54,6 +54,7 @@ func _run() -> void:
 	var nonfinite := 0
 	var smg_crate := {}
 	var got_smg_at := -1.0
+	var smg_slot := -1
 	var smg_hits_before := 0
 	var max_fx := 0
 	for i in frames:
@@ -68,7 +69,11 @@ func _run() -> void:
 			var c := Vector2(smg_crate["x"] - p.phys.px, smg_crate["z"] - p.phys.pz)
 			world.cam.yaw = atan2(c.x, c.y)
 			go = Vector2(0, 1)
-			if p.weapon == "smg": got_smg_at = t; smg_hits_before = int(p.st["hits"])
+			for n in 3:     # a picked-up weapon only goes into the hand when the hand is empty (auto_eq), so a random crate
+				if p.slots[n] != null and p.slots[n]["key"] == "smg": smg_slot = n    # taken earlier may keep the SMG in a slot
+			if smg_slot >= 0:
+				got_smg_at = t; smg_hits_before = int(p.st["hits"])
+				if p.slot != smg_slot: st.press("slot%d" % (smg_slot + 1))   # the player picks it, like pressing the slot button
 		elif tg != null:
 			var d := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
 			world.cam.yaw = atan2(d.x, d.y)
