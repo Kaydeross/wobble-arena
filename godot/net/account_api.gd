@@ -4,7 +4,8 @@ extends Node
 ## `acct` / api / cloudPush / verifyLogin (public/index.html ~8666-8720). One instance lives under the Save autoload
 ## (`Save.cloud`); the title's Account sheet (ui/account_sheet.gd) and the Play online panel's login fields both use it.
 ##
-## Calls: signup (username, email, password; the reply's recovery code is shown once), login (username or email),
+## Calls: claim (just a name: the easy path, a password-less account), protect (add a password to it; the reply's recovery
+## code is shown once), signup (username, email, password; also with a recovery code), login (username or email),
 ## logout, change_password, new_recovery, reset (forgot password: recovery code + new password), delete_account.
 ## Each one ends with `done(op, ok, msg)`; `msg` is plain words for the UI.
 ##
@@ -39,6 +40,7 @@ var base_override := ""            ## the API's http(s) base; "" = from Settings
 var push_delay := PUSH_DELAY
 var retry_delay := RETRY_DELAY
 
+var has_password := true           ## false: a name-only account (claim) that can't log in on another device yet; see protect()
 var stale := false                 ## another device saved since: waiting for keep_device() / use_cloud()
 var busy := false                  ## a push is on its way
 var offline := false               ## the last push could not reach the server
@@ -137,6 +139,30 @@ func _finish(op: String, ok: bool, msg: String) -> void:
 
 # ============================== account calls ==============================
 
+## Pick a name: a password-less account (POST /api/claim). This device's profile becomes its first cloud save. Names
+## nobody uses for 30 days are freed by the server.
+func claim(username: String) -> void:
+	var data: Variant = profile.get_blob() if profile else null
+	call_api(HTTPClient.METHOD_POST, "/api/claim", {"name": username.strip_edges(), "data": data}, "",
+		func(r: Dictionary) -> void:
+			if not r["ok"]: _finish("claim", false, str(r.get("msg", "Couldn't claim that name. Try again in a moment."))); return
+			_signed_in(r)
+			setv("cloud_user", user().to_lower())
+			t = int(r.get("t", 0)); dirty = false; last_saved = Time.get_unix_time_from_system(); offline = false
+			if int(r.get("t", 0)) == 0: _mark_dirty(0.0)
+			_finish("claim", true, tr("Welcome, %s! Your name is yours.") % user()))
+
+## Put a password on a name-only account so the name can log in on another device. A recovery code comes with `recovery`.
+func protect(password: String) -> void:
+	if password.length() < 6: _finish("protect", false, "Passwords are 6 to 72 characters."); return
+	call_api(HTTPClient.METHOD_POST, "/api/protect", {"password": password}, str(getv("token")),
+		func(r: Dictionary) -> void:
+			if _auth_failed(r): _finish("protect", false, str(r["msg"])); return
+			if not r["ok"]: _finish("protect", false, str(r.get("msg", "Couldn't set a password. Try again in a moment."))); return
+			has_password = true
+			if r.get("recovery") is String: recovery.emit(r["recovery"])
+			_finish("protect", true, "Password set. This name now works on other devices."))
+
 ## Create an account; this device's profile becomes its first cloud save. The recovery code comes with `recovery`.
 func signup(username: String, mail: String, password: String) -> void:
 	var data: Variant = profile.get_blob() if profile else null
@@ -225,6 +251,7 @@ func verify() -> void:
 		if int(r.get("status", 0)) == 401: _expire(); return
 		if not r["ok"]: return
 		if r.get("user") is Dictionary: setv("email", str(r["user"].get("email", "")))
+		has_password = bool(r.get("hasPassword", true))
 		_merge(r.get("data"), int(r.get("t", 0)))
 		changed.emit())
 
@@ -238,11 +265,12 @@ func _signed_in(r: Dictionary) -> void:
 	setv("token", str(r.get("token", "")))
 	setv("user", str(u.get("username", "")) if u is Dictionary else str(u))
 	setv("email", str(u.get("email", "")) if u is Dictionary else "")
+	has_password = bool(u.get("hasPassword", true)) if u is Dictionary else true
 	expired = false; stale = false; pending = {}; offline = false
 
 func _clear_login() -> void:
 	setv("token", ""); setv("user", ""); setv("email", "")
-	setv("cloud_user", ""); dirty = false; t = 0
+	setv("cloud_user", ""); dirty = false; t = 0; has_password = true
 	stale = false; pending = {}; busy = false; offline = false; _push_in = -1.0
 
 func _auth_failed(r: Dictionary) -> bool:

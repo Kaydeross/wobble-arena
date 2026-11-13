@@ -7,7 +7,7 @@ _Runbook for the owner. Nothing here is done for you: you run the NAS, own the d
 One Node process (`server.js`, image from the repo `Dockerfile`, `node:22-alpine`):
 
 - **Room relay** over WebSocket `/ws` (rooms, host migration, message relay; host-authoritative game, see `docs/PROTOCOL.md`).
-- **Account REST API** on the same port (`/api/...`: sign-up, login, cloud save), handled by `accounts.js`.
+- **Account REST API** on the same port (`/api/...`: claim a name, sign-up, login, cloud save), handled by `accounts.js`.
 - **Static web game** from `public/` and **`/health`** for monitoring.
 - Bandwidth is small (8 players x 30 Hz JSON per room). A NAS CPU is plenty.
 
@@ -19,6 +19,7 @@ The iOS app reads one address, `wss://<your hostname>/ws`; the REST API is deriv
 |---|---|---|
 | `PORT` | `3000` | Listen port inside the container. |
 | `DATA_DIR` | `/data` (compose) | Folder for `db.json` (accounts, cloud saves). Must be a persistent volume. The image default `/tmp/wobble-data` is wiped on redeploy (Render). |
+| `ACCOUNT_TTL_DAYS` | `30` | Accounts nobody used for this many days are erased (account, cloud save, tokens, email) by a sweep at start-up and every 6 hours, which frees the name. `0` disables it. Accounts from before this setting existed start their 30 days on the first sweep. Only counts are logged. |
 | `REQUIRE_LOGIN` | `1` | Online play needs a signed-in account. `0` lets anyone connect. Keep `1`. |
 | `TRUST_PROXY` | off | Where the per-IP limit gets the client address. Unset/`0`: the socket address. `1`: last `x-forwarded-for` entry (one proxy hop you control). `cloudflare`: `cf-connecting-ip`, else the last `x-forwarded-for`. The compose file sets `cloudflare`. Never enable it when the port is reachable without the proxy, or clients can spoof their address. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | unset | Optional: store accounts in Upstash instead of `db.json`. Both must be set. Only needed if you want the data off the NAS. |

@@ -22,7 +22,7 @@ const CONNECT_WAIT := 8.0
 const RESUME_WAIT := 3.0         ## host migration: seconds the new host waits for the guests' hello before resuming
 const EMOTE_GAP := 0.4           ## seconds between two emotes of one guest
 const NOCREATE_TEXT := {
-	"auth": "Log in to host a room (or run the server with REQUIRE_LOGIN=0).",
+	"auth": "Pick a name to host a room (or run the server with REQUIRE_LOGIN=0).",
 	"inroom": "You're already in a room.",
 	"busy": "The server is full right now. Try again in a moment.",
 }
