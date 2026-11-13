@@ -1,8 +1,8 @@
 <div align="center">
 
-  <img src="docs/img/banner.jpg" alt="Wobble Arena Cinematic Banner" width="100%" />
+  <img src="docs/img/banner.jpg" alt="Wobblers Arena Cinematic Banner" width="100%" />
 
-  # 🥊 WOBBLE ARENA
+  # 🥊 WOBBLERS ARENA
   **Fast-paced, physics-fuelled low-poly arena brawling.**  
   *Grab a spatula, pick your fighter, and knock your mates out of the yard.*
 
@@ -16,7 +16,7 @@
 
 ## 🎮 About the Game
 
-**Wobble Arena** is a chaotic 3D party brawler where blocky, wobbly fighters clash in tight, hazard-filled arenas. Built around snappy movement, momentum-based knockback, and over-the-top melee swings, every match is a scramble for positioning and survival.
+**Wobblers Arena** is a chaotic 3D party brawler where blocky, wobbly fighters clash in tight, hazard-filled arenas. Built around snappy movement, momentum-based knockback, and over-the-top melee swings, every match is a scramble for positioning and survival.
 
 Whether you are dashing across the arena with an oversized kitchen spatula or swinging heavy tradie gear in the **Site Yard**, every hit lands with punchy shader flashes, procedural weapon ribbon trails, and physics-driven chaos.
 
