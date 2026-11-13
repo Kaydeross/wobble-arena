@@ -35,5 +35,6 @@ static func describe(c: Dictionary) -> String:
 	var parts: PackedStringArray = []
 	for s: Array in STATS:
 		var v := float(c.get(s[1], 1.0))
-		parts.append("%s %s" % [s[0], "x%.2f" % v if s[1] != "kb" else "x%.2f taken" % v])
+		var label := TranslationServer.translate(str(s[0]))
+		parts.append(TranslationServer.translate("%s x%.2f") % [label, v] if s[1] != "kb" else TranslationServer.translate("%s x%.2f taken") % [label, v])
 	return ", ".join(parts)

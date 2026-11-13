@@ -628,17 +628,21 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 		t = tr("%d / %d K.O.s") % [player.ko, limit]
 	var extra := ""
 	if c.mode_id == "gungame" and not match_over:
-		extra = "Weapon %d of %d · %s" % [player.gg_rung + 1, GG.size(), c.wdata(GG[player.gg_rung]).get("name", "Spatula")]
+		extra = tr("Weapon %d of %d · %s") % [player.gg_rung + 1, GG.size(), tr(str(c.wdata(GG[player.gg_rung]).get("name", "Spatula")))]
 	elif not pil.is_empty() and not match_over:
-		extra = "%s  ·  New weapon in %d" % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
+		extra = tr("%s  ·  New weapon in %d") % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
 	elif chaos_text() != "":
 		extra = "⚡ " + chaos_text()
 	elif not shrink.is_empty() and not match_over:
 		var s := shrink
-		extra = "Arena %dm" % Combat.js_round(s["size"]) + (" · shrinking soon" if s["hold"] > 0.0 else (" · growing" if s["dir"] == 1 else (" · smallest" if s["size"] <= s["min"] else "")))
+		var sz := Combat.js_round(s["size"])
+		if s["hold"] > 0.0: extra = tr("Arena %dm · shrinking soon") % sz
+		elif s["dir"] == 1: extra = tr("Arena %dm · growing") % sz
+		elif s["size"] <= s["min"]: extra = tr("Arena %dm · smallest") % sz
+		else: extra = tr("Arena %dm") % sz
 	if dash_gear(player) and not player.dead:
-		extra += ("   " if extra != "" else "") + "Dash " + "◆".repeat(player.dash_n) + "◇".repeat(DASH_MAX - player.dash_n)
+		extra += ("   " if extra != "" else "") + tr("Dash") + " " + "◆".repeat(player.dash_n) + "◇".repeat(DASH_MAX - player.dash_n)
 	var bh := Skills.burst_hud(c, player) if not player.dead else []   # weapon_tuning.json burst pool of the held weapon
 	if bh.size() > 0:
-		extra += ("   " if extra != "" else "") + "Shots " + "◆".repeat(bh[0]) + "◇".repeat(bh[1] - bh[0])
+		extra += ("   " if extra != "" else "") + tr("Shots") + " " + "◆".repeat(bh[0]) + "◇".repeat(bh[1] - bh[0])
 	return t if extra == "" else (t + "   " + extra if t != "" else extra)
