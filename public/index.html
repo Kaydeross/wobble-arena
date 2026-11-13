@@ -1332,6 +1332,7 @@ body.tplay #chat{display:none}
         <div class="grp" data-tab="audio">
           <h3>Sound &amp; screen</h3>
           <label>Volume <b id="vol-v"></b> <input id="vol" type="range" min="0" max="1" step="0.05" value="0.5"></label>
+          <label>Music <b id="music-v"></b> <input id="music" type="range" min="0" max="1" step="0.05" value="0.5"></label>
           <div class="tog"><span>Menu click sounds</span><button id="uisnd-tog">On</button></div>
           <div class="tog"><span>Damage numbers</span><button id="dmg-tog">On</button></div>
           <div class="tog"><span>Kill feed</span><button id="feed-tog">On</button></div>
@@ -1451,7 +1452,7 @@ const DEF_BINDS = { map: 'KeyN', chat: 'Enter', forward: 'KeyW', back: 'KeyS', l
 let bootTour = false;                              // the slow tour behind the loading bar runs the live battle too
 const SHOW = { on: false, sim: false, busy: false, saved: null, t: 0, len: 11, arm: 0, last: '', theme: null, label: '', fixed: false, roofs: [], bd: null, cam: { t: 0, style: 'orbit', bot: null } };       // the bot battle behind the menus (build 72)
 let net = null, netApply = false;       // online play (null = offline)
-const settings = { name: '', sens: 1, floppy: 2.2, ice: 0.6, fov: 72, camDist: 1, invertY: false, vol: 0.5, shake: 1, binds: Object.assign({}, DEF_BINDS), binds2: {}, multi: false, shared: false, quality: 'high', scenery: true, fps: false, killcam: true, crossColor: '#ffffff', crossSize: 1, scopeMode: 'hold', dmgNums: true, feed: true, radar: true, autoSwitch: false, chat: true, fpsCap: 0, autoRes: true, skyFx: true, uiSounds: true, reduceMotion: false, menuBattle: true };
+const settings = { name: '', sens: 1, floppy: 2.2, ice: 0.6, fov: 72, camDist: 1, invertY: false, vol: 0.5, music: 0.5, shake: 1, binds: Object.assign({}, DEF_BINDS), binds2: {}, multi: false, shared: false, quality: 'high', scenery: true, fps: false, killcam: true, crossColor: '#ffffff', crossSize: 1, scopeMode: 'hold', dmgNums: true, feed: true, radar: true, autoSwitch: false, chat: true, fpsCap: 0, autoRes: true, skyFx: true, uiSounds: true, reduceMotion: false, menuBattle: true };
 
 /* ---- build 69, behind the scenes: error log, performance counters, developer switches ---- */
 const DEVLOG = [];
@@ -1482,65 +1483,382 @@ function toast(msg) {
   clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('show'), 1900);
 }
 
-/* ============================== sound (tiny synth, no files) ============================== */
-let actx = null, master = null, noiseBuf = null, muted = false;
-function initAudio() {
-  try {
-    if (!actx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) return;
-      actx = new AC();
-      master = actx.createGain(); master.gain.value = 0.9 * settings.vol; master.connect(actx.destination);
-      noiseBuf = actx.createBuffer(1, Math.floor(actx.sampleRate * 0.7), actx.sampleRate);
-      const d = noiseBuf.getChannelData(0);
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    }
-    if (actx.state === 'suspended') actx.resume();
-  } catch (e) { actx = null; }
+/* ============================== sound: procedural WebAudio engine (no files, no libraries) ==============================
+   One AudioContext, created lazily on the first key / pointer / click (browsers block audio until a gesture) and
+   resumed whenever it gets suspended (tab switch, phone call, Siri). Signal flow:
+     [osc / noise / FM layers] -> layer gain (ADSR) -> voice gain -> StereoPanner -> sfxBus --+
+     [BGM notes] -> bgmBus (+ arp echo) ---------------------------------------------------+-> Compressor -> master -> limiter -> out
+   Every sound is a SndVoice: a handful of layered nodes with exponential envelopes and filter sweeps. When the last
+   source of a voice ends, every node of that voice is disconnected so the graph never grows.
+   API: sound.play(name, { pan, vol, pitch, delay }), sound.setMute(on), sound.setMasterVolume(v),
+        sound.setMusicVolume(v), sound.startBGM(mood), sound.stopBGM(), sound.setIntensity(0..1). */
+const SND_EPS = 0.0001;                               // exponential ramps can't touch 0: this is "silent"
+const sndRand = (a, b) => a + Math.random() * (b - a);
+const midiHz = m => 440 * Math.pow(2, (m - 69) / 12);
+
+class SndVoice {                                       // one playing sound: its nodes, freed together when it ends
+  constructor(sm, bus, o) {
+    const c = this.c = sm.ctx;
+    this.sm = sm; this.t = c.currentTime + 0.005 + (o.delay || 0); this.nodes = []; this.live = 0; this.done = false;
+    this.k = o.k || 1; this.fk = o.fk || 1;            // pitch and filter multipliers (micro-randomisation)
+    this.out = this.add(c.createGain()); this.out.gain.value = o.vol === undefined ? 1 : o.vol;
+    let tail = this.out;
+    if (o.pan && c.createStereoPanner) { const p = this.add(c.createStereoPanner()); p.pan.value = clamp(o.pan, -1, 1); tail.connect(p); tail = p; }
+    tail.connect(bus);
+  }
+  add(n) { this.nodes.push(n); return n; }
+  run(s, at, stop, off) {                              // start a source; the voice frees itself after its last source ends
+    this.live++; s.onended = () => { if (--this.live <= 0) this.free(); };
+    if (off) s.start(at, off); else s.start(at); s.stop(stop);
+  }
+  free() {
+    if (this.done) return; this.done = true;
+    for (const n of this.nodes) { try { n.onended = null; n.disconnect(); } catch (e) { /* already gone */ } }
+    this.nodes.length = 0; this.sm.onVoiceEnd(this);
+  }
+  /* ADSR on an AudioParam. Percussive when s = 0 (attack -> decay to silence); otherwise holds the sustain level for
+     `hold` seconds and releases over r. Returns the time the envelope is silent. */
+  env(p, at, e) {
+    const a = e.a || 0.004, pk = Math.max(SND_EPS, e.peak === undefined ? 1 : e.peak), d = e.d === undefined ? 0.1 : e.d, s = e.s || 0;
+    p.setValueAtTime(SND_EPS, at);
+    p.exponentialRampToValueAtTime(pk, at + a);
+    if (!s) { p.exponentialRampToValueAtTime(SND_EPS, at + a + d); return at + a + d; }
+    const lv = Math.max(SND_EPS, pk * s), t1 = at + a + d, t2 = t1 + (e.hold || 0), t3 = t2 + (e.r || 0.08);
+    p.exponentialRampToValueAtTime(lv, t1); p.setValueAtTime(lv, t2); p.exponentialRampToValueAtTime(SND_EPS, t3);
+    return t3;
+  }
+  sweep(p, at, v0, v1, dur, lin) {                    // a frequency sweep (exponential unless lin)
+    p.setValueAtTime(Math.max(1, v0), at);
+    if (v1 !== undefined && v1 !== v0) { if (lin) p.linearRampToValueAtTime(v1, at + dur); else p.exponentialRampToValueAtTime(Math.max(1, v1), at + dur); }
+  }
+  filt(f, at, dur) {                                   // optional BiquadFilter with its own cutoff sweep; returns [in, out]
+    const b = this.add(this.c.createBiquadFilter()); b.type = f.type || 'lowpass'; b.Q.value = f.Q === undefined ? 0.8 : f.Q;
+    this.sweep(b.frequency, at, f.f0 * this.fk, f.f1 === undefined ? undefined : f.f1 * this.fk, f.t || dur);
+    return b;
+  }
+  /* oscillator layer: { type, f0, f1, glide, at, env, filter, gain, det (cents), vib: {rate, depth (0..1 of f)} } */
+  tone(o) {
+    const c = this.c, at = this.t + (o.at || 0), g = this.add(c.createGain()), os = this.add(c.createOscillator());
+    os.type = o.type || 'sine'; if (o.det) os.detune.value = o.det;
+    const f0 = o.f0 * this.k, f1 = o.f1 === undefined ? undefined : o.f1 * this.k;
+    const end = this.env(g.gain, at, o.env || {});
+    this.sweep(os.frequency, at, f0, f1, o.glide || (end - at));
+    if (o.vib) { const l = this.add(c.createOscillator()), lg = this.add(c.createGain()); l.frequency.value = o.vib.rate; lg.gain.value = f0 * o.vib.depth; l.connect(lg); lg.connect(os.frequency); this.run(l, at, end + 0.02); }
+    let n = os; if (o.filter) { const b = this.filt(o.filter, at, end - at); n.connect(b); n = b; }
+    const lv = this.add(c.createGain()); lv.gain.value = o.gain === undefined ? 1 : o.gain;
+    n.connect(g); g.connect(lv); lv.connect(this.out); this.run(os, at, end + 0.02);
+    return end;
+  }
+  /* noise layer: { color: 'white' | 'pink', at, env, filter, gain } */
+  noise(o) {
+    const c = this.c, at = this.t + (o.at || 0), g = this.add(c.createGain()), s = this.add(c.createBufferSource());
+    const buf = o.color === 'pink' ? this.sm.pink : this.sm.white; s.buffer = buf;
+    const end = this.env(g.gain, at, o.env || {});
+    let n = s; if (o.filter) { const b = this.filt(o.filter, at, end - at); n.connect(b); n = b; }
+    const lv = this.add(c.createGain()); lv.gain.value = o.gain === undefined ? 1 : o.gain;
+    n.connect(g); g.connect(lv); lv.connect(this.out);
+    this.run(s, at, Math.min(end + 0.02, at + buf.duration - 0.05), Math.random() * Math.max(0, buf.duration - (end - at) - 0.1));
+    return end;
+  }
+  /* FM bell: a sine carrier whose frequency is wobbled by a modulator at ratio x f; the index decays with the note */
+  fm(o) {
+    const c = this.c, at = this.t + (o.at || 0), f = o.f * this.k;
+    const car = this.add(c.createOscillator()), mod = this.add(c.createOscillator()), mg = this.add(c.createGain()), g = this.add(c.createGain());
+    car.frequency.value = f; mod.frequency.value = f * (o.ratio || 3.5);
+    const end = this.env(g.gain, at, o.env || { d: 0.4 });
+    mg.gain.setValueAtTime(f * (o.index || 2), at); mg.gain.exponentialRampToValueAtTime(Math.max(1, f * 0.05), end);
+    mod.connect(mg); mg.connect(car.frequency);
+    const lv = this.add(c.createGain()); lv.gain.value = o.gain === undefined ? 1 : o.gain;
+    car.connect(g); g.connect(lv); lv.connect(this.out);
+    this.run(mod, at, end + 0.02); this.run(car, at, end + 0.02);
+    return end;
+  }
 }
-function tone(f0, f1, dur, type = 'sine', vol = 0.25, delay = 0) {
-  if (!actx || muted || SHOW.sim) return;
-  try {
-    const t = actx.currentTime + delay, o = actx.createOscillator(), g = actx.createGain();
-    o.type = type; o.frequency.setValueAtTime(f0, t);
-    o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), t + dur);
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.03);
-  } catch (e) { /* sound is optional */ }
-}
-function noise(dur, vol = 0.25, freq = 1500, delay = 0) {
-  if (!actx || muted || SHOW.sim) return;
-  try {
-    const t = actx.currentTime + delay, s = actx.createBufferSource(), f = actx.createBiquadFilter(), g = actx.createGain();
-    s.buffer = noiseBuf; f.type = 'lowpass'; f.frequency.value = freq;
-    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 0.3); s.stop(t + dur + 0.03);
-  } catch (e) { /* sound is optional */ }
-}
-const SFX = {
-  click: () => { tone(620, 880, 0.06, 'triangle', 0.09); },
-  pop: () => { tone(300, 760, 0.12, 'sine', 0.12); },
-  whack: () => { noise(0.12, 0.35, 1800); tone(190, 60, 0.16, 'square', 0.18); },
-  clink: () => { tone(1400, 900, 0.12, 'triangle', 0.2); noise(0.06, 0.2, 5000); },
-  slap: () => { noise(0.09, 0.4, 3500); tone(420, 160, 0.1, 'triangle', 0.2); },
-  swing: () => noise(0.14, 0.12, 3500),
-  shot: () => { noise(0.1, 0.3, 4000); tone(520, 120, 0.1, 'square', 0.12); },
-  shotgun: () => { noise(0.22, 0.45, 2500); tone(180, 50, 0.22, 'sawtooth', 0.2); },
-  flame: () => { noise(0.12, 0.28, 1400); tone(110, 70, 0.1, 'sawtooth', 0.06); },
-  mammoth: () => { noise(0.45, 0.7, 1500); tone(110, 28, 0.5, 'sawtooth', 0.32); tone(260, 60, 0.18, 'square', 0.12); },
-  sniper: () => { noise(0.3, 0.5, 6000); tone(900, 90, 0.35, 'sawtooth', 0.2); },
-  rocket: () => { noise(0.35, 0.3, 1200); tone(300, 90, 0.3, 'sawtooth', 0.15); },
-  boom: () => { noise(0.9, 0.7, 600); noise(0.3, 0.45, 2600); tone(120, 24, 0.9, 'sine', 0.55); tone(70, 20, 1.2, 'triangle', 0.3, 0.05); },
-  wind: () => noise(0.1, 0.1, 2200),
-  kick: () => { noise(0.1, 0.18, 1200); tone(140, 70, 0.1, 'sine', 0.2); },
-  boing: () => { tone(220, 520, 0.25, 'sine', 0.22); tone(520, 180, 0.3, 'sine', 0.18, 0.2); },
-  bounce: () => tone(260, 760, 0.22, 'sine', 0.22),
-  pickup: () => { tone(520, 780, 0.1, 'triangle', 0.22); tone(780, 1170, 0.14, 'triangle', 0.22, 0.09); },
-  drop: () => tone(900, 300, 0.35, 'sine', 0.16),
-  mag: () => { noise(0.05, 0.22, 3200); tone(240, 130, 0.07, 'square', 0.09); },
-  shellIn: () => { tone(760, 520, 0.05, 'triangle', 0.1); noise(0.03, 0.1, 2500); },
+
+/* ---- the effect library. vary: random +-pitch/filter spread per play (repetitive sounds); gap: min seconds between
+   two plays of the same sound; pri: survives the voice cap. Layers use v.tone / v.noise / v.fm. ---- */
+const SOUNDS = {
+  // UI: crisp filtered blips
+  hover: { gap: 0.035, vary: 0.04, fn: v => { v.tone({ type: 'sine', f0: 2400, f1: 2900, env: { a: 0.002, peak: 0.09, d: 0.035 } }); v.noise({ env: { a: 0.001, peak: 0.08, d: 0.012 }, filter: { type: 'bandpass', f0: 6000, Q: 3 } }); } },
+  click: { gap: 0.03, vary: 0.03, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.16, d: 0.014 }, filter: { type: 'highpass', f0: 3500, Q: 0.7 } });
+    v.tone({ type: 'triangle', f0: 1250, f1: 1900, glide: 0.025, env: { a: 0.002, peak: 0.13, d: 0.06 } });
+    v.tone({ type: 'sine', f0: 2500, f1: 3800, at: 0.022, env: { a: 0.002, peak: 0.05, d: 0.05 } }); } },
+  pop: { vary: 0.05, fn: v => { v.tone({ f0: 300, f1: 760, env: { a: 0.004, peak: 0.13, d: 0.12 } }); v.tone({ type: 'triangle', f0: 600, f1: 1520, env: { a: 0.004, peak: 0.04, d: 0.08 } }); } },
+
+  // movement: filtered-noise whoosh + rising pitch
+  jump: { vary: 0.07, gap: 0.06, fn: v => {
+    v.noise({ color: 'pink', env: { a: 0.02, peak: 0.16, d: 0.2 }, filter: { type: 'bandpass', f0: 500, f1: 2600, Q: 1.4 } });
+    v.tone({ type: 'sine', f0: 200, f1: 560, glide: 0.16, env: { a: 0.006, peak: 0.16, d: 0.2 }, vib: { rate: 18, depth: 0.04 } });
+    v.tone({ type: 'triangle', f0: 400, f1: 1120, glide: 0.16, env: { a: 0.006, peak: 0.04, d: 0.14 } }); } },
+  dash: { vary: 0.07, gap: 0.08, fn: v => {
+    v.noise({ color: 'pink', env: { a: 0.03, peak: 0.32, d: 0.3 }, filter: { type: 'bandpass', f0: 380, f1: 3400, Q: 1.8, t: 0.22 } });
+    v.noise({ env: { a: 0.01, peak: 0.08, d: 0.16 }, filter: { type: 'highpass', f0: 5000, Q: 0.7 } });
+    v.tone({ type: 'triangle', f0: 170, f1: 760, glide: 0.2, env: { a: 0.01, peak: 0.12, d: 0.26 } }); } },
+  land: { vary: 0.1, gap: 0.08, fn: v => {
+    v.noise({ env: { a: 0.003, peak: 0.3, d: 0.16 }, filter: { type: 'lowpass', f0: 1400, f1: 300, Q: 0.7 } });
+    v.tone({ f0: 110, f1: 45, env: { a: 0.003, peak: 0.3, d: 0.16 } }); } },
+  step: { vary: 0.1, gap: 0.09, fn: v => {
+    v.noise({ env: { a: 0.002, peak: 0.07, d: 0.05 }, filter: { type: 'bandpass', f0: 900, Q: 1.2 } });
+    v.tone({ f0: 95, f1: 60, env: { a: 0.002, peak: 0.09, d: 0.06 } }); } },
+  swing: { vary: 0.09, gap: 0.04, fn: v => {
+    v.noise({ color: 'pink', env: { a: 0.02, peak: 0.6, d: 0.14 }, filter: { type: 'bandpass', f0: 2600, f1: 650, Q: 1.6 } });
+    v.tone({ type: 'sine', f0: 320, f1: 520, env: { a: 0.015, peak: 0.03, d: 0.12 } }); } },
+  wind: { vary: 0.08, gap: 0.05, fn: v => v.noise({ color: 'pink', env: { a: 0.02, peak: 0.4, d: 0.1 }, filter: { type: 'bandpass', f0: 1200, f1: 2400, Q: 1.4 } }) },
+
+  // attacks: punchy transient + fast downward sweep
+  whack: { vary: 0.08, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.45, d: 0.08 }, filter: { type: 'lowpass', f0: 4200, f1: 900, Q: 0.9 } });
+    v.tone({ type: 'triangle', f0: 330, f1: 80, env: { a: 0.002, peak: 0.28, d: 0.14 } });
+    v.tone({ f0: 160, f1: 42, env: { a: 0.002, peak: 0.45, d: 0.2 } }); } },
+  slap: { vary: 0.08, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.5, d: 0.07 }, filter: { type: 'bandpass', f0: 3200, f1: 1600, Q: 1.1 } });
+    v.tone({ type: 'triangle', f0: 460, f1: 150, env: { a: 0.002, peak: 0.22, d: 0.1 } }); } },
+  kick: { vary: 0.08, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.26, d: 0.06 }, filter: { type: 'lowpass', f0: 1600, f1: 500 } });
+    v.tone({ f0: 170, f1: 52, env: { a: 0.002, peak: 0.36, d: 0.13 } }); } },
+  clink: { vary: 0.06, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.2, d: 0.035 }, filter: { type: 'highpass', f0: 4000 } });
+    v.fm({ f: 1450, ratio: 2.76, index: 1.6, env: { a: 0.001, peak: 0.16, d: 0.22 } });
+    v.tone({ type: 'triangle', f0: 1400, f1: 950, env: { a: 0.001, peak: 0.08, d: 0.1 } }); } },
+  shot: { vary: 0.07, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.42, d: 0.11 }, filter: { type: 'lowpass', f0: 7000, f1: 900, Q: 0.7 } });
+    v.tone({ type: 'sawtooth', f0: 560, f1: 85, env: { a: 0.001, peak: 0.16, d: 0.1 }, filter: { type: 'lowpass', f0: 3000, f1: 400 } });
+    v.tone({ f0: 150, f1: 48, env: { a: 0.002, peak: 0.3, d: 0.12 } }); } },
+  shotgun: { vary: 0.06, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.6, d: 0.24 }, filter: { type: 'lowpass', f0: 5000, f1: 500, Q: 0.6 } });
+    v.noise({ color: 'pink', at: 0.02, env: { a: 0.01, peak: 0.2, d: 0.35 }, filter: { type: 'lowpass', f0: 900, f1: 200 } });
+    v.tone({ type: 'sawtooth', f0: 190, f1: 45, env: { a: 0.001, peak: 0.2, d: 0.22 }, filter: { type: 'lowpass', f0: 1500, f1: 200 } });
+    v.tone({ f0: 110, f1: 32, env: { a: 0.002, peak: 0.45, d: 0.26 } }); } },
+  flame: { vary: 0.1, gap: 0.05, fn: v => {
+    v.noise({ color: 'pink', env: { a: 0.02, peak: 0.3, d: 0.14 }, filter: { type: 'bandpass', f0: 700, f1: 1500, Q: 0.9 } });
+    v.tone({ type: 'sawtooth', f0: 95, f1: 70, env: { a: 0.02, peak: 0.05, d: 0.12 }, filter: { type: 'lowpass', f0: 600 } }); } },
+  mammoth: { vary: 0.05, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.7, d: 0.45 }, filter: { type: 'lowpass', f0: 4000, f1: 300, Q: 0.6 } });
+    v.tone({ type: 'sawtooth', f0: 120, f1: 30, env: { a: 0.001, peak: 0.3, d: 0.5 }, filter: { type: 'lowpass', f0: 1200, f1: 150 } });
+    v.tone({ f0: 120, f1: 30, env: { a: 0.002, peak: 0.6, d: 0.6 } });
+    v.tone({ type: 'square', f0: 280, f1: 60, env: { a: 0.001, peak: 0.08, d: 0.16 }, filter: { type: 'lowpass', f0: 2000 } }); } },
+  sniper: { vary: 0.04, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.55, d: 0.05 }, filter: { type: 'highpass', f0: 2500 } });
+    v.noise({ color: 'pink', env: { a: 0.002, peak: 0.35, d: 0.6 }, filter: { type: 'lowpass', f0: 5000, f1: 250 } });
+    v.tone({ type: 'sawtooth', f0: 1100, f1: 80, env: { a: 0.001, peak: 0.16, d: 0.3 }, filter: { type: 'lowpass', f0: 6000, f1: 300 } });
+    v.tone({ f0: 140, f1: 35, env: { a: 0.002, peak: 0.35, d: 0.3 } }); } },
+  rocket: { vary: 0.06, fn: v => {
+    v.noise({ color: 'pink', env: { a: 0.02, peak: 0.4, d: 0.4 }, filter: { type: 'bandpass', f0: 400, f1: 2200, Q: 1.3 } });
+    v.tone({ type: 'sawtooth', f0: 280, f1: 95, env: { a: 0.005, peak: 0.12, d: 0.32 }, filter: { type: 'lowpass', f0: 1800, f1: 400 } });
+    v.tone({ f0: 90, f1: 40, env: { a: 0.003, peak: 0.3, d: 0.2 } }); } },
+
+  // impacts / explosions: sub drop 120 -> 30 Hz, low-passed noise burst, long tail
+  boom: { pri: 1, vary: 0.05, fn: v => {
+    v.tone({ f0: 120, f1: 30, glide: 0.7, env: { a: 0.003, peak: 0.85, d: 1.4 } });
+    v.tone({ type: 'triangle', f0: 70, f1: 24, at: 0.04, env: { a: 0.01, peak: 0.3, d: 1.3 } });
+    v.noise({ env: { a: 0.002, peak: 0.8, d: 1.3 }, filter: { type: 'lowpass', f0: 3200, f1: 140, t: 0.9, Q: 0.5 } });
+    v.noise({ env: { a: 0.001, peak: 0.35, d: 0.12 }, filter: { type: 'highpass', f0: 1800 } });
+    v.noise({ color: 'pink', at: 0.08, env: { a: 0.1, peak: 0.14, d: 1.6 }, filter: { type: 'lowpass', f0: 600, f1: 90 } }); } },
+  thunder: { pri: 1, vary: 0.08, fn: v => {
+    v.noise({ color: 'pink', env: { a: 0.05, peak: 0.6, d: 1.6 }, filter: { type: 'lowpass', f0: 700, f1: 120 } });
+    v.noise({ at: 0.12, env: { a: 0.01, peak: 0.3, d: 0.6 }, filter: { type: 'lowpass', f0: 1500, f1: 200 } });
+    v.tone({ f0: 70, f1: 28, env: { a: 0.04, peak: 0.35, d: 1.4 } }); } },
+  drop: { vary: 0.05, fn: v => {
+    v.tone({ f0: 1000, f1: 260, glide: 0.34, env: { a: 0.01, peak: 0.12, d: 0.36 }, vib: { rate: 9, depth: 0.03 } });
+    v.noise({ at: 0.3, env: { a: 0.002, peak: 0.25, d: 0.12 }, filter: { type: 'lowpass', f0: 1200, f1: 300 } });
+    v.tone({ at: 0.3, f0: 120, f1: 45, env: { a: 0.002, peak: 0.25, d: 0.14 } }); } },
+  mag: { vary: 0.08, fn: v => {
+    v.noise({ env: { a: 0.001, peak: 0.25, d: 0.04 }, filter: { type: 'bandpass', f0: 3200, Q: 2 } });
+    v.tone({ type: 'triangle', f0: 260, f1: 130, env: { a: 0.001, peak: 0.12, d: 0.06 } });
+    v.noise({ at: 0.05, env: { a: 0.001, peak: 0.12, d: 0.03 }, filter: { type: 'highpass', f0: 4500 } }); } },
+  shellIn: { vary: 0.08, fn: v => { v.fm({ f: 760, ratio: 2.4, index: 0.8, env: { a: 0.001, peak: 0.09, d: 0.08 } }); v.noise({ env: { a: 0.001, peak: 0.12, d: 0.03 }, filter: { type: 'bandpass', f0: 2500, Q: 1.5 } }); } },
+
+  // bouncy, wobbly cartoon springs (the house sound)
+  boing: { vary: 0.06, fn: v => {
+    v.tone({ f0: 210, f1: 540, glide: 0.22, env: { a: 0.005, peak: 0.22, d: 0.42 }, vib: { rate: 14, depth: 0.08 } });
+    v.tone({ type: 'triangle', f0: 420, f1: 1080, glide: 0.22, env: { a: 0.005, peak: 0.05, d: 0.3 }, vib: { rate: 14, depth: 0.08 } }); } },
+  bounce: { vary: 0.07, fn: v => { v.tone({ f0: 260, f1: 760, glide: 0.18, env: { a: 0.004, peak: 0.2, d: 0.24 } }); v.tone({ type: 'triangle', f0: 520, f1: 1520, glide: 0.18, env: { a: 0.004, peak: 0.05, d: 0.16 } }); } },
+
+  // pickup / score: fast major-pentatonic arpeggio, bright triangle + FM bell
+  pickup: { pri: 1, vary: 0.02, fn: v => {
+    [72, 76, 79, 84].forEach((m, i) => { const f = midiHz(m), at = i * 0.05;
+      v.tone({ type: 'triangle', f0: f, at, env: { a: 0.003, peak: 0.13, d: 0.16 } });
+      v.fm({ f: f * 2, ratio: 3.5, index: 1.2, at, env: { a: 0.002, peak: 0.05, d: 0.22 } }); });
+    v.noise({ env: { a: 0.001, peak: 0.05, d: 0.04 }, filter: { type: 'highpass', f0: 7000 } }); } },
+  victory: { pri: 1, fn: v => {
+    [[60, 0], [64, 0.1], [67, 0.2], [72, 0.3], [76, 0.42], [79, 0.42], [84, 0.42]].forEach(([m, at], i) => {
+      v.tone({ type: 'triangle', f0: midiHz(m), at, env: { a: 0.004, peak: 0.14, d: 0.1, s: 0.5, hold: i > 3 ? 0.5 : 0.04, r: 0.5 } });
+      v.fm({ f: midiHz(m + 12), ratio: 3.5, index: 1, at, env: { a: 0.002, peak: 0.04, d: 0.5 } }); });
+    v.tone({ f0: midiHz(36), at: 0.42, env: { a: 0.01, peak: 0.3, d: 0.1, s: 0.6, hold: 0.4, r: 0.6 } }); } },
+
+  // damage / game over: dissonant detuned saws under a closing low-pass
+  hurt: { pri: 1, gap: 0.12, vary: 0.06, fn: v => {
+    for (const [m, det] of [[50, -14], [51, 9], [56, -6]]) v.tone({ type: 'sawtooth', f0: midiHz(m), f1: midiHz(m - 5), det, env: { a: 0.004, peak: 0.09, d: 0.26 }, filter: { type: 'lowpass', f0: 3200, f1: 300, Q: 2 } });
+    v.noise({ env: { a: 0.001, peak: 0.3, d: 0.07 }, filter: { type: 'lowpass', f0: 2500, f1: 600 } }); } },
+  death: { pri: 1, fn: v => {
+    for (const [m, det] of [[45, -18], [46, 12], [51, -9], [52, 15], [57, -5]]) v.tone({ type: 'sawtooth', f0: midiHz(m), f1: midiHz(m - 12), glide: 1.3, det, env: { a: 0.006, peak: 0.08, d: 0.15, s: 0.7, hold: 0.4, r: 0.9 }, filter: { type: 'lowpass', f0: 3600, f1: 120, t: 1.3, Q: 3 } });
+    v.tone({ f0: 110, f1: 28, env: { a: 0.004, peak: 0.45, d: 0.9 } });
+    v.noise({ env: { a: 0.001, peak: 0.4, d: 0.3 }, filter: { type: 'lowpass', f0: 3000, f1: 200 } }); } },
+  gameOver: { pri: 1, fn: v => {
+    [[57, 0], [56, 0.32], [55, 0.64], [54, 0.96]].forEach(([m, at], i) => {
+      for (const det of [-16, 0, 13]) v.tone({ type: 'sawtooth', f0: midiHz(m), f1: i === 3 ? midiHz(m - 7) : undefined, glide: 1.2, at, det, env: { a: 0.01, peak: 0.05, d: 0.1, s: 0.7, hold: i === 3 ? 0.8 : 0.18, r: i === 3 ? 0.9 : 0.1 }, filter: { type: 'lowpass', f0: 2400 - i * 400, f1: 180, t: i === 3 ? 1.6 : 0.3, Q: 2.5 } });
+      v.tone({ type: 'triangle', f0: midiHz(m - 24), at, env: { a: 0.01, peak: 0.16, d: 0.1, s: 0.6, hold: i === 3 ? 0.8 : 0.18, r: 0.5 } }); }); } },
 };
-function sfx(name) { try { if (SFX[name]) SFX[name](); } catch (e) { /* ignore */ } }
+
+class SoundManager {
+  constructor() {
+    this.ctx = null; this.muted = false; this.vol = 0.5; this.musicVol = 0.5; this.voices = 0; this.last = {};
+    this.bgm = { on: false, timer: 0, mood: 'menu', step: 0, nextT: 0, int: 0, want: 0 };
+  }
+  init() {                                             // lazy: called from the first user gesture
+    if (this.ctx) return this.ctx;
+    const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
+    try {
+      const c = this.ctx = new AC();
+      this.master = c.createGain(); this.master.gain.value = this.muted ? 0 : this.vol;
+      this.comp = c.createDynamicsCompressor();        // glue + safety: stacked hits never clip
+      this.comp.threshold.value = -16; this.comp.knee.value = 18; this.comp.ratio.value = 5; this.comp.attack.value = 0.003; this.comp.release.value = 0.22;
+      this.sfxBus = c.createGain(); this.sfxBus.gain.value = 0.95;
+      this.bgmBus = c.createGain(); this.bgmBus.gain.value = SND_EPS;
+      this.limit = c.createDynamicsCompressor();       // last-stage brick wall after the volume: a pile-up of hits can't clip
+      this.limit.threshold.value = -4; this.limit.knee.value = 0; this.limit.ratio.value = 20; this.limit.attack.value = 0.001; this.limit.release.value = 0.12;
+      this.sfxBus.connect(this.comp); this.bgmBus.connect(this.comp); this.comp.connect(this.master); this.master.connect(this.limit); this.limit.connect(c.destination);
+      // arp echo for the music: a dotted-eighth feedback delay with a darkening filter (persistent, a few nodes)
+      this.echo = c.createDelay(1); this.echoFb = c.createGain(); this.echoLp = c.createBiquadFilter(); this.echoIn = c.createGain();
+      this.echoFb.gain.value = 0.32; this.echoLp.type = 'lowpass'; this.echoLp.frequency.value = 2200; this.echoIn.gain.value = 0.35;
+      this.echoIn.connect(this.echo); this.echo.connect(this.echoLp); this.echoLp.connect(this.echoFb); this.echoFb.connect(this.echo); this.echoLp.connect(this.bgmBus);
+      this.white = this.makeNoise(false); this.pink = this.makeNoise(true);
+    } catch (e) { this.ctx = null; }
+    return this.ctx;
+  }
+  makeNoise(pink) {                                    // 2 s of white, or pink (Paul Kellet's filter), noise
+    const c = this.ctx, n = Math.floor(c.sampleRate * 2), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < n; i++) {
+      const w = Math.random() * 2 - 1;
+      if (!pink) { d[i] = w; continue; }
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852; b3 = 0.8665 * b3 + w * 0.3104856;
+      b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898; d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926;
+    }
+    return b;
+  }
+  unlock() {                                           // call from any user gesture: create + resume
+    if (!this.init()) return;
+    if (this.ctx.state !== 'running') { try { this.ctx.resume(); } catch (e) { /* the next gesture tries again */ } }
+  }
+  resume() { if (this.ctx && this.ctx.state !== 'running') { try { this.ctx.resume(); } catch (e) { /* x */ } } }
+  get ready() { return !!this.ctx && this.ctx.state === 'running' && !this.muted; }
+
+  /* play(name, { pan: -1..1, vol: 0..1, pitch: x, delay: s }) */
+  play(name, o) {
+    const r = SOUNDS[name]; if (!r || !this.ready) return null;
+    o = o || {}; const now = this.ctx.currentTime;
+    if (r.gap && now - (this.last[name] || -9) < r.gap) return null;          // the same sound a moment ago: skip (flamethrower, footsteps)
+    if (this.voices >= 48 && !r.pri) return null;                             // the mix is full: drop the unimportant
+    this.last[name] = now;
+    const vr = r.vary || 0, k = (o.pitch || 1) * (1 + sndRand(-vr, vr)), fk = 1 + sndRand(-vr, vr);
+    try {
+      const v = new SndVoice(this, this.sfxBus, { vol: o.vol, pan: o.pan, delay: o.delay, k, fk }); this.voices++;
+      r.fn(v); if (!v.live) v.free();
+      return v;
+    } catch (e) { return null; }                       // sound is a bonus: never break the game
+  }
+  onVoiceEnd(v) { if (!v.bgm) this.voices = Math.max(0, this.voices - 1); }
+  setMute(on) { this.muted = !!on; if (this.master) this.master.gain.setTargetAtTime(this.muted ? 0 : this.vol, this.ctx.currentTime, 0.02); }
+  setMasterVolume(v) { this.vol = clamp(+v || 0, 0, 1); if (this.master && !this.muted) this.master.gain.setTargetAtTime(this.vol, this.ctx.currentTime, 0.02); }
+  setMusicVolume(v) { this.musicVol = clamp(+v || 0, 0, 1); if (this.bgm.on && this.bgmBus) this.bgmBus.gain.setTargetAtTime(Math.max(SND_EPS, this.musicVol * 0.34), this.ctx.currentTime, 0.1); }
+  setIntensity(x) { this.bgm.want = clamp(x, 0, 1); }
+
+  /* ---- procedural music: a lookahead scheduler. setInterval wakes every 25 ms and queues every 16th note that
+     falls in the next 200 ms at exact AudioContext times, so timing never depends on the frame rate. ---- */
+  startBGM(mood) {
+    const B = this.bgm;
+    if (B.on) { if (mood && mood !== B.mood) B.pending = mood; return; }          // already playing: switch on the next bar line
+    if (mood) B.mood = mood; B.pending = null;
+    if (!this.init()) return;
+    B.on = true; B.step = 0; B.nextT = this.ctx.currentTime + 0.08;
+    const g = this.bgmBus.gain, t = this.ctx.currentTime; g.cancelScheduledValues(t); g.setValueAtTime(Math.max(SND_EPS, g.value), t); g.exponentialRampToValueAtTime(Math.max(SND_EPS, this.musicVol * 0.34), t + 1.5);
+    clearInterval(B.timer); B.timer = setInterval(() => this.schedule(), 25);
+  }
+  stopBGM(fade) {
+    const B = this.bgm; if (!B.on) return; B.on = false;
+    const g = this.bgmBus.gain, t = this.ctx.currentTime, f = fade === undefined ? 0.8 : fade;
+    g.cancelScheduledValues(t); g.setValueAtTime(Math.max(SND_EPS, g.value), t); g.exponentialRampToValueAtTime(SND_EPS, t + Math.max(0.02, f));
+    clearInterval(B.timer); B.timer = 0;
+  }
+  schedule() {
+    const B = this.bgm, c = this.ctx; if (!B.on || !c) return;
+    if (c.state !== 'running') { B.nextT = c.currentTime + 0.05; return; }
+    if (B.nextT < c.currentTime - 0.3) B.nextT = c.currentTime + 0.05;        // a real stall (hidden tab): skip ahead, no burst; small lags just catch up
+    while (B.nextT < c.currentTime + 0.2) {
+      if (B.pending && B.step % 16 === 0) { B.mood = B.pending; B.pending = null; B.step = 0; }
+      B.int += (B.want - B.int) * 0.04;                                      // intensity glides over a couple of seconds
+      const bpm = B.mood === 'match' ? 112 + B.int * 30 : 88, st = 60 / bpm / 4;
+      if (!this.muted) { try { this.note(B.step, Math.max(B.nextT, c.currentTime + 0.005), st); } catch (e) { /* skip a note rather than stop */ } }
+      B.nextT += st; B.step++;
+    }
+  }
+  bgmVoice(t, pan) { const v = new SndVoice(this, this.bgmBus, { pan }); v.bgm = true; v.t = t; return v; }
+  note(step, t, st) {
+    const B = this.bgm, I = B.int, s = step % 16, bar = Math.floor(step / 16) % 4, match = B.mood === 'match';
+    // A minor: Am - F - C - G; under pressure the last bar turns to E major (G#) for a pull back to Am
+    const CH = [[45, [57, 60, 64]], [41, [57, 60, 65]], [48, [55, 60, 64]], I > 0.62 && match ? [40, [56, 59, 64]] : [43, [55, 59, 62]]];
+    const [root, tri] = CH[bar], cut = 500 + I * 1700 + (match ? 300 : 0);
+    if (s === 0) {                                     // pad: detuned saw pairs, slow swell, one bar long
+      const v = this.bgmVoice(t), len = st * 16;
+      for (const m of tri) for (const det of [-8, 8]) v.tone({ type: 'sawtooth', f0: midiHz(m), det, env: { a: len * 0.35, peak: match ? 0.05 : 0.065, d: len * 0.2, s: 0.75, hold: len * 0.3, r: len * 0.4 }, filter: { type: 'lowpass', f0: cut * 0.6, f1: cut, t: len * 0.5, Q: 1 } });
+    }
+    const bassHit = match ? s % 2 === 0 : s === 0 || s === 8 || s === 14;
+    if (bassHit) {                                     // bass: plucky saw + sine sub; in a match it drives 8ths with octave pops
+      const v = this.bgmVoice(t), m = root - 12 + (match && (s === 6 || s === 14) ? 12 : 0), f = midiHz(m), acc = s % 8 === 0 ? 1 : 0.7;
+      v.tone({ type: 'sawtooth', f0: f, env: { a: 0.005, peak: 0.13 * acc, d: st * (match ? 1.8 : 6) }, filter: { type: 'lowpass', f0: 300 + cut * 0.6, f1: 120, t: st * 1.5, Q: 4 } });
+      v.tone({ f0: f, env: { a: 0.005, peak: 0.22 * acc, d: st * (match ? 2 : 7) } });
+    }
+    const arpEvery = match ? (I > 0.45 ? 1 : 2) : 2;
+    if (s % arpEvery === 0 && (match || s % 4 !== 2 || bar % 2)) {   // arpeggio: triangle + a little square, panned left/right, echoed
+      const PAT = [0, 1, 2, 1, 0, 2, 1, 2], i = (s / arpEvery) % 8, m = tri[PAT[i]] + 12 + (i === 6 && I > 0.3 ? 12 : 0);
+      const v = this.bgmVoice(t, (i % 2 ? 0.35 : -0.35));
+      v.tone({ type: 'triangle', f0: midiHz(m), env: { a: 0.004, peak: 0.07, d: st * 2.2 } });
+      v.tone({ type: 'square', f0: midiHz(m), det: 6, env: { a: 0.004, peak: 0.018 + I * 0.02, d: st * 1.5 }, filter: { type: 'lowpass', f0: cut * 1.6, f1: cut * 0.5 } });
+      v.out.connect(this.echoIn);
+    }
+    if (!match) return;
+    // drums grow with intensity: kick on the beat, hats on the off-beats, a clap on 2 and 4
+    if (s % 8 === 0 || (I > 0.55 && s % 4 === 0) || (I > 0.8 && s === 14)) { const v = this.bgmVoice(t); v.tone({ f0: 150, f1: 42, glide: 0.09, env: { a: 0.002, peak: 0.42, d: 0.2 } }); v.noise({ env: { a: 0.001, peak: 0.06, d: 0.012 }, filter: { type: 'highpass', f0: 3000 } }); }
+    if (I > 0.25 && s % 4 === 2) { const v = this.bgmVoice(t, 0.2); v.noise({ env: { a: 0.001, peak: 0.05 + I * 0.04, d: 0.035 }, filter: { type: 'highpass', f0: 7000, Q: 0.7 } }); }
+    if (I > 0.7 && s % 2 === 1) { const v = this.bgmVoice(t, -0.2); v.noise({ env: { a: 0.001, peak: 0.025, d: 0.02 }, filter: { type: 'highpass', f0: 9000 } }); }
+    if (I > 0.45 && (s === 4 || s === 12)) { const v = this.bgmVoice(t); v.noise({ env: { a: 0.001, peak: 0.18, d: 0.13 }, filter: { type: 'bandpass', f0: 1500, Q: 0.9 } }); v.tone({ type: 'triangle', f0: 220, f1: 140, env: { a: 0.001, peak: 0.08, d: 0.06 } }); }
+  }
+}
+const sound = new SoundManager();
+for (const ev of ['keydown', 'pointerdown', 'click', 'touchend']) document.addEventListener(ev, () => sound.unlock(), { capture: true, passive: true });
+function initAudio() { sound.unlock(); }
+
+/* ---- game glue: sfx(name) plays as before (centred); sfxAt(name, worldPos) pans and fades it from the camera ---- */
+function sfx(name, o) { if (SHOW.sim && !(o && o.ui)) return; sound.play(name, o); }          // the bot battle behind the menus stays silent
+const _sndD = new THREE.Vector3(), _sndR = new THREE.Vector3();
+function sfxAt(name, pos, o) {
+  if (!pos) return sfx(name, o);
+  _sndD.copy(pos).sub(camera.position); const d = _sndD.length();
+  _sndR.setFromMatrixColumn(camera.matrixWorld, 0);                             // the camera's right-hand direction
+  const vol = 1 / (1 + Math.max(0, d - 8) / 14) * (o && o.vol !== undefined ? o.vol : 1);
+  if (vol < 0.06) return;                                                       // too far away to hear
+  const pan = d > 0.01 ? clamp(_sndD.dot(_sndR) / d, -1, 1) * Math.min(1, d / 5) * 0.85 : 0;
+  sfx(name, Object.assign({}, o, { pan, vol }));
+}
+/* the music follows the game: a calm loop in the menus, a driving one in a match whose tempo, filter and drums rise
+   with the action (enemies close by, taking damage, low health, someone one K.O. from winning); silent at the end. */
+globalThis.__wobbleSound = { sound, SOUNDS, SoundManager, sfxAt, get camera() { return camera; } };     // for tools/test-sound.js
+let musicMood = null;
+function musicTick() {
+  if (!sound.ctx) return;
+  const mood = settings.music <= 0 ? null : ui === 'play' ? (matchOver ? null : 'match') : (ui === 'lobby' || ui === 'title') ? 'menu' : null;
+  if (mood !== musicMood) { musicMood = mood; if (mood) sound.startBGM(mood); else sound.stopBGM(); }
+  if (mood !== 'match' || !player) { sound.setIntensity(0.1); return; }
+  let I = 0.2, near = 0;
+  for (const f of fighters) if (f !== player && !f.dead && !isFriend(f, player) && f.pos.distanceToSquared(player.pos) < 196) near++;
+  I += Math.min(0.4, near * 0.13);
+  if (simTime - (player.hurtT === undefined ? -9 : player.hurtT) < 3) I += 0.2;
+  if (!player.dead && player.hp < maxHp() * 0.35) I += 0.15;
+  if (cfg.limit && fighters.some(f => (f.ko | 0) >= cfg.limit - 1)) I += 0.15;
+  sound.setIntensity(I);
+}
 
 /* ============================== renderer / scene ============================== */
 const IS_TOUCH_DEV = (() => { try { return matchMedia('(pointer:coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(any-pointer:fine)').matches); } catch (e) { return false; } })();      // phones and tablets get the touch controls and the lighter graphics tier
@@ -2887,6 +3205,7 @@ function ringFx(p, color, R = 3, life = 0.45, y = 0.1) {   // a flat shockwave r
   fx.push({ m: ring, life, max: life, type: 'ring', R, op: 0.7 });
 }
 function landDust(f, v) {                             // a soft ring of dust where a hard landing happens
+  sfxAt('land', f.pos, { vol: Math.min(1, 0.4 + v * 0.05) });
   const n = Math.min(12, 4 + Math.floor(v * 0.45));
   for (let i = 0; i < n; i++) {
     const a = i / n * Math.PI * 2 + rand(-0.2, 0.2), sp = rand(1.6, 3.2);
@@ -5703,7 +6022,7 @@ class Fighter {
     this.lastAttacker = attacker; this.lastHitTime = simTime; this.lastHitN = recN; this.hurtT = simTime;
     if (attacker && attacker !== this && attacker.st) { const real = Math.max(0, Math.min(dmg, this.hp)); attacker.st.dmg += real; attacker.st.hits++; this.st.taken += real; if (head) attacker.st.heads++; }
     this.hp -= dmg; this.flash = 0.12;
-    if (this.isPlayer) hurtFlash = Math.min(1, hurtFlash + 0.35 + dmg / 90);
+    if (this.isPlayer) { hurtFlash = Math.min(1, hurtFlash + 0.35 + dmg / 90); if (this.hp > 0) sfx('hurt', { vol: Math.min(1, 0.45 + dmg / 40) }); }
     const light = force < 8;                           // bullets, knives: a small shove, no stun, you keep your footing
     const kf = light ? 0.4 : 1;
     const fk = (cfg.kb || 1) * 0.8 * (MODES[cfg.mode].kbMul || 1) * this.cls.kb;                    // the knockback setting (and everything shoves a bit softer than before)
@@ -5722,6 +6041,7 @@ class Fighter {
     if (this.hp <= 0) {
       this.st.streak = 0; this.st.multi = 0; this.st.deaths++; if (this.isPlayer) { const kp = el('kopop'); if (kp) kp.innerHTML = ''; }
       this.dead = true; this.deathT = this.home ? 1.2 : (this.isPlayer ? 3 : BOT_RESPAWN); this.fallSide = Math.random() < 0.5 ? -1 : 1;
+      if (this.isPlayer) sfx('death'); else sfxAt('whack', this.pos, { pitch: 0.7 });
       this.downT = 0; this.kickT = -1;
       if (this.pos.y > -1) { this.vel.y = Math.max(this.vel.y, 6.5); puff(V(this.pos.x, this.pos.y + 1.6, this.pos.z), 0xffe27a, 12, 6); puff(V(this.pos.x, this.pos.y + 1.0, this.pos.z), 0xffffff, 6, 4); koBurst(this.pos); }   // death: pop into the air with a burst of stars, spinning
       this.clearInventory();
@@ -5743,7 +6063,7 @@ class Fighter {
     if (this.returnSlot !== null) { const r = this.returnSlot; this.returnSlot = null; this.equipSlot(this.slots[r] ? r : -1); }
     this.head.kick(rand(-3, 3), rand(-3, 3));
     this.armVel.x += rand(-3, 3); this.armVel.z += rand(-3, 3);
-    sfx('boing');
+    sfxAt('boing', this.pos);
     if (this.isPlayer) toast(msg || 'You fell over!');
     return true;
   }
@@ -5759,7 +6079,7 @@ class Fighter {
     if (t >= 0.3 && !this.kickLeaned) {
       this.kickLeaned = true;
       this.lean.kick(-3.2, 0); this.head.kick(-2.5, 0);
-      sfx('kick');
+      sfxAt('kick', this.pos);
     }
     if (t >= 0.3 && t <= 0.6 && !this.kickResolved) {
       const fx_ = Math.sin(this.kickYaw), fz_ = Math.cos(this.kickYaw);
@@ -5779,7 +6099,7 @@ class Fighter {
         if (!e.hit(5, tmpD, 9, false, this)) continue;
         e.topple(1.3);
         puff(e.chestPos, 0xffffff, 6, 4);
-        sfx('whack');
+        sfxAt('whack', e.chestPos);
         if (this.isPlayer) hitMarker();
         hitAny = true;
       }
@@ -5845,7 +6165,7 @@ class Fighter {
       this.vel.x += Math.sin(yaw) * dash; this.vel.z += Math.cos(yaw) * dash;
       if (w.dash) { if (this.grounded) this.vel.y = Math.max(this.vel.y, 1.5); puff(V(this.pos.x, this.pos.y + 1, this.pos.z), 0xcfe3ff, 8, 4); }
     }
-    sfx('swing');
+    sfxAt('swing', this.pos);
   }
 
   meleeTick(w, dt, yaw) {            // returns true on the frame the swing ends
@@ -5907,7 +6227,7 @@ class Fighter {
         if (e.hit(w.dmg * this.dmgScale * (this.slam ? (w.slamMul || 1.3) : this.cyclone ? 1.6 : 1), tmpC, w.force * (this.slam ? 1.1 : this.cyclone ? 1.5 : 1), false, this)) {
           if (w.topple && Math.random() < w.topple) e.topple(1.1);
           puff(e.chestPos, 0xff7a59, 8, 5);
-          sfx(w.hitSfx);
+          sfxAt(w.hitSfx, e.chestPos);
           cam.shake = Math.max(cam.shake, this.isPlayer ? (this.slam ? 0.14 : 0.08) : (e.isPlayer ? 0.1 : 0));
           if (this.isPlayer) hitMarker();
         }
@@ -5959,7 +6279,7 @@ class Fighter {
     if (len <= md) { this.vel.x = tx; this.vel.z = tz; }
     else { this.vel.x += dx / len * md; this.vel.z += dz / len * md; }
 
-    if (this.wantJump && this.grounded && !incap) { this.vel.y = (cfg.grav < 0.3 ? 7.4 : 9.2) * this.cls.jump; this.grounded = false; }      // Drift: a slightly gentler push-off, you still go very high
+    if (this.wantJump && this.grounded && !incap) { this.vel.y = (cfg.grav < 0.3 ? 7.4 : 9.2) * this.cls.jump; this.grounded = false; if (this.isPlayer) sfx('jump'); }      // Drift: a slightly gentler push-off, you still go very high
     this.wantJump = false;
 
     this.vel.y = Math.max(this.vel.y - GRAV * (cfg.grav || 1) * dt, -22);
@@ -6029,7 +6349,8 @@ class Fighter {
     const spRaw = Math.hypot(this.vel.x, this.vel.z);
     this.stride += ((walking || !this.grounded ? spRaw : 0) - this.stride) * Math.min(1, 14 * dt);
     const sp = this.stride;
-    this.phase += sp * dt * 1.5;
+    const ph0 = this.phase; this.phase += sp * dt * 1.5;
+    if (this.isPlayer && !SHOW.on && this.grounded && sp > 1.5 && Math.floor(this.phase / Math.PI) !== Math.floor(ph0 / Math.PI)) sfx('step', { vol: Math.min(1, sp / 9) });      // a footstep each time a leg passes under you
     const amp = this.grounded ? Math.min(sp / 5, 1) * 0.85 : 0.4;
     this.legs[0].rotation.x = Math.sin(this.phase) * amp + (this.grounded ? 0 : 0.5);
     this.legs[1].rotation.x = -Math.sin(this.phase) * amp + (this.grounded ? 0 : -0.3);
@@ -6338,7 +6659,7 @@ class Fighter {
         if (this.isPlayer) hitMarker();
       }
       this.armVel.addScaledVector(bd, 0.6);
-      this.flameN = (this.flameN || 0) + 1; if (this.flameN % 3 === 0) sfx('flame');
+      this.flameN = (this.flameN || 0) + 1; if (this.flameN % 3 === 0) sfxAt('flame', this.pos);
       return;
     }
     if (w.style === 'punch') {                       // a big springy fist: hits whoever is roughly in front of it
@@ -6363,7 +6684,7 @@ class Fighter {
         if (this.isPlayer) hitMarker();
       }
       this.armVel.addScaledVector(this.armDir, 4); this.lean.kick(-1.6, 0);
-      sfx('whack');
+      sfxAt('whack', this.pos);
       return;
     }
     for (let i = 0; i < n; i++) {
@@ -6433,7 +6754,7 @@ class Fighter {
       this.vel.y = Math.max(this.vel.y, w.hop); this.grounded = false;
     } else if (w.kickback) { this.vel.x -= lastDir.x * w.kickback; this.vel.z -= lastDir.z * w.kickback; }
     if (!(w.pellets > 1)) ejectShell(this, w);       // shotgun shells come out on the pump stroke instead
-    if (w.cooldown >= 0.1 || simTime - this.sfxT > 0.07) { this.sfxT = simTime; sfx(w.pellets ? 'shotgun' : (w.big ? 'mammoth' : w.name === 'Sniper' ? 'sniper' : (w.style === 'punch' ? 'whack' : 'shot'))); }
+    if (w.cooldown >= 0.1 || simTime - this.sfxT > 0.07) { this.sfxT = simTime; sfxAt(w.pellets ? 'shotgun' : (w.big ? 'mammoth' : w.name === 'Sniper' ? 'sniper' : (w.style === 'punch' ? 'whack' : 'shot'))); }
   }
 }
 
@@ -6529,7 +6850,7 @@ function spawnDrop(forceKey, at, spotOverride) {
     return p;
   }
   if (!player.downT) toast('Crate incoming: ' + w.name + '!');     // don't bury the "you fell over" message
-  sfx('drop');
+  sfxAt('drop', V(p.x, p.gy, p.z));
   return p;
 }
 
@@ -6569,7 +6890,7 @@ function updatePickups(dt) {
     if (!p.grounded) {
       p.vy -= 14 * dt; p.y += p.vy * dt;
       p.net.g.rotation.y += dt * 1.2; p.net.g.rotation.x = Math.sin(p.t * 2.5) * 0.12;       // tumbles gently on the way down
-      if (p.y <= p.gy + 0.4) { p.y = p.gy + 0.4; p.vy = 0; p.grounded = true; p.net.g.rotation.x = 0; puff(V(p.x, p.gy + 0.3, p.z), 0xffd24a, 12, 5); sfx('clink'); cam.shake = Math.max(cam.shake, Math.max(0, 0.1 - Math.hypot(p.x - player.pos.x, p.z - player.pos.z) * 0.004)); }
+      if (p.y <= p.gy + 0.4) { p.y = p.gy + 0.4; p.vy = 0; p.grounded = true; p.net.g.rotation.x = 0; puff(V(p.x, p.gy + 0.3, p.z), 0xffd24a, 12, 5); sfxAt('clink', V(p.x, p.gy + 0.4, p.z)); cam.shake = Math.max(cam.shake, Math.max(0, 0.1 - Math.hypot(p.x - player.pos.x, p.z - player.pos.z) * 0.004)); }
     }
     if (p.grounded && p.open < 1) {                   // unfold: pop open with a little overshoot
       p.open = Math.min(1, p.open + dt / 0.7);
@@ -6619,7 +6940,7 @@ function updatePads(dt) {
         f.vel.y = pd.power; f.grounded = false; f.padCool = 0.4; pd.squash = 1;
         f.lean.kick(-2.0, rand(-1, 1)); f.head.kick(-3, rand(-2, 2));
         puff(V(pd.x, 0.15, pd.z), 0x9ff5ea, 6, 3);
-        sfx('bounce');
+        sfxAt('bounce', V(pd.x, 0.15, pd.z));
       }
     }
   }
@@ -6639,7 +6960,7 @@ function launchRocket(p, w) {
   rockets.push({ pos: origin, vel: dir.multiplyScalar(w.speed), owner: p, age: 0, mesh, w });
   p.armVel.y += 6; p.armVel.addScaledVector(dir, -3);
   p.lean.kick(-2.6, rand(-0.5, 0.5));
-  sfx('rocket');
+  sfxAt('rocket', origin);
 }
 
 /* aim direction with a bit of crosshair assist, like guns have */
@@ -6660,7 +6981,7 @@ function throwTrident(p, w, hold) {                 // overarm throw; hold = kee
   if (p.throwFn) return;
   p.throwHold = !!hold; p.throwPow = 0.3;
   p.throwT = 0; p.thrown = false; p.throwFn = () => releaseTrident(p, w);
-  p.lean.kick(1.6, 0); sfx('swing');                  // lean back with the trident raised
+  p.lean.kick(1.6, 0); sfxAt('swing', p.pos);                  // lean back with the trident raised
 }
 function releaseTrident(p, w) {
   const pw = clamp(p.throwPow == null ? 0.3 : p.throwPow, 0, 1);
@@ -6672,7 +6993,7 @@ function releaseTrident(p, w) {
   mesh.position.copy(origin); scene.add(mesh);
   knives.push({ pos: origin, vel: V().copy(dir).multiplyScalar(TW.speed), owner: p, age: 0, mesh, stuck: 0, w: TW, spin: 0.0001, grav: 5 - 4 * pw });
   p.armVel.addScaledVector(dir, 5); p.lean.kick(-3.0, 0);
-  p.knifeT = 0; p.twirlLen = 1.2; sfx('slap');
+  p.knifeT = 0; p.twirlLen = 1.2; sfxAt('slap', p.pos);
 }
 const knives = [], snakes = [], balls = [], arrows = [];
 function clearProjectiles() {
@@ -6733,7 +7054,7 @@ function launchGrenade(p, w) {                     // grenade launcher: flies ou
   }
   p.armVel.y += 4; p.armVel.addScaledVector(dir0, -2); p.lean.kick(-1.8, rand(-0.3, 0.3));
   puff(V().copy(p.handPos).addScaledVector(dir0, w.muzzle), 0xcfd8de, 3, 2, dir0);
-  sfx('rocket');
+  sfxAt('rocket', p.handPos);
 }
 
 function updateBowMesh(wm, draw, hasArrow) {
@@ -6785,7 +7106,7 @@ function shootArrow(p, w) {                         // charge = how far the bow 
     arrows.push({ pos: origin, vel: V().copy(dir).multiplyScalar(lerp(w.speedMin, w.speedMax, ch)), owner: p, age: 0, mesh, stuck: 0, w, ch });
   }
   p.armVel.addScaledVector(dir0, -2 - ch * 3); p.lean.kick(-1.2 - ch * 1.4, 0);
-  p.draw = 0; p.nocked = false; sfx('swing'); if (ch > 0.8) sfx('shot');
+  p.draw = 0; p.nocked = false; sfxAt('swing', p.pos); if (ch > 0.8) sfxAt('shot', p.pos);
 }
 function updateArrows(dt) {
   for (let i = arrows.length - 1; i >= 0; i--) {
@@ -6797,7 +7118,7 @@ function updateArrows(dt) {
     for (let sub = 0; sub < N && !gone && k.stuck <= 0; sub++) {
       k.vel.y -= 3 * h;
       k.pos.addScaledVector(k.vel, h);
-      if (inSolid(k.pos.x, k.pos.y, k.pos.z, 0.05)) { k.stuck = 3; sfx('clink'); puff(k.pos, 0xd9a066, 3, 2); break; }
+      if (inSolid(k.pos.x, k.pos.y, k.pos.z, 0.05)) { k.stuck = 3; sfxAt('clink', k.pos); puff(k.pos, 0xd9a066, 3, 2); break; }
       for (const f of fighters) {
         if (f.dead || (f === k.owner && k.age < 0.3)) continue;
         for (const [c, r, head] of f.spheres()) {
@@ -6806,7 +7127,7 @@ function updateArrows(dt) {
             tmpC.copy(k.vel).normalize();
             const dmg = lerp(k.w.minDmg, k.w.dmg, k.ch) * (k.owner ? k.owner.dmgScale : 1) * (head ? 1.8 : 1);
             f.hit(dmg, tmpC, 5 + k.ch * 8, head, k.owner);
-            puff(k.pos, 0xff7a59, 5, 3); sfx('clink');
+            puff(k.pos, 0xff7a59, 5, 3); sfxAt('clink', k.pos);
             if (k.owner && k.owner.isPlayer) hitMarker();
             gone = true; break;
           }
@@ -6822,7 +7143,7 @@ function updateArrows(dt) {
 function throwKnife(p, w) {                         // wind the arm back over the shoulder, then whip it forward and let go
   if (p.throwFn) return;
   p.throwT = 0; p.thrown = false; p.throwFn = () => releaseKnife(p, w);
-  p.lean.kick(0.9, 0); p.armVel.y += 2.5; sfx('swing');
+  p.lean.kick(0.9, 0); p.armVel.y += 2.5; sfxAt('swing', p.pos);
 }
 function releaseKnife(p, w) {
   const dir = V().copy(p.aimTarget).normalize();
@@ -6831,7 +7152,7 @@ function releaseKnife(p, w) {
   knives.push({ pos: origin, vel: V().copy(dir).multiplyScalar(w.speed), owner: p, age: 0, mesh, stuck: 0, w });
   p.armVel.addScaledVector(dir, 5); p.lean.kick(-2.4, rand(-0.3, 0.3));
   p.knifeT = 0; p.twirlLen = 1.4;                   // the knife in your hand is gone; a fresh one twirls in
-  sfx('slap');
+  sfxAt('slap', p.pos);
 }
 function boomShape(parent, sc) {                    // a smooth bent boomerang lying flat: ten tapered pieces along an arc, painted with stripes
   const R = 0.62, N = 10, A = 0.95;
@@ -6856,7 +7177,7 @@ const boomers = [];
 function throwBoomerang(p, w) {                     // wind-up, then it flies out, curves round and comes back
   if (p.throwFn || p.boom) return;
   p.throwT = 0; p.thrown = false; p.throwFn = () => releaseBoomerang(p, w);
-  p.lean.kick(0.9, 0); p.armVel.y += 2.5; sfx('swing');
+  p.lean.kick(0.9, 0); p.armVel.y += 2.5; sfxAt('swing', p.pos);
 }
 function releaseBoomerang(p, w) {
   const dir = V().copy(p.aimTarget).normalize();
@@ -6873,7 +7194,7 @@ function releaseBoomerang(p, w) {
     if (p.ammo <= 0) { b.noReturn = true; p.dropSlot(); }                      // the last one is a one-way throw: hand is empty straight away
   }
   p.armVel.addScaledVector(dir, 4); p.lean.kick(-2.0, rand(-0.3, 0.3));
-  sfx('slap');
+  sfxAt('slap', p.pos);
 }
 function endBoomerang(i, caught) {
   const b = boomers[i], o = b.owner;
@@ -6881,7 +7202,7 @@ function endBoomerang(i, caught) {
   if (o) {
     o.boom = null;
     if (caught) {
-      o.catchT = 0.3; o.armVel.y += 2.5; puff(o.handPos, 0xf4e3b0, 5, 2); sfx('pickup');
+      o.catchT = 0.3; o.armVel.y += 2.5; puff(o.handPos, 0xf4e3b0, 5, 2); sfxAt('pickup', o.handPos);
     }
     if (o.slot >= 0 && o.weapon === 'boomerang' && o.ammo <= 0 && !cfg.inf) o.dropSlot();
   }
@@ -6896,7 +7217,7 @@ function updateBoomerangs(dt) {
       b.sp = w.speed * Math.max(0.5, 1 - b.age / 1.3);
       b.vy *= Math.exp(-1.5 * dt);
       b.v.set(Math.sin(b.h) * b.sp, b.vy, Math.cos(b.h) * b.sp);
-      if (b.age > 0.75) { b.hit.clear(); sfx('swing'); if (b.noReturn) { b.phase = 2; b.vy = b.v.y; } else b.phase = 1; }
+      if (b.age > 0.75) { b.hit.clear(); sfxAt('swing', b.pos); if (b.noReturn) { b.phase = 2; b.vy = b.v.y; } else b.phase = 1; }
     } else if (b.phase === 2) {                                                // last throw: loses speed and drops, never turns back
       b.vy -= 24 * dt; b.sp = Math.max(4, b.sp * Math.exp(-1.6 * dt));
       b.v.set(Math.sin(b.h) * b.sp, b.vy, Math.cos(b.h) * b.sp);
@@ -6914,8 +7235,8 @@ function updateBoomerangs(dt) {
     for (let sub = 0; sub < N; sub++) {
       tmpD.copy(b.pos);
       b.pos.addScaledVector(b.v, h);
-      if (b.phase === 2 && (b.pos.y < 0.15 || inSolid(b.pos.x, b.pos.y, b.pos.z, 0.2))) { puff(b.pos, 0xd9a066, 5, 2); sfx('clink'); endBoomerang(i, false); b.ended = true; break; }
-      if (b.phase === 0 && inSolid(b.pos.x, b.pos.y, b.pos.z, 0.2)) { b.pos.copy(tmpD); b.phase = 1; b.hit.clear(); puff(b.pos, 0xd9a066, 3, 2); sfx('clink'); break; }
+      if (b.phase === 2 && (b.pos.y < 0.15 || inSolid(b.pos.x, b.pos.y, b.pos.z, 0.2))) { puff(b.pos, 0xd9a066, 5, 2); sfxAt('clink', b.pos); endBoomerang(i, false); b.ended = true; break; }
+      if (b.phase === 0 && inSolid(b.pos.x, b.pos.y, b.pos.z, 0.2)) { b.pos.copy(tmpD); b.phase = 1; b.hit.clear(); puff(b.pos, 0xd9a066, 3, 2); sfxAt('clink', b.pos); break; }
       for (const f of fighters) {
         if (f === o || f.dead || b.hit.has(f)) continue;
         for (const [c, r, head] of f.spheres()) {
@@ -6923,7 +7244,7 @@ function updateBoomerangs(dt) {
           if (dx * dx + dy * dy + dz * dz < rr * rr) {
             tmpC.copy(b.v).normalize();
             f.hit(w.dmg * o.dmgScale * (head ? 1.5 : 1), tmpC, w.force, head, o);
-            b.hit.add(f); puff(b.pos, 0xffe0a0, 6, 4); sfx('whack');
+            b.hit.add(f); puff(b.pos, 0xffe0a0, 6, 4); sfxAt('whack', b.pos);
             if (o.isPlayer) hitMarker();
             break;
           }
@@ -6935,7 +7256,7 @@ function updateBoomerangs(dt) {
     const bank = b.phase === 0 ? Math.min(1, b.age / 0.5) : 1;                   // it leans into the turn like a real one
     b.mesh.rotation.x = 0.25 + 0.55 * bank; b.mesh.rotation.z = -0.5 * bank * (b.phase === 0 ? 1 : -0.6);
     const sc = b.age < 0.15 ? 0.5 + b.age / 0.15 * 0.5 : 1; b.mesh.scale.setScalar(sc * 1.15);
-    b.swT = (b.swT || 0) - dt; if (b.swT <= 0) { b.swT = 0.28; sfx('swing'); puff(b.pos, 0xfff2c0, 2, 1.2); }
+    b.swT = (b.swT || 0) - dt; if (b.swT <= 0) { b.swT = 0.28; sfxAt('swing', b.pos); puff(b.pos, 0xfff2c0, 2, 1.2); }
     if (b.age > 0.04) tracer(b.last, b.pos, 0xfff0b8, 1.3, 0.3);
     b.last.copy(b.pos);
   }
@@ -6984,7 +7305,7 @@ function tyInFlight(p) { for (const k of knives) if (k.ty && k.owner === p) retu
 function throwTyphoon(p, w) {                       // same wind-up as the shuriken, then three blades fan out, curve in, slice through people and boomerang back to your hand
   if (p.throwFn || tyInFlight(p)) return;
   p.throwT = 0; p.thrown = false; p.throwFn = () => releaseTyphoon(p, w);
-  p.lean.kick(0.7, 0); p.armVel.y += 2; sfx('swing');
+  p.lean.kick(0.7, 0); p.armVel.y += 2; sfxAt('swing', p.pos);
 }
 function releaseTyphoon(p, w) {
   const dir = V().copy(p.aimTarget).normalize();
@@ -7003,12 +7324,12 @@ function releaseTyphoon(p, w) {
   }
   p.armVel.addScaledVector(dir, 3); p.lean.kick(-1.4, rand(-0.2, 0.2));
   p.knifeT = 0; p.twirlLen = 1.0;
-  sfx('slap');
+  sfxAt('slap', p.pos);
 }
 function throwShuriken(p, w) {                      // wind both arms back, then throw a star from each hand
   if (p.throwFn) return;
   p.throwT = 0; p.thrown = false; p.throwFn = () => releaseShuriken(p, w);
-  p.lean.kick(0.6, 0); p.armVel.y += 2; sfx('swing');
+  p.lean.kick(0.6, 0); p.armVel.y += 2; sfxAt('swing', p.pos);
 }
 function releaseShuriken(p, w) {
   const dir = V().copy(p.aimTarget).normalize();
@@ -7032,7 +7353,7 @@ function releaseShuriken(p, w) {
   }
   p.armVel.addScaledVector(dir, 3); p.lean.kick(-1.2, rand(-0.2, 0.2));
   p.knifeT = 0; p.twirlLen = 0.8;                  // a fresh star spins into the hand
-  sfx('slap');
+  sfxAt('slap', p.pos);
 }
 function updateKnives(dt) {
   for (let i = knives.length - 1; i >= 0; i--) {
@@ -7059,7 +7380,7 @@ function updateKnives(dt) {
       k.pos.addScaledVector(k.vel, h);
       if (k.age > 0.03 && k.w.tri) { tracer(tmpD, k.pos, 0x7be3ee, 2.4, 0.55); tracer(tmpD, k.pos, 0xffffff, 1.1, 0.4); tracer(tmpD, k.pos, 0x2fb8c8, 3.6, 0.3); if (sub % 2 === 0) puff(k.pos, 0x9fe8ff, 1, 1.2); }
       else if (k.age > 0.03) { tracer(tmpD, k.pos, 0xffffff, 0.95, 0.38); if (sub % 2 === 0) tracer(tmpD, k.pos, 0x9fd8ff, 0.6, 0.6); }          // air streak behind the knife
-      if (!(k.ty && k.back) && inSolid(k.pos.x, k.pos.y, k.pos.z, 0.05)) { if (k.ty) { k.back = true; k.home = null; sfx('clink'); puff(k.pos, 0xdfe6ec, 3, 2); } else { k.stuck = 1.6; sfx('clink'); puff(k.pos, 0xdfe6ec, 3, 2); break; } }
+      if (!(k.ty && k.back) && inSolid(k.pos.x, k.pos.y, k.pos.z, 0.05)) { if (k.ty) { k.back = true; k.home = null; sfxAt('clink', k.pos); puff(k.pos, 0xdfe6ec, 3, 2); } else { k.stuck = 1.6; sfxAt('clink', k.pos); puff(k.pos, 0xdfe6ec, 3, 2); break; } }
       for (const f of fighters) {
         if (f.dead || (f === k.owner && k.age < 0.25) || (k.hit && k.hit.has(f))) continue;
         for (const [c, r, head] of f.spheres()) {
@@ -7067,7 +7388,7 @@ function updateKnives(dt) {
           if (dx * dx + dy * dy + dz * dz < rr * rr) {
             tmpC.copy(k.vel).normalize();
             f.hit(k.w.dmg * (k.owner ? k.owner.dmgScale : 1) * (head ? 1.8 : 1), tmpC, k.w.force, head, k.owner);
-            puff(k.pos, 0xff7a59, 5, 3); sfx('clink');
+            puff(k.pos, 0xff7a59, 5, 3); sfxAt('clink', k.pos);
             if (k.owner && k.owner.isPlayer) hitMarker();
             if (k.pierce) { k.hit.add(f); break; }
             gone = true; break;
@@ -7078,7 +7399,7 @@ function updateKnives(dt) {
     }
     if (gone || k.pos.y < -30 || k.age > 4) {
       scene.remove(k.mesh); knives.splice(i, 1);
-      if (k.ty && k.caught && k.owner && !tyInFlight(k.owner)) { k.owner.knifeT = 0; k.owner.twirlLen = 0.5; sfx('swing'); }          // last blade home: a fresh set spins into the hand
+      if (k.ty && k.caught && k.owner && !tyInFlight(k.owner)) { k.owner.knifeT = 0; k.owner.twirlLen = 0.5; sfxAt('swing', k.owner.pos); }          // last blade home: a fresh set spins into the hand
       continue;
     }
     k.mesh.position.copy(k.pos);
@@ -7102,7 +7423,7 @@ function shootSnake(p, w) {
   const vel = V().copy(dir).multiplyScalar(9); vel.y += 2;
   snakes.push({ bites: 3, kills: 0, biteCd: 0, backT: 0, ignore: null, pos: origin, vel, heading: Math.atan2(dir.x, dir.z), owner: p, age: 0, grounded: false, hist: [], histT: 0, mesh: g, segs, w });
   p.armVel.y += 1.5; p.lean.kick(-0.9, rand(-0.3, 0.3));
-  sfx('boing');
+  sfxAt('boing', origin);
 }
 function updateSnakes(dt) {
   for (let i = snakes.length - 1; i >= 0; i--) {
@@ -7150,7 +7471,7 @@ function updateSnakes(dt) {
           const kn = feedItems.length;
           f.hit(s_.w.dmg * (s_.owner ? s_.owner.dmgScale : 1), tmpC, s_.w.force, false, s_.owner);
           if (Math.random() < s_.w.topple) f.topple(1.0);
-          puff(s_.pos, 0x7dff8a, 8, 4); sfx('slap');
+          puff(s_.pos, 0x7dff8a, 8, 4); sfxAt('slap', s_.pos);
           if (s_.owner && s_.owner.isPlayer) hitMarker();
           s_.bites--; s_.biteCd = 0.55; s_.backT = 0.28; s_.vel.y = 5;
           if (f.dead) {                                // a snake K.O.: say so in the kill feed and the pop-up
@@ -7178,7 +7499,7 @@ function shootBall(p, w) {                         // snowball cannon: lands, gr
   balls.push({ pos: origin, vel, owner: p, age: 0, rolling: false, rollT: 0, r: 0.35, heading: Math.atan2(dir.x, dir.z), hit: new Set(), mesh, w });
   p.armVel.y += 3; p.armVel.addScaledVector(dir, -2.5); p.lean.kick(-2.0, rand(-0.4, 0.4));
   puff(origin, 0xffffff, 6, 3, dir);
-  sfx('drop');
+  sfxAt('drop', origin);
 }
 const nets = [], trapNets = [];
 function netGround(x, y, z) {                      // the floor under a point (null = nothing there: it's a drop into the void)
@@ -7193,7 +7514,7 @@ function shootNet(p, w) {
   const vel = V().copy(dir).multiplyScalar(w.speed); vel.y += 1.5;
   nets.push({ pos: origin, vel, owner: p, age: 0, mesh: m, w });
   p.armVel.addScaledVector(dir, -3); p.lean.kick(-1.4, rand(-0.3, 0.3));
-  puff(origin, 0xf2ead2, 10, 5, dir); sfx('slap');
+  puff(origin, 0xf2ead2, 10, 5, dir); sfxAt('slap', origin);
 }
 function landNet(n, x, y, z, onFighter) {
   const w = n.w, o = n.owner;
@@ -7237,7 +7558,7 @@ function landNet(n, x, y, z, onFighter) {
     b.position.set(Math.cos(a) * (R - 0.04), sz * 0.55, Math.sin(a) * (R - 0.04)); b.scale.y = 0.7; b.rotation.set(rand(0, 3), rand(0, 3), rand(0, 3)); g.add(b);
   }
   g.position.set(x, gy, z); scene.add(g); net.g = g;
-  puff(V(x, gy + 0.3, z), 0xf2ead2, 14, 6); sfx('drop');
+  puff(V(x, gy + 0.3, z), 0xf2ead2, 14, 6); sfxAt('drop', V(x, gy, z));
   trapNets.push(net);
 }
 function updateNets(dt) {
@@ -7276,7 +7597,7 @@ function updateBalls(dt) {
     const px = b.pos.x, pz = b.pos.z;
     moveGrenadeAxis(b, 'x', dt); moveGrenadeAxis(b, 'z', dt); moveGrenadeAxis(b, 'y', dt);
     if (!b.rolling && b.age > 0.12 && Math.abs(b.vel.y) < 0.01) {
-      b.rolling = true; puff(b.pos, 0xffffff, 8, 4); sfx('bounce');
+      b.rolling = true; puff(b.pos, 0xffffff, 8, 4); sfxAt('bounce', b.pos);
       if (Math.hypot(b.vel.x, b.vel.z) > 0.5) b.heading = Math.atan2(b.vel.x, b.vel.z);
     }
     const floorY = b.pos.y - 0.2;
@@ -7285,7 +7606,7 @@ function updateBalls(dt) {
     b.mesh.rotation.x += dt * (b.rolling ? 7 : 3);
     if (b.pos.y < -30 || b.age > 8 || b.rollT > 5.5) { puff(b.mesh.position, 0xffffff, 12, 6); scene.remove(b.mesh); balls.splice(i, 1); continue; }
     if (b.rolling && b.rollT > 0.2 && Math.hypot(b.pos.x - px, b.pos.z - pz) < 4 * dt && b.vel.y === 0) {   // ran into a wall: smash
-      puff(b.mesh.position, 0xffffff, 16, 7); sfx('whack'); cam.shake = Math.max(cam.shake, 0.12);
+      puff(b.mesh.position, 0xffffff, 16, 7); sfxAt('whack', b.mesh.position); cam.shake = Math.max(cam.shake, 0.12);
       scene.remove(b.mesh); balls.splice(i, 1); continue;
     }
     if (b.rolling) {
@@ -7297,7 +7618,7 @@ function updateBalls(dt) {
           tmpC.set(Math.sin(b.heading) + dx * 0.15, 0.38, Math.cos(b.heading) + dz * 0.15).normalize();
           f.hit(b.w.dmg * (b.owner ? b.owner.dmgScale : 1) * (0.7 + b.r * 0.3), tmpC, b.w.force * (0.8 + b.r * 0.25), false, b.owner);
           f.topple(1.5);
-          puff(f.chestPos, 0xffffff, 12, 6); sfx('whack'); cam.shake = Math.max(cam.shake, 0.15);
+          puff(f.chestPos, 0xffffff, 12, 6); sfxAt('whack', f.chestPos); cam.shake = Math.max(cam.shake, 0.15);
           if (b.owner && b.owner.isPlayer) hitMarker();
         }
       }
@@ -7340,7 +7661,7 @@ function explode(pos, owner, w) {
     fx.push({ m, life: 1.4, max: 1.4, type: 's', v: V(rand(-1, 1) * 7, rand(5, 11), rand(-1, 1) * 7), spin: V(rand(-8, 8), rand(-8, 8), rand(-8, 8)) });
   }
   puff(pos, 0xffd27a, 18, 11); puff(pos, 0xff8a3a, 14, 7); puff(pos, 0x6b7a86, 10, 5);
-  sfx('boom');
+  sfxAt('boom', pos);
   const dCam = camera.position.distanceTo(pos);
   cam.shake = Math.max(cam.shake, clamp(0.34 - dCam * 0.011, 0.02, 0.34));
   flashV = Math.max(flashV, clamp(1 - dCam / (rad * 3.2), 0, 1) * 0.6);
@@ -7603,7 +7924,7 @@ function updatePotato(dt) {
   pot.fuse -= dt;
   const frac = Math.max(0, pot.fuse / pot.total);
   potBeep -= dt;
-  if (potBeep <= 0) { potBeep = 0.12 + 0.75 * frac; sfx('clink'); h.flash = 0.12; }
+  if (potBeep <= 0) { potBeep = 0.12 + 0.75 * frac; sfxAt('clink', h.pos); h.flash = 0.12; }
   if (!bombMesh) {
     bombMesh = new THREE.Group();
     const bb = new THREE.Mesh(new THREE.IcosahedronGeometry(0.45, 1), lm(0x222831));
@@ -7667,7 +7988,7 @@ function endMatch(w) {
   try { stats.deaths += player.st.deaths | 0; if (net && net.started) stats.onl++; stats.hist.unshift({ m: MODES[cfg.mode].name, map: (MAPS[currentMap] || {}).name || '', ko: player.ko | 0, d: player.st.deaths | 0, w: won ? 1 : 0, o: net && net.started ? 1 : 0 }); stats.hist.length = Math.min(stats.hist.length, 8); } catch (e) { /* stats are a bonus */ }
   addCoins(40 + (won ? 60 : 0), won ? 'match win' : 'match done'); save();
   endWinner = w; endT = 3.4; endMsg = false;                 // the game keeps running for a moment so you see the final K.O.
-  sfx('pickup');
+  sound.stopBGM(0.6); sfx(won ? 'victory' : 'gameOver');
 }
 function finishMatch() {
   endT = 0;
@@ -8319,7 +8640,8 @@ function syncSettings() {
   el('sens').value = settings.sens; el('ice').value = settings.ice;
   el('feed').style.display = settings.feed ? 'flex' : 'none';
   el('radar').style.display = settings.radar ? 'block' : 'none';
-  if (master) master.gain.value = 0.9 * settings.vol;
+  sound.setMasterVolume(settings.vol); sound.setMusicVolume(settings.music);
+  el('music').value = settings.music; el('music-v').textContent = Math.round(settings.music * 100) + '%';
   syncPro();
 }
 const BIND_LABELS = [['map', 'Map on / off'], ['chat', 'Chat (online)'], ['forward', 'Move forward'], ['back', 'Move back'], ['left', 'Move left'], ['right', 'Move right'], ['jump', 'Jump'], ['sprint', 'Sprint'], ['squat', 'Squat'], ['attack', 'Attack / fire'], ['aim', 'Aim / scope (mouse)'], ['scope', 'Scope / aim (key)'], ['cycle', 'Next weapon'], ['cycleBack', 'Previous weapon'], ['lastw', 'Swap to last weapon'], ['spatula', 'Quick spatula'], ['shove', 'Shove'], ['kick', 'Kick'], ['taunt', 'Emote 1'], ['emote2', 'Emote 2'], ['emote3', 'Emote 3'], ['dash', 'Dash (Ninja mode)'], ['slot1', 'Weapon slot 1'], ['slot2', 'Weapon slot 2'], ['slot3', 'Weapon slot 3'], ['reload', 'Reload']];
@@ -8418,6 +8740,7 @@ el('fov').oninput = e => { settings.fov = +e.target.value; syncSettings(); };
 el('cdist').oninput = e => { settings.camDist = +e.target.value; syncSettings(); };
 el('shake').oninput = e => { settings.shake = +e.target.value; syncSettings(); };
 el('vol').oninput = e => { settings.vol = +e.target.value; syncSettings(); };
+el('music').oninput = e => { settings.music = +e.target.value; syncSettings(); };
 
 // custom level
 el('c-themes').innerHTML = Object.keys(CUSTOM_THEMES).map(k => '<button class="opt" id="ct-' + k + '">' + k[0].toUpperCase() + k.slice(1) + '</button>').join('');
@@ -8586,8 +8909,8 @@ el('sc-delete').onclick = () => {
   });
 };
 for (const id of ['sc-old', 'sc-new', 'sc-del', 'sc-rpw', 'au-code-in']) { el(id).onkeydown = e => e.stopPropagation(); el(id).onkeyup = e => e.stopPropagation(); }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cloudBeacon(); else if (actx && actx.state !== 'running') { try { actx.resume(); } catch (e) { /* x */ } } });
-for (const ev of ['pointerdown', 'touchend']) document.addEventListener(ev, () => { if (actx && actx.state !== 'running') { try { actx.resume(); } catch (e) { /* x */ } } }, { passive: true });     // a call or Siri can stop the sound: the next touch brings it back
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') cloudBeacon(); else sound.resume(); });
+// a call or Siri can stop the sound: the gesture listeners in the sound section resume it on the next touch / key
 window.addEventListener('pagehide', cloudBeacon);
 async function verifyLogin() {                                       // at start-up: is the saved login still good, and is the cloud save newer than this device's copy?
   if (!acct.user) return;
@@ -8757,7 +9080,7 @@ function load() {
     if (d.set) { const t = d.set, n = (k, a, b) => { if (Number.isFinite(t[k])) settings[k] = clamp(t[k], a, b); };
       if (['low', 'medium', 'high'].includes(t.quality)) settings.quality = t.quality;
       if (CROSS_COLORS.includes(t.crossColor)) settings.crossColor = t.crossColor; n('crossSize', 0.6, 1.8);
-      n('fov', 55, 105); n('camDist', 0.6, 1.6); n('shake', 0, 1.5); n('vol', 0, 1);
+      n('fov', 55, 105); n('camDist', 0.6, 1.6); n('shake', 0, 1.5); n('vol', 0, 1); n('music', 0, 1);
       for (const k of ['invertY', 'dmgNums', 'feed', 'radar', 'scenery', 'fps', 'killcam', 'autoSwitch', 'chat', 'autoRes', 'skyFx', 'uiSounds', 'reduceMotion', 'menuBattle']) if (typeof t[k] === 'boolean') settings[k] = t[k];
       if ([0, 30, 60, 120].includes(t.fpsCap)) settings.fpsCap = t.fpsCap;
       if (['KeyZ', 'KeyX', 'KeyC', 'KeyV'].includes(t.scopeKey)) settings.binds.scope = t.scopeKey;
@@ -9683,7 +10006,7 @@ document.addEventListener('keydown', e => {
     if (e.code === 'AltLeft') e.preventDefault();
     if (settings.scopeMode === 'toggle') scopeToggled = !scopeToggled; else scopeHeld = true;
   }
-  if (e.code === 'KeyM') { muted = !muted; toast(muted ? 'Sound off' : 'Sound on'); }
+  if (e.code === 'KeyM') { sound.setMute(!sound.muted); toast(sound.muted ? 'Sound off' : 'Sound on'); }
   if (is('chat', e.code) && ui === 'play' && net && net.started && settings.chat && !player.trapT) { if (chatOpen()) { e.preventDefault(); return; } }
   if (is('map', e.code) && ui === 'play') { settings.radar = !settings.radar; syncSettings(); save(); toast(settings.radar ? 'Map on' : 'Map off'); }
   if (!locked || player.dead || player.trapT > 0) return;
@@ -9756,7 +10079,7 @@ function doDash(f, ix, iz) {                          // ninja mode: a quick bur
   f.vel.x = ix / l * 24; f.vel.z = iz / l * 24; if (f.grounded) f.vel.y = Math.max(f.vel.y, 1.2);
   if (cfg.mode === 'pillars') f.dashAirT = 0.45; f.dashN--; f.dashCd = DASH_CD; if (f.dashN === DASH_MAX - 1) f.dashRegen = 0;
   puff(V(f.pos.x, f.pos.y + 0.9, f.pos.z), 0xcfe3ff, 10, 4); puff(V(f.pos.x - ix / l, f.pos.y + 0.9, f.pos.z - iz / l), 0xffffff, 5, 2);
-  sfx('swing'); return true;
+  sfxAt('dash', f.pos); return true;
 }
 function dashTick(f, dt) {
   f.dashCd = Math.max(0, f.dashCd - dt);
@@ -10466,6 +10789,7 @@ function frame(now) {
     if (SHOW.on) showTick(dt);
   } catch (e) { acc = 0; crashNote('game', e); }
   try { trackSlot(); updateAimRing(dt); updateFx(dt); updateHud(dt); updateBackdrop(dt); } catch (e) { crashNote('visuals', e); }
+  try { musicTick(); } catch (e) { /* music is a bonus */ }
   fpsN++; if (now - fpsT0 >= 500) { if (settings.fps) el('fps').textContent = Math.round(fpsN * 1000 / (now - fpsT0)) + ' FPS' + (net && net.started && net.ping !== undefined ? ' \u00b7 ' + net.ping + ' ms' : ''); fpsN = 0; fpsT0 = now; }
   if (devOpen && now - devT > 250) { devT = now; try { devUpdate(); } catch (e) { devLog('dev', e); } }
   try { renderer.render(scene, camera); } catch (e) { crashNote('render', e); }
@@ -10555,7 +10879,6 @@ function skyFxTick(dt) {
     setTimeout(() => { L.on = false; }, 600); setTimeout(() => { try { sfx('thunder'); } catch (e) { /* ok */ } }, 500 + Math.random() * 900);
   }
 }
-SFX.thunder = () => { noise(1.4, 0.55, 420); noise(0.5, 0.35, 900, 0.1); tone(70, 28, 1.2, 'sine', 0.3); };
 
 /* ---- bug report: what a tester pastes to the maker (no passwords, emails or names) ---- */
 function bugReport() {
@@ -10623,11 +10946,16 @@ try {
   if (menu && menu.addEventListener) {
     menu.addEventListener('pointerdown', e => {
       const b = e.target && e.target.closest ? e.target.closest('button') : null; if (!b || b.disabled) return;
-      if (settings.uiSounds) { initAudio(); sfx('click'); }
+      if (settings.uiSounds) { initAudio(); sfx('click', { ui: true }); }
       if (settings.reduceMotion || !b.matches || !b.matches('.big,.opt,.stabs button,#back,#next,.hbtn')) return;
       const r = b.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2, s = document.createElement('span');
       s.className = 'rip'; s.style.cssText = 'width:' + d + 'px;height:' + d + 'px;left:' + (e.clientX - r.left - d / 2) + 'px;top:' + (e.clientY - r.top - d / 2) + 'px';
       if (getComputedStyle(b).position === 'static') b.style.position = 'relative'; b.style.overflow = 'hidden'; b.appendChild(s); setTimeout(() => { try { s.remove(); } catch (x) { /* ok */ } }, 600);
+    });
+    menu.addEventListener('pointerover', e => {         // a soft blip when the mouse moves onto a button
+      if (e.pointerType !== 'mouse' || !settings.uiSounds) return;
+      const b = e.target && e.target.closest ? e.target.closest('button') : null; if (!b || b.disabled || (e.relatedTarget && b.contains(e.relatedTarget))) return;
+      sfx('hover', { ui: true });
     });
     menu.addEventListener('pointermove', e => { if (settings.reduceMotion) return; menu.style.setProperty('--mx', ((e.clientX / window.innerWidth - 0.5) * 2).toFixed(3)); menu.style.setProperty('--my', ((e.clientY / window.innerHeight - 0.5) * 2).toFixed(3)); });
   }
