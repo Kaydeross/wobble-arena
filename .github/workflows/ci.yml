@@ -36,3 +36,8 @@ jobs:
       - run: npm run test:godot
       - run: npm run test:godot-netguest
       - run: npm run test:godot-music
+      - run: npm run test:godot-quests
+      - run: npm run test:godot-modes
+      - run: npm run test:godot-whats-new
+      - run: npm run test:godot-flow
+      - run: npm run test:godot-ui
