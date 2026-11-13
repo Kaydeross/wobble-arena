@@ -79,6 +79,7 @@ var last_hit_time := -99.0
 var weapon := "spatula"          ## "" = nothing (dead)
 var slots: Array = [null, null, null]   ## each null or {key, ammo, mag (-1 = no magazine), pend}
 var slot := -1                   ## -1 = the default spatula
+var spatula_lock := false        ## the player chose the spatula on purpose: pickups do not pull a weapon into the hand (tuned matches)
 var return_slot := -1            ## quick melee: slot to go back to (-1 = none)
 var reloading := false
 var rl_t := 0.0
