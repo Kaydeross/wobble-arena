@@ -221,7 +221,20 @@ func _flow() -> void:
 	var arcade_taps := [0]
 	hub.arcade_requested.connect(func() -> void: arcade_taps[0] += 1)
 	hub.arcade_b.pressed.emit()
-	check(arcade_taps[0] == (1 if ready else 0), "Arcade %s" % ("opens" if ready else "does nothing while it is coming soon"))
+	check(arcade_taps[0] == 0 and hub.arc_step == (1 if ready else 0), "Arcade %s" % ("opens the class step first" if ready else "does nothing while it is coming soon"))
+	if ready:
+		check(hub.arc_class_box.visible and not hub.main_view.visible and hub.title_l.text == "Pick your character", "the class step replaces the cards")
+		hub.arcade_next()
+		check(hub.arc_step == 2 and hub.arc_diff_box.visible and hub._diff_cards.size() == 3, "then the difficulty step with three cards")
+		for d: String in ["easy", "normal", "nightmare"]:
+			var c: Button = hub._diff_cards[d]
+			hub.pick_diff(d)
+			check(c.button_pressed and hub.arc_diff == d and root.get_node("Settings").get_value("arcade_diff") == d, "%s is picked and remembered" % d)
+		hub.arcade_next()
+		check(arcade_taps[0] == 1, "Start on the difficulty step starts the run")
+		hub.back()
+		hub.back()
+		check(hub.arc_step == 0 and hub.main_view.visible, "Back twice returns to the cards")
 	# Classic: the pre-match card
 	var got: Array = []
 	hub.start_requested.connect(func(o: Dictionary) -> void: got.append(o))

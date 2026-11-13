@@ -27,6 +27,7 @@ const FRAME := 1.0 / 60.0
 var shot := "title"
 var out := "shot.png"
 var pick_arg := ""             ## --pick KEY: the Locker card to pick (locker-* shots), instead of the default one
+var diff_arg := "nightmare"    ## --diff easy|normal|nightmare: the Arcade difficulty of the arcade-* shots
 var frames := 0
 var world: Node
 var i := 0
@@ -37,6 +38,7 @@ func _initialize() -> void:
 		if a[k] == "--shot" and k + 1 < a.size(): shot = a[k + 1]
 		elif a[k] == "--out" and k + 1 < a.size(): out = a[k + 1]
 		elif a[k] == "--pick" and k + 1 < a.size(): pick_arg = a[k + 1]
+		elif a[k] == "--diff" and k + 1 < a.size(): diff_arg = a[k + 1]
 		elif a[k] == "--lang" and k + 1 < a.size(): TranslationServer.set_locale(a[k + 1])   # e.g. ja, fr
 	process_frame.connect(_start, CONNECT_ONE_SHOT)
 
@@ -90,14 +92,19 @@ func _start() -> void:
 	if shot.begins_with("dlc-"):
 		var sv: Node = root.get_node("Save")
 		sv.coins = 800 if shot == "dlc-hub-poor" else 2300
-		if shot in ["dlc-hub", "dlc-prematch"]: sv.dlc["owned"] = true
+		if shot in ["dlc-hub", "dlc-prematch", "dlc-arc-class", "dlc-arc-diff"]: sv.dlc["owned"] = true
+		if shot == "dlc-arc-diff":
+			sv.dlc["arcade_best"]["easy"] = 6
+			sv.dlc["arcade_best"]["normal"] = 4
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		m.auto_intro = false
 		root.add_child(m)
 		m.open_hub()
 		if shot == "dlc-prematch": m.hub.open_pre()
 		if shot == "dlc-code": m.hub.open_code()
-		frames = 40
+		if shot == "dlc-arc-class": m.hub.show_arcade(1)
+		if shot == "dlc-arc-diff": m.hub.show_arcade(2)
+		frames = 90 if shot == "dlc-arc-class" else 40
 		process_frame.connect(_wait)
 		return
 	if shot == "news":                                    # the What's new card over the title
@@ -198,7 +205,7 @@ func _arcade_start() -> void:
 	_settings().set_value("touch_lefty", false)
 	root.get_node("Save").dlc["owned"] = true
 	var AM: GDScript = load("res://dlc/construction/arcade_manager.gd")
-	world = AM.call("launch", 4242)
+	world = AM.call("launch", 4242, diff_arg)
 	var arc = world.arcade
 	arc.stage = {"arcade-engineer": 1, "arcade-pm": 4, "arcade-client": 5, "arcade-client2": 5, "arcade-client3": 5, "arcade-clear": 1, "arcade-victory": 5, "arcade-failed": 1}.get(shot, 0)
 	arc.fixed_seed = 777

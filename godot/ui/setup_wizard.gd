@@ -34,6 +34,7 @@ const PAD := 8                  ## room round a card grid inside its scroll area
 const TEXT_PATH := "res://data/extra/wizard.json"
 
 var page := 0
+var class_only := false     ## set before add_child: only the Character page (no header, footer or other pages); the Arcade hub embeds it (dlc/construction/construction_hub.gd)
 var map_id := "arena"
 var mode_id := "classic"
 var dyn := "random"
@@ -257,7 +258,7 @@ func save() -> void:
 # ---------------- navigation ----------------
 
 func go(i: int) -> void:
-	page = clampi(i, 0, pages.size() - 1)
+	page = P_CHAR if class_only else clampi(i, 0, pages.size() - 1)
 	_sync_classes()
 	for k in pages.size():
 		(pages[k] as Control).visible = k == page
@@ -348,6 +349,9 @@ func _ready() -> void:
 	_build_start(pages[P_START])
 	_build_foot()
 	JuicyButton.attach_all(self)
+	if class_only:
+		for n in ["Head", "Foot"]: get_node(n).visible = false
+		set_process_unhandled_input(false)
 	go(page)
 
 func _bake() -> void:

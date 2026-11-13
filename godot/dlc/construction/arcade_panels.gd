@@ -151,9 +151,9 @@ static func intro(m: ArcadeManager, d: Dictionary, on_start: Callable) -> Contro
 	col.add_child(nl)
 	_line(box, "Tagline", TranslationServer.translate(str(d["tagline"])), 20)
 	var tag := TranslationServer.translate("Final boss") if m.is_last_stage() else (TranslationServer.translate("Boss fight") if bool(d.get("boss", false)) else TranslationServer.translate("Crew fight"))
-	_line(box, "Tag", "%s · %s" % [tag, TranslationServer.translate("Lives %d") % m.lives], 18, false, UiTheme.ACCENT)
+	_line(box, "Tag", "%s · %s · %s" % [tag, TranslationServer.translate(ConstructionHub.diff_name(m.diff)), TranslationServer.translate("Lives %d") % m.lives], 18, false, UiTheme.ACCENT)
 	if m.first_clear():
-		_line(box, "Reward", TranslationServer.translate("First clear: %d coins") % (int(d.get("coin_reward", 0)) + int(d.get("first_clear_bonus", 0))), 18)
+		_line(box, "Reward", TranslationServer.translate("First clear: %d coins") % m.stage_coins(d), 18)
 	_buttons(box, _button(TranslationServer.translate("Start"), "Start", true, on_start))
 	return p
 
@@ -202,10 +202,13 @@ static func won(m: ArcadeManager, on_quit: Callable) -> Control:
 	_line(box, "Sub", TranslationServer.translate("The Client signed off. Every tradie is back on smoko."), 20)
 	_coin_row(box, TranslationServer.translate("+%d coins") % m.run_coins)
 	var hat := TranslationServer.translate(LockerData.hat_name(ArcadeManager.FOREMAN_HAT))
-	if bool(m.victory.get("first", false)):
+	if bool(m.victory.get("hat_first", false)):
 		_line(box, "Hat", TranslationServer.translate("New hat: %s. Pick it in the Walldrobe") % hat, 19, false, UiTheme.GOOD)
-		_line(box, "Bonus", TranslationServer.translate("Includes %d victory bonus coins") % int(m.victory.get("coins", 0)), 17)
-	else:
+	elif bool(m.victory.get("hat_owned", false)):
 		_line(box, "Hat", TranslationServer.translate("Your %s is already in the Walldrobe") % hat, 19)
+	else:
+		_line(box, "Hat", TranslationServer.translate("Win on Normal or Nightmare for the Site Foreman hat"), 19, false, UiTheme.ACCENT)
+	if bool(m.victory.get("first", false)):
+		_line(box, "Bonus", TranslationServer.translate("Includes %d victory bonus coins") % int(m.victory.get("coins", 0)), 17)
 	_buttons(box, _button(TranslationServer.translate("Back to title"), "Quit", true, on_quit))
 	return p

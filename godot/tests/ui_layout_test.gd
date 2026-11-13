@@ -51,14 +51,14 @@ const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set
 	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
 	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1", "s2", "goals",
 	"a-guest", "a-login", "a-reset", "a-code", "a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict",
-	"dlc-locked", "dlc-owned", "dlc-pre", "dlc-code"]
+	"dlc-locked", "dlc-owned", "dlc-pre", "dlc-code", "dlc-arc-class", "dlc-arc-diff"]
 const SIGNED := ["a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
 const MIN_GAP_PT := 8.0      ## pt: the least space between two interactive controls (congestion pass)
 const MAX_BAR := 4           ## the most buttons in one bar (footer, header, card row)
 ## Languages beyond English (the longest, and the shortest, text): on these screens at LANG_CASES
 const LANG_SCREENS := ["title", "online", "rooms", "w0", "w1", "w2", "w3", "w4", "l0", "l3", "s0", "goals", "set-controls", "set-graphics",
-	"set-gameplay", "set-about", "help", "pause", "pause-help", "host", "host-rules", "lobby", "a-guest", "dlc-locked", "dlc-owned", "dlc-pre", "dlc-code"]
+	"set-gameplay", "set-about", "help", "pause", "pause-help", "host", "host-rules", "lobby", "a-guest", "dlc-locked", "dlc-owned", "dlc-pre", "dlc-code", "dlc-arc-class", "dlc-arc-diff"]
 const LANG_CASES := [
 	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]], [Vector2(812, 375), [44.0, 0.0, 44.0, 21.0]], [Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
 	[Vector2(926, 428), [47.0, 0.0, 47.0, 21.0]], [Vector2(1180, 820), [0.0, 24.0, 0.0, 20.0]],
@@ -205,14 +205,18 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	elif scr.begins_with("dlc-"):        # the Construction hub: locked, unlocked, the Classic pre-match card, the code sheet
 		var sv: Node = root.get_node("Save")
 		sv.coins = 2300
-		sv.dlc["owned"] = scr == "dlc-owned" or scr == "dlc-pre"
+		sv.dlc["owned"] = scr in ["dlc-owned", "dlc-pre", "dlc-arc-class", "dlc-arc-diff"]
+		sv.dlc["arcade_best"]["normal"] = 3
 		main.open_hub()
 		if scr == "dlc-pre": main.hub.open_pre()
+		if scr == "dlc-arc-class": main.hub.show_arcade(1)
+		if scr == "dlc-arc-diff": main.hub.show_arcade(2)
 		if scr == "dlc-code":
 			main.hub.open_code()
 			over = main.hub.code_sheet.card; over_col = main.hub.code_sheet.card
 		else:
 			over = main.hub; over_col = main.hub.col
+			if scr == "dlc-arc-class": over_scroll = main.hub.arc_wizard.scroll_of(3)    # the class cards scroll (DragScroll): its rows are checked as a list
 	elif scr.begins_with("intro"):
 		main.intro.open()
 		main.intro.go(int(scr.substr(5)))

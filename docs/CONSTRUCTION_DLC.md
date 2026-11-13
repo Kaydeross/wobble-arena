@@ -100,15 +100,15 @@ Screenshots: `godot --path godot --resolution 1280x720 --script res://tests/site
 ## The DLC front end (Unit C: unlock, hub, title banner)
 
 - **Entry**: a wide hazard-tape banner on the title (below Walldrobe / Shop / Goals, drawn in code, `dlc/construction/construction_style.gd`) opens the hub (`construction_hub.gd`). Construction is no longer a game type card in the setup wizard; the mode id and `ModeRules.OFFLINE_ONLY` are unchanged.
-- **Unlock** (`dlc_unlock.gd`, state in `dlc_save.gd`): 1500 coins (`DlcUnlock.PRICE`) or the developer code. Save blob key `dlc` = `{owned, arcade_best, arcade_clears, bonus}`, written only once the DLC is touched (old saves load as locked; the web game ignores the key). The code is never stored or logged: only `sha256("wobblers-arena-dlc-v1:" + code)` is compared with `DEV_HASH`. A right code unlocks the DLC, every outfit, emote and class (secret ones too), pays 5000 coins once and adds `dev` to the wallet codes; three wrong tries start a 1.5 s cooldown. The code field is on the hub (Enter code) and in Settings > About (tap the version line 7 times).
+- **Unlock** (`dlc_unlock.gd`, state in `dlc_save.gd`): 1500 coins (`DlcUnlock.PRICE`) or the developer code. Save blob key `dlc` = `{owned, arcade_best{easy,normal,nightmare}, arcade_clears{easy,normal,nightmare}, bonus}`, written only once the DLC is touched (old saves load as locked; the web game ignores the key). The code is never stored or logged: only `sha256("wobblers-arena-dlc-v1:" + code)` is compared with `DEV_HASH`. A right code unlocks the DLC, every outfit, emote and class (secret ones too), pays 5000 coins once and adds `dev` to the wallet codes; three wrong tries start a 1.5 s cooldown. The code field is on the hub (Enter code) and in Settings > About (tap the version line 7 times).
 - **Hub**: Classic (pre-match card: bots 1..7 default 7, bot skill, site seed Random / Re-roll, Start) and Arcade ("Coming soon" until `res://dlc/construction/arcade_manager.gd` exists; the hub emits `arcade_requested` for the arcade manager to hook). Start writes the Settings keys `mode = construction`, `bots`, `difficulty`, `offline_map` (`sitegen` when that map is registered, else `siteyard`) and `site_seed` (0 = a new random site every match), then calls `main.play_offline({...})`.
 - Tests: `npm run test:godot-dlc-ui` (`godot/tests/dlc_ui_test.gd`), plus the `dlc-*` screens in `ui_layout_test.gd`.
 
 ## Unit D: the Arcade boss rush
 
-**Flow.** Title > Construction > Arcade card (enabled once `dlc/construction/arcade_manager.gd` exists and the DLC is owned) > `main.play_arcade()` >
+**Flow.** Title > Construction > Arcade card (enabled once `dlc/construction/arcade_manager.gd` exists and the DLC is owned) > **class step** (the Character page of the setup wizard, `SetupWizard.class_only`: only owned classes, the last class preselected, six stat bars, scrolls with DragScroll) > **difficulty step** (Easy / Normal / Nightmare cards, green / amber / red, best result per difficulty, Start) > `main.play_arcade()` >
 `ArcadeManager.launch()` builds a World with `world.arcade` set. `start_run(seed)` picks the run seed (the stage sites are `base + map_seed_offset`, +1009 per retry)
-and 3 lives. Per stage: **intro card** (stage no., name, tagline, the boss portrait in its table colour, Start; the match is frozen behind it) > fight > **stage clear
+and the difficulty's lives (5 / 4 / 3). Per stage: **intro card** (stage no., name, tagline, the boss portrait in its table colour, Start; the match is frozen behind it) > fight > **stage clear
 card** (name, time, K.O.s, coins, Next stage / Quit run) or **stage failed card** (lives left, Retry stage / Quit run) > after the sixth stage the **victory card**.
 Dying (or falling out) ends the attempt after 1.8 s, costs a life and retries the SAME stage on a fresh site; no lives left = **run over** card. Stage clear = the boss is
 down (stages with `boss: true`; the crew that is left gives up) or every enemy is (stage 1). Enemies that go down never respawn. Quit run = back to the title.
@@ -116,6 +116,34 @@ down (stages with `boss: true`; the crew that is left gives up) or every enemy i
 **Rewards.** `coin_reward + first_clear_bonus` is paid ONCE per stage, the first time it is cleared (`Save.dlc.arcade_clears`); a replay pays only the normal K.O. coins.
 `arcade_best` = furthest stage cleared. The victory (after The Client) pays 2000 bonus coins once and unlocks the exclusive **Site Foreman Hard Hat** (`foreman`, rare;
 `locker.json` `extra_hats` + `exclusive_hats`, listed by `LockerData.hats()` only after the victory; remembered as the pseudo stage id `_victory` in `arcade_clears`).
+
+**Class and difficulty pick.** The class step writes the Settings key `class` exactly like the setup wizard does (so the pick also becomes the normal class), the difficulty step writes `arcade_diff` (default `normal`). `main.play_arcade` reads both and calls `ArcadeManager.launch(0, diff, class)`: `World.player_class` keeps the class for every stage and retry of the run. The Classic card is unchanged. The run strip of the HUD names the difficulty ("Normal - Stage 2 / 6 - Lives 4"), the intro card shows it too.
+
+**Difficulties** (`stages.json` top-level `difficulties`; Nightmare is the table exactly as it was before the difficulties existed). `ArcadeManager._dress` / `enemy_hp` apply them to every enemy (summoned and creeping tradies too), `StageEvents.setup` scales every `every` / hold time, `start_run` sets the lives, `scaled()` the coins:
+
+| | hp x | hp floor (crew / boss) | damage x | speed x | events x slower | lives | coins x |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Easy | 0.4 | 0.8 / 1.5 | 0.35 | 0.85 | 1.5 | 5 | 0.6 |
+| Normal | 0.7 | 0.9 / 1.5 | 0.65 | 1.0 | 1.15 | 4 | 1.0 |
+| Nightmare | 1.0 | none | 1.0 | 1.0 | 1.0 | 3 | 1.5 |
+
+The result is x the table's hp, never below the floor and never above the table's own value; boss phases (66 / 33 %) are unchanged. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
+
+**Difficulty tuning.** `godot/tests/arcade_balance.gd` (not in `npm test`, about 5 minutes per 8 seeds of two difficulties; run the difficulties in parallel processes): `godot --headless --path godot --script res://tests/arcade_balance.gd -- --no-save --seeds=8 --diffs=easy --stages=1,2,3`. The scripted melee player of `arcade_test.gd` (the starting Wobbler, normal damage, no healing, one life, 100 s limit) fights each stage once per seed against the table's own bot skills. Wins out of the seeds, and the player's average health left on a win:
+
+| Stage | Easy (8 seeds) | Normal (8 seeds) | Nightmare (6 seeds) |
+| --- | --- | --- | --- |
+| 1 Tradies | 7/8, 75 % hp left | 6/8, 51 % | 3/6, 22 % |
+| 2 Engineer | 8/8, 69 % | 4/8, 14 % | 2/6, 37 % |
+| 3 Designer | 7/8, 91 % | 8/8, 67 % | 6/6, 46 % |
+| 4 Supervisor | 6/8, 39 % | 5/8, 36 % | 2/6, 52 % |
+| 5 Project Manager | 6/8, 57 % | 6/8, 46 % | 3/6, 60 % |
+| 6 The Client | 6/8, 54 % | 3/8, 69 % | 1/6, 100 % |
+| All stages | 40/48 (83 %) | 32/48 (67 %) | 17/36 (47 %) |
+
+Easy is beatable on every stage including the final boss (6/8), Normal is a fair fight (about two wins in three, the Engineer and the final boss the hardest), Nightmare is the old balance (the final boss 1/6). Before tuning (Easy damage 0.6 / Normal 0.85) the same player won only 2/6 on Easy stage 2 and 0/6 on Normal stage 2, hence the lower damage multipliers. The first Easy / Normal pass used the lead's starting numbers (Easy 0.6, Normal 0.85 damage); the Easy speed went from 0.9 to 0.85.
+
+The scripted player is a crude yardstick (it only walks at the nearest enemy and swings, never dodges, and is weak against several attackers and the Engineer's nail gun, strong against slow bosses), so use the numbers for the ordering Easy > Normal > Nightmare and not as absolute difficulty. The deterministic checks are in `arcade_test.gd`: the tuned multipliers, Easy < Normal < Nightmare health for every enemy and boss, lives, per-difficulty coins and the hat rule.
 
 **What the stage table drives** (`ArcadeManager._dress`): each bot's name, skin, hat, colour, tool (`give_weapon`, topped up every 0.5 s so tools never run dry), `hp` (x the
 Health setting, via `cls_hp`), `dmg_scale` (x the skill's damage), `speed` (x the skill's speed) and `difficulty` (its own `BotBrain`; `bot_brain.gd` itself is untouched).

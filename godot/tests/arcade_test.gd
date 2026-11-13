@@ -55,6 +55,8 @@ func _run() -> void:
 	await _events()
 	await _phases()
 	await _replay_and_reload()
+	await _difficulties()
+	await _class_pick()
 	await _classic_after(nodes0)
 	print("ARCADE %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
 	quit(0 if fails == 0 else 1)
@@ -62,8 +64,8 @@ func _run() -> void:
 # ---------------- helpers ----------------
 
 ## A world on a new Arcade run (auto_run off: the test ticks it).
-func _launch(stage := 0, easy := true, dmg := 15.0) -> Node:
-	var w: Node = AM.call("launch", 4242)
+func _launch(stage := 0, easy := true, dmg := 15.0, diff := "nightmare", cls := "") -> Node:
+	var w: Node = AM.call("launch", 4242, diff, cls)
 	var arc = w.arcade
 	if easy: arc.difficulty_override = "easy"
 	arc.player_dmg = dmg
@@ -164,7 +166,17 @@ func _gate() -> void:
 	var got := [0]
 	hub.arcade_requested.connect(func() -> void: got[0] += 1)
 	hub.arcade_b.pressed.emit()
-	check(got[0] == 1, "the card emits arcade_requested")
+	check(got[0] == 0 and hub.arc_step == 1 and hub.arc_class_box.visible, "the card opens the class step first")
+	hub.arcade_next()
+	check(got[0] == 0 and hub.arc_step == 2 and hub.arc_diff_box.visible, "Next opens the difficulty step")
+	hub.pick_diff("easy")
+	check(str(root.get_node("Settings").get_value("arcade_diff")) == "easy", "the pick is remembered (Settings arcade_diff)")
+	hub.arcade_next()
+	check(got[0] == 1, "Start emits arcade_requested")
+	hub.back()
+	check(hub.arc_step == 1, "Back goes to the class step")
+	hub.back()
+	check(hub.arc_step == 0 and hub.main_view.visible, "Back again returns to the cards")
 	_sv().dlc["owned"] = false
 	hub.refresh()
 	check(hub.arcade_b.disabled, "locked: the Arcade card is disabled")
@@ -227,11 +239,11 @@ func _full_run() -> void:
 		check(arc.state == "clearing", "stage %d: clearing (%s)" % [si + 1, arc.state])
 		check(not arc.hud.boss_visible(), "stage %d: boss bar gone once the boss is down" % (si + 1))
 		for k in int((arc.CLEAR_DELAY + 0.2) / FRAME): w.tick(FRAME)
-		var want_coins: int = int(d["coin_reward"]) + int(d["first_clear_bonus"])
+		var want_coins: int = arc.stage_coins(d)
 		check(int(arc.last["coins"]) == want_coins, "stage %d pays %d coins (%s)" % [si + 1, want_coins, arc.last["coins"]])
 		check(sv.coins - c0 >= want_coins, "stage %d coins in the wallet (+%d)" % [si + 1, sv.coins - c0])
-		check(int(sv.dlc["arcade_best"]) == si + 1, "arcade_best = %d (%s)" % [si + 1, sv.dlc["arcade_best"]])
-		check((sv.dlc["arcade_clears"] as Array).has(str(d["id"])), "%s is in arcade_clears" % d["id"])
+		check(DlcSave.best(sv.dlc, "nightmare") == si + 1, "arcade_best = %d (%s)" % [si + 1, sv.dlc["arcade_best"]])
+		check(DlcSave.has_cleared(sv.dlc, str(d["id"]), "nightmare") and not DlcSave.has_cleared(sv.dlc, str(d["id"]), "easy"), "%s is in the Nightmare arcade_clears only" % d["id"])
 		if si < 5:
 			var card := _ui(w, "ArcadeClear")
 			check(card != null and arc.state == "cleared", "stage %d: the clear card" % (si + 1))
@@ -242,7 +254,7 @@ func _full_run() -> void:
 		else:
 			check(_ui(w, "ArcadeVictory") != null and arc.state == "won", "the victory card after The Client (%s)" % arc.state)
 	check(seeds.size() == 6, "six different sites (%d)" % seeds.size())
-	check(not (sv.dlc["arcade_clears"] as Array).is_empty() and (sv.dlc["arcade_clears"] as Array).has("_victory"), "victory remembered")
+	check(DlcSave.won_diff(sv.dlc, "nightmare"), "victory remembered")
 	check(_hats().has("foreman"), "the Site Foreman hat is unlocked")
 	check(arc.victory.get("hat", "") == "foreman" and bool(arc.victory["first"]), "victory grants the hat once (%s)" % [arc.victory])
 	print("FULL RUN stages=%d coins=%d time=%.0fs" % [arc.history.size(), arc.run_coins, arc.run_time])
@@ -291,7 +303,7 @@ func _lives() -> void:
 	check(_ui(w, "ArcadeFailed") != null, "the failed card shows")
 	check(arc.stage == 1, "still on stage 2")
 	check(sv.coins == coins0 or sv.coins - coins0 < 50, "no stage coins for a failure (+%d)" % (sv.coins - coins0))
-	check(int(sv.dlc.get("arcade_best", 0)) == 0, "arcade_best unchanged by a failure")
+	check(DlcSave.best(sv.dlc, "nightmare") == 0, "arcade_best unchanged by a failure")
 	_press(_ui(w, "ArcadeFailed"), "Retry")
 	await _wait_frames(3)
 	check(arc.stage == 1 and arc.attempt == 1 and arc.lives == 2, "retry: stage 2 again, attempt %d, lives %d" % [arc.attempt, arc.lives])
@@ -469,17 +481,17 @@ func _replay_and_reload() -> void:
 	check(_play(w) >= 0.0, "the Client falls")
 	for k in int(2.0 / FRAME): w.tick(FRAME)
 	check(arc.state == "won" and bool(arc.victory["first"]), "first victory")
-	var want: int = 500 + 1500 + 2000
+	var want: int = arc.scaled(500) + arc.scaled(1500) + arc.scaled(2000)
 	check(sv.coins - c0 >= want and sv.coins - c0 < want + 60, "stage + first clear + victory coins paid once (+%d)" % (sv.coins - c0))
 	check(_hats().has("foreman"), "hat granted")
 	# save + reload through the blob
 	var blob: Dictionary = sv.get_blob()
 	var dlc: Dictionary = blob["dlc"]
-	check(int(dlc["arcade_best"]) == 6 and (dlc["arcade_clears"] as Array).has("the_client") and (dlc["arcade_clears"] as Array).has("_victory"), "blob carries arcade_best / arcade_clears %s" % [dlc])
+	check(DlcSave.best(dlc, "nightmare") == 6 and DlcSave.has_cleared(dlc, "the_client", "nightmare") and DlcSave.won_diff(dlc, "nightmare"), "blob carries arcade_best / arcade_clears %s" % [dlc])
 	sv.reset()
 	check(not _hats().has("foreman"), "a fresh profile does not list the Site Foreman hat")
 	check(sv.apply_blob(JSON.parse_string(JSON.stringify(blob))), "blob reloads")
-	check(int(sv.dlc["arcade_best"]) == 6 and (sv.dlc["arcade_clears"] as Array).has("the_client"), "arcade_best / arcade_clears survive a reload")
+	check(DlcSave.best(sv.dlc, "nightmare") == 6 and DlcSave.has_cleared(sv.dlc, "the_client", "nightmare"), "arcade_best / arcade_clears survive a reload")
 	check(_hats().has("foreman") and sv.set_hat("foreman"), "the hat is listed and wearable after the reload")
 	await _free_world(w)
 	# the same stage again: no coins, no second hat
@@ -492,9 +504,156 @@ func _replay_and_reload() -> void:
 	check(arc.state == "won" and not bool(arc.victory["first"]) and int(arc.victory["coins"]) == 0, "second victory grants nothing new (%s)" % [arc.victory])
 	check(int(arc.last["coins"]) == 0 and not bool(arc.last["first"]), "replaying a cleared stage pays no stage coins")
 	check(sv.coins - c0 < 60, "the wallet only gets K.O. coins (+%d)" % (sv.coins - c0))
-	check((sv.dlc["arcade_clears"] as Array).count("the_client") == 1 and (sv.dlc["arcade_clears"] as Array).count("_victory") == 1, "no duplicate clears")
+	check(((sv.dlc["arcade_clears"] as Dictionary)["nightmare"] as Array).count("the_client") == 1 and ((sv.dlc["arcade_clears"] as Dictionary)["nightmare"] as Array).count("_victory") == 1, "no duplicate clears")
 	check(_ui(w, "ArcadeVictory").find_child("Quit", true, false) != null, "the victory card has a way back to the title")
 	await _free_world(w)
+
+# ---------------- 6b. difficulties ----------------
+
+func _difficulties() -> void:
+	var sv := _sv()
+	var tab: Dictionary = AM.call("difficulties")
+	check(tab.keys() == ["easy", "normal", "nightmare"], "three difficulties (%s)" % [tab.keys()])
+	# tuned numbers (data/extra/construction/stages.json difficulties): changing them is a balance decision, so it fails here first
+	var want := {"easy": [5, 0.35, 0.85, 1.5], "normal": [4, 0.65, 1.0, 1.15], "nightmare": [3, 1.0, 1.0, 1.0]}
+	for k: String in want:
+		var d: Dictionary = tab[k]
+		var w: Array = want[k]
+		check(int(d["lives"]) == w[0] and is_equal_approx(float(d["dmg_mul"]), w[1]) and is_equal_approx(float(d["speed_mul"]), w[2]) and is_equal_approx(float(d["event_mul"]), w[3]), "%s: lives / damage / speed / event timing %s" % [k, d])
+	var n: Dictionary = tab["nightmare"]
+	check(is_equal_approx(float(n["hp_mul"]), 1.0) and float(n["hp_floor"]) == 0.0 and float(n["boss_hp_floor"]) == 0.0, "Nightmare keeps the table's health as written")
+	check(float(tab["easy"]["coin_mul"]) < float(tab["normal"]["coin_mul"]) and float(tab["normal"]["coin_mul"]) < float(n["coin_mul"]), "coin rewards grow with the difficulty")
+	var arcs := {}
+	for k: String in want:
+		var a = AM.new()
+		a.start_run(1, k)
+		check(a.lives == want[k][0], "%s starts with %d lives (%d)" % [k, want[k][0], a.lives])
+		arcs[k] = a
+		a.end_run()
+	# every enemy of every stage: Easy < Normal < Nightmare health (the bosses too)
+	var stages: Array = AM.call("stages")
+	var bad := 0
+	for st: Dictionary in stages:
+		var boss: bool = bool(st["boss"])
+		for i in (st["bots"] as Array).size():
+			var h: float = float(st["bots"][i]["hp"])
+			var isb := boss and i == 0
+			var e: float = arcs["easy"].enemy_hp(h, isb)
+			var nm: float = arcs["normal"].enemy_hp(h, isb)
+			var nt: float = arcs["nightmare"].enemy_hp(h, isb)
+			if not (e < nm and nm < nt and is_equal_approx(nt, h)): bad += 1; print("FAIL hp order %s %s: %.2f %.2f %.2f" % [st["id"], st["bots"][i]["name"], e, nm, nt])
+	check(bad == 0, "Easy < Normal < Nightmare health for every enemy and boss")
+	# the fighters really get them
+	for k: String in ["easy", "nightmare"]:
+		var w := _launch(1, false, 1.0, k)
+		_start_fight(w)
+		var b: FighterState = w.arcade.boss
+		var h0: float = float(stages[1]["bots"][0]["hp"])
+		check(is_equal_approx(b.cls_hp, w.arcade.enemy_hp(h0, true)), "%s Engineer health multiplier %.2f" % [k, b.cls_hp])
+		check(is_equal_approx(w.arcade.lives, want[k][0]), "%s lives in the run" % k)
+		var ev = w.arcade.events
+		var le: Dictionary = ev.evs[0]
+		check(is_equal_approx(float(le["every"]), 12.0 * want[k][3]), "%s: load test every %.1f s" % [k, le["every"]])
+		await _free_world(w)
+	# first-clear coins are paid once PER difficulty; an Easy victory pays coins but no hat
+	_unlock()
+	var coins_seen := {}
+	for k: String in ["easy", "normal"]:
+		var w := _launch(5, true, 40.0, k)
+		var arc = w.arcade
+		_start_fight(w)
+		var c0: int = sv.coins
+		check(_play(w) >= 0.0, "%s: the Client falls" % k)
+		for i in int(2.0 / FRAME): w.tick(FRAME)
+		check(arc.state == "won" and bool(arc.victory["first"]), "%s: first victory pays its own bonus (%s)" % [k, arc.victory])
+		check(int(arc.last["coins"]) == arc.stage_coins(stages[5]), "%s: the Client's first clear pays %d" % [k, arc.last["coins"]])
+		check(int(arc.victory["coins"]) == arc.scaled(2000), "%s: victory bonus x coin multiplier (%d)" % [k, arc.victory["coins"]])
+		coins_seen[k] = int(arc.last["coins"])
+		check(DlcSave.best(sv.dlc, k) == 6 and DlcSave.won_diff(sv.dlc, k), "%s progress saved under %s" % [k, k])
+		var card := _ui(w, "ArcadeVictory")
+		var hat_l := card.find_child("Hat", true, false) as Label
+		if k == "easy":
+			check(not _hats().has("foreman") and not bool(arc.victory["hat_first"]), "an Easy victory grants no hat")
+			check(hat_l != null and hat_l.text.contains("Normal or Nightmare"), "... and the card says how to get it (%s)" % [hat_l.text if hat_l else ""])
+			check(DlcSave.best(sv.dlc, "normal") == 0 and DlcSave.best(sv.dlc, "nightmare") == 0, "Easy progress stays on Easy")
+		else:
+			check(_hats().has("foreman") and bool(arc.victory["hat_first"]), "the first Normal victory grants the Site Foreman hat")
+		await _free_world(w)
+	check(coins_seen["easy"] < coins_seen["normal"], "Normal pays more than Easy (%s)" % [coins_seen])
+	# the menu text
+	var hub = CH.new()
+	root.add_child(hub)
+	await _wait_frames(2)
+	hub.open()
+	hub.show_arcade(2)
+	check(hub.best_text("easy") == "Cleared" and hub.best_text("nightmare") == "Not played yet", "picker: best per difficulty (%s / %s)" % [hub.best_text("easy"), hub.best_text("nightmare")])
+	sv.dlc["arcade_best"]["nightmare"] = 4
+	check(hub.best_text("nightmare") == "Best: stage 4/6", "picker: Best: stage 4/6 (%s)" % hub.best_text("nightmare"))
+	hub.free()
+	await _wait_frames(2)
+
+# ---------------- 6c. the class pick ----------------
+
+func _class_pick() -> void:
+	var st := root.get_node("Settings")
+	var sv := _sv()
+	_unlock()
+	st.set_value("class", "kid")
+	var hub = CH.new()
+	root.add_child(hub)
+	await _wait_frames(2)
+	hub.open()
+	hub.show_arcade(1)
+	await _wait_frames(3)
+	var wz = hub.arc_wizard
+	check(wz != null and wz.class_only and wz.cls == "kid", "the class step preselects the last class (%s)" % [wz.cls if wz else ""])
+	check(wz.get_node("Head").visible == false and wz.get_node("Foot").visible == false, "only the Character page shows")
+	var owned := 0
+	for id: String in wz._class_bs:
+		var c: Control = wz._class_bs[id]
+		check(c.visible == sv.owns_class(id), "class card %s visible = owned (%s)" % [id, c.visible])
+		if c.visible: owned += 1
+	check(owned >= 5, "the five starter classes are offered (%d)" % owned)
+	wz.set_class("bruiser")
+	hub.show_arcade(2)
+	check(hub.arcade_class() == "bruiser", "the pick reaches the run")
+	var got := [""]
+	hub.arcade_requested.connect(func() -> void: got[0] = str(st.get_value("class")))
+	hub.arcade_next()
+	check(got[0] == "bruiser", "Start writes the Settings class like the wizard does (%s)" % got[0])
+	hub.free()
+	await _wait_frames(2)
+	# the run uses it on every stage and retry
+	var w := _launch(0, true, 1.0, "nightmare", "bruiser")
+	var p0: FighterState = w.sim.player
+	var cd: Dictionary = root.get_node("Content").classes["bruiser"]
+	check(p0.class_id == "bruiser" and is_equal_approx(p0.cls_hp, float(cd["hp"])), "stage 1 starts as a Bruiser (hp x%.2f)" % p0.cls_hp)
+	_start_fight(w)
+	w.arcade.stage = 1
+	w.arcade.attempt = 1
+	w.load_map(w.map_id)
+	await _wait_frames(2)
+	check(w.sim.player.class_id == "bruiser", "... still a Bruiser on the next stage / retry")
+	await _free_world(w)
+	var w2 := _launch(0, true, 1.0, "nightmare", "wobbler")
+	check(w2.sim.player.class_id == "wobbler" and is_equal_approx(w2.sim.player.cls_hp, 1.0), "a Wobbler run is unchanged")
+	await _free_world(w2)
+	# a class that is not owned is not offered, and cannot be launched with
+	var secret := ""
+	for id: String in root.get_node("Content").classes:
+		if not sv.owns_class(id): secret = id
+	if secret != "":
+		var h2 = CH.new()
+		root.add_child(h2)
+		await _wait_frames(2)
+		h2.open()
+		st.set_value("class", secret)
+		h2.show_arcade(1)
+		await _wait_frames(3)
+		check(not (h2.arc_wizard._class_bs[secret] as Control).visible and h2.arc_wizard.cls != secret, "an unowned class (%s) is not offered or preselected" % secret)
+		h2.free()
+	st.set_value("class", "wobbler")
+	await _wait_frames(2)
 
 # ---------------- 7. nothing leaks into a normal match ----------------
 

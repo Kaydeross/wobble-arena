@@ -53,6 +53,7 @@ const DEFAULTS := {
 	"offline_map": "arena", # offline arena (setup wizard page 1)
 	"bots": 3,              # offline bots 1..7 (team modes fix the count: ModeRules.bot_count)
 	"difficulty": "normal", # offline bot skill: easy | normal | hard | insane (data/difficulties.json)
+	"arcade_diff": "normal", # Construction Arcade: the last picked difficulty (easy | normal | nightmare, dlc/construction/construction_hub.gd)
 	"site_seed": 0,         # Construction: the building-site seed (0 = a new random site every match; the hub's Re-roll fixes one)
 	# --- the Settings screen (ui/settings_screen.gd) ---
 	"mouse_sens": 1.0,      # look sensitivity for the mouse and a controller's right stick (input/player_input.gd); touch uses `sens`

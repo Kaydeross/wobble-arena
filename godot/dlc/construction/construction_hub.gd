@@ -35,6 +35,14 @@ var pre: PanelContainer
 var seed_l: Label
 var start_b: Button
 var code_sheet: DlcCodeSheet
+var arc_step := 0                 ## the Arcade flow: 0 = the cards, 1 = pick the class, 2 = pick the difficulty
+var arc_diff := "normal"
+var arc_wizard: SetupWizard       ## the Character page of the setup wizard (class_only), reused as the Arcade's class step
+var arc_class_box: VBoxContainer
+var arc_diff_box: HBoxContainer
+var arc_foot: HBoxContainer
+var arc_next: Button
+var _diff_cards := {}             ## difficulty id -> its card Button
 var _bot_bs := {}
 var _diff_bs := {}
 var _locks: Array = []            ## the padlock controls (shown while locked)
@@ -85,7 +93,7 @@ func _ready() -> void:
 	classic_b = classic_card
 	arcade_b = arcade_card
 	classic_b.pressed.connect(open_pre)
-	arcade_b.pressed.connect(func() -> void: if arcade_ready(): arcade_requested.emit())
+	arcade_b.pressed.connect(func() -> void: if arcade_ready(): show_arcade(1))
 	buy_row = HBoxContainer.new()
 	buy_row.name = "BuyRow"
 	buy_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -106,6 +114,7 @@ func _ready() -> void:
 	code_b.pressed.connect(open_code)
 	buy_row.add_child(code_b)
 	_build_pre()
+	_build_arcade()
 	code_sheet = DlcCodeSheet.new()
 	add_child(code_sheet)
 	code_sheet.redeemed.connect(refresh)
@@ -121,12 +130,17 @@ func open() -> void:
 	diff = str(Settings.get_value("difficulty", "normal"))
 	if not DIFFS.has(diff): diff = "normal"
 	site_seed = clampi(int(Settings.get_value("site_seed", 0)), 0, SEED_MAX)
+	arc_diff = DlcSave.norm(str(Settings.get_value("arcade_diff", "normal")))
+	show_arcade(0)
 	show_pre(false)
 	refresh()
 	if Tier.is_pc(): (classic_b if DlcUnlock.owned() else buy_b).grab_focus.call_deferred()
 
 func back() -> bool:
 	if code_sheet.visible: return code_sheet.back()
+	if arc_step > 0:
+		show_arcade(arc_step - 1)
+		return true
 	if pre.visible:
 		show_pre(false)
 		return true
@@ -231,12 +245,12 @@ func refresh() -> void:
 	arcade_card.modulate = Color.WHITE if own and arc else Color(1, 1, 1, 0.55)
 	classic_b.disabled = not own
 	arcade_b.disabled = not own or not arc
-	var best := int(Save.dlc.get("arcade_best", 0))
+	var best := DlcSave.best(Save.dlc, arc_diff)
 	var ct := tr("Play") if own else tr("Unlock to play")
 	var at := ""
 	if not arc: at = tr("Coming soon")
 	elif not own: at = tr("Unlock to play")
-	else: at = tr("Best stage: %d") % best if best > 0 else tr("Play")
+	else: at = tr("Best: stage %d/%d") % [best, ArcadeManager.count()] if best > 0 else tr("Play")
 	(_tags[classic_card] as Label).text = ct
 	(_tags[arcade_card] as Label).text = at
 	for c: Button in [classic_card, arcade_card]:
@@ -256,6 +270,176 @@ func buy() -> bool:
 
 func open_code() -> void:
 	code_sheet.open()
+
+# ---------------- the Arcade flow: class, then difficulty, then Start ----------------
+
+const DIFF_COLORS := {"easy": Color("#5fd37a"), "normal": Color("#ffb637"), "nightmare": Color("#ff5a4d")}
+const DIFF_CARD_H := 168.0
+
+func _build_arcade() -> void:
+	arc_class_box = VBoxContainer.new()
+	arc_class_box.name = "ArcadeClass"
+	arc_class_box.visible = false
+	arc_class_box.size_flags_vertical = SIZE_EXPAND_FILL
+	col.add_child(arc_class_box)
+	arc_diff_box = HBoxContainer.new()
+	arc_diff_box.name = "ArcadeDifficulty"
+	arc_diff_box.visible = false
+	arc_diff_box.size_flags_vertical = SIZE_EXPAND_FILL
+	arc_diff_box.alignment = BoxContainer.ALIGNMENT_CENTER
+	arc_diff_box.add_theme_constant_override("separation", UiTheme.SP_3)
+	col.add_child(arc_diff_box)
+	var grp := ButtonGroup.new()
+	for d: String in DlcSave.DIFFS:
+		var c := _diff_card(d, grp)
+		arc_diff_box.add_child(c)
+		_diff_cards[d] = c
+	arc_diff_box.resized.connect(fit_diff_cards.call_deferred)
+	arc_foot = HBoxContainer.new()
+	arc_foot.name = "ArcadeFoot"
+	arc_foot.visible = false
+	arc_foot.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.add_child(arc_foot)
+	arc_next = Button.new()
+	arc_next.name = "ArcadeNext"
+	arc_next.theme_type_variation = &"PrimaryButton"
+	arc_next.custom_minimum_size = Vector2(340, 62)
+	arc_next.add_theme_font_size_override("font_size", 28)
+	arc_next.pressed.connect(arcade_next)
+	arc_foot.add_child(arc_next)
+	JuicyButton.attach_all(arc_foot)
+
+func _diff_card(d: String, grp: ButtonGroup) -> Button:
+	var accent: Color = DIFF_COLORS[d]
+	var c := Button.new()
+	c.name = d
+	c.toggle_mode = true
+	c.button_group = grp
+	c.size_flags_horizontal = SIZE_EXPAND_FILL
+	c.size_flags_vertical = SIZE_SHRINK_CENTER
+	c.custom_minimum_size = Vector2(0, DIFF_CARD_H)
+	for st: String in ["normal", "disabled", "pressed", "hover_pressed", "hover", "focus"]:
+		var sel := st == "pressed" or st == "hover_pressed"
+		var sb := UiTheme.box(Color(0.075, 0.2, 0.245, 0.96).lerp(accent, 0.22 if sel else 0.0), UiTheme.RADIUS, accent if sel else accent.darkened(0.45), 5 if sel else 3, 6)
+		if st == "hover": sb.bg_color = Color(0.1, 0.26, 0.31, 0.98)
+		if st == "focus":
+			sb.draw_center = false
+			sb.border_color = Color.WHITE
+			sb.shadow_size = 0
+		c.add_theme_stylebox_override(st, sb)
+	var m := MarginContainer.new()
+	m.name = "Margin"
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side: String in ["left", "right", "top", "bottom"]: m.add_theme_constant_override("margin_" + side, UiTheme.SP_3)
+	c.add_child(m)
+	var v := VBoxContainer.new()
+	v.name = "Stack"
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_theme_constant_override("separation", UiTheme.SP_2)
+	m.add_child(v)
+	var n := Label.new()
+	n.name = "Name"
+	n.add_theme_font_size_override("font_size", 28)
+	n.add_theme_font_override("font", UiTheme.font(700))
+	n.add_theme_color_override("font_color", accent)
+	n.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(n)
+	var ds := Label.new()
+	ds.name = "Desc"
+	ds.theme_type_variation = &"MutedLabel"
+	ds.add_theme_font_size_override("font_size", 19)
+	ds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ds.custom_minimum_size = Vector2(60, 0)
+	ds.size_flags_vertical = SIZE_EXPAND_FILL
+	ds.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(ds)
+	var b := Label.new()
+	b.name = "Best"
+	b.add_theme_font_size_override("font_size", 19)
+	b.add_theme_font_override("font", UiTheme.font(700))
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(b)
+	c.pressed.connect(pick_diff.bind(d))
+	return c
+
+## The three difficulty cards as tall as the longest words need (never under DIFF_CARD_H): a button's own minimum ignores what is inside it.
+func fit_diff_cards() -> void:
+	var h := DIFF_CARD_H
+	for c: Button in _diff_cards.values():
+		h = maxf(h, (c.get_node("Margin/Stack") as Control).get_combined_minimum_size().y + 2.0 * UiTheme.SP_3)
+	for c: Button in _diff_cards.values():
+		if not is_equal_approx(c.custom_minimum_size.y, h): c.custom_minimum_size.y = h
+
+static func diff_name(d: String) -> String:
+	return {"easy": "Easy", "normal": "Normal", "nightmare": "Nightmare"}.get(d, "Normal")
+
+static func diff_desc(d: String) -> String:
+	return {"easy": "Softer foes, fewer hazards, five lives. A relaxed first run.",
+		"normal": "A fair fight with four lives. Bosses still bite.",
+		"nightmare": "The full boss rush: tough bosses, three lives, the best coin rewards."}.get(d, "")
+
+## "Best: stage 4/6", "Cleared" or "Not played yet" for a difficulty.
+func best_text(d: String) -> String:
+	var b := DlcSave.best(Save.dlc, d)
+	if b >= ArcadeManager.count() or DlcSave.won_diff(Save.dlc, d): return tr("Cleared")
+	return tr("Best: stage %d/%d") % [b, ArcadeManager.count()] if b > 0 else tr("Not played yet")
+
+## step 0 = the two cards, 1 = class, 2 = difficulty (the Arcade flow replaces the cards).
+func show_arcade(step: int) -> void:
+	if step > 0 and not DlcUnlock.owned(): step = 0
+	arc_step = step
+	var on := step > 0
+	main_view.visible = not on and not pre.visible
+	arc_class_box.visible = step == 1
+	arc_diff_box.visible = step == 2
+	arc_foot.visible = on
+	if step == 1:
+		if arc_wizard == null:
+			arc_wizard = SetupWizard.new()
+			arc_wizard.class_only = true
+			arc_wizard.name = "Wizard"
+			arc_wizard.size_flags_vertical = SIZE_EXPAND_FILL
+			arc_class_box.add_child(arc_wizard)
+		else:
+			arc_wizard.go(SetupWizard.P_CHAR)
+		title_l.text = tr("Pick your character")
+		arc_next.text = tr("Next")
+	elif step == 2:
+		title_l.text = tr("Pick a difficulty")
+		arc_next.text = tr("Start")
+		for d: String in _diff_cards:
+			var c: Button = _diff_cards[d]
+			(c.get_node("Margin/Stack/Name") as Label).text = tr(diff_name(d))
+			(c.get_node("Margin/Stack/Desc") as Label).text = tr(diff_desc(d))
+			(c.get_node("Margin/Stack/Best") as Label).text = best_text(d)
+			c.set_pressed_no_signal(d == arc_diff)
+		fit_diff_cards.call_deferred()
+		if Tier.is_pc(): (_diff_cards[arc_diff] as Button).grab_focus.call_deferred()
+	else:
+		title_l.text = tr("Construction")
+		if Tier.is_pc() and is_visible_in_tree(): (classic_b if DlcUnlock.owned() else buy_b).grab_focus.call_deferred()
+
+func pick_diff(d: String) -> void:
+	arc_diff = DlcSave.norm(d)
+	Settings.set_value("arcade_diff", arc_diff)
+	for k: String in _diff_cards: (_diff_cards[k] as Button).set_pressed_no_signal(k == arc_diff)
+	refresh()
+
+## The class a run starts with: the wizard's pick (the Settings "class" it keeps), else the saved class.
+func arcade_class() -> String:
+	var id := arc_wizard.cls if arc_wizard != null else str(Settings.get_value("class", "wobbler"))
+	return id if Content.classes.has(id) and SetupWizard.owns_class(id) else "wobbler"
+
+## Next on the class step, Start on the difficulty step (which hands over to main.play_arcade).
+func arcade_next() -> void:
+	if arc_step == 1:
+		show_arcade(2)
+	elif arc_step == 2:
+		Settings.set_value("arcade_diff", arc_diff)
+		Settings.set_value("class", arcade_class())
+		arcade_requested.emit()
 
 # ---------------- the pre-match card ----------------
 
@@ -354,7 +538,7 @@ func open_pre() -> void:
 ## The pre-match card instead of the two big cards (and the page title says Classic).
 func show_pre(on: bool) -> void:
 	pre.visible = on
-	main_view.visible = not on
+	main_view.visible = not on and arc_step == 0
 	title_l.text = tr("Classic") if on else tr("Construction")
 	if on:
 		_select()

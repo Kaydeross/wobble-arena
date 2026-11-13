@@ -43,7 +43,7 @@ func setup(manager: ArcadeManager, s: MatchSim, stage: Dictionary, p_rng: Random
 	rng = p_rng
 	evs = []
 	for e: Dictionary in stage.get("events", []):
-		var every := float(e.get("every", 0.0))
+		var every := float(e.get("every", 0.0)) * float(manager.diff_def().get("event_mul", 1.0))     # easier = events come less often
 		evs.append({"type": str(e["type"]), "every": every, "params": e.get("params", {}), "t": every, "done": false})
 	for k: String in ["hammer", "wirewhip", "blower", "pipewrench", "nailgun", "jackhammer", "spiritlevel", "tapemeasure", "cementbucket",
 			"conelauncher", "anglegrinder", "drill"]:
