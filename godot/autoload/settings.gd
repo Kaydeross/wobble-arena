@@ -57,6 +57,7 @@ const DEFAULTS := {
 	"aim_mode": "hold",     # keyboard / mouse / controller aim: hold | toggle (touch always double-taps to toggle)
 	"damage_numbers": true, # floating damage numbers over the fighter you hit (read by the world's effects)
 	"sfx_volume": 1.0,      # sound effects bus 0..1 (autoload Sfx); `volume` stays the master volume
+	"music_volume": 0.5,    # music bus 0..1 (autoload Music; the web settings.music)
 	"seen_intro": false,    # the 3-card how-to (ui/intro_cards.gd) was shown or skipped once
 }
 

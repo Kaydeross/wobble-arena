@@ -50,3 +50,41 @@ Not hooked yet because the Godot port has no matching event: the later reload-ph
 boomerang, emotes, shop/UI clicks, match end. The JS has no jump/land or K.O. sound.
 
 Test: `npm run test:godot-audio` (`tools/test-audio.js` + `godot/tests/audio_test.gd`).
+
+# Godot music
+
+The web game's procedural score (`SoundManager.note`: bass, echoed arpeggio, pad, drums that grow with intensity) is
+pre-rendered for Godot, like the effects, so iOS pays no synthesis CPU and the web export can use sample playback.
+
+## Rendering: `tools/render-music.js` (`npm run music`)
+Boots the web page in Chromium and runs the real scheduler at a fixed mood and intensity through the real bus graph
+(music bus at full music volume -> compressor -> limiter) in an `OfflineAudioContext`, then encodes with ffmpeg
+(libvorbis q5) to `godot/audio/music/<track>.ogg` (~450 KB for all four) plus `music.json` (mood, intensity, bpm,
+bars, seconds) and `<track>.ogg.import` (loop on, tempo metadata, uid kept across re-renders).
+
+| track | mood / intensity | tempo | what you hear |
+|---|---|---|---|
+| `menu` | menu / 0.1 | 88 bpm | pad, sparse bass, slow arpeggio |
+| `match_low` | match / 0.2 | 118 bpm | driving 8th bass, 8th arps, kick |
+| `match_mid` | match / 0.5 | 127 bpm | 16th arps, hats, claps |
+| `match_high` | match / 0.85 | 137.5 bpm | E-major turnaround, 4-on-the-floor kick, extra hats |
+
+Seamless loops: each loop is 4 bars, rendered twice; the second pass is kept (pad releases and arp echoes from the end
+already wrap into its start) and the render just past the loop is crossfaded into its first 2048 samples. Measured wrap
+jump: 5-24 (16-bit), below the 99th-percentile sample step of every loop. Chromium's offline render is not bit-exact
+between runs, so re-render only when the music changes and commit the new files.
+
+## Runtime: autoload `Music` (`godot/autoload/music.gd`)
+- Follows the scene by itself: a scene with a `MatchSim` in `sim` (the world) plays the match loops; `match_over` or
+  the results panel is silent; anything else (title, menus, lobby) plays `menu`.
+- Match intensity = the web's `musicTick` (`Music.match_intensity`): 0.2, +0.13 per enemy within 14 m (max +0.4),
+  +0.2 for 3 s after a hit, +0.15 under 35 % health, +0.15 when someone is one K.O. from the limit; smoothed, then
+  tiers with hysteresis (up at 0.38 / 0.70, down at 0.30 / 0.62).
+- Changes wait for the playing loop's next bar line and crossfade (0.35 s) into the new loop at the matching bar;
+  first start fades in over 1.5 s, stopping fades out over 0.7 s. Two players, no nodes created at runtime.
+- "Music" bus -> Master; Settings `music_volume` (default 0.5 = the web `settings.music`), slider in Settings > Audio.
+  `muted` mutes Master (autoload Sfx), which silences the music too. Plays under the pause menu; pauses with the app.
+- iOS: the loops are ordinary imported resources, so every export (TestFlight included) packs them; they use the same
+  Solo Ambient audio session as the effects.
+- Tests: `npm run test:godot-music` (`godot/tests/music_test.gd`, in CI) and the Music slider check in
+  `ui_layout_test.gd`.

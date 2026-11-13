@@ -143,6 +143,7 @@ func show_section(s: String) -> void:
 			_toggle("muted", "Sound", "", true)
 			_slider("volume", "Main volume", "", 0.0, 1.0, 0.05, _pct)
 			_slider("sfx_volume", "Sound effects", "", 0.0, 1.0, 0.05, _pct)
+			_slider("music_volume", "Music", "", 0.0, 1.0, 0.05, _pct)
 		"gameplay":
 			_toggle("kill_cam", "Knock-out replays", "A short slow-motion replay after a quick knock-out (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
