@@ -136,7 +136,7 @@ class Picture extends Control:
 	func _label(at: Vector2, side: int, title: String, sub: String, fs: int, fs2: int) -> void:
 		title = tr(title)   # drawn with draw_string, so it does not translate itself
 		sub = tr(sub)
-		var w1 :=font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		var w1 := font.get_string_size(title, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		var w2 := font.get_string_size(sub, HORIZONTAL_ALIGNMENT_LEFT, -1, fs2).x if sub != "" else 0.0
 		var h := fs + (fs2 + 2 if sub != "" else 0)
 		var y0 := at.y - h * 0.5 if absi(side) == 1 else at.y - h if side == 0 else at.y

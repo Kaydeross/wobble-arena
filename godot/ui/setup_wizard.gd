@@ -691,7 +691,7 @@ func _rebuild_maps() -> void:
 	for id: String in maps_for(mode_id):
 		var m := Content.get_map(id)
 		var tags: Array = m.get("tags", [])
-		var b := _card(map_name(id), " · ".join(tags.slice(0, 2)), MAP_CARD, MapThumb.new(m, id))
+		var b := _card(map_name(id), " · ".join(tags.slice(0, 2).map(func(t: Variant) -> String: return tr(str(t)))), MAP_CARD, MapThumb.new(m, id))
 		b.name = id
 		b.button_group = grp
 		b.tooltip_text = str(m.get("blurb", ""))
