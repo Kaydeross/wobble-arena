@@ -10,6 +10,7 @@ const TAP_SPREAD := 0.25     ## three fingers must land within this many seconds
 const TAP_HOLD := 0.6        ## ...and all lift before this long after the first
 
 var _panel: PanelContainer
+var _perf: PerfOverlay = null           ## Settings `perf_overlay`: the four-line device readout (ui/perf_overlay.gd), only while on
 var _top: Label
 var _bot: Label
 var _times := PackedFloat64Array()     ## frame dt, oldest first
@@ -45,8 +46,11 @@ func _ready() -> void:
 	_panel.anchor_left = 0.5; _panel.anchor_right = 0.5
 	_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	get_tree().root.window_input.connect(_on_window_input)
-	Settings.changed.connect(func(k, _v): if k == "show_fps": _sync())
+	Settings.changed.connect(func(k, _v):
+		if k == "show_fps": _sync()
+		elif k == "perf_overlay": _sync_perf())
 	_sync()
+	_sync_perf()
 
 func _line(parent: Node, fs: int, c: Color) -> Label:
 	var l := Label.new()
@@ -62,6 +66,17 @@ func _sync() -> void:
 	visible = bool(Settings.get_value("show_fps", false))
 	if visible:
 		_refresh = REFRESH   # fill the text on the next frame
+
+## The device readout exists only while Settings `perf_overlay` is on (and the soak run is not showing its own).
+func _sync_perf() -> void:
+	var on := bool(Settings.get_value("perf_overlay", false))
+	if on and _perf == null:
+		_perf = PerfOverlay.new()
+		_perf.name = "PerfOverlay"
+		get_tree().root.add_child.call_deferred(_perf)   # not a child of this layer: hiding the FPS pill must not hide it
+	elif not on and _perf != null:
+		_perf.queue_free()
+		_perf = null
 
 func toggle() -> void:
 	Settings.set_value("show_fps", not bool(Settings.get_value("show_fps", false)))
@@ -118,10 +133,10 @@ func _process(dt: float) -> void:
 	var vp := get_viewport()
 	var top_inset: float = SafeArea.insets(vp)[1]
 	_panel.offset_top = 4.0 + top_inset
-	_top.text = "%d fps   %.1f ms   avg %.0f   1%% low %.0f" % [fps, dt * 1000.0, _avg, _low]
+	_top.text = tr("%d fps   %.1f ms   avg %.0f   1%% low %.0f") % [fps, dt * 1000.0, _avg, _low]
 	var draws := int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))
-	_bot.text = "%s · %s · 3D x%.2f · %d draws" % [renderer_name(), Tier.tier_name(), vp.scaling_3d_scale, draws]
+	_bot.text = tr("%s · %s · 3D x%.2f · %d draws") % [renderer_name(), Tier.tier_name(), vp.scaling_3d_scale, draws]
 
 static func renderer_name() -> String:
 	var m := RenderingServer.get_current_rendering_method()
-	return {"forward_plus": "Forward+", "mobile": "Mobile", "gl_compatibility": "Compatibility"}.get(m, m)
+	return TranslationServer.translate({"forward_plus": "Forward+", "mobile": "Mobile", "gl_compatibility": "Compatibility"}.get(m, m))

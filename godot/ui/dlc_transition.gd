@@ -62,8 +62,8 @@ func _draw() -> void:
 		var r := _band_rect(i)
 		if r.size.x < 1.0: continue
 		var dir := 1.0 if i % 2 == 0 else -1.0
-		Hazard.stripes(self, r, 26.0, _t * 70.0 * dir + i * 13.0, Hazard.YELLOW if i % 2 == 0 else Hazard.BLACK, Hazard.BLACK if i % 2 == 0 else Hazard.YELLOW)
-		draw_rect(Rect2(r.position.x, r.position.y, r.size.x, 3.0), Hazard.BLACK)
+		HazardTape.stripes(self, r, 26.0, _t * 70.0 * dir + i * 13.0, HazardTape.YELLOW if i % 2 == 0 else HazardTape.BLACK, HazardTape.BLACK if i % 2 == 0 else HazardTape.YELLOW)
+		draw_rect(Rect2(r.position.x, r.position.y, r.size.x, 3.0), HazardTape.BLACK)
 	# banner while fully covered
 	var a := clampf(1.0 - absf(p - 1.0) / 0.18, 0.0, 1.0)
 	if a <= 0.0 or _font == null: return
@@ -71,9 +71,9 @@ func _draw() -> void:
 	var w := minf(size.x * 0.86, 920.0) * pop
 	var h := 118.0 * pop
 	var box := Rect2((size.x - w) / 2.0, (size.y - h) / 2.0, w, h)
-	draw_rect(box.grow(8.0), Hazard.YELLOW)
-	draw_rect(box, Hazard.BLACK)
+	draw_rect(box.grow(8.0), HazardTape.YELLOW)
+	draw_rect(box, HazardTape.BLACK)
 	var fs := int(clampf(w / (banner.length() * 0.62), 24.0, 66.0) * pop)
 	var tw := _font.get_string_size(banner, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var base := Vector2(box.position.x + (w - tw) / 2.0, box.position.y + (h + _font.get_ascent(fs) - _font.get_descent(fs)) / 2.0)
-	draw_string(_font, base, banner, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Hazard.YELLOW.lerp(Color.WHITE, 0.0))
+	draw_string(_font, base, banner, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HazardTape.YELLOW.lerp(Color.WHITE, 0.0))

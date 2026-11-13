@@ -1,0 +1,779 @@
+{
+ "Pick a game type": {
+  "zh_TW": "選擇遊戲模式",
+  "zh_CN": "选择游戏模式",
+  "ja": "ゲームタイプを選ぼう",
+  "fr": "Choisis un mode de jeu",
+  "es": "Elige un modo de juego"
+ },
+ "Pick an arena": {
+  "zh_TW": "選擇競技場",
+  "zh_CN": "选择竞技场",
+  "ja": "アリーナを選ぼう",
+  "fr": "Choisis une arène",
+  "es": "Elige una arena"
+ },
+ "Pick your character": {
+  "zh_TW": "選擇你的角色",
+  "zh_CN": "选择你的角色",
+  "ja": "キャラクターを選ぼう",
+  "fr": "Choisis ton personnage",
+  "es": "Elige tu personaje"
+ },
+ "Ready to play?": {
+  "zh_TW": "準備好了嗎？",
+  "zh_CN": "准备好了吗？",
+  "ja": "準備はいい？",
+  "fr": "Prêt à jouer ?",
+  "es": "¿Listo para jugar?"
+ },
+ "Game types": {
+  "zh_TW": "遊戲模式",
+  "zh_CN": "游戏模式",
+  "ja": "ゲームタイプ",
+  "fr": "Modes de jeu",
+  "es": "Modos de juego"
+ },
+ "%s has no %s: arena is now %s.": {
+  "zh_TW": "%s 沒有 %s：競技場已改為 %s。",
+  "zh_CN": "%s 没有 %s：竞技场已改为 %s。",
+  "ja": "%s には %s がありません。アリーナは %s になりました。",
+  "fr": "%s n'a pas %s : l'arène est maintenant %s.",
+  "es": "%s no tiene %s: la arena ahora es %s."
+ },
+ "Arena back to %s.": {
+  "zh_TW": "競技場已切回 %s。",
+  "zh_CN": "竞技场已切回 %s。",
+  "ja": "アリーナを %s に戻しました。",
+  "fr": "Arène de retour sur %s.",
+  "es": "Arena de vuelta a %s."
+ },
+ "You + %d dummies": {
+  "zh_TW": "你 + %d 個假人",
+  "zh_CN": "你 + %d 个假人",
+  "ja": "あなた + ダミー %d 体",
+  "fr": "Toi + %d mannequins",
+  "es": "Tú + %d maniquíes"
+ },
+ "You + %d bot": {
+  "zh_TW": "你 + %d 名電腦玩家",
+  "zh_CN": "你 + %d 名电脑玩家",
+  "ja": "あなた + ボット %d 体",
+  "fr": "Toi + %d bot",
+  "es": "Tú + %d bot"
+ },
+ "You + %d bots": {
+  "zh_TW": "你 + %d 名電腦玩家",
+  "zh_CN": "你 + %d 名电脑玩家",
+  "ja": "あなた + ボット %d 体",
+  "fr": "Toi + %d bots",
+  "es": "Tú + %d bots"
+ },
+ "Does the arena floor move? Random = a different moving floor every match": {
+  "zh_TW": "競技場地板會移動嗎？隨機 = 每場比賽的移動地板都不同",
+  "zh_CN": "竞技场地板会移动吗？随机 = 每场比赛的移动地板都不同",
+  "ja": "アリーナの床は動く？ランダム = 試合ごとに違う動く床",
+  "fr": "Le sol de l'arène bouge-t-il ? Aléatoire = un sol mobile différent à chaque partie",
+  "es": "¿El suelo de la arena se mueve? Aleatorio = un suelo móvil distinto en cada partida"
+ },
+ "Moving floor": {
+  "zh_TW": "移動地板",
+  "zh_CN": "移动地板",
+  "ja": "動く床",
+  "fr": "Sol mobile",
+  "es": "Suelo móvil"
+ },
+ "Bots": {
+  "zh_TW": "電腦玩家",
+  "zh_CN": "电脑玩家",
+  "ja": "ボット",
+  "fr": "Bots",
+  "es": "Bots"
+ },
+ "Bot skill": {
+  "zh_TW": "電腦玩家強度",
+  "zh_CN": "电脑玩家强度",
+  "ja": "ボットの強さ",
+  "fr": "Niveau des bots",
+  "es": "Nivel de los bots"
+ },
+ "Insane": {
+  "zh_TW": "瘋狂",
+  "zh_CN": "疯狂",
+  "ja": "超むずかしい",
+  "fr": "Infernal",
+  "es": "Infernal"
+ },
+ "Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).": {
+  "zh_TW": "電腦玩家是電腦控制的玩家。兩隊：%d 對 %d（奇數電腦玩家時仍保持雙方人數相等）。",
+  "zh_CN": "电脑玩家是电脑控制的玩家。两队：%d 对 %d（奇数电脑玩家时仍保持双方人数相等）。",
+  "ja": "ボットはコンピューターが操作するプレイヤーです。2チーム：%d 対 %d（奇数のボットでも人数が揃うよう調整されます）。",
+  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Deux équipes : %d contre %d (un nombre impair de bots garde les équipes égales).",
+  "es": "Los bots son jugadores controlados por el ordenador. Dos equipos: %d contra %d (con un número impar de bots, los equipos siguen iguales)."
+ },
+ "Bots are computer players. %s fixes the teams: %d vs %d.": {
+  "zh_TW": "電腦玩家是電腦控制的玩家。%s 固定了隊伍：%d 對 %d。",
+  "zh_CN": "电脑玩家是电脑控制的玩家。%s 固定了队伍：%d 对 %d。",
+  "ja": "ボットはコンピューターが操作するプレイヤーです。%s ではチームが固定されます：%d 対 %d。",
+  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. %s fixe les équipes : %d contre %d.",
+  "es": "Los bots son jugadores controlados por el ordenador. %s fija los equipos: %d contra %d."
+ },
+ "The range has %d dummies: they stand, slide and pop back up. They never fight back.": {
+  "zh_TW": "練習場有 %d 個假人：它們會站立、滑動並彈起，從不反擊。",
+  "zh_CN": "练习场有 %d 个假人：它们会站立、滑动并弹起，从不反击。",
+  "ja": "練習場には %d 体のダミーがいます。立つ、滑る、起き上がるだけで、反撃はしません。",
+  "fr": "Le terrain d'entraînement compte %d mannequins : ils restent debout, glissent et se relèvent. Ils ne ripostent jamais.",
+  "es": "El campo de práctica tiene %d maniquíes: se quedan quietos, se deslizan y vuelven a levantarse. Nunca devuelven el golpe."
+ },
+ "%s fills every pillar: you + %d bots, one life each.": {
+  "zh_TW": "%s 每根柱子都有人：你 + %d 名電腦玩家，每人一條命。",
+  "zh_CN": "%s 每根柱子都有人：你 + %d 名电脑玩家，每人一条命。",
+  "ja": "%s はすべての柱を使います：あなた + ボット %d 体、残機は1つずつです。",
+  "fr": "%s occupe chaque pilier : toi + %d bots, une vie chacun.",
+  "es": "%s ocupa cada pilar: tú + %d bots, una vida cada uno."
+ },
+ "Step %d of %d": {
+  "zh_TW": "第 %d 步，共 %d 步",
+  "zh_CN": "第 %d 步，共 %d 步",
+  "ja": "ステップ %d / %d",
+  "fr": "Étape %d sur %d",
+  "es": "Paso %d de %d"
+ },
+ "Arenas for %s": {
+  "zh_TW": "%s 的競技場",
+  "zh_CN": "%s 的竞技场",
+  "ja": "%s のアリーナ",
+  "fr": "Arènes pour %s",
+  "es": "Arenas para %s"
+ },
+ "%s: %s": {
+  "zh_TW": "%s：%s",
+  "zh_CN": "%s：%s",
+  "ja": "%s：%s",
+  "fr": "%s : %s",
+  "es": "%s: %s"
+ },
+ "%s · Floor: %s": {
+  "zh_TW": "%s · 地板：%s",
+  "zh_CN": "%s · 地板：%s",
+  "ja": "%s · 床：%s",
+  "fr": "%s · Sol : %s",
+  "es": "%s · Suelo: %s"
+ },
+ "%s · %s": {
+  "zh_TW": "%s · %s",
+  "zh_CN": "%s · %s",
+  "ja": "%s · %s",
+  "fr": "%s · %s",
+  "es": "%s · %s"
+ },
+ "%s · %s · %s": {
+  "zh_TW": "%s · %s · %s",
+  "zh_CN": "%s · %s · %s",
+  "ja": "%s · %s · %s",
+  "fr": "%s · %s · %s",
+  "es": "%s · %s · %s"
+ },
+ "Check your match. Tap a row to change it.": {
+  "zh_TW": "確認你的比賽。點選一列即可更改。",
+  "zh_CN": "确认你的比赛。点选一行即可更改。",
+  "ja": "試合の内容を確認しましょう。項目をタップして変更できます。",
+  "fr": "Vérifie ta partie. Touche une ligne pour la modifier.",
+  "es": "Revisa tu partida. Toca una fila para cambiarla."
+ },
+ "Change": {
+  "zh_TW": "更改",
+  "zh_CN": "更改",
+  "ja": "変更",
+  "fr": "Modifier",
+  "es": "Cambiar"
+ },
+ "Steady": {
+  "zh_TW": "穩定",
+  "zh_CN": "稳定",
+  "ja": "固定",
+  "fr": "Stable",
+  "es": "Estable"
+ },
+ "Random": {
+  "zh_TW": "隨機",
+  "zh_CN": "随机",
+  "ja": "ランダム",
+  "fr": "Aléatoire",
+  "es": "Aleatorio"
+ },
+ "Wobble": {
+  "zh_TW": "晃動",
+  "zh_CN": "晃动",
+  "ja": "ゆれ",
+  "fr": "Vacillement",
+  "es": "Oscilación"
+ },
+ "Tilt": {
+  "zh_TW": "傾斜",
+  "zh_CN": "倾斜",
+  "ja": "傾き",
+  "fr": "Inclinaison",
+  "es": "Inclinación"
+ },
+ "Quake": {
+  "zh_TW": "地震",
+  "zh_CN": "地震",
+  "ja": "地震",
+  "fr": "Séisme",
+  "es": "Sismo"
+ },
+ "Drift": {
+  "zh_TW": "漂移",
+  "zh_CN": "漂移",
+  "ja": "ドリフト",
+  "fr": "Dérive",
+  "es": "Deriva"
+ },
+ "Touch buttons": {
+  "zh_TW": "觸控按鈕",
+  "zh_CN": "触控按钮",
+  "ja": "タッチボタン",
+  "fr": "Boutons tactiles",
+  "es": "Botones táctiles"
+ },
+ "Auto shows them on phones and tablets": {
+  "zh_TW": "自動：在手機和平板上顯示",
+  "zh_CN": "自动：在手机和平板上显示",
+  "ja": "自動：スマホとタブレットで表示します",
+  "fr": "Auto les affiche sur téléphone et tablette",
+  "es": "Automático las muestra en móviles y tabletas"
+ },
+ "Button size": {
+  "zh_TW": "按鈕大小",
+  "zh_CN": "按钮大小",
+  "ja": "ボタンの大きさ",
+  "fr": "Taille des boutons",
+  "es": "Tamaño de los botones"
+ },
+ "Button opacity": {
+  "zh_TW": "按鈕不透明度",
+  "zh_CN": "按钮不透明度",
+  "ja": "ボタンの濃さ",
+  "fr": "Opacité des boutons",
+  "es": "Opacidad de los botones"
+ },
+ "Left-handed": {
+  "zh_TW": "左手模式",
+  "zh_CN": "左手模式",
+  "ja": "左利きモード",
+  "fr": "Gaucher",
+  "es": "Zurdo"
+ },
+ "Buttons on the left, move on the right": {
+  "zh_TW": "按鈕在左邊，移動在右邊",
+  "zh_CN": "按钮在左边，移动在右边",
+  "ja": "ボタンは左、移動は右",
+  "fr": "Boutons à gauche, déplacement à droite",
+  "es": "Botones a la izquierda, movimiento a la derecha"
+ },
+ "Look speed (touch)": {
+  "zh_TW": "視角速度（觸控）",
+  "zh_CN": "视角速度（触控）",
+  "ja": "視点の速さ（タッチ）",
+  "fr": "Vitesse de vue (tactile)",
+  "es": "Velocidad de mirada (táctil)"
+ },
+ "Look speed (mouse and controller)": {
+  "zh_TW": "視角速度（滑鼠與手把）",
+  "zh_CN": "视角速度（鼠标和手柄）",
+  "ja": "視点の速さ（マウス・コントローラー）",
+  "fr": "Vitesse de vue (souris et manette)",
+  "es": "Velocidad de mirada (ratón y mando)"
+ },
+ "Invert up and down look": {
+  "zh_TW": "反轉上下視角",
+  "zh_CN": "反转上下视角",
+  "ja": "上下の視点を反転",
+  "fr": "Inverser le regard haut et bas",
+  "es": "Invertir la mirada arriba y abajo"
+ },
+ "Aim button": {
+  "zh_TW": "瞄準按鈕",
+  "zh_CN": "瞄准按钮",
+  "ja": "照準ボタン",
+  "fr": "Bouton de visée",
+  "es": "Botón de apuntado"
+ },
+ "Mouse and controller. On touch, double-tap to aim.": {
+  "zh_TW": "滑鼠與手把。觸控時雙擊即可瞄準。",
+  "zh_CN": "鼠标和手柄。触控时双击即可瞄准。",
+  "ja": "マウスとコントローラー。タッチでは2回タップで照準します。",
+  "fr": "Souris et manette. Sur tactile, double-tape pour viser.",
+  "es": "Ratón y mando. En táctil, toca dos veces para apuntar."
+ },
+ "Hold": {
+  "zh_TW": "按住",
+  "zh_CN": "按住",
+  "ja": "長押し",
+  "fr": "Maintenir",
+  "es": "Mantener"
+ },
+ "Toggle": {
+  "zh_TW": "切換",
+  "zh_CN": "切换",
+  "ja": "切り替え",
+  "fr": "Basculer",
+  "es": "Alternar"
+ },
+ "See the controls": {
+  "zh_TW": "查看操作說明",
+  "zh_CN": "查看操作说明",
+  "ja": "操作を見る",
+  "fr": "Voir les commandes",
+  "es": "Ver los controles"
+ },
+ "Show the how-to again": {
+  "zh_TW": "再次顯示教學",
+  "zh_CN": "再次显示教程",
+  "ja": "使い方をもう一度見る",
+  "fr": "Revoir le tutoriel",
+  "es": "Volver a ver el tutorial"
+ },
+ "Manual": {
+  "zh_TW": "手動",
+  "zh_CN": "手动",
+  "ja": "手動",
+  "fr": "Manuelle",
+  "es": "Manual"
+ },
+ "Auto-centre": {
+  "zh_TW": "自動置中",
+  "zh_CN": "自动居中",
+  "ja": "自動センター",
+  "fr": "Centrage auto",
+  "es": "Centrado automático"
+ },
+ "Auto-centre swings the camera back behind you as you run": {
+  "zh_TW": "自動置中：奔跑時鏡頭會擺回你的身後",
+  "zh_CN": "自动居中：奔跑时镜头会转回你身后",
+  "ja": "自動センター：走ると、カメラが自動で後ろに回り込みます",
+  "fr": "Le centrage auto replace la caméra derrière toi quand tu cours",
+  "es": "El centrado automático lleva la cámara detrás de ti al correr"
+ },
+ "Camera distance": {
+  "zh_TW": "鏡頭距離",
+  "zh_CN": "镜头距离",
+  "ja": "カメラの距離",
+  "fr": "Distance de la caméra",
+  "es": "Distancia de la cámara"
+ },
+ "Field of view": {
+  "zh_TW": "視野角",
+  "zh_CN": "视野角",
+  "ja": "視野角",
+  "fr": "Champ de vision",
+  "es": "Campo de visión"
+ },
+ "Effects": {
+  "zh_TW": "特效",
+  "zh_CN": "特效",
+  "ja": "エフェクト",
+  "fr": "Effets",
+  "es": "Efectos"
+ },
+ "Particles, trails and flashes in a match. Auto follows this device (%s).": {
+  "zh_TW": "比賽中的粒子、軌跡與閃光。自動：跟隨這部裝置（%s）。",
+  "zh_CN": "比赛中的粒子、轨迹和闪光。自动：跟随此设备（%s）。",
+  "ja": "試合中の粒子、残像、閃光。自動はこの端末に合わせます（%s）。",
+  "fr": "Particules, traînées et éclairs pendant la partie. Auto suit cet appareil (%s).",
+  "es": "Partículas, estelas y destellos en la partida. Automático sigue este dispositivo (%s)."
+ },
+ "Small": {
+  "zh_TW": "小",
+  "zh_CN": "小",
+  "ja": "小",
+  "fr": "Petit",
+  "es": "Pequeño"
+ },
+ "Large": {
+  "zh_TW": "大",
+  "zh_CN": "大",
+  "ja": "大",
+  "fr": "Grand",
+  "es": "Grande"
+ },
+ "Text and button size": {
+  "zh_TW": "文字與按鈕大小",
+  "zh_CN": "文字与按钮大小",
+  "ja": "文字とボタンの大きさ",
+  "fr": "Taille du texte et des boutons",
+  "es": "Tamaño del texto y los botones"
+ },
+ "Menus, HUD and touch buttons. Auto keeps buttons finger-sized on this screen.": {
+  "zh_TW": "選單、HUD 與觸控按鈕。自動會讓按鈕在這個畫面上保持適合手指點按的大小。",
+  "zh_CN": "菜单、HUD 和触控按钮。自动会让按钮在此屏幕上保持适合手指点按的大小。",
+  "ja": "メニュー、HUD、タッチボタン。自動は、この画面でボタンを指で押しやすい大きさに保ちます。",
+  "fr": "Menus, ATH et boutons tactiles. Auto garde les boutons à la taille d'un doigt sur cet écran.",
+  "es": "Menús, HUD y botones táctiles. Automático mantiene los botones a tamaño de dedo en esta pantalla."
+ },
+ "Screen shake": {
+  "zh_TW": "畫面震動",
+  "zh_CN": "画面震动",
+  "ja": "画面の揺れ",
+  "fr": "Tremblement d'écran",
+  "es": "Sacudida de pantalla"
+ },
+ "The camera shakes on big hits and explosions": {
+  "zh_TW": "重擊與爆炸時鏡頭會震動",
+  "zh_CN": "重击和爆炸时镜头会震动",
+  "ja": "強い衝撃や爆発でカメラが揺れます",
+  "fr": "La caméra tremble lors des gros coups et des explosions",
+  "es": "La cámara tiembla con los golpes fuertes y las explosiones"
+ },
+ "Show frame rate (FPS)": {
+  "zh_TW": "顯示幀率（FPS）",
+  "zh_CN": "显示帧率（FPS）",
+  "ja": "フレームレートを表示（FPS）",
+  "fr": "Afficher la fréquence d'images (FPS)",
+  "es": "Mostrar la tasa de fotogramas (FPS)"
+ },
+ "F3 or a three-finger tap also toggles it": {
+  "zh_TW": "F3 或三指點按也能切換",
+  "zh_CN": "F3 或三指点按也能切换",
+  "ja": "F3キーか3本指タップでも切り替えられます",
+  "fr": "F3 ou un tap à trois doigts l'active aussi",
+  "es": "F3 o un toque con tres dedos también lo cambia"
+ },
+ "Sound": {
+  "zh_TW": "聲音",
+  "zh_CN": "声音",
+  "ja": "サウンド",
+  "fr": "Son",
+  "es": "Sonido"
+ },
+ "Main volume": {
+  "zh_TW": "主音量",
+  "zh_CN": "主音量",
+  "ja": "全体の音量",
+  "fr": "Volume principal",
+  "es": "Volumen principal"
+ },
+ "Sound effects": {
+  "zh_TW": "音效",
+  "zh_CN": "音效",
+  "ja": "効果音",
+  "fr": "Effets sonores",
+  "es": "Efectos de sonido"
+ },
+ "Music": {
+  "zh_TW": "音樂",
+  "zh_CN": "音乐",
+  "ja": "音楽",
+  "fr": "Musique",
+  "es": "Música"
+ },
+ "Knock-out replays": {
+  "zh_TW": "擊倒重播",
+  "zh_CN": "击倒重播",
+  "ja": "KOリプレイ",
+  "fr": "Replays des K.O.",
+  "es": "Repeticiones de K.O."
+ },
+ "A short slow-motion replay after a quick knock-out (offline)": {
+  "zh_TW": "快速擊倒後的短暫慢動作重播（離線）",
+  "zh_CN": "快速击倒后的短暂慢动作重播（离线）",
+  "ja": "素早くKOしたあとに短いスローモーションを再生（オフライン）",
+  "fr": "Un court replay au ralenti après un K.O. rapide (hors ligne)",
+  "es": "Una breve repetición a cámara lenta tras un K.O. rápido (sin conexión)"
+ },
+ "Damage numbers": {
+  "zh_TW": "傷害數字",
+  "zh_CN": "伤害数字",
+  "ja": "ダメージ数値",
+  "fr": "Nombres de dégâts",
+  "es": "Números de daño"
+ },
+ "Numbers pop up over the player you hit": {
+  "zh_TW": "被你擊中的玩家頭上會跳出數字",
+  "zh_CN": "被你击中的玩家头上会跳出数字",
+  "ja": "攻撃したプレイヤーの上に数値が表示されます",
+  "fr": "Les nombres apparaissent au-dessus du joueur touché",
+  "es": "Los números aparecen sobre el jugador al que golpeas"
+ },
+ "Open your account from the title screen (the chip at the top).": {
+  "zh_TW": "請從標題畫面開啟帳號（頂部的小圖示）。",
+  "zh_CN": "请从标题画面打开账号（顶部的小图标）。",
+  "ja": "タイトル画面（上部のチップ）からアカウントを開いてください。",
+  "fr": "Ouvre ton compte depuis l'écran titre (la puce en haut).",
+  "es": "Abre tu cuenta desde la pantalla de título (la ficha de arriba)."
+ },
+ "Open account": {
+  "zh_TW": "開啟帳號",
+  "zh_CN": "打开账号",
+  "ja": "アカウントを開く",
+  "fr": "Ouvrir le compte",
+  "es": "Abrir cuenta"
+ },
+ "Credits": {
+  "zh_TW": "製作名單",
+  "zh_CN": "制作名单",
+  "ja": "クレジット",
+  "fr": "Crédits",
+  "es": "Créditos"
+ },
+ "Made by Kaydeross. Built with the Godot Engine (godotengine.org). Font: Fredoka (SIL Open Font License).": {
+  "zh_TW": "由 Kaydeross 製作。使用 Godot Engine（godotengine.org）打造。字型：Fredoka（SIL Open Font License）。",
+  "zh_CN": "由 Kaydeross 制作。使用 Godot Engine（godotengine.org）构建。字体：Fredoka（SIL Open Font License）。",
+  "ja": "制作：Kaydeross。Godot Engine（godotengine.org）で開発。フォント：Fredoka（SIL Open Font License）。",
+  "fr": "Créé par Kaydeross. Réalisé avec le Godot Engine (godotengine.org). Police : Fredoka (SIL Open Font License).",
+  "es": "Hecho por Kaydeross. Creado con Godot Engine (godotengine.org). Fuente: Fredoka (SIL Open Font License)."
+ },
+ "Game server (advanced)": {
+  "zh_TW": "遊戲伺服器（進階）",
+  "zh_CN": "游戏服务器（高级）",
+  "ja": "ゲームサーバー（上級者向け）",
+  "fr": "Serveur de jeu (avancé)",
+  "es": "Servidor de juego (avanzado)"
+ },
+ "Only change this if a friend runs their own server": {
+  "zh_TW": "只有朋友自己架設伺服器時才需要更改",
+  "zh_CN": "只有朋友自己架设服务器时才需要更改",
+  "ja": "友だちが自分のサーバーを使う場合のみ変更してください",
+  "fr": "Ne change ceci que si un ami fait tourner son propre serveur",
+  "es": "Cámbialo solo si un amigo tiene su propio servidor"
+ },
+ "Signed in as %s": {
+  "zh_TW": "已登入為 %s",
+  "zh_CN": "已登录为 %s",
+  "ja": "%s としてログイン中",
+  "fr": "Connecté en tant que %s",
+  "es": "Sesión iniciada como %s"
+ },
+ "Your progress is saved to your account.": {
+  "zh_TW": "你的進度已儲存到帳號。",
+  "zh_CN": "你的进度已保存到账号。",
+  "ja": "進行状況はアカウントに保存されます。",
+  "fr": "Ta progression est enregistrée sur ton compte.",
+  "es": "Tu progreso se guarda en tu cuenta."
+ },
+ "Playing as a guest": {
+  "zh_TW": "以訪客身分遊玩",
+  "zh_CN": "以访客身份游玩",
+  "ja": "ゲストとしてプレイ中",
+  "fr": "Tu joues en tant qu'invité",
+  "es": "Jugando como invitado"
+ },
+ "Your progress is saved on this device only. Make an account to keep it safe.": {
+  "zh_TW": "你的進度只儲存在這部裝置上。建立帳號即可安全保存。",
+  "zh_CN": "你的进度只保存在这台设备上。创建账号即可安全保存。",
+  "ja": "進行状況はこの端末だけに保存されます。アカウントを作ると安全に保存できます。",
+  "fr": "Ta progression n'est sauvegardée que sur cet appareil. Crée un compte pour la garder en sécurité.",
+  "es": "Tu progreso solo se guarda en este dispositivo. Crea una cuenta para mantenerlo a salvo."
+ },
+ "Not available on this device": {
+  "zh_TW": "此裝置不支援",
+  "zh_CN": "此设备不支持",
+  "ja": "この端末では使えません",
+  "fr": "Non disponible sur cet appareil",
+  "es": "No disponible en este dispositivo"
+ },
+ "Reset to default": {
+  "zh_TW": "重設為預設值",
+  "zh_CN": "重置为默认值",
+  "ja": "初期値に戻す",
+  "fr": "Rétablir par défaut",
+  "es": "Restablecer el valor predeterminado"
+ },
+ "Version %s, build %s": {
+  "zh_TW": "版本 %s，建置 %s",
+  "zh_CN": "版本 %s，构建 %s",
+  "ja": "バージョン %s、ビルド %s",
+  "fr": "Version %s, build %s",
+  "es": "Versión %s, compilación %s"
+ },
+ "Using: %s (%s)": {
+  "zh_TW": "使用中：%s（%s）",
+  "zh_CN": "使用中：%s（%s）",
+  "ja": "使用中：%s（%s）",
+  "fr": "Utilisé : %s (%s)",
+  "es": "En uso: %s (%s)"
+ },
+ "default": {
+  "zh_TW": "預設",
+  "zh_CN": "默认",
+  "ja": "初期値",
+  "fr": "par défaut",
+  "es": "predeterminado"
+ },
+ "custom": {
+  "zh_TW": "自訂",
+  "zh_CN": "自定义",
+  "ja": "カスタム",
+  "fr": "personnalisé",
+  "es": "personalizado"
+ },
+ "%d of %d": {
+  "zh_TW": "第 %d 張，共 %d 張",
+  "zh_CN": "第 %d 张，共 %d 张",
+  "ja": "%d / %d",
+  "fr": "%d sur %d",
+  "es": "%d de %d"
+ },
+ "Let's play": {
+  "zh_TW": "開始吧",
+  "zh_CN": "开始吧",
+  "ja": "さあ、遊ぼう",
+  "fr": "C'est parti",
+  "es": "¡A jugar!"
+ },
+ "Move and look": {
+  "zh_TW": "移動與視角",
+  "zh_CN": "移动与视角",
+  "ja": "移動と視点",
+  "fr": "Se déplacer et regarder",
+  "es": "Moverse y mirar"
+ },
+ "Drag your left thumb to move. Drag on the right side of the screen to look around.": {
+  "zh_TW": "用左拇指拖曳即可移動。在螢幕右側拖曳即可環顧四周。",
+  "zh_CN": "用左拇指拖动即可移动。在屏幕右侧拖动即可环顾四周。",
+  "ja": "左の親指でドラッグして移動。画面右側をドラッグして周りを見回します。",
+  "fr": "Fais glisser ton pouce gauche pour bouger. Glisse sur la droite de l'écran pour regarder autour de toi.",
+  "es": "Arrastra con el pulgar izquierdo para moverte. Arrastra en la mitad derecha de la pantalla para mirar alrededor."
+ },
+ "WASD to move, the mouse to look. Click once to grab the mouse; Esc lets it go.": {
+  "zh_TW": "WASD 移動，滑鼠看向四周。點一下即可鎖定滑鼠；Esc 可釋放。",
+  "zh_CN": "WASD 移动，鼠标看向四周。点一下即可锁定鼠标；Esc 可释放。",
+  "ja": "移動は WASD、視点はマウス。一度クリックするとマウスを捕捉します。Esc で解除。",
+  "fr": "WASD pour bouger, la souris pour regarder. Clique une fois pour capturer la souris ; Échap la libère.",
+  "es": "WASD para moverte, el ratón para mirar. Haz clic una vez para capturar el ratón; Esc lo suelta."
+ },
+ "Fire and melee": {
+  "zh_TW": "射擊與近戰",
+  "zh_CN": "射击与近战",
+  "ja": "射撃と近接",
+  "fr": "Tirer et corps à corps",
+  "es": "Disparar y cuerpo a cuerpo"
+ },
+ "Hold FIRE to shoot. Tap MELEE to shove, hold it to kick. JUMP hops over gaps.": {
+  "zh_TW": "按住射擊鍵開火。點一下近戰鍵推擠，按住則踢擊。跳躍可越過縫隙。",
+  "zh_CN": "按住射击键开火。点一下近战键推挤，按住则踢击。跳跃可越过缝隙。",
+  "ja": "FIREを押し続けて射撃。MELEEをタップで突き飛ばし、長押しでキック。JUMPで隙間を飛び越えます。",
+  "fr": "Maintiens FIRE pour tirer. Tape MELEE pour bousculer, maintiens pour donner un coup de pied. JUMP franchit les trous.",
+  "es": "Mantén FIRE para disparar. Toca MELEE para empujar, mantenlo para patear. JUMP salta sobre los huecos."
+ },
+ "Click to shoot, right-click to aim. E shoves, F kicks, Space jumps.": {
+  "zh_TW": "點擊射擊，右鍵瞄準。E 推擠，F 踢擊，空白鍵跳躍。",
+  "zh_CN": "点击射击，右键瞄准。E 推挤，F 踢击，空格键跳跃。",
+  "ja": "クリックで射撃、右クリックで照準。Eで突き飛ばし、Fでキック、Spaceでジャンプ。",
+  "fr": "Clic pour tirer, clic droit pour viser. E bouscule, F donne un coup de pied, Espace saute.",
+  "es": "Clic para disparar, clic derecho para apuntar. E empuja, F patea, Espacio salta."
+ },
+ "Grab the crates": {
+  "zh_TW": "撿起補給箱",
+  "zh_CN": "拾取补给箱",
+  "ja": "クレートを拾おう",
+  "fr": "Récupère les caisses",
+  "es": "Recoge las cajas"
+ },
+ "Crates drop weapons, heals and power-ups. Walk over one to pick it up, then tap a slot at the bottom to switch weapon.": {
+  "zh_TW": "補給箱會掉落武器、補血與強化道具。走過去撿起，再點畫面底部的欄位即可切換武器。",
+  "zh_CN": "补给箱会掉落武器、补血和强化道具。走过去拾取，再点屏幕底部的格子即可切换武器。",
+  "ja": "クレートからは武器、回復、パワーアップが出ます。乗って拾い、画面下のスロットをタップして武器を切り替えます。",
+  "fr": "Les caisses lâchent armes, soins et bonus. Passe dessus pour la ramasser, puis touche un emplacement en bas pour changer d'arme.",
+  "es": "Las cajas sueltan armas, curación y potenciadores. Pasa por encima para recogerla y toca una ranura abajo para cambiar de arma."
+ },
+ "Crates drop weapons, heals and power-ups. Walk over one to pick it up; 1, 2 and 3 switch weapons.": {
+  "zh_TW": "補給箱會掉落武器、補血與強化道具。走過去撿起，按 1、2、3 切換武器。",
+  "zh_CN": "补给箱会掉落武器、补血和强化道具。走过去拾取，按 1、2、3 切换武器。",
+  "ja": "クレートからは武器、回復、パワーアップが出ます。乗って拾い、1・2・3キーで武器を切り替えます。",
+  "fr": "Les caisses lâchent armes, soins et bonus. Passe dessus pour la ramasser ; 1, 2 et 3 changent d'arme.",
+  "es": "Las cajas sueltan armas, curación y potenciadores. Pasa por encima para recogerla; 1, 2 y 3 cambian de arma."
+ },
+ "Keyboard: WASD move · mouse look · click fire · right-click aim · Space jump · E shove · F kick · Q quick melee · 1-3 weapons · T G H emotes · Esc pause.   Controller: sticks move and look · RT fire · LT aim · A jump · RB shove · B kick · Start pause.": {
+  "zh_TW": "鍵盤：WASD 移動 · 滑鼠看向四周 · 點擊射擊 · 右鍵瞄準 · 空白鍵跳躍 · E 推擠 · F 踢擊 · Q 快速近戰 · 1-3 武器 · T G H 表情動作 · Esc 暫停。   手把：搖桿移動與看向 · RT 射擊 · LT 瞄準 · A 跳躍 · RB 推擠 · B 踢擊 · Start 暫停。",
+  "zh_CN": "键盘：WASD 移动 · 鼠标看向四周 · 点击射击 · 右键瞄准 · 空格键跳跃 · E 推挤 · F 踢击 · Q 快速近战 · 1-3 武器 · T G H 表情动作 · Esc 暂停。   手柄：摇杆移动与看向 · RT 射击 · LT 瞄准 · A 跳跃 · RB 推挤 · B 踢击 · Start 暂停。",
+  "ja": "キーボード：WASDで移動 · マウスで視点 · クリックで射撃 · 右クリックで照準 · Spaceでジャンプ · Eで突き飛ばし · Fでキック · Qでクイック近接 · 1-3で武器 · T G Hでエモート · Escで一時停止。   コントローラー：スティックで移動と視点 · RTで射撃 · LTで照準 · Aでジャンプ · RBで突き飛ばし · Bでキック · Startで一時停止。",
+  "fr": "Clavier : WASD déplacer · souris regarder · clic tirer · clic droit viser · Espace sauter · E bousculer · F coup de pied · Q corps à corps rapide · 1-3 armes · T G H emotes · Échap pause.   Manette : sticks déplacer et regarder · RT tirer · LT viser · A sauter · RB bousculer · B coup de pied · Start pause.",
+  "es": "Teclado: WASD mover · ratón mirar · clic disparar · clic derecho apuntar · Espacio saltar · E empujar · F patear · Q cuerpo a cuerpo rápido · 1-3 armas · T G H emotes · Esc pausa.   Mando: sticks mover y mirar · RT disparar · LT apuntar · A saltar · RB empujar · B patear · Start pausa."
+ },
+ "Move": {
+  "zh_TW": "移動",
+  "zh_CN": "移动",
+  "ja": "移動",
+  "fr": "Déplacer",
+  "es": "Mover"
+ },
+ "Drag anywhere on the left side": {
+  "zh_TW": "在左側任意處拖曳",
+  "zh_CN": "在左侧任意处拖动",
+  "ja": "左側のどこでもドラッグ",
+  "fr": "Glisse n'importe où à gauche",
+  "es": "Arrastra en cualquier punto de la izquierda"
+ },
+ "Look": {
+  "zh_TW": "視角",
+  "zh_CN": "视角",
+  "ja": "視点",
+  "fr": "Regarder",
+  "es": "Mirar"
+ },
+ "Drag on the right side · double-tap to aim": {
+  "zh_TW": "在右側拖曳 · 雙擊瞄準",
+  "zh_CN": "在右侧拖动 · 双击瞄准",
+  "ja": "右側をドラッグ · ダブルタップで照準",
+  "fr": "Glisse à droite · double-tape pour viser",
+  "es": "Arrastra a la derecha · doble toque para apuntar"
+ },
+ "Fire: hold": {
+  "zh_TW": "射擊：按住",
+  "zh_CN": "射击：按住",
+  "ja": "射撃：長押し",
+  "fr": "Tir : maintenir",
+  "es": "Disparo: mantener"
+ },
+ "Jump": {
+  "zh_TW": "跳躍",
+  "zh_CN": "跳跃",
+  "ja": "ジャンプ",
+  "fr": "Saut",
+  "es": "Salto"
+ },
+ "Melee": {
+  "zh_TW": "近戰",
+  "zh_CN": "近战",
+  "ja": "近接",
+  "fr": "Corps à corps",
+  "es": "Cuerpo a cuerpo"
+ },
+ "Tap: shove · hold: kick": {
+  "zh_TW": "點按：推擠 · 按住：踢擊",
+  "zh_CN": "点按：推挤 · 按住：踢击",
+  "ja": "タップ：突き飛ばし · 長押し：キック",
+  "fr": "Tape : bousculer · maintiens : coup de pied",
+  "es": "Toque: empujar · mantener: patear"
+ },
+ "Dash / Reload": {
+  "zh_TW": "衝刺 / 換彈",
+  "zh_CN": "冲刺 / 换弹",
+  "ja": "ダッシュ / リロード",
+  "fr": "Dash / Recharger",
+  "es": "Impulso / Recargar"
+ },
+ "Emotes": {
+  "zh_TW": "表情動作",
+  "zh_CN": "表情动作",
+  "ja": "エモート",
+  "fr": "Emotes",
+  "es": "Emotes"
+ },
+ "Tap a slot to switch": {
+  "zh_TW": "點按欄位即可切換",
+  "zh_CN": "点按格子即可切换",
+  "ja": "スロットをタップで切り替え",
+  "fr": "Touche un emplacement pour changer",
+  "es": "Toca una ranura para cambiar"
+ },
+ "Bots are computer players. Free for all: they fight you and each other.": {
+  "zh_TW": "電腦玩家是電腦控制的玩家。自由混戰：他們會與你和彼此對戰。",
+  "zh_CN": "电脑玩家是电脑控制的玩家。自由混战：他们会与你和彼此对战。",
+  "ja": "ボットはコンピューターが操作するプレイヤーです。全員が敵同士の乱戦です。",
+  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Chacun pour soi : ils t'affrontent et s'affrontent entre eux.",
+  "es": "Los bots son jugadores controlados por el ordenador. Todos contra todos: te atacan a ti y se atacan entre ellos."
+ }
+}

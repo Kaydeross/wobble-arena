@@ -25,6 +25,16 @@ var lives := 0
 var elim := false
 var ko := 0
 var kill_t := -99.0
+var gg_rung := 0                 ## Weapon Ladder rung (ModeRules.GG index)
+var dash_n := 3                  ## ninja dash charges (ModeRules.DASH_MAX)
+var dash_regen := 0.0
+var dash_cd := 0.0
+## Generic skill timers (logic/skills.gd), Godot-only and empty by default so the parity paths never see them.
+## skill_n: charges left per skill id ("recover", "b:<weapon>" = a weapon's burst pool); a missing id = full.
+## skill_cd: seconds until the next charge comes back, per skill id.
+var skill_n := {}
+var skill_cd := {}
+var recover_air_t := 0.0         ## air recovery: boosted air control while > 0 (FighterPhysics counts it down)
 
 # --- class (shared/classes.json) ---
 var class_id := "wobbler"
@@ -50,9 +60,14 @@ var invuln := 0.0
 var flash := 0.0
 var shield_t := 0.0
 var rage_t := 0.0
+var big_t := 0.0                 ## Chaos "Giant" event: bigger hit spheres, double health, harder hits (ModeRules)
 var spd_t := 0.0                 ## speed boost: x1.4 run speed (FighterPhysics)
 var dash_air_t := 0.0            ## Pillars dash: air steering stays at 3 while > 0 (FighterPhysics counts it down)
 var trap_t := 0.0
+var trap_net: RefCounted = null  ## the Weapons.TrapNet holding this fighter down (trapNet), null = none
+var trap_x := 0.0                ## pinned here while trapped (trapX / trapZ)
+var trap_z := 0.0
+var lie_side := 1                ## which side they lie on under a net (lieSide, visual)
 var struggle := 0.0
 var burn := 0.0
 var burn_acc := 0.0
@@ -64,6 +79,7 @@ var last_hit_time := -99.0
 var weapon := "spatula"          ## "" = nothing (dead)
 var slots: Array = [null, null, null]   ## each null or {key, ammo, mag (-1 = no magazine), pend}
 var slot := -1                   ## -1 = the default spatula
+var spatula_lock := false        ## the player chose the spatula on purpose: pickups do not pull a weapon into the hand (tuned matches)
 var return_slot := -1            ## quick melee: slot to go back to (-1 = none)
 var reloading := false
 var rl_t := 0.0
@@ -79,6 +95,12 @@ var pad_cool := 0.0
 var climb := 0.0
 var climb_back := 1.0
 var last_shot_t := -9.0
+var bloom := 0.0                 ## extra gun spread built up by sustained fire (tuned matches only)
+var gun_kick := 0.0              ## recent gun hits taken: each stacked hit pushes less (tuned matches only)
+var wob_x := 0.0                 ## random arm wobble added to the aim (tuned matches only)
+var wob_y := 0.0
+var wob_z := 0.0
+var wob_t := 0.0                 ## time to the next wobble nudge
 var hip_d := 0.0                 ## barrel tilt (hip-carried minigun)
 var spin := 0.0                  ## minigun spin-up (playerControl p.spin)
 var uzi_side := 0                ## dual Uzis: which gun fires next
@@ -86,7 +108,8 @@ var uzi_k: Array = [0.0, 0.0]    ## per-gun kick (visual)
 var ads := 0.0                   ## scoped-in amount (cam.aim for the player)
 var nocked := false
 var grab_t := -1.0
-var draw := 0.0
+var draw := 0.0                  ## bow draw 0..1
+var flame_n := 0                 ## flamethrower shots (every third one makes the sound)
 
 # --- melee swing ---
 var swing := -1.0                ## -1 idle, 0..1.3 while swinging
@@ -116,6 +139,12 @@ var thrown := false
 var throw_hold := false
 var knife_t := -1.0
 var twirl_len := 1.4
+var throw_pow := 0.3             ## trident: how far the throw was charged (throwPow)
+var t_charge := -1.0             ## trident input state (tCharge): >= 0 charging, -1 idle, -2 waiting for release, -3 jab-or-throw
+var t_pend := -1.0
+var t_chg := 0.0                 ## last charge (the HUD bar / spin)
+var boom: Object = null          ## Weapons.Boom in the air (p.boom): no second throw until it is back
+var aim_pt: Array = []           ## the player's crosshair point (aimPoint), written by PlayerControl; homing throws read it on release
 
 # --- points written by the animation (world space) ---
 var hand_x := 0.0
@@ -127,6 +156,10 @@ var arm_z := 1.0
 var aim_x := 0.0                 ## where the arm wants to point (aimTarget)
 var aim_y := 0.0
 var aim_z := 1.0
+var hand2_x := 0.0               ## off hand (armL.localToWorld(0, -0.8, 0)): the shuriken's second star; hand2_ok = written
+var hand2_y := 0.0
+var hand2_z := 0.0
+var hand2_ok := false
 var shoulder_x := 0.0
 var shoulder_y := 0.0
 var shoulder_z := 0.0
@@ -162,7 +195,7 @@ func set_class(cid: String, c: Dictionary) -> void:
 
 ## Hit spheres [cx, cy, cz, r, is_head] (Fighter.spheres). Head, chest and legs are the points written by the animation.
 func spheres(giant: bool) -> Array:
-	var k := 1.5 if giant else 1.0
+	var k := 1.5 if (giant or big_t > 0.0) else 1.0
 	return [[head_x, head_y, head_z, 0.4 * k, true], [chest_x, chest_y, chest_z, 0.62 * k, false],
 		[leg_x, leg_y, leg_z, 0.5 * k, false]]
 
@@ -176,7 +209,7 @@ func current_slot() -> Variant:
 ## Ammo of the held slot (the `ammo` getter).
 func get_ammo() -> int:
 	var s: Variant = current_slot()
-	return int(s["ammo"]) if s != null else 0
+	return int(s["ammo"]) if s != null else 0   # the Air Blower's fractional ammo is read from the slot directly
 
 func set_ammo(v: int) -> void:
 	var s: Variant = current_slot()

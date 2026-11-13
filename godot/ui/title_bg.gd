@@ -86,8 +86,8 @@ func _draw_site(s: Vector2) -> void:
 	var hx := cx + sin(_t * 0.9) * 10.0
 	var hy := jib_y + s.y * 0.1 + sin(_t * 1.3) * 3.0
 	draw_line(Vector2(cx, jib_y + 5.0), Vector2(hx, hy), k, 2.0)
-	draw_rect(Rect2(hx - 22.0, hy, 44.0, 24.0), Color(Hazard.YELLOW, 0.95 * mix))             # the hanging load
-	draw_rect(Rect2(hx - 22.0, hy + 10.0, 44.0, 5.0), Color(Hazard.BLACK, 0.9 * mix))
+	draw_rect(Rect2(hx - 22.0, hy, 44.0, 24.0), Color(HazardTape.YELLOW, 0.95 * mix))             # the hanging load
+	draw_rect(Rect2(hx - 22.0, hy + 10.0, 44.0, 5.0), Color(HazardTape.BLACK, 0.9 * mix))
 	# low scaffold
 	var sx := s.x * 0.25
 	var sw := s.x * 0.1
@@ -109,4 +109,4 @@ func _draw_site(s: Vector2) -> void:
 		draw_rect(Rect2(bx - 7.0, ground - 20.0, 14.0, 4.0), Color(1, 1, 1, 0.9 * mix))
 	# ground with a hazard strip
 	draw_rect(Rect2(0, ground, s.x, s.y - ground), Color(0.06, 0.05, 0.05, 0.96 * mix))
-	Hazard.stripes(self, Rect2(0, ground, s.x, 12.0), 14.0, _t * 6.0, Color(Hazard.YELLOW, mix), Color(Hazard.BLACK, mix))
+	HazardTape.stripes(self, Rect2(0, ground, s.x, 12.0), 14.0, _t * 6.0, Color(HazardTape.YELLOW, mix), Color(HazardTape.BLACK, mix))

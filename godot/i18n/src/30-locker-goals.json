@@ -1,0 +1,1682 @@
+{
+ "Your coins. Earn them from K.O.s, finished matches and Goals": {
+  "zh_TW": "你的金幣。可從擊倒、完成的比賽和目標中賺取",
+  "zh_CN": "你的金币。可通过击倒、完成的比赛和目标获得",
+  "ja": "コイン。KO、終了した試合、目標で手に入ります",
+  "fr": "Pièces. Se gagnent avec les K.O., les matchs terminés et les objectifs",
+  "es": "Tus monedas. Gánalas con K.O., partidas terminadas y objetivos"
+ },
+ "Your outfits, hats, colours, emotes and classes": {
+  "zh_TW": "你的服裝、帽子、顏色、表情動作和角色",
+  "zh_CN": "你的服装、帽子、颜色、表情动作和角色",
+  "ja": "持っている衣装、帽子、色、エモート、キャラクター",
+  "fr": "Tenues, chapeaux, couleurs, emotes et classes possédés",
+  "es": "Tus atuendos, sombreros, colores, emotes y clases"
+ },
+ "Buy outfits, emotes and classes with coins": {
+  "zh_TW": "用金幣購買服裝、表情動作和角色",
+  "zh_CN": "用金币购买服装、表情动作和角色",
+  "ja": "コインで衣装、エモート、キャラクターを買えます",
+  "fr": "Acheter tenues, emotes et classes avec des pièces",
+  "es": "Compra atuendos, emotes y clases con monedas"
+ },
+ "Buy": {
+  "zh_TW": "購買",
+  "zh_CN": "购买",
+  "ja": "購入",
+  "fr": "Acheter",
+  "es": "Comprar"
+ },
+ "Equipped": {
+  "zh_TW": "已裝備",
+  "zh_CN": "已装备",
+  "ja": "装備中",
+  "fr": "Équipé",
+  "es": "Equipado"
+ },
+ "Wearing": {
+  "zh_TW": "穿著中",
+  "zh_CN": "穿着中",
+  "ja": "着用中",
+  "fr": "Porté",
+  "es": "Puesto"
+ },
+ "Picked": {
+  "zh_TW": "已選擇",
+  "zh_CN": "已选择",
+  "ja": "選択中",
+  "fr": "Choisi",
+  "es": "Elegido"
+ },
+ "Owned": {
+  "zh_TW": "已擁有",
+  "zh_CN": "已拥有",
+  "ja": "所持",
+  "fr": "Possédé",
+  "es": "Obtenido"
+ },
+ "Free": {
+  "zh_TW": "免費",
+  "zh_CN": "免费",
+  "ja": "無料",
+  "fr": "Gratuit",
+  "es": "Gratis"
+ },
+ "With an outfit": {
+  "zh_TW": "需搭配服裝",
+  "zh_CN": "需搭配服装",
+  "ja": "衣装と一緒に",
+  "fr": "Avec une tenue",
+  "es": "Con un atuendo"
+ },
+ "Buy for %d": {
+  "zh_TW": "%d 金幣購買",
+  "zh_CN": "%d 金币购买",
+  "ja": "%d コインで購入",
+  "fr": "Acheter pour %d",
+  "es": "Comprar por %d"
+ },
+ "Need %d more": {
+  "zh_TW": "還差 %d",
+  "zh_CN": "还差 %d",
+  "ja": "あと %d 枚",
+  "fr": "Manque %d",
+  "es": "Faltan %d"
+ },
+ "Secret": {
+  "zh_TW": "隱藏",
+  "zh_CN": "隐藏",
+  "ja": "シークレット",
+  "fr": "Secret",
+  "es": "Secreta"
+ },
+ "Locked": {
+  "zh_TW": "未解鎖",
+  "zh_CN": "未解锁",
+  "ja": "ロック中",
+  "fr": "Verrouillé",
+  "es": "Bloqueado"
+ },
+ "Not for sale": {
+  "zh_TW": "不販售",
+  "zh_CN": "不出售",
+  "ja": "販売していません",
+  "fr": "Pas à vendre",
+  "es": "No está en venta"
+ },
+ "Use colour": {
+  "zh_TW": "使用此顏色",
+  "zh_CN": "使用此颜色",
+  "ja": "この色を使う",
+  "fr": "Utiliser cette couleur",
+  "es": "Usar este color"
+ },
+ "Wear": {
+  "zh_TW": "穿上",
+  "zh_CN": "穿上",
+  "ja": "着用",
+  "fr": "Porter",
+  "es": "Ponerse"
+ },
+ "Equip": {
+  "zh_TW": "裝備",
+  "zh_CN": "装备",
+  "ja": "装備",
+  "fr": "Équiper",
+  "es": "Equipar"
+ },
+ "Pick": {
+  "zh_TW": "選擇",
+  "zh_CN": "选择",
+  "ja": "選ぶ",
+  "fr": "Choisir",
+  "es": "Elegir"
+ },
+ "Using it": {
+  "zh_TW": "使用中",
+  "zh_CN": "使用中",
+  "ja": "使用中",
+  "fr": "En cours d'utilisation",
+  "es": "En uso"
+ },
+ "Tap to see it. Equip puts it on T.": {
+  "zh_TW": "點一下預覽。裝備後會放在 T 鍵",
+  "zh_CN": "点一下预览。装备后会放在 T 键",
+  "ja": "タップで確認。装備すると T キーに入ります",
+  "fr": "Toucher pour voir. Équiper le place sur T.",
+  "es": "Toca para verlo. Equipar lo pone en T."
+ },
+ "Your outfits. Get more in the Shop.": {
+  "zh_TW": "你的服裝。到商店取得更多",
+  "zh_CN": "你的服装。到商店获取更多",
+  "ja": "持っている衣装。ショップで追加できます",
+  "fr": "Tenues possédées. D'autres à la boutique.",
+  "es": "Tus atuendos. Consigue más en la tienda."
+ },
+ "Hats are free to wear.": {
+  "zh_TW": "帽子可免費穿戴。",
+  "zh_CN": "帽子可免费佩戴。",
+  "ja": "帽子はいつでも無料で着用できます。",
+  "fr": "Chapeaux gratuits à porter.",
+  "es": "Los sombreros son gratis."
+ },
+ "Your body colour with no outfit on. Outfits bring their own.": {
+  "zh_TW": "未穿服裝時的身體顏色。服裝自帶顏色。",
+  "zh_CN": "未穿服装时的身体颜色。服装自带颜色。",
+  "ja": "衣装を着ていないときの体の色。衣装には専用の色があります。",
+  "fr": "Couleur du corps sans tenue. Les tenues ont la leur.",
+  "es": "Color del cuerpo sin atuendo. Los atuendos traen el suyo."
+ },
+ "Your classes. Buy more in the Shop, some unlock by playing.": {
+  "zh_TW": "你的角色。可到商店購買更多，部分需透過遊玩解鎖。",
+  "zh_CN": "你的角色。可到商店购买更多，部分需通过游玩解锁。",
+  "ja": "持っているキャラクター。ショップで追加購入、一部はプレイで解放。",
+  "fr": "Classes possédées. D'autres à acheter, certaines se débloquent en jouant.",
+  "es": "Tus clases. Compra más en la tienda; algunas se desbloquean jugando."
+ },
+ "Earn coins: K.O. +5, match +40, win +60, Goals.": {
+  "zh_TW": "賺取金幣：擊倒 +5、比賽 +40、獲勝 +60、目標。",
+  "zh_CN": "赚取金币：击倒 +5、比赛 +40、获胜 +60、目标。",
+  "ja": "コインの入手：KO +5、試合 +40、勝利 +60、目標。",
+  "fr": "Gagner des pièces : K.O. +5, match +40, victoire +60, objectifs.",
+  "es": "Ganar monedas: K.O. +5, partida +40, victoria +60, objetivos."
+ },
+ "You own every class for sale. Secret classes unlock by playing.": {
+  "zh_TW": "你已擁有所有可販售的角色。隱藏角色需透過遊玩解鎖。",
+  "zh_CN": "你已拥有所有可出售的角色。隐藏角色需通过游玩解锁。",
+  "ja": "販売中のキャラクターはすべて持っています。シークレットはプレイで解放されます。",
+  "fr": "Toutes les classes en vente sont possédées. Les classes secrètes se débloquent en jouant.",
+  "es": "Ya tienes todas las clases a la venta. Las clases secretas se desbloquean jugando."
+ },
+ "You own everything here!": {
+  "zh_TW": "這裡的東西你都有了！",
+  "zh_CN": "这里的东西你都有了！",
+  "ja": "ここにあるものはすべて持っています！",
+  "fr": "Tout est déjà possédé !",
+  "es": "¡Ya tienes todo lo de aquí!"
+ },
+ "Nothing here yet. Get some in the Shop.": {
+  "zh_TW": "這裡還沒有東西。到商店購買吧。",
+  "zh_CN": "这里还没有东西。到商店购买吧。",
+  "ja": "まだ何もありません。ショップで手に入れましょう。",
+  "fr": "Rien pour l'instant. Passer par la boutique.",
+  "es": "Aún no hay nada. Consigue algo en la tienda."
+ },
+ "Outfits": {
+  "zh_TW": "服裝",
+  "zh_CN": "服装",
+  "ja": "衣装",
+  "fr": "Tenues",
+  "es": "Atuendos"
+ },
+ "Hats": {
+  "zh_TW": "帽子",
+  "zh_CN": "帽子",
+  "ja": "帽子",
+  "fr": "Chapeaux",
+  "es": "Sombreros"
+ },
+ "Colour": {
+  "zh_TW": "顏色",
+  "zh_CN": "颜色",
+  "ja": "色",
+  "fr": "Couleur",
+  "es": "Color"
+ },
+ "Class": {
+  "zh_TW": "角色",
+  "zh_CN": "角色",
+  "ja": "キャラクター",
+  "fr": "Classe",
+  "es": "Clase"
+ },
+ "Comes with %s": {
+  "zh_TW": "附帶 %s",
+  "zh_CN": "附带 %s",
+  "ja": "%s 付き",
+  "fr": "Inclut %s",
+  "es": "Incluye %s"
+ },
+ "%d coins": {
+  "zh_TW": "%d 金幣",
+  "zh_CN": "%d 金币",
+  "ja": "%d コイン",
+  "fr": "%d pièces",
+  "es": "%d monedas"
+ },
+ "Hidden under %s. Shows with no outfit": {
+  "zh_TW": "被 %s 遮住。不穿服裝時會顯示",
+  "zh_CN": "被 %s 遮住。不穿服装时会显示",
+  "ja": "%s の下に隠れています。衣装を脱ぐと見えます",
+  "fr": "Caché sous %s. Visible sans tenue",
+  "es": "Oculto bajo %s. Se ve sin atuendo"
+ },
+ "wins": {
+  "zh_TW": "勝",
+  "zh_CN": "胜",
+  "ja": "勝利",
+  "fr": "victoires",
+  "es": "victorias"
+ },
+ "played": {
+  "zh_TW": "場",
+  "zh_CN": "场",
+  "ja": "試合",
+  "fr": "matchs",
+  "es": "partidas"
+ },
+ "K.O.s": {
+  "zh_TW": "擊倒",
+  "zh_CN": "击倒",
+  "ja": "KO",
+  "fr": "K.O.",
+  "es": "K.O."
+ },
+ "%d/%d %s": {
+  "zh_TW": "%d/%d %s",
+  "zh_CN": "%d/%d %s",
+  "ja": "%d/%d %s",
+  "fr": "%d/%d %s",
+  "es": "%d/%d %s"
+ },
+ "%s · %d/%d": {
+  "zh_TW": "%s · %d/%d",
+  "zh_CN": "%s · %d/%d",
+  "ja": "%s · %d/%d",
+  "fr": "%s · %d/%d",
+  "es": "%s · %d/%d"
+ },
+ "Buy %s?": {
+  "zh_TW": "購買 %s？",
+  "zh_CN": "购买 %s？",
+  "ja": "%s を購入しますか？",
+  "fr": "Acheter %s ?",
+  "es": "¿Comprar %s?"
+ },
+ "%d coins. You have %d.": {
+  "zh_TW": "%d 金幣。你有 %d。",
+  "zh_CN": "%d 金币。你有 %d。",
+  "ja": "%d コイン。所持は %d コイン。",
+  "fr": "%d pièces. Solde : %d.",
+  "es": "%d monedas. Tienes %d."
+ },
+ "You need %d more coins. Score K.O.s and finish matches to earn them.": {
+  "zh_TW": "還差 %d 金幣。擊倒對手並完成比賽就能賺取。",
+  "zh_CN": "还差 %d 金币。击倒对手并完成比赛就能赚取。",
+  "ja": "あと %d コイン必要です。KO を取って試合を終えると貯まります。",
+  "fr": "Il manque %d pièces. En gagner avec les K.O. et les matchs terminés.",
+  "es": "Te faltan %d monedas. Consigue K.O. y termina partidas para ganarlas."
+ },
+ "Secret class. %s to unlock it.": {
+  "zh_TW": "隱藏角色。%s即可解鎖。",
+  "zh_CN": "隐藏角色。%s即可解锁。",
+  "ja": "シークレットキャラクター。%s で解放。",
+  "fr": "Classe secrète. %s pour la débloquer.",
+  "es": "Clase secreta. %s para desbloquearla."
+ },
+ "%s is on T and first in the emote button.": {
+  "zh_TW": "%s 已放在 T 鍵，並排在表情按鈕的第一格。",
+  "zh_CN": "%s 已放在 T 键，并排在表情按钮的第一格。",
+  "ja": "%s を T キーに設定し、エモートボタンの先頭にしました。",
+  "fr": "%s est sur T, en première place du bouton d'emotes.",
+  "es": "%s está en T y es el primero del botón de emotes."
+ },
+ "Now wearing %s.": {
+  "zh_TW": "正在穿著 %s。",
+  "zh_CN": "正在穿着 %s。",
+  "ja": "%s を着用中です。",
+  "fr": "%s est porté.",
+  "es": "Ahora llevas %s."
+ },
+ "You play as %s.": {
+  "zh_TW": "你將以 %s 上場。",
+  "zh_CN": "你将以 %s 上场。",
+  "ja": "%s で遊びます。",
+  "fr": "Joué avec %s.",
+  "es": "Juegas como %s."
+ },
+ "Body colour: %s.": {
+  "zh_TW": "身體顏色：%s。",
+  "zh_CN": "身体颜色：%s。",
+  "ja": "体の色：%s。",
+  "fr": "Couleur du corps : %s.",
+  "es": "Color del cuerpo: %s."
+ },
+ " Take your outfit off to see it.": {
+  "zh_TW": " 脫下服裝即可看到。",
+  "zh_CN": " 脱下服装即可看到。",
+  "ja": " 衣装を脱ぐと見えます。",
+  "fr": " Retirer la tenue pour le voir.",
+  "es": " Quítate el atuendo para verlo."
+ },
+ " You're wearing it.": {
+  "zh_TW": " 你已穿上。",
+  "zh_CN": " 你已穿上。",
+  "ja": " 着用しました。",
+  "fr": " Elle est portée.",
+  "es": " Ya la llevas puesta."
+ },
+ " You also got %s.": {
+  "zh_TW": " 還附贈 %s。",
+  "zh_CN": " 还附赠 %s。",
+  "ja": " %s も手に入りました。",
+  "fr": " %s est aussi débloqué.",
+  "es": " También consigues %s."
+ },
+ " You play as it now.": {
+  "zh_TW": " 現在以此角色上場。",
+  "zh_CN": " 现在以此角色上场。",
+  "ja": " このキャラクターで遊びます。",
+  "fr": " Joué désormais avec elle.",
+  "es": " Ahora juegas con ella."
+ },
+ "Bought %s!%s": {
+  "zh_TW": "已購買 %s！%s",
+  "zh_CN": "已购买 %s！%s",
+  "ja": "%s を購入しました！%s",
+  "fr": "%s acheté !%s",
+  "es": "¡%s comprado!%s"
+ },
+ "You need %d more coins.": {
+  "zh_TW": "還差 %d 金幣。",
+  "zh_CN": "还差 %d 金币。",
+  "ja": "あと %d コイン必要です。",
+  "fr": "Il manque %d pièces.",
+  "es": "Te faltan %d monedas."
+ },
+ "You can't buy that.": {
+  "zh_TW": "無法購買這個。",
+  "zh_CN": "无法购买这个。",
+  "ja": "これは購入できません。",
+  "fr": "Impossible d'acheter cela.",
+  "es": "No puedes comprar eso."
+ },
+ "No outfit": {
+  "zh_TW": "不穿服裝",
+  "zh_CN": "不穿服装",
+  "ja": "衣装なし",
+  "fr": "Sans tenue",
+  "es": "Sin atuendo"
+ },
+ "Teal": {
+  "zh_TW": "青綠",
+  "zh_CN": "青绿",
+  "ja": "ティール",
+  "fr": "Sarcelle",
+  "es": "Verde azulado"
+ },
+ "Red": {
+  "zh_TW": "紅",
+  "zh_CN": "红",
+  "ja": "レッド",
+  "fr": "Rouge",
+  "es": "Rojo"
+ },
+ "Blue": {
+  "zh_TW": "藍",
+  "zh_CN": "蓝",
+  "ja": "ブルー",
+  "fr": "Bleu",
+  "es": "Azul"
+ },
+ "Yellow": {
+  "zh_TW": "黃",
+  "zh_CN": "黄",
+  "ja": "イエロー",
+  "fr": "Jaune",
+  "es": "Amarillo"
+ },
+ "Purple": {
+  "zh_TW": "紫",
+  "zh_CN": "紫",
+  "ja": "パープル",
+  "fr": "Violet",
+  "es": "Morado"
+ },
+ "Green": {
+  "zh_TW": "綠",
+  "zh_CN": "绿",
+  "ja": "グリーン",
+  "fr": "Vert",
+  "es": "Verde"
+ },
+ "Orange": {
+  "zh_TW": "橘",
+  "zh_CN": "橘",
+  "ja": "オレンジ",
+  "fr": "Orange",
+  "es": "Naranja"
+ },
+ "White": {
+  "zh_TW": "白",
+  "zh_CN": "白",
+  "ja": "ホワイト",
+  "fr": "Blanc",
+  "es": "Blanco"
+ },
+ "Common": {
+  "zh_TW": "普通",
+  "zh_CN": "普通",
+  "ja": "コモン",
+  "fr": "Commun",
+  "es": "Común"
+ },
+ "Uncommon": {
+  "zh_TW": "罕見",
+  "zh_CN": "罕见",
+  "ja": "アンコモン",
+  "fr": "Peu commun",
+  "es": "Poco común"
+ },
+ "Rare": {
+  "zh_TW": "稀有",
+  "zh_CN": "稀有",
+  "ja": "レア",
+  "fr": "Rare",
+  "es": "Raro"
+ },
+ "Epic": {
+  "zh_TW": "史詩",
+  "zh_CN": "史诗",
+  "ja": "エピック",
+  "fr": "Épique",
+  "es": "Épico"
+ },
+ "Legendary": {
+  "zh_TW": "傳說",
+  "zh_CN": "传说",
+  "ja": "レジェンド",
+  "fr": "Légendaire",
+  "es": "Legendario"
+ },
+ "Mythic": {
+  "zh_TW": "神話",
+  "zh_CN": "神话",
+  "ja": "ミシック",
+  "fr": "Mythique",
+  "es": "Mítico"
+ },
+ "No hat": {
+  "zh_TW": "不戴帽子",
+  "zh_CN": "不戴帽子",
+  "ja": "帽子なし",
+  "fr": "Sans chapeau",
+  "es": "Sin sombrero"
+ },
+ "Party": {
+  "zh_TW": "派對",
+  "zh_CN": "派对",
+  "ja": "パーティー",
+  "fr": "Fête",
+  "es": "Fiesta"
+ },
+ "Top hat": {
+  "zh_TW": "高帽",
+  "zh_CN": "高帽",
+  "ja": "シルクハット",
+  "fr": "Haut-de-forme",
+  "es": "Sombrero de copa"
+ },
+ "Crown": {
+  "zh_TW": "皇冠",
+  "zh_CN": "皇冠",
+  "ja": "王冠",
+  "fr": "Couronne",
+  "es": "Corona"
+ },
+ "Propeller": {
+  "zh_TW": "螺旋槳",
+  "zh_CN": "螺旋桨",
+  "ja": "プロペラ",
+  "fr": "Hélice",
+  "es": "Hélice"
+ },
+ "Wizard": {
+  "zh_TW": "巫師",
+  "zh_CN": "巫师",
+  "ja": "ウィザード",
+  "fr": "Magicien",
+  "es": "Mago"
+ },
+ "Bunny": {
+  "zh_TW": "兔耳",
+  "zh_CN": "兔耳",
+  "ja": "うさ耳",
+  "fr": "Oreilles de lapin",
+  "es": "Orejas de conejo"
+ },
+ "Cone": {
+  "zh_TW": "交通錐",
+  "zh_CN": "交通锥",
+  "ja": "コーン",
+  "fr": "Cône",
+  "es": "Cono"
+ },
+ "Pirate": {
+  "zh_TW": "海盜",
+  "zh_CN": "海盗",
+  "ja": "海賊",
+  "fr": "Pirate",
+  "es": "Pirata"
+ },
+ "Chef": {
+  "zh_TW": "主廚",
+  "zh_CN": "厨师",
+  "ja": "コック",
+  "fr": "Chef",
+  "es": "Chef"
+ },
+ "Cowboy": {
+  "zh_TW": "牛仔",
+  "zh_CN": "牛仔",
+  "ja": "カウボーイ",
+  "fr": "Cow-boy",
+  "es": "Vaquero"
+ },
+ "Halo": {
+  "zh_TW": "光環",
+  "zh_CN": "光环",
+  "ja": "ヘイロー",
+  "fr": "Auréole",
+  "es": "Aureola"
+ },
+ "Viking": {
+  "zh_TW": "維京",
+  "zh_CN": "维京",
+  "ja": "ヴァイキング",
+  "fr": "Viking",
+  "es": "Vikingo"
+ },
+ "Headphones": {
+  "zh_TW": "耳機",
+  "zh_CN": "耳机",
+  "ja": "ヘッドホン",
+  "fr": "Casque",
+  "es": "Auriculares"
+ },
+ "Beanie": {
+  "zh_TW": "毛帽",
+  "zh_CN": "毛线帽",
+  "ja": "ビーニー",
+  "fr": "Bonnet",
+  "es": "Gorro"
+ },
+ "Santa": {
+  "zh_TW": "聖誕老人",
+  "zh_CN": "圣诞老人",
+  "ja": "サンタ",
+  "fr": "Père Noël",
+  "es": "Papá Noel"
+ },
+ "Hoodie": {
+  "zh_TW": "連帽衫",
+  "zh_CN": "连帽衫",
+  "ja": "パーカー",
+  "fr": "Sweat à capuche",
+  "es": "Sudadera"
+ },
+ "Skater": {
+  "zh_TW": "滑板少年",
+  "zh_CN": "滑板少年",
+  "ja": "スケーター",
+  "fr": "Skateur",
+  "es": "Skater"
+ },
+ "Suit": {
+  "zh_TW": "西裝",
+  "zh_CN": "西装",
+  "ja": "スーツ",
+  "fr": "Costume",
+  "es": "Traje"
+ },
+ "Builder": {
+  "zh_TW": "工人",
+  "zh_CN": "工人",
+  "ja": "ビルダー",
+  "fr": "Bricoleur",
+  "es": "Constructor"
+ },
+ "Sporty": {
+  "zh_TW": "運動風",
+  "zh_CN": "运动风",
+  "ja": "スポーティ",
+  "fr": "Sportif",
+  "es": "Deportista"
+ },
+ "Jacket": {
+  "zh_TW": "夾克",
+  "zh_CN": "夹克",
+  "ja": "ジャケット",
+  "fr": "Veste",
+  "es": "Chaqueta"
+ },
+ "Sundress": {
+  "zh_TW": "夏日洋裝",
+  "zh_CN": "夏日连衣裙",
+  "ja": "サンドレス",
+  "fr": "Robe d'été",
+  "es": "Vestido de verano"
+ },
+ "Sheriff": {
+  "zh_TW": "警長",
+  "zh_CN": "警长",
+  "ja": "保安官",
+  "fr": "Shérif",
+  "es": "Sheriff"
+ },
+ "Captain Salt": {
+  "zh_TW": "鹽船長",
+  "zh_CN": "盐船长",
+  "ja": "ソルト船長",
+  "fr": "Capitaine Sel",
+  "es": "Capitán Sal"
+ },
+ "Star Wizard": {
+  "zh_TW": "星星巫師",
+  "zh_CN": "星星巫师",
+  "ja": "スターウィザード",
+  "fr": "Magicien stellaire",
+  "es": "Mago estelar"
+ },
+ "Astronaut": {
+  "zh_TW": "太空人",
+  "zh_CN": "宇航员",
+  "ja": "宇宙飛行士",
+  "fr": "Astronaute",
+  "es": "Astronauta"
+ },
+ "Bolt-Bot": {
+  "zh_TW": "閃電機器人",
+  "zh_CN": "闪电机器人",
+  "ja": "ボルトボット",
+  "fr": "Bolt-Bot",
+  "es": "Bolt-Bot"
+ },
+ "Shadow Ninja": {
+  "zh_TW": "暗影忍者",
+  "zh_CN": "暗影忍者",
+  "ja": "シャドウニンジャ",
+  "fr": "Ninja de l'ombre",
+  "es": "Ninja sombra"
+ },
+ "Silver Knight": {
+  "zh_TW": "白銀騎士",
+  "zh_CN": "白银骑士",
+  "ja": "シルバーナイト",
+  "fr": "Chevalier d'argent",
+  "es": "Caballero de plata"
+ },
+ "Crimson Samurai": {
+  "zh_TW": "赤紅武士",
+  "zh_CN": "赤红武士",
+  "ja": "クリムゾンサムライ",
+  "fr": "Samouraï cramoisi",
+  "es": "Samurái carmesí"
+ },
+ "Count Dusk": {
+  "zh_TW": "黃昏伯爵",
+  "zh_CN": "黄昏伯爵",
+  "ja": "ドゥスク伯爵",
+  "fr": "Comte Crépuscule",
+  "es": "Conde Ocaso"
+ },
+ "Frost Viking": {
+  "zh_TW": "霜凍維京人",
+  "zh_CN": "霜冻维京人",
+  "ja": "フロストバイキング",
+  "fr": "Viking du givre",
+  "es": "Vikingo de escarcha"
+ },
+ "Lab Genius": {
+  "zh_TW": "實驗天才",
+  "zh_CN": "实验天才",
+  "ja": "ラボの天才",
+  "fr": "Génie du labo",
+  "es": "Genio de laboratorio"
+ },
+ "Turbo Racer": {
+  "zh_TW": "極速賽車手",
+  "zh_CN": "极速赛车手",
+  "ja": "ターボレーサー",
+  "fr": "Pilote turbo",
+  "es": "Piloto turbo"
+ },
+ "Sun Pharaoh": {
+  "zh_TW": "太陽法老",
+  "zh_CN": "太阳法老",
+  "ja": "サンファラオ",
+  "fr": "Pharaon du soleil",
+  "es": "Faraón del sol"
+ },
+ "Fire Fighter": {
+  "zh_TW": "消防員",
+  "zh_CN": "消防员",
+  "ja": "ファイヤーファイター",
+  "fr": "Pompier",
+  "es": "Bombero"
+ },
+ "Detective": {
+  "zh_TW": "偵探",
+  "zh_CN": "侦探",
+  "ja": "探偵",
+  "fr": "Détective",
+  "es": "Detective"
+ },
+ "Ace Pilot": {
+  "zh_TW": "王牌飛行員",
+  "zh_CN": "王牌飞行员",
+  "ja": "エースパイロット",
+  "fr": "As pilote",
+  "es": "As piloto"
+ },
+ "Jester": {
+  "zh_TW": "小丑",
+  "zh_CN": "小丑",
+  "ja": "ジェスター",
+  "fr": "Bouffon",
+  "es": "Bufón"
+ },
+ "Developer": {
+  "zh_TW": "開發者",
+  "zh_CN": "开发者",
+  "ja": "デベロッパー",
+  "fr": "Développeur",
+  "es": "Desarrollador"
+ },
+ "Beta Tester": {
+  "zh_TW": "測試員",
+  "zh_CN": "测试员",
+  "ja": "ベータテスター",
+  "fr": "Bêta-testeur",
+  "es": "Probador beta"
+ },
+ "Deck Hand": {
+  "zh_TW": "甲板水手",
+  "zh_CN": "甲板水手",
+  "ja": "デッキハンド",
+  "fr": "Matelot",
+  "es": "Marinero"
+ },
+ "Triple T": {
+  "zh_TW": "三T",
+  "zh_CN": "三T",
+  "ja": "トリプルT",
+  "fr": "Triple T",
+  "es": "Triple T"
+ },
+ "Ballerina Cappuccina": {
+  "zh_TW": "芭蕾卡布奇納",
+  "zh_CN": "芭蕾卡布奇纳",
+  "ja": "バレリーナ・カプチーナ",
+  "fr": "Ballerina Cappuccina",
+  "es": "Ballerina Cappuccina"
+ },
+ "Cappuccino Assassino": {
+  "zh_TW": "卡布奇諾刺客",
+  "zh_CN": "卡布奇诺刺客",
+  "ja": "カプチーノ・アサシーノ",
+  "fr": "Cappuccino Assassino",
+  "es": "Cappuccino Assassino"
+ },
+ "Thunder Titan": {
+  "zh_TW": "雷霆泰坦",
+  "zh_CN": "雷霆泰坦",
+  "ja": "サンダータイタン",
+  "fr": "Titan du tonnerre",
+  "es": "Titán del trueno"
+ },
+ "Captain Comet": {
+  "zh_TW": "彗星船長",
+  "zh_CN": "彗星船长",
+  "ja": "コメット船長",
+  "fr": "Capitaine Comète",
+  "es": "Capitán Cometa"
+ },
+ "Wobble Dance": {
+  "zh_TW": "搖擺舞",
+  "zh_CN": "摇摆舞",
+  "ja": "ウォブルダンス",
+  "fr": "Danse wobble",
+  "es": "Baile wobble"
+ },
+ "Hip Swing": {
+  "zh_TW": "扭胯",
+  "zh_CN": "扭胯",
+  "ja": "ヒップスイング",
+  "fr": "Balancement des hanches",
+  "es": "Balanceo de caderas"
+ },
+ "Clap Along": {
+  "zh_TW": "跟著拍手",
+  "zh_CN": "跟着拍手",
+  "ja": "手拍子",
+  "fr": "Battements de mains",
+  "es": "Palmas al ritmo"
+ },
+ "Disco Point": {
+  "zh_TW": "迪斯可指",
+  "zh_CN": "迪斯科指",
+  "ja": "ディスコポイント",
+  "fr": "Pointé disco",
+  "es": "Señalar disco"
+ },
+ "Chill Out": {
+  "zh_TW": "放鬆",
+  "zh_CN": "放松",
+  "ja": "くつろぎ",
+  "fr": "Détente",
+  "es": "Relax"
+ },
+ "Robot": {
+  "zh_TW": "機器人",
+  "zh_CN": "机器人",
+  "ja": "ロボット",
+  "fr": "Robot",
+  "es": "Robot"
+ },
+ "Spin Cycle": {
+  "zh_TW": "快速旋轉",
+  "zh_CN": "快速旋转",
+  "ja": "スピンサイクル",
+  "fr": "Tour express",
+  "es": "Giro rápido"
+ },
+ "Backflip": {
+  "zh_TW": "後空翻",
+  "zh_CN": "后空翻",
+  "ja": "バックフリップ",
+  "fr": "Salto arrière",
+  "es": "Salto hacia atrás"
+ },
+ "The Griddy": {
+  "zh_TW": "格里迪",
+  "zh_CN": "格里迪",
+  "ja": "グリディ",
+  "fr": "The Griddy",
+  "es": "The Griddy"
+ },
+ "Hip Floss": {
+  "zh_TW": "扭扭舞",
+  "zh_CN": "扭扭舞",
+  "ja": "ヒップフロス",
+  "fr": "Hip Floss",
+  "es": "Hip Floss"
+ },
+ "The Dab": {
+  "zh_TW": "達布",
+  "zh_CN": "达布",
+  "ja": "ダブ",
+  "fr": "Le Dab",
+  "es": "El Dab"
+ },
+ "Fist Pump": {
+  "zh_TW": "握拳慶祝",
+  "zh_CN": "握拳庆祝",
+  "ja": "ガッツポーズ",
+  "fr": "Poing levé",
+  "es": "Puño en alto"
+ },
+ "Shimmy": {
+  "zh_TW": "搖肩",
+  "zh_CN": "摇肩",
+  "ja": "シェイミー",
+  "fr": "Shimmy",
+  "es": "Shimmy"
+ },
+ "Code Spin": {
+  "zh_TW": "代碼旋轉",
+  "zh_CN": "代码旋转",
+  "ja": "コードスピン",
+  "fr": "Rotation du code",
+  "es": "Giro del código"
+ },
+ "Bug Stomp": {
+  "zh_TW": "踩蟲",
+  "zh_CN": "踩虫",
+  "ja": "バグストンプ",
+  "fr": "Écrasement de bugs",
+  "es": "Pisotón de bichos"
+ },
+ "Crane Kick": {
+  "zh_TW": "鶴式踢",
+  "zh_CN": "鹤式踢",
+  "ja": "クレーンキック",
+  "fr": "Coup de la grue",
+  "es": "Patada de grulla"
+ },
+ "Hero Landing": {
+  "zh_TW": "英雄降落",
+  "zh_CN": "英雄降落",
+  "ja": "ヒーロー着地",
+  "fr": "Atterrissage héroïque",
+  "es": "Aterrizaje heroico"
+ },
+ "Air Guitar": {
+  "zh_TW": "空氣吉他",
+  "zh_CN": "空气吉他",
+  "ja": "エアギター",
+  "fr": "Air guitar",
+  "es": "Guitarra aérea"
+ },
+ "Galaxy Ascend": {
+  "zh_TW": "銀河升空",
+  "zh_CN": "银河升空",
+  "ja": "ギャラクシーアセント",
+  "fr": "Ascension galactique",
+  "es": "Ascenso galáctico"
+ },
+ "Sur-Ron Wheelie": {
+  "zh_TW": "電動越野車前輪翹起",
+  "zh_CN": "电动越野车翘头",
+  "ja": "スールーンのウィリー",
+  "fr": "Wheelie Sur-Ron",
+  "es": "Caballito Sur-Ron"
+ },
+ "Muscle Flex": {
+  "zh_TW": "秀肌肉",
+  "zh_CN": "秀肌肉",
+  "ja": "マッスルフレックス",
+  "fr": "Muscles",
+  "es": "Mostrar músculos"
+ },
+ "Salute": {
+  "zh_TW": "敬禮",
+  "zh_CN": "敬礼",
+  "ja": "敬礼",
+  "fr": "Salut",
+  "es": "Saludo"
+ },
+ "Fancy Bow": {
+  "zh_TW": "優雅鞠躬",
+  "zh_CN": "优雅鞠躬",
+  "ja": "優雅なお辞儀",
+  "fr": "Révérence élégante",
+  "es": "Reverencia elegante"
+ },
+ "Zombie Shuffle": {
+  "zh_TW": "殭屍步",
+  "zh_CN": "僵尸步",
+  "ja": "ゾンビシャッフル",
+  "fr": "Pas de zombie",
+  "es": "Paso zombi"
+ },
+ "Sprinkler": {
+  "zh_TW": "灑水器",
+  "zh_CN": "洒水器",
+  "ja": "スプリンクラー",
+  "fr": "Arroseur",
+  "es": "Aspersor"
+ },
+ "Cartwheel": {
+  "zh_TW": "側手翻",
+  "zh_CN": "侧手翻",
+  "ja": "側転",
+  "fr": "Roue",
+  "es": "Voltereta lateral"
+ },
+ "Victory Jig": {
+  "zh_TW": "勝利舞",
+  "zh_CN": "胜利舞",
+  "ja": "ビクトリージグ",
+  "fr": "Gigue de victoire",
+  "es": "Jig de la victoria"
+ },
+ "Storm Surge": {
+  "zh_TW": "風暴湧動",
+  "zh_CN": "风暴涌动",
+  "ja": "ストームサージ",
+  "fr": "Déferlante",
+  "es": "Oleada de tormenta"
+ },
+ "Supernova": {
+  "zh_TW": "超新星",
+  "zh_CN": "超新星",
+  "ja": "スーパーノヴァ",
+  "fr": "Supernova",
+  "es": "Supernova"
+ },
+ "Grand Pirouette": {
+  "zh_TW": "大回旋",
+  "zh_CN": "大回旋",
+  "ja": "グランドピルエット",
+  "fr": "Grand pirouette",
+  "es": "Gran pirueta"
+ },
+ "Spin and hop. Everyone has this one": {
+  "zh_TW": "旋轉跳躍。人人都有這個",
+  "zh_CN": "旋转跳跃。人人都有这个",
+  "ja": "くるくる回ってジャンプ。全員が持っています",
+  "fr": "Tourne et saute. Tout le monde l'a",
+  "es": "Gira y salta. Todos la tienen"
+ },
+ "Sway side to side": {
+  "zh_TW": "左右搖擺",
+  "zh_CN": "左右摇摆",
+  "ja": "左右に揺れる",
+  "fr": "Se balancer de gauche à droite",
+  "es": "Balancearse de lado a lado"
+ },
+ "Clap to the beat": {
+  "zh_TW": "跟著節奏拍手",
+  "zh_CN": "跟着节奏拍手",
+  "ja": "リズムに合わせて手拍子",
+  "fr": "Applaudir en rythme",
+  "es": "Aplaudir al ritmo"
+ },
+ "Point to the sky, point to the floor": {
+  "zh_TW": "指向天空，指向地面",
+  "zh_CN": "指向天空，指向地面",
+  "ja": "空と床を指差す",
+  "fr": "Pointe le ciel, pointe le sol",
+  "es": "Señala al cielo, señala al suelo"
+ },
+ "Squat down and wave": {
+  "zh_TW": "蹲下揮手",
+  "zh_CN": "蹲下挥手",
+  "ja": "しゃがんで手を振る",
+  "fr": "S'accroupir et saluer",
+  "es": "Agáchate y saluda"
+ },
+ "Stiff, jerky and spinning in steps": {
+  "zh_TW": "僵硬、頓挫地一步步旋轉",
+  "zh_CN": "僵硬、顿挫地一步步旋转",
+  "ja": "かくかくと段階的に回転",
+  "fr": "Raide, saccadé, tourne par étapes",
+  "es": "Rígido, a sacudidas y girando por pasos"
+ },
+ "Two fast spins, arms out": {
+  "zh_TW": "兩次快速旋轉，張開雙手",
+  "zh_CN": "两次快速旋转，张开双手",
+  "ja": "両腕を広げて素早く2回転",
+  "fr": "Deux rotations rapides, bras écartés",
+  "es": "Dos giros rápidos, brazos abiertos"
+ },
+ "A big jump and a backflip": {
+  "zh_TW": "大跳一下，再來一個後空翻",
+  "zh_CN": "大跳一下，再来一个后空翻",
+  "ja": "大ジャンプして後方宙返り",
+  "fr": "Un grand saut puis un salto arrière",
+  "es": "Un gran salto y un salto hacia atrás"
+ },
+ "Swing the arms wide and step side to side": {
+  "zh_TW": "大幅擺動雙臂，左右踏步",
+  "zh_CN": "大幅摆动双臂，左右踏步",
+  "ja": "腕を大きく振って左右にステップ",
+  "fr": "Bras grands ouverts, pas de côté",
+  "es": "Brazos amplios y pasos laterales"
+ },
+ "Arms swing one way, hips the other": {
+  "zh_TW": "雙臂向一邊擺，臀部向另一邊",
+  "zh_CN": "双臂向一边摆，臀部向另一边",
+  "ja": "腕と腰を逆方向に振る",
+  "fr": "Bras dans un sens, hanches dans l'autre",
+  "es": "Brazos hacia un lado, caderas hacia el otro"
+ },
+ "Head down, arm up. Classic": {
+  "zh_TW": "低頭、舉起一隻手。經典款",
+  "zh_CN": "低头、举起一只手。经典款",
+  "ja": "頭を下げ、片腕を上げる。定番",
+  "fr": "Tête baissée, un bras levé. Classique",
+  "es": "Cabeza abajo, un brazo arriba. Clásico"
+ },
+ "Pump it and bounce": {
+  "zh_TW": "揮拳並彈跳",
+  "zh_CN": "挥拳并弹跳",
+  "ja": "拳を突き上げて跳ねる",
+  "fr": "Lever le poing et rebondir",
+  "es": "Sube el puño y rebota"
+ },
+ "Shake the shoulders": {
+  "zh_TW": "搖動肩膀",
+  "zh_CN": "摇动肩膀",
+  "ja": "肩を揺らす",
+  "fr": "Secouer les épaules",
+  "es": "Mueve los hombros"
+ },
+ "Developers only. Type fast, then spin": {
+  "zh_TW": "僅限開發者。快速打字，然後旋轉",
+  "zh_CN": "仅限开发者。快速打字，然后旋转",
+  "ja": "デベロッパー専用。素早くタイプしてから回転",
+  "fr": "Réservé aux développeurs. Taper vite, puis tourner",
+  "es": "Solo desarrolladores. Escribe rápido y gira"
+ },
+ "Beta testers only. Hop and stomp the bugs": {
+  "zh_TW": "僅限測試員。跳起來踩蟲",
+  "zh_CN": "仅限测试员。跳起来踩虫",
+  "ja": "ベータテスター専用。跳んでバグを踏みつぶす",
+  "fr": "Réservé aux bêta-testeurs. Sauter et écraser les bugs",
+  "es": "Solo probadores beta. Salta y aplasta los bichos"
+ },
+ "One leg up, then the other, then a power kick": {
+  "zh_TW": "一腳抬起，換另一腳，最後強力踢擊",
+  "zh_CN": "一脚抬起，换另一脚，最后强力踢击",
+  "ja": "片脚、もう片脚と上げて、最後は強烈なキック",
+  "fr": "Une jambe, puis l'autre, puis un coup de pied puissant",
+  "es": "Una pierna arriba, luego la otra, y una patada potente"
+ },
+ "Drop from the sky and hit the ground in a fist-down crouch": {
+  "zh_TW": "從天而降，以握拳蹲姿落地",
+  "zh_CN": "从天而降，以握拳蹲姿落地",
+  "ja": "空から降りて、拳を地面につけてしゃがむ",
+  "fr": "Tombe du ciel et atterrit accroupi, poing au sol",
+  "es": "Cae del cielo y aterriza agachado, con el puño en el suelo"
+ },
+ "Shred, headbang and finish with a windmill solo": {
+  "zh_TW": "猛彈、甩頭，最後來一段風車式獨奏",
+  "zh_CN": "猛弹、甩头，最后来一段风车式独奏",
+  "ja": "かき鳴らし、ヘッドバンギングしてウィンドミル奏法で締める",
+  "fr": "Riffs, headbang et finale en moulinet",
+  "es": "Rasguea, headbanging y remate con un solo de molino"
+ },
+ "Rise into the sky spinning in a shower of stars": {
+  "zh_TW": "在星雨中旋轉升空",
+  "zh_CN": "在星雨中旋转升空",
+  "ja": "星のシャワーの中、回転しながら上昇",
+  "fr": "S'élève en tournant sous une pluie d'étoiles",
+  "es": "Se eleva girando en una lluvia de estrellas"
+ },
+ "Jump on an electric dirt bike, rev it up and pull a huge wheelie": {
+  "zh_TW": "跳上電動越野車，猛催油門拉出大前輪翹起",
+  "zh_CN": "跳上电动越野车，猛加油门拉出大翘头",
+  "ja": "電動オフロードバイクに飛び乗り、大きなウィリーを決める",
+  "fr": "Saute sur une moto électrique, accélère et fait un gros wheeling",
+  "es": "Salta a una moto eléctrica, acelera y haz un gran caballito"
+ },
+ "Show off both arms": {
+  "zh_TW": "展示雙臂",
+  "zh_CN": "展示双臂",
+  "ja": "両腕を見せつける",
+  "fr": "Montrer les deux bras",
+  "es": "Muestra ambos brazos"
+ },
+ "A crisp salute, then a happy hop": {
+  "zh_TW": "乾脆的敬禮，然後開心跳一下",
+  "zh_CN": "干脆的敬礼，然后开心跳一下",
+  "ja": "きれいな敬礼のあとで、ぴょんと跳ねる",
+  "fr": "Un salut net, puis un petit saut joyeux",
+  "es": "Un saludo firme y un saltito alegre"
+ },
+ "A gentleman's bow": {
+  "zh_TW": "紳士鞠躬",
+  "zh_CN": "绅士鞠躬",
+  "ja": "紳士のお辞儀",
+  "fr": "Une révérence de gentleman",
+  "es": "Una reverencia de caballero"
+ },
+ "Arms out, head lolling, shuffle shuffle": {
+  "zh_TW": "雙臂伸展，頭晃來晃去，沙沙沙",
+  "zh_CN": "双臂伸展，头晃来晃去，沙沙沙",
+  "ja": "腕を伸ばし、頭をだらんと揺らして、ずるずる",
+  "fr": "Bras tendus, tête ballante, pas traînants",
+  "es": "Brazos extendidos, cabeza colgando, arrastrando los pies"
+ },
+ "Turn in little jerks, arm out like a garden sprinkler": {
+  "zh_TW": "一頓一頓地轉，手臂像灑水器一樣伸出",
+  "zh_CN": "一顿一顿地转，手臂像洒水器一样伸出",
+  "ja": "小刻みに回り、腕は庭の散水機のように伸ばす",
+  "fr": "Tourne par petits à-coups, bras tendu comme un arroseur",
+  "es": "Gira a tirones, brazo extendido como un aspersor"
+ },
+ "A big sideways cartwheel": {
+  "zh_TW": "大大的側手翻",
+  "zh_CN": "大大的侧手翻",
+  "ja": "大きな横向きの側転",
+  "fr": "Une grande roue de côté",
+  "es": "Una gran voltereta lateral"
+ },
+ "Hop, kick and wave": {
+  "zh_TW": "跳一下、踢一腳、揮揮手",
+  "zh_CN": "跳一下、踢一脚、挥挥手",
+  "ja": "ジャンプ、キック、手を振る",
+  "fr": "Saute, donne un coup de pied, salue",
+  "es": "Salta, patea y saluda"
+ },
+ "Crouch and crackle, blast lightning into the sky, then slam it into the ground": {
+  "zh_TW": "蹲下蓄力，電光閃爍，把閃電射向天空，再砸向地面",
+  "zh_CN": "蹲下蓄力，电光闪烁，把闪电射向天空，再砸向地面",
+  "ja": "しゃがんで放電し、雷を空に放ってから地面に叩きつける",
+  "fr": "S'accroupit en crépitant, lance la foudre vers le ciel, puis la frappe au sol",
+  "es": "Se agacha y chisporrotea, lanza un rayo al cielo y lo estrella contra el suelo"
+ },
+ "Curl up as light is pulled in, explode into the sky and float spinning in a ring of stars": {
+  "zh_TW": "蜷縮、聚攏光芒，爆發升空，在星環中旋轉漂浮",
+  "zh_CN": "蜷缩、聚拢光芒，爆发升空，在星环中旋转漂浮",
+  "ja": "体を丸めて光を集め、空へ爆発し、星の輪の中で回転しながら浮かぶ",
+  "fr": "Se recroqueville pendant que la lumière est aspirée, explose vers le ciel et flotte en tournant dans un anneau d'étoiles",
+  "es": "Se encoge mientras absorbe la luz, explota hacia el cielo y flota girando en un anillo de estrellas"
+ },
+ "Rise onto pointe, spin three times in a shower of petals and curtsy": {
+  "zh_TW": "踮起腳尖，在花瓣雨中旋轉三圈，然後行屈膝禮",
+  "zh_CN": "踮起脚尖，在花瓣雨中旋转三圈，然后行屈膝礼",
+  "ja": "つま先で立ち、花びらの雨の中で3回転してカーテシー",
+  "fr": "Sur la pointe, trois tours sous une pluie de pétales, puis révérence",
+  "es": "Se pone de puntillas, gira tres veces bajo una lluvia de pétalos y hace una reverencia"
+ },
+ "Ace": {
+  "zh_TW": "王牌",
+  "zh_CN": "王牌",
+  "ja": "エース",
+  "fr": "As",
+  "es": "As"
+ },
+ "Champ": {
+  "zh_TW": "冠軍",
+  "zh_CN": "冠军",
+  "ja": "チャンプ",
+  "fr": "Champion",
+  "es": "Campeón"
+ },
+ "Zippy": {
+  "zh_TW": "迅捷",
+  "zh_CN": "迅捷",
+  "ja": "ジッピー",
+  "fr": "Zippy",
+  "es": "Zippy"
+ },
+ "Boo": {
+  "zh_TW": "幽幽",
+  "zh_CN": "幽幽",
+  "ja": "ブー",
+  "fr": "Boo",
+  "es": "Boo"
+ },
+ "Bulwark": {
+  "zh_TW": "壁壘",
+  "zh_CN": "壁垒",
+  "ja": "ブルワーク",
+  "fr": "Rempart",
+  "es": "Baluarte"
+ },
+ "Rampage": {
+  "zh_TW": "狂暴",
+  "zh_CN": "狂暴",
+  "ja": "ランページ",
+  "fr": "Rampage",
+  "es": "Rampage"
+ },
+ "A walking wall. Slow to get going": {
+  "zh_TW": "移動的牆。起步慢",
+  "zh_CN": "移动的墙。起步慢",
+  "ja": "歩く壁。動き出しが遅い",
+  "fr": "Un mur ambulant. Lent à démarrer",
+  "es": "Un muro andante. Tarda en arrancar"
+ },
+ "Fastest feet in the arena, light as a feather": {
+  "zh_TW": "競技場裡腳步最快，輕如鴻毛",
+  "zh_CN": "竞技场里脚步最快，轻如鸿毛",
+  "ja": "アリーナで最速、羽のように軽い",
+  "fr": "Les pieds les plus rapides de l'arène, légère comme une plume",
+  "es": "Los pies más rápidos de la arena, ligera como una pluma"
+ },
+ "Fast trigger, fast reload, deep pockets": {
+  "zh_TW": "扳機快、換彈快、彈藥多",
+  "zh_CN": "扳机快、换弹快、弹药多",
+  "ja": "トリガーが速く、リロードも速い。弾数も多い",
+  "fr": "Gâchette rapide, rechargement rapide, grosses réserves",
+  "es": "Gatillo rápido, recarga rápida, muchas reservas"
+ },
+ "Floats, drifts and jumps sky high": {
+  "zh_TW": "飄浮、漂移，跳得很高",
+  "zh_CN": "飘浮、漂移，跳得很高",
+  "ja": "浮いて、流れて、高くジャンプ",
+  "fr": "Flotte, dérive et saute très haut",
+  "es": "Flota, se desliza y salta muy alto"
+ },
+ "A winner's build: tough and hits hard": {
+  "zh_TW": "勝者的體格：耐打、出手重",
+  "zh_CN": "胜者的体格：耐打、出手重",
+  "ja": "勝者の体型。頑丈で一撃が重い",
+  "fr": "Build de gagnant : robuste et frappe fort",
+  "es": "Constitución de ganador: resistente y golpea fuerte"
+ },
+ "Hits like a truck, swings a bit slower": {
+  "zh_TW": "攻擊如卡車，揮動稍慢",
+  "zh_CN": "攻击如卡车，挥动稍慢",
+  "ja": "トラックのような一撃、動きは少し遅い",
+  "fr": "Frappe comme un camion, un peu moins rapide",
+  "es": "Golpea como un camión, algo más lento"
+ },
+ "Play 10 matches": {
+  "zh_TW": "進行 10 場比賽",
+  "zh_CN": "进行 10 场比赛",
+  "ja": "10試合プレイ",
+  "fr": "Jouer 10 matchs",
+  "es": "Juega 10 partidas"
+ },
+ "Win 5 matches": {
+  "zh_TW": "獲勝 5 場",
+  "zh_CN": "获胜 5 场",
+  "ja": "5試合勝利",
+  "fr": "Gagner 5 matchs",
+  "es": "Gana 5 partidas"
+ },
+ "Score 50 K.O.s": {
+  "zh_TW": "擊倒 50 次",
+  "zh_CN": "击倒 50 次",
+  "ja": "KOを50回取る",
+  "fr": "Obtenir 50 K.O.",
+  "es": "Consigue 50 K.O."
+ },
+ "Claimed": {
+  "zh_TW": "已領取",
+  "zh_CN": "已领取",
+  "ja": "受け取り済み",
+  "fr": "Récupéré",
+  "es": "Recogido"
+ },
+ "Claim +%d": {
+  "zh_TW": "領取 +%d",
+  "zh_CN": "领取 +%d",
+  "ja": "+%d を受け取る",
+  "fr": "Récupérer +%d",
+  "es": "Reclamar +%d"
+ },
+ "+%d": {
+  "zh_TW": "+%d",
+  "zh_CN": "+%d",
+  "ja": "+%d",
+  "fr": "+%d",
+  "es": "+%d"
+ },
+ "Finish the goal to claim %d coins": {
+  "zh_TW": "完成目標即可領取 %d 金幣",
+  "zh_CN": "完成目标即可领取 %d 金币",
+  "ja": "目標を達成すると %d コインを受け取れます",
+  "fr": "Termine l'objectif pour récupérer %d pièces",
+  "es": "Completa el objetivo para reclamar %d monedas"
+ },
+ "%d / %d": {
+  "zh_TW": "%d / %d",
+  "zh_CN": "%d / %d",
+  "ja": "%d / %d",
+  "fr": "%d / %d",
+  "es": "%d / %d"
+ },
+ "Today": {
+  "zh_TW": "今日",
+  "zh_CN": "今日",
+  "ja": "今日",
+  "fr": "Aujourd'hui",
+  "es": "Hoy"
+ },
+ "This week": {
+  "zh_TW": "本週",
+  "zh_CN": "本周",
+  "ja": "今週",
+  "fr": "Cette semaine",
+  "es": "Esta semana"
+ },
+ "Milestones": {
+  "zh_TW": "里程碑",
+  "zh_CN": "里程碑",
+  "ja": "マイルストーン",
+  "fr": "Jalons",
+  "es": "Hitos"
+ },
+ "Win a match each day to build a streak": {
+  "zh_TW": "每天獲勝一場即可累積連勝",
+  "zh_CN": "每天获胜一场即可累积连胜",
+  "ja": "毎日1試合勝つと連続記録が伸びます",
+  "fr": "Gagner un match chaque jour pour construire une série",
+  "es": "Gana una partida cada día para hacer racha"
+ },
+ "Play streak: %d day. First win of the day pays a bonus": {
+  "zh_TW": "連續遊玩：%d 天。當日首勝有獎勵",
+  "zh_CN": "连续游玩：%d 天。当日首胜有奖励",
+  "ja": "連続プレイ：%d 日。その日最初の勝利でボーナス",
+  "fr": "Série : %d jour. La première victoire du jour rapporte un bonus",
+  "es": "Racha: %d día. La primera victoria del día da un bonus"
+ },
+ "Play streak: %d days. First win of the day pays a bonus": {
+  "zh_TW": "連續遊玩：%d 天。當日首勝有獎勵",
+  "zh_CN": "连续游玩：%d 天。当日首胜有奖励",
+  "ja": "連続プレイ：%d 日。その日最初の勝利でボーナス",
+  "fr": "Série : %d jours. La première victoire du jour rapporte un bonus",
+  "es": "Racha: %d días. La primera victoria del día da un bonus"
+ },
+ "Win a match": {
+  "zh_TW": "獲勝一場",
+  "zh_CN": "获胜一场",
+  "ja": "1試合勝利",
+  "fr": "Gagner un match",
+  "es": "Gana una partida"
+ },
+ "Get 10 K.O.s": {
+  "zh_TW": "擊倒 10 次",
+  "zh_CN": "击倒 10 次",
+  "ja": "KOを10回取る",
+  "fr": "Obtenir 10 K.O.",
+  "es": "Consigue 10 K.O."
+ },
+ "Play 3 different game types": {
+  "zh_TW": "玩 3 種不同的遊戲模式",
+  "zh_CN": "玩 3 种不同的游戏模式",
+  "ja": "違うゲームタイプを3つプレイ",
+  "fr": "Jouer 3 modes de jeu différents",
+  "es": "Juega 3 modos de juego distintos"
+ },
+ "Get 3 K.O.s with melee weapons": {
+  "zh_TW": "用近戰武器擊倒 3 次",
+  "zh_CN": "用近战武器击倒 3 次",
+  "ja": "近接武器でKOを3回取る",
+  "fr": "Obtenir 3 K.O. au corps à corps",
+  "es": "Consigue 3 K.O. cuerpo a cuerpo"
+ },
+ "Land 3 headshots": {
+  "zh_TW": "爆頭 3 次",
+  "zh_CN": "爆头 3 次",
+  "ja": "ヘッドショットを3回決める",
+  "fr": "Placer 3 tirs à la tête",
+  "es": "Haz 3 disparos a la cabeza"
+ },
+ "Finish 3 matches": {
+  "zh_TW": "完成 3 場比賽",
+  "zh_CN": "完成 3 场比赛",
+  "ja": "3試合を終える",
+  "fr": "Terminer 3 matchs",
+  "es": "Termina 3 partidas"
+ },
+ "Land 60 hits": {
+  "zh_TW": "命中 60 次",
+  "zh_CN": "命中 60 次",
+  "ja": "60回ヒットさせる",
+  "fr": "Placer 60 coups",
+  "es": "Consigue 60 golpes"
+ },
+ "Win 3 matches": {
+  "zh_TW": "獲勝 3 場",
+  "zh_CN": "获胜 3 场",
+  "ja": "3試合勝利",
+  "fr": "Gagner 3 matchs",
+  "es": "Gana 3 partidas"
+ },
+ "Get 30 K.O.s this week": {
+  "zh_TW": "本週擊倒 30 次",
+  "zh_CN": "本周击倒 30 次",
+  "ja": "今週KOを30回取る",
+  "fr": "Obtenir 30 K.O. cette semaine",
+  "es": "Consigue 30 K.O. esta semana"
+ },
+ "Win 5 matches this week": {
+  "zh_TW": "本週獲勝 5 場",
+  "zh_CN": "本周获胜 5 场",
+  "ja": "今週5試合勝利",
+  "fr": "Gagner 5 matchs cette semaine",
+  "es": "Gana 5 partidas esta semana"
+ },
+ "Finish 10 matches this week": {
+  "zh_TW": "本週完成 10 場比賽",
+  "zh_CN": "本周完成 10 场比赛",
+  "ja": "今週10試合を終える",
+  "fr": "Terminer 10 matchs cette semaine",
+  "es": "Termina 10 partidas esta semana"
+ },
+ "Get 10 melee K.O.s this week": {
+  "zh_TW": "本週近戰擊倒 10 次",
+  "zh_CN": "本周近战击倒 10 次",
+  "ja": "今週近接KOを10回取る",
+  "fr": "Obtenir 10 K.O. au corps à corps cette semaine",
+  "es": "Consigue 10 K.O. cuerpo a cuerpo esta semana"
+ },
+ "First win": {
+  "zh_TW": "首勝",
+  "zh_CN": "首胜",
+  "ja": "初勝利",
+  "fr": "Première victoire",
+  "es": "Primera victoria"
+ },
+ "First headshot": {
+  "zh_TW": "首次爆頭",
+  "zh_CN": "首次爆头",
+  "ja": "初ヘッドショット",
+  "fr": "Premier tir à la tête",
+  "es": "Primer disparo a la cabeza"
+ },
+ "Play an online match": {
+  "zh_TW": "進行一場線上比賽",
+  "zh_CN": "进行一场线上比赛",
+  "ja": "オンライン対戦を1試合",
+  "fr": "Jouer un match en ligne",
+  "es": "Juega una partida en línea"
+ },
+ "Try every game type": {
+  "zh_TW": "體驗所有遊戲模式",
+  "zh_CN": "体验所有游戏模式",
+  "ja": "全ゲームタイプを試す",
+  "fr": "Essayer tous les modes de jeu",
+  "es": "Prueba todos los modos de juego"
+ },
+ "100 K.O.s in total": {
+  "zh_TW": "累計擊倒 100 次",
+  "zh_CN": "累计击倒 100 次",
+  "ja": "累計KO 100回",
+  "fr": "100 K.O. au total",
+  "es": "100 K.O. en total"
+ },
+ "25 melee K.O.s": {
+  "zh_TW": "近戰擊倒 25 次",
+  "zh_CN": "近战击倒 25 次",
+  "ja": "近接KO 25回",
+  "fr": "25 K.O. au corps à corps",
+  "es": "25 K.O. cuerpo a cuerpo"
+ },
+ "Win 25 matches": {
+  "zh_TW": "獲勝 25 場",
+  "zh_CN": "获胜 25 场",
+  "ja": "25試合勝利",
+  "fr": "Gagner 25 matchs",
+  "es": "Gana 25 partidas"
+ },
+ "Play 7 days in a row": {
+  "zh_TW": "連續 7 天遊玩",
+  "zh_CN": "连续 7 天游玩",
+  "ja": "7日連続でプレイ",
+  "fr": "Jouer 7 jours d'affilée",
+  "es": "Juega 7 días seguidos"
+ },
+ "All three daily goals": {
+  "zh_TW": "每日三個目標全部完成",
+  "zh_CN": "每日三个目标全部完成",
+  "ja": "デイリー目標3つすべて",
+  "fr": "Les trois objectifs du jour",
+  "es": "Los tres objetivos diarios"
+ },
+ "+%d coins": {
+  "zh_TW": "+%d 金幣",
+  "zh_CN": "+%d 金币",
+  "ja": "+%d コイン",
+  "fr": "+%d pièces",
+  "es": "+%d monedas"
+ },
+ "%d K.O. × 5": {
+  "zh_TW": "%d 次擊倒 × 5",
+  "zh_CN": "%d 次击倒 × 5",
+  "ja": "KO %d × 5",
+  "fr": "%d K.O. × 5",
+  "es": "%d K.O. × 5"
+ },
+ "%d K.O.s × 5": {
+  "zh_TW": "%d 次擊倒 × 5",
+  "zh_CN": "%d 次击倒 × 5",
+  "ja": "KO %d × 5",
+  "fr": "%d K.O. × 5",
+  "es": "%d K.O. × 5"
+ },
+ "finished +40": {
+  "zh_TW": "完成 +40",
+  "zh_CN": "完成 +40",
+  "ja": "完了 +40",
+  "fr": "match terminé +40",
+  "es": "partida terminada +40"
+ },
+ "win +60": {
+  "zh_TW": "獲勝 +60",
+  "zh_CN": "获胜 +60",
+  "ja": "勝利 +60",
+  "fr": "victoire +60",
+  "es": "victoria +60"
+ },
+ "%d coins in all": {
+  "zh_TW": "共 %d 金幣",
+  "zh_CN": "共 %d 金币",
+  "ja": "合計 %d コイン",
+  "fr": "%d pièces au total",
+  "es": "%d monedas en total"
+ },
+ "Secret class unlocked: %s! Pick it in the Walldrobe.": {
+  "zh_TW": "解鎖隱藏角色：%s！可在衣櫥中選擇。",
+  "zh_CN": "解锁隐藏角色：%s！可在衣橱中选择。",
+  "ja": "シークレットキャラクター解放：%s！ワードローブで選べます。",
+  "fr": "Classe secrète débloquée : %s ! À choisir dans la garde-robe.",
+  "es": "¡Clase secreta desbloqueada: %s! Elígela en el armario."
+ },
+ "You own every outfit and emote!": {
+  "zh_TW": "你已擁有所有服裝和表情動作！",
+  "zh_CN": "你已拥有所有服装和表情动作！",
+  "ja": "衣装とエモートはすべて持っています！",
+  "fr": "Toutes les tenues et tous les emotes sont possédés !",
+  "es": "¡Ya tienes todos los atuendos y emotes!"
+ },
+ "You can buy %s now (%d coins)!": {
+  "zh_TW": "現在可以購買 %s（%d 金幣）！",
+  "zh_CN": "现在可以购买 %s（%d 金币）！",
+  "ja": "%s を購入できます（%d コイン）！",
+  "fr": "%s est achetable maintenant (%d pièces) !",
+  "es": "¡Ya puedes comprar %s (%d monedas)!"
+ },
+ "Next unlock: %s · %d / %d coins": {
+  "zh_TW": "下一個解鎖：%s · %d / %d 金幣",
+  "zh_CN": "下一个解锁：%s · %d / %d 金币",
+  "ja": "次の解放：%s · %d / %d コイン",
+  "fr": "Prochain déblocage : %s · %d / %d pièces",
+  "es": "Siguiente desbloqueo: %s · %d / %d monedas"
+ },
+ "+%d goal completed: %s (claim it in Goals)": {
+  "zh_TW": "+%d 目標完成：%s（可在目標中領取）",
+  "zh_CN": "+%d 目标完成：%s（可在目标中领取）",
+  "ja": "+%d 目標達成：%s（目標画面で受け取り）",
+  "fr": "+%d : objectif atteint : %s (à récupérer dans Objectifs)",
+  "es": "+%d objetivo completado: %s (recógelo en Objetivos)"
+ },
+ "+%d: %d goals completed (claim them in Goals)": {
+  "zh_TW": "+%d：完成 %d 個目標（可在目標中領取）",
+  "zh_CN": "+%d：完成 %d 个目标（可在目标中领取）",
+  "ja": "+%d：%d 件の目標達成（目標画面で受け取り）",
+  "fr": "+%d : %d objectifs atteints (à récupérer dans Objectifs)",
+  "es": "+%d: %d objetivos completados (recógelos en Objetivos)"
+ },
+ "First win today +%d (%d-day streak)": {
+  "zh_TW": "今日首勝 +%d（連續 %d 天）",
+  "zh_CN": "今日首胜 +%d（连续 %d 天）",
+  "ja": "今日の初勝利 +%d（%d日連続）",
+  "fr": "Première victoire du jour +%d (série de %d jours)",
+  "es": "Primera victoria del día +%d (racha de %d días)"
+ },
+ "First win today +%d": {
+  "zh_TW": "今日首勝 +%d",
+  "zh_CN": "今日首胜 +%d",
+  "ja": "今日の初勝利 +%d",
+  "fr": "Première victoire du jour +%d",
+  "es": "Primera victoria del día +%d"
+ }
+}

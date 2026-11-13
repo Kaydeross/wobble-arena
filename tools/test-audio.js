@@ -1,11 +1,10 @@
 'use strict';
-/* Godot sound effects: the committed WAVs (godot/audio/sfx) must be what tools/render-sfx.js makes from the web game's
-   SFX table, and the Sfx autoload must have a stream of the right length (JS duration +-10%), a sane peak and play
+/* Godot sound effects: the committed WAVs (godot/audio/sfx) must be what tools/render-sfx.js rendered from the web game's
+   SoundManager (checked structurally: WAV + sfx.json per name), and the Sfx autoload must have a stream of the right length (sfx.json dur +-10%), a sane peak and play
    every name without errors (godot/tests/audio_test.gd; headless = dummy audio driver).
    npm run test:godot-audio */
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
-const { names, recipeOf, jsDuration } = require('./render-sfx');
 const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
 const GD = path.join(__dirname, '..', 'godot');
 
@@ -13,8 +12,8 @@ const chk = spawnSync(process.execPath, [path.join(__dirname, 'render-sfx.js'), 
 console.log(chk.stdout.trim());
 let bad = chk.status !== 0;
 
-const expected = {};
-for (const n of names()) expected[n] = { dur: jsDuration(recipeOf(n)) };
+const meta = JSON.parse(fs.readFileSync(path.join(GD, 'audio', 'sfx', 'sfx.json'), 'utf8')), expected = {};
+for (const [n, m] of Object.entries(meta)) expected[n] = { dur: m.dur };
 const tf = path.join(os.tmpdir(), 'wa-audio-' + process.pid + '.json');
 fs.writeFileSync(tf, JSON.stringify(expected));
 

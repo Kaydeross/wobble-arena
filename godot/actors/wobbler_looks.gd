@@ -30,8 +30,20 @@ static func data(name: String) -> Dictionary:
 	if typeof(d) != TYPE_DICTIONARY:
 		push_error("WobblerLooks: cannot read %s" % path)
 		d = {}
+	if name == "classes": ExtraClasses.merge(d)          # + the Godot-only classes (res://data/extra/classes.json)
+	if name == "cosmetics": _merge_extra_hats(d)         # + the Construction DLC hard hats (res://data/extra/locker.json extra_hats)
 	_json[name] = d
 	return d
+
+
+const LOCKER_PATH := "res://data/extra/locker.json"
+
+## Adds the Godot-only hats (locker.json `extra_hats`) to cosmetics' `hats`, so the Locker lists them and Settings accepts them.
+static func _merge_extra_hats(cos: Dictionary) -> void:
+	var v = JSON.parse_string(FileAccess.get_file_as_string(LOCKER_PATH)) if FileAccess.file_exists(LOCKER_PATH) else null
+	if not (v is Dictionary) or not (cos.get("hats") is Array): return
+	for h in v.get("extra_hats", []):
+		if not (cos["hats"] as Array).has(h): (cos["hats"] as Array).append(h)
 
 
 static func class_def(id: String) -> Dictionary:
@@ -126,6 +138,41 @@ const HATS := {
 		["hat", ["cone", 0.31, 0.62, 8], 0xd32f2f, [-0.04, 0.3, 0], [0, 0, 0.25]],
 		["hat", ["cyl", 0.34, 0.34, 0.12, 8], 0xffffff, [0, 0.02, 0]],
 		["hat", ["ico", 0.09, 0], 0xffffff, [0.13, 0.55, 0]]],
+	## Construction DLC hard hats (free, common): the web Builder's yellow helmet (dome, brim, front peak, ridge) in three colours.
+	"hardhat": [
+		["hat", ["sph", 0.4, 8, 5, 0, TAU, 0, PI / 2], 0xffd33d, [0, -0.08, 0], [0, 0, 0], [1, 0.85, 1.05]],
+		["hat", ["cyl", 0.45, 0.45, 0.04, 10], 0xffd33d, [0, -0.09, 0]],
+		["hat", ["box", 0.42, 0.04, 0.3], 0xffd33d, [0, -0.09, 0.5]],
+		["hat", ["box", 0.08, 0.06, 0.64], 0xe6b800, [0, 0.27, 0]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xe6b800, [-0.2, 0.2, 0], [0, 0, 0.45]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xe6b800, [0.2, 0.2, 0], [0, 0, -0.45]],
+		["hat", ["box", 0.14, 0.09, 0.04], 0xf4f4ee, [0, 0.1, 0.42], [0.35, 0, 0]]],
+	"hardhat_white": [
+		["hat", ["sph", 0.4, 8, 5, 0, TAU, 0, PI / 2], 0xf3f3ee, [0, -0.08, 0], [0, 0, 0], [1, 0.85, 1.05]],
+		["hat", ["cyl", 0.45, 0.45, 0.04, 10], 0xf3f3ee, [0, -0.09, 0]],
+		["hat", ["box", 0.42, 0.04, 0.3], 0xf3f3ee, [0, -0.09, 0.5]],
+		["hat", ["box", 0.08, 0.06, 0.64], 0xd2d2ca, [0, 0.27, 0]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd2d2ca, [-0.2, 0.2, 0], [0, 0, 0.45]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd2d2ca, [0.2, 0.2, 0], [0, 0, -0.45]],
+		["hat", ["box", 0.14, 0.09, 0.04], 0xf4f4ee, [0, 0.1, 0.42], [0.35, 0, 0]]],
+	"hardhat_orange": [
+		["hat", ["sph", 0.4, 8, 5, 0, TAU, 0, PI / 2], 0xff8a1f, [0, -0.08, 0], [0, 0, 0], [1, 0.85, 1.05]],
+		["hat", ["cyl", 0.45, 0.45, 0.04, 10], 0xff8a1f, [0, -0.09, 0]],
+		["hat", ["box", 0.42, 0.04, 0.3], 0xff8a1f, [0, -0.09, 0.5]],
+		["hat", ["box", 0.08, 0.06, 0.64], 0xd9690a, [0, 0.27, 0]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd9690a, [-0.2, 0.2, 0], [0, 0, 0.45]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xd9690a, [0.2, 0.2, 0], [0, 0, -0.45]],
+		["hat", ["box", 0.14, 0.09, 0.04], 0xf4f4ee, [0, 0.1, 0.42], [0.35, 0, 0]]],
+	## Site Foreman (rare, the Arcade victory reward): a gold hard hat with a black band and a white front badge.
+	"foreman": [
+		["hat", ["sph", 0.4, 8, 5, 0, TAU, 0, PI / 2], 0xffc21a, [0, -0.08, 0], [0, 0, 0], [1, 0.85, 1.05]],
+		["hat", ["cyl", 0.45, 0.45, 0.04, 10], 0xffc21a, [0, -0.09, 0]],
+		["hat", ["box", 0.42, 0.04, 0.3], 0xffc21a, [0, -0.09, 0.5]],
+		["hat", ["cyl", 0.41, 0.41, 0.06, 10], 0x23262d, [0, 0.02, 0]],
+		["hat", ["box", 0.08, 0.06, 0.64], 0xb37f00, [0, 0.27, 0]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xb37f00, [-0.2, 0.2, 0], [0, 0, 0.45]],
+		["hat", ["box", 0.05, 0.05, 0.5], 0xb37f00, [0.2, 0.2, 0], [0, 0, -0.45]],
+		["hat", ["box", 0.18, 0.12, 0.04], 0xf4f4ee, [0, 0.12, 0.42], [0.35, 0, 0]]],
 }
 
 
@@ -163,13 +210,52 @@ static func class_parts(id: String, arm: float, deep: float) -> Array:
 				["neck", ["ico", 0.075, 0], 0xffe14a, [-0.2, 0.93, 0]],
 				["neck", ["cyl", 0.018, 0.018, 0.34, 4], 0x5fb760, [0.14, 0.75, 0], [0, 0, -0.3]],
 				["neck", ["ico", 0.075, 0], 0xffe14a, [0.2, 0.93, 0]]]
+		# ---- Godot-only classes (data/extra/classes.json)
+		"tank":      # steel helmet with a brim, big square shoulder plates
+			return [
+				["neck", ["ico", 0.4, 1], 0x6b7a86, [0, 0.5, -0.04], [0, 0, 0], [1.04, 0.6, 1.06]],
+				["neck", ["box", 0.56, 0.05, 0.2], 0x56626e, [0, 0.52, 0.28]],
+				["body", ["box", 0.34, 0.12, 0.38], 0x6b7a86, [-(arm + 0.02), 0.88, 0]],
+				["body", ["box", 0.34, 0.12, 0.38], 0x6b7a86, [arm + 0.02, 0.88, 0]]]
+		"dash":      # green sweatband with a flapping tail, wrist bands
+			return [
+				["neck", ["tor", 0.36, 0.04, 4, 8], 0x3fd070, [0, 0.5, 0], [PI / 2, 0, 0]],
+				["neck", ["box", 0.08, 0.3, 0.03], 0x3fd070, [0.08, 0.4, -0.38], [0.5, 0, 0.35]],
+				["neck", ["box", 0.08, 0.24, 0.03], 0x2fae5a, [-0.06, 0.42, -0.37], [0.6, 0, -0.25]],
+				["armL", ["cyl", 0.11, 0.11, 0.1, 6], 0x3fd070, [0, -0.6, 0]]]
+		"ace":       # aviator shades and a bandolier
+			return [
+				["neck", ["box", 0.15, 0.09, 0.04], 0x1d232b, [-0.13, 0.37, 0.345]],
+				["neck", ["box", 0.15, 0.09, 0.04], 0x1d232b, [0.13, 0.37, 0.345]],
+				["neck", ["box", 0.12, 0.025, 0.03], 0xd9c27a, [0, 0.4, 0.35]],
+				["body", ["box", 0.09, 0.62, 0.04], 0x7a4f2a, [0, 0.5, 0.39], [0, 0, 0.6]],
+				["body", ["box", 0.06, 0.09, 0.05], 0xd9a63a, [-0.08, 0.56, 0.41], [0, 0, 0.6]],
+				["body", ["box", 0.06, 0.09, 0.05], 0xd9a63a, [0.08, 0.44, 0.41], [0, 0, 0.6]]]
+		"ghost":     # a pale sheet hood with a little curl on top
+			return [
+				["neck", ["ico", 0.4, 1], 0xf4f7ff, [0, 0.5, -0.06], [0, 0, 0], [1.05, 0.62, 1.1]],
+				["neck", ["cone", 0.08, 0.22, 5], 0xf4f7ff, [0.04, 0.78, -0.04], [0, 0, -0.5]]]
+		"champ":     # a gold title belt and a red headband
+			return [
+				["body", ["cyl", 0.43, 0.41, 0.15, 8], 0xf2c230, [0, 0.17, 0]],
+				["body", ["box", 0.26, 0.2, 0.05], 0xffe14a, [0, 0.17, 0.41]],
+				["body", ["box", 0.12, 0.1, 0.05], 0xe3403b, [0, 0.17, 0.44]],
+				["neck", ["tor", 0.36, 0.035, 4, 8], 0xe3403b, [0, 0.5, 0], [PI / 2, 0, 0]]]
+		"rampage":   # horns, angry brows, spiky shoulders
+			return [
+				["neck", ["cone", 0.07, 0.26, 5], 0xe8e0d0, [-0.22, 0.62, 0], [0, 0, 0.5]],
+				["neck", ["cone", 0.07, 0.26, 5], 0xe8e0d0, [0.22, 0.62, 0], [0, 0, -0.5]],
+				["neck", ["box", 0.16, 0.04, 0.04], 0x2a1d14, [-0.13, 0.46, 0.33], [0, 0, -0.35]],
+				["neck", ["box", 0.16, 0.04, 0.04], 0x2a1d14, [0.13, 0.46, 0.33], [0, 0, 0.35]],
+				["body", ["cone", 0.08, 0.24, 5], 0x3a3f4a, [-(arm + 0.02), 0.98, 0]],
+				["body", ["cone", 0.08, 0.24, 5], 0x3a3f4a, [arm + 0.02, 0.98, 0]]]
 	return []
 
 
 # ---------------------------------------------------------------- outfits (buildSkinParts, ~4022)
 ## Outfits with a part builder below. The rest of cosmetics.json skins fall back to colours only (top/tone/pants/shoes)
 ## until their builders are ported.
-const SKIN_BUILDERS := ["hoodie", "skater", "chef", "suit", "sporty"]
+const SKIN_BUILDERS := ["hoodie", "skater", "chef", "suit", "builder", "sporty", "tripleT", "ballerina", "assassino", "thunder"]
 
 const T := [1.0, 0.0]
 const T8 := [0.85, 0.0]
@@ -188,6 +274,21 @@ static func _faces(out: Array, y: float, w: float, h: float, d: float, spec: Var
 		out.append(["body", ["box", w, h, d], spec, [sg * 0.433 * r + sg * 0.5 * off, y, 0.75 * r + 0.866 * off], [0, sg * PI / 6, 0]])
 
 
+## The Builder's hi-vis vest: two silver reflective bands round the torso (same hexagon, a hair wider) and two braces up
+## the chest and the back, over the orange of the outfit.
+const REFLECTIVE := 0xd7dde3
+static func _hi_vis(out: Array) -> void:
+	for y: float in [0.3, 0.58]:
+		var r := _r_at(y) + 0.028
+		out.append(["body", ["cyl", r, r, 0.07, 6], REFLECTIVE, [0, y, 0]])
+	var y := 0.62
+	var r := _r_at(y)
+	for sg in [-1.0, 1.0]:
+		out.append(["body", ["box", 0.075, 0.5, 0.035], REFLECTIVE, [sg * 0.433 * r + sg * 0.0225, y, 0.75 * r + 0.866 * 0.045], [0, sg * PI / 6, 0]])
+		out.append(["body", ["box", 0.075, 0.5, 0.035], REFLECTIVE, [sg * 0.433 * r + sg * 0.0225, y, -(0.75 * r + 0.866 * 0.045)], [0, sg * PI * 5.0 / 6.0, 0]])
+	out.append(["body", ["box", 0.2, 0.05, 0.05], 0xe08a1c, [0, 0.855, _r_at(0.85) * 0.5]])             # collar piping at the neck
+
+
 static func _cap(out: Array, col: Variant, y: float = 0.5, z: float = -0.06, sy: float = 0.55) -> void:
 	out.append(["neck", ["ico", 0.4, 1], col, [0, y, z], [0, 0, 0], [1, sy, 1.05]])
 
@@ -197,6 +298,11 @@ static func _brim(out: Array, col: Variant, z: float, w: float = 0.36) -> void:
 
 
 static func skin_parts(key: String) -> Array:
+	match key:                                  # outfits that replace the head and / or the torso (noHead / noTorso)
+		"tripleT": return _triple_t()
+		"ballerina": return _ballerina()
+		"assassino": return _assassino()
+		"thunder": return _thunder()
 	var p := []
 	var mouth := 0.165
 	match key:
@@ -229,6 +335,9 @@ static func skin_parts(key: String) -> Array:
 			p.append(["body", ["box", 0.1, 0.1, 0.04], T6, [0, 0.8, _r_at(0.8) + 0.03]])
 			_faces(p, 0.66, 0.08, 0.34, 0.04, [1.0, 0.2], 0.035)
 			p.append(["body", ["box", 0.05, 0.05, 0.03], 0xd9c27a, [-0.12, 0.3, _r_at(0.3)]])
+		"builder":                              # hi-vis vest: the orange torso with silver reflective bands and braces front and back
+			_hi_vis(p)
+			p.append(["body", ["box", 0.1, 0.1, 0.04], 0xdfe5ea, [0.2, 0.18, _r_at(0.18) - 0.04]])     # (the web's badge on the belt)
 		"sporty":
 			_cap(p, 0xe8c872, 0.5, -0.06)
 			p.append(["neck", ["cyl", 0.375, 0.375, 0.07, 10], T, [0, 0.47, 0]])
@@ -244,6 +353,181 @@ static func skin_parts(key: String) -> Array:
 	p.append(["neck", ["box", 0.065, 0.075, 0.09], "toneD", [0, 0.285, 0.375]])
 	var mz := maxf(head_surf(-0.055, mouth), maxf(head_surf(0.0, mouth), head_surf(0.055, mouth)))
 	p.append(["neck", ["box", 0.11, 0.024, 0.05], 0x7a2c2c, [0, mouth, mz + 0.002]])
+	return p
+
+
+# ---- the mythic / legendary outfits that replace the head and / or torso (web buildSkinParts ~4610..4760). Ported
+# with the plain LowPoly shapes (no lathes, no reactive faces: the "normal" face only), so they render as a complete
+# figure; before this they only hid the head / torso and showed floating limbs.
+
+## z of a cylinder's front at (x, y): radius going linearly from rb at y0 to rt at y1 (cups, mugs, logs).
+static func _cyl_z(x: float, y: float, rb: float, rt: float, y0: float, y1: float) -> float:
+	var r := lerpf(rb, rt, clampf((y - y0) / (y1 - y0), 0.0, 1.0))
+	return sqrt(maxf(0.0001, r * r - x * x))
+
+
+static func _triple_t() -> Array:                # Tung Tung Tung Sahur: a living wooden log with a big face
+	const WD := 0xb07a43
+	const WL := 0xd9a566
+	const WK := 0x5a3a1c
+	var p := [
+		["body", ["cyl", 0.4, 0.4, 0.565, 12], WD, [0, 1.2825, 0]],      # head part of the log
+		["body", ["cyl", 0.4, 0.37, 0.45, 12], WD, [0, 0.775, 0]],       # then a gentle taper to the legs
+		["body", ["cyl", 0.37, 0.29, 0.635, 12], WD, [0, 0.2325, 0]],
+		["body", ["cyl", 0.37, 0.37, 0.05, 12], WL, [0, 1.58, 0]],       # cut top with tree rings
+		["body", ["tor", 0.2, 0.012, 4, 14], WK, [0, 1.61, 0], [PI / 2, 0, 0]],
+		["body", ["tor", 0.1, 0.012, 4, 12], WK, [0, 1.61, 0], [PI / 2, 0, 0]],
+		["body", ["ico", 0.07, 1], 0x9a6634, [0, 1.08, 0.4], [0, 0, 0], [1, 1.2, 0.8]],        # wooden nose
+		["body", ["box", 0.34, 0.09, 0.05], 0x2a1208, [0, 0.9, 0.39]],                         # wide mouth, teeth
+		["body", ["box", 0.3, 0.045, 0.055], 0xffffff, [0, 0.918, 0.395]]]
+	for a: float in [0.5, 1.6, 2.7, 3.9, 5.0]:                                                 # wood grain
+		p.append(["body", ["box", 0.02, 0.42, 0.012], 0x94652f, [sin(a) * 0.4, 1.15, cos(a) * 0.4], [0, a, 0]])
+	for sx: float in [-1.0, 1.0]:
+		p.append(["body", ["ico", 0.13, 1], 0xffffff, [sx * 0.17, 1.2, 0.34], [0, 0, 0], [1, 1.05, 0.5]])
+		p.append(["body", ["ico", 0.06, 1], 0x111114, [sx * 0.17, 1.2, 0.41], [0, 0, 0], [1, 1, 0.6]])
+		p.append(["body", ["box", 0.2, 0.05, 0.04], WK, [sx * 0.17, 1.38, 0.37], [0, 0, sx * 0.1]])
+		p.append(["body", ["box", 0.08, 0.05, 0.05], 0x2a1208, [sx * 0.19, 0.935, 0.39], [0, 0, -sx * 0.65]])
+	return p
+
+
+static func _ballerina() -> Array:               # Ballerina Cappuccina: a cappuccino cup head, a pink tutu
+	const CUP := 0xfbf6ee
+	const FOAM := 0xf2dcc0
+	const PK := 0xff8fc0
+	const DK := 0x2a1612
+	var cz := func(x: float, y: float) -> float: return _cyl_z(x, y, 0.33, 0.47, -0.03, 0.63)
+	var p := [
+		["neck", ["cyl", 0.47, 0.33, 0.66, 16], CUP, [0, 0.3, 0]],                 # the cup and its foot
+		["neck", ["cyl", 0.335, 0.31, 0.08, 16], 0xe9dfd0, [0, -0.04, 0]],
+		["neck", ["cyl", 0.43, 0.43, 0.03, 16], 0x8a5532, [0, 0.625, 0]],         # coffee, rim, cream
+		["neck", ["tor", 0.455, 0.028, 6, 24], CUP, [0, 0.625, 0], [PI / 2, 0, 0]],
+		["neck", ["cyl", 0.27, 0.27, 0.012, 16], FOAM, [0, 0.645, 0]],
+		["neck", ["tor", 0.15, 0.04, 6, 12, PI * 1.5], CUP, [0.5, 0.3, 0], [0, 0, -PI * 0.75]],   # the handle
+		["neck", ["box", 0.1, 0.024, 0.02], DK, [0, 0.19, cz.call(0.0, 0.19) + 0.006]],   # a small smile
+		["neck", ["ico", 0.09, 1], PK, [0, 0.68, -0.4], [0, 0, 0], [1, 1, 0.8]],     # a pink bow at the back
+		["body", ["cyl", 0.3, 0.2, 0.66, 16], 0xffc2da, [0, 0.5, 0]],             # slim leotard bodice
+		["body", ["cyl", 0.31, 0.3, 0.05, 16], 0xffffff, [0, 0.82, 0]],
+		["body", ["cyl", 0.24, 0.22, 0.06, 16], 0xffe3a0, [0, 0.17, 0]],          # gold waistband
+		["body", ["tor", 0.66, 0.04, 6, 24], 0xffd0e4, [0, 0.06, 0], [PI / 2, 0, 0]]]   # tutu ruffle
+	for l: Array in [[0.66, 0.06, PK, 0.09], [0.58, 0.13, 0xffb6d6, 0.08], [0.47, 0.2, 0xfff0f6, 0.07]]:   # pancake tutu
+		p.append(["body", ["cyl", l[0] * 0.96, l[0], l[3], 20], l[2], [0, l[1], 0]])
+	for sx: float in [-1.0, 1.0]:
+		var ex := sx * 0.15
+		var ya := atan2(ex, cz.call(ex, 0.34))
+		p.append(["neck", ["ico", 0.058, 1], DK, [ex, 0.34, cz.call(ex, 0.34) + 0.012], [0, ya, 0], [1, 1.35, 0.4]])   # big eyes
+		p.append(["neck", ["ico", 0.016, 0], 0xffffff, [ex - sx * 0.01, 0.365, cz.call(ex, 0.365) + 0.034], [0, ya, 0]])
+		p.append(["neck", ["box", 0.07, 0.018, 0.02], DK, [sx * 0.205, 0.395, cz.call(sx * 0.205, 0.395) + 0.006], [0, atan2(sx * 0.205, cz.call(sx * 0.205, 0.395)), sx * 0.55]])
+		var bx := sx * 0.25
+		p.append(["neck", ["ico", 0.06, 1], 0xff9db8, [bx, 0.21, cz.call(bx, 0.21)], [0, atan2(bx, cz.call(bx, 0.21)), 0], [1.3, 0.8, 0.3]])   # blush
+		p.append(["neck", ["box", 0.04, 0.024, 0.02], DK, [sx * 0.065, 0.2, cz.call(sx * 0.065, 0.2) + 0.006], [0, 0, -sx * 0.6]])
+		p.append(["neck", ["ico", 0.06, 1], PK, [sx * 0.08, 0.68, -0.4], [0, 0, 0], [1, 1, 0.8]])
+		p.append(["body", ["box", 0.05, 0.3, 0.04], 0xffffff, [sx * 0.1, 0.72, 0.28], [0.2, 0, 0]])   # straps
+	for k in 2:                                                              # pointe-shoe ribbons up the shin
+		p.append(["leg%d" % k, ["cyl", 0.1, 0.1, 0.05, 10], 0xffc4dc, [0, -0.42, 0]])
+		for rz: float in [0.25, -0.25]:
+			p.append(["leg%d" % k, ["box", 0.04, 0.5, 0.03], 0xffc4dc, [0, -0.62, 0.11], [0.1, 0, rz]])
+	return p
+
+
+static func _assassino() -> Array:               # Cappuccino Assassino: a ninja with a coffee mug for a head
+	const MUG := 0xfaf4ea
+	const BK := 0x17171f
+	const BK2 := 0x2a2a36
+	const RED := 0xc4202c
+	const RED2 := 0x8f1620
+	const STEEL := 0xc9d2dc
+	const DK := 0x22160f
+	const CLOTH := 0xf0ece4
+	var mz := func(x: float, y: float) -> float: return _cyl_z(x, y, 0.37, 0.43, -0.08, 0.68)
+	var p := [
+		["neck", ["cyl", 0.43, 0.37, 0.76, 16], MUG, [0, 0.3, 0]],
+		["neck", ["cyl", 0.375, 0.35, 0.07, 16], 0xdcd0bf, [0, -0.1, 0]],
+		["neck", ["tor", 0.435, 0.03, 6, 24], MUG, [0, 0.68, 0], [PI / 2, 0, 0]],
+		["neck", ["cyl", 0.41, 0.41, 0.03, 16], 0x4a2a14, [0, 0.665, 0]],
+		["neck", ["cyl", 0.3, 0.3, 0.012, 16], 0xf3dfc2, [0, 0.683, 0]],
+		["neck", ["box", 0.38, 0.012, 0.07], DK, [0, 0.692, 0], [0, PI / 4, 0]],          # a ninja star in the foam
+		["neck", ["box", 0.38, 0.012, 0.07], DK, [0, 0.692, 0], [0, -PI / 4, 0]],
+		["neck", ["tor", 0.16, 0.045, 6, 12, PI * 1.5], MUG, [0.45, 0.3, 0], [0, 0, -PI * 0.75]],   # the handle
+		["neck", ["cyl", 0.44, 0.434, 0.14, 16], RED, [0, 0.5, 0]],                        # red headband
+		["neck", ["box", 0.15, 0.15, 0.04], STEEL, [0, 0.5, 0.44]],                        # forehead plate
+		["neck", ["ico", 0.085, 1], RED, [0, 0.5, -0.45]],                                  # knot and its tails
+		["neck", ["box", 0.095, 0.62, 0.025], RED, [0.07, 0.23, -0.5], [0.34, 0, 0.14]],
+		["neck", ["box", 0.095, 0.5, 0.025], RED, [-0.07, 0.29, -0.5], [0.32, 0, -0.2]],
+		["body", ["cyl", 0.41, 0.33, 0.44, 16], BK, [0, 0.19, 0]],                          # the black ninja suit
+		["body", ["cyl", 0.43, 0.41, 0.28, 16], BK, [0, 0.55, 0]],
+		["body", ["cyl", 0.3, 0.43, 0.2, 16], BK, [0, 0.79, 0]],
+		["body", ["cyl", 0.12, 0.3, 0.06, 16], BK, [0, 0.92, 0]],
+		["body", ["tor", 0.405, 0.06, 6, 24], RED, [0, 0.13, 0], [PI / 2, 0, 0]],           # red sash
+		["body", ["box", 0.1, 0.55, 0.03], RED, [0.3, -0.145, 0.3], [0.1, 0, 0.12]],
+		["body", ["tor", 0.29, 0.095, 6, 20], RED, [0, 0.92, 0], [PI / 2, 0, 0]],           # the scarf
+		["body", ["box", 0.2, 0.78, 0.03], RED, [0.14, 0.49, -0.44], [0.2, 0, 0.06]],
+		["body", ["box", 0.075, 1.0, 0.085], BK2, [0, 0.5, -0.46], [0, 0, 0.65]],           # sword across the back
+		["body", ["box", 0.065, 0.3, 0.07], RED, [-0.388, 1.0, -0.46], [0, 0, 0.65]],
+		["body", ["box", 0.17, 0.03, 0.06], 0xd9a63a, [-0.31, 0.89, -0.46], [0, 0, 0.65]]]
+	var rad := func(y: float) -> float:                                                   # the suit's radius at y
+		if y < 0.41: return lerpf(0.33, 0.41, (y + 0.03) / 0.44)
+		if y < 0.69: return lerpf(0.41, 0.43, (y - 0.41) / 0.28)
+		return lerpf(0.43, 0.3, (y - 0.69) / 0.2)
+	for sg: float in [-1.0, 1.0]:                                                         # crossed chest straps
+		for i in 9:
+			var t := i / 8.0
+			var x := sg * (-0.26 + 0.52 * t)
+			var y := 0.82 - 0.62 * t
+			var r: float = rad.call(y)
+			var z := sqrt(maxf(0.0001, r * r - x * x))
+			p.append(["body", ["box", 0.1, 0.17, 0.035], RED2, [x, y, z + 0.005], [0, atan2(x, z), sg * 0.7]])
+	for sx: float in [-1.0, 1.0]:                                                         # a cute face
+		var ex := sx * 0.15
+		var ya := atan2(ex, mz.call(ex, 0.27))
+		p.append(["neck", ["ico", 0.07, 1], DK, [ex, 0.27, mz.call(ex, 0.27) + 0.006], [0, ya, 0], [1, 1.3, 0.35]])
+		p.append(["neck", ["ico", 0.02, 0], 0xffffff, [ex + sx * 0.012, 0.305, mz.call(ex, 0.305) + 0.03], [0, ya, 0]])
+		var cx := sx * 0.26
+		p.append(["neck", ["ico", 0.055, 1], 0xff9db8, [cx, 0.17, mz.call(cx, 0.17)], [0, atan2(cx, mz.call(cx, 0.17)), 0], [1.3, 0.8, 0.3]])
+		p.append(["neck", ["box", 0.045, 0.02, 0.02], DK, [sx * 0.035, 0.146, mz.call(sx * 0.035, 0.15) + 0.006], [0, 0, -sx * 0.55]])
+		p.append(["neck", ["box", 0.1, 0.15, 0.04], STEEL, [sx * 0.118, 0.5, mz.call(sx * 0.118, 0.5) + 0.02], [0, sx * 0.32, 0]])
+	for a in ["armL", "arm"]:                                                              # bandaged forearms
+		for y: float in [-0.48, -0.62]:
+			p.append([a, ["cyl", 0.118, 0.108, 0.1, 10], CLOTH, [0, y, 0]])
+	for k in 2:
+		p.append(["leg%d" % k, ["cyl", 0.138, 0.126, 0.13, 10], CLOTH, [0, -0.6, 0]])
+		p.append(["leg%d" % k, ["cyl", 0.135, 0.125, 0.1, 10], CLOTH, [0, -0.45, 0]])
+	return p
+
+
+static func _thunder() -> Array:                 # Thunder Titan: gold storm armour, a winged helm, a white beard
+	const GOLD := 0xf2c230
+	const GOLD2 := 0xc9971c
+	const STORM := 0x2b49c4
+	const STORM2 := 0x1a2f86
+	const WHITE := 0xf4f7ff
+	const BOLT := 0xfffbb0
+	var p := [
+		["body", ["cyl", 0.43, 0.33, 0.38, 12], STORM, [0, 0.16, 0]],                       # storm suit
+		["body", ["cyl", 0.46, 0.43, 0.3, 12], STORM, [0, 0.5, 0]],
+		["body", ["cyl", 0.3, 0.46, 0.29, 12], STORM, [0, 0.795, 0]],
+		["body", ["ico", 0.42, 1], GOLD2, [0, 0.6, 0.1], [0, 0, 0], [0.98, 0.82, 0.98]],    # gold cuirass
+		["body", ["box", 0.08, 0.3, 0.04], BOLT, [0.02, 0.62, 0.47], [0, 0, 0.35], {"glow": BOLT, "glow_k": 0.8}],   # glowing bolt
+		["body", ["box", 0.08, 0.2, 0.04], BOLT, [-0.04, 0.48, 0.46], [0, 0, -0.5], {"glow": BOLT, "glow_k": 0.8}],
+		["body", ["tor", 0.43, 0.055, 6, 24], GOLD, [0, 0.12, 0], [PI / 2, 0, 0]],          # belt
+		["body", ["box", 0.88, 1.2, 0.05], STORM2, [0, 0.38, -0.5], [0.08, 0, 0]],          # cape and collar
+		["body", ["box", 0.9, 0.08, 0.07], GOLD, [0, 0.98, -0.47], [0.08, 0, 0]]]
+	_cap(p, GOLD, 0.5, -0.06, 0.6)                                                         # the winged helmet
+	p.append(["neck", ["cyl", 0.39, 0.39, 0.04, 10], GOLD2, [0, 0.45, 0]])
+	p.append(["neck", ["box", 0.06, 0.26, 0.04], BOLT, [0, 0.85, 0], [0, 0, 0.3], {"glow": BOLT, "glow_k": 0.8}])
+	for sx: float in [-1.0, 1.0]:
+		p.append(["body", ["ico", 0.23, 1], GOLD, [sx * 0.52, 0.86, 0], [0, 0, 0], [1.15, 0.72, 1.15]])   # pauldrons
+		p.append(["body", ["cone", 0.05, 0.22, 5], GOLD, [sx * 0.62, 1.06, 0], [0, 0, -sx * 0.45]])
+		p.append(["neck", ["box", 0.3, 0.2, 0.03], WHITE, [sx * 0.44, 0.62, -0.06], [0, sx * 0.35, -sx * 0.5]])   # wings
+		p.append(["neck", ["box", 0.22, 0.14, 0.03], WHITE, [sx * 0.5, 0.74, -0.1], [0, sx * 0.35, -sx * 0.8]])
+		p.append(["neck", ["box", 0.17, 0.06, 0.05], WHITE, [sx * 0.13, 0.47, head_surf(sx * 0.13, 0.47) + 0.012], [0, 0, sx * 0.3]])   # brows
+		p.append(["neck", ["ico", 0.065, 1], WHITE, [sx * 0.07, 0.22, head_surf(sx * 0.07, 0.22) + 0.04], [0, 0, sx * 0.3], [1.5, 0.7, 0.9]])   # moustache
+	for b: Array in [[0, 0.1, 0.13], [0.14, 0.14, 0.11], [-0.14, 0.14, 0.11], [0.24, 0.2, 0.09], [-0.24, 0.2, 0.09], [0.09, 0.0, 0.1], [-0.09, 0.0, 0.1], [0, -0.05, 0.1]]:
+		p.append(["neck", ["ico", b[2], 1], WHITE, [b[0], b[1], head_surf(b[0], maxf(b[1], 0.05)) + 0.035 - (0.03 if absf(b[0]) > 0.2 else 0.0)], [0, 0, 0], [1.1, 1, 1]])   # cloud beard
+	for k in 2:
+		p.append(["leg%d" % k, ["cyl", 0.17, 0.145, 0.3, 10], GOLD, [0, -0.58, 0]])      # greaves, knee guards
+		p.append(["leg%d" % k, ["ico", 0.11, 1], GOLD, [0, -0.38, 0.12]])
+	for a in ["armL", "arm"]:
+		p.append([a, ["cyl", 0.128, 0.118, 0.2, 10], GOLD, [0, -0.5, 0]])                 # gold bracers
 	return p
 
 

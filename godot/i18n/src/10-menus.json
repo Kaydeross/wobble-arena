@@ -1,0 +1,611 @@
+{
+ "Tip: push the stick to the edge to sprint.": {
+  "zh_TW": "提示：把搖桿推到邊緣就能衝刺。",
+  "zh_CN": "提示：把摇杆推到边缘即可冲刺。",
+  "ja": "ヒント：スティックを端まで倒すと全力で走れます。",
+  "fr": "Astuce : pousse le stick jusqu'au bord pour sprinter.",
+  "es": "Consejo: empuja el stick hasta el borde para correr."
+ },
+ "Tip: knock other players off the edge to score.": {
+  "zh_TW": "提示：把其他玩家擊落邊緣即可得分。",
+  "zh_CN": "提示：把其他玩家击落边缘即可得分。",
+  "ja": "ヒント：ほかのプレイヤーを場外に落とすと得点です。",
+  "fr": "Astuce : fais tomber les autres joueurs du bord pour marquer.",
+  "es": "Consejo: saca a otros jugadores del borde para puntuar."
+ },
+ "Tip: crates drop weapons, heals and power-ups.": {
+  "zh_TW": "提示：補給箱會掉落武器、回復與強化道具。",
+  "zh_CN": "提示：补给箱会掉落武器、回血和强化道具。",
+  "ja": "ヒント：クレートから武器・回復・パワーアップが出ます。",
+  "fr": "Astuce : les caisses lâchent armes, soins et bonus.",
+  "es": "Consejo: las cajas sueltan armas, curas y potenciadores."
+ },
+ "Tip: kick and shove work even without a weapon.": {
+  "zh_TW": "提示：沒有武器也能踢與推擠。",
+  "zh_CN": "提示：没有武器也能踢和推挤。",
+  "ja": "ヒント：武器がなくても、キックや突き飛ばしが使えます。",
+  "fr": "Astuce : le coup de pied et la bousculade marchent sans arme.",
+  "es": "Consejo: la patada y el empujón funcionan incluso sin arma."
+ },
+ "Needs internet · public rooms or a code": {
+  "zh_TW": "需要網路 · 公開房間或房間代碼",
+  "zh_CN": "需要网络 · 公开房间或房间代码",
+  "ja": "インターネットが必要 · 公開ルームまたはコード",
+  "fr": "Internet requis · salons publics ou code",
+  "es": "Requiere internet · salas públicas o código"
+ },
+ "Pick a room, or join a friend with their code.": {
+  "zh_TW": "選一個房間，或用朋友的代碼加入。",
+  "zh_CN": "选一个房间，或用朋友的代码加入。",
+  "ja": "ルームを選ぶか、友だちのコードで参加しましょう。",
+  "fr": "Choisis un salon, ou rejoins un ami avec son code.",
+  "es": "Elige una sala o únete a un amigo con su código."
+ },
+ "What you own": {
+  "zh_TW": "擁有的物品",
+  "zh_CN": "拥有的物品",
+  "ja": "所持アイテム",
+  "fr": "Possessions",
+  "es": "Lo que tienes"
+ },
+ "You have %d coins": {
+  "zh_TW": "你有 %d 枚金幣",
+  "zh_CN": "你有 %d 枚金币",
+  "ja": "コインを %d 枚持っています",
+  "fr": "%d pièces en poche",
+  "es": "Tienes %d monedas"
+ },
+ "%d to claim": {
+  "zh_TW": "%d 項可領取",
+  "zh_CN": "%d 项可领取",
+  "ja": "受け取り可能 %d 件",
+  "fr": "%d à réclamer",
+  "es": "%d por reclamar"
+ },
+ "Daily coin goals": {
+  "zh_TW": "每日金幣目標",
+  "zh_CN": "每日金币目标",
+  "ja": "毎日のコイン目標",
+  "fr": "Objectifs de pièces du jour",
+  "es": "Objetivos diarios de monedas"
+ },
+ "Last time: %s": {
+  "zh_TW": "上次：%s",
+  "zh_CN": "上次：%s",
+  "ja": "前回：%s",
+  "fr": "Dernière fois : %s",
+  "es": "Última vez: %s"
+ },
+ "Connected · %s": {
+  "zh_TW": "已連線 · %s",
+  "zh_CN": "已连接 · %s",
+  "ja": "接続中 · %s",
+  "fr": "Connecté · %s",
+  "es": "Conectado · %s"
+ },
+ "Signed in as %s": {
+  "zh_TW": "已登入為 %s",
+  "zh_CN": "已登录为 %s",
+  "ja": "%s としてログイン中",
+  "fr": "Connecté en tant que %s",
+  "es": "Sesión iniciada como %s"
+ },
+ "Signed in: %s": {
+  "zh_TW": "已登入：%s",
+  "zh_CN": "已登录：%s",
+  "ja": "ログイン中：%s",
+  "fr": "Connecté : %s",
+  "es": "Sesión iniciada: %s"
+ },
+ "Log in to host": {
+  "zh_TW": "登入以建立房間",
+  "zh_CN": "登录以创建房间",
+  "ja": "ホストするにはログイン",
+  "fr": "Connexion pour héberger",
+  "es": "Inicia sesión para alojar"
+ },
+ "Your account": {
+  "zh_TW": "你的帳號",
+  "zh_CN": "你的账号",
+  "ja": "アカウント",
+  "fr": "Mon compte",
+  "es": "Tu cuenta"
+ },
+ "Hosting a room needs an account. Joining works as a guest.": {
+  "zh_TW": "建立房間需要帳號。以訪客身分也能加入房間。",
+  "zh_CN": "创建房间需要账号。以访客身份也能加入房间。",
+  "ja": "ルームを作るにはアカウントが必要です。ゲストとしても参加できます。",
+  "fr": "Héberger un salon demande un compte. Rejoindre fonctionne en invité.",
+  "es": "Alojar una sala requiere cuenta. Unirse funciona como invitado."
+ },
+ "Account: sign up or log in to save to the cloud": {
+  "zh_TW": "帳號：註冊或登入即可儲存到雲端",
+  "zh_CN": "账号：注册或登录即可保存到云端",
+  "ja": "アカウント：登録かログインでクラウドに保存できます",
+  "fr": "Compte : créer un compte ou se connecter pour sauvegarder dans le cloud",
+  "es": "Cuenta: regístrate o inicia sesión para guardar en la nube"
+ },
+ "Type the room code your friend gave you, or pick a room from the list.": {
+  "zh_TW": "輸入朋友給你的房間代碼，或從列表選一個房間。",
+  "zh_CN": "输入朋友给你的房间代码，或从列表选一个房间。",
+  "ja": "友だちから受け取ったルームコードを入力するか、リストからルームを選んでください。",
+  "fr": "Saisis le code de salon d'un ami, ou choisis un salon dans la liste.",
+  "es": "Escribe el código de sala que te dio tu amigo, o elige una sala de la lista."
+ },
+ "In the room: %s": {
+  "zh_TW": "房間內：%s",
+  "zh_CN": "房间内：%s",
+  "ja": "ルーム内：%s",
+  "fr": "Dans le salon : %s",
+  "es": "En la sala: %s"
+ },
+ "Room name": {
+  "zh_TW": "房間名稱",
+  "zh_CN": "房间名称",
+  "ja": "ルーム名",
+  "fr": "Nom du salon",
+  "es": "Nombre de la sala"
+ },
+ "Private (code)": {
+  "zh_TW": "私人（代碼）",
+  "zh_CN": "私人（代码）",
+  "ja": "非公開（コード）",
+  "fr": "Privé (code)",
+  "es": "Privada (código)"
+ },
+ "Public": {
+  "zh_TW": "公開",
+  "zh_CN": "公开",
+  "ja": "公開",
+  "fr": "Public",
+  "es": "Pública"
+ },
+ "Who can join": {
+  "zh_TW": "誰能加入",
+  "zh_CN": "谁能加入",
+  "ja": "参加できる人",
+  "fr": "Qui peut rejoindre",
+  "es": "Quién puede unirse"
+ },
+ "Seats": {
+  "zh_TW": "座位數",
+  "zh_CN": "座位数",
+  "ja": "人数",
+  "fr": "Places",
+  "es": "Plazas"
+ },
+ "Bots": {
+  "zh_TW": "電腦玩家",
+  "zh_CN": "电脑玩家",
+  "ja": "ボット",
+  "fr": "Bots",
+  "es": "Bots"
+ },
+ "Game": {
+  "zh_TW": "遊戲",
+  "zh_CN": "游戏",
+  "ja": "ゲーム",
+  "fr": "Jeu",
+  "es": "Juego"
+ },
+ "Mode": {
+  "zh_TW": "模式",
+  "zh_CN": "模式",
+  "ja": "モード",
+  "fr": "Mode",
+  "es": "Modo"
+ },
+ "Rules": {
+  "zh_TW": "規則",
+  "zh_CN": "规则",
+  "ja": "ルール",
+  "fr": "Règles",
+  "es": "Reglas"
+ },
+ "Floor": {
+  "zh_TW": "地面",
+  "zh_CN": "地面",
+  "ja": "床",
+  "fr": "Sol",
+  "es": "Suelo"
+ },
+ "Gravity": {
+  "zh_TW": "重力",
+  "zh_CN": "重力",
+  "ja": "重力",
+  "fr": "Gravité",
+  "es": "Gravedad"
+ },
+ "Ammo": {
+  "zh_TW": "彈藥",
+  "zh_CN": "弹药",
+  "ja": "弾薬",
+  "fr": "Munitions",
+  "es": "Munición"
+ },
+ "Infinite": {
+  "zh_TW": "無限",
+  "zh_CN": "无限",
+  "ja": "無限",
+  "fr": "Infinies",
+  "es": "Infinita"
+ },
+ "Knockback": {
+  "zh_TW": "擊退",
+  "zh_CN": "击退",
+  "ja": "ノックバック",
+  "fr": "Recul",
+  "es": "Retroceso"
+ },
+ "Crates": {
+  "zh_TW": "補給箱",
+  "zh_CN": "补给箱",
+  "ja": "クレート",
+  "fr": "Caisses",
+  "es": "Cajas"
+ },
+ "Few": {
+  "zh_TW": "少",
+  "zh_CN": "少",
+  "ja": "少",
+  "fr": "Peu",
+  "es": "Pocas"
+ },
+ "Many": {
+  "zh_TW": "多",
+  "zh_CN": "多",
+  "ja": "多",
+  "fr": "Beaucoup",
+  "es": "Muchas"
+ },
+ "Chaos": {
+  "zh_TW": "混亂",
+  "zh_CN": "混乱",
+  "ja": "カオス",
+  "fr": "Chaos",
+  "es": "Caos"
+ },
+ "None": {
+  "zh_TW": "無",
+  "zh_CN": "无",
+  "ja": "なし",
+  "fr": "Aucune",
+  "es": "Ninguno"
+ },
+ "Create room": {
+  "zh_TW": "建立房間",
+  "zh_CN": "创建房间",
+  "ja": "ルームを作成",
+  "fr": "Créer le salon",
+  "es": "Crear sala"
+ },
+ "Leave": {
+  "zh_TW": "離開",
+  "zh_CN": "离开",
+  "ja": "退出",
+  "fr": "Quitter",
+  "es": "Salir"
+ },
+ "  (app)": {
+  "zh_TW": "  （App）",
+  "zh_CN": "  （App）",
+  "ja": "  （アプリ）",
+  "fr": "  (appli)",
+  "es": "  (app)"
+ },
+ "  (host)": {
+  "zh_TW": "  （房主）",
+  "zh_CN": "  （房主）",
+  "ja": "  （ホスト）",
+  "fr": "  (hôte)",
+  "es": "  (anfitrión)"
+ },
+ "  (web)": {
+  "zh_TW": "  （網頁）",
+  "zh_CN": "  （网页）",
+  "ja": "  （Web）",
+  "fr": "  (web)",
+  "es": "  (web)"
+ },
+ "Start on pillars. A new weapon every 10 seconds. One life": {
+  "zh_TW": "從柱子上開始。每 10 秒出現新武器。只有一條命。",
+  "zh_CN": "从柱子上开始。每 10 秒出现新武器。只有一条命。",
+  "ja": "柱の上からスタート。10秒ごとに新しい武器。ライフは1つ。",
+  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 secondes. Une seule vie",
+  "es": "Empiezas en pilares. Un arma nueva cada 10 segundos. Una sola vida"
+ },
+ "Explosives only. Always 300 health": {
+  "zh_TW": "只有爆炸物。生命值永遠是 300。",
+  "zh_CN": "只有爆炸物。生命值永远是 300。",
+  "ja": "爆発物のみ。体力は常に300。",
+  "fr": "Explosifs uniquement. Toujours 300 de santé",
+  "es": "Solo explosivos. Siempre 300 de salud"
+ },
+ "Super low gravity. Float, soar and knock rivals around": {
+  "zh_TW": "超低重力。飄浮、飛躍，把對手撞來撞去。",
+  "zh_CN": "超低重力。漂浮、飞跃，把对手撞来撞去。",
+  "ja": "超低重力。ふわふわ浮いて、相手を吹き飛ばそう。",
+  "fr": "Gravité très faible. Flotte, bondis et envoie les rivaux valser",
+  "es": "Gravedad súper baja. Flota, vuela y manda a los rivales por los aires"
+ },
+ "Dummies to shoot and a rack of weapons. No score": {
+  "zh_TW": "練習假人與一整排武器。沒有計分。",
+  "zh_CN": "练习假人和一排武器。没有计分。",
+  "ja": "的と武器が並ぶ練習モード。スコアはありません。",
+  "fr": "Mannequins à viser et un rack d'armes. Pas de score",
+  "es": "Maniquíes para disparar y un estante de armas. Sin puntuación"
+ },
+ "Build your own arena with blocks, then play it with bots": {
+  "zh_TW": "用方塊蓋出你自己的競技場，再和電腦玩家對戰。",
+  "zh_CN": "用方块搭建你自己的竞技场，再和电脑玩家对战。",
+  "ja": "ブロックで自分のアリーナを作って、ボットと遊ぼう。",
+  "fr": "Construis une arène avec des blocs, puis affronte les bots",
+  "es": "Construye tu propia arena con bloques y luego juega con bots"
+ },
+ "App only: a web player in the room makes it Classic.": {
+  "zh_TW": "僅限應用程式：房間內有網頁玩家時會改為經典模式。",
+  "zh_CN": "仅限应用：房间内有网页玩家时会改为经典模式。",
+  "ja": "アプリ専用：Webのプレイヤーがいると、クラシックになります。",
+  "fr": "Appli uniquement : un joueur web dans le salon le passe en classique.",
+  "es": "Solo app: si hay un jugador web en la sala, pasa a clásico."
+ },
+ "Web and app players.": {
+  "zh_TW": "網頁與應用程式玩家都能加入。",
+  "zh_CN": "网页和应用玩家都能加入。",
+  "ja": "Webとアプリのプレイヤーが参加できます。",
+  "fr": "Joueurs web et appli.",
+  "es": "Jugadores web y de app."
+ },
+ "Arena: %s (from your last Play setup).": {
+  "zh_TW": "競技場：%s（取自你上次的遊戲設定）。",
+  "zh_CN": "竞技场：%s（取自你上次的游戏设置）。",
+  "ja": "アリーナ：%s（前回のプレイ設定から）。",
+  "fr": "Arène : %s (d'après le dernier réglage de jeu).",
+  "es": "Arena: %s (de tu última configuración de juego)."
+ },
+ "Public room · %s": {
+  "zh_TW": "公開房間 · %s",
+  "zh_CN": "公开房间 · %s",
+  "ja": "公開ルーム · %s",
+  "fr": "Salon public · %s",
+  "es": "Sala pública · %s"
+ },
+ "Room code %s": {
+  "zh_TW": "房間代碼 %s",
+  "zh_CN": "房间代码 %s",
+  "ja": "ルームコード %s",
+  "fr": "Code du salon %s",
+  "es": "Código de sala %s"
+ },
+ "%d / %d players": {
+  "zh_TW": "%d / %d 位玩家",
+  "zh_CN": "%d / %d 位玩家",
+  "ja": "%d / %d 人",
+  "fr": "%d / %d joueurs",
+  "es": "%d / %d jugadores"
+ },
+ " · empty seats get bots": {
+  "zh_TW": " · 空位由電腦玩家補上",
+  "zh_CN": " · 空位由电脑玩家补上",
+  "ja": " · 空席にはボットが入ります",
+  "fr": " · les places vides reçoivent des bots",
+  "es": " · las plazas libres tendrán bots"
+ },
+ " · waiting for the host to start": {
+  "zh_TW": " · 等待房主開始",
+  "zh_CN": " · 等待房主开始",
+  "ja": " · ホストの開始待ち",
+  "fr": " · en attente du lancement par l'hôte",
+  "es": " · esperando a que el anfitrión empiece"
+ },
+ "Random": {
+  "zh_TW": "隨機",
+  "zh_CN": "随机",
+  "ja": "ランダム",
+  "fr": "Aléatoire",
+  "es": "Aleatorio"
+ },
+ "Tilt": {
+  "zh_TW": "傾斜",
+  "zh_CN": "倾斜",
+  "ja": "傾き",
+  "fr": "Inclinaison",
+  "es": "Inclinación"
+ },
+ "Quake": {
+  "zh_TW": "地震",
+  "zh_CN": "地震",
+  "ja": "地震",
+  "fr": "Séisme",
+  "es": "Sismo"
+ },
+ "Drift": {
+  "zh_TW": "漂移",
+  "zh_CN": "漂移",
+  "ja": "ドリフト",
+  "fr": "Dérive",
+  "es": "Deriva"
+ },
+ "Looking for rooms…": {
+  "zh_TW": "正在尋找房間…",
+  "zh_CN": "正在查找房间…",
+  "ja": "ルームを探しています…",
+  "fr": "Recherche de salons…",
+  "es": "Buscando salas…"
+ },
+ "Offline": {
+  "zh_TW": "離線",
+  "zh_CN": "离线",
+  "ja": "オフライン",
+  "fr": "Hors ligne",
+  "es": "Sin conexión"
+ },
+ "None open yet": {
+  "zh_TW": "尚無開放房間",
+  "zh_CN": "暂无开放房间",
+  "ja": "公開ルームはまだありません",
+  "fr": "Aucun salon ouvert pour l'instant",
+  "es": "Aún no hay salas abiertas"
+ },
+ "No rooms yet: host one, or join a friend with a code.": {
+  "zh_TW": "還沒有房間：建立一個，或用朋友的代碼加入。",
+  "zh_CN": "还没有房间：创建一个，或用朋友的代码加入。",
+  "ja": "まだルームがありません。ルームを作るか、友だちのコードで参加しましょう。",
+  "fr": "Aucun salon pour l'instant : en créer un, ou rejoindre un ami avec son code.",
+  "es": "Aún no hay salas: crea una, o únete a un amigo con su código."
+ },
+ "%d open · %d playing": {
+  "zh_TW": "%d 個開放中 · %d 個進行中",
+  "zh_CN": "%d 个开放中 · %d 个进行中",
+  "ja": "公開 %d 件 · プレイ中 %d 件",
+  "fr": "%d ouverts · %d en cours",
+  "es": "%d abiertas · %d jugando"
+ },
+ "1 open · %d playing": {
+  "zh_TW": "1 個開放中 · %d 個進行中",
+  "zh_CN": "1 个开放中 · %d 个进行中",
+  "ja": "公開 1 件 · プレイ中 %d 件",
+  "fr": "1 ouvert · %d en cours",
+  "es": "1 abierta · %d jugando"
+ },
+ "Join %s": {
+  "zh_TW": "加入 %s",
+  "zh_CN": "加入 %s",
+  "ja": "%s に参加",
+  "fr": "Rejoindre %s",
+  "es": "Unirse a %s"
+ },
+ "Host: %s": {
+  "zh_TW": "房主：%s",
+  "zh_CN": "房主：%s",
+  "ja": "ホスト：%s",
+  "fr": "Hôte : %s",
+  "es": "Anfitrión: %s"
+ },
+ "Playing now": {
+  "zh_TW": "進行中",
+  "zh_CN": "进行中",
+  "ja": "プレイ中",
+  "fr": "En cours",
+  "es": "Jugando"
+ },
+ "In the lobby": {
+  "zh_TW": "在大廳",
+  "zh_CN": "在大厅",
+  "ja": "ロビーにいます",
+  "fr": "Dans la salle d'attente",
+  "es": "En la sala de espera"
+ },
+ "Full": {
+  "zh_TW": "已滿",
+  "zh_CN": "已满",
+  "ja": "満員",
+  "fr": "Complet",
+  "es": "Llena"
+ },
+ "Leave the room? You'll leave this match and go back to the title.": {
+  "zh_TW": "要離開房間嗎？你會結束這場比賽，回到標題畫面。",
+  "zh_CN": "要离开房间吗？你将结束这场比赛，返回标题画面。",
+  "ja": "ルームを出ますか？この試合を抜けてタイトルに戻ります。",
+  "fr": "Quitter le salon ? Cette partie s'arrête et l'on revient au titre.",
+  "es": "¿Salir de la sala? Abandonarás esta partida y volverás al título."
+ },
+ "Quit this match? It won't count, and you'll go back to the title.": {
+  "zh_TW": "要結束這場比賽嗎？不會計入成績，並回到標題畫面。",
+  "zh_CN": "要结束这场比赛吗？不会计入成绩，并返回标题画面。",
+  "ja": "この試合を終了しますか？記録には残らず、タイトルに戻ります。",
+  "fr": "Quitter la partie ? Elle ne comptera pas et l'on revient au titre.",
+  "es": "¿Terminar esta partida? No contará y volverás al título."
+ },
+ "Keep playing": {
+  "zh_TW": "繼續遊戲",
+  "zh_CN": "继续游戏",
+  "ja": "プレイを続ける",
+  "fr": "Continuer à jouer",
+  "es": "Seguir jugando"
+ },
+ "Quit match": {
+  "zh_TW": "結束比賽",
+  "zh_CN": "结束比赛",
+  "ja": "試合を終了",
+  "fr": "Quitter la partie",
+  "es": "Terminar partida"
+ },
+ "v%s  build %s": {
+  "zh_TW": "v%s  建置 %s",
+  "zh_CN": "v%s  构建 %s",
+  "ja": "v%s  ビルド %s",
+  "fr": "v%s  build %s",
+  "es": "v%s  compilación %s"
+ },
+ "%d fps   %.1f ms   avg %.0f   1%% low %.0f": {
+  "zh_TW": "%d fps   %.1f ms   平均 %.0f   1%% 低 %.0f",
+  "zh_CN": "%d fps   %.1f ms   平均 %.0f   1%% 低 %.0f",
+  "ja": "%d fps   %.1f ms   平均 %.0f   1%% 低 %.0f",
+  "fr": "%d fps   %.1f ms   moy. %.0f   1%% bas %.0f",
+  "es": "%d fps   %.1f ms   media %.0f   1%% mín %.0f"
+ },
+ "%s · %s · 3D x%.2f · %d draws": {
+  "zh_TW": "%s · %s · 3D x%.2f · %d 次繪製",
+  "zh_CN": "%s · %s · 3D x%.2f · %d 次绘制",
+  "ja": "%s · %s · 3D x%.2f · 描画 %d 回",
+  "fr": "%s · %s · 3D x%.2f · %d appels de rendu",
+  "es": "%s · %s · 3D x%.2f · %d llamadas de dibujo"
+ },
+ "Forward+": {
+  "zh_TW": "Forward+",
+  "zh_CN": "Forward+",
+  "ja": "Forward+",
+  "fr": "Forward+",
+  "es": "Forward+"
+ },
+ "Mobile": {
+  "zh_TW": "行動版",
+  "zh_CN": "移动版",
+  "ja": "モバイル",
+  "fr": "Mobile",
+  "es": "Móvil"
+ },
+ "Compatibility": {
+  "zh_TW": "相容模式",
+  "zh_CN": "兼容模式",
+  "ja": "互換モード",
+  "fr": "Compatibilité",
+  "es": "Compatibilidad"
+ },
+ "BLUE": {
+  "zh_TW": "藍隊",
+  "zh_CN": "蓝队",
+  "ja": "ブルー",
+  "fr": "BLEU",
+  "es": "AZUL"
+ },
+ "RED": {
+  "zh_TW": "紅隊",
+  "zh_CN": "红队",
+  "ja": "レッド",
+  "fr": "ROUGE",
+  "es": "ROJO"
+ },
+ "YOU": {
+  "zh_TW": "你",
+  "zh_CN": "你",
+  "ja": "自分",
+  "fr": "TOI",
+  "es": "TÚ"
+ },
+ "First to %d": {
+  "zh_TW": "先到 %d 分",
+  "zh_CN": "先到 %d 分",
+  "ja": "%d 点先取",
+  "fr": "Premier à %d",
+  "es": "Primero en %d"
+ },
+ "vs": {
+  "zh_TW": "對戰",
+  "zh_CN": "对战",
+  "ja": "対",
+  "fr": "contre",
+  "es": "contra"
+ }
+}

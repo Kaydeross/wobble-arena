@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build Wobble Arena for iOS from the command line. See docs/BUILD_IOS.md.
+# Build Wobblers Arena for iOS from the command line. See docs/BUILD_IOS.md.
 #
 #   tools/build-ios.sh              export Xcode project -> signed archive -> App Store .ipa
 #   tools/build-ios.sh --simulator  export -> unsigned build -> install, launch and screenshot in the iOS Simulator

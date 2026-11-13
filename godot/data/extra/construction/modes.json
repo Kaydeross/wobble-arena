@@ -1,0 +1,16 @@
+{
+ "_note": "Godot-only Construction mode extension: extends allowWeapons with the 9 DLC tools.",
+ "construction": {
+  "allowWeapons": [
+   "pipewrench",
+   "nailgun",
+   "jackhammer",
+   "spiritlevel",
+   "tapemeasure",
+   "cementbucket",
+   "conelauncher",
+   "anglegrinder",
+   "drill"
+  ]
+ }
+}

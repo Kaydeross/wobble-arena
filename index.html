@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>Wobble Arena</title>
+<title>Wobblers Arena</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   html,body{margin:0;height:100%;overflow:hidden;background:#bfe3f2;font-family:system-ui,-apple-system,Segoe UI,sans-serif;user-select:none}
@@ -525,7 +525,7 @@
 </div>
 <div id="menu">
   <div class="card">
-    <div class="mhead"><h1>Wobble Arena</h1><p>Build 66</p><span id="coinchip" title="Your coins. Earn them from K.O.s and finished matches">&#129689; <b id="coinn">0</b></span></div>
+    <div class="mhead"><h1>Wobblers Arena</h1><p>Build 66</p><span id="coinchip" title="Your coins. Earn them from K.O.s and finished matches">&#129689; <b id="coinn">0</b></span></div>
     <div id="netbanner"><span>ONLINE ROOM &middot; code</span><b id="nb-code"></b><span id="nb-info"></span><button class="opt" id="nb-copy">Copy code</button></div>
     <div id="winner"></div>
     <div id="crumbs-top"></div>
@@ -4425,7 +4425,7 @@ class Fighter {
       if (this.deathT <= 0) this.respawn();
     }
     if (this.kickT >= 0) this.kickStep(dt);
-    if (this.isPlayer && !this.dead && this.hp < maxHp() && simTime - this.lastHitTime > 4) this.hp = Math.min(maxHp(), this.hp + 8 * maxHp() / 100 * dt);
+    if (this.isPlayer && !this.dead && this.hp < maxHp() * 0.5 && simTime - this.lastHitTime > 6) this.hp = Math.min(maxHp() * 0.5, this.hp + 4 * maxHp() / 100 * dt); // slow, capped at 50%: hiding can not full-heal
   }
 
   respawn() {
@@ -7102,8 +7102,8 @@ document.addEventListener('keydown', e => {
 
 el('start').onclick = () => { initAudio(); setUi('lobby'); };
 document.addEventListener('keydown', e => { if (ui === 'title' && (e.code === 'Enter' || e.code === 'Space')) { initAudio(); setUi('lobby'); } });
-el('bootlogo').innerHTML = 'WOBBLE ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
-el('logo').innerHTML = 'WOBBLE ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
+el('bootlogo').innerHTML = 'WOBBLERS ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
+el('logo').innerHTML = 'WOBBLERS ARENA'.split('').map((ch, i) => '<span style="animation-delay:' + (i * 0.09).toFixed(2) + 's">' + (ch === ' ' ? '&nbsp;' : ch) + '</span>').join('');
 el('bn').oninput = () => { setBotCfg({ count: +el('bn').value }); loadMap(currentMap); };
 el('behav-dummy').onclick = () => { setBotCfg({ behav: 'dummy' }); loadMap(currentMap); };
 el('behav-brawl').onclick = () => { setBotCfg({ behav: 'brawl' }); loadMap(currentMap); };

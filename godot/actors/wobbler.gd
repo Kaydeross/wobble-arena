@@ -92,6 +92,29 @@ var _time: float = 0.0
 var _state_flash := false
 var _stiff_override := -1.0
 
+# --- emotes (web Fighter.emote + emotePose; actors/emote_poses.gd). Visual only: play_emote(id) / stop_emote().
+var emote_id := ""                    ## the emote playing ("" = none)
+var emote_t := 0.0
+var emote_dur := 0.0
+var e_yaw := 0.0                      ## this frame's emote offsets (web eYaw, eLX, eLZ, eHop, ePitch)
+var e_lx := 0.0
+var e_lz := 0.0
+var e_hop := 0.0
+var e_pitch := 0.0
+var _e_crouch := 0.0
+
+# --- ragdoll overlay (docs/RAGDOLL.md): "classic" | "ragdoll". Presentation only: Fighter reads the gameplay points
+# from the classic pose, then overlay() re-poses the visible nodes; the next animate() restores the classic pose first.
+var rig_mode: String = "classic"
+var rig_scale := Vector3.ONE          ## classic rig scale this frame (squash, crouch, class size)
+var foot_meshes: Array[MeshInstance3D] = []
+var arm_sleeve: MeshInstance3D
+var arm_hand_mesh: MeshInstance3D
+var rag := RagdollRig.new()
+var _overlaid := false
+var _xf_nodes: Array[Node3D] = []
+var _xf_saved: Array[Transform3D] = []
+
 
 func _init() -> void:
 	_build()
@@ -99,7 +122,10 @@ func _init() -> void:
 
 
 # ================================================================ material: the ONE place parts get their look
-## Flat-shaded low-poly material (web `lm`). The graphics pass swaps this for the rim-light shader.
+## Flat-shaded low-poly material (web `lm`). MID / HIGH tiers (docs/GRAPHICS.md): soft wrap lighting (keeps every
+## facet its own tone; full toon flattened the low-poly look) and a sun rim light so fighters read against busy
+## levels; specular off.
+## LOW keeps plain lambert. Stays a StandardMaterial3D: hit flash and recolours drive albedo / emission as before.
 func _make_mat(c: int) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color.hex(c << 8 | 0xff)
@@ -108,7 +134,20 @@ func _make_mat(c: int) -> StandardMaterial3D:
 	m.emission_enabled = true
 	m.emission = Color.hex(0xff6644ff)
 	m.emission_energy_multiplier = 0.0
+	if _gfx_q() >= 1:
+		m.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT_WRAP
+		m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		m.roughness = 0.6
+		m.rim_enabled = true
+		m.rim = 0.6
+		m.rim_tint = 0.3
 	return m
+
+
+static func _gfx_q() -> int:
+	var tree := Engine.get_main_loop() as SceneTree
+	var t: Node = tree.root.get_node_or_null("Tier") if tree and tree.root else null
+	return int(t.call("quality")) if t else 2
 
 
 ## A flashing body material, sorted into the colour groups the web game recolours.
@@ -178,16 +217,17 @@ func _build() -> void:
 		_leg_mats.append(lm)
 		_foot_mats.append(fm)
 		_mesh(g, LowPoly.cyl(0.15, 0.12, 0.8, 5), lm, Vector3(0, -0.4, 0), "Thigh")
-		_mesh(g, LowPoly.box(0.26, 0.12, 0.4), fm, Vector3(0, -0.74, 0.07), "Foot")
+		foot_meshes.append(_mesh(g, LowPoly.box(0.26, 0.12, 0.4), fm, Vector3(0, -0.74, 0.07), "Foot"))
 		legs.append(g)
 	arm_l = _group(body, Vector3(0.52, 0.75, 0), "ArmL")             # local +X is the character's left
 	_mesh(arm_l, LowPoly.cyl(0.11, 0.09, 0.75, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.375, 0), "Sleeve")
 	hand_l = _mesh(arm_l, LowPoly.ico(0.13, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.78, 0), "HandL")
 	shoulder = _group(body, Vector3(-0.52, 0.75, 0), "Shoulder")        # right shoulder
 	arm = _group(self, Vector3.ZERO, "Arm")                              # aiming arm: free in world space
-	_mesh(arm, LowPoly.cyl(0.11, 0.09, 0.85, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.425, 0), "Sleeve")
-	_mesh(arm, LowPoly.ico(0.14, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.85, 0), "Hand")
+	arm_sleeve = _mesh(arm, LowPoly.cyl(0.11, 0.09, 0.85, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.425, 0), "Sleeve")
+	arm_hand_mesh = _mesh(arm, LowPoly.ico(0.14, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.85, 0), "Hand")
 	hand = _group(arm, Vector3(0, -0.85, 0), "Grip")
+	_xf_nodes = [rig, body, neck, legs[0], legs[1], foot_meshes[0], foot_meshes[1], arm_l, arm, arm_sleeve, arm_hand_mesh, hand]
 
 
 ## Builds a list of look parts (see WobblerLooks) under this rig. Returns the created nodes.
@@ -338,6 +378,14 @@ func _skin_flags() -> void:
 		e.visible = not sk.get("noEyes", false)
 	if hat:
 		hat.visible = not sk.get("noHat", false)
+	for n in _cls_nodes:                        # class bits on the head (hair, antennae) would float around a cup / log
+		(n as Node3D).visible = not (sk.get("noHead", false) and n.get_parent() == neck)
+	var th := float(sk.get("thin", 1.0))        # web skinFlags `thin`: slim arms and legs (Ballerina)
+	for l in legs:
+		(l.get_node("Thigh") as Node3D).scale = Vector3(th, 1, th)
+		foot_meshes[legs.find(l)].scale = Vector3(minf(1.0, th * 1.2), 1, 1)
+	(arm_l.get_node("Sleeve") as Node3D).scale = Vector3(th, 1, th)
+	arm_sleeve.scale = Vector3(th, 1, th)
 
 
 func _free_part(n: Node) -> void:
@@ -358,10 +406,53 @@ func set_weapon(key: Variant) -> void:
 		var holder := _group(hand, Vector3.ZERO, "W_" + k)
 		holder.add_child(WeaponModels.build(k, _make_mat))
 		_weapon_nodes[k] = holder
-	for wk in _weapon_nodes:
-		_weapon_nodes[wk].visible = wk == k
+	_show_weapon()
 	var wd: Dictionary = WobblerLooks.data("weapons").get(k, {})
 	stiff = float(wd.get("stiff", 25.0)) if k != "" else 25.0
+
+
+## Emotes put the weapon away (web build 60): the held weapon shows only when no emote plays.
+func _show_weapon() -> void:
+	for wk in _weapon_nodes:
+		_weapon_nodes[wk].visible = wk == weapon and emote_id == ""
+
+
+# ================================================================ emotes
+## Starts emote `id` (data/extra/locker.json EMOTES). false when it cannot play now (web playEmote: not while down,
+## dead, trapped, swinging or kicking) or the id is unknown.
+func play_emote(id: String) -> bool:
+	var e := LockerData.emote(id)
+	if e.is_empty() or dead or down_t > 0.0 or trap or swing >= 0.0 or kick_t >= 0.0:
+		return false
+	emote_id = id
+	emote_t = 0.0
+	emote_dur = float(e.get("dur", 2.0))
+	_show_weapon()
+	return true
+
+
+func stop_emote() -> void:
+	if emote_id == "":
+		return
+	emote_id = ""
+	_show_weapon()
+
+
+func is_emoting() -> bool:
+	return emote_id != ""
+
+
+## This frame's emote pose ({} when none). It ends when its time is up, or on a fall, K.O., net, swing or kick, or
+## when the fighter walks off (the web game slows you down instead; this port keeps gameplay untouched).
+func _emote_pose(dt: float) -> Dictionary:
+	if emote_id == "":
+		return {}
+	emote_t += dt
+	var walks := wish.length_squared() > 0.09 and emote_t > 0.3
+	if emote_t >= emote_dur or dead or down_t > 0.0 or trap or swing >= 0.0 or kick_t >= 0.0 or walks:
+		stop_emote()
+		return {}
+	return EmotePoses.pose(emote_id, emote_t, emote_dur, yaw)
 
 
 # ================================================================ state in
@@ -422,6 +513,8 @@ func apply_state(s: Dictionary) -> void:
 		lean.kick(-3.2, 0.0)
 		head.kick(-2.5, 0.0)
 	kick_t = nk
+	if s.has("hp"):
+		rag.note_hp(float(s["hp"]))
 	if s.has("flash"):
 		_state_flash = true
 		flash = clampf(float(s["flash"]) / FLASH_FULL, 0.0, 1.0)
@@ -436,12 +529,15 @@ func hit_kick(dir: Vector3, force: float) -> void:
 	lean.kick(-d_f * force * 0.22, -d_r * force * 0.22)
 	head.kick(-d_f * force * 0.5, -d_r * force * 0.5)
 	arm_vel += dir * force * 0.3
+	rag.hit(-d_f * force * 0.22, -d_r * force * 0.22, yaw, float(cls.get("size", 1.0)))
 	if not _state_flash:
 		flash = 1.0
 
 
 # ================================================================ animate (Fighter.animate ~5619 + applyPose ~5882)
 func animate(dt: float) -> void:
+	if _overlaid:                                           # undo the ragdoll overlay: nodes back to the classic pose
+		_restore_classic()
 	if dt <= 0.0:
 		return
 	_time += dt
@@ -459,9 +555,16 @@ func animate(dt: float) -> void:
 	lean.step(dt, 95.0 / wob, 0.28, -a_f * 0.45, -a_r * 0.45, clampf(v_f * 0.03, -0.45, 0.45), clampf(v_r * 0.03, -0.4, 0.4))
 	head.step(dt, 60.0 / wob, 0.2, -a_f * 0.9, -a_r * 0.9)
 
-	# poses that steer the aiming arm: melee swing (meleeTick), falling over, lying trapped
+	# poses that steer the aiming arm: emote, melee swing (meleeTick), falling over, lying trapped
 	var st := stiff if _stiff_override < 0.0 else _stiff_override
 	var target := aim_target
+	var ep := _emote_pose(dt)
+	if not ep.is_empty() and ep["aim"] != null and (ep["aim"] as Vector3).length_squared() > 1e-8:
+		target = (ep["aim"] as Vector3).normalized()
+		st = 70.0
+	e_yaw = ep.get("yaw", 0.0); e_lx = ep.get("lx", 0.0); e_lz = ep.get("lz", 0.0)
+	e_hop = ep.get("hop", 0.0); e_pitch = ep.get("pitch", 0.0)
+	_e_crouch += (float(ep.get("crouch", 0.0)) - _e_crouch) * minf(1.0, dt * 14.0)
 	if swing >= 0.0 and not dead and down_t <= 0.0:
 		var ss := sin(swing_yaw)
 		var cs := cos(swing_yaw)
@@ -534,6 +637,13 @@ func animate(dt: float) -> void:
 		leg1 = a
 		leg0 = 0.15
 		arm_lz = 0.9
+	if not ep.is_empty():                                   # the emote's own off-arm, legs and head
+		if ep["arm_l"] != null:
+			arm_lx = ep["arm_l"].x; arm_lz = ep["arm_l"].y
+		if ep["legs"] != null:
+			leg0 = ep["legs"].x; leg1 = ep["legs"].y
+		if ep["head"] != null:
+			head.kick(ep["head"].x * dt * 20.0, ep["head"].y * dt * 20.0)
 	if grounded and not was_g and prev_vy < -4.0:          # landing squash
 		squash = minf(0.28, -prev_vy * 0.025)
 	was_g = grounded
@@ -546,15 +656,16 @@ func animate(dt: float) -> void:
 	var d_t0 := fall_side * (PI / 2.0 * 0.98 + TAU)
 	var d_p := clampf(fall_a / d_t0, 0.0, 1.15) if dead else 0.0
 	var lift := 1.5 * sin(PI * clampf(d_p * 1.5, 0.0, 1.0)) if dead else absf(sin(fall_a)) * 0.4
-	rig.position = Vector3(pos.x, pos.y + lift + lie_k * 0.3, pos.z)
+	rig.position = Vector3(pos.x, pos.y + lift + lie_k * 0.3 + e_hop, pos.z)
 	var rx := lie_k * lie_side * PI / 2.0 * 0.98 + (-fall_side * TAU * clampf(d_p * 1.1, 0.0, 1.0) if dead else 0.0)
 	var size_k := float(cls.get("size", 1.0))
 	var stv := 0.0 if grounded else clampf(vel.y * 0.012, -0.08, 0.1)
-	var sy := (1.0 - 0.3 * crouch_k * (1.0 - lie_k)) * (1.0 - squash + stv)
+	var sy := (1.0 - 0.3 * maxf(crouch_k, _e_crouch) * (1.0 - lie_k)) * (1.0 - squash + stv)
 	var sxz := 1.0 + squash * 0.6 - stv * 0.5
-	rig.basis = _euler_yxz(Vector3(rx, yaw, fall_a)).scaled_local(Vector3(sxz, sy, sxz) * size_k)
+	rig_scale = Vector3(sxz, sy, sxz) * size_k
+	rig.basis = _euler_yxz(Vector3(rx - e_pitch, yaw + e_yaw, fall_a)).scaled_local(rig_scale)
 	body.position.y = body_y
-	body.basis = _euler_xyz(Vector3(lean.x, 0, lean.y))
+	body.basis = _euler_xyz(Vector3(lean.x + e_lx, 0, lean.y + e_lz))
 	var neck_x := head.x
 	if dead and d_p > 0.02:                                # flailing while it tumbles, then limp
 		var fl := sin(d_p * 34.0) * (1.0 - clampf(d_p, 0.0, 1.0))
@@ -572,6 +683,31 @@ func animate(dt: float) -> void:
 	arm.position = sh
 	arm.basis = Basis(_arc(SIM_DOWN, arm_dir)).scaled(Vector3.ONE * size_k)
 	_apply_flash()
+
+
+## Ragdoll overlay (rig_mode "ragdoll"): call AFTER the gameplay points were read from the classic pose.
+func overlay(dt: float) -> void:
+	if emote_id != "":                                      # a dance keeps the classic pose (the ragdoll would undo it)
+		return
+	if not _overlaid:
+		_xf_saved.resize(_xf_nodes.size())
+		for i in _xf_nodes.size():
+			_xf_saved[i] = _xf_nodes[i].transform
+	var grip := arm.transform * hand.transform              # the classic (= sim) grip, wobbler-local
+	rag.update(self, dt)
+	rag.render(self, dt, grip)
+	_overlaid = true
+
+
+## A Combat `lean` kick, for the ragdoll's hit reaction (the classic springs get theirs from Fighter.on_event).
+func ragdoll_hit(a: float, b: float) -> void:
+	rag.hit(a, b, yaw, float(cls.get("size", 1.0)))
+
+
+func _restore_classic() -> void:
+	for i in _xf_saved.size():
+		_xf_nodes[i].transform = _xf_saved[i]
+	_overlaid = false
 
 
 static func _arc(from: Vector3, to: Vector3) -> Quaternion:   # three.js Quaternion.setFromUnitVectors

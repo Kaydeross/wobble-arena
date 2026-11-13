@@ -34,15 +34,15 @@ func _draw() -> void:
 	var pulse := 0.5 + 0.5 * sin(_t * 4.0)
 	draw_rect(r.grow(3.0 + pulse * 3.0), Color(1.0, 0.7, 0.1, 0.12 + 0.16 * pulse), false, 4.0)
 	# black plate, hazard-tape frame, yellow face
-	draw_rect(r, Hazard.BLACK)
-	Hazard.stripes(self, r.grow(-2.0), 8.0, _t * 14.0)
+	draw_rect(r, HazardTape.BLACK)
+	HazardTape.stripes(self, r.grow(-2.0), 8.0, _t * 14.0)
 	var face := r.grow(-2.0 - EDGE)
-	draw_rect(face, Hazard.BLACK)
-	draw_rect(face.grow(-2.0), Hazard.YELLOW)
-	var fs := 21
+	draw_rect(face, HazardTape.BLACK)
+	draw_rect(face.grow(-2.0), HazardTape.YELLOW)
+	var fs := int(clampf(size.y * 0.46, 18.0, 34.0))
 	var tw := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var asc := _font.get_ascent(fs)
 	var base := Vector2((size.x - tw) / 2.0, (size.y + asc - _font.get_descent(fs)) / 2.0)
-	draw_string(_font, base, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Hazard.BLACK)
+	draw_string(_font, base, label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, HazardTape.BLACK)
 	if has_focus():
 		draw_rect(r.grow(2.0), Color.WHITE, false, 3.0)

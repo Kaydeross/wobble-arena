@@ -35,10 +35,11 @@ Files:
 
 | Symbol | Lines | What |
 |---|---|---|
-| `initAudio` | ~1464 | creates AudioContext, master gain, noise buffer (needs a user gesture; the Play handler and `startGame` call it) |
-| `tone(f0,f1,dur,type,vol,delay)` | ~1478 | oscillator blip with pitch slide |
-| `noise(dur,vol,freq,delay)` | ~1488 | filtered noise burst |
-| `SFX`, `sfx(name)` | ~1497-1520 | name -> recipe table; every sound effect is here |
+| `SndVoice` | ~1485 | one playing sound: layered `tone` / `noise` / `fm` nodes, ADSR (`env`) and filter sweeps; disconnects every node when its last source ends |
+| `SOUNDS` | ~1575 | effect library: name -> `{ fn, vary, gap, pri }` (UI blips, movement, attacks, impacts, pickups, damage / game over) |
+| `SoundManager`, `sound` | ~1700 | lazy AudioContext (first key / pointer / click), sfx + music buses -> compressor -> master; `play`, `setMute`, `setMasterVolume`, `setMusicVolume`, `startBGM` / `stopBGM` / `setIntensity` (lookahead music scheduler) |
+| `sfx(name, o)`, `sfxAt(name, pos, o)` | ~1830 | game glue: centred, or panned / faded from the camera for world events |
+| `musicTick` | ~1845 | picks the music mood from `ui` / `matchOver` and the match intensity each frame |
 
 ## 3. Renderer, scene, lights, materials, main loop
 
@@ -92,6 +93,7 @@ Porting note: `MAPS[id].build` is imperative three.js code, not data. Spawn/bot 
 | `Fighter.ladderStep` | ~5544 | ladder climbing |
 | `separate()` | ~9486 | pushes fighters apart |
 | `groundBelow, netGround` | ~6932, ~6808 | floor raycast helpers |
+| `DYN-PURE` block, `dynSetup`, `updateDyn` | ~2603-2834 | dynamic arenas (wobble / tilt / quake / drift); Godot port `godot/logic/dynamics.gd` + `arena_dyn.gd`, see `docs/DYNAMICS.md` |
 
 ## 6. Weapons
 
@@ -118,6 +120,7 @@ Porting note: `MAPS[id].build` is imperative three.js code, not data. Spawn/bot 
 | Snake: `shootSnake, updateSnakes` | ~6714-6795 | crawler projectile |
 | Snowball: `shootBall, updateBalls` | ~6796, ~6889 | |
 | Nets / traps: `shootNet, landNet, updateNets, nets, trapNets` | ~6807-6888 | trap sets `f.trapT`, `f.trapNet`; the fighter is pinned in `simStep` after `separate()` |
+| Air Blower: `playerControl` `w.type === 'blower'` branch; Construction: `MODES.construction`, `MAPS.siteyard` | ~9827, ~3088, ~3320 | held cone push (no damage), mode start hammer + allow list, exclusive map; Godot: `Weapons.blower_tick`, setup wizard Game type page (`ui/setup_wizard.gd`), test `npm run test:godot-construction`, see `docs/CONSTRUCTION.md` |
 | `clearProjectiles` | ~6302 | wipes all projectile arrays at match reset |
 | `hitMarker` | ~2672 | crosshair hit feedback |
 | `enemyInReach, crossInRange` | ~9711-9731 | reach test and crosshair colour |

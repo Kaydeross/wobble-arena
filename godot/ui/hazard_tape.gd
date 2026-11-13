@@ -1,4 +1,4 @@
-class_name Hazard
+class_name HazardTape
 extends RefCounted
 ## Construction-site hazard tape: diagonal yellow / black stripes. Shared by the "DON'T ENTER" sign and the wipe
 ## transition of the Construction DLC title.

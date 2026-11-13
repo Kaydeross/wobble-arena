@@ -1,0 +1,205 @@
+{
+ "Stage %d of %d": {
+  "zh_TW": "第 %d 關，共 %d 關",
+  "zh_CN": "第 %d 关，共 %d 关",
+  "ja": "ステージ %d / %d",
+  "fr": "Étape %d sur %d",
+  "es": "Etapa %d de %d"
+ },
+ "Stage %d of %d: %s": {
+  "zh_TW": "第 %d 關（共 %d 關）：%s",
+  "zh_CN": "第 %d 关（共 %d 关）：%s",
+  "ja": "ステージ %d / %d：%s",
+  "fr": "Étape %d sur %d : %s",
+  "es": "Etapa %d de %d: %s"
+ },
+ "Stage %d / %d": {
+  "zh_TW": "第 %d / %d 關",
+  "zh_CN": "第 %d / %d 关",
+  "ja": "ステージ %d / %d",
+  "fr": "Étape %d / %d",
+  "es": "Etapa %d / %d"
+ },
+ "Final boss": {
+  "zh_TW": "最終首領",
+  "zh_CN": "最终首领",
+  "ja": "ラスボス",
+  "fr": "Boss final",
+  "es": "Jefe final"
+ },
+ "Boss fight": {
+  "zh_TW": "首領戰",
+  "zh_CN": "首领战",
+  "ja": "ボス戦",
+  "fr": "Combat de boss",
+  "es": "Pelea de jefe"
+ },
+ "Crew fight": {
+  "zh_TW": "工友戰",
+  "zh_CN": "工友战",
+  "ja": "職人バトル",
+  "fr": "Combat d'équipe",
+  "es": "Pelea de cuadrilla"
+ },
+ "First clear: %d coins": {
+  "zh_TW": "首次通關：%d 金幣",
+  "zh_CN": "首次通关：%d 金币",
+  "ja": "初クリア：%d コイン",
+  "fr": "Première victoire : %d pièces",
+  "es": "Primera victoria: %d monedas"
+ },
+ "Time %s": {
+  "zh_TW": "時間 %s",
+  "zh_CN": "时间 %s",
+  "ja": "タイム %s",
+  "fr": "Temps %s",
+  "es": "Tiempo %s"
+ },
+ "K.O.s %d": {
+  "zh_TW": "K.O. %d",
+  "zh_CN": "K.O. %d",
+  "ja": "K.O. %d",
+  "fr": "K.O. %d",
+  "es": "K.O. %d"
+ },
+ "Stage clear!": {
+  "zh_TW": "過關！",
+  "zh_CN": "过关！",
+  "ja": "ステージクリア！",
+  "fr": "Étape réussie !",
+  "es": "¡Etapa superada!"
+ },
+ "%d clear + %d first clear bonus": {
+  "zh_TW": "通關 %d + 首次獎勵 %d",
+  "zh_CN": "通关 %d + 首次奖励 %d",
+  "ja": "クリア %d + 初クリアボーナス %d",
+  "fr": "%d victoire + %d bonus première victoire",
+  "es": "%d por superar + %d de bono por primera vez"
+ },
+ "Cleared before: no coins this time": {
+  "zh_TW": "已通關過：這次沒有金幣",
+  "zh_CN": "已通关过：这次没有金币",
+  "ja": "クリア済み：今回のコインはなし",
+  "fr": "Déjà réussie : pas de pièces cette fois",
+  "es": "Ya superada: sin monedas esta vez"
+ },
+ "Next stage": {
+  "zh_TW": "下一關",
+  "zh_CN": "下一关",
+  "ja": "次のステージ",
+  "fr": "Étape suivante",
+  "es": "Siguiente etapa"
+ },
+ "Quit run": {
+  "zh_TW": "結束挑戰",
+  "zh_CN": "结束挑战",
+  "ja": "挑戦をやめる",
+  "fr": "Quitter la partie",
+  "es": "Salir de la partida"
+ },
+ "Stage failed": {
+  "zh_TW": "挑戰失敗",
+  "zh_CN": "挑战失败",
+  "ja": "ステージ失敗",
+  "fr": "Étape échouée",
+  "es": "Etapa fallida"
+ },
+ "Lives left: %d": {
+  "zh_TW": "剩餘生命：%d",
+  "zh_CN": "剩余生命：%d",
+  "ja": "残りライフ：%d",
+  "fr": "Vies restantes : %d",
+  "es": "Vidas restantes: %d"
+ },
+ "A fresh site, a fresh try.": {
+  "zh_TW": "新工地，新挑戰。",
+  "zh_CN": "新工地，新挑战。",
+  "ja": "新しい現場で、もう一度。",
+  "fr": "Un nouveau chantier, un nouvel essai.",
+  "es": "Una obra nueva, otro intento."
+ },
+ "Retry stage": {
+  "zh_TW": "重試本關",
+  "zh_CN": "重试本关",
+  "ja": "ステージをやり直す",
+  "fr": "Réessayer l'étape",
+  "es": "Reintentar etapa"
+ },
+ "Run over": {
+  "zh_TW": "挑戰結束",
+  "zh_CN": "挑战结束",
+  "ja": "ゲームオーバー",
+  "fr": "Partie terminée",
+  "es": "Fin de la partida"
+ },
+ "You reached stage %d of %d: %s": {
+  "zh_TW": "你到達了第 %d 關（共 %d 關）：%s",
+  "zh_CN": "你到达了第 %d 关（共 %d 关）：%s",
+  "ja": "ステージ %d / %d まで到達：%s",
+  "fr": "Vous avez atteint l'étape %d sur %d : %s",
+  "es": "Llegaste a la etapa %d de %d: %s"
+ },
+ "Out of lives. The site wins this time.": {
+  "zh_TW": "生命用完了。這次工地贏了。",
+  "zh_CN": "生命用完了。这次工地赢了。",
+  "ja": "ライフがなくなりました。今回は現場の勝ちです。",
+  "fr": "Plus de vies. Le chantier gagne cette fois.",
+  "es": "Sin vidas. La obra gana esta vez."
+ },
+ "Site cleared!": {
+  "zh_TW": "工地清場！",
+  "zh_CN": "工地清场！",
+  "ja": "現場クリア！",
+  "fr": "Chantier nettoyé !",
+  "es": "¡Obra despejada!"
+ },
+ "The Client signed off. Every tradie is back on smoko.": {
+  "zh_TW": "客戶簽字驗收了。工友們都回去休息了。",
+  "zh_CN": "客户签字验收了。工友们都回去休息了。",
+  "ja": "依頼主が承認しました。職人たちは休憩に戻りました。",
+  "fr": "Le client a validé. Tous les ouvriers retournent en pause.",
+  "es": "El cliente dio el visto bueno. Todos los obreros vuelven al descanso."
+ },
+ "New hat: %s. Pick it in the Walldrobe": {
+  "zh_TW": "新帽子：%s。可在衣櫥中選擇",
+  "zh_CN": "新帽子：%s。可在衣橱中选择",
+  "ja": "新しい帽子：%s。ワードローブで選べます",
+  "fr": "Nouveau chapeau : %s. À choisir dans la garde-robe",
+  "es": "Sombrero nuevo: %s. Elígelo en el armario"
+ },
+ "Includes %d victory bonus coins": {
+  "zh_TW": "包含 %d 金幣勝利獎勵",
+  "zh_CN": "包含 %d 金币胜利奖励",
+  "ja": "勝利ボーナス %d コインを含む",
+  "fr": "Dont %d pièces de bonus de victoire",
+  "es": "Incluye %d monedas de bono de victoria"
+ },
+ "Your %s is already in the Walldrobe": {
+  "zh_TW": "你的%s已在衣櫥中",
+  "zh_CN": "你的%s已在衣橱中",
+  "ja": "%s はすでにワードローブにあります",
+  "fr": "Votre %s est déjà dans la garde-robe",
+  "es": "Tu %s ya está en el armario"
+ },
+ "Site Foreman Hard Hat": {
+  "zh_TW": "工地主管安全帽",
+  "zh_CN": "工地主管安全帽",
+  "ja": "現場監督のヘルメット",
+  "fr": "Casque de chef de chantier",
+  "es": "Casco de capataz"
+ },
+ "%s is fired up!": {
+  "zh_TW": "%s 火力全開！",
+  "zh_CN": "%s 火力全开！",
+  "ja": "%s が本気を出した！",
+  "fr": "%s est remonté !",
+  "es": "¡%s se ha motivado!"
+ },
+ "%s is furious!": {
+  "zh_TW": "%s 暴怒了！",
+  "zh_CN": "%s 暴怒了！",
+  "ja": "%s が激怒した！",
+  "fr": "%s est furieux !",
+  "es": "¡%s está furioso!"
+ }
+}

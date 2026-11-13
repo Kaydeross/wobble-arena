@@ -1,94 +1,108 @@
-<p align="center">
-  <img src="docs/img/banner.jpg" alt="Wobble Arena" width="100%">
-</p>
+<div align="center">
 
-<p align="center">
-  <b>Bonk your friends off floating arenas.</b><br>
-  A chaotic, wobbly-physics party brawler. Play free in your browser today.<br>
-  iPhone & PC apps coming soon — same rooms, same chaos.
-</p>
+  <img src="docs/img/banner.jpg" alt="Wobblers Arena Cinematic Banner" width="100%" />
 
-<p align="center">
-  <img alt="Play now" src="https://img.shields.io/badge/Play%20in%20browser-ffcf5a?style=for-the-badge&labelColor=102b35">
-  <img alt="iPhone" src="https://img.shields.io/badge/iPhone-TestFlight%20soon-4aa3d8?style=for-the-badge&labelColor=102b35">
-  <img alt="Cross-play" src="https://img.shields.io/badge/Cross--play-web%20%2B%20native-8fe0a5?style=for-the-badge&labelColor=102b35">
-</p>
+  # 🥊 WOBBLERS ARENA
+  **Fast-paced, physics-fuelled low-poly arena brawling.**  
+  *Grab a spatula, pick your fighter, and knock your mates out of the yard.*
+
+  [![Play on TestFlight](https://img.shields.io/badge/iOS_Beta-TestFlight_0.1.0_(130)-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/v1/app/6833812750)
+  [![Play on Web](https://img.shields.io/badge/Web_Build-Play_in_Browser-FF5722?style=for-the-badge&logo=googlechrome&logoColor=white)](#)
+  [![Engine](https://img.shields.io/badge/Godot_4.x-478cbf?style=for-the-badge&logo=godotengine&logoColor=white)](#)
+
+</div>
 
 ---
 
-## The Game
+## 🎮 About the Game
 
-You’re a floppy, spring-limbed wobbler. Fight on floating maps with open edges. Weapons rain from the sky. Every hit sends bodies flying.
+**Wobblers Arena** is a chaotic 3D party brawler where blocky, wobbly fighters clash in tight, hazard-filled arenas. Built around snappy movement, momentum-based knockback, and over-the-top melee swings, every match is a scramble for positioning and survival.
 
-**Knock everyone else off. Or fall trying.**
+Whether you are dashing across the arena with an oversized kitchen spatula or swinging heavy tradie gear in the **Site Yard**, every hit lands with punchy shader flashes, procedural weapon ribbon trails, and physics-driven chaos.
 
-Play solo against bots, practise weapons, or jump into online rooms with up to 8 friends. Works on desktop and phone (touch controls included).
-
-## Screenshots
-
-<table>
-  <tr>
-    <td><img src="docs/img/shot-sunny-arena.jpg" alt="Sunny Arena"><br><sub><b>Sunny Arena</b></sub></td>
-    <td><img src="docs/img/shot-volcano-rim.jpg" alt="Volcano Rim"><br><sub><b>Volcano Rim</b></sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/img/shot-pirate-ship.jpg" alt="Pirate Ship"><br><sub><b>Pirate Ship</b></sub></td>
-    <td><img src="docs/img/shot-temple-ruins.jpg" alt="Temple Ruins"><br><sub><b>Temple Ruins</b></sub></td>
-  </tr>
-  <tr>
-    <td><img src="docs/img/shot-moon-base.jpg" alt="Moon Base"><br><sub><b>Moon Base</b></sub></td>
-    <td><img src="docs/img/shot-haunted-hollow.jpg" alt="Haunted Hollow"><br><sub><b>Haunted Hollow</b></sub></td>
-  </tr>
-</table>
-
-<p align="center">
-  <img src="docs/img/iphone-menu.jpg" alt="Phone menu" width="45%">
-  <img src="docs/img/iphone-match.jpg" alt="Phone match" width="45%">
-</p>
-
-## Pick Your Wobbler
-
-| Class | Vibe | Superpower | Trade-off |
-|---|---|---|---|
-| **Wobbler** | Balanced | Reliable all-rounder | None |
-| **Bruiser** | Heavy tank | +30% health, hits harder | Slow & clumsy in air |
-| **Scamp** | Tiny & zippy | Fastest, great air control | Fragile |
-| **Gramps** | Precision | Sharp steering, fast reloads | Lower top speed |
-| **Zorp** | Alien tech | Guns 20% faster, more ammo | Lowest health |
-
-<p align="center">
-  <img src="docs/style/godot-wobbler-classes.png" alt="The five classes" width="80%">
-</p>
-
-## What’s Inside
-
-- **15 modes** — Classic, Melee, Guns, Ninja, Explosive, Giant, Mega Damage, Weapon Ladder, Pillars, team fights (1v1–4v4), Sandbox…
-- **33 maps** — Sunny Arena, Volcano Rim, Pirate Ship, Moon Base, Haunted Hollow, Candy Land and more
-- **30 weapons** — Bats, spring gloves, shotguns, rockets, flamethrowers, katanas, boomerangs…
-- **Bots** on Easy → Insane
-- **Online rooms** + room codes
-- **Cloud save**, locker, shop, practice range
-- **Cross-play** between browser and native clients (in progress)
-
-## Platforms
-
-| Platform | Status |
-|---|---|
-| **Browser** | Playable now |
-| **iPhone** | Offline + guest online ready. TestFlight next |
-| **PC** | After iPhone |
-| **Godot web** | Coming once native reaches parity |
-
-## Play It
-
-```bash
-npm install
-npm start
-```
-
-Open http://localhost:3000 → Play online → Quick play.
+* 📱 **iOS Beta (TestFlight):** [Install Wobblers Arena on TestFlight](https://testflight.apple.com/v1/app/6833812750) (iOS 15.0+)
+* 🌐 **Instant Host Multiplayer:** Spin up peer-to-peer matches directly from a Godot host client—no dedicated server required—or jump straight into offline solo play.
 
 ---
 
-**Developers:** Full server setup, protocol, roadmap, tests and architecture live in [`docs/`](docs/).  
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for the native client plan.
+## 📸 Screenshots & Gameplay
+
+<div align="center">
+  <table>
+    <tr>
+      <td width="50%">
+        <img src="docs/style/godot-fx-melee.png" alt="Arena Combat" width="100%" />
+        <p align="center"><em>High-impact melee brawling with procedural ribbon trails & hit-flash shaders</em></p>
+      </td>
+      <td width="50%">
+        <img src="docs/style/godot-ui-construction.png" alt="Site Yard Mode" width="100%" />
+        <p align="center"><em>Scaffold Construction mode inside the Site Yard arena</em></p>
+      </td>
+    </tr>
+    <tr>
+      <td width="50%">
+        <img src="docs/style/godot-locker-class.png" alt="Main Menu & Class Select" width="100%" />
+        <p align="center"><em>3D class showcase & cosmetic loadout selection</em></p>
+      </td>
+      <td width="50%">
+        <img src="docs/style/godot-gfx-moonbase-after.png" alt="Mobile Landscape Controls" width="100%" />
+        <p align="center"><em>Landscape HUD at 852×393: hotbar, health and radar</em></p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 🦸 Meet the Fighters
+
+Pick from five distinct low-poly 3D classes, each with its own silhouette, stats, and brawl style:
+
+<p align="center">
+  <img src="docs/style/godot-wobbler-classes.png" alt="The five classes" width="80%" />
+</p>
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center" width="20%">
+        <strong>Wobbler</strong><br />
+        <sub><strong>All-Rounder</strong><br />Balanced speed, weight, and swing recovery built for pure arena fundamentals.</sub>
+      </td>
+      <td align="center" width="20%">
+        <strong>Bruiser</strong><br />
+        <sub><strong>Heavy Tank</strong><br />High knockback resistance and crushing melee force that sends rivals flying.</sub>
+      </td>
+      <td align="center" width="20%">
+        <strong>Scamp</strong><br />
+        <sub><strong>Speedster</strong><br />Hyper-agile dasher built for hit-and-run strikes and baiting heavy swings.</sub>
+      </td>
+      <td align="center" width="20%">
+        <strong>Gramps</strong><br />
+        <sub><strong>Veteran Brawler</strong><br />Stubborn footing, deceptive weapon reach, and punishing counter-hits.</sub>
+      </td>
+      <td align="center" width="20%">
+        <strong>Zorp</strong><br />
+        <sub><strong>Cosmic Wildcard</strong><br />Floaty momentum and erratic movement timings that keep opponents guessing.</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+---
+
+## 🛠️ Weapons, Modes & Features
+
+* **Tradie & Kitchen Arsenal:** Trade blows with classic **Kitchen Spatulas**, heavy-duty **Site Yard Tradie Weapons** (wrenches, hammers, levels, and site gear), and unlockable cosmetics.
+* **Scaffold Construction Mode (`Site Yard`):** Battle across multi-tiered scaffolding and construction hazards in the Site Yard, with full offline mode support.
+* **Juicy Combat VFX:** Every swing and dash drives custom 3D lighting, hit-flash character shaders, procedural weapon ribbons, and impact particle bursts.
+* **Serverless Godot Host Multiplayer:** Host lobbies directly from your device without needing a dedicated backend server, or play offline anytime.
+* **Built for Mobile & Desktop:** Tuned for widescreen mobile landscape (`852×393`) with dedicated virtual joysticks, dash/attack buttons, and clean HUD framing.
+
+---
+
+## 🗺️ Project & Developer Docs
+
+Looking for architecture details, build pipelines, or upcoming milestones?
+* 🧭 **[Roadmap](docs/ROADMAP.md)** — Upcoming modes, visual passes, and feature milestones.
+* 🗂️ **[Codemap](docs/CODEMAP.md)** — Project structure, networking flow, and Godot scene breakdown.

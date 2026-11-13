@@ -1,0 +1,16 @@
+{
+ "Offline, against computer players": {
+  "zh_TW": "離線，對戰電腦玩家",
+  "zh_CN": "离线，对战电脑玩家",
+  "ja": "オフライン · コンピューターと対戦",
+  "fr": "Hors ligne, contre l'ordinateur",
+  "es": "Sin conexión, contra la computadora"
+ },
+ "Play online with friends": {
+  "zh_TW": "與朋友線上對戰",
+  "zh_CN": "与朋友在线对战",
+  "ja": "友達とオンラインで遊ぶ",
+  "fr": "Jouer en ligne avec des amis",
+  "es": "Jugar en línea con amigos"
+ }
+}

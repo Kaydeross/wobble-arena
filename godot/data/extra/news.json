@@ -1,0 +1,48 @@
+{
+ "_note": "Patch notes for the What's new card (ui/whats_new.gd), newest first. `version` matches application/config/version in project.godot: the card opens by itself once when the newest version here is one the player hasn't seen. Voice and rules: docs/WRITING.md. Short lines, no trailing full stop, one silly beat at most.",
+ "entries": [
+  {
+   "version": "0.3.0",
+   "title": "The Construction update",
+   "notes": [
+    "Construction DLC: the title banner opens Classic with up to 8 on a random building site, nine construction tools, plus hard hats and hi-vis",
+    "Arcade boss rush: fight from the Tradies up to the Client with 3 lives, and earn the Site Foreman hard hat",
+    "Pick a name to log in. No password needed, and unused names are freed after 30 days",
+    "A cleaner, less crowded title, setup and HUD",
+    "Chinese, Japanese, French and Spanish fonts fixed",
+    "Gun feel: scatter and bloom, and a shorter net trap",
+    "Settings > Graphics has a performance readout and a 15-minute soak test",
+    "Online play now uses the new server"
+   ]
+  },
+  {
+   "version": "0.2.0",
+   "title": "The big wobble update",
+   "notes": [
+    "Music! The game finally hums along while you bonk people",
+    "Goals: daily, weekly and lifetime coin goals, plus a streak bonus for your first win each day. Free coins, no catch",
+    "The Walldrobe only shows what you own. Everything else lives in the Shop, including a new Class tab",
+    "Secret classes: Boo, Champ and Rampage unlock as you play, win and K.O. Peek in the Walldrobe to see what each one wants",
+    "Got knocked flying? Tap RECOVER for a boing burst and wobble back into the fight",
+    "The setup wizard is sorted into Classic, Team and Special games, with little drawn icons and a Moving floor switch",
+    "New modes: Team Deathmatch, Deathmatch, Sudden Death and Chaos. Chaos is exactly what it sounds like",
+    "Host your own room, with Godot-only modes when everyone's on the app. If the host leaves, someone else takes over and the match goes on",
+    "Build mode: make your own arena out of blocks, then play it with bots. Plus Lava Pillars, where the floor is (still) lava",
+    "Bigger buttons on small phones, and a Text and button size option in Settings",
+    "Hits feel crunchier: particles, trails, squash and stretch, a tiny freeze on big hits and some screen shake. Turn the shake off in Settings if your tummy says so",
+    "Accounts with cloud saves, a kill cam for your best K.O.s, and a fresh coat of paint on the skies, shadows and materials"
+   ]
+  },
+  {
+   "version": "0.1.0",
+   "title": "Hello, wobblers",
+   "notes": [
+    "The first app build! Every arena, every weapon and the bots that live in them came over from the web game",
+    "Wobbly ragdoll legs, knockdowns and get-ups. Falling over is a feature",
+    "Touch controls built for thumbs: Fire, Jump, Melee (tap to shove, hold to kick), plus Dash or Reload when you need them",
+    "Play with web friends: join rooms hosted in the browser and fight side by side",
+    "Arenas that wobble, tilt, quake and drift. Pick Random if you like surprises"
+   ]
+  }
+ ]
+}

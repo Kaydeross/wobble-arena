@@ -4,7 +4,7 @@ extends Control
 ## a drop shadow and a slight per-letter tilt (optionally bobbing). Used by the title screen and to render the
 ## launch-screen PNG (tests/brand_shots.gd).
 
-@export var lines: PackedStringArray = PackedStringArray(["WOBBLE ARENA"])
+@export var lines: PackedStringArray = PackedStringArray(["WOBBLERS ARENA"])
 @export var font_size := 64:
 	set(v): font_size = v; update_minimum_size(); queue_redraw()
 @export var animate := false

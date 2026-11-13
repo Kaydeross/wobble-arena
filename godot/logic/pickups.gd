@@ -25,6 +25,8 @@ var drop_timer := 2.5
 var ported_only := true
 ## Live crates: {id, key, spot (index), gy, x, z, y, vy, grounded, open, t, age}
 var list: Array = []
+## permQ: rack weapons (Practice Range / Test Map, place_perm) that were taken come back here after 2.5 s: {key, x, z, t}.
+var perm_q: Array = []
 var _next_id := 0
 ## Online guest: only the host drops crates; they arrive as `crate`/`crates` messages (spawn_at) and leave on `take`.
 var remote := false
@@ -39,19 +41,22 @@ func set_map(map: Dictionary) -> void:
 	spots = map.get("drops", [])
 	no_crates = bool(map.get("noCrates", false)) or bool(combat.mode.get("ladder", false))
 	list.clear()
+	perm_q.clear()
 	drop_timer = 1.0
 
 ## pickCrateKey: weighted by each weapon's rarity setting, only what the mode allows. "" = nothing allowed.
 func pick_crate_key() -> String:
 	var tot := 0.0
 	var ents: Array = []
-	var allow: Array = drops.get("allow", {}).get(combat.mode_id, [])
+	var al: Dictionary = drops.get("allow", {})
+	var allow: Array = al.get(combat.mode_id, combat.mode["dropAllow"] if combat.mode.get("dropAllow") is Array else al.get(str(combat.mode.get("dropsAs", "")), []))   # Godot-only modes borrow a pool
 	var base: Dictionary = drops.get("base", {})
 	var mult: Dictionary = drops.get("mult", {})
+	var tuned: Dictionary = combat.tuned_drops if combat.tuning_active() else {}   # weapon_tuning.json crate weights
 	for k: String in base:
 		if not allow.has(k): continue
 		if ported_only and not usable(k): continue
-		var w := float(base[k]) * float(mult.get(wstate.get(k, "normal"), 1.0))
+		var w := float(tuned.get(k, base[k])) * float(mult.get(wstate.get(k, "normal"), 1.0))
 		if combat.mode_id == "ninja":   # Ninja: fewer shuriken, more of the other ninja weapons
 			w *= float({"shuriken": 0.4, "knife": 1.3, "katana": 1.5, "typhoon": 1.5}.get(k, 1.0))
 		if w > 0.0:
@@ -84,7 +89,17 @@ func spawn_drop(force_key: String = "") -> Dictionary:
 		"grounded": false, "open": 0.0, "t": 0.0, "age": 0.0}
 	list.append(p)
 	combat.ev({"type": "crate", "crate": p})
-	combat.ev({"type": "toast", "text": "Crate incoming: " + label(key) + "!"})
+	combat.ev({"type": "toast", "text": tr("Crate incoming: %s! Look up") % tr(label(key))})
+	return p
+
+## spawnDrop(key, {x, z}): a weapon laid out on the floor (the Practice Range rack, the Test Map grid). Already landed
+## and open, never expires, and comes back 2.5 s after somebody takes it (permQ). No random numbers, no toast.
+func place_perm(key: String, x: float, z: float) -> Dictionary:
+	_next_id += 1
+	var p := {"id": _next_id, "key": key, "spot": -1, "gy": 0.0, "x": x, "z": z, "y": 0.4, "vy": 0.0,
+		"grounded": true, "open": 1.0, "t": 0.0, "age": 0.0, "perm": true}
+	list.append(p)
+	combat.ev({"type": "crate", "crate": p})
 	return p
 
 ## spawnDrop(key, null, spot) for a crate the host announced (`crate` message): `spot` = [x, z, floor y?] as in
@@ -107,7 +122,7 @@ func spawn_at(key: String, spot: Variant, cid: int) -> Dictionary:
 		"grounded": false, "open": 0.0, "t": 0.0, "age": 0.0}
 	list.append(p)
 	combat.ev({"type": "crate", "crate": p})
-	combat.ev({"type": "toast", "text": "Crate incoming: " + label(key) + "!"})
+	combat.ev({"type": "toast", "text": tr("Crate incoming: %s! Look up") % tr(label(key))})
 	return p
 
 ## Index in `list` of the crate with the host's id `cid`, or -1.
@@ -125,13 +140,14 @@ func remove_cid(cid: int) -> bool:
 	combat.ev({"type": "crate_gone", "crate": p})
 	return true
 
-## Heal, power-ups and the weapons whose behaviour is ported (melee, hitscan guns incl. shotgun/Uzi/minigun, thrown knives).
+## Heal, power-ups and the weapons whose behaviour is ported (melee, hitscan guns incl. shotgun/Uzi/minigun, thrown knives,
+## the Air Blower).
 func usable(key: String) -> bool:
 	if key == "heal" or PU_TIMERS.has(key): return true
 	var w := combat.wdata(key)
 	match String(w.get("type", "")):
-		"melee": return true
-		"gun": return w.get("style", "") != "flame"      # TODO(next batch): flame
+		"melee", "blower": return true
+		"gun": return true
 	return Weapons.LAUNCH.has(String(w.get("type", "")))
 
 ## Display name of a drop key (weapon, heal or power-up).
@@ -151,6 +167,12 @@ func bot_wants(b: FighterState, p: Dictionary) -> bool:
 
 ## updatePickups: drop timer, falling, landing, being picked up, expiring.
 func update(dt: float) -> void:
+	for i in range(perm_q.size() - 1, -1, -1):
+		var q: Dictionary = perm_q[i]
+		q["t"] -= dt
+		if q["t"] <= 0.0:
+			perm_q.remove_at(i)
+			place_perm(q["key"], q["x"], q["z"])
 	drop_timer -= dt
 	if not no_crates and not remote and drop_timer <= 0.0:
 		drop_timer = combat.rng.range_f(3, 5) * float(rates.get(crate_rate, 0.42))
@@ -176,10 +198,11 @@ func update(dt: float) -> void:
 					_take(f, p["key"]); taker = f
 					break
 			if taker != null:
+				if p.get("perm", false): perm_q.append({"key": p["key"], "x": p["x"], "z": p["z"], "t": 2.5})
 				list.remove_at(i)
 				combat.ev({"type": "crate_take", "crate": p, "f": taker})
 				continue
-		if p["age"] > LIFETIME:
+		if p["age"] > LIFETIME and not p.get("perm", false):
 			list.remove_at(i)
 			combat.ev({"type": "crate_gone", "crate": p})
 

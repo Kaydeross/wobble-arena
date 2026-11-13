@@ -1,0 +1,416 @@
+{
+ "_note": "Generated from public/index.html (SKIN_SHOP, CODE_SKINS, FREE_SKINS, EMOTES, HAT_LABEL, HAT_ICON, RAR_LABEL, RAR_RANK). Godot-only copy; tests/save_test.gd checks parity.",
+ "skin_shop": {
+  "cowboy": [
+   400,
+   "uncommon"
+  ],
+  "pirate": [
+   500,
+   "uncommon"
+  ],
+  "wizard": [
+   850,
+   "epic"
+  ],
+  "astro": [
+   700,
+   "rare"
+  ],
+  "robot": [
+   700,
+   "rare"
+  ],
+  "shadow": [
+   800,
+   "rare"
+  ],
+  "knight": [
+   900,
+   "epic"
+  ],
+  "samurai": [
+   1000,
+   "epic"
+  ],
+  "vampire": [
+   1100,
+   "epic"
+  ],
+  "hero": [
+   1500,
+   "legendary"
+  ],
+  "fire": [
+   450,
+   "uncommon"
+  ],
+  "detective": [
+   500,
+   "uncommon"
+  ],
+  "pilot": [
+   550,
+   "uncommon"
+  ],
+  "scientist": [
+   650,
+   "rare"
+  ],
+  "racer": [
+   650,
+   "rare"
+  ],
+  "viking": [
+   750,
+   "rare"
+  ],
+  "jester": [
+   850,
+   "epic"
+  ],
+  "pharaoh": [
+   1200,
+   "epic"
+  ],
+  "tripleT": [
+   3500,
+   "mythic"
+  ],
+  "ballerina": [
+   3500,
+   "mythic"
+  ],
+  "assassino": [
+   3500,
+   "mythic"
+  ],
+  "thunder": [
+   2000,
+   "legendary"
+  ]
+ },
+ "code_skins": {
+  "dev": "mythic",
+  "beta": "legendary"
+ },
+ "free_skins": [
+  "hoodie",
+  "skater",
+  "chef",
+  "suit",
+  "builder",
+  "sporty",
+  "jacket",
+  "dress"
+ ],
+ "emotes": {
+  "wobble": {
+   "name": "Wobble Dance",
+   "price": 0,
+   "dur": 1.6,
+   "rar": "common",
+   "ico": "💃",
+   "blurb": "Spin and hop. Everyone has this one"
+  },
+  "hip": {
+   "name": "Hip Swing",
+   "price": 150,
+   "dur": 2.6,
+   "rar": "uncommon",
+   "ico": "🕺",
+   "blurb": "Sway side to side"
+  },
+  "clap": {
+   "name": "Clap Along",
+   "price": 200,
+   "dur": 2.4,
+   "rar": "uncommon",
+   "ico": "👏",
+   "blurb": "Clap to the beat"
+  },
+  "disco": {
+   "name": "Disco Point",
+   "price": 250,
+   "dur": 2.8,
+   "rar": "uncommon",
+   "ico": "🫨",
+   "blurb": "Point to the sky, point to the floor"
+  },
+  "sit": {
+   "name": "Chill Out",
+   "price": 300,
+   "dur": 3.2,
+   "rar": "rare",
+   "ico": "😎",
+   "blurb": "Squat down and wave. So relaxed"
+  },
+  "robot": {
+   "name": "Robot",
+   "price": 350,
+   "dur": 3,
+   "rar": "rare",
+   "ico": "🤖",
+   "blurb": "Stiff, jerky and spinning in steps"
+  },
+  "spin": {
+   "name": "Spin Cycle",
+   "price": 450,
+   "dur": 2.2,
+   "rar": "rare",
+   "ico": "🌀",
+   "blurb": "Two fast spins, arms out"
+  },
+  "flip": {
+   "name": "Backflip",
+   "price": 600,
+   "dur": 1.4,
+   "rar": "epic",
+   "ico": "🤸",
+   "blurb": "A big jump and a backflip"
+  },
+  "griddy": {
+   "name": "The Griddy",
+   "price": 550,
+   "dur": 3.2,
+   "rar": "epic",
+   "ico": "🏈",
+   "blurb": "Swing the arms wide and step side to side"
+  },
+  "floss": {
+   "name": "Hip Floss",
+   "price": 650,
+   "dur": 3,
+   "rar": "epic",
+   "ico": "🪥",
+   "blurb": "Arms swing one way, hips the other"
+  },
+  "dab": {
+   "name": "The Dab",
+   "price": 300,
+   "dur": 1.8,
+   "rar": "rare",
+   "ico": "🤦",
+   "blurb": "Head down, arm up. Classic"
+  },
+  "pump": {
+   "name": "Fist Pump",
+   "price": 250,
+   "dur": 2.4,
+   "rar": "uncommon",
+   "ico": "💪",
+   "blurb": "Pump it and bounce"
+  },
+  "shimmy": {
+   "name": "Shimmy",
+   "price": 250,
+   "dur": 2.6,
+   "rar": "uncommon",
+   "ico": "💃",
+   "blurb": "Shake the shoulders"
+  },
+  "devspin": {
+   "name": "Code Spin",
+   "price": 0,
+   "dur": 3.2,
+   "rar": "mythic",
+   "ico": "💻",
+   "blurb": "Developers only. Type fast, then spin",
+   "code": true
+  },
+  "betahop": {
+   "name": "Bug Stomp",
+   "price": 0,
+   "dur": 2.6,
+   "rar": "legendary",
+   "ico": "🐞",
+   "blurb": "Beta testers only. Hop and stomp the bugs",
+   "code": true
+  },
+  "crane": {
+   "name": "Crane Kick",
+   "price": 1300,
+   "dur": 3,
+   "rar": "legendary",
+   "ico": "🥋",
+   "blurb": "One leg up, then the other, then a power kick"
+  },
+  "land": {
+   "name": "Hero Landing",
+   "price": 1500,
+   "dur": 2.8,
+   "rar": "legendary",
+   "ico": "🦸",
+   "blurb": "Drop from the sky and hit the ground in a fist-down crouch"
+  },
+  "guitar": {
+   "name": "Air Guitar",
+   "price": 1800,
+   "dur": 3.4,
+   "rar": "legendary",
+   "ico": "🎸",
+   "blurb": "Shred, headbang and finish with a windmill solo"
+  },
+  "galaxy": {
+   "name": "Galaxy Ascend",
+   "price": 3500,
+   "dur": 4.2,
+   "rar": "mythic",
+   "ico": "🌌",
+   "blurb": "Rise into the sky spinning in a shower of stars",
+   "fx": true
+  },
+  "wheelie": {
+   "name": "Sur-Ron Wheelie",
+   "price": 3500,
+   "dur": 4.6,
+   "rar": "mythic",
+   "ico": "🏍️",
+   "blurb": "Jump on an electric dirt bike, rev it up and pull a huge wheelie",
+   "fx": true
+  },
+  "flex": {
+   "name": "Muscle Flex",
+   "price": 250,
+   "dur": 2.8,
+   "rar": "uncommon",
+   "ico": "💪",
+   "blurb": "Show off both arms"
+  },
+  "salute": {
+   "name": "Salute",
+   "price": 200,
+   "dur": 2.4,
+   "rar": "uncommon",
+   "ico": "🫡",
+   "blurb": "A crisp salute, then a happy hop"
+  },
+  "bow": {
+   "name": "Fancy Bow",
+   "price": 250,
+   "dur": 2.6,
+   "rar": "uncommon",
+   "ico": "🎩",
+   "blurb": "A very fancy bow. Pinkies up"
+  },
+  "zombie": {
+   "name": "Zombie Shuffle",
+   "price": 350,
+   "dur": 3.2,
+   "rar": "rare",
+   "ico": "🧟",
+   "blurb": "Arms out, head lolling, shuffle shuffle"
+  },
+  "sprinkler": {
+   "name": "Sprinkler",
+   "price": 450,
+   "dur": 3.4,
+   "rar": "rare",
+   "ico": "💦",
+   "blurb": "Turn in little jerks, arm out like a garden sprinkler"
+  },
+  "cartwheel": {
+   "name": "Cartwheel",
+   "price": 650,
+   "dur": 1.6,
+   "rar": "epic",
+   "ico": "🤸",
+   "blurb": "A big sideways cartwheel"
+  },
+  "jig": {
+   "name": "Victory Jig",
+   "price": 450,
+   "dur": 2.6,
+   "rar": "rare",
+   "ico": "🎉",
+   "blurb": "Hop, kick and wave"
+  },
+  "storm": {
+   "name": "Storm Surge",
+   "price": 1900,
+   "dur": 3.8,
+   "rar": "legendary",
+   "ico": "⚡",
+   "blurb": "Crouch and crackle, blast lightning into the sky, then slam it into the ground",
+   "fx": true
+  },
+  "nova": {
+   "name": "Supernova",
+   "price": 4000,
+   "dur": 5.2,
+   "rar": "mythic",
+   "ico": "💥",
+   "blurb": "Curl up as light is pulled in, explode into the sky and float spinning in a ring of stars",
+   "fx": true
+  },
+  "pirouette": {
+   "name": "Grand Pirouette",
+   "price": 0,
+   "dur": 4,
+   "rar": "mythic",
+   "ico": "🩰",
+   "blurb": "Rise onto pointe, spin three times in a shower of petals and curtsy",
+   "skin": "ballerina",
+   "fx": true
+  }
+ },
+ "hat_label": {
+  "none": "No hat",
+  "party": "Party",
+  "top": "Top hat",
+  "crown": "Crown",
+  "prop": "Propeller",
+  "wizard": "Wizard",
+  "bunny": "Bunny",
+  "cone": "Cone",
+  "pirate": "Pirate",
+  "chef": "Chef",
+  "cowboy": "Cowboy",
+  "halo": "Halo",
+  "viking": "Viking",
+  "phones": "Headphones",
+  "beanie": "Beanie",
+  "santa": "Santa",
+  "hardhat": "Hard Hat",
+  "hardhat_white": "White Hard Hat",
+  "hardhat_orange": "Orange Hard Hat",
+  "foreman": "Site Foreman Hard Hat"
+ },
+ "extra_hats": ["hardhat", "hardhat_white", "hardhat_orange", "foreman"],
+ "exclusive_hats": ["foreman"],
+ "hat_rarity": {"hardhat": "common", "hardhat_white": "common", "hardhat_orange": "common", "foreman": "rare"},
+ "hat_icon": {
+  "none": "🚫",
+  "party": "🎉",
+  "top": "🎩",
+  "crown": "👑",
+  "prop": "🚁",
+  "wizard": "🧙",
+  "bunny": "🐰",
+  "cone": "🚧",
+  "pirate": "🏴‍☠️",
+  "chef": "👨‍🍳",
+  "cowboy": "🤠",
+  "halo": "😇",
+  "viking": "🪓",
+  "phones": "🎧",
+  "beanie": "🧢",
+  "santa": "🎅"
+ },
+ "rar_label": {
+  "common": "Common",
+  "uncommon": "Uncommon",
+  "rare": "Rare",
+  "epic": "Epic",
+  "legendary": "Legendary",
+  "mythic": "Mythic"
+ },
+ "rar_rank": {
+  "mythic": 0,
+  "legendary": 1,
+  "epic": 2,
+  "rare": 3,
+  "uncommon": 4,
+  "common": 5
+ }
+}

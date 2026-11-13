@@ -1,0 +1,65 @@
+{
+ "The Construction update": {
+  "zh_TW": "建築大更新",
+  "zh_CN": "建筑大更新",
+  "ja": "工事現場アップデート",
+  "fr": "La mise à jour Chantier",
+  "es": "La actualización de la obra"
+ },
+ "Construction DLC: the title banner opens Classic with up to 8 on a random building site, nine construction tools, plus hard hats and hi-vis": {
+  "zh_TW": "建築 DLC：標題橫幅開啟經典模式，最多 8 人在隨機工地對戰，有九種建築工具，還有安全帽和反光衣",
+  "zh_CN": "建筑 DLC：标题横幅开启经典模式，最多 8 人在随机工地对战，有九种建筑工具，还有安全帽和反光衣",
+  "ja": "工事現場DLC：タイトルのバナーからクラシックへ。最大8人でランダムな現場に集合、工事道具は9種類、ヘルメットと反射ベストも登場",
+  "fr": "DLC Chantier : la bannière du titre ouvre le Classique jusqu'à 8 sur un chantier aléatoire, neuf outils de chantier, casques et gilets fluo",
+  "es": "DLC de construcción: el banner del título abre Clásico para hasta 8 en una obra aleatoria, nueve herramientas de obra, cascos y chalecos reflectantes"
+ },
+ "Arcade boss rush: fight from the Tradies up to the Client with 3 lives, and earn the Site Foreman hard hat": {
+  "zh_TW": "街機頭目連戰：從工人一路打到客戶，有 3 條命，還能贏得工頭安全帽",
+  "zh_CN": "街机头目连战：从工人一路打到客户，有 3 条命，还能赢得工头安全帽",
+  "ja": "アーケードのボス連戦：作業員からクライアントまで3ライフで挑戦。現場監督のヘルメットも手に入る",
+  "fr": "Série de boss Arcade : des Ouvriers jusqu'au Client, avec 3 vies, et le casque de Chef de chantier à gagner",
+  "es": "Maratón de jefes Arcade: de los Obreros al Cliente con 3 vidas, y el casco de Capataz como premio"
+ },
+ "Pick a name to log in. No password needed, and unused names are freed after 30 days": {
+  "zh_TW": "選個名字就能登入，不用密碼，沒人用的名字 30 天後會釋出",
+  "zh_CN": "选个名字就能登录，不用密码，没人用的名字 30 天后会释放",
+  "ja": "名前を選ぶだけでログイン。パスワードは不要で、使われていない名前は30日後に解放されます",
+  "fr": "Choisis un nom pour te connecter. Pas de mot de passe, et les noms inutilisés sont libérés après 30 jours",
+  "es": "Elige un nombre para entrar. Sin contraseña, y los nombres sin uso se liberan a los 30 días"
+ },
+ "A cleaner, less crowded title, setup and HUD": {
+  "zh_TW": "標題、設定和 HUD 更清爽，不再擠成一團",
+  "zh_CN": "标题、设置和 HUD 更清爽，不再挤成一团",
+  "ja": "タイトル、セットアップ、HUDがすっきり。もうぎゅうぎゅうじゃない",
+  "fr": "Un titre, une configuration et un HUD plus nets et moins chargés",
+  "es": "Un título, una configuración y un HUD más limpios y menos apretados"
+ },
+ "Chinese, Japanese, French and Spanish fonts fixed": {
+  "zh_TW": "修好了中文、日文、法文和西班牙文的字型",
+  "zh_CN": "修好了中文、日文、法文和西班牙文的字体",
+  "ja": "中国語、日本語、フランス語、スペイン語のフォントを修正",
+  "fr": "Polices chinoise, japonaise, française et espagnole réparées",
+  "es": "Arregladas las fuentes de chino, japonés, francés y español"
+ },
+ "Gun feel: scatter and bloom, and a shorter net trap": {
+  "zh_TW": "槍的手感：新增散射和擴散，捕網陷阱時間縮短",
+  "zh_CN": "枪的手感：新增散射和扩散，捕网陷阱时间缩短",
+  "ja": "銃の手触り：拡散とブルームを追加、ネットトラップは短めに",
+  "fr": "Sensation des armes : dispersion et bloom, et un piège à filet plus court",
+  "es": "Tacto de las armas: dispersión y bloom, y una trampa de red más corta"
+ },
+ "Settings > Graphics has a performance readout and a 15-minute soak test": {
+  "zh_TW": "設定 > 畫面 新增效能顯示和 15 分鐘耐久測試",
+  "zh_CN": "设置 > 画面 新增性能显示和 15 分钟耐久测试",
+  "ja": "設定 > グラフィックにパフォーマンス表示と15分間のソークテストを追加",
+  "fr": "Réglages > Graphismes : affichage des performances et test d'endurance de 15 minutes",
+  "es": "Ajustes > Gráficos: medidor de rendimiento y prueba de resistencia de 15 minutos"
+ },
+ "Online play now uses the new server": {
+  "zh_TW": "線上對戰現在使用新伺服器",
+  "zh_CN": "线上对战现在使用新服务器",
+  "ja": "オンライン対戦は新しいサーバーを使うようになりました",
+  "fr": "Le jeu en ligne utilise maintenant le nouveau serveur",
+  "es": "El juego en línea ahora usa el servidor nuevo"
+ }
+}
