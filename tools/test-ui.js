@@ -3,6 +3,8 @@
    and desktop sizes; the HUD, touch layer and FPS overlay build and update headless. Needs Godot (GODOT env var or
    the macOS default). Run: npm run test:godot-ui */
 const { spawnSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
@@ -11,16 +13,20 @@ let failed = false;
 for (const t of ['ui_layout_test', 'hud_test']) {
   // The full multilingual/resolution matrix now includes the 44 pt Small layout and takes close to
   // five minutes on a cold GitHub runner. Keep the same coverage, but leave headroom for that host.
+  const logPath = path.join(os.tmpdir(), `wobble-${t}-${process.pid}.log`);
+  const logFd = fs.openSync(logPath, 'w');
   const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', `res://tests/${t}.gd`, '--', '--no-save'], {
-    encoding: 'utf8', timeout: 600000, maxBuffer: 16 * 1024 * 1024,
+    timeout: 600000, stdio: ['ignore', logFd, logFd],
   });
-  const out = (r.stdout || '') + (r.stderr || '');
+  fs.closeSync(logFd);
+  const out = fs.readFileSync(logPath, 'utf8');
+  fs.unlinkSync(logPath);
   const lines = out.split('\n').filter(l => /^(UI|HUD|FAIL)|ERROR|SCRIPT ERROR/.test(l));
-  console.log(lines.join('\n'));
+  console.log(lines.slice(-160).join('\n'));
   const ok = r.status === 0 && /^(UI|HUD) ok/m.test(out) && !/SCRIPT ERROR|^ERROR/m.test(out);
   if (!ok) {
     if (r.error) console.log(`${t}: ${r.error.message}`);
-    if (!lines.length) console.log(out.slice(0, 2000));
+    console.log(out.split('\n').slice(-120).join('\n'));
     console.log(`${t} FAILED`);
     failed = true;
   }
