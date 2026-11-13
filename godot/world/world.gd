@@ -33,6 +33,12 @@ const FEED_TIME := 5.0
 ## instead of the score / radar / health / hotbar. Its Play saves and reloads the arena as a Sandbox match with bots.
 @export var build_mode := false
 var build_hud: BuildHud = null
+## Soak test (world/soak_run.gd): > 0 = a scripted-player performance run of this many seconds over `soak_maps`, logged to
+## `soak_dir`. Built by SoakRun.make_world; the sim, combat and physics play as usual.
+@export var soak_duration := 0.0
+var soak_maps: Array = []
+var soak_dir := ""
+var soak: SoakRun = null
 
 @onready var env_node: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $Sun
@@ -126,6 +132,10 @@ func _ready() -> void:
 		_bind_net()
 		pause_menu.online = true
 	load_map(map_id)
+	if soak_duration > 0.0:
+		soak = SoakRun.new()
+		soak.name = "Soak"
+		add_child(soak)
 
 func _exit_tree() -> void:
 	if net_match:
@@ -719,7 +729,7 @@ func _unhandled_input(e: InputEvent) -> void:
 ## (Tests that step the world by hand, auto_run = false, get no replay unless they set `kill_cam_in_tests`: their
 ## match clocks must not stop.)
 func kill_cam_enabled() -> bool:
-	return session == null and (auto_run or kill_cam_in_tests) and bool(Settings.get_value("kill_cam", true)) and sim != null and sim.combat.teams == 0
+	return session == null and soak_duration <= 0.0 and (auto_run or kill_cam_in_tests) and bool(Settings.get_value("kill_cam", true)) and sim != null and sim.combat.teams == 0
 
 func start_kill_cam() -> void:
 	if not kill_cam.start(): return

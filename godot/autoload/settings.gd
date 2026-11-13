@@ -25,6 +25,7 @@ const DEFAULTS := {
 	"touch_assist": true,
 	"ui_scale": "auto",     # menus, HUD and touch buttons: auto | small | normal | large (ui/ui_scale.gd)
 	"show_fps": false,      # FPS / frame-time overlay (F3 or a three-finger tap toggles it)
+	"perf_overlay": false,  # device readout in the top-left corner: fps, frame ms, CPU / GPU, draws, tier, thermal (ui/perf_overlay.gd)
 	"effects": "auto",      # combat effects level: auto (= graphics tier) | low | medium | high (world/fx.gd)
 	"screen_shake": true,   # camera shake on big hits, explosions and K.O.s (world/follow_camera.gd)
 	"class": "wobbler",     # character class (shared/classes.json id)
@@ -70,6 +71,18 @@ func _init() -> void:
 		persist = false
 		return
 	_cfg.load(PATH)   # missing file = defaults
+	if migrate_server_url(_cfg, server_default()):
+		_cfg.save(PATH)
+
+## Builds before 0.2.0 (15) stored the dev address as the player's server. When this build ships a different default,
+## drop that stale localhost value so the player gets the real server. Returns true when it changed `cfg`.
+static func migrate_server_url(cfg: ConfigFile, shipped_default: String) -> bool:
+	if shipped_default == DEV_SERVER_URL or not cfg.has_section_key(SECTION, "server_url"):
+		return false
+	if str(cfg.get_value(SECTION, "server_url")).strip_edges() != DEV_SERVER_URL:
+		return false
+	cfg.erase_section_key(SECTION, "server_url")
+	return true
 
 ## The server a fresh install connects to: the configured production url in release exports, else the dev address.
 ## `config_path` and `release` are parameters so tests can exercise the release path in the editor.

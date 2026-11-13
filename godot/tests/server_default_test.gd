@@ -23,7 +23,8 @@ func _run() -> void:
 	var dev: String = st.DEV_SERVER_URL
 	check(dev == "ws://127.0.0.1:3000/ws", "dev default unchanged")
 	var shipped := FileAccess.get_file_as_string(st.SERVER_CONFIG_PATH)
-	check((JSON.parse_string(shipped) as Dictionary).get("url", "x") == "", "shipped server.json has an empty url (user fills it in)")
+	var shipped_url := str((JSON.parse_string(shipped) as Dictionary).get("url", "x"))
+	check(shipped_url == "" or shipped_url.begins_with("wss://"), "shipped server.json url is empty or a wss:// address")
 	check(st.server_default() == dev, "editor/dev uses the dev default")
 	var tmp := "user://server_test.json"
 	_write(tmp, '{"url": "wss://play.example.test/ws"}')
@@ -45,6 +46,13 @@ func _run() -> void:
 	check(st.server_status_text().ends_with("(default)"), "status says default")
 	st.set_value("server_url", "  ")
 	check(st.get_value("server_url") == dev, "blank value means default")
+	var old := ConfigFile.new()
+	old.set_value(st.SECTION, "server_url", dev)
+	check(st.migrate_server_url(old, "wss://play.example.test/ws") and not old.has_section_key(st.SECTION, "server_url"), "stale localhost server dropped when a real default ships")
+	old.set_value(st.SECTION, "server_url", dev)
+	check(not st.migrate_server_url(old, dev) and old.has_section_key(st.SECTION, "server_url"), "kept when the default is still localhost")
+	old.set_value(st.SECTION, "server_url", "wss://friend.example.test/ws")
+	check(not st.migrate_server_url(old, "wss://play.example.test/ws"), "a real custom server is never dropped")
 	check(AccountApi.http_base("wss://play.example.test/ws") == "https://play.example.test", "wss maps to https")
 	check(AccountApi.http_base("ws://127.0.0.1:3000/ws") == "http://127.0.0.1:3000", "ws maps to http")
 	print("SERVERDEFAULT ok" if fails == 0 else "SERVERDEFAULT failed (%d)" % fails)
