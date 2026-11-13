@@ -152,7 +152,7 @@ func _draw() -> void:
 		draw_circle(p, ITEM_R + 3.0, rc)
 		draw_circle(p, ITEM_R, Color(UiTheme.PANEL_SOLID, 0.95))
 		EmoteIcon.paint(self, id, p, ITEM_R * 0.55, Color.WHITE)   # vector glyph (emoji fonts are not bundled)
-		var nm := LockerData.emote_name(id)
+		var nm := tr(LockerData.emote_name(id))
 		var nw := _font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x
 		var np := p + Vector2(-nw / 2.0, ITEM_R + 20.0)
 		draw_string_outline(_font, np, nm, HORIZONTAL_ALIGNMENT_LEFT, -1, 17, 6, Color(UiTheme.INK, 0.9))

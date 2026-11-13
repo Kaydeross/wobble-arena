@@ -123,7 +123,7 @@ func call_api(method: int, path: String, body: Variant, token: String, cb: Calla
 			r = r.duplicate()
 			r["status"] = code
 			if not r.has("ok"): r["ok"] = false
-			if not r["ok"] and not r.has("msg"): r["msg"] = "The server had a problem (%d). Try again in a moment." % code
+			if not r["ok"] and not r.has("msg"): r["msg"] = tr("The server had a problem (%d). Try again in a moment.") % code
 		cb.call(r))
 	var err := h.request(api_base() + path, headers, method, "" if body == null else JSON.stringify(body))
 	if err != OK:
@@ -148,7 +148,7 @@ func signup(username: String, mail: String, password: String) -> void:
 			t = int(r.get("t", 0)); dirty = false; last_saved = Time.get_unix_time_from_system(); offline = false
 			if r.get("recovery") is String: recovery.emit(r["recovery"])
 			if int(r.get("t", 0)) == 0: _mark_dirty(0.0)
-			_finish("signup", true, "Account made. You are signed in as %s." % user()))
+			_finish("signup", true, tr("Account made. You are signed in as %s.") % user()))
 
 ## Log in with a username or email. `ws_url` (optional) also becomes the server for everything else.
 func login(id: String, password: String, ws_url := "") -> void:
@@ -158,7 +158,7 @@ func login(id: String, password: String, ws_url := "") -> void:
 			if not r["ok"]: _finish("login", false, str(r.get("msg", "Login failed."))); return
 			_signed_in(r)
 			_merge(r.get("data"), int(r.get("t", 0)))
-			_finish("login", true, "Signed in as %s." % user()))
+			_finish("login", true, tr("Signed in as %s.") % user()))
 
 ## Forgot the password: username or email + recovery code + a new password. Signs in and shows a new recovery code.
 func reset(id: String, code: String, password: String, ws_url := "") -> void:
@@ -169,7 +169,7 @@ func reset(id: String, code: String, password: String, ws_url := "") -> void:
 			_signed_in(r)
 			_merge(r.get("data"), int(r.get("t", 0)))
 			if r.get("recovery") is String: recovery.emit(r["recovery"])
-			_finish("reset", true, "New password set. You are signed in as %s." % user()))
+			_finish("reset", true, tr("New password set. You are signed in as %s.") % user()))
 
 ## Sign out (the last changes are pushed first when possible). The profile stays on this device as a guest.
 func logout() -> void:
@@ -268,22 +268,22 @@ func sync_text() -> String:
 	if dirty: return "Saved on this device. Cloud save in a moment."
 	var last := maxf(last_saved, t / 1000.0)
 	if last <= 0.0: return "Saved on this device."
-	return "Saved to cloud " + ago(Time.get_unix_time_from_system() - last)
+	return tr("Saved to cloud %s") % ago(Time.get_unix_time_from_system() - last)
 
 static func ago(s: float) -> String:
-	if s < 60.0: return "just now"
-	if s < 3600.0: return "%d min ago" % floori(s / 60.0)
-	if s < 86400.0: return "%d h ago" % floori(s / 3600.0)
+	if s < 60.0: return TranslationServer.translate("just now")
+	if s < 3600.0: return TranslationServer.translate("%d min ago") % floori(s / 60.0)
+	if s < 86400.0: return TranslationServer.translate("%d h ago") % floori(s / 3600.0)
 	var d := floori(s / 86400.0)
-	return "%d day%s ago" % [d, "" if d == 1 else "s"]
+	return (TranslationServer.translate("%d day ago") if d == 1 else TranslationServer.translate("%d days ago")) % d
 
 ## "1,234 coins · 12 matches · 5 outfits" for a blob (the conflict choice).
 static func summary(d: Variant) -> String:
-	if not (d is Dictionary): return "nothing saved"
+	if not (d is Dictionary): return TranslationServer.translate("nothing saved")
 	var w: Dictionary = d.get("wallet") if d.get("wallet") is Dictionary else {}
 	var s: Dictionary = d.get("stats") if d.get("stats") is Dictionary else {}
 	var sk: int = (w["skins"] as Array).size() - 1 if w.get("skins") is Array else 0
-	return "%d coins · %d matches · %d K.O.s · %d outfits" % [int(w.get("coins", 0)), int(s.get("matches", 0)), int(s.get("kos", 0)), maxi(0, sk)]
+	return TranslationServer.translate("%d coins · %d matches · %d K.O.s · %d outfits") % [int(w.get("coins", 0)), int(s.get("matches", 0)), int(s.get("kos", 0)), maxi(0, sk)]
 
 func _on_profile_changed() -> void:
 	if _applying or not signed_in() or stale: return

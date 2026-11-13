@@ -176,12 +176,12 @@ static func class_name_of(id: String) -> String:
 
 ## The last setup in one line (title screen Play tooltip).
 func summary_line() -> String:
-	return "%s · %s · %s" % [mode_name(mode_id), map_name(map_id), _players_text()]
+	return tr("%s · %s · %s") % [tr(mode_name(mode_id)), tr(map_name(map_id)), _players_text()]
 
 func _players_text() -> String:
 	var t := bot_total()
-	if mode_id == "practice": return "You + %d dummies" % t
-	return "You + %d bot%s" % [t, "" if t == 1 else "s"]
+	if mode_id == "practice": return tr("You + %d dummies") % t
+	return (tr("You + %d bot") if t == 1 else tr("You + %d bots")) % t
 
 ## Loads the remembered choices from Settings (and fixes anything no longer valid).
 func load_settings() -> void:
@@ -218,9 +218,9 @@ func set_mode(m: String) -> void:
 	var to := nearest_map(want, valid)
 	note = ""
 	if to != map_id and not valid.has(map_id):
-		note = "%s has no %s: arena is now %s." % [mode_name(m), map_name(map_id), map_name(to)]
+		note = tr("%s has no %s: arena is now %s.") % [tr(mode_name(m)), tr(map_name(map_id)), tr(map_name(to))]
 	elif to != map_id:
-		note = "Arena back to %s." % map_name(to)
+		note = tr("Arena back to %s.") % tr(map_name(to))
 	map_id = to
 	Settings.set_value("offline_map", to)
 	_rebuild_maps()
@@ -426,7 +426,7 @@ func _build_foot() -> void:
 	for k in SHORT.size():
 		var b := Button.new()
 		b.name = "S%d" % (k + 1)
-		b.text = "%d %s" % [k + 1, SHORT[k]]
+		b.text = "%d %s" % [k + 1, tr(SHORT[k])]
 		b.theme_type_variation = &"TabButton"
 		b.toggle_mode = true
 		b.focus_mode = Control.FOCUS_NONE
@@ -510,7 +510,7 @@ func _section_head(text: String, col: Color) -> Control:
 	dot.size_flags_vertical = SIZE_SHRINK_CENTER
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	h.add_child(dot)
-	var l := _label(text.to_upper(), 18)
+	var l := _label(tr(text).to_upper(), 18)
 	l.name = "Caption"
 	l.add_theme_font_override("font", _heavy)
 	l.add_theme_color_override("font_color", col)
@@ -713,7 +713,7 @@ func _build_players(p: Control) -> void:
 	for n in range(BOT_MIN, BOT_MAX + 1): ns.append(n)
 	_pills(p, "Bots", "Bots", ns, ns, _bot_bs, set_bots, 64)
 	var dn: Array = []
-	for d: String in DIFFS: dn.append(d.capitalize())
+	for d: String in DIFFS: dn.append(tr(d.capitalize()))
 	_pills(p, "Skill", "Bot skill", DIFFS, dn, _diff_bs, set_diff, 100)
 	players_hint = _label("", 17, "MutedLabel", true)
 	players_hint.name = "Hint"
@@ -805,10 +805,10 @@ func _build_start(p: Control) -> void:
 func _refresh() -> void:
 	if title_l == null: return
 	title_l.text = TITLES[page]
-	step_l.text = "Step %d of %d" % [page + 1, TITLES.size()]
+	step_l.text = tr("Step %d of %d") % [page + 1, TITLES.size()]
 	var n := note
 	if n == "" and page == P_ARENA:
-		n = "Arenas for %s" % mode_name(mode_id)
+		n = tr("Arenas for %s") % tr(mode_name(mode_id))
 	note_l.text = n
 	note_l.tooltip_text = n
 	back_b.text = "Back"
@@ -817,7 +817,7 @@ func _refresh() -> void:
 		(step_bs[k] as Button).set_pressed_no_signal(k == page)
 	_select(_map_bs, map_id)
 	_select(_mode_bs, mode_id)
-	if detail_l: detail_l.text = "%s: %s" % [mode_name(mode_id), mode_long(mode_id)]
+	if detail_l: detail_l.text = tr("%s: %s") % [tr(mode_name(mode_id)), tr(mode_long(mode_id))]
 	_select(_dyn_bs, dyn)
 	_select(_class_bs, cls)
 	_select(_diff_bs, diff)
@@ -832,15 +832,15 @@ func _refresh() -> void:
 	if players_l:
 		players_l.text = _players_text()
 		var t := ModeRules.team_size(mode_id, Content.modes, total)
-		if flex: players_hint.text = "Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even)." % [t, t]
-		elif team: players_hint.text = "Bots are computer players. %s fixes the teams: %d vs %d." % [mode_name(mode_id), t, t]
-		elif mode_id == "practice": players_hint.text = "The range has %d dummies: they stand, slide and pop back up. They never fight back." % total
-		elif ModeRules.fixed_bots(mode_id, Content.modes) >= 0: players_hint.text = "%s fills every pillar: you + %d bots, one life each." % [mode_name(mode_id), total]
+		if flex: players_hint.text = tr("Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).") % [t, t]
+		elif team: players_hint.text = tr("Bots are computer players. %s fixes the teams: %d vs %d.") % [tr(mode_name(mode_id)), t, t]
+		elif mode_id == "practice": players_hint.text = tr("The range has %d dummies: they stand, slide and pop back up. They never fight back.") % total
+		elif ModeRules.fixed_bots(mode_id, Content.modes) >= 0: players_hint.text = tr("%s fills every pillar: you + %d bots, one life each.") % [tr(mode_name(mode_id)), total]
 		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = mode_name(mode_id)
-		_sum_vals[1].text = "%s · Floor: %s" % [map_name(map_id), Dynamics.NAMES.get(dyn, dyn)]
-		_sum_vals[2].text = "%s · %s" % [_players_text(), diff.capitalize()]
+		_sum_vals[1].text = tr("%s · Floor: %s") % [tr(map_name(map_id)), tr(Dynamics.NAMES.get(dyn, dyn))]
+		_sum_vals[2].text = tr("%s · %s") % [_players_text(), tr(diff.capitalize())]
 		_sum_vals[3].text = class_name_of(cls)
 
 func _select(store: Dictionary, key: Variant) -> void:

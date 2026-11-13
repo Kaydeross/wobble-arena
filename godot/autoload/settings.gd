@@ -87,7 +87,7 @@ static func server_default(config_path: String = SERVER_CONFIG_PATH, release: bo
 ## "Using: <url> (default|custom)" for the Settings screen.
 func server_status_text() -> String:
 	var cur := str(get_value("server_url"))
-	return "Using: %s (%s)" % [cur, "default" if cur == server_default() else "custom"]
+	return tr("Using: %s (%s)") % [cur, tr("default") if cur == server_default() else tr("custom")]
 
 func get_value(key: String, default: Variant = null) -> Variant:
 	if default == null:

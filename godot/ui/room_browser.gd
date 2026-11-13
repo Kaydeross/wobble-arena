@@ -110,7 +110,7 @@ func show_rooms(r: Array, err: String = "") -> void:
 	state = "rooms"
 	var playing := 0
 	for x: Dictionary in r: playing += int(x.get("n", 0))
-	count_l.text = "%d open · %d playing" % [r.size(), playing] if r.size() != 1 else "1 open · %d playing" % playing
+	count_l.text = (tr("%d open · %d playing") % [r.size(), playing]) if r.size() != 1 else (tr("1 open · %d playing") % playing)
 	_clear()
 	for x: Dictionary in r: rows.add_child(_row(x))
 	JuicyButton.attach_all(rows)
@@ -164,7 +164,7 @@ func _row(r: Dictionary) -> Button:
 	b.custom_minimum_size = Vector2(0, ROW_H)
 	b.disabled = why != ""
 	b.focus_mode = Control.FOCUS_ALL
-	b.tooltip_text = "Join " + str(r["name"]) if why == "" else why
+	b.tooltip_text = (tr("Join %s") % str(r["name"])) if why == "" else tr(why)
 	b.pressed.connect(func() -> void: if not b.disabled: join_requested.emit(str(r["id"])))
 	scroll.add_card(b)
 	b.button_mask = MOUSE_BUTTON_MASK_LEFT if Tier.is_pc() else 0   # PC: a click on a row joins (the list handles touch)
@@ -193,10 +193,10 @@ func _row(r: Dictionary) -> Button:
 	n.set_meta("user_text", true)   # a player's room name: "…" when it is too long (the tooltip has it all)
 	v.add_child(n)
 	var parts: Array = []
-	if str(r["host"]) != "": parts.append("Host: " + str(r["host"]))
-	if str(r["modeName"]) != "": parts.append(str(r["modeName"]))
-	if str(r["map"]) != "": parts.append(str(r["map"]))
-	parts.append(why if why != "" else ("Playing now" if r["started"] else "In the lobby"))
+	if str(r["host"]) != "": parts.append(tr("Host: %s") % str(r["host"]))
+	if str(r["modeName"]) != "": parts.append(tr(str(r["modeName"])))
+	if str(r["map"]) != "": parts.append(tr(str(r["map"])))
+	parts.append(tr(why) if why != "" else (tr("Playing now") if r["started"] else tr("In the lobby")))
 	var s := Label.new()
 	s.name = "Sub"
 	s.text = " · ".join(parts)

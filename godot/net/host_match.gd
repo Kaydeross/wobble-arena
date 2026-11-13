@@ -127,7 +127,7 @@ func bot_to_human(k: int, info: Dictionary) -> FighterState:
 	s["kind"] = "human"; s["id"] = k
 	slots[k] = s
 	combat.ev({"type": "relook", "f": b})
-	combat.ev({"type": "toast", "text": str(info.get("name", "Player")) + " joined, a bot made room!"})
+	combat.ev({"type": "toast", "text": tr("%s joined, a bot made room!") % str(info.get("name", "Player"))})
 	return b
 
 ## netHumanToBot: the guest in slot `k` left; with `bots` on, the bot comes back, else the seat is emptied.

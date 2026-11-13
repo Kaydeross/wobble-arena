@@ -134,7 +134,7 @@ func show_section(s: String) -> void:
 			_slider("fov", "Field of view", "", 60.0, 90.0, 1.0, func(v: float) -> String: return "%d°" % int(v))
 		"graphics":
 			var auto_n: String = ["Low", "Medium", "High"][MapBuilder.gfx_q()]
-			_choice("effects", "Effects", "Particles, trails and flashes in a match. Auto follows this device (%s)." % auto_n,
+			_choice("effects", "Effects", tr("Particles, trails and flashes in a match. Auto follows this device (%s).") % tr(auto_n),
 				["auto", "low", "medium", "high"], ["Auto", "Low", "Medium", "High"])
 			_choice("ui_scale", "Text and button size", "Menus, HUD and touch buttons. Auto keeps buttons finger-sized on this screen.",
 				UiScale.MODES, ["Auto", "Small", "Normal", "Large"])
@@ -174,14 +174,14 @@ static func version_text() -> String:
 	if cfg.load("res://build_info.cfg") == OK:
 		version = str(cfg.get_value("build", "version", version))
 		build = str(cfg.get_value("build", "number", build))
-	return "Version %s, build %s" % [version, build]
+	return TranslationServer.translate("Version %s, build %s") % [version, build]
 
 func _account_line() -> Array:
 	var sv := get_node_or_null("/root/Save")
 	var cloud: Variant = sv.get("cloud") if sv else null
 	if cloud != null and cloud.signed_in():
 		var sync: String = cloud.sync_text()
-		return ["Signed in as " + str(cloud.user()), sync if sync != "" else "Your progress is saved to your account."]
+		return [tr("Signed in as %s") % str(cloud.user()), sync if sync != "" else "Your progress is saved to your account."]
 	return ["Playing as a guest", "Your progress is saved on this device only. Make an account to keep it safe."]
 
 func open_help() -> void:

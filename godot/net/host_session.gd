@@ -81,7 +81,7 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 	my_info = clean_info(info, 0)
 	my_info["gd"] = NetClient.GD
 	room_name = str(opts.get("name", "")).strip_edges().substr(0, 24)
-	if room_name == "": room_name = my_info["name"] + "'s room"
+	if room_name == "": room_name = tr("%s's room") % my_info["name"]
 	room_name = room_name.substr(0, 24)
 	pub = bool(opts.get("pub", false))
 	opt_max = clampi(int(opts.get("max", 4)), 2, NET_MAX)
@@ -98,7 +98,7 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 	_connect_t = CONNECT_WAIT
 	_set_status("Connecting…")
 	if net.connect_to_server(url) != OK:
-		_finish("Could not open %s" % url); return false
+		_finish(tr("Could not open %s") % url); return false
 	return true
 
 ## The rules part of the Host sheet (also between matches / in the lobby): mode, lim, hp, grav, kb, crate, inf, dyn.
@@ -181,7 +181,7 @@ func poll(dt: float) -> void:
 	if phase == Phase.CONNECTING or phase == Phase.JOINING:
 		_connect_t -= dt
 		if _connect_t <= 0.0:
-			_finish("The game server at %s did not answer. Check the address and that the server is running." % url); return
+			_finish(tr("The game server at %s did not answer. Check the address and that the server is running.") % url); return
 	for i in range(_closing.size() - 1, -1, -1):
 		_closing[i][0] -= dt
 		if _closing[i][0] <= 0.0:
@@ -208,7 +208,7 @@ func _on_connected() -> void:
 
 func _on_disconnected() -> void:
 	if phase == Phase.CONNECTING or phase == Phase.JOINING:
-		_finish("Could not reach the game server at %s. Check the address and that the server is running." % url)
+		_finish(tr("Could not reach the game server at %s. Check the address and that the server is running.") % url)
 	elif phase != Phase.CLOSED and phase != Phase.IDLE:
 		_finish("Lost the connection to the game server.")
 
@@ -226,11 +226,11 @@ func _on_server(m: Dictionary) -> void:
 			slot = 0; net.slot = 0
 			roster = [my_info.duplicate()]
 			phase = Phase.LOBBY
-			_set_status(("Your room is open. It shows up in everyone's room list (%s)." if pub else "Room ready! Tell your friends the code: %s") % room_code)
+			_set_status((tr("Your room is open. It shows up in everyone's room list (%s).") if pub else tr("Room ready! Tell your friends the code: %s")) % room_code)
 			hosted.emit(room_code)
 			roster_changed.emit(roster)
 		"nocreate":
-			_finish(NOCREATE_TEXT.get(str(m.get("reason", "")), "Could not open a room. Try again."))
+			_finish(tr(NOCREATE_TEXT.get(str(m.get("reason", "")), "Could not open a room. Try again.")))
 		"peer":
 			var cid := NetSnapshot.to_int32(m.get("cid"))
 			if str(m.get("ev", "")) == "close": _drop(cid)
@@ -285,9 +285,9 @@ func take_over(g: GuestSession, pub_flag: bool, rs: Dictionary) -> void:
 	_resume_slot = int(rs.get("my_slot", g.slot))
 	if not rs.is_empty():
 		_resume_t = RESUME_WAIT
-		_set_status("%s left. You are now the host: carrying the match on…" % migrated)
+		_set_status(tr("%s left. You are now the host: carrying the match on…") % migrated)
 	else:
-		_set_status("%s left. You are now the host. " % migrated + ("The room is still open to everyone." if pub else "The room code is still %s." % room_code))
+		_set_status(tr("%s left. You are now the host. ") % migrated + (tr("The room is still open to everyone.") if pub else tr("The room code is still %s.") % room_code))
 	_last_info = ""
 	push_info()
 
@@ -410,7 +410,7 @@ func _hello(cid: int, m: Dictionary) -> void:
 	if started and not gd and app_only(mode_id):            # a web player cannot play an app-only mode
 		_to(cid, {"t": "kick", "msg": "This room is playing %s, which only the Wobblers Arena app has. Ask the host to pick a Classic-style mode." % mode_label()})
 		_close_later(cid)
-		_set_status("%s tried to join from the web browser: %s is app-only." % [info["name"], mode_label()])
+		_set_status(tr("%s tried to join from the web browser: %s is app-only.") % [info["name"], tr(mode_label())])
 		return
 	var id := _resume_seat(m, info) if not _resume.is_empty() else -1
 	if id < 0:
@@ -437,8 +437,8 @@ func _hello(cid: int, m: Dictionary) -> void:
 		_refresh_mode()
 		_all(roster_msg())
 		if not gd and app_only(want_mode):
-			_set_status("%s joined from the web browser: %s is app-only, so the match plays Classic." % [info["name"], mode_name(want_mode)])
-		else: _set_status("%s joined!" % info["name"])
+			_set_status(tr("%s joined from the web browser: %s is app-only, so the match plays Classic.") % [info["name"], tr(mode_name(want_mode))])
+		else: _set_status(tr("%s joined!") % info["name"])
 	roster_changed.emit(roster)
 	push_info()
 	if not _resume.is_empty() and _resume_waiting().is_empty(): _resume_start()
@@ -459,11 +459,11 @@ func _drop(cid: int) -> void:
 		slots = hm.slots
 		var kind := str(info.get("kind", "empty"))
 		_all({"t": "slot", "slot": id, "kind": kind, "info": info})
-		if who != "": hm.combat.ev({"type": "toast", "text": who + " left" + (", a bot took their place" if kind == "bot" else "")})
+		if who != "": hm.combat.ev({"type": "toast", "text": (tr("%s left, a bot took their place") if kind == "bot" else tr("%s left")) % who})
 	else:
 		_refresh_mode()
 		_all(roster_msg())
-	if who != "": _set_status("%s left." % who)
+	if who != "": _set_status(tr("%s left.") % who)
 	roster_changed.emit(roster)
 	push_info()
 
@@ -557,20 +557,20 @@ static func rules_text(rl: Dictionary) -> String:
 	var m := str(rl.get("mode", "classic"))
 	var lim := int(rl.get("lim", 0))
 	var md: Dictionary = all_modes().get(m, {})
-	var parts: Array = [mode_name(m)]
-	if str(rl.get("map", "")) != "": parts.append(str(rl["map"]))
-	if md.get("lives"): parts.append("one life" if int(md["lives"]) == 1 else "%d lives" % int(md["lives"]))
-	elif md.get("ladder"): parts.append("12 weapons")
-	else: parts.append(("first to %d" % lim) if lim > 0 else "no K.O. limit")
-	parts.append("%d HP" % int(rl.get("hp", 200)))
-	parts.append("gravity %sx" % _num(float(rl.get("grav", 1.0))))
-	parts.append("knockback %sx" % _num(float(rl.get("kb", 1.0))))
-	parts.append("%s crates" % str(rl.get("crate", "normal")))
-	if bool(rl.get("inf", false)): parts.append("infinite ammo")
-	parts.append("floor " + str(Dynamics.NAMES.get(str(rl.get("dyn", "off")), "Steady")))
+	var parts: Array = [TranslationServer.translate(mode_name(m))]
+	if str(rl.get("map", "")) != "": parts.append(TranslationServer.translate(str(rl["map"])))
+	if md.get("lives"): parts.append(TranslationServer.translate("one life") if int(md["lives"]) == 1 else TranslationServer.translate("%d lives") % int(md["lives"]))
+	elif md.get("ladder"): parts.append(TranslationServer.translate("12 weapons"))
+	else: parts.append((TranslationServer.translate("first to %d") % lim) if lim > 0 else TranslationServer.translate("no K.O. limit"))
+	parts.append(TranslationServer.translate("%d HP") % int(rl.get("hp", 200)))
+	parts.append(TranslationServer.translate("gravity %sx") % _num(float(rl.get("grav", 1.0))))
+	parts.append(TranslationServer.translate("knockback %sx") % _num(float(rl.get("kb", 1.0))))
+	parts.append(TranslationServer.translate("%s crates") % TranslationServer.translate(str(rl.get("crate", "normal"))))
+	if bool(rl.get("inf", false)): parts.append(TranslationServer.translate("infinite ammo"))
+	parts.append(TranslationServer.translate("floor %s") % TranslationServer.translate(str(Dynamics.NAMES.get(str(rl.get("dyn", "off")), "Steady"))))
 	var t := " · ".join(parts)
 	var want := str(rl.get("want", m))
-	if want != m: t += "\n%s is app-only: a web player is here, so it plays Classic." % mode_name(want)
+	if want != m: t += "\n" + TranslationServer.translate("%s is app-only: a web player is here, so it plays Classic.") % TranslationServer.translate(mode_name(want))
 	return t
 
 static func _num(v: float) -> String:

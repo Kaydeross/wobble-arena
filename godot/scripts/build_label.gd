@@ -12,4 +12,4 @@ func _ready() -> void:
 		var commit := str(cfg.get_value("build", "commit", ""))
 		if commit != "":
 			build += " (" + commit + ")"
-	text = "v%s  build %s" % [version, build]
+	text = tr("v%s  build %s") % [version, build]

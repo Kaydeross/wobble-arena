@@ -1063,7 +1063,7 @@ func _land_net(n: Shot, x: float, y: float, z: float, on_fighter: bool) -> void:
 		net.victims.append(f)
 		if o != null: o.st["hits"] += 1
 		if f.is_player: combat.ev({"type": "toast", "text": "Trapped in a net!"})
-		elif o != null and o.is_player: combat.ev({"type": "toast", "text": "Got %s!" % f.name})
+		elif o != null and o.is_player: combat.ev({"type": "toast", "text": tr("Got %s!") % f.name})
 	if net.victims.is_empty(): net.life = 1.4
 	for k in 24 * 5: combat.rng.next()     # the web game's rim stones (5 rand each, visual)
 	trap_nets.append(net)

@@ -156,7 +156,7 @@ func _build() -> void:
 	p = _page(holder, "delete")
 	_text(p, "Info", "")
 	_field(p, "delete", "Pass", "Your password", true)
-	_field(p, "delete", "Confirm", "Type %s to confirm" % CONFIRM_WORD, false)
+	_field(p, "delete", "Confirm", tr("Type %s to confirm") % CONFIRM_WORD, false)
 	var dg := _btn("delete", "Go", "Delete account", false, _do_delete)
 	dg.add_theme_color_override("font_color", UiTheme.BAD)
 	dg.add_theme_color_override("font_hover_color", UiTheme.BAD)
@@ -279,15 +279,15 @@ func _first_field(n: Node) -> Control:
 ## Texts that follow the account state (who, sync line, conflict summaries, delete warning).
 func refresh() -> void:
 	if api == null or pages.is_empty(): return
-	(ui["signed/Who"] as Label).text = "Signed in as " + api.user()
+	(ui["signed/Who"] as Label).text = tr("Signed in as %s") % api.user()
 	var sync := api.sync_text()
 	var em := api.email()
-	(ui["signed/Sync"] as Label).text = (em + "\n" if em != "" else "") + (sync if sync != "" else "Saved on this device.")
-	(ui["delete/Info"] as Label).text = "This deletes the account %s and its cloud save for good. It cannot be undone. This device starts again as a new guest." % api.user()
+	(ui["signed/Sync"] as Label).text = (em + "\n" if em != "" else "") + (sync if sync != "" else tr("Saved on this device."))
+	(ui["delete/Info"] as Label).text = tr("This deletes the account %s and its cloud save for good. It cannot be undone. This device starts again as a new guest.") % api.user()
 	var ci := api.conflict_info()
 	if not ci.is_empty():
-		(ui["conflict/Local"] as Label).text = "This device: " + str(ci["local"])
-		(ui["conflict/Cloud"] as Label).text = "Cloud: " + str(ci["cloud"])
+		(ui["conflict/Local"] as Label).text = tr("This device: %s") % str(ci["local"])
+		(ui["conflict/Cloud"] as Label).text = tr("Cloud: %s") % str(ci["cloud"])
 	if page == "signed" and not api.signed_in(): open("guest")
 	elif page == "guest" and api.signed_in(): open("signed")
 	_delete_ready()

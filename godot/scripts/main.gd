@@ -98,10 +98,10 @@ func _ready() -> void:
 	Save.cloud.changed.connect(_refresh_login)
 	_build_chip()
 	_build_online()
-	_status(notice if notice != "" else "Pick a room, or join a friend with their code.")
+	_status(tr(notice) if notice != "" else tr("Pick a room, or join a friend with their code."))
 	if session != null:
 		_bind_session()
-		_status((notice + "  " if notice != "" else "") + session.status)
+		_status((tr(notice) + "  " if notice != "" else "") + session.status)
 		_on_roster(session.roster)
 	var join := ""
 	for a in OS.get_cmdline_user_args():
@@ -217,11 +217,11 @@ func _small_button(big: String, sub: String) -> Button:
 	return b
 
 func _coins_sub() -> void:
-	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = "You have %d coins" % Save.coins
+	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = tr("You have %d coins") % Save.coins
 	if goals_b:
 		var n := Save.goals_to_claim()
 		var sl := goals_b.get_node("Stack/Sub") as Label
-		sl.text = ("%d to claim" % n) if n > 0 else "Daily coin goals"
+		sl.text = (tr("%d to claim") % n) if n > 0 else tr("Daily coin goals")
 		sl.add_theme_color_override("font_color", UiTheme.GOOD if n > 0 else UiTheme.MUTED)
 
 ## The Goals screen over the title.
@@ -267,7 +267,7 @@ func close_wizard() -> void:
 
 ## Play keeps one plain sub line; the last setup is its tooltip (the wizard opens on it anyway).
 func _play_sub() -> void:
-	play.tooltip_text = "Last time: " + wizard.summary_line()
+	play.tooltip_text = tr("Last time: %s") % wizard.summary_line()
 
 func show_settings(on: bool, section := "") -> void:
 	if on:
@@ -298,7 +298,7 @@ func _status(t: String) -> void:
 	status.tooltip_text = t
 	var on := session != null and session.is_active()
 	var sub: Label = $Safe/Col/Body/Home/Online/Stack/Sub
-	sub.text = ("Connected · " + t) if on else ONLINE_SUB
+	sub.text = (tr("Connected · %s") % t) if on else tr(ONLINE_SUB)
 	sub.tooltip_text = sub.text
 
 ## Safe-area insets (notch, home indicator) plus our own padding.
@@ -380,11 +380,11 @@ func open_account(pg := "") -> void:
 func _refresh_login() -> void:
 	var u := Save.cloud.user()
 	var logged := Save.cloud.signed_in()
-	_ui["acct"].text = ("Signed in as " + u) if logged else "Log in to host"
-	_ui["acct"].tooltip_text = "Your account" if logged else "Hosting a room needs an account. Joining works as a guest."
-	who.text = ("Signed in as " + u.substr(0, 12)) if logged and u != "" else "Guest"
+	_ui["acct"].text = (tr("Signed in as %s") % u) if logged else tr("Log in to host")
+	_ui["acct"].tooltip_text = tr("Your account") if logged else tr("Hosting a room needs an account. Joining works as a guest.")
+	who.text = (tr("Signed in as %s") % u.substr(0, 12)) if logged and u != "" else tr("Guest")
 	var sync := Save.cloud.sync_text()
-	who.tooltip_text = ("Account: sign up or log in to save to the cloud" if not logged else "Signed in: " + u) + ("\n" + sync if sync != "" else "")
+	who.tooltip_text = ((tr("Account: sign up or log in to save to the cloud") if not logged else tr("Signed in: %s") % u) + ("\n" + sync if sync != "" else ""))
 	chip.tooltip_text = who.tooltip_text
 
 func _refresh_buttons() -> void:
@@ -448,7 +448,7 @@ func _on_ended(_reason: String) -> void:
 func _on_roster(r: Array) -> void:
 	var names: Array = []
 	for e: Dictionary in r: names.append(e["name"])
-	_ui["roster"].text = "In the room: " + ", ".join(names)
+	_ui["roster"].text = tr("In the room: %s") % ", ".join(names)
 	if session != null and session.is_active() and (session.slot >= 0 or session.is_host()) and not session.started:
 		_fill_lobby()
 		show_lobby(true)
@@ -713,10 +713,10 @@ func set_host_mode(m: String) -> void:
 func _show_host_mode() -> void:
 	var box := host_sheet.get_node("Center/Card/Box/Mode")
 	var m := str(_host["mode"])
-	(box.get_node("Game/Name") as Button).text = HostSession.mode_name(m) + ("  (app)" if HostSession.app_only(m) else "")
-	var blurb := ModeRules.blurb(m, HostSession.all_modes())
-	var t := blurb + ("." if blurb != "" and not blurb.ends_with(".") else "")
-	t += (" " if t != "" else "") + ("App only: a web player in the room makes it Classic." if HostSession.app_only(m) else "Web and app players.")
+	(box.get_node("Game/Name") as Button).text = tr(HostSession.mode_name(m)) + (tr("  (app)") if HostSession.app_only(m) else "")
+	var blurb := tr(ModeRules.blurb(m, HostSession.all_modes()))
+	var t := blurb + ("." if blurb != "" and not blurb.ends_with(".") and not blurb.ends_with("。") else "")
+	t += (" " if t != "" else "") + (tr("App only: a web player in the room makes it Classic.") if HostSession.app_only(m) else tr("Web and app players."))
 	(box.get_node("ModeHint") as Label).text = t
 	_host_hint()
 
@@ -725,7 +725,7 @@ func _host_hint() -> void:
 	if host_sheet == null: return
 	var hint: Label = host_sheet.get_node("Center/Card/Box/Hint")
 	var mp := _host_map(str(_host["mode"]))
-	hint.text = "Arena: %s (from your last Play setup)." % str(Content.get_map(mp).get("name", mp))
+	hint.text = tr("Arena: %s (from your last Play setup).") % str(Content.get_map(mp).get("name", mp))
 
 ## The arena for game type `mode`: the last Play setup's if allowed online, else the mode's first one.
 func _host_map(mode: String) -> String:
@@ -737,7 +737,7 @@ func _host_map(mode: String) -> String:
 func show_host(on: bool) -> void:
 	host_sheet.visible = on
 	if on:
-		if str(_ui["rname"].text) == "": _ui["rname"].text = (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player") + "'s room"
+		if str(_ui["rname"].text) == "": _ui["rname"].text = tr("%s's room") % (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player")
 		show_host_tab("Room")
 		if Tier.is_pc(): (_ui["rname"] as LineEdit).grab_focus.call_deferred()
 
@@ -830,22 +830,22 @@ func _fill_lobby() -> void:
 	var box := lobby.get_node("Center/Card/Box")
 	var hs: HostSession = session as HostSession if session is HostSession else null
 	var roster: Array = session.roster if session != null else []
-	(box.get_node("Title") as Label).text = (session.room_name if session != null and session.room_name != "" else "Lobby").substr(0, 24)
+	(box.get_node("Title") as Label).text = (session.room_name if session != null and session.room_name != "" else tr("Lobby")).substr(0, 24)
 	var code: Label = box.get_node("Code")
 	if session == null: code.text = ""
-	elif hs != null: code.text = ("Public room · " if hs.pub else "Room code ") + hs.room_code
-	else: code.text = "Room code " + session.room_code.to_upper()
+	elif hs != null: code.text = (tr("Public room · %s") % hs.room_code) if hs.pub else (tr("Room code %s") % hs.room_code)
+	else: code.text = tr("Room code %s") % session.room_code.to_upper()
 	var grid: GridContainer = box.get_node("Players")
 	for c in grid.get_children(): c.queue_free()
 	for r: Dictionary in roster:
 		var l := Label.new()
 		l.add_theme_font_size_override("font_size", 20)
-		l.text = "%s%s%s" % [r.get("name", "?"), "  (host)" if int(r.get("id", -1)) == 0 else "", "  (web)" if hs != null and int(r.get("id", -1)) != 0 and not r.has("gd") else ""]
+		l.text = "%s%s%s" % [r.get("name", "?"), tr("  (host)") if int(r.get("id", -1)) == 0 else "", tr("  (web)") if hs != null and int(r.get("id", -1)) != 0 and not r.has("gd") else ""]
 		grid.add_child(l)
 	var seats := hs.opt_max if hs != null else int(session.lobby.get("max", 0)) if session != null else 0
 	var info: Label = box.get_node("Info")
-	info.text = "%d / %d players" % [roster.size(), seats] + (" · empty seats get bots" if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
-		+ ("" if hs != null else " · waiting for the host to start")
+	info.text = tr("%d / %d players") % [roster.size(), seats] + (tr(" · empty seats get bots") if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
+		+ ("" if hs != null else tr(" · waiting for the host to start"))
 	var rl: Label = box.get_node("Rules")
 	if hs != null: rl.text = HostSession.rules_text(hs.rules_list())
 	elif session != null and session.lobby.get("rl") is Dictionary: rl.text = HostSession.rules_text(session.lobby["rl"])
