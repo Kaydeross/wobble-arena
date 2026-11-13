@@ -3,8 +3,8 @@
 #   sh tools/shoot-godot-ui.sh [suffix] [shot ...]     shots: title title-online title-settings wizard-mode wizard-arena
 #     wizard-players wizard-character wizard-start match touch touch-lefty fps pause (default: these, plus title and
 #     wizard-character in iPhone portrait 390x844 as *-portrait.png), title-construction construction
-# Locker set: locker-skin locker-hat locker-color locker-emote locker-class shop shop-confirm emote-wheel results
-# (written as docs/style/godot-locker-*.png). Accounts: account-guest account-signed killcam (docs/style/godot-account-*.png).
+# Walldrobe / Shop set (internally "locker"): locker-skin locker-hat locker-color locker-emote locker-class shop
+# shop-class shop-confirm emote-wheel results (written as docs/style/godot-locker-*.png); goals (docs/style/godot-ui-goals.png). Accounts: account-guest account-signed killcam (docs/style/godot-account-*.png).
 # Writes docs/style/godot-ui-<shot>[-suffix].png (wizard pages: godot-wizard-<page>[-suffix].png) at the iPhone landscape
 # size (852x393 pt; RES=WxH overrides).
 set -e

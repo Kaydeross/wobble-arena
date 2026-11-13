@@ -100,7 +100,8 @@ func _run() -> void:
 	r.on_ko(true, false); r.on_ko(true, false); r.on_ko(false, true); r.on_ko(true, false)
 	check(r.coins == 515 and int(r.stats["best"]) == 2 and int(r.stats["deaths"]) == 1, "K.O.s pay 5 each, streak + deaths (%d)" % r.coins)
 	var sum := r.finish_match(true, "Classic", "Arena")
-	check(r.coins == 615 and sum["coins"] == 115 and sum["kos"] == 3 and sum["coins"] == SaveProfile.match_coins(3, true), "a win pays 40 + 60 (%s)" % [sum])
+	check(r.coins == 615 + int(sum["streak"]) and sum["coins"] == 115 and sum["kos"] == 3 and sum["coins"] == SaveProfile.match_coins(3, true), "a win pays 40 + 60 (%s)" % [sum])
+	check(int(sum["streak"]) == Quests.STREAK_BASE and sum["total"] == r.coins, "the first win of the day adds the streak bonus on top (logic/quests.gd)")
 	check(int(r.stats["matches"]) == 1 and int(r.stats["wins"]) == 1 and r.hist[0]["ko"] == 3 and r.hist[0]["d"] == 1, "match stats + history")
 	r.begin_match()
 	check(r.finish_match(false)["coins"] == 40 and SaveProfile.match_coins(0, false) == 40, "a loss pays 40")
@@ -126,6 +127,16 @@ func _parity() -> void:
 	check(js.contains("const wallet = { coins: %d," % SaveProfile.START_COINS), "start coins match the web (%d)" % SaveProfile.START_COINS)
 	check(js.contains("wallet.coins += %d; updateCoins();" % SaveProfile.KO_COINS), "K.O. coins match the web (%d)" % SaveProfile.KO_COINS)
 	check(js.contains("addCoins(%d + (won ? %d : 0)" % [SaveProfile.MATCH_COINS, SaveProfile.WIN_COINS]), "match / win coins match the web")
+	# the Godot-only "quests" key (coin goals): the web snapshot() builds its own key list, so the web game ignores it
+	# (and drops it when it saves); a web blob without it loads with fresh goals, and the key is not kept twice
+	var snap := js.substr(js.find("function snapshot()"), 600)
+	check(snap.begins_with("function snapshot()") and not snap.contains("quests"), "the web save ignores the quests key")
+	var g := _fresh()
+	g.persist = false
+	var gb := g.get_blob()
+	check(gb.has("quests") and gb["quests"] is Dictionary, "the blob carries the goals")
+	gb.erase("quests")
+	check(g.apply_blob(gb) and g.quests == Quests.fresh() and not g.extra.has("quests") and not g.get_blob()["wallet"].has("quests"), "an old blob without quests loads with fresh goals")
 	var shop := js.substr(js.find("const SKIN_SHOP = {"), 1200)
 	for k: String in LockerData.data()["skin_shop"]:
 		var e: Array = LockerData.data()["skin_shop"][k]

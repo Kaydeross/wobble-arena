@@ -12,7 +12,8 @@ extends Control
 ## sheet or page closes; on the title itself nothing happens, the app never quits on back).
 ## Laid out with containers inside a safe-area MarginContainer so nothing overlaps at any aspect ratio
 ## (tests/ui_layout_test.gd checks 852x393, 667x375, 1170x540, 1280x720 and 390x844 on every page and sheet).
-## Under the two Play buttons: Locker and Shop (ui/locker.gd, one screen in two modes; the Shop button shows your coins).
+## Under the two Play buttons: Walldrobe and Shop (ui/locker.gd, one screen in two modes; the Shop button shows your
+## coins) and Goals (ui/goals_screen.gd: daily / weekly coin goals and milestones; its sub says how many to claim).
 ## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
@@ -42,9 +43,11 @@ const O := "Safe/Col/Body/Online/Box/"
 @onready var online_b: Button = $Safe/Col/Body/Home/Online
 @onready var status: Label = get_node(O + "Foot/Status")
 var wizard: SetupWizard
-var locker: LockerScreen            ## the Locker / Shop screen (hidden until opened)
+var locker: LockerScreen            ## the Walldrobe / Shop screen (hidden until opened)
 var locker_b: Button
 var shop_b: Button
+var goals_b: Button
+var goals: GoalsScreen              ## the Goals screen (title: Goals)
 var settings: SettingsScreen        ## the Settings screen (gear)
 var intro: IntroCards               ## the first-run how-to (also Settings > Controls)
 var browser: RoomBrowser            ## public rooms in the online panel
@@ -78,6 +81,11 @@ func _ready() -> void:
 	add_child(settings)
 	settings.closed.connect(func() -> void: if Tier.is_pc(): gear.grab_focus.call_deferred())
 	settings.account_requested.connect(func() -> void: open_account())
+	goals = GoalsScreen.new()
+	add_child(goals)
+	goals.closed.connect(func() -> void:
+		_coins_sub()
+		if Tier.is_pc(): goals_b.grab_focus.call_deferred())
 	_build_host_sheet()
 	_build_lobby()
 	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
@@ -120,12 +128,13 @@ func _ready() -> void:
 	var first: bool = auto_intro if auto_intro is bool else (Settings.persist and not bool(Settings.get_value("seen_intro", false)))
 	if first and session == null and join == "" and notice == "": intro.open()
 
-## Back (Escape / controller B via ui_cancel, Android's back gesture): close the top thing. The wizard and the Locker
+## Back (Escape / controller B via ui_cancel, Android's back gesture): close the top thing. The wizard and the Walldrobe
 ## handle ui_cancel themselves; the back gesture reaches them through here. On the bare title nothing happens.
 func go_back() -> bool:
 	if intro.visible: return intro.back()
 	if account.visible: return account.back()
 	if settings.visible: return settings.back()
+	if goals.visible: return goals.back()
 	if lobby.visible:
 		if session: session.leave("You left the room.")
 		show_lobby(false)
@@ -155,7 +164,8 @@ func _process(dt: float) -> void:
 func maps_for(mode: String) -> Array:
 	return SetupWizard.maps_for(mode)
 
-## The Locker / Shop row under Play online: two clear buttons, each with a one-line sub (the Shop's shows your coins).
+## The Walldrobe / Shop / Goals row under Play online: clear buttons, each with a one-line sub (the Shop's shows your
+## coins, the Goals one how many goals wait to be claimed).
 func _build_more() -> void:
 	var more := HBoxContainer.new()
 	more.name = "More"
@@ -163,19 +173,23 @@ func _build_more() -> void:
 	more.add_theme_constant_override("separation", 16)
 	home.add_child(more)
 	home.add_theme_constant_override("separation", 12)   # one more row: a little tighter, so the column still fits a phone
-	locker_b = _small_button("Locker", "Outfits, hats and emotes")
+	locker_b = _small_button("Walldrobe", "What you own")
+	locker_b.name = "Locker"
 	locker_b.pressed.connect(open_locker.bind(false))
 	more.add_child(locker_b)
 	shop_b = _small_button("Shop", "")
 	shop_b.pressed.connect(open_locker.bind(true))
 	more.add_child(shop_b)
+	goals_b = _small_button("Goals", "")
+	goals_b.pressed.connect(open_goals)
+	more.add_child(goals_b)
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
 
 func _small_button(big: String, sub: String) -> Button:
 	var b := Button.new()
 	b.name = big
-	b.custom_minimum_size = Vector2(252, 60)
+	b.custom_minimum_size = Vector2(212, 60)
 	var st := VBoxContainer.new()
 	st.name = "Stack"
 	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -204,8 +218,17 @@ func _small_button(big: String, sub: String) -> Button:
 
 func _coins_sub() -> void:
 	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = "You have %d coins" % Save.coins
+	if goals_b:
+		var n := Save.goals_to_claim()
+		var sl := goals_b.get_node("Stack/Sub") as Label
+		sl.text = ("%d to claim" % n) if n > 0 else "Daily coin goals"
+		sl.add_theme_color_override("font_color", UiTheme.GOOD if n > 0 else UiTheme.MUTED)
 
-## The Locker (shop = false) or the Shop instead of the title column.
+## The Goals screen over the title.
+func open_goals() -> void:
+	goals.open()
+
+## The Walldrobe (shop = false) or the Shop instead of the title column.
 func open_locker(shop_mode: bool = false, tab: String = "") -> void:
 	col.visible = false
 	wizard.visible = false

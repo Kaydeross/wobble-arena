@@ -8,8 +8,9 @@ extends SceneTree
 ## wizard on Construction), construction (a Construction match on Site Yard, mid hammer swing), newmodes-mode (the game
 ## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
 ## teams (Team Deathmatch with the team scoreboard), locker-skin / locker-hat / locker-color / locker-emote /
-## locker-class (the Locker tabs, ui/locker.gd, with 1500 coins and a card picked; --pick KEY picks another card), shop (the Shop, an outfit tried on),
-## shop-confirm (its Buy card), emote-wheel (a match with the emote wheel open while the player dances), results (the
+## locker-class (the Walldrobe tabs, ui/locker.gd: a few outfits, emotes and a class bought first, a card picked; --pick
+## KEY picks another card), shop (the Shop, an outfit tried on), shop-class (the Shop's Class tab, a class tried on),
+## shop-confirm (its Buy card), goals (the Goals screen after a won match: some goals to claim, one claimed), emote-wheel (a match with the emote wheel open while the player dances), results (the
 ## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on),
 ## account-guest / account-signed (the Account sheet from the title chip; signed in, saved to the cloud 2 min ago),
 ## killcam (a fast K.O. by the player, mid replay in slow-mo). Used by tools/shoot-godot-ui.sh.
@@ -40,18 +41,37 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
-	if shot.begins_with("locker") or shot.begins_with("shop"):
+	if shot == "goals":
 		var sv: Node = root.get_node("Save")
-		sv.add_coins(1000)
-		for id in ["griddy", "dab", "flip"]: sv.buy("emote", id)
-		if shot.begins_with("shop"): sv.add_coins(700)
+		sv.begin_match()
+		for k in 3: sv.on_ko(true, false, k == 0)
+		sv.on_hit(true)
+		sv.finish_match(true, "Classic", "Arena", false, "classic")
+		sv.claim_goal("a:first_win")
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
+		m.open_goals()
+		frames = 40
+		process_frame.connect(_wait)
+		return
+	if shot.begins_with("locker") or shot.begins_with("shop"):
+		var sv: Node = root.get_node("Save")
 		var shop := shot.begins_with("shop")
-		var tab: String = "skin" if shop else shot.substr(7)
+		if not shop:                       # the Walldrobe only shows what you own: buy a few things first
+			sv.add_coins(3400)
+			for id in ["griddy", "dab", "flip"]: sv.buy("emote", id)
+			sv.buy("skin", "pirate"); sv.buy("skin", "cowboy"); sv.buy("class", "tank")
+			sv.wear_skin("none"); sv.set_class("wobbler")
+		else:
+			sv.add_coins(1000)
+			for id in ["griddy", "dab", "flip"]: sv.buy("emote", id)
+			sv.add_coins(700)
+		var m: Node = load("res://scenes/main.tscn").instantiate()
+		root.add_child(m)
+		var tab: String = ("class" if shot == "shop-class" else "skin") if shop else shot.substr(7)
 		m.open_locker(shop, tab)
-		var pick: String = {"skin": "cowboy", "hat": "crown", "color": "", "emote": "griddy", "class": "bruiser"}.get(tab, "")
-		if shop: pick = "pirate"
+		var pick: String = {"skin": "cowboy", "hat": "crown", "color": "", "emote": "griddy", "class": "tank"}.get(tab, "")
+		if shop: pick = "dash" if tab == "class" else "pirate"
 		if pick_arg != "": pick = pick_arg
 		if pick != "" and m.locker.cards.has(pick): m.locker._select_card(pick)
 		if shot == "shop-confirm": m.locker.act()

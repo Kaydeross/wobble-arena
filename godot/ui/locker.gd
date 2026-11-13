@@ -1,15 +1,16 @@
 class_name LockerScreen
 extends VBoxContainer
-## The Locker and the Shop (title screen: Locker / Shop), one screen in two modes, built in code in the UiTheme look
-## like ui/setup_wizard.gd. Matches the web game's build 75 store pages: your wobbler big on the left (a live 3D
-## render, ui/locker_stage.gd, turning; it wears whatever card you tap: try before you buy), a card grid on the right
-## (DragScroll: drag + fling, a tap picks), the coins top right, Back and one action button at the bottom.
-##   Locker tabs: Outfits, Hats, Colour, Emotes, Class. Owned items first; locked outfits / emotes show a padlock and
-##            their price and can be bought from here too. Colours, hats and the 5 shared classes are free (web). The
-##            Colour tab is the body colour under no outfit, so its preview takes the outfit off. Godot-only classes
-##            (ExtraClasses): some cost coins (padlock + price), secret ones show as a ??? silhouette with their unlock
-##            goal ("Win 5 matches · 2/5") until a lifetime stat unlocks them.
-##   Shop tabs:   Outfits, Emotes (only what is for sale, cheapest first).
+## The Walldrobe and the Shop (title screen: Walldrobe / Shop), one screen in two modes (internally still the
+## "Locker": LockerScreen, LockerData, locker.json), built in code in the UiTheme look like ui/setup_wizard.gd. Matches
+## the web game's build 75 store pages: your wobbler big on the left (a live 3D render, ui/locker_stage.gd, turning; it
+## wears whatever card you tap: try before you buy), a card grid on the right (DragScroll: drag + fling, a tap picks),
+## Back and one action button at the bottom.
+##   Walldrobe tabs: Outfits, Hats, Colour, Emotes, Class. Only what you own: no outfit + your outfits, your emotes,
+##            your classes (the 5 shared ones, bought and unlocked ones); hats and colours are free (web). The Colour
+##            tab is the body colour under no outfit, so its preview takes the outfit off. No prices or coins here.
+##   Shop tabs:   Outfits, Emotes (only what is for sale, cheapest first; owned ones say Owned), Class (the Godot-only
+##            classes for coins that you do not own yet, ExtraClasses; secret classes are never sold or shown).
+##            The coins show top right.
 ## The action button says what a tap would do: Wear / Equip / Pick, Wearing, Buy (opens a confirm card), or
 ## "Need N more coins" (says how to earn them). Everything goes through the Save autoload (autoload/save.gd), which
 ## also mirrors the look into Settings, so the setup wizard and the match use it.
@@ -17,7 +18,7 @@ extends VBoxContainer
 signal closed
 
 const LOCKER_TABS := ["skin", "hat", "color", "emote", "class"]
-const SHOP_TABS := ["skin", "emote"]
+const SHOP_TABS := ["skin", "emote", "class"]
 const TAB_NAMES := {"skin": "Outfits", "hat": "Hats", "color": "Colour", "emote": "Emotes", "class": "Class"}
 const SILHOUETTE := Color(0.02, 0.05, 0.07, 0.92)   ## a secret class you have not unlocked: a dark shape
 const CARD := Vector2(150, 156)
@@ -32,6 +33,8 @@ var stage: LockerStage
 var title_l: Label
 var sub_l: Label
 var coins_l: Label
+var coins_chip: Control
+var empty_l: Label              ## shown when a tab has no cards
 var name_l: Label
 var info_l: Label
 var msg_l: Label
@@ -67,7 +70,7 @@ func tabs() -> Array:
 static func save() -> SaveProfile:
 	return (Engine.get_main_loop() as SceneTree).root.get_node("Save")
 
-## The cards of a tab, in order.
+## The cards of a tab, in order (the Walldrobe: only what you own; the Shop: what is for sale).
 func items(t: String) -> Array:
 	var sv := save()
 	var out: Array = []
@@ -78,8 +81,6 @@ func items(t: String) -> Array:
 			mine.erase("none")
 			mine.sort_custom(func(a: String, b: String) -> bool: return LockerData.rarity_rank(LockerData.skin_rarity(a)) < LockerData.rarity_rank(LockerData.skin_rarity(b)))
 			out = ["none"] + mine
-			for k: String in LockerData.shop_skins():
-				if not out.has(k): out.append(k)
 		"hat":
 			out = LockerData.hats()
 		"color":
@@ -89,12 +90,16 @@ func items(t: String) -> Array:
 			var mine: Array = sv.owned.duplicate()
 			mine.sort_custom(func(a: String, b: String) -> bool: return LockerData.rarity_rank(LockerData.emote_rarity(a)) < LockerData.rarity_rank(LockerData.emote_rarity(b)))
 			out = mine
-			for k: String in LockerData.shop_emotes():
-				if not out.has(k): out.append(k)
-			for k: String in LockerData.all_emotes():             # outfit emotes: shown, locked, "comes with ..."
-				if not out.has(k) and LockerData.emote(k).has("skin"): out.append(k)
 		"class":
-			out = WobblerLooks.data("classes").keys()
+			if shop: return shop_classes()
+			out = WobblerLooks.data("classes").keys().filter(func(k: String) -> bool: return sv.owns_class(k))
+	return out
+
+## The classes the Shop sells: Godot-only ones with a price you do not own yet, cheapest first (never a secret one).
+static func shop_classes() -> Array:
+	var out: Array = ExtraClasses.data().keys().filter(func(k: String) -> bool:
+		return ExtraClasses.price(k) > 0 and not ExtraClasses.is_hidden(k) and not save().owns_class(k))
+	out.sort_custom(func(a: String, b: String) -> bool: return ExtraClasses.price(a) < ExtraClasses.price(b))
 	return out
 
 static func is_owned(t: String, k: String) -> bool:
@@ -238,7 +243,7 @@ func _build_head() -> void:
 	head.name = "Head"
 	head.add_theme_constant_override("separation", 14)
 	add_child(head)
-	title_l = _label("Locker", 36, "TitleLabel")
+	title_l = _label("Walldrobe", 36, "TitleLabel")
 	title_l.name = "Title"
 	head.add_child(title_l)
 	sub_l = _label("", 18, "MutedLabel", true)
@@ -250,8 +255,9 @@ func _build_head() -> void:
 	chip.name = "Coins"
 	chip.theme_type_variation = &"ChipPanel"
 	chip.size_flags_vertical = SIZE_SHRINK_CENTER
-	chip.tooltip_text = "Your coins. Earn them from K.O.s and finished matches"
+	chip.tooltip_text = "Your coins. Earn them from K.O.s, finished matches and Goals"
 	head.add_child(chip)
+	coins_chip = chip
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -315,6 +321,14 @@ func _build_grid(parent: Control) -> void:
 	grid.add_theme_constant_override("h_separation", GAP)
 	grid.add_theme_constant_override("v_separation", GAP)
 	scroll.add_child(grid)
+	empty_l = _label("", 20, "MutedLabel")
+	empty_l.name = "Empty"
+	empty_l.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	empty_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	empty_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	empty_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	empty_l.visible = false
+	frame.add_child(empty_l)
 	fade = SetupWizard.EdgeFade.new(scroll)
 	fade.name = "Fade"
 	fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -373,9 +387,10 @@ func _build_tabs() -> void:
 		tab_row.add_child(b)
 		tab_bs[t] = b
 		JuicyButton.attach(b)
-	title_l.text = "Shop" if shop else "Locker"
-	switch_b.text = "Locker" if shop else "Shop"
-	switch_b.tooltip_text = "Your outfits, hats, colours and emotes" if shop else "Buy outfits and emotes with coins"
+	title_l.text = "Shop" if shop else "Walldrobe"
+	switch_b.text = "Walldrobe" if shop else "Shop"
+	switch_b.tooltip_text = "Your outfits, hats, colours, emotes and classes" if shop else "Buy outfits, emotes and classes with coins"
+	coins_chip.visible = shop
 
 func _build_confirm() -> void:
 	confirm = Control.new()
@@ -479,16 +494,24 @@ func _rebuild() -> void:
 	_reflow()
 	if bake.size() > 0: stage.bake(bake)
 	sub_l.text = _tab_hint()
+	empty_l.text = _empty_text()
+	empty_l.visible = keys.is_empty()
 
 func _tab_hint() -> String:
-	if shop: return "Earn coins: K.O. +5, match +40, win +60."
+	if shop: return "Earn coins: K.O. +5, match +40, win +60, Goals."
 	match tab:
-		"skin": return "Tap an outfit to try it on."
+		"skin": return "Your outfits. Get more in the Shop."
 		"hat": return "Hats are free to wear."
 		"color": return "Your body colour with no outfit on. Outfits bring their own."
 		"emote": return "Tap to see it. Equip puts it on T."
-		"class": return "Size and stats. Some cost coins, some are secret."
+		"class": return "Your classes. Buy more in the Shop, some unlock by playing."
 	return ""
+
+## What an empty tab says.
+func _empty_text() -> String:
+	if shop and tab == "class": return "You own every class for sale. Secret classes unlock by playing."
+	if shop: return "You own everything here!"
+	return "Nothing here yet. Get some in the Shop."
 
 func _reveal() -> void:
 	if not is_inside_tree(): return
@@ -553,6 +576,9 @@ func _card(t: String, k: String) -> Button:
 		row.add_child(LockerIcon.new("check", 16))
 		st.text = "Equipped" if t == "emote" else "Wearing" if t != "class" else "Picked"
 		st.add_theme_color_override("font_color", UiTheme.GOOD)
+	elif own and shop:
+		row.add_child(LockerIcon.new("check", 16))
+		st.text = "Owned"
 	elif own:
 		st.text = LockerData.rarity_label(rarity(t, k)) if t == "skin" or t == "emote" or (t == "class" and ExtraClasses.is_extra(k)) else "Free"
 		st.add_theme_color_override("font_color", rc.lightened(0.25))
@@ -603,7 +629,7 @@ func _art(t: String, k: String) -> Control:
 func _select_card(k: String, play := true) -> void:
 	sel[tab] = k
 	for ck: String in cards: (cards[ck] as Button).set_pressed_no_signal(ck == k)
-	var lk := try_look(tab, k)
+	var lk := try_look(tab, k) if k != "" else save().look.duplicate()
 	stage.preview(lk)
 	preview_tr.modulate = SILHOUETTE if tab == "class" and is_secret(k) else Color.WHITE
 	if tab == "emote" and play and k != "": stage.emote(k)
@@ -615,11 +641,13 @@ func picked() -> String:
 func kind() -> String:
 	return tab if tab == "skin" or tab == "emote" or tab == "class" else ""
 
-## What the action button does for the picked card: "wear" | "worn" | "buy" | "coins" | "locked".
+## What the action button does for the picked card: "wear" | "worn" | "buy" | "coins" | "locked" | "none" (nothing
+## picked; the Walldrobe only has owned cards, so it never buys).
 func action_state() -> String:
 	var k := picked()
-	if k == "": return "locked"
+	if k == "": return "none"
 	if is_owned(tab, k): return "worn" if is_worn(tab, k) else "wear"
+	if not shop: return "none"
 	match save().buy_check(tab, k):
 		"ok": return "buy"
 		"coins": return "coins"
@@ -631,11 +659,11 @@ func _refresh() -> void:
 	var st := action_state()
 	var verb: String = {"skin": "Wear", "hat": "Wear", "color": "Use colour", "emote": "Equip", "class": "Pick"}[tab]
 	var done: String = {"skin": "Wearing", "hat": "Wearing", "color": "Using it", "emote": "Equipped", "class": "Picked"}[tab]
-	action_b.disabled = st == "worn" or (st == "locked" and not (tab == "class" and is_secret(k)))   # Secret: a tap says how
+	action_b.disabled = st == "worn" or st == "none" or (st == "locked" and not (tab == "class" and is_secret(k)))   # Secret: a tap says how
 	action_b.theme_type_variation = &"PrimaryButton" if st == "wear" or st == "buy" else &""
 	action_b.add_theme_font_size_override("font_size", 24)
 	match st:
-		"wear": action_b.text = verb
+		"wear", "none": action_b.text = verb
 		"worn": action_b.text = done
 		"buy": action_b.text = "Buy for %d" % save().price_of(tab, k)
 		"coins": action_b.text = "Need %d more" % save().missing(tab, k)
@@ -732,11 +760,18 @@ func buy_confirmed() -> String:
 	_redraw_keep()
 	return r
 
-## Rebuild the cards (owned / worn changed), keeping the pick and the scroll position.
+## Rebuild the cards (owned / worn changed), keeping the pick and the scroll position (a class bought in the Shop
+## leaves its tab: the worn card, or the first, is picked then).
 func _redraw_keep() -> void:
 	var sv := scroll.scroll_vertical
 	var k := picked()
 	_rebuild()
+	if not cards.has(k):
+		var keys := items(tab)
+		k = ""
+		for c: String in keys:
+			if is_worn(tab, c): k = c; break
+		if k == "" and keys.size() > 0: k = keys[0]
 	_select_card(k, false)
 	scroll.scroll_vertical = sv
 

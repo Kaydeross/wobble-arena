@@ -1,6 +1,6 @@
 class_name ExtraClasses
 extends RefCounted
-## Godot-only classes (res://data/extra/classes.json): Bulwark, Zippy and Ace cost coins (Locker, Class tab); Boo,
+## Godot-only classes (res://data/extra/classes.json): Bulwark, Zippy and Ace cost coins (Shop, Class tab); Boo,
 ## Champ and Rampage are secret (a ??? silhouette) until a lifetime stat unlocks them (SaveProfile.owns_class).
 ## Same multipliers as shared/classes.json, so FighterState.set_class needs nothing new. Bots never pick them
 ## (MatchSim.BOT_CLASS_ORDER), so the JS parity / hash tests are untouched. merge() adds them to a classes table

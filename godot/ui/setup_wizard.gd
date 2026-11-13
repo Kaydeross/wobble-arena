@@ -220,7 +220,7 @@ func go(i: int) -> void:
 	_reveal_selected.call_deferred()
 	if Tier.is_pc(): next_b.grab_focus.call_deferred()
 
-## Only the classes you own get a card (the Locker sells / unlocks the rest); follows a class picked in the Locker.
+## Only the classes you own get a card (the Shop sells, playing unlocks the rest); follows a class picked in the Walldrobe.
 func _sync_classes() -> void:
 	var want := str(Settings.get_value("class", cls))
 	if want != cls and Content.classes.has(want) and owns_class(want): cls = want

@@ -1,10 +1,11 @@
 extends SceneTree
-## Locker / Shop / emotes test (headless): buy and equip rules (autoload/save.gd), the Locker / Shop screen flow
-## (ui/locker.gd: try on, buy with a confirm, not enough coins, wear, emote preview), the Wobbler emotes
+## Walldrobe / Shop / emotes test (headless): buy and equip rules (autoload/save.gd), the Walldrobe / Shop screen flow
+## (ui/locker.gd: the Walldrobe shows only what you own, no prices; the Shop sells outfits, emotes and classes: try on,
+## buy with a confirm, not enough coins, Owned marks, an empty tab; wear, emote preview), the Wobbler emotes
 ## (actors/emote_poses.gd: every emote poses finite values, ends on time, stops on a swing, hides the weapon), and the
 ## in-match emote button (ui/emote_wheel.gd: a touch on it opens the wheel and does not reach the touch layer, a pick
 ## dances, T plays slot 1) plus the results panel rewards. Also the Godot-only classes (logic/extra_classes.gd: paid and
-## secret ones, their unlocks, the Class tab) and every look the Locker preview can show (_previews: each outfit on each
+## secret ones, their unlocks, the Class tabs) and every look the Walldrobe preview can show (_previews: each outfit on each
 ## class, each hat on each class, the hat cards) builds a whole character: head, torso, legs and arms that sit on the
 ## body, and the auto-fitted camera keeps all of it in the shot.
 ##   godot --headless --path godot --script res://tests/locker_test.gd -- --no-save   (npm run test:godot-locker)
@@ -136,13 +137,41 @@ func _screen() -> void:
 	main.locker_b.pressed.emit()
 	await process_frame
 	var l = main.locker
-	check(l.visible and not main.get_node("Safe/Col").visible and l.title_l.text == "Locker" and l.tabs().size() == 5, "Locker opens with 5 tabs")
+	check(l.visible and not main.get_node("Safe/Col").visible and l.title_l.text == "Walldrobe" and l.tabs().size() == 5, "Walldrobe opens with 5 tabs")
+	check(not l.coins_chip.visible and l.switch_b.text == "Shop", "no coins in the Walldrobe, Switch goes to the Shop")
 	check(l.picked() == "none" and l.action_b.text == "Wearing" and l.action_b.disabled, "worn outfit picked, nothing to do")
 	l._show_tab("skin")
+	check(l.items("skin")[0] == "none" and l.items("skin").size() == 1 + LockerData.free_skins().size() and not l.cards.has("hero") and not l.cards.has("cowboy"), "Walldrobe outfits: none + owned only (%s)" % [l.items("skin")])
+	for k: String in l.cards:
+		check(not l.cards[k].has_node("Lock"), "no padlock in the Walldrobe (%s)" % k)
+	l._show_tab("emote")
+	check(l.items("emote") == ["wobble"] and not l.cards.has("pirouette") and not l.cards.has("dab"), "Walldrobe emotes: owned only")
+	l._show_tab("class")
+	check(l.items("class") == ["wobbler", "bruiser", "kid", "elder", "alien"] and not l.cards.has("tank") and not l.cards.has("ghost"), "Walldrobe classes: owned only (%s)" % [l.items("class")])
+	for k: String in l.cards:
+		var st_l := l.cards[k].find_child("L", true, false) as Label
+		check(not st_l.text.is_valid_int() and not st_l.text.contains("/"), "no price or goal on Walldrobe class %s (%s)" % [k, st_l.text])
+	l.cards["bruiser"].pressed.emit()
+	check(l.action_state() == "wear" and l.action_b.text == "Pick", "an owned class: Pick")
+	l.act()
+	check(sv.look["cls"] == "bruiser" and str(root.get_node("Settings").get_value("class")) == "bruiser", "pick a class")
+	l._show_tab("hat")
+	l.cards["crown"].pressed.emit()
+	l.act()
+	check(sv.look["hat"] == "crown", "wear a hat")
+	l._show_tab("color")
+	check(l.tab_bs["color"].text == "Colour" and l.sub_l.text.contains("no outfit"), "the Colour tab says what it is for")
+	l.cards[str(LockerData.swatch()[3])].pressed.emit()
+	l.act()
+	check(sv.look["color"] == LockerData.swatch()[3], "use a colour")
+	# the Shop: all buying
+	l.switch_b.pressed.emit()
+	check(l.shop and l.title_l.text == "Shop" and l.tabs() == ["skin", "emote", "class"] and l.coins_chip.visible and l.switch_b.text == "Walldrobe", "Shop: 3 tabs and the coins")
+	check(l.cards.size() == LockerData.shop_skins().size(), "Shop: outfits for sale")
 	l.cards["hero"].pressed.emit()
-	check(l.picked() == "hero" and l.action_state() == "coins" and l.action_b.text == "Need 1000 more", "a locked outfit you cannot afford (%s)" % l.action_b.text)
+	check(l.picked() == "hero" and l.action_state() == "coins" and l.action_b.text == "Need 1000 more", "an outfit you cannot afford (%s)" % l.action_b.text)
 	check(l.stage.current.contains("hero"), "tapping a card tries it on")
-	check(l.cards["hero"].has_node("Lock") and not l.cards["hoodie"].has_node("Lock"), "padlock on locked cards only")
+	check(l.cards["hero"].has_node("Lock"), "padlock on cards you do not own")
 	l.act()
 	check(not l.confirm.visible and l.msg_l.text.contains("1000 more coins"), "not enough coins is explained: %s" % l.msg_l.text)
 	l.cards["cowboy"].pressed.emit()
@@ -155,35 +184,21 @@ func _screen() -> void:
 	check(l.buy_confirmed() == "ok" and sv.coins == 100 and sv.look["skin"] == "cowboy" and not l.confirm.visible, "confirmed: bought and worn")
 	check(str(root.get_node("Settings").get_value("skin")) == "cowboy", "the match / wizard see the new outfit")
 	check(l.action_b.text == "Wearing" and not l.cards["cowboy"].has_node("Lock"), "card unlocked")
-	l._show_tab("hat")
-	l.cards["crown"].pressed.emit()
-	l.act()
-	check(sv.look["hat"] == "crown", "wear a hat")
-	l._show_tab("color")
-	l.cards[str(LockerData.swatch()[3])].pressed.emit()
-	l.act()
-	check(sv.look["color"] == LockerData.swatch()[3], "use a colour")
+	check((l.cards["cowboy"].find_child("L", true, false) as Label).text == "Wearing", "the worn card says Wearing")
+	sv.wear_skin("none"); l._redraw_keep()
+	check((l.cards["cowboy"].find_child("L", true, false) as Label).text == "Owned", "an owned outfit says Owned in the Shop")
 	l._show_tab("class")
-	l.cards["bruiser"].pressed.emit()
-	l.act()
-	check(sv.look["cls"] == "bruiser" and str(root.get_node("Settings").get_value("class")) == "bruiser", "pick a class")
-	check(l.cards.has("tank") and l.cards["tank"].has_node("Lock") and str((l.cards["tank"].find_child("L", true, false) as Label).text) == str(ExtraClasses.price("tank")), "paid class: padlock and price")
-	check((l.cards["ghost"].find_child("Name", true, false) as Label).text == "???" and l.cards["ghost"].find_child("Art", true, false).modulate == l.SILHOUETTE, "secret class: ??? silhouette")
-	l.cards["ghost"].pressed.emit()
-	check(l.preview_tr.modulate == l.SILHOUETTE and l.action_b.text == "Secret" and not l.action_b.disabled and l.info_l.text.contains("Play 10 matches · 0/10"), "secret class preview is a silhouette with its goal (%s)" % l.info_l.text)
-	l.act()
-	check(l.msg_l.text.contains("Play 10 matches"), "tapping a secret class says how to unlock it")
+	check(l.items("class") == l.shop_classes() and l.cards.size() >= 2 and not l.cards.has("ghost") and not l.cards.has("wobbler"), "Shop classes: paid extra classes only, no secret ones (%s)" % [l.items("class")])
+	for k: String in l.cards: check(ExtraClasses.price(k) > 0 and not ExtraClasses.is_hidden(k), "shop class %s has a price" % k)
+	check(l.cards["tank"].has_node("Lock") and str((l.cards["tank"].find_child("L", true, false) as Label).text) == str(ExtraClasses.price("tank")), "paid class: padlock and price")
 	l.cards["dash"].pressed.emit()
 	check(l.preview_tr.modulate == Color.WHITE and l.action_state() == "coins", "paid class you cannot afford yet")
 	sv.add_coins(1200)
 	l.act()
-	check(l.confirm.visible and l.buy_confirmed() == "ok" and sv.look["cls"] == "dash" and sv.owns_class("dash"), "buy a class in the Locker")
-	l._show_tab("color")
-	check(l.tab_bs["color"].text == "Colour" and l.sub_l.text.contains("no outfit"), "the Colour tab says what it is for")
-	l.cards[str(LockerData.swatch()[2])].pressed.emit()
-	check(l.stage.wobbler().skin_key == "none" and l.info_l.text.contains("Hidden under"), "colour preview takes the outfit off (%s)" % l.info_l.text)
+	check(l.confirm.visible and l.buy_confirmed() == "ok" and sv.look["cls"] == "dash" and sv.owns_class("dash"), "buy a class in the Shop")
+	check(not l.cards.has("dash") and l.picked() != "dash", "a bought class leaves the Shop")
 	l._show_tab("emote")
-	check(l.cards.has("pirouette") and l.cards["pirouette"].has_node("Lock"), "outfit emotes are shown locked")
+	check(l.cards.size() == LockerData.shop_emotes().size() and not l.cards.has("pirouette") and not l.cards.has("wobble"), "Shop: emotes for sale only")
 	var icons := 0
 	for k: String in l.cards:
 		if l.cards[k].find_child("Art", true, false) is EmoteIcon: icons += 1
@@ -191,14 +206,32 @@ func _screen() -> void:
 	for id: String in LockerData.all_emotes(): check(EmoteIcon.GLYPHS.has(id), "emote %s has its own glyph" % id)
 	l.cards["dab"].pressed.emit()
 	check(l.stage.wobbler().emote_id == "dab", "an emote card plays on the preview")
-	check(l.action_state() == "coins" and l.action_b.text.begins_with("Need"), "a locked emote shows its price gap in the Locker")
-	l.switch_b.pressed.emit()
-	check(l.shop and l.title_l.text == "Shop" and l.tabs() == ["skin", "emote"] and l.cards.size() == LockerData.shop_skins().size(), "Shop: outfits for sale")
-	l._show_tab("emote")
-	check(l.cards.size() == LockerData.shop_emotes().size() and not l.cards.has("pirouette") and not l.cards.has("wobble"), "Shop: emotes for sale only")
+	check(l.action_state() == "coins" and l.action_b.text.begins_with("Need"), "an emote you cannot afford shows its price gap")
 	sv.add_coins(1000)
-	l.cards["dab"].pressed.emit(); l.act(); l.buy_confirmed()
+	l.act(); l.buy_confirmed()
 	check(sv.owns_emote("dab") and sv.coins == 800 and sv.slots.has("dab"), "buy an emote in the Shop (%d)" % sv.coins)
+	# back in the Walldrobe: what you bought is there
+	l.switch_b.pressed.emit()
+	check(not l.shop and l.title_l.text == "Walldrobe", "Switch back to the Walldrobe")
+	l._show_tab("skin")
+	check(l.cards.has("cowboy") and not l.cards.has("hero"), "a bought outfit shows in the Walldrobe")
+	l._show_tab("emote")
+	check(l.cards.has("dab") and l.cards.size() == sv.owned.size(), "a bought emote shows in the Walldrobe")
+	l._show_tab("class")
+	check(l.cards.has("dash") and not l.cards.has("tank"), "a bought class shows in the Walldrobe")
+	l._show_tab("color")
+	l.cards[str(LockerData.swatch()[2])].pressed.emit()
+	sv.wear_skin("cowboy")
+	l._show_tab("color")
+	l.cards[str(LockerData.swatch()[2])].pressed.emit()
+	check(l.stage.wobbler().skin_key == "none" and l.info_l.text.contains("Hidden under"), "colour preview takes the outfit off (%s)" % l.info_l.text)
+	# the empty state: a Shop tab with nothing left
+	sv.classes = l.shop_classes() + sv.classes
+	l.switch_b.pressed.emit()
+	l._show_tab("class")
+	check(l.cards.is_empty() and l.empty_l.visible and l.empty_l.text.contains("every class") and l.action_b.disabled, "an empty tab says so (%s)" % l.empty_l.text)
+	l._show_tab("skin")
+	check(not l.empty_l.visible, "the empty line hides again")
 	l.back_b.pressed.emit()
 	check(not l.visible and main.get_node("Safe/Col").visible, "Back returns to the title")
 	sv.reset()

@@ -1,6 +1,6 @@
 class_name LockerStage
 extends CharacterStage
-## The Locker / Shop 3D stage: CharacterStage (same lights, pedestal, one SubViewport) posing any look, not only the
+## The Walldrobe / Shop 3D stage: CharacterStage (same lights, pedestal, one SubViewport) posing any look, not only the
 ## one in Settings. Looks are registered under a key: `looks[key] = {cls, skin, hat, color, frame}` (frame "head"
 ## moves the camera in for hat cards), then bake(keys) renders each once into `baked[key]` (queued: a second
 ## bake() call while one runs is added to it) and preview(look) shows a look live, slowly turning, with an optional

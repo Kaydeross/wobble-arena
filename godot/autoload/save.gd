@@ -14,6 +14,8 @@ extends Node
 ## Coins (web): you start with 500; +5 per K.O. you score; +40 for every finished match and +60 more for a win.
 ## The equipped look is mirrored into Settings (skin, hat, color, class), which the match, the online `join` info and
 ## the setup wizard's Character page already read; a class picked in the wizard comes back here.
+## Coin goals (logic/quests.gd: daily, weekly, milestones, the play streak) live under the blob key "quests", which only
+## this client reads (the web snapshot() drops it; an old save without it starts with fresh goals).
 ## `--no-save` (tests) keeps everything in memory.
 ## Cloud save: `cloud` (net/account_api.gd, a child node) pushes get_blob() to the signed-in account a little after each
 ## change and pulls / merges the cloud blob after a sign-in; the game never waits for it.
@@ -45,6 +47,8 @@ var daily := {"d": 0, "s": 0}
 var look := DEFAULT_LOOK.duplicate()
 var stats := {}
 var hist: Array = []
+var quests := {}                     ## coin goals (logic/quests.gd), blob key "quests" (Godot only, the web ignores it)
+var day_override := -1               ## tests: the day the goals use (-1 = Quests.today())
 var extra := {}                      ## blob keys this client does not use, kept for the web game
 var extra_wallet := {}
 var extra_stats := {}
@@ -56,6 +60,9 @@ var cloud: AccountApi                ## accounts + cloud sync (only on the autol
 var match_kos := 0
 var match_hits := 0
 var match_deaths := 0
+var match_heads := 0                 ## headshots the player landed
+var match_mkos := 0                  ## K.O.s the player scored with a melee weapon
+var _quest_before: Array = []        ## goals already done when the match began (Quests.done_keys)
 var _streak := 0
 var _seen_classes: Array = []        ## secret classes already announced on a results panel (this session)
 var _bak_t := -1.0e9
@@ -99,7 +106,9 @@ func reset() -> void:
 	stats["secs"] = 0.0
 	hist = []
 	extra = {}; extra_wallet = {}; extra_stats = {}
-	match_kos = 0; match_hits = 0; match_deaths = 0; _streak = 0
+	quests = Quests.fresh()
+	match_kos = 0; match_hits = 0; match_deaths = 0; match_heads = 0; match_mkos = 0; _streak = 0
+	_quest_before = []
 	_seen_classes = []
 
 # ============================== the blob (web snapshot shape) ==============================
@@ -122,6 +131,7 @@ func get_blob() -> Dictionary:
 	w["codes"] = codes.duplicate()
 	w["daily"] = daily.duplicate()
 	d["wallet"] = w
+	d["quests"] = quests.duplicate(true)
 	return d
 
 ## Loads a blob (a web save or one of ours), cleaning it like the web load(): unknown items dropped, the free outfits
@@ -130,7 +140,8 @@ func apply_blob(d: Variant) -> bool:
 	if not (d is Dictionary): return false
 	reset()
 	for k: String in d:
-		if not k in ["look", "stats", "wallet"]: extra[k] = d[k]
+		if not k in ["look", "stats", "wallet", "quests"]: extra[k] = d[k]
+	quests = Quests.clean(d.get("quests"))
 	var w: Variant = d.get("wallet")
 	if w is Dictionary:
 		for k: String in w:
@@ -420,6 +431,27 @@ func next_unlock() -> Dictionary:
 
 # ============================== match rewards + stats ==============================
 
+# ============================== goals (logic/quests.gd) ==============================
+
+func quest_day() -> int:
+	return day_override if day_override >= 0 else Quests.today()
+
+## The Goals screen rows (Quests.rows).
+func goal_rows() -> Array:
+	return Quests.rows(quests, quest_day(), stats)
+
+## Goals done and waiting to be claimed (the title's Goals button).
+func goals_to_claim() -> int:
+	return Quests.claimable(quests, quest_day(), stats)
+
+## Claims a done goal: its coins are added and saved. Returns the coins (0 = nothing to claim).
+func claim_goal(key: String) -> int:
+	var n := Quests.claim(quests, key, quest_day(), stats)
+	if n > 0:
+		coins += n
+		_commit()
+	return n
+
 ## Coins for a finished match (web endMatch: +40, +60 more for a win) plus the K.O.s in it (web: +5 each, paid as
 ## they happen).
 static func match_coins(kos: int, won: bool) -> int:
@@ -430,12 +462,17 @@ func begin_match() -> void:
 	match_kos = 0
 	match_hits = 0
 	match_deaths = 0
+	match_heads = 0
+	match_mkos = 0
 	_streak = 0
+	_quest_before = Quests.done_keys(quests, quest_day(), stats)
 
-## A K.O. happened: `mine` = the player scored it (+5 coins), `died` = the player was the one knocked out.
-func on_ko(mine: bool, died: bool) -> void:
+## A K.O. happened: `mine` = the player scored it (+5 coins), `died` = the player was the one knocked out, `melee` = scored
+## with a melee weapon (the spatula counts; goals).
+func on_ko(mine: bool, died: bool, melee := false) -> void:
 	if mine:
 		match_kos += 1
+		if melee: match_mkos += 1
 		_streak += 1
 		stats["kos"] += 1
 		stats["best"] = maxi(int(stats["best"]), _streak)
@@ -446,18 +483,21 @@ func on_ko(mine: bool, died: bool) -> void:
 		match_deaths += 1
 		stats["deaths"] += 1
 
-## The player landed a hit.
-func on_hit() -> void:
+## The player landed a hit (`head`: a headshot).
+func on_hit(head := false) -> void:
 	match_hits += 1
+	if head: match_heads += 1
 	stats["hits"] += 1
 
 ## Seconds played (counted while a match runs and is not paused).
 func add_play_time(dt: float) -> void:
 	stats["secs"] = float(stats["secs"]) + dt
 
-## The match ended: stats, history, +40 / +100 coins, saved. Returns what the results panel shows:
-## {coins (earned this match, K.O.s included), kos, won, total (coins now), next (next_unlock())}.
-func finish_match(won: bool, mode_name: String = "", map_name: String = "", online: bool = false) -> Dictionary:
+## The match ended: stats, history, +40 / +100 coins, goal progress (Quests), saved. Returns what the results panel shows:
+## {coins (earned this match, K.O.s included), kos, won, total (coins now), next (next_unlock()), goals ([{text, coins}]
+## goals this match completed, to claim on the Goals screen), streak (coins for the first win of the day, already
+## added), days (the play streak)}. `mode_id`: the game type (for "play N game types").
+func finish_match(won: bool, mode_name: String = "", map_name: String = "", online: bool = false, mode_id: String = "") -> Dictionary:
 	stats["matches"] += 1
 	if won: stats["wins"] += 1
 	if online: stats["onl"] += 1
@@ -465,7 +505,12 @@ func finish_match(won: bool, mode_name: String = "", map_name: String = "", onli
 	if hist.size() > 8: hist.resize(8)
 	var bonus := MATCH_COINS + (WIN_COINS if won else 0)
 	coins += bonus
-	var out := {"coins": bonus + KO_COINS * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "next": next_unlock()}
+	var g := Quests.on_match(quests, {"won": won, "kos": match_kos, "hits": match_hits, "heads": match_heads, "mkos": match_mkos,
+		"mode": mode_id, "online": online}, quest_day(), stats, _quest_before)
+	coins += int(g["streak"])
+	_quest_before = Quests.done_keys(quests, quest_day(), stats)
+	var out := {"coins": bonus + KO_COINS * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "next": next_unlock(),
+		"goals": g["done"], "streak": int(g["streak"]), "days": int(g["days"])}
 	var fresh: Array = []                               # secret classes this match unlocked (K.O.s count too)
 	for id: String in owned_classes():
 		if ExtraClasses.is_hidden(id) and not _seen_classes.has(id): fresh.append(id)
