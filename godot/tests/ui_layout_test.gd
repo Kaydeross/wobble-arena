@@ -540,6 +540,10 @@ func _logic() -> void:
 	var sb := AudioServer.get_bus_index("SFX")
 	check(sb >= 0 and absf(db_to_linear(AudioServer.get_bus_volume_db(sb)) - 0.4) < 0.01, "Sound effects volume drives the SFX bus live")
 	main.settings.ctl["sfx_volume"].value = 1.0
+	main.settings.ctl["music_volume"].value = 0.3
+	var mb := AudioServer.get_bus_index("Music")
+	check(mb >= 0 and absf(db_to_linear(AudioServer.get_bus_volume_db(mb)) - 0.3) < 0.01, "Music volume drives the Music bus live")
+	main.settings.ctl["music_volume"].value = 0.5
 	main.settings.show_section("controls")
 	main.settings._on_row_tapped(main.settings.rows.get_node("Row_touch_lefty"))
 	check(bool(st.get_value("touch_lefty")), "a tap on a row's words flips its switch")

@@ -35,3 +35,4 @@ jobs:
       - run: npm run test:godot-weapons
       - run: npm run test:godot
       - run: npm run test:godot-netguest
+      - run: npm run test:godot-music
