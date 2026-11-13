@@ -1014,6 +1014,13 @@
   "fr": "Air guitar",
   "es": "Guitarra aérea"
  },
+ "Alive · %d left": {
+  "zh_TW": "存活 · 剩 %d 人",
+  "zh_CN": "存活 · 剩 %d 人",
+  "ja": "生存 · 残り %d 人",
+  "fr": "En vie · %d en jeu",
+  "es": "Vivo · quedan %d"
+ },
  "All three daily goals": {
   "zh_TW": "每日三個目標全部完成",
   "zh_CN": "每日三个目标全部完成",
@@ -2834,6 +2841,13 @@
   "fr": "Équipé",
   "es": "Equipado"
  },
+ "Event: %s": {
+  "zh_TW": "事件：%s",
+  "zh_CN": "事件：%s",
+  "ja": "イベント：%s",
+  "fr": "Événement : %s",
+  "es": "Evento: %s"
+ },
  "Every K.O. swaps you to the next weapon. Finish the whole ladder to win": {
   "zh_TW": "每次擊倒都會換到下一把武器。走完整個階梯即獲勝",
   "zh_CN": "每次击倒都会换到下一把武器。走完整个阶梯即获胜",
@@ -4093,6 +4107,13 @@
   "ja": "ライブワイヤー",
   "fr": "Fouet électrique",
   "es": "Látigo eléctrico"
+ },
+ "Lives %d": {
+  "zh_TW": "生命 %d",
+  "zh_CN": "生命 %d",
+  "ja": "残機 %d",
+  "fr": "Vies %d",
+  "es": "Vidas %d"
  },
  "Load test incoming! Crates falling!": {
   "zh_TW": "負載測試開始！板箱正在墜落！",
@@ -8349,12 +8370,5 @@
   "ja": "♥  ·  残り %d 人",
   "fr": "♥  ·  %d en jeu",
   "es": "♥  ·  %d en juego"
- },
- "♥ · %d left": {
-  "zh_TW": "♥ · 剩 %d 人",
-  "zh_CN": "♥ · 剩 %d 人",
-  "ja": "♥ · 残り %d 人",
-  "fr": "♥ · %d en jeu",
-  "es": "♥ · quedan %d"
  }
 }

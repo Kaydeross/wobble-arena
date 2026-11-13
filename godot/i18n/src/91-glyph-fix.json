@@ -1,0 +1,23 @@
+{
+  "Alive · %d left": {
+    "zh_TW": "存活 · 剩 %d 人",
+    "zh_CN": "存活 · 剩 %d 人",
+    "ja": "生存 · 残り %d 人",
+    "fr": "En vie · %d en jeu",
+    "es": "Vivo · quedan %d"
+  },
+  "Lives %d": {
+    "zh_TW": "生命 %d",
+    "zh_CN": "生命 %d",
+    "ja": "残機 %d",
+    "fr": "Vies %d",
+    "es": "Vidas %d"
+  },
+  "Event: %s": {
+    "zh_TW": "事件：%s",
+    "zh_CN": "事件：%s",
+    "ja": "イベント：%s",
+    "fr": "Événement : %s",
+    "es": "Evento: %s"
+  }
+}

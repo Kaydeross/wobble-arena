@@ -629,13 +629,6 @@
     "fr": "ÉLIMINÉ · %d en jeu",
     "es": "Fuera · quedan %d"
   },
-  "♥ · %d left": {
-    "zh_TW": "♥ · 剩 %d 人",
-    "zh_CN": "♥ · 剩 %d 人",
-    "ja": "♥ · 残り %d 人",
-    "fr": "♥ · %d en jeu",
-    "es": "♥ · quedan %d"
-  },
   "%d K.O.s · %d left": {
     "zh_TW": "%d 次擊倒 · 剩 %d 人",
     "zh_CN": "%d 次击倒 · 剩 %d 人",

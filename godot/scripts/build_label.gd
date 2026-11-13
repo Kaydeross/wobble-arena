@@ -1,6 +1,6 @@
 extends Label
 ## Shows the version and build number so a build can be recognised on a device.
-## tools/build-ios.sh writes res://build_info.cfg; without it (editor runs) this shows "dev".
+## tools/build-ios.sh and tools/build-android.sh write res://build_info.cfg; without it (editor runs) this shows "dev".
 
 func _ready() -> void:
 	var version := str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
