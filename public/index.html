@@ -9590,7 +9590,7 @@ function netMigrate(me) {                                            // the host
   const nn = { srv: true, peer: null, started: false, ghosts: {}, ai: {}, slotKind: ['human', 'bot', 'bot', 'bot'], slots: null, sendT: 0, cid: 0, optMax: o.optMax, optBots: o.optBots, optLim: o.optLim, bhv: o.bhv, hdiff: o.hdiff, limit: 0, pub: o.pub, roomName: o.roomName, code: o.code, prevCfg: o.prevCfg, rv: new Set(), rvList: [], rvTotal: 0, migrated: oldHost };
   if (me) {
     net = Object.assign(nn, { host: true, id: 0, vc: {}, conns: {}, roster: [Object.assign({ id: 0 }, cleanInfo(myInfo(), 0))], out: hostOut, lastInfo: '' });
-    toast(tf('%s left. You\'re now the host!', oldHost)); netStatus(o.pub ? t('You\'re now the host. The room is still open to everyone.') : tf('You are now the host. The room code is still %s.', o.code));
+    toast(tf('%s left. You\'re now the host!', oldHost)); netStatus(o.pub ? t('You\'re now the host. The room is still open to everyone.') : tf('You\'re now the host. The room code is still %s.', o.code));
   } else {
     const c = { open: true, send: x => srvTx({ op: 'tohost', m: x }), close: () => srvTx({ op: 'leave' }) };
     net = Object.assign(nn, { host: false, id: -1, conn: c, roster: [] });
