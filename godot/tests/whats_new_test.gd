@@ -15,10 +15,12 @@ func _initialize() -> void:
 	process_frame.connect(_run, CONNECT_ONE_SHOT)
 
 func _run() -> void:
-	var es := WhatsNew.load_entries()
+	# loaded here, not named: a --script test compiles before the autoloads (Save) exist, and whats_new.gd uses Save
+	var WN: GDScript = load("res://ui/whats_new.gd")
+	var es: Array = WN.load_entries()
 	check(es.size() >= 1, "news.json has entries")
-	check(WhatsNew.newest_version() == str(ProjectSettings.get_setting("application/config/version")), "newest entry matches the app version")
-	check(WhatsNew.load_entries("res://data/extra/nope.json").is_empty(), "a missing file gives no entries")
+	check(WN.newest_version() == str(ProjectSettings.get_setting("application/config/version")), "newest entry matches the app version")
+	check(WN.load_entries("res://data/extra/nope.json").is_empty(), "a missing file gives no entries")
 	var save: Node = root.get_node("Save")
 	check(save.last_seen_news == "", "default last_seen_news is empty")
 	check(not save.get_blob().has("last_seen_news"), "an unset value is not written")
@@ -44,7 +46,7 @@ func _run() -> void:
 	b.pressed.emit()
 	await process_frame
 	check(main.news.visible, "the button opens the card")
-	check(save.last_seen_news == WhatsNew.newest_version(), "opening stores the newest version as seen")
+	check(save.last_seen_news == WN.newest_version(), "opening stores the newest version as seen")
 	check(main.news.bodies[es[0]["version"]].visible, "newest entry is open")
 	if es.size() > 1: check(not main.news.bodies[es[1]["version"]].visible, "older entries are folded")
 	main.news.toggle(es[0]["version"])
