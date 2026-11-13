@@ -318,6 +318,13 @@ func assist_dir(f: FighterState, assist: float, aim_point: Array) -> Array:
 # ============================== guns ==============================
 
 const UZI_SIDE := 0.66          ## how far apart the two Uzis are held
+## Balance overlay only (Combat.tuning_active): the player's gun assist is no longer a perfect lock.
+const PLAYER_ASSIST := 0.8
+const WOB_AIM := 0.05           ## how much of a visible arm nudge reaches the aim direction
+const GUN_KICK_STEP := 0.7      ## each gun hit taken adds this much stack to the victim
+const GUN_KICK_CAP := 4.0
+const GUN_KICK_RECOVER := 1.2   ## stack lost per second
+const GUN_KICK_DAMP := 0.8      ## push = push / (1 + DAMP * stack)
 
 ## shotSpread: the shotgun is wide from the hip and tight when aimed (the on-screen circle is only the HUD).
 static func shot_spread(w: Dictionary, aim: float) -> float:
@@ -438,10 +445,14 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 	var ly := by
 	var lz := bz
 	var base := [bx, by, bz]
-	var asst := 1.0 if f.is_player else float(w.get("assist", 0.0))
+	var tuned := combat.tuning_active()
+	var asst := float(w.get("assist", 0.0))
+	if f.is_player: asst = PLAYER_ASSIST if tuned else 1.0
+	if tuned: sp += f.bloom
 	if asst != 0.0:
 		var a := aim_from_hand(f, o, aim_point)
 		if f.climb > 0.0: a[1] += f.climb
+		if tuned: a[0] += f.wob_x; a[1] += f.wob_y; a[2] += f.wob_z
 		a = Combat.norm3(a[0], a[1], a[2])
 		base = Combat.norm3(bx + (a[0] - bx) * asst, by + (a[1] - by) * asst, bz + (a[2] - bz) * asst)
 	if w.get("style", "") == "punch":
@@ -506,7 +517,11 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 	for v: FighterState in victims:
 		var rec: Dictionary = victims[v]
 		var rd := Combat.norm3(rec["dx"], rec["dy"], rec["dz"])
-		combat.hit(v, rec["dmg"], rd[0], rd[1], rd[2], minf(rec["force"], max_force), rec["head"], f, _main_part(rec["parts"], rec["head"]))
+		var push := minf(rec["force"], max_force)
+		if tuned:     # a stream of bullets stops shoving them around: every recent hit shrinks the next push
+			push /= 1.0 + GUN_KICK_DAMP * v.gun_kick
+			v.gun_kick = minf(GUN_KICK_CAP, v.gun_kick + GUN_KICK_STEP)
+		combat.hit(v, rec["dmg"], rd[0], rd[1], rd[2], push, rec["head"], f, _main_part(rec["parts"], rec["head"]))
 		if rec["head"] and key == "mammoth" and not v.dead:   # a Mammoth headshot snaps their head back
 			var s_ := sin(v.yaw)
 			var c_ := cos(v.yaw)
@@ -517,6 +532,7 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		var tp := float(w.get("topple", 0.0))
 		if tp and rng.next() < tp: combat.topple(v, 1.0)
 	# recoil kicks the arm up and back and rocks the body
+	if tuned and w.get("bloomAdd", 0): f.bloom = minf(float(w.get("bloomMax", 0.04)), f.bloom + float(w["bloomAdd"]))
 	var rc := float(w.get("recoil", 1.0)) if w.get("recoil", 0) else 1.0
 	if w.get("climb", 0):
 		f.climb = minf(float(w["climbMax"]), f.climb + float(w["climb"])); f.climb_back = float(w["climbBack"]); f.last_shot_t = combat.time
@@ -628,6 +644,25 @@ func has_los(b: FighterState, tg: FighterState) -> bool:
 ## Recoil climb settles once you stop shooting (from Fighter.animate in the web game).
 func climb_tick(f: FighterState, dt: float) -> void:
 	if combat.time - f.last_shot_t > 0.1: f.climb = maxf(0.0, f.climb - f.climb_back * dt)
+	if not combat.tuning_active(): return
+	# balance overlay only: bloom cools, stacked gun knockback recovers, the arm wobbles
+	var w := combat.wdata(f.weapon if f.weapon != "" else "spatula")
+	f.bloom = maxf(0.0, f.bloom - float(w.get("bloomDecay", 0.05)) * dt)
+	f.gun_kick = maxf(0.0, f.gun_kick - GUN_KICK_RECOVER * dt)
+	var amp := float(w.get("wobble", 0.0))
+	var decay := exp(-4.0 * dt)
+	f.wob_x *= decay; f.wob_y *= decay; f.wob_z *= decay
+	if amp <= 0.0 or f.dead: return
+	f.wob_t -= dt
+	if f.wob_t > 0.0: return
+	f.wob_t = combat.rng.range_f(0.12, 0.35)
+	var mv := sqrt(f.phys.vx * f.phys.vx + f.phys.vz * f.phys.vz)
+	var k := amp * (1.0 + mv / 8.0) * (1.0 - 0.5 * clampf(f.ads, 0.0, 1.0))
+	var nx := combat.rng.range_f(-1.0, 1.0) * k
+	var ny := combat.rng.range_f(-1.0, 1.0) * k * 0.6
+	var nz := combat.rng.range_f(-1.0, 1.0) * k
+	combat.push_arm(f, nx * 1.5, ny * 1.5, nz * 1.5)       # the visible arm jerks
+	f.wob_x += nx * WOB_AIM; f.wob_y += ny * WOB_AIM; f.wob_z += nz * WOB_AIM   # and the shot follows it
 
 # ============================== thrown: knife ==============================
 
