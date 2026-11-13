@@ -47,6 +47,9 @@ var pools := {}                     ## name -> Pool
 var rng := RandomNumberGenerator.new()
 var _labels: Array = []             ## {node, life, vel}
 var _label_i := 0
+const DAMAGE_FLASH_SHADER := "res://shaders/hit_vignette.gdshader"   ## red twelve-sided edge when the local player is hurt
+var _damage_flash := 0.0
+var _damage_mat: ShaderMaterial
 var _watch := {}                    ## FighterState -> {g, vy, sp, vx, vz, foot}
 var _specks: Specks
 
@@ -77,6 +80,18 @@ func _init(p_level := -1) -> void:
 	pools["blobs"] = Pool.new(self, CAPS["blobs"][lv], Pool.BLOBS, LowPoly.ico(1.0, 1), alpha)
 	pools["rings"] = Pool.new(self, CAPS["rings"][lv], Pool.RINGS, quad, ring)
 	pools["streaks"] = Pool.new(self, CAPS["streaks"][lv], Pool.STREAKS, LowPoly.box(1.0, 1.0, 1.0), alpha)
+	_damage_mat = ShaderMaterial.new()
+	_damage_mat.shader = load(DAMAGE_FLASH_SHADER)
+	var damage_layer := CanvasLayer.new()
+	damage_layer.name = "DamageFlash"
+	damage_layer.layer = 0
+	var damage_rect := ColorRect.new()
+	damage_rect.name = "Rect"
+	damage_rect.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	damage_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	damage_rect.material = _damage_mat
+	damage_layer.add_child(damage_rect)
+	add_child(damage_layer)
 	for i in LABELS[lv]:
 		var l := Label3D.new()
 		l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -108,6 +123,8 @@ func clear() -> void:
 	for x: Dictionary in _labels:
 		x["life"] = 0.0; (x["node"] as Label3D).visible = false
 	_watch.clear()
+	_damage_flash = 0.0
+	if _damage_mat: _damage_mat.set_shader_parameter("intensity", 0.0)
 
 func setup_map(id: String, map: Dictionary) -> void:
 	if _specks == null: return
@@ -301,6 +318,8 @@ func on_event(e: Dictionary) -> void:
 			if f: dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), float(e["dmg"]), String(e.get("part", "head" if e["head"] else "")), int(e.get("pct", 0)))
 		"hit":
 			if f: _on_hit(e, f)
+		"hurt":
+			_damage_flash = maxf(_damage_flash, clampf(float(e.get("amount", 0.5)), 0.35, 1.0))
 		"ko_burst":
 			if f: ko_burst(Vector3(f.phys.px, f.phys.py, f.phys.pz))
 		"ko":
@@ -431,6 +450,9 @@ func update(dt: float, cam_pos: Vector3) -> void:
 		l.modulate.a = clampf(x["life"] / DMG_LIFE * 1.5, 0.0, 1.0)
 		l.position += x["vel"] * dt
 	if _specks: _specks.update(dt, cam_pos)
+	if _damage_flash > 0.0:
+		_damage_flash = maxf(0.0, _damage_flash - dt * 3.6)
+		if _damage_mat: _damage_mat.set_shader_parameter("intensity", _damage_flash)
 
 
 ## One MultiMesh pool simulated on the CPU (see the class header). Live particles are packed at the front
