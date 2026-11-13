@@ -13,6 +13,7 @@ extends SceneTree
 ## shop-confirm (its Buy card), goals (the Goals screen after a won match: some goals to claim, one claimed), emote-wheel (a match with the emote wheel open while the player dances), results (the
 ## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on),
 ## account-guest (Pick a name) / account-signed (signed in, saved to the cloud 2 min ago) / account-signed-np (a name with no password yet); --lang ja|fr,
+## perf (match with the performance readout on, top-left), soak (a real 20 s soak run and its summary card),
 ## killcam (a fast K.O. by the player, mid replay in slow-mo). Used by tools/shoot-godot-ui.sh.
 ## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
 ## after the first weapon handout), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
@@ -79,6 +80,12 @@ func _start() -> void:
 		frames = 150
 		process_frame.connect(_wait)
 		return
+	if shot == "soak":                       # a real 20 s soak run (the device run is 900 s), then its summary card
+		var w: Node = SoakRun.make_world(20.0, ["arenaxl", "colosseum"], "user://soak_shot")
+		root.add_child(w)
+		_soak = w.soak
+		process_frame.connect(_wait_soak)
+		return
 	if shot.begins_with("account"):
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
@@ -121,6 +128,7 @@ func _start() -> void:
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
 	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
+	_settings().set_value("perf_overlay", shot == "perf")     # the device readout (ui/perf_overlay.gd)
 	world = load("res://world/world.tscn").instantiate()
 	world.map_id = "siteyard" if shot == "construction" else "arena"
 	if shot == "construction":
@@ -148,6 +156,13 @@ func _start() -> void:
 	process_frame.connect(_frame)
 
 var _scroll_wizard: Node = null
+var _soak: SoakRun = null
+
+func _wait_soak() -> void:
+	if not _soak.done: return
+	process_frame.disconnect(_wait_soak)
+	frames = 30
+	process_frame.connect(_wait)
 
 ## Menu polish shots (docs/style/godot-polish-*.png): polish-rooms / polish-rooms-empty / polish-rooms-error (the
 ## online panel's room list), polish-settings-<section>, polish-help (the controls picture), polish-intro-1..3;

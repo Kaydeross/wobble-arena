@@ -6,7 +6,7 @@ extends UiPage
 ##             mouse / controller, invert up-down look, aim hold or toggle (mouse / controller), the controls picture
 ##             (ui/controls_help.gd) and the how-to cards again (ui/intro_cards.gd)
 ##   Camera    Manual / Auto-centre, distance, field of view
-##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS
+##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS, performance readout, 15-minute soak test (world/soak_run.gd)
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
 ##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), knock-out replays (kill cam), damage numbers
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
@@ -139,6 +139,10 @@ func show_section(s: String) -> void:
 				UiScale.MODES, ["Auto", "Small", "Normal", "Large"])
 			_toggle("screen_shake", "Screen shake", "The camera shakes on big hits and explosions")
 			_toggle("show_fps", "Show frame rate (FPS)", "F3 or a three-finger tap also toggles it")
+			_toggle("perf_overlay", "Performance readout", "Top-left: fps, frame time, CPU / GPU, draws, thermal. For testing on a device.")
+			if not in_match:
+				_info("soak", "15-minute soak test", "An offline Chaos 5v5 bot match logs the frame rate every second. Leave the phone alone: the screen stays on. At the end, tap Copy summary to share the result.")
+				_buttons("Soak", [["soak", "Start soak test", func() -> void: SoakRun.launch(get_tree())]])
 		"audio":
 			_toggle("muted", "Sound", "", true)
 			_slider("volume", "Main volume", "", 0.0, 1.0, 0.05, _pct)
