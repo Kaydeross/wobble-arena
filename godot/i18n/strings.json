@@ -944,6 +944,13 @@
   "fr": "Compte créé. Connecté en tant que %s.",
   "es": "Cuenta creada. Sesión iniciada como %s."
  },
+ "Account: pick a name to save to the cloud": {
+  "zh_TW": "帳號：取個名字即可存到雲端",
+  "zh_CN": "账号：取个名字即可存到云端",
+  "ja": "アカウント：名前を決めるとクラウドに保存できます",
+  "fr": "Compte : choisis un nom pour sauvegarder dans le cloud",
+  "es": "Cuenta: elige un nombre para guardar en la nube"
+ },
  "Account: sign up or log in to save to the cloud": {
   "zh_TW": "帳號：註冊或登入即可儲存到雲端",
   "zh_CN": "账号：注册或登录即可保存到云端",
@@ -2176,6 +2183,13 @@
   "fr": "Impossible de changer le mot de passe. Réessayer dans un instant.",
   "es": "No se pudo cambiar tu contraseña. Inténtalo de nuevo en un momento."
  },
+ "Couldn't claim that name. Try again in a moment.": {
+  "zh_TW": "無法使用這個名字。請稍後再試。",
+  "zh_CN": "无法使用这个名字。请稍后再试。",
+  "ja": "その名前を取得できませんでした。しばらくしてからもう一度お試しください。",
+  "fr": "Impossible de réserver ce nom. Réessaie dans un instant.",
+  "es": "No se pudo reservar ese nombre. Inténtalo de nuevo en un momento."
+ },
  "Couldn't delete your account. Try again in a moment.": {
   "zh_TW": "無法刪除帳號。請稍後再試一次。",
   "zh_CN": "无法删除账号。请稍后再试一次。",
@@ -2252,6 +2266,13 @@
   "ja": "パスワードをリセットできませんでした。リカバリーコードを確認して、もう一度お試しください。",
   "fr": "Impossible de réinitialiser le mot de passe. Vérifier le code de récupération et réessayer.",
   "es": "No se pudo restablecer tu contraseña. Revisa tu código de recuperación e inténtalo de nuevo."
+ },
+ "Couldn't set a password. Try again in a moment.": {
+  "zh_TW": "無法設定密碼。請稍後再試。",
+  "zh_CN": "无法设置密码。请稍后再试。",
+  "ja": "パスワードを設定できませんでした。しばらくしてからもう一度お試しください。",
+  "fr": "Impossible de définir un mot de passe. Réessaie dans un instant.",
+  "es": "No se pudo poner la contraseña. Inténtalo de nuevo en un momento."
  },
  "Count Dusk": {
   "zh_TW": "黃昏伯爵",
@@ -3709,6 +3730,13 @@
   "fr": "Hôte : %s",
   "es": "Anfitrión: %s"
  },
+ "Hosting a room needs a name. Joining works as a guest.": {
+  "zh_TW": "開房需要名字，加入房間則可以訪客身分進行。",
+  "zh_CN": "开房需要名字，加入房间则可以访客身份进行。",
+  "ja": "部屋を作るには名前が必要です。参加はゲストでもできます。",
+  "fr": "Héberger une partie demande un nom. Rejoindre marche en invité.",
+  "es": "Crear una sala necesita un nombre. Unirse funciona como invitado."
+ },
  "Hosting a room needs an account. Joining works as a guest.": {
   "zh_TW": "建立房間需要帳號。以訪客身分也能加入房間。",
   "zh_CN": "创建房间需要账号。以访客身份也能加入房间。",
@@ -3722,6 +3750,13 @@
   "ja": "超巨大",
   "fr": "Immense",
   "es": "Enorme"
+ },
+ "I have a password": {
+  "zh_TW": "我有密碼",
+  "zh_CN": "我有密码",
+  "ja": "パスワードを持っています",
+  "fr": "J'ai un mot de passe",
+  "es": "Tengo una contraseña"
  },
  "I saved it": {
   "zh_TW": "我已儲存",
@@ -4437,6 +4472,13 @@
   "fr": "Pistolet à clous",
   "es": "Pistola de clavos"
  },
+ "Names nobody uses for 30 days are freed.": {
+  "zh_TW": "30 天沒人使用的名字會被釋出。",
+  "zh_CN": "30 天没人使用的名字会被释放。",
+  "ja": "30日間だれも使わない名前は解放されます。",
+  "fr": "Les noms inutilisés pendant 30 jours sont libérés.",
+  "es": "Los nombres que nadie usa en 30 días se liberan."
+ },
  "Need %d more": {
   "zh_TW": "還差 %d",
   "zh_CN": "还差 %d",
@@ -4597,6 +4639,20 @@
   "ja": "衣装なし",
   "fr": "Sans tenue",
   "es": "Sin atuendo"
+ },
+ "No password yet. If you log out, this name is lost to you. Tap Log out again to leave it, or protect it first.": {
+  "zh_TW": "尚未設定密碼。登出後你將無法再使用這個名字。再按一次「登出」即可離開，或先為它設定密碼。",
+  "zh_CN": "尚未设置密码。退出后你将无法再使用这个名字。再点一次“退出”即可离开，或先为它设置密码。",
+  "ja": "パスワード未設定です。ログアウトするとこの名前は使えなくなります。もう一度ログアウトを押して離れるか、先に名前を守ってください。",
+  "fr": "Pas de mot de passe. Si tu te déconnectes, ce nom est perdu pour toi. Appuie encore sur Se déconnecter pour partir, ou protège-le d'abord.",
+  "es": "Sin contraseña. Si cierras sesión, perderás este nombre. Pulsa Cerrar sesión otra vez para salir, o protégelo antes."
+ },
+ "No password yet: this name only works on this device.": {
+  "zh_TW": "尚無密碼：這個名字只能在這部裝置使用。",
+  "zh_CN": "尚无密码：这个名字只能在这台设备使用。",
+  "ja": "パスワード未設定：この名前はこの端末でのみ使えます。",
+  "fr": "Pas encore de mot de passe : ce nom ne marche que sur cet appareil.",
+  "es": "Aún sin contraseña: este nombre solo funciona en este dispositivo."
  },
  "No patch notes yet": {
   "zh_TW": "還沒有更新說明",
@@ -4913,6 +4969,20 @@
   "fr": "Mot de passe modifié.",
   "es": "Contraseña cambiada."
  },
+ "Password set. This name now works on other devices.": {
+  "zh_TW": "密碼已設定。這個名字現在可在其他裝置使用。",
+  "zh_CN": "密码已设置。这个名字现在可在其他设备使用。",
+  "ja": "パスワードを設定しました。この名前は他の端末でも使えます。",
+  "fr": "Mot de passe défini. Ce nom fonctionne maintenant sur d'autres appareils.",
+  "es": "Contraseña puesta. Ahora este nombre funciona en otros dispositivos."
+ },
+ "Passwords are 6 to 72 characters.": {
+  "zh_TW": "密碼需要 6 到 72 個字元。",
+  "zh_CN": "密码需要 6 到 72 个字符。",
+  "ja": "パスワードは 6～72 文字です。",
+  "fr": "Les mots de passe font de 6 à 72 caractères.",
+  "es": "Las contraseñas tienen de 6 a 72 caracteres."
+ },
  "Patch notes": {
   "zh_TW": "更新說明",
   "zh_CN": "更新说明",
@@ -4954,6 +5024,41 @@
   "ja": "ゲームタイプを選ぼう",
   "fr": "Choisis un mode de jeu",
   "es": "Elige un modo de juego"
+ },
+ "Pick a name": {
+  "zh_TW": "選個名字",
+  "zh_CN": "选个名字",
+  "ja": "名前を決めよう",
+  "fr": "Choisis un nom",
+  "es": "Elige un nombre"
+ },
+ "Pick a name to host": {
+  "zh_TW": "取名字來開房",
+  "zh_CN": "取名字来开房",
+  "ja": "名前を決めて部屋を作る",
+  "fr": "Choisis un nom pour héberger",
+  "es": "Elige un nombre para crear sala"
+ },
+ "Pick a name to host a room (or run the server with REQUIRE_LOGIN=0).": {
+  "zh_TW": "取個名字才能開房（或以 REQUIRE_LOGIN=0 執行伺服器）。",
+  "zh_CN": "取个名字才能开房（或以 REQUIRE_LOGIN=0 运行服务器）。",
+  "ja": "部屋を作るには名前を決めてください（またはサーバーを REQUIRE_LOGIN=0 で実行）。",
+  "fr": "Choisis un nom pour héberger une partie (ou lance le serveur avec REQUIRE_LOGIN=0).",
+  "es": "Elige un nombre para crear una sala (o ejecuta el servidor con REQUIRE_LOGIN=0)."
+ },
+ "Pick a name to play online (or run the server with REQUIRE_LOGIN=0).": {
+  "zh_TW": "取個名字才能線上遊玩（或以 REQUIRE_LOGIN=0 執行伺服器）。",
+  "zh_CN": "取个名字才能在线游玩（或以 REQUIRE_LOGIN=0 运行服务器）。",
+  "ja": "オンラインで遊ぶには名前を決めてください（またはサーバーを REQUIRE_LOGIN=0 で実行）。",
+  "fr": "Choisis un nom pour jouer en ligne (ou lance le serveur avec REQUIRE_LOGIN=0).",
+  "es": "Elige un nombre para jugar en línea (o ejecuta el servidor con REQUIRE_LOGIN=0)."
+ },
+ "Pick a name to play online and keep your coins, outfits and stats in the cloud. No password needed.": {
+  "zh_TW": "取個名字就能線上遊玩，並把金幣、服裝和數據存到雲端。不需要密碼。",
+  "zh_CN": "取个名字就能在线游玩，并把金币、服装和数据存到云端。不需要密码。",
+  "ja": "名前を決めるだけでオンラインで遊べ、コイン・衣装・記録もクラウドに残せます。パスワードは不要です。",
+  "fr": "Choisis un nom pour jouer en ligne et garder tes pièces, tenues et statistiques dans le cloud. Pas de mot de passe.",
+  "es": "Elige un nombre para jugar en línea y guardar tus monedas, atuendos y estadísticas en la nube. Sin contraseña."
  },
  "Pick a room, or join a friend with their code.": {
   "zh_TW": "選一個房間，或用朋友的代碼加入。",
@@ -5192,6 +5297,20 @@
   "ja": "プロペラ",
   "fr": "Hélice",
   "es": "Hélice"
+ },
+ "Protect my name": {
+  "zh_TW": "保護我的名字",
+  "zh_CN": "保护我的名字",
+  "ja": "名前を守る",
+  "fr": "Protéger mon nom",
+  "es": "Proteger mi nombre"
+ },
+ "Protect my name with a password": {
+  "zh_TW": "用密碼保護我的名字",
+  "zh_CN": "用密码保护我的名字",
+  "ja": "パスワードで名前を守る",
+  "fr": "Protéger mon nom avec un mot de passe",
+  "es": "Proteger mi nombre con contraseña"
  },
  "Public": {
   "zh_TW": "公開",
@@ -5766,6 +5885,13 @@
   "ja": "新しいパスワードを設定",
   "fr": "Définir le nouveau mot de passe",
   "es": "Establecer nueva contraseña"
+ },
+ "Set password": {
+  "zh_TW": "設定密碼",
+  "zh_CN": "设置密码",
+  "ja": "パスワードを設定",
+  "fr": "Définir",
+  "es": "Poner contraseña"
  },
  "Settings": {
   "zh_TW": "設定",
@@ -7384,6 +7510,13 @@
   "fr": "Joueurs web et appli.",
   "es": "Jugadores web y de app."
  },
+ "Welcome, %s! Your name is yours.": {
+  "zh_TW": "歡迎，%s！這個名字是你的了。",
+  "zh_CN": "欢迎，%s！这个名字是你的了。",
+  "ja": "ようこそ、%s！この名前はあなたのものです。",
+  "fr": "Bienvenue, %s ! Ce nom est à toi.",
+  "es": "¡Bienvenido, %s! El nombre es tuyo."
+ },
  "What you own": {
   "zh_TW": "擁有的物品",
   "zh_CN": "拥有的物品",
@@ -7873,6 +8006,13 @@
   "ja": "ログインの有効期限が切れました。クラウドに保存するにはもう一度ログインしてください。",
   "fr": "Connexion expirée. Se reconnecter pour sauvegarder dans le cloud.",
   "es": "Tu sesión caducó. Vuelve a iniciarla para guardar en la nube."
+ },
+ "Your name (3 to 16 letters or numbers)": {
+  "zh_TW": "你的名字（3 到 16 個字母或數字）",
+  "zh_CN": "你的名字（3 到 16 个字母或数字）",
+  "ja": "あなたの名前（英数字 3～16 文字）",
+  "fr": "Ton nom (3 à 16 lettres ou chiffres)",
+  "es": "Tu nombre (3 a 16 letras o números)"
  },
  "Your outfits, hats, colours, emotes and classes": {
   "zh_TW": "你的服裝、帽子、顏色、表情動作和角色",

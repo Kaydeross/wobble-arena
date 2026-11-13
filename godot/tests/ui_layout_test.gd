@@ -11,7 +11,7 @@ extends SceneTree
 ## The Walldrobe (5 tabs) and the Shop (3 tabs) get the same layout checks (ui/locker.gd: header, preview, tabs, card
 ## grid, footer), and the title's Walldrobe / Shop / Goals row. The Goals screen (ui/goals_screen.gd) is checked like a
 ## Settings page (header, rows reachable, buttons 44 pt).
-## The Account sheet (ui/account_sheet.gd, from the title chip): every page (guest, sign up, log in, forgot password,
+## The Account sheet (ui/account_sheet.gd, from the title chip): every page (guest "Pick a name", log in, forgot password,
 ## recovery code, signed in, change password, delete, conflict) inside the safe area, nothing overlapping, touch
 ## targets at least 44 pt tall; _logic checks the chip opens it and the delete button waits for the typed word.
 ## Polish pass: the room browser in the online panel (loading, a full list with greyed-out rows, empty, server
@@ -45,8 +45,8 @@ const CASES := [
 const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
 	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
 	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1", "s2", "goals",
-	"a-guest", "a-signup", "a-login", "a-reset", "a-code", "a-signed", "a-password", "a-delete", "a-conflict"]
-const SIGNED := ["a-signed", "a-password", "a-delete", "a-conflict"]
+	"a-guest", "a-login", "a-reset", "a-code", "a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict"]
+const SIGNED := ["a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
 ## Touch targets in canvas px for the case being checked: MIN_TOUCH pt (UiScale keeps the canvas small enough that the
 ## designed 60 px are at least 44 pt on every landscape phone / tablet; "small" is checked against the old 60 px).
@@ -120,6 +120,13 @@ func _run() -> void:
 			if with_insets and c[1] == [0.0, 0.0, 0.0, 0.0]: continue
 			for scr: String in SCREENS:
 				await _case(c[0], c[1] if with_insets else [0.0, 0.0, 0.0, 0.0], scr, c[2])
+	# the Account sheet again in French and Japanese (longer words must not overlap or overflow)
+	for loc: String in ["fr", "ja"]:
+		TranslationServer.set_locale(loc)
+		for c: Array in CASES:
+			for scr: String in SCREENS:
+				if scr.begins_with("a-"): await _case(c[0], c[1], scr, c[2], loc)
+	TranslationServer.set_locale("en")
 	for t: String in min_pt: print("UI tap targets %s: min %.1f pt" % [t, min_pt[t]])
 	SafeArea.override = []
 	await _logic()
@@ -133,14 +140,14 @@ func _no_overlap(rects: Dictionary, keys: Array, tag: String) -> void:
 			var b: Rect2 = rects[keys[j]]
 			check(not a.grow(-0.5).intersects(b.grow(-0.5)), "%s %s %s overlaps %s %s" % [tag, keys[i], a, keys[j], b])
 
-func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
+func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "en") -> void:
 	var cs := UiScale.canvas_size(win, mode, true)
 	var k := cs.x / win.x
 	pt_k = 1.0 / k
 	var strict := mode != "small" and win.x > win.y     # 44 pt checked; "small" and portrait keep the designed 60 px
 	TOUCH_PX = MIN_TOUCH * k if strict else 60.0
 	touch_case = strict
-	size_tag = "%dx%d %s" % [win.x, win.y, mode]
+	size_tag = "%dx%d %s%s" % [win.x, win.y, mode, "" if loc == "en" else " " + loc]
 	var ins := [ins_pt[0] * k, ins_pt[1] * k, ins_pt[2] * k, ins_pt[3] * k]
 	SafeArea.override = ins
 	var vp := SubViewport.new()
@@ -186,7 +193,8 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 		if scr == "a-conflict":
 			cloud.pending = {"data": {"wallet": {"coins": 12345, "skins": ["none", "cowboy"]}, "stats": {"matches": 321, "kos": 999}}, "t": 1}
 		if scr == "a-code": main.account._on_recovery("ABCD-EFGH-JKLM-NPQR")
-		main.open_account(scr.substr(2))
+		cloud.has_password = scr != "a-signed-np" and scr != "a-protect"
+		main.open_account(scr.substr(2).trim_suffix("-np"))
 		main.account.msg_l.text = "That username and recovery code do not match. Check the code (letters and numbers, no mix-ups between O and 0)."
 	elif lock:
 		var shop := scr.begins_with("s")
@@ -244,7 +252,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 		var card: Control = main.account.card
 		for c: Control in _leaves(card): inside.append(str(main.get_path_to(c)))
 		groups.append(inside)
-		check(main.account.pages[scr.substr(2)].visible and main.account.visible, "%s account page shown" % tag)
+		check(main.account.pages[scr.substr(2).trim_suffix("-np")].visible and main.account.visible, "%s account page shown" % tag)
 		for p: String in inside:
 			var c: Control = main.get_node(p)
 			if (c is Button or c is LineEdit) and win.x > win.y:   # (portrait shows the landscape canvas scaled down)
@@ -312,7 +320,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 			check(sb.size.x + 0.5 >= sb.get_minimum_size().x, "%s step pill '%s' squeezed" % [tag, sb.text])
 		_no_word(main.wizard, "fighter", tag)
 	elif over == null:
-		_not_cut(main.get_node("Safe/Col"), tag)
+		_not_cut(main.account.card if acct else main.get_node("Safe/Col"), tag)   # (the title's own labels are checked on the title screen)
 		if scr == "title":
 			check(main.get_node("Safe/Col/Body/Home/Play/Stack/Big").text == "Play", "%s Play button says Play" % tag)
 			check(main.get_node("Safe/Col/Body/Home/Online/Stack/Big").text == "Play online with friends", "%s online button label" % tag)
@@ -579,8 +587,9 @@ func _logic() -> void:
 	ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = true
 	main.chip.gui_input.emit(ev)
 	check(main.account.visible and main.account.page == "guest", "the chip opens the Account sheet (guest)")
-	main.account.ui["guest/Signup"].pressed.emit()
-	check(main.account.page == "signup", "Create account opens the sign-up page")
+	main.account.ui["guest/Login"].pressed.emit()
+	check(main.account.page == "login", "I have a password opens the log-in page")
+	check(main.account.ui["guest/Go"].text == "Play" and main.account.title_l.text != "", "the guest page is Pick a name with a Play button")
 	main.account.close()
 	main.account.open("delete")
 	main.account.ui["delete/Pass"].text = "pw"

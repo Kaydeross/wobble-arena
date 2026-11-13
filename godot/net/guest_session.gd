@@ -28,7 +28,7 @@ const NET_MAX := 8
 ## What a guest may hear before `welcome` (clientRecv).
 const BEFORE_WELCOME := ["welcome", "full", "badver", "kick"]
 const NOJOIN_TEXT := {
-	"auth": "Log in to play online (or run the server with REQUIRE_LOGIN=0).",
+	"auth": "Pick a name to play online (or run the server with REQUIRE_LOGIN=0).",
 	"build": "That room is running a different version of the game.",
 	"full": "That room is full.",
 	"inroom": "You're already in a room.",

@@ -7,7 +7,7 @@ extends SceneTree
 ## device", retry planned); sign up (recovery code XXXX-XXXX-XXXX-XXXX, the device profile becomes the cloud save);
 ## debounced push after a change; a fresh device takes the cloud silently; a push from a device that is behind gets
 ## `stale` -> conflict -> Use cloud / Keep this device; a guest profile signing in gets the conflict choice; change
-## password; forgot password with the recovery code; the web account's blob (web keys kept) loads and syncs back;
+## password; forgot password with the recovery code; pick a name (claim: no password) then protect it and log in elsewhere; the web account's blob (web keys kept) loads and syncs back;
 ## delete account; an expired token signs out and keeps the profile.
 ## Prints WEB_COINS=<n> for the Node side to check on the server.
 
@@ -162,6 +162,38 @@ func _run() -> void:
 	b.reset(name, str(codes[0]).to_lower().replace("-", " "), "third-pass3")
 	r = await _done(b)
 	check(r[1] and b.signed_in() and bcodes.size() == 1 and _is_code(bcodes[0]) and bcodes[0] != codes[0], "reset with the recovery code signs in + new code (%s)" % r[2])
+
+	# --- pick a name: no password, no email, no recovery code; then protect it and use it on a second device
+	a.logout()
+	await _done(a)
+	var pick := "pick_%d" % (randi() % 100000)
+	var ncodes := codes.size()
+	a.claim("a!")
+	r = await _done(a)
+	check(not r[1] and not a.signed_in(), "a bad name is refused: %s" % r[2])
+	a.claim(pick)
+	r = await _done(a)
+	check(r[1] and a.signed_in() and a.user() == pick and a.email() == "", "claim: signed in as %s with just a name (%s)" % [a.user(), r[2]])
+	check(not a.has_password and codes.size() == ncodes, "a name-only account: no password, no recovery code")
+	check(a.t > 0 and not a.dirty, "its first cloud save was made")
+	bad.claim(pick.to_upper())
+	r = await _done(bad)
+	check(not r[1] and str(r[2]).contains("taken"), "the name is taken, whatever the case: %s" % r[2])
+	b.login(pick, "nothing1")
+	r = await _done(b)
+	check(not r[1], "a name-only account can't log in on another device")
+	a.protect("short")
+	r = await _done(a)
+	check(not r[1] and not a.has_password, "a too-short password is refused: %s" % r[2])
+	a.protect("pick-pass1")
+	r = await _done(a)
+	check(r[1] and a.has_password and codes.size() == ncodes + 1 and _is_code(codes[-1]), "protect: password set and a recovery code shown (%s)" % r[2])
+	b.login(pick, "pick-pass1")
+	r = await _done(b)
+	check(r[1] and b.user() == pick and b.has_password, "the protected name logs in on device B")
+	a.delete_account("pick-pass1")
+	r = await _done(a)
+	check(r[1], "cleanup: the picked name is deleted")
 
 	# --- the web account: its blob loads here (web-only keys kept) and syncs back
 	a.logout()
