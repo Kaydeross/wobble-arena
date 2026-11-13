@@ -18,6 +18,22 @@ LANG_OF = {'TC': 'zh_TW', 'SC': 'zh_CN', 'JP': 'ja'}
 EXTRA = '，。！？：；、．・·…—–～〜「」『』（）【】《》〈〉“”‘’％＋－×÷＝＞＜≥≤→←↑↓★☆♥♡●○◆◇■□▲△▼▽♪＃＆＊／＠０１２３４５６７８９ー'
 src = sys.argv[1] if len(sys.argv) > 1 else '.'
 
+# Godot sizes a line by the tallest ascent/descent in a font and ALL its fallbacks, so the CJK fonts (taller than Fredoka) would make
+# every label taller, English included. The subsets therefore report Fredoka's vertical metrics (both fonts are 1000 units per em).
+_fred = TTFont(os.path.join(ROOT, 'godot', 'ui', 'fonts', 'Fredoka-Variable.ttf'))
+FRED = (_fred['hhea'].ascent, _fred['hhea'].descent, _fred['OS/2'].usWinAscent, _fred['OS/2'].usWinDescent)
+assert _fred['head'].unitsPerEm == 1000
+
+def match_metrics(font):
+    asc, desc, wasc, wdesc = FRED
+    assert font['head'].unitsPerEm == 1000
+    h, o = font['hhea'], font['OS/2']
+    h.ascent, h.descent, h.lineGap = asc, desc, 0
+    o.sTypoAscender, o.sTypoDescender, o.sTypoLineGap = asc, desc, 0
+    o.usWinAscent, o.usWinDescent = wasc, wdesc
+    o.fsSelection |= 128          # USE_TYPO_METRICS
+
+
 def catalog_chars(lang):
     chars = set(EXTRA)
     with open(os.path.join(ROOT, 'public', 'i18n-data.js'), encoding='utf8') as f:
@@ -44,6 +60,7 @@ for region, lang in LANG_OF.items():
         font = TTFont(path)
         opts.flavor = flavor
         s = subset.Subsetter(opts); s.populate(text=text); s.subset(font)
+        match_metrics(font)
         font.flavor = flavor
         font.save(out)
         print(f'{os.path.relpath(out, ROOT)}: {len(text)} chars, {os.path.getsize(out) // 1024} KB')
