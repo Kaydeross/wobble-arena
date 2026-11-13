@@ -59,7 +59,7 @@ var _heavy: Font
 
 func _init() -> void:
 	name = "Locker"
-	add_theme_constant_override("separation", 10)
+	add_theme_constant_override("separation", UiTheme.SP_3)
 	size_flags_vertical = SIZE_EXPAND_FILL
 
 # ============================== data per tab ==============================
@@ -214,11 +214,11 @@ func _ready() -> void:
 	var right := VBoxContainer.new()
 	right.name = "Right"
 	right.size_flags_horizontal = SIZE_EXPAND_FILL
-	right.add_theme_constant_override("separation", 8)
+	right.add_theme_constant_override("separation", UiTheme.SP_3)
 	body.add_child(right)
 	tab_row = HBoxContainer.new()
 	tab_row.name = "Tabs"
-	tab_row.add_theme_constant_override("separation", 6)
+	tab_row.add_theme_constant_override("separation", UiTheme.SP_3)
 	right.add_child(tab_row)
 	_build_grid(right)
 	_build_foot()
@@ -246,7 +246,10 @@ func _build_head() -> void:
 	title_l = _label("Walldrobe", 36, "TitleLabel")
 	title_l.name = "Title"
 	head.add_child(title_l)
-	sub_l = _label("", 18, "MutedLabel", true)
+	sub_l = _label("", 18, "MutedLabel")
+	sub_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	sub_l.max_lines_visible = 2
+	sub_l.custom_minimum_size = Vector2(60, 0)
 	sub_l.name = "Sub"
 	sub_l.size_flags_horizontal = SIZE_EXPAND_FILL
 	sub_l.size_flags_vertical = SIZE_SHRINK_CENTER
@@ -294,14 +297,20 @@ func _build_preview(body: Control) -> void:
 	preview_tr.texture = stage.get_texture()
 	preview_tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(preview_tr)
-	name_l = _label("", 22, "", true)
+	name_l = _label("", 22)
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_l.max_lines_visible = 2
+	name_l.custom_minimum_size = Vector2(40, 0)
 	name_l.name = "Name"
 	name_l.add_theme_font_override("font", _heavy)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(name_l)
-	info_l = _label("", 15, "MutedLabel", true)
+	info_l = _label("", 15, "MutedLabel")
 	info_l.name = "Info"
 	info_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART          # the description wraps (two lines) instead of ending in "..."
+	info_l.max_lines_visible = 3
+	info_l.custom_minimum_size = Vector2(40, 0)
 	v.add_child(info_l)
 
 func _build_grid(parent: Control) -> void:
@@ -340,7 +349,7 @@ func _build_grid(parent: Control) -> void:
 
 func _reflow() -> void:
 	var w := scroll.size.x - 16.0
-	grid.columns = clampi(int((w + GAP) / (CARD.x + GAP)), 1, maxi(1, grid.get_child_count()))
+	grid.columns = clampi(int((w + GAP) / (CARD.x + GAP)), 1, 12)   # by width only: a short tab (4 emotes, 3 classes) keeps the same card size as a long one
 	fade.queue_redraw()
 
 func _build_foot() -> void:
@@ -559,7 +568,10 @@ func _card(t: String, k: String) -> Button:
 	art.size_flags_vertical = SIZE_EXPAND_FILL
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(art)
-	var nl := _label(item_name(t, k), 18, "", true)
+	var nl := _label(item_name(t, k), 18)
+	nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART          # a long name takes two lines, never an ellipsis
+	nl.max_lines_visible = 2
+	nl.custom_minimum_size = Vector2(40, 0)
 	nl.name = "Name"
 	nl.add_theme_font_override("font", _heavy)
 	nl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

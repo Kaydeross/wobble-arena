@@ -40,9 +40,9 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	check(not main.news.visible, "the card stays shut when not auto-opened")
-	var b: Button = main.get_node("Safe/Col/Body/Home/More/News")
-	check((b.get_node("Stack/Big") as Label).text == "What's new", "button label")
-	check((b.get_node("Stack/Sub") as Label).text == "Patch notes", "button sub")
+	main.show_settings(true, "about")           # the patch notes live in Settings > About (the title keeps three cards)
+	var b: Button = main.settings.ui["news"]
+	check(b.text == "What's new", "button label")
 	b.pressed.emit()
 	await process_frame
 	check(main.news.visible, "the button opens the card")

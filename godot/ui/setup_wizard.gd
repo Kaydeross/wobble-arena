@@ -28,7 +28,7 @@ const BOT_MAX := 7
 const DIFFS := ["easy", "normal", "hard", "insane"]
 const GAP := 12
 const MAP_CARD := Vector2(220, 148)
-const MODE_CARD := Vector2(220, 108)
+const MODE_CARD := Vector2(220, 136)
 const CLASS_CARD := Vector2(172, 282)
 const PAD := 8                  ## room round a card grid inside its scroll area, so a card's ring / shadow is never clipped
 const TEXT_PATH := "res://data/extra/wizard.json"
@@ -49,7 +49,7 @@ var note_l: Label
 var pages: Array = []       ## the five page Controls (only `page` is visible)
 var back_b: Button
 var next_b: Button
-var step_bs: Array = []
+var dots: StepDots                ## the five progress dots in the footer
 var players_l: Label
 var players_hint: Label
 var stage: CharacterStage   ## the shared 3D stage for the character cards
@@ -315,7 +315,7 @@ func scroll_of(p: int) -> DragScroll:
 
 func _init() -> void:
 	name = "Wizard"
-	add_theme_constant_override("separation", 10)
+	add_theme_constant_override("separation", UiTheme.SP_3)
 	size_flags_vertical = SIZE_EXPAND_FILL
 
 func _ready() -> void:
@@ -336,7 +336,7 @@ func _ready() -> void:
 		var p := VBoxContainer.new()
 		p.name = PAGE_NAMES[k]
 		p.size_flags_vertical = SIZE_EXPAND_FILL
-		p.add_theme_constant_override("separation", 10)
+		p.add_theme_constant_override("separation", UiTheme.SP_3)
 		body.add_child(p)
 		pages.append(p)
 	_build_mode(pages[P_MODE])
@@ -409,7 +409,7 @@ func _build_head() -> void:
 func _build_foot() -> void:
 	var foot := HBoxContainer.new()
 	foot.name = "Foot"
-	foot.add_theme_constant_override("separation", 10)
+	foot.add_theme_constant_override("separation", UiTheme.SP_3)
 	add_child(foot)
 	back_b = Button.new()
 	back_b.name = "Back"
@@ -417,24 +417,11 @@ func _build_foot() -> void:
 	back_b.custom_minimum_size = Vector2(124, 60)
 	back_b.pressed.connect(back)
 	foot.add_child(back_b)
-	var steps := HBoxContainer.new()
-	steps.name = "Steps"
-	steps.size_flags_horizontal = SIZE_EXPAND_FILL
-	steps.alignment = BoxContainer.ALIGNMENT_CENTER
-	steps.add_theme_constant_override("separation", 5)
-	foot.add_child(steps)
-	for k in SHORT.size():
-		var b := Button.new()
-		b.name = "S%d" % (k + 1)
-		b.text = "%d %s" % [k + 1, tr(SHORT[k])]
-		b.theme_type_variation = &"TabButton"
-		b.toggle_mode = true
-		b.focus_mode = Control.FOCUS_NONE
-		b.custom_minimum_size = Vector2(0, 60)
-		b.add_theme_font_size_override("font_size", 16)
-		b.pressed.connect(go.bind(k))
-		steps.add_child(b)
-		step_bs.append(b)
+	dots = StepDots.new()               # progress only (Back / Next move; a summary row on the last page jumps back): 3 buttons in the bar
+	dots.name = "Steps"
+	dots.n = SHORT.size()
+	dots.size_flags_horizontal = SIZE_EXPAND_FILL
+	foot.add_child(dots)
 	next_b = Button.new()
 	next_b.name = "Next"
 	next_b.text = "Next"
@@ -468,7 +455,7 @@ func _grid_page(p: Control, k: int, card_w: float) -> GridContainer:
 	var body := VBoxContainer.new()
 	body.name = "Body"
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	body.add_theme_constant_override("separation", 8)
+	body.add_theme_constant_override("separation", UiTheme.SP_3)
 	pad.add_child(body)
 	var fade := EdgeFade.new(sc)
 	fade.name = "Fade"
@@ -503,7 +490,7 @@ func _section_head(text: String, col: Color) -> Control:
 	var h := HBoxContainer.new()
 	h.name = "Head_" + text
 	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	h.add_theme_constant_override("separation", 10)
+	h.add_theme_constant_override("separation", UiTheme.SP_3)
 	var dot := ColorRect.new()
 	dot.color = col
 	dot.custom_minimum_size = Vector2(6, 20)
@@ -545,6 +532,7 @@ func _reflow(k: int) -> void:
 ## A selectable card: optional art on top (or a small icon beside the title), a heavy title, a muted line or two, and a
 ## tick in the corner while it is the pick.
 func _card(title: String, sub: String, size: Vector2, art: Control = null, icon: Control = null) -> Button:
+	if art == null: sub = sub.replace("\n", " · ")     # one flowing description (a hard line break made a 4th line in French)
 	var b := Button.new()
 	b.toggle_mode = true
 	b.custom_minimum_size = size
@@ -593,7 +581,7 @@ func _card(title: String, sub: String, size: Vector2, art: Control = null, icon:
 		s.clip_text = true
 		if art == null:   # text-only cards: two lines of description
 			s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			s.max_lines_visible = 2
+			s.max_lines_visible = 3
 			s.size_flags_vertical = SIZE_EXPAND_FILL
 		v.add_child(s)
 	t.resized.connect(_fit_title.bind(t, 21 if icon else 22))
@@ -613,13 +601,19 @@ func _fit_title(l: Label, base: int) -> void:
 	var fs := base
 	while fs > 15 and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x:
 		fs -= 1
+	if f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x and l.text.contains(" "):
+		fs = 17                     # still too long (French): two lines at a slightly smaller size, never an ellipsis
+		if l.autowrap_mode == TextServer.AUTOWRAP_OFF:
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.max_lines_visible = 2
+			l.clip_text = false
 	if l.get_theme_font_size("font_size") != fs: l.add_theme_font_size_override("font_size", fs)
 
 ## A row of pill toggles (one ButtonGroup) after a muted label.
 func _pills(parent: Control, row_name: String, label: String, keys: Array, names: Array, store: Dictionary, on_pick: Callable, min_w := 0.0) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.name = row_name
-	row.add_theme_constant_override("separation", 8)
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
 	parent.add_child(row)
 	var l := _label(label, 18, "MutedLabel")
 	l.custom_minimum_size = Vector2(124, 0)
@@ -757,6 +751,8 @@ func _stat_grid(id: String) -> GridContainer:
 		var l := _label(str(st[0]), 15, "MutedLabel")
 		l.name = "Label"
 		l.clip_text = false
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART      # a long name ("Résistance au recul") wraps instead of running into its neighbour
+		l.custom_minimum_size.x = 40
 		cell.add_child(l)
 		var bar := StatBar.new(float(st[1]), float(st[2]))
 		bar.name = "Bar"
@@ -813,8 +809,8 @@ func _refresh() -> void:
 	note_l.tooltip_text = n
 	back_b.text = "Back"
 	next_b.text = "Start" if page == pages.size() - 1 else "Next"
-	for k in step_bs.size():
-		(step_bs[k] as Button).set_pressed_no_signal(k == page)
+	dots.page = page
+	dots.tooltip_text = tr(SHORT[page])
 	_select(_map_bs, map_id)
 	_select(_mode_bs, mode_id)
 	if detail_l: detail_l.text = tr("%s: %s") % [tr(mode_name(mode_id)), tr(mode_long(mode_id))]
@@ -954,6 +950,32 @@ class StatBar extends Control:
 		draw_rect(Rect2(size.x * base - 1.0, -1.0, 2.0, size.y + 2.0), Color(1, 1, 1, 0.85))
 
 ## The corner tick of the picked card.
+## Five dots, the current page's one a longer gold pill: where you are in the wizard, nothing to tap.
+class StepDots extends Control:
+	var n := 5
+	var page := 0:
+		set(v):
+			page = v
+			queue_redraw()
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		custom_minimum_size = Vector2(120, 20)
+
+	func _draw() -> void:
+		var w := 12.0
+		var gap := 12.0
+		var cur := 40.0
+		var total := (n - 1) * (w + gap) + cur
+		var x := (size.x - total) / 2.0
+		var y := size.y / 2.0
+		for k in n:
+			var cw := cur if k == page else w
+			var r := Rect2(x, y - w / 2.0, cw, w)
+			var col := UiTheme.ACCENT if k == page else (Color(1, 1, 1, 0.55) if k < page else Color(1, 1, 1, 0.2))
+			draw_style_box(UiTheme.box(col, 6, Color(0, 0, 0, 0), 0, 0), r)
+			x += cw + gap
+
 class Tick extends Control:
 	const SIZE := 24.0
 

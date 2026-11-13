@@ -43,6 +43,9 @@ func _settings() -> Node:
 	return root.get_node("Settings")
 
 func _start() -> void:
+	if "--phone" in OS.get_cmdline_user_args():          # like a touch device: the 44 pt UI scale and the touch layer (docs/UI_REVIEW.md)
+		_settings().set_value("ui_scale", "normal")
+		_settings().set_value("touch_mode", "on")
 	if shot == "goals":
 		var sv: Node = root.get_node("Save")
 		sv.begin_match()
@@ -78,6 +81,13 @@ func _start() -> void:
 		if pick != "" and m.locker.cards.has(pick): m.locker._select_card(pick)
 		if shot == "shop-confirm": m.locker.act()
 		frames = 150
+		process_frame.connect(_wait)
+		return
+	if shot == "news":                                    # the What's new card over the title
+		var m: Node = load("res://scenes/main.tscn").instantiate()
+		root.add_child(m)
+		m.open_news()
+		frames = 40
 		process_frame.connect(_wait)
 		return
 	if shot == "soak":                       # a real 20 s soak run (the device run is 900 s), then its summary card
@@ -124,7 +134,8 @@ func _start() -> void:
 		frames = 40
 		process_frame.connect(_wait)
 		return
-	var touch_shot := shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel" or shot == "recover"
+	var phone: bool = "--phone" in OS.get_cmdline_user_args()
+	var touch_shot := phone or shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel" or shot == "recover" or shot.begins_with("hud-")
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
 	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
@@ -139,6 +150,10 @@ func _start() -> void:
 		world.dyn_choice = "off"
 	if shot == "teams":                                  # Team Deathmatch: the TeamBoard (colour chips, YOU tag)
 		world.mode_id = "tdm"
+		world.dyn_choice = "off"
+	if shot.begins_with("hud-"):                         # touch HUD per mode: hud-classic / hud-tdm / hud-chaos / hud-pillars
+		world.mode_id = shot.substr(4)
+		if world.mode_id == "pillars": world.map_id = "pillars"
 		world.dyn_choice = "off"
 	if shot.begins_with("modes2-"):                      # Pillars / Moon Drift / Practice Range
 		var mm: Array = {"modes2-pillars": ["pillars", "pillars"], "modes2-lowg": ["lowg", "craterdome"], "modes2-practice": ["practice", "practice"]}[shot]
@@ -263,8 +278,8 @@ func _frame() -> void:
 	if i == 2:
 		sim.combat.pickup(p, "katana")
 		sim.combat.pickup(p, "smg")      # the last pickup is the active slot
-		if shot == "recover": sim.combat.pickup(p, "rocket")
-		if not shot.begins_with("touch"): world.hud.last_touch = false
+		if shot == "recover" or shot.begins_with("hud-"): sim.combat.pickup(p, "rocket")
+		if not shot.begins_with("touch") and not shot.begins_with("hud-") and shot != "recover": world.hud.last_touch = false
 	var go := Vector2.ZERO
 	var fire := false
 	var tg := _nearest(p)
@@ -282,7 +297,10 @@ func _frame() -> void:
 		world._toast("K.O.!")
 	if i == 330 and not p.dead:
 		p.hp = sim.combat.max_hp(p) * 0.22   # show the damage trail and the low-health pulse
-	if shot.begins_with("touch") and i == 340:
+	if shot.begins_with("hud-") and i == 346:       # a second toast under the K.O. one
+		world._toast("Got Rocket Launcher")
+	if shot == "recover" and i == 346: world._toast("Boing burst!")
+	if (shot.begins_with("touch") or shot.begins_with("hud-")) and i == 340:
 		var vs: Vector2 = world.touch.get_viewport_rect().size
 		var sx := vs.x * (0.84 if shot == "touch-lefty" else 0.16)
 		_touch(7, Vector2(sx, vs.y * 0.62), true)
@@ -290,12 +308,12 @@ func _frame() -> void:
 		e.index = 7; e.position = Vector2(sx + 40, vs.y * 0.62 - 50)
 		world.touch._input(e)
 		_touch(8, world.touch.button_rect(world.touch.button("fire"))[0], true)
-	if shot == "recover" and i >= 300 and i < 344 and p.weapon != "rocket":   # rocket in hand (no dash gear)
+	if (shot == "recover" or shot.begins_with("hud-")) and i >= 300 and i < 344 and p.weapon != "rocket":   # rocket in hand (no dash gear)
 		for k in 3:
 			if p.slots[k] != null and p.slots[k]["key"] == "rocket": sim.combat.equip_slot(p, k)
-	if shot == "recover" and i == 334 and not p.dead:   # knocked up and away, then the context button (RECOVER)
+	if (shot == "recover" or shot.begins_with("hud-")) and i == 334 and not p.dead:   # knocked up and away, then the context button (RECOVER)
 		p.phys.vy = 11.0; p.phys.vx = 9.0; p.phys.grounded = false; p.last_hit_time = sim.combat.time
-	if shot == "recover" and i == 344:
+	if (shot == "recover" or shot.begins_with("hud-")) and i == 344:
 		_touch(9, world.touch.button_rect(world.touch.button("context"))[0], true)
 	if shot == "emote-wheel" and i == 300:
 		var sv: Node = root.get_node("Save")

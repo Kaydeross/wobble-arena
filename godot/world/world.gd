@@ -630,19 +630,19 @@ func _update_mode_ui(delta: float) -> void:
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
-	var top := float(ins[1]) + 44.0                  # under the crate toast (hud.gd keeps that at the very top)
+	var top := float(ins[1]) + MatchHud.TOP_STACK     # under the toast (hud.gd keeps that at the very top), with a gap
 	_team_board.visible = board
 	if board:
 		var rules := sim.combat.rules
 		_team_board.set_data(rules.team_ko(0), rules.team_ko(1), maxi(sim.player.team, 0), rules.limit)
 		_team_board.position = Vector2(vs.x / 2.0 - _team_board.size.x / 2.0, top + 4.0)
-		top += _team_board.size.y + 4.0
+		top += _team_board.size.y + 10.0
 	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
 	if spectating != null:                      # spectator line: who, how many left, how to switch
 		_mode_l.text = tr("Spectating %s · %d left · tap to switch") % [spectating.name, sim.combat.rules.survivors().size()]
 		_mode_l.visible = true
 		_mode_l.reset_size()
-		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + 44.0)
+		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + MatchHud.TOP_STACK)
 	if _banner.visible:
 		var ct := sim.combat.rules.chaos
 		if not ct.is_empty() and float(ct.get("warn", 0.0)) > 0.0:   # the Chaos countdown ticks in the banner
@@ -812,8 +812,25 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	$UI.add_child(p)
 	$UI.move_child(p, pause_menu.get_index())
 	_results = p
+	_dim_behind(p)
 	touch.release_all()
 	input.release_mouse()
+
+## A dimmed backdrop right under the results panel: the HUD and touch buttons behind it stay as quiet context, never a second
+## set of controls competing with Play again / Quit; it goes away with the panel. The HUD toast is cleared (see MatchHud.toast).
+func _dim_behind(p: Control) -> void:
+	var dim := ColorRect.new()
+	dim.name = "ResultsDim"
+	dim.color = Color(0.02, 0.06, 0.08, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	$UI.add_child(dim)
+	$UI.move_child(dim, p.get_index())
+	p.tree_exited.connect(dim.queue_free)
+	hud.clear_toast()
+
+## True while the end-of-match panel is up.
+func results_open() -> bool:
+	return _results != null
 
 ## The shrinking floor: the map's first box is drawn by its own mesh, scaled to ModeRules.shrink every frame.
 func _build_shrink_view() -> void:
@@ -953,6 +970,7 @@ func _show_results(winner: String) -> void:
 	$UI.add_child(p)
 	$UI.move_child(p, pause_menu.get_index())   # under the pause menu, over the HUD and touch layer
 	_results = p
+	_dim_behind(p)
 
 func _on_net_votes(list: Array, total: int) -> void:
 	if _results: (_results.find_child("Votes", true, false) as Label).text = tr("Rematch votes: %d / %d") % [list.size(), total]

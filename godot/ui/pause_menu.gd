@@ -49,7 +49,7 @@ func _ready() -> void:
 	cc.add_child(card)
 	box = VBoxContainer.new()
 	box.name = "Box"
-	box.add_theme_constant_override("separation", 10)
+	box.add_theme_constant_override("separation", UiTheme.SP_3)
 	card.add_child(box)
 	var t := Label.new()
 	t.name = "Label"
