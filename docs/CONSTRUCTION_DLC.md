@@ -97,3 +97,9 @@ sets skin `builder`, a hard-hat variant and a trade name (Dazza, Bluey, Sparky, 
 built by `WeaponModels.build` from LowPoly primitives; `KEYS` still mirrors shared/weapons.json.
 
 Screenshots: `godot --path godot --resolution 1280x720 --script res://tests/site_shots.gd -- --no-save --out DIR [--seeds 1,2,3] [--what sites|tools|ppe]`.
+## The DLC front end (Unit C: unlock, hub, title banner)
+
+- **Entry**: a wide hazard-tape banner on the title (below Walldrobe / Shop / Goals, drawn in code, `dlc/construction/construction_style.gd`) opens the hub (`construction_hub.gd`). Construction is no longer a game type card in the setup wizard; the mode id and `ModeRules.OFFLINE_ONLY` are unchanged.
+- **Unlock** (`dlc_unlock.gd`, state in `dlc_save.gd`): 1500 coins (`DlcUnlock.PRICE`) or the developer code. Save blob key `dlc` = `{owned, arcade_best, arcade_clears, bonus}`, written only once the DLC is touched (old saves load as locked; the web game ignores the key). The code is never stored or logged: only `sha256("wobblers-arena-dlc-v1:" + code)` is compared with `DEV_HASH`. A right code unlocks the DLC, every outfit, emote and class (secret ones too), pays 5000 coins once and adds `dev` to the wallet codes; three wrong tries start a 1.5 s cooldown. The code field is on the hub (Enter code) and in Settings > About (tap the version line 7 times).
+- **Hub**: Classic (pre-match card: bots 1..7 default 7, bot skill, site seed Random / Re-roll, Start) and Arcade ("Coming soon" until `res://dlc/construction/arcade_manager.gd` exists; the hub emits `arcade_requested` for the arcade manager to hook). Start writes the Settings keys `mode = construction`, `bots`, `difficulty`, `offline_map` (`sitegen` when that map is registered, else `siteyard`) and `site_seed` (0 = a new random site every match), then calls `main.play_offline({...})`.
+- Tests: `npm run test:godot-dlc-ui` (`godot/tests/dlc_ui_test.gd`), plus the `dlc-*` screens in `ui_layout_test.gd`.
