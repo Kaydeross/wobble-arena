@@ -31,6 +31,7 @@ func _run() -> void:
 	for id in content.map_ids():
 		var m: Dictionary = content.get_map(id)
 		if PillarsMap.IDS.has(id): m = PillarsMap.complete(m)     # its boxes come from PillarsMap, not the export
+		if id == SiteMap.ID: m = SiteMap.generate(SiteMap.current_seed)   # Construction DLC: generated at build time, like maps_test does
 		var node := MapBuilder.build(id)
 		var want: int = m["geometry"]["boxes"].size()
 		check(node.solids.size() == want, "%s solids %d != boxes %d" % [id, node.solids.size(), want])
