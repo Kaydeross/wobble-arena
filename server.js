@@ -68,7 +68,16 @@ function serveStatic(req, res, full) {
     });
   });
 }
-const ipOf = req => (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?').toString().split(',')[0].trim();
+/* The client address used for per-IP limits. Proxy headers are client-controlled unless a proxy you run sets them, so they are
+   ignored by default (the socket address is used). TRUST_PROXY=1 (or true/yes) trusts ONE proxy hop: the LAST x-forwarded-for entry,
+   which is the one that proxy appended. TRUST_PROXY=cloudflare prefers cf-connecting-ip (Cloudflare Tunnel / proxy), else the same. */
+const trustMode = () => { const v = String(process.env.TRUST_PROXY || '').toLowerCase(); return v === 'cloudflare' ? 'cf' : (v === '1' || v === 'true' || v === 'yes') ? 'xff' : ''; };
+const ipOf = req => {
+  const mode = trustMode(), h = req.headers;
+  if (mode === 'cf' && h['cf-connecting-ip']) return h['cf-connecting-ip'].toString().trim();
+  if (mode && h['x-forwarded-for']) { const l = h['x-forwarded-for'].toString().split(',').map(x => x.trim()).filter(Boolean); if (l.length) return l[l.length - 1]; }
+  return req.socket.remoteAddress || '?';
+};
 const server = http.createServer((req, res) => {
   if (accounts.handle(req, res, ipOf(req))) return;
   let url = '/';
@@ -191,7 +200,7 @@ const handlers = {
 };
 
 wss.on('connection', (ws, req) => {
-  const ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress || '?').toString().split(',')[0].trim();
+  const ip = ipOf(req);
   if (totalConns >= LIMITS.conns || (perIp.get(ip) || 0) >= LIMITS.perIp) { ws.close(1013, 'busy'); return; }
   totalConns++; perIp.set(ip, (perIp.get(ip) || 0) + 1);
   ws.user = null; ws.room = null; ws.role = null; ws.cid = 0; ws.alive = true; ws.ip = ip; ws.tokens = LIMITS.rate; ws.tokT = Date.now(); ws.bad = 0;
@@ -226,4 +235,4 @@ function start(port) {
 }
 function stop() { clearInterval(beat); clearInterval(sweep); if (accounts.store.flush) accounts.store.flush(); for (const ws of wss.clients) ws.terminate(); return new Promise(res => server.close(() => res())); }
 if (require.main === module) { start(); process.on('SIGTERM', () => stop().then(() => process.exit(0))); }
-module.exports = { start, stop, rooms, LIMITS, server, config, accounts };
+module.exports = { start, stop, rooms, LIMITS, server, config, accounts, ipOf };

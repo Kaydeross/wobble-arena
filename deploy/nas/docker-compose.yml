@@ -1,0 +1,48 @@
+# Wobblers Arena server on a personal NAS (Synology Container Manager / QNAP Container Station / TrueNAS / any Docker host).
+# Runbook: docs/SERVER_PLAN.md.   Usage (from the repo root):
+#   cp deploy/nas/.env.example deploy/nas/.env   # then fill in the placeholders
+#   docker compose -f deploy/nas/docker-compose.yml --env-file deploy/nas/.env up -d --build
+# Add --profile tunnel to also run the Cloudflare Tunnel connector (needs CLOUDFLARE_TUNNEL_TOKEN in .env).
+services:
+  wobble:
+    build:
+      context: ../..            # the repo root, uses the existing Dockerfile
+    image: wobble-arena-server:local
+    container_name: wobble
+    restart: unless-stopped
+    environment:
+      PORT: "3000"
+      DATA_DIR: /data
+      REQUIRE_LOGIN: ${REQUIRE_LOGIN:-1}
+      # The tunnel sits in front of the server and sets cf-connecting-ip, so trust it for per-IP limits.
+      # Use TRUST_PROXY=0 (or unset) when the port is exposed directly with no proxy you control.
+      TRUST_PROXY: ${TRUST_PROXY:-cloudflare}
+      # Optional: keep accounts in Upstash instead of the volume (leave both unset to use DATA_DIR/db.json).
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-}
+    volumes:
+      - wobble-data:/data       # db.json lives here; back it up (docs/SERVER_PLAN.md)
+    ports:
+      # LAN / local testing only. With the tunnel you can drop this and nothing is exposed on the host.
+      - "${WOBBLE_HOST_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  cloudflared:
+    profiles: ["tunnel"]
+    image: cloudflare/cloudflared:latest
+    container_name: wobble-cloudflared
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?set CLOUDFLARE_TUNNEL_TOKEN in deploy/nas/.env}
+    depends_on:
+      wobble:
+        condition: service_healthy
+
+volumes:
+  wobble-data:
