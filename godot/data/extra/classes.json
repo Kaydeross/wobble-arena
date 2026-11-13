@@ -1,5 +1,5 @@
 {
- "_note": "Godot-only classes (not in shared/classes.json, so the web game and the JS references never see them). Same multipliers as shared/classes.json, plus: price (coins, bought in the Locker Class tab) or unlock {stat, n} (a SaveProfile stat that unlocks it for free; hidden: true shows it as a ??? silhouette until then). Merged by ExtraClasses.merge (logic/extra_classes.gd).",
+ "_note": "Godot-only classes (not in shared/classes.json, so the web game and the JS references never see them). Same multipliers as shared/classes.json, plus: price (coins, bought in the Shop Class tab) or unlock {stat, n} (a SaveProfile stat that unlocks it for free; hidden: true shows it as a ??? silhouette until then). Merged by ExtraClasses.merge (logic/extra_classes.gd).",
  "tank": {
   "name": "Bulwark",
   "icon": "",

@@ -101,7 +101,7 @@ Goal: one map, one mode, on your iPhone, in a room with web players.
 ### Phase 3 — Interface and meta (5–7 weeks, overlaps Phase 2) → TestFlight build 5
 - Godot `Theme` (your Stage 3 spec): main menu, play setup, lobby, room browser, pause/controls, results; button micro-interactions; safe areas on every aspect ratio.
 - HUD (your Stage 4 spec): hotbar with keybind badges, KO/timer pill, health bar with damage trail, radar, nameplates, touch buttons with icons and left-handed/size/opacity options.
-- Locker, shop, class picker, emotes; accounts and cloud save against the existing `/api/*`; kill-cam.
+- Walldrobe (what you own), Shop (all buying, incl. classes), Goals (daily / weekly coin goals, milestones, play streak; Godot-only `quests` save key), class picker, emotes; accounts and cloud save against the existing `/api/*`; kill-cam.
 - **Exit:** a new player can install, pick a class, play offline, log in, and join a friend's room with no dead ends.
 
 ### Phase 4 — Graphics overhaul, full (3–4 weeks, after gameplay is stable)

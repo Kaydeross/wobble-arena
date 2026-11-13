@@ -8,8 +8,9 @@ extends SceneTree
 ## ("…"). Then drives the wizard (step names, navigation, saved choices, arena moved by a game type, team bot counts),
 ## the card grid scrolling (mouse drag and touch drag scroll + fling and never pick a card, a tap picks one, the
 ## selected card is scrolled into view) and the character stage (one SubViewport, renders only on its page).
-## The Locker (5 tabs) and the Shop (2 tabs) get the same layout checks (ui/locker.gd: header, preview, tabs, card
-## grid, footer), and the title's Locker / Shop row.
+## The Walldrobe (5 tabs) and the Shop (3 tabs) get the same layout checks (ui/locker.gd: header, preview, tabs, card
+## grid, footer), and the title's Walldrobe / Shop / Goals row. The Goals screen (ui/goals_screen.gd) is checked like a
+## Settings page (header, rows reachable, buttons 44 pt).
 ## The Account sheet (ui/account_sheet.gd, from the title chip): every page (guest, sign up, log in, forgot password,
 ## recovery code, signed in, change password, delete, conflict) inside the safe area, nothing overlapping, touch
 ## targets at least 44 pt tall; _logic checks the chip opens it and the delete button waits for the typed word.
@@ -43,7 +44,7 @@ const CASES := [
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
 const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
 	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
-	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1",
+	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1", "s2", "goals",
 	"a-guest", "a-signup", "a-login", "a-reset", "a-code", "a-signed", "a-password", "a-delete", "a-conflict"]
 const SIGNED := ["a-signed", "a-password", "a-delete", "a-conflict"]
 const MIN_TOUCH := 44.0      ## pt: Apple's minimum touch target
@@ -54,7 +55,8 @@ var TOUCH_PX := 60.0
 var min_pt := {}
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
-const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop"]
+const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop",
+	"Safe/Col/Body/Home/More/Goals"]
 const OB := "Safe/Col/Body/Online/Box/"
 ## the online panel (back, name, the room list, join with a code, host, account, status, roster): must not overlap
 const ONLINE := [OB + "Head/Back", OB + "Head/Title", OB + "Head/Name", OB + "Main/Rooms/Head/Refresh", OB + "Main/Rooms/Scroll",
@@ -89,7 +91,7 @@ const W := "Safe/Wizard/"
 const WFRAME := [W + "Head/Title", W + "Head/Step", W + "Pages", W + "Foot/Back", W + "Foot/Steps", W + "Foot/Next"]
 
 const L := "Safe/Locker/"
-## Locker / Shop frame (must not overlap each other); the tab buttons are added per mode
+## Walldrobe / Shop frame (must not overlap each other); the tab buttons are added per mode (the coins: Shop only)
 const LFRAME := [L + "Head/Title", L + "Head/Sub", L + "Head/Coins", L + "Head/Switch", L + "Body/Preview", L + "Body/Right/Tabs",
 	L + "Body/Right/Frame", L + "Foot/Back", L + "Foot/Action"]
 
@@ -170,6 +172,9 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 		main.show_settings(true, "controls")
 		main.settings.open_help()
 		over = main.settings.help; over_col = main.settings.help.col
+	elif scr == "goals":
+		main.open_goals()
+		over = main.goals; over_col = main.goals.col; over_scroll = main.goals.scroll
 	elif scr.begins_with("intro"):
 		main.intro.open()
 		main.intro.go(int(scr.substr(5)))
@@ -245,10 +250,12 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 			if (c is Button or c is LineEdit) and win.x > win.y:   # (portrait shows the landscape canvas scaled down)
 				_tap(c, tag, p)
 	elif lock:
-		inside = LFRAME.duplicate()
+		var frame: Array = LFRAME.filter(func(p: String) -> bool: return main.locker.shop or not p.ends_with("/Coins"))
+		check(main.locker.coins_chip.visible == main.locker.shop, "%s coins only in the Shop" % tag)
+		inside = frame.duplicate()
 		for b in main.locker.tab_row.get_children(): inside.append(L + "Body/Right/Tabs/" + b.name)
-		groups.append(LFRAME)
-		groups.append(inside.slice(LFRAME.size()))
+		groups.append(frame)
+		groups.append(inside.slice(frame.size()))
 	elif wiz:
 		inside = WFRAME.duplicate()
 		for b in main.wizard.step_bs: inside.append(W + "Foot/Steps/" + b.name)
@@ -291,7 +298,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal") -> void:
 	if lock:
 		_not_cut(main.locker.get_node("Head"), tag)
 		_not_cut(main.locker.get_node("Foot"), tag)
-		check(main.locker.title_l.text == ("Shop" if scr.begins_with("s") else "Locker"), "%s title says %s" % [tag, main.locker.title_l.text])
+		check(main.locker.title_l.text == ("Shop" if scr.begins_with("s") else "Walldrobe"), "%s title says %s" % [tag, main.locker.title_l.text])
 		for b: Button in main.locker.tab_row.get_children():
 			check(b.size.x + 0.5 >= b.get_minimum_size().x, "%s tab '%s' squeezed" % [tag, b.text])
 		check(main.locker.preview_tr.get_global_rect().size.y >= 110.0, "%s preview big enough (%s)" % [tag, main.locker.preview_tr.get_global_rect().size])
@@ -620,7 +627,7 @@ func _stage(main: Control) -> void:
 	for id: String in root.get_node("Content").classes:
 		check(w._class_art.has(id) and w._class_bs[id].find_children("Render", "TextureRect", true, false).size() == 1, "card %s has a render" % id)
 	check(w._class_art[w.cls].texture == w.stage.get_texture(), "the selected card shows the live stage")
-	check(w._class_bs["wobbler"].visible and not w._class_bs["tank"].visible and not w._class_bs["ghost"].visible, "only classes you own get a card (Locker sells / unlocks the rest)")
+	check(w._class_bs["wobbler"].visible and not w._class_bs["tank"].visible and not w._class_bs["ghost"].visible, "only classes you own get a card (the Shop sells, playing unlocks the rest)")
 	w.set_class("kid")
 	check(w.stage.current == "kid" and w._class_art["kid"].texture == w.stage.get_texture(), "picking a character swaps the stage model")
 	w.go(4)

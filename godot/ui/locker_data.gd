@@ -1,6 +1,6 @@
 class_name LockerData
 extends RefCounted
-## The cosmetics catalogue for the Locker, the Shop and the emote wheel: the web game's SKIN_SHOP, CODE_SKINS,
+## The cosmetics catalogue for the Walldrobe, the Shop and the emote wheel: the web game's SKIN_SHOP, CODE_SKINS,
 ## FREE_SKINS, EMOTES, HAT_LABEL / HAT_ICON and the rarities (public/index.html ~4325, ~4775, ~4215, ~4936), copied
 ## into res://data/extra/locker.json (Godot-only data; tests/save_test.gd checks the prices still match the web game).
 ## Outfit looks (colours, names) come from cosmetics.json (shared/), hats from WobblerLooks.HATS.

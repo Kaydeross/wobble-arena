@@ -1,7 +1,7 @@
 class_name EmoteIcon
 extends Control
 ## A vector icon per emote (no image files, no emoji font): a rarity-coloured disc with a white glyph drawn from
-## lines, arcs and polygons. Used by the Locker / Shop emote cards and the in-match emote wheel (EmoteIcon.paint).
+## lines, arcs and polygons. Used by the Walldrobe / Shop emote cards and the in-match emote wheel (EmoteIcon.paint).
 ## Unknown ids get a generic star, so a new emote never shows a blank card.
 
 var id := ""
