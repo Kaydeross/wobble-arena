@@ -229,17 +229,22 @@ func load_map(id: String) -> void:
 	else:
 		var mode := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
 		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
-		# Destructible environment mode (docs/DESTRUCTIBLE.md): OFFLINE only, opt-in, never on the Practice Range, the
-		# Sandbox, Construction or the Arcade. Off means no solids, no meshes and no code path at all.
-		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode):
-			var want: bool = bool(Settings.get_value("destructible", false)) if destruct_choice == "" else destruct_choice == "on"
-			if want and Destruct.has_arena(id):      # only arenas with authored props: everywhere else the mode is a no-op
-				sim.destructible = true
-				sim.view_parent = map_node   # prop meshes are new children of the built map, never a rebuild of it
 		sim.dyn_choice = "off" if build_mode else (dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random")))
 		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
 			sim.dyn_choice = "random"            # Chaos: a random floor unless the player picked a moving one
 		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
+		# Destructible environment mode (docs/DESTRUCTIBLE.md): OFFLINE only, opt-in, never on the Practice Range, the
+		# Sandbox, Construction or the Arcade. Off means no analysis, no solids, no meshes, no RNG draws. On every real
+		# arena the breakables are picked from the map's own cover boxes, seeded per match (same seed = same set).
+		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode):
+			var want: bool = bool(Settings.get_value("destructible", false)) if destruct_choice == "" else destruct_choice == "on"
+			if want and Destruct.supported(id, map_node.map):
+				sim.destruct_seed = Dynamics.hash32(rng_seed, 17, 0, 0) if rng_seed > 0 else randi()
+				var break_plan := Destruct.plan_for(id, map_node.map, sim.destruct_seed, map_node.box_styles)
+				if not (break_plan.get("props", []) as Array).is_empty():
+					sim.destructible = true
+					sim.destruct_plan = break_plan
+					sim.view_parent = map_node   # the component meshes replace the merged map boxes at setup
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
@@ -448,7 +453,9 @@ func _drain_events() -> void:
 			"toast":
 				_toast(str(e["text"]))
 			"break":
-				_on_break(e)             # destructible props (docs/DESTRUCTIBLE.md): pooled debris + dust + a short shake
+				_on_break(e)             # destructible props: pooled debris + dust + a short shake
+			"prop_respawn":
+				_on_prop_respawn(e)      # a broken component materialised again: a small dust puff at its base
 			"match_end":
 				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
@@ -497,6 +504,13 @@ func _on_break(e: Dictionary) -> void:
 		if fx.lv >= 1:
 			fx.ring(base + Vector3(0, -0.01, 0), trim, maxf(w, float(e.get("d", 1.4))) * 0.9, 0.3, 0.5)
 		add_shake(clampf(0.11 - at.distance_to(player_pos()) * 0.006, 0.03, 0.1))
+
+## A breakable component respawned (docs/DESTRUCTIBLE.md): the mesh fades in itself (Destruct), this only adds the
+## cheap dust at its base so it does not pop silently. Presentation only, from the existing pooled particles.
+func _on_prop_respawn(e: Dictionary) -> void:
+	if fx:
+		var base := Vector3(float(e["x"]), float(e["y"]) + 0.08, float(e["z"]))
+		fx.dust(base, 1, 2.2)
 
 func _on_ko(e: Dictionary) -> void:
 	var k: FighterState = e.get("killer")
