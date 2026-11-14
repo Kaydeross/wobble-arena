@@ -7,7 +7,7 @@ _Runbook for the owner. Nothing here is done for you: you run the NAS, own the d
 One Node process (`server.js`, image from the repo `Dockerfile`, `node:22-alpine`):
 
 - **Room relay** over WebSocket `/ws` (rooms, host migration, message relay; host-authoritative game, see `docs/PROTOCOL.md`).
-- **Account REST API** on the same port (`/api/...`: claim a name, sign-up, login, cloud save), handled by `accounts.js`.
+- **Account REST API** on the same port (`/api/...`: claim a name, sign-up, login, cloud save, leaderboard), handled by `accounts.js`.
 - **Static web game** from `public/` and **`/health`** for monitoring.
 - Bandwidth is small (8 players x 30 Hz JSON per room). A NAS CPU is plenty.
 
@@ -71,6 +71,7 @@ What you need to supply: **a domain** (about US$10/yr, on Cloudflare DNS) and **
 
 ## 7. Operations
 
+- **Leaderboard storage:** `GET/POST /api/rank` (K.O.s / wins / Arcade boards) lives in the same store as accounts: each account record keeps its lifetime bests (`rk`, only ever raised) and each board has one `rank:<board>` key holding its top 100 entries. There is no separate service or extra env var; with the file store it is part of `db.json` (so the nightly copy backs it up), with Upstash it is in the same database. Reads are one store call; a submit is a few small get/set calls. See `docs/PROTOCOL.md` 4.1.
 - **Health check:** `GET /health` returns `{"ok":true,"rooms":N,"players":N,"accounts":"file","saved":false}` (`accounts` is `upstash` when that is used). The compose healthcheck uses it, and `restart: unless-stopped` brings the container back after crashes and reboots.
 - **Uptime monitor:** UptimeRobot (free) or Better Stack: HTTPS check on `https://play.<your-domain>/health` every 5 min, alert to email/phone. Add a keyword check for `"ok":true`. Optionally Uptime Kuma on the NAS for LAN-side checks (it cannot see tunnel or ISP outages from inside).
 - **Backups of `db.json`:** it holds password hashes and cloud saves. Nightly copy off the volume, e.g. a Synology Task Scheduler / cron job:

@@ -38,6 +38,8 @@ const CRATES := ["slow", "normal", "fast", "chaos"]
 var pub := false
 var arcade := false              ## an Arcade co-op room (options `arcade: true`): app-only, 2 seats, crew after them
 var arcade_diff := "normal"      ## the Arcade difficulty of an arcade room (Settings "arcade_diff" from the hub)
+var arcade_ff := false           ## co-op friendly fire between the two seats (Settings "arcade_ff"; owner default off):
+                                 ## travels in `start.arc.ff`, so the host and every guest apply the same rule
 var arc: Dictionary = {}         ## the current stage's run snapshot (`start.arc`); {} = a normal room
 var opt_max := 4
 var opt_bots := true             ## free seats get bots (and a bot takes the seat of a guest who leaves)
@@ -99,6 +101,7 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 	bhv = "dummy" if opts.get("bhv") == "dummy" else "brawl"
 	diff = str(opts.get("diff", "normal"))
 	arcade = bool(opts.get("arcade", false))
+	arcade_ff = false
 	var m := str(opts.get("map", "arena"))
 	map_id = m if data("maps").has(m) or m == "sitegen" else "arena"
 	arc = {}
@@ -108,6 +111,8 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 		opt_max = ArcadeCoop.SEATS; bot_n = 1; opt_bots = true
 		want_mode = "construction"
 		arcade_diff = ArcadeCoop.norm_diff(str(opts.get("arcade_diff", opts.get("diff", ArcadeCoop.DEFAULT_DIFF))))
+		var ff: Variant = opts.get("arcade_ff", null)
+		arcade_ff = bool(ff) if ff != null else _settings_bool("arcade_ff", false)
 		map_id = ArcadeCoop.site_map()
 		hp = 200; grav = 1.0; kb = 1.0; crate = "normal"; inf = false; opt_lim = 0; dyn_kind = "off"
 	set_rules(opts)
@@ -167,6 +172,16 @@ static func online_mode(m: String) -> String:
 ## Web clients cannot play it: it needs every guest on the app.
 static func app_only(m: String) -> bool:
 	return NetMatch.GODOT_MODES.has(m)
+
+## A Settings bool read at runtime (the Construction hub writes "arcade_ff"). The net test scripts compile this file at
+## --script start-up, before the autoloads exist, so a static Settings reference would fail there (same reason
+## ArcadeCoop._content is looked up lazily).
+static func _settings_bool(key: String, fallback: bool) -> bool:
+	var loop := Engine.get_main_loop()
+	if loop is SceneTree:
+		var s := (loop as SceneTree).root.get_node_or_null("Settings")
+		if s != null: return bool(s.call("get_value", key, fallback))
+	return fallback
 
 ## shared/modes.json + the Godot-only modes.
 static var _all_modes := {}
@@ -572,10 +587,24 @@ func guard(m: Dictionary, s: int) -> Dictionary:
 
 # ============================== messages the host builds ==============================
 
-## srvInfo: what the room list shows (`mode` web-compatible, `modeName` the mode really played).
+## srvInfo: what the room list shows (`mode` web-compatible, `modeName` the mode really played, `kind`/`arcade` the
+## room kind so a list or lobby can say "Arcade co-op" instead of a vague Construction, docs/PROTOCOL.md 1.1).
 func srv_info() -> Dictionary:
-	return {"name": room_name, "host": str(my_info.get("name", "?")), "mode": net_mode(mode_id), "modeName": mode_label(),
-		"map": map_label(), "max": room_max(), "started": started, "build": NetClient.BUILD}
+	return {"name": room_name, "host": str(my_info.get("name", "?")), "mode": net_mode(mode_id), "modeName": list_mode_label(),
+		"map": map_label(), "max": room_max(), "started": started, "build": NetClient.BUILD,
+		"kind": room_kind(), "arcade": arcade, "kindName": kind_label()}
+
+## The room kind on the wire: "arcade-coop" for the Construction hub's two-seat run, "pvp" for every other room.
+func room_kind() -> String:
+	return "arcade-coop" if arcade else "pvp"
+
+## What a room list shows as the mode: an Arcade co-op room says so; other rooms use the mode's name.
+func list_mode_label() -> String:
+	return "Arcade co-op" if arcade else mode_label()
+
+## A short human kind for the lobby line.
+func kind_label() -> String:
+	return "Arcade co-op" if arcade else "PvP"
 
 ## The room's seat count for the room list: an Arcade run has two joinable seats, the crew slots are not players.
 func room_max() -> int:
@@ -598,7 +627,8 @@ func room_info() -> Dictionary:
 		for x: Dictionary in slots: if x.get("kind") == "human": n += 1
 	else: n = roster.size()
 	return {"t": "info", "build": NetClient.BUILD, "name": room_name, "host": str(my_info.get("name", "?")), "mode": net_mode(mode_id),
-		"modeName": mode_label(), "map": map_label(), "n": n, "max": room_max(), "started": started, "pub": pub}
+		"modeName": list_mode_label(), "map": map_label(), "n": n, "max": room_max(), "started": started, "pub": pub,
+		"kind": room_kind(), "arcade": arcade, "kindName": kind_label()}
 
 func mode_label() -> String:
 	return mode_name(mode_id)
@@ -617,7 +647,7 @@ func rules_list() -> Dictionary:
 
 func roster_msg() -> Dictionary:
 	return {"t": "roster", "roster": roster, "max": opt_max, "bots": opt_bots, "lim": eff_limit(mode_id), "bhv": bhv, "diff": diff,
-		"modeName": mode_label(), "map": map_label(), "rl": rules_list()}
+		"modeName": list_mode_label(), "map": map_label(), "rl": rules_list()}
 
 ## One line for the lobby from a rules list (rules_list() / roster `rl`): "Team Deathmatch · first to 30 · 200 HP ·
 ## gravity 1x · knockback 1x · normal crates · floor Steady", plus why an app-only pick plays Classic.
@@ -674,7 +704,7 @@ func start_match() -> bool:
 	if phase != Phase.LOBBY or started: return false
 	_resume = {}; _resume_t = -1.0
 	if arcade:
-		arc = ArcadeCoop.run_start_arc(randi_range(1, 900000), arcade_diff)
+		arc = ArcadeCoop.run_start_arc(randi_range(1, 900000), arcade_diff, ArcadeCoop.SEATS, arcade_ff)
 		var sl := arcade_slots()
 		_begin_match(sl)
 		return true

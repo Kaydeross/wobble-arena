@@ -114,9 +114,28 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: LIMITS.payload, perMessageDeflate: false });
 
 const str = (v, n) => String(v === undefined || v === null ? '' : v).replace(/[\u0000-\u001f\u007f]/g, '').slice(0, n);
+/* Room kind: the server carries what kind of room this is, so a room list or a lobby can say "Arcade co-op" instead of
+   a vague mode name, and a join-by-code can ask for the kind it expected (docs/PROTOCOL.md 1.1, 1.2). `pvp` is a normal
+   room; `arcade-coop` is the Construction hub's two-seat Arcade co-op. An Arcade co-op room always plays `construction`,
+   so the kind is also derived from the mode when an older host does not send it. */
+const ROOM_KINDS = new Set(['pvp', 'arcade-coop']);
+const ARCADE_MODE = 'construction';
+function cleanKind(i, base) {
+  const mode = str(base.mode, 16);
+  let arcade = false;
+  if (i.arcade !== undefined) arcade = !!i.arcade;
+  else if (i.kind !== undefined) arcade = str(i.kind, 16) === 'arcade-coop';
+  else if (mode === ARCADE_MODE) arcade = true;                      // older app builds send only mode: construction
+  let kind = arcade ? 'arcade-coop' : 'pvp';
+  if (i.kind !== undefined && ROOM_KINDS.has(str(i.kind, 16))) kind = str(i.kind, 16);
+  if (arcade) kind = 'arcade-coop';
+  else if (kind === 'arcade-coop') arcade = true;
+  if (arcade && mode !== ARCADE_MODE) { arcade = false; kind = 'pvp'; }   // Arcade is Construction only: never mislabel a classic room
+  return { arcade, kind };
+}
 function cleanInfo(i, old) {
   i = i && typeof i === 'object' ? i : {};
-  const o = Object.assign({ name: 'Room', host: '?', mode: 'classic', modeName: 'Classic', map: '', max: 4, started: false, build: '' }, old || {});
+  const o = Object.assign({ name: 'Room', host: '?', mode: 'classic', modeName: 'Classic', map: '', max: 4, started: false, build: '', arcade: false, kind: 'pvp' }, old || {});
   if (i.name !== undefined) o.name = accountStore.filterDisplayName(str(i.name, 24)) || 'Room';
   if (i.host !== undefined) o.host = accountStore.filterDisplayName(str(i.host, 12)) || '?';
   if (i.mode !== undefined) o.mode = str(i.mode, 16);
@@ -125,10 +144,14 @@ function cleanInfo(i, old) {
   if (i.max !== undefined) o.max = Math.max(2, Math.min(LIMITS.perRoom, i.max | 0 || 4));
   if (i.started !== undefined) o.started = !!i.started;
   if (i.build !== undefined) o.build = str(i.build, 16);
+  const k = cleanKind(i, o);
+  o.arcade = k.arcade; o.kind = k.kind;
+  const kn = str(i.kindName, 24);
+  o.kindName = kn !== '' ? kn : (o.arcade ? 'Arcade co-op' : o.modeName);
   return o;
 }
 const humans = r => 1 + r.clients.size;
-const publicView = r => ({ id: r.id, name: r.info.name, host: r.info.host, mode: r.info.mode, modeName: r.info.modeName, map: r.info.map, n: humans(r), max: r.info.max, started: r.info.started, build: r.info.build, pub: true });
+const publicView = r => ({ id: r.id, name: r.info.name, host: r.info.host, mode: r.info.mode, modeName: r.info.modeName, kind: r.info.kind, kindName: r.info.kindName || (r.info.arcade ? 'Arcade co-op' : r.info.modeName), arcade: !!r.info.arcade, map: r.info.map, n: humans(r), max: r.info.max, started: r.info.started, build: r.info.build, pub: true });
 function newCode() { for (let t = 0; t < 50; t++) { const c = Array.from({ length: 5 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join(''); if (!rooms.has(c)) return c; } return null; }
 function findRoom(id) { id = str(id, 16); return rooms.get(id) || rooms.get(id.toUpperCase()) || rooms.get(id.toLowerCase()) || null; }
 
@@ -157,7 +180,7 @@ function joinRoom(ws, r, build) {
   // no build-number gate here: web and native clients release on different schedules. The room host compares the protocol version (`proto`) in `hello` and answers `badver` when it differs (docs/PROTOCOL.md 6.1).
   if (humans(r) >= r.info.max) { send(ws, { op: 'nojoin', reason: 'full' }); return false; }
   const cid = r.nextCid++; ws.room = r; ws.role = 'client'; ws.cid = cid; r.clients.set(cid, ws);
-  send(ws, { op: 'joined', cid, id: r.id, pub: r.pub });
+  send(ws, { op: 'joined', cid, id: r.id, pub: r.pub, kind: r.info.kind, arcade: !!r.info.arcade });
   send(r.host, { op: 'peer', cid, ev: 'open' });
   return true;
 }
@@ -184,6 +207,8 @@ const handlers = {
     if (config.requireAuth && !ws.user) { send(ws, { op: 'nojoin', reason: 'auth' }); return; }
     if (ws.room) { send(ws, { op: 'nojoin', reason: 'inroom' }); return; }
     const r = findRoom(m.id); if (!r) { send(ws, { op: 'nojoin', reason: 'none' }); return; }
+    const want = str(m.kind, 16);
+    if (ROOM_KINDS.has(want) && want !== r.info.kind) { send(ws, { op: 'nojoin', reason: 'kind', kind: r.info.kind, arcade: !!r.info.arcade }); return; }   // the code is for another kind of room (docs/PROTOCOL.md 1.2)
     joinRoom(ws, r, str(m.build, 16));
   },
   quick(ws, m) {

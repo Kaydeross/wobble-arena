@@ -71,8 +71,8 @@ var TOUCH_PX := 60.0
 var min_pt := {}
 ## Title column blocks (paths under Main) that must not overlap each other.
 const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
-const HOME := ["Safe/Col/Body/Home/Play", "Safe/Col/Body/Home/Online", "Safe/Col/Body/Home/More/Locker", "Safe/Col/Body/Home/More/Shop",
-	"Safe/Col/Body/Home/More/Goals", "Safe/Col/Body/Home/Construction"]
+const HOME := ["Safe/Col/Body/Home/Cols/Left/Play", "Safe/Col/Body/Home/Cols/Left/Online", "Safe/Col/Body/Home/Cols/Right/More/Locker", "Safe/Col/Body/Home/Cols/Right/More/Shop",
+	"Safe/Col/Body/Home/Cols/Right/More/Goals", "Safe/Col/Body/Home/Construction"]
 const OB := "Safe/Col/Body/Online/Box/"
 ## the online panel (back, name, the room list, join with a code, host, account, status, roster): must not overlap
 const ONLINE := [OB + "Head/Back", OB + "Head/Title", OB + "Head/Name", OB + "Main/Rooms/Head/Refresh", OB + "Main/Rooms/Scroll",
@@ -356,8 +356,8 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	elif over == null:
 		_not_cut(main.account.card if acct else main.get_node("Safe/Col"), tag)   # (the title's own labels are checked on the title screen)
 		if scr == "title" and lang_tag == "":
-			check(main.get_node("Safe/Col/Body/Home/Play/Stack/Big").text == "Play", "%s Play button says Play" % tag)
-			check(main.get_node("Safe/Col/Body/Home/Online/Stack/Big").text == "Play online with friends", "%s online button label" % tag)
+			check(main.get_node("Safe/Col/Body/Home/Cols/Left/Play/Stack/Big").text == "Play", "%s Play button says Play" % tag)
+			check(main.get_node("Safe/Col/Body/Home/Cols/Left/Online/Stack/Big").text == "Play online with friends", "%s online button label" % tag)
 			check(main.who.text == "Guest", "%s chip says Guest (%s)" % [tag, main.who.text])
 			_no_word(main.get_node("Safe/Col/Top"), "offline", tag, true)   # no status pill saying "Offline"
 	if acct:
@@ -445,7 +445,7 @@ func _text_whole(c: Control, txt: String, tag: String) -> void:
 ## Buttons in the busy bars (MAX_BAR at most): title top row and cards row, wizard footer, Walldrobe header / footer.
 func _bars(main: Control, tag: String, scr: String) -> void:
 	var bars: Array = []
-	if scr == "title": bars = ["Safe/Col/Top", "Safe/Col/Body/Home/More"]
+	if scr == "title": bars = ["Safe/Col/Top", "Safe/Col/Body/Home/Cols/Right/More"]
 	elif scr.begins_with("w"): bars = ["Safe/Wizard/Foot", "Safe/Wizard/Head"]
 	elif (scr.begins_with("l") and scr != "lobby") or (scr.begins_with("s") and not scr.begins_with("set-")): bars = ["Safe/Locker/Head", "Safe/Locker/Foot"]
 	for p: String in bars:

@@ -27,6 +27,11 @@ var room_id := ""
 var player_name := "Godot"
 var token := ""
 var pslot := -1                  ## my slot before a host migration (sent once as `pslot` in the next hello)
+## The room kind the server reported in `joined` (docs/PROTOCOL.md 1.2): "pvp" or "arcade-coop". A screen can read it
+## before the host's welcome to say what kind of room this is, or to warn when it expected the other kind.
+var room_kind := ""
+var room_arcade := false
+var kind_failed := ""            ## the room's real kind when a join expected another one (`nojoin {reason: "kind"}`)
 ## hello info (PROTOCOL.md 2.1): skin, hat, color and the optional class id `cls` ("" = leave it out).
 var skin := "none"
 var hat := "none"
@@ -47,10 +52,12 @@ func send_op(d: Dictionary) -> void:
 	if ws.get_ready_state() == WebSocketPeer.STATE_OPEN:
 		ws.send_text(JSON.stringify(d))
 
-## `build` "" leaves the field out (the server then skips its build filter).
-func join_room(id: String, build: String = BUILD) -> void:
+## `build` "" leaves the field out (the server then skips its build filter). `expect_kind` ("" = accept any) asks the
+## server to refuse the join when the code belongs to the other kind of room, with `nojoin {reason: "kind"}`.
+func join_room(id: String, build: String = BUILD, expect_kind: String = "") -> void:
 	var m := {"op": "join", "id": id}
 	if build != "": m["build"] = build
+	if expect_kind != "": m["kind"] = expect_kind
 	send_op(m)
 
 func to_host(m: Dictionary) -> void:
@@ -91,10 +98,13 @@ func _handle(text: String) -> void:
 	match m["op"]:
 		"joined":
 			cid = int(m.get("cid", -1)); room_id = str(m.get("id", ""))
+			room_kind = str(m.get("kind", "pvp")); room_arcade = bool(m.get("arcade", false))
 			room_joined.emit(room_id, cid)
 			send_hello()
 		"nojoin":
-			join_failed.emit(str(m.get("reason", "")))
+			var reason := str(m.get("reason", ""))
+			if reason == "kind": kind_failed = str(m.get("kind", ""))
+			join_failed.emit(reason)
 		"msg":
 			var inner = m.get("m", {})
 			if typeof(inner) != TYPE_DICTIONARY:

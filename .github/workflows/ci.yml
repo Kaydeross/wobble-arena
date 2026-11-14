@@ -73,6 +73,12 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-touch
         if: matrix.shard == 'rest'
+      - run: npm run test:godot-touch-layout
+        if: matrix.shard == 'rest'
+      - run: npm run test:godot-kids
+        if: matrix.shard == 'rest'
+      - run: npm run test:godot-ranking
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-ui
         if: matrix.shard == 'ui'
       - run: npm run test:godot-audio
