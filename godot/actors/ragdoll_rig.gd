@@ -55,6 +55,28 @@ var idle_t := 0.0
 var hand_off := Vector3.ZERO          ## off-hand verlet point (world)
 var hand_off_v := Vector3.ZERO
 
+# --- seeded gait personality (docs/RAGDOLL.md, M0): sampled ONCE per fighter by set_gait, never per frame.
+# Every extra pose term is scaled by the Settings `leg_wobble` strength (0 = exactly the pre-M0 overlay pose).
+var gait_ready := false
+var gait_seed := 0                    ## deterministic personality seed (mix_seed)
+var gait_cls := 1.0                   ## class wobble factor clampf(cls.wob, 0.7, 1.3): Kid wobblier, Elder calmer
+var gait_phase := 0.0                 ## phase offset 0..2pi: idle hip sway and the down-struggle paddle
+var gait_freq := 1.0                  ## step cadence multiplier 0.85..1.15
+var gait_amp := 1.0                   ## swing amplitude multiplier 0.8..1.25
+var gait_asym := Vector2.ONE          ## left/right asymmetry (leg 0, leg 1) 0.85..1.0
+var gait_flop := 0.15                 ## foot pitch while swinging 0.10..0.25 rad
+var gait_roll := 0.0                  ## foot roll while swinging -0.10..+0.10 rad
+var gait_splay := 0.05                ## stance splay 0.02..0.08 rad
+var gait_land := 0.08                 ## landing splay gain 0.05..0.12 rad
+var gait_hip := 1.0                   ## hip-roll step-kick scale 0.7..1.2
+var step_jit: Array[float] = [1.0, 1.0]      ## per-step duration/cadence jitter (sampled when the step starts)
+var step_lift: Array[float] = [1.0, 1.0]     ## per-step lift jitter (sampled when the step starts)
+var step_flop: Array[float] = [0.0, 0.0]     ## per-step foot-flop direction/magnitude
+var hip_roll := Spring2.new()         ## small hip roll spring (rad): kicked by steps and landings, idles gently
+var _land_k := 0.0                    ## landing splay envelope 0..1
+var _wk := 0.0                        ## this frame's wobble strength; 0 = the exact pre-M0 code path
+var _rng := 0                         ## local generator state, used only inside set_gait (never the global RNG)
+
 # --- knock-down body
 var px := PackedVector3Array()
 var pv := PackedVector3Array()
@@ -113,6 +135,90 @@ func hit(a: float, b: float, yaw: float, size: float) -> void:
 	hit_age = 0.0
 
 
+# ================================================================ seeded gait (docs/RAGDOLL.md M0)
+
+## Deterministic personality seed: the owning fighter's net_slot when online, else its match id, mixed with the
+## look (class/skin/hat/colour) and a fixed salt. Two fighters in a match never share it; never the global RNG.
+static func mix_seed(class_id: String, skin: String, hat: String, color: int, id: int, slot: int) -> int:
+	var x := _fnv("leg_wobble")
+	x = _mix32(x ^ _fnv(class_id))
+	x = _mix32(x ^ _fnv(skin))
+	x = _mix32(x ^ _fnv(hat))
+	x = _mix32(x ^ (color & 0xFFFFFFFF))
+	x = _mix32(x ^ ((slot if slot >= 0 else id) + 1))
+	return 0x9E3779B9 if x == 0 else x                     # xorshift32 must never start at 0
+
+static func _fnv(s: String) -> int:                       # FNV-1a 32-bit, stable across platforms/runs
+	var h := 2166136261
+	for i in s.length():
+		h = ((h ^ (s.unicode_at(i) & 0xFF)) * 16777619) & 0xFFFFFFFF
+	return h
+
+static func _mix32(v: int) -> int:                        # xorshift32 round, all 32-bit (no overflow)
+	var x := v & 0xFFFFFFFF
+	x ^= (x << 13) & 0xFFFFFFFF
+	x ^= x >> 17
+	x ^= (x << 5) & 0xFFFFFFFF
+	return x & 0xFFFFFFFF
+
+static func _f01(x: int) -> float:
+	return float(x & 0xFFFFFFFF) * 2.3283064365386963e-10   # 1 / 2^32
+
+func _rnd() -> float:
+	var x := _rng
+	x ^= (x << 13) & 0xFFFFFFFF
+	x ^= x >> 17
+	x ^= (x << 5) & 0xFFFFFFFF
+	_rng = x & 0xFFFFFFFF
+	if _rng == 0:
+		_rng = 0x9E3779B9
+	return _f01(_rng)
+
+func _rnd_range(a: float, b: float) -> float:
+	return a + (b - a) * _rnd()
+
+## Sample the gait constants once (Wobbler.overlay does this when the fighter's identity/look changes). Caller owns
+## a local generator only: same seed = the same personality forever, no global randf/randi, no allocations per frame.
+func set_gait(seed: int, cls_wob: float) -> void:
+	gait_seed = seed & 0xFFFFFFFF
+	_rng = gait_seed if gait_seed != 0 else 0x9E3779B9
+	gait_cls = clampf(cls_wob, 0.7, 1.3)
+	gait_phase = _rnd() * TAU
+	gait_freq = _rnd_range(0.85, 1.15)
+	gait_amp = _rnd_range(0.8, 1.25)
+	gait_asym = Vector2(_rnd_range(0.85, 1.0), _rnd_range(0.85, 1.0))
+	gait_flop = _rnd_range(0.10, 0.25)
+	gait_roll = _rnd_range(-0.10, 0.10)
+	gait_splay = _rnd_range(0.02, 0.08)
+	gait_land = _rnd_range(0.05, 0.12)
+	gait_hip = _rnd_range(0.7, 1.2)
+	gait_ready = true
+	hip_roll.reset()
+	_land_k = 0.0
+	step_jit[0] = 1.0
+	step_jit[1] = 1.0
+	step_lift[0] = 1.0
+	step_lift[1] = 1.0
+	step_flop[0] = 0.0
+	step_flop[1] = 0.0
+
+## Per-step jitter (duration factor, lift factor, flop direction) for leg i: a pure hash of the seed, the step
+## count and the leg, so it never touches the global RNG and replays exactly.
+func _step_jitter(i: int) -> Vector3:
+	var x := _mix32(gait_seed ^ _mix32((steps + 1) * 2654435761 + i * 40503))
+	var a := _f01(x)
+	x = _mix32(x)
+	var b := _f01(x)
+	x = _mix32(x)
+	return Vector3(lerpf(0.85, 1.15, a), lerpf(0.85, 1.15, b), -1.0 if _f01(x) < 0.5 else 1.0)
+
+## This frame's wobble strength. Exactly 0.0 when the setting is 0 (and therefore the pre-M0 pose bit for bit).
+func _wob(w: Wobbler) -> float:
+	if not gait_ready or w.leg_wobble <= 0.0:
+		return 0.0
+	return clampf(w.leg_wobble, 0.0, 1.0) * gait_cls
+
+
 func _reset(w: Wobbler, s: float, yb: Basis) -> void:
 	var pos := w.pos
 	inited = true
@@ -137,6 +243,8 @@ func _reset(w: Wobbler, s: float, yb: Basis) -> void:
 	getup = -1.0
 	was_down = false
 	was_ground = w.grounded
+	hip_roll.reset()
+	_land_k = 0.0
 
 
 static func _sgn(i: int) -> float:
@@ -162,6 +270,16 @@ func _start_step(i: int, dur: float) -> void:
 	foot_from[i] = feet[i]
 	step_t[i] = 0.0
 	step_dur[i] = dur
+	if _wk > 0.0:                                          # seeded cadence/lift jitter, only when the setting is on
+		var j := _step_jitter(i)
+		step_jit[i] = lerpf(1.0, gait_freq * gait_asym[i] * j.x, _wk)
+		step_lift[i] = lerpf(1.0, gait_amp * j.y, _wk)
+		step_flop[i] = j.z * _wk
+		hip_roll.kick(gait_hip * j.z * _wk * (0.6 + 0.4 * gait_asym[i]) * (1.0 if i == 1 else -1.0), 0.0)
+	else:
+		step_jit[i] = 1.0
+		step_lift[i] = 1.0
+		step_flop[i] = 0.0
 	steps += 1
 
 
@@ -189,6 +307,7 @@ func _start_down(w: Wobbler, s: float, yb: Basis) -> void:
 
 # ================================================================ simulate
 func update(w: Wobbler, dt: float) -> void:
+	_wk = _wob(w)
 	var s := float(w.cls.get("size", 1.0))
 	var yb := Basis(UP, w.yaw)
 	if not inited or w.pos.distance_to(last_pos) > 4.0:      # spawn / respawn / teleport: start standing
@@ -260,6 +379,9 @@ func update(w: Wobbler, dt: float) -> void:
 	if grounded:
 		if not was_ground:                                    # landing: the hips dip, the feet catch the floor
 			hy_v -= maxf(0.0, -land_vy) * 0.12 * s
+			if _wk > 0.0:                                     # ...and the seeded feet splay out from the impact
+				_land_k = clampf(maxf(0.0, -land_vy) / 10.0, 0.0, 1.0)
+				hip_roll.kick((0.9 if gait_roll >= 0.0 else -0.9) * gait_hip * _land_k, 0.0)
 		if kicking:
 			var kxf := Transform3D(yb.scaled_local(rs), pos)
 			feet[1] = kxf * (Vector3(0.2, LEG, 0.0) + Basis(Vector3.RIGHT, _kick_angle(w.kick_t)) * Vector3(0.0, -LEG, 0.0))
@@ -298,14 +420,15 @@ func update(w: Wobbler, dt: float) -> void:
 		for i in 2:
 			if step_t[i] < 0.0:
 				continue
-			step_t[i] += dt / step_dur[i]
+			var sd := step_dur[i] * (step_jit[i] if _wk > 0.0 else 1.0)   # live setting 0: back to the base cadence at once
+			step_t[i] += dt / sd
 			var t := minf(step_t[i], 1.0)
 			var home := home0 if i == 0 else home1
-			var tgt := home + hv * ((1.0 - t) * step_dur[i])
+			var tgt := home + hv * ((1.0 - t) * sd)
 			tgt.y = pos.y
 			var e := t * t * (3.0 - 2.0 * t)
 			var p := foot_from[i].lerp(tgt, e)
-			p.y = lerpf(foot_from[i].y, pos.y, e) + sin(PI * t) * lift
+			p.y = lerpf(foot_from[i].y, pos.y, e) + sin(PI * t) * lift * (step_lift[i] if _wk > 0.0 else 1.0)
 			feet[i] = p
 			if step_t[i] >= 1.0:
 				feet[i] = tgt
@@ -317,6 +440,15 @@ func update(w: Wobbler, dt: float) -> void:
 			tgt.y = pos.y + (0.12 * s if vel.y > 0.0 else 0.0)
 			feet[i] = feet[i].lerp(tgt, minf(1.0, 12.0 * dt))
 	was_ground = grounded
+
+	# ---- seeded hip roll: a small spring kicked by steps and landings, gently idling (M0; 0 = untouched)
+	if _wk > 0.0:
+		hip_roll.step(dt, 46.0 / wob, 0.32, sin(time * 1.9 + gait_phase) * 1.2, 0.0)
+		hip_roll.x = clampf(hip_roll.x, -0.12, 0.12)
+		_land_k = maxf(0.0, _land_k - dt * 2.5)
+	else:
+		hip_roll.reset()
+		_land_k = 0.0
 
 	# ---- hips: damped pendulum offset (lag on starts, overshoot on stops), pulled toward the feet, capped by reach
 	var k_off := 60.0 / wob
@@ -394,7 +526,7 @@ func _simulate_down(w: Wobbler, dt: float, s: float, pos: Vector3) -> void:
 		v.y -= GRAV * dt
 		v *= damp
 		if struggle and (i == P_FOOT0 or i == P_FOOT1 or i == P_HAND):   # stunned: limbs paddle a bit
-			v.y += sin(time * 11.0 + i * 1.7) * 9.0 * dt
+			v.y += sin(time * 11.0 + i * 1.7 + (gait_phase * _wk if _wk > 0.0 else 0.0)) * 9.0 * dt
 		_pp[i] = px[i] + v * dt
 	var hs := float(w.cls.get("head", 1.0))
 	for it in 4:
@@ -434,6 +566,7 @@ func _simulate_down(w: Wobbler, dt: float, s: float, pos: Vector3) -> void:
 func render(w: Wobbler, dt: float, grip: Transform3D) -> void:
 	var s := float(w.cls.get("size", 1.0))
 	var dk := down_k
+	var wk := _wob(w)                                       # 0 = the pre-M0 pose path, unchanged
 	var yaw_used := lerp_angle(w.yaw, down_yaw, dk)
 	var yb := Basis(UP, yaw_used)
 	var rs: Vector3 = w.rig_scale.lerp(Vector3.ONE * s, dk)
@@ -449,6 +582,8 @@ func render(w: Wobbler, dt: float, grip: Transform3D) -> void:
 	var f0 := rig_inv * feet[0]
 	var f1 := rig_inv * feet[1]
 	var hip_q := Quaternion(Basis(UP, twist * 0.5))
+	if wk > 0.0:                                            # seeded hip roll (M0): only the leg root, feet stay planted
+		hip_q = hip_q * Quaternion(Basis(Vector3.BACK, hip_roll.x * wk))
 	if dk > 0.0:                                            # collapsed body (rig local), blended in
 		var dp := rig_inv * px[P_PELVIS]
 		var dc := rig_inv * px[P_CHEST]
@@ -485,8 +620,11 @@ func render(w: Wobbler, dt: float, grip: Transform3D) -> void:
 		lg.basis = Basis(r) * Basis.from_scale(Vector3(1.0, ky, 1.0))
 		var unscale := Basis.from_scale(Vector3(1.0, 1.0 / ky, 1.0))
 		w.foot_meshes[i].basis = unscale * Basis(r.inverse().slerp(Quaternion.IDENTITY, dk))
+		if wk > 0.0 and dk < 1.0:                            # seeded foot splay/flop/roll, planted foot still flat
+			w.foot_meshes[i].basis = _foot_wobble(i, r, ky, dk, wk)
 
 	# points for the next collapse / tests
+
 	var body_xf := rig_xf * w.body.transform
 	pelvis_w = body_xf.origin if dk > 0.0 else pelvis_w
 	chest_w = body_xf * Vector3(0.0, 0.75, 0.0)
@@ -550,3 +688,20 @@ func render(w: Wobbler, dt: float, grip: Transform3D) -> void:
 		g_local = g_local.interpolate_with(Transform3D(Basis.IDENTITY, Vector3(0.0, -lr, 0.0)), free_k)
 	w.hand.transform = g_local
 	aim_hand_w = arm_xf * w.hand.position
+
+
+## The seeded foot pose (M0): the old flat/following foot counter-rotation plus splay (always), flop/roll in swing and
+## the landing splay. Planted soles only yaw about up, so the sole point never moves or sinks.
+func _foot_wobble(i: int, r: Quaternion, ky: float, dk: float, wk: float) -> Basis:
+	var splay := gait_splay * (0.75 + 0.5 * gait_asym[i]) * wk
+	splay += gait_land * _land_k * (0.7 + 0.3 * gait_asym[i]) * wk
+	var pitch := 0.0
+	var roll := 0.0
+	var t: float = step_t[i]
+	if t >= 0.0 and t < 1.0:                               # in swing: toe flop and a little sole roll
+		var sw := sin(PI * t)
+		pitch = gait_flop * step_flop[i] * sw * gait_amp
+		roll = gait_roll * step_flop[i] * sw
+	var flop := Basis(UP, _sgn(i) * splay) * Basis(Vector3.RIGHT, pitch) * Basis(Vector3.BACK, roll)
+	var unscale := Basis.from_scale(Vector3(1.0, 1.0 / ky, 1.0))
+	return unscale * Basis(r.inverse().slerp(Quaternion.IDENTITY, dk)) * flop

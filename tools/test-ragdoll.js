@@ -6,7 +6,8 @@ const path = require('path');
 const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
 const gd = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', gd, '--import'], { timeout: 120000 });   // registers class_name scripts
-const r = spawnSync(GODOT, ['--headless', '--path', gd, '--script', 'res://tests/ragdoll_test.gd', '--', path.join(__dirname, '..', 'shared', 'classes.json')], { encoding: 'utf8', timeout: 120000 });
+// --no-save keeps Settings (and the leg_wobble default/live-change checks) away from the user's settings.cfg
+const r = spawnSync(GODOT, ['--headless', '--path', gd, '--script', 'res://tests/ragdoll_test.gd', '--', path.join(__dirname, '..', 'shared', 'classes.json'), '--no-save'], { encoding: 'utf8', timeout: 180000 });
 const out = (r.stdout || '') + (r.stderr || '');
 for (const l of out.split('\n')) if (/^(RAGDOLL|FAIL)/.test(l)) console.log(l);
 const errs = out.split('\n').filter(l => /SCRIPT ERROR|^ERROR|Parse Error|leaked/i.test(l));

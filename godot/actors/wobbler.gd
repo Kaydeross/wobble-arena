@@ -111,14 +111,59 @@ var foot_meshes: Array[MeshInstance3D] = []
 var arm_sleeve: MeshInstance3D
 var arm_hand_mesh: MeshInstance3D
 var rag := RagdollRig.new()
+## Seeded per-fighter gait (docs/RAGDOLL.md, M0): a deterministic "leg personality" for the ragdoll overlay, sampled
+## once per fighter from the owning Fighter's identity (net_slot when online, else the match id) mixed with the look.
+## Presentation only: no sim/net value, planted feet never move, classic mode is untouched (docs/RAGDOLL_STUDY.md).
+var leg_wobble: float = 0.55          ## Settings "leg_wobble" 0..1 (0 = exactly the overlay pose before this feature)
+var gait_seed: int = -1               ## >= 0 pins the personality (tests / tools); -1 = derive from identity + look
 var _overlaid := false
 var _xf_nodes: Array[Node3D] = []
 var _xf_saved: Array[Transform3D] = []
+var _gait_dirty := true               ## re-sample the gait constants on the next overlay (look or owner changed)
+var _gait_pin := -2                   ## gait_seed the current constants were sampled with
+var _settings_node: Node = null
 
 
 func _init() -> void:
 	_build()
 	setup("wobbler", "none", "none", WobblerLooks.DEFAULT_COLOR)
+
+
+func _ready() -> void:
+	_bind_settings()
+
+
+## Read Settings.leg_wobble once and follow live slider changes (Settings.changed). No autoload = the default.
+func _bind_settings() -> void:
+	var tree := Engine.get_main_loop() as SceneTree
+	var st: Node = tree.root.get_node_or_null("Settings") if tree and tree.root else null
+	if st == null:
+		return
+	_settings_node = st
+	leg_wobble = clampf(float(st.get_value("leg_wobble", 0.55)), 0.0, 1.0)
+	if not st.changed.is_connected(_on_setting):
+		st.changed.connect(_on_setting)
+
+
+func _on_setting(key: String, v: Variant) -> void:
+	if key == "leg_wobble":
+		leg_wobble = clampf(float(v), 0.0, 1.0)
+
+
+## The deterministic gait seed: the owning Fighter's net_slot when online, else its match id, mixed with the look.
+## Never the global RNG. A standalone wobbler (tests, tools) uses the look only unless `gait_seed` is pinned.
+func gait_identity() -> int:
+	if gait_seed >= 0:
+		return gait_seed
+	var id := 0
+	var slot := -1
+	var p := get_parent()
+	if p != null:
+		var st: Variant = p.get("state")           # Fighter.state (actors/fighter.gd): a soft read, presentation only
+		if st != null and "id" in st and "net_slot" in st:
+			id = int(st.id)
+			slot = int(st.net_slot)
+	return RagdollRig.mix_seed(class_id, skin_key, hat_name, color, id, slot)
 
 
 # ================================================================ material: the ONE place parts get their look
@@ -288,6 +333,7 @@ func setup(p_class_id: String, p_skin: String = "none", p_hat: String = "none", 
 
 ## Fighter.setClass + classLook: proportions plus a few cheap accessories. Looks only.
 func set_class(id: String) -> void:
+	_gait_dirty = true
 	if not WobblerLooks.data("classes").has(id):
 		id = "wobbler"
 	class_id = id
@@ -314,6 +360,7 @@ func set_class(id: String) -> void:
 
 ## Outfit (Fighter.setSkin). Keys come from cosmetics.json skins; unknown keys mean no outfit.
 func set_skin(key: String) -> void:
+	_gait_dirty = true
 	for n in _skin_nodes:
 		_free_part(n)
 	_skin_nodes.clear()
@@ -326,6 +373,7 @@ func set_skin(key: String) -> void:
 
 
 func set_hat(name: String) -> void:
+	_gait_dirty = true
 	if hat:
 		hat.free()
 	hat = null
@@ -344,6 +392,7 @@ func set_hat(name: String) -> void:
 
 ## Fighter.recolor: body colour; outfits keep their own top colour (team matches pass team = true to force `c`).
 func recolor(c: int, team: bool = false) -> void:
+	_gait_dirty = true
 	color = c
 	var sk := WobblerLooks.skin_def(skin_key)
 	var main: int = c if sk.is_empty() or team else int(sk.get("col", c))
@@ -689,6 +738,10 @@ func animate(dt: float) -> void:
 func overlay(dt: float) -> void:
 	if emote_id != "":                                      # a dance keeps the classic pose (the ragdoll would undo it)
 		return
+	if _gait_dirty or gait_seed != _gait_pin:               # sample the personality once per fighter (look/owner change)
+		_gait_pin = gait_seed
+		_gait_dirty = false
+		rag.set_gait(gait_identity(), float(cls.get("wob", 1.0)))
 	if not _overlaid:
 		_xf_saved.resize(_xf_nodes.size())
 		for i in _xf_nodes.size():

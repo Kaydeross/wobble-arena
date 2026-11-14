@@ -6,7 +6,7 @@ extends UiPage
 ##             mouse / controller, invert up-down look, aim hold or toggle (mouse / controller), the controls picture
 ##             (ui/controls_help.gd) and the how-to cards again (ui/intro_cards.gd)
 ##   Camera    Manual / Auto-centre, distance, field of view
-##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS, performance readout, 15-minute soak test (world/soak_run.gd)
+##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS, performance readout, leg wobble (docs/RAGDOLL.md), 15-minute soak test (world/soak_run.gd)
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
 ##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), knock-out replays (kill cam), damage numbers
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
@@ -154,6 +154,7 @@ func show_section(s: String) -> void:
 			_toggle("perf_overlay", "Performance readout", "Top-left: fps, frame time, CPU / GPU, draws, thermal. For testing on a device.")
 			_choice("fps_cap", "Frame rate cap", "A lower cap saves battery and heat on a phone. Max removes the cap.", [30, 60, 120, 0], ["30", "60", "120", "Max"])
 			_slider("render_scale", "Render scale", "Renders the 3D scene at a lower resolution; buttons and text stay sharp.", 0.6, 1.0, 0.05, _pct)
+			_slider("leg_wobble", "Leg wobble", "Extra random wobble in the legs. Cosmetic only.", 0.0, 1.0, 0.05, _pct)
 			if not in_match:
 				_info("soak", "15-minute soak test", "An offline Chaos 5v5 bot match logs the frame rate every second. Leave the phone alone: the screen stays on. At the end, tap Copy summary to share the result.")
 				_buttons("Soak", [["soak", "Start soak test", func() -> void: SoakRun.launch(get_tree())]])
