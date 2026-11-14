@@ -228,3 +228,14 @@ an **L/XL effort, with M3's fighter handover and M2's PvE bot AI as the sharp ed
 the shared web protocol (`S`/`h`/`ko` stay byte-identical; the new fields are Godot-only like `gm`). Full host migration
 inside a run is the one case that is not clean: it needs run state, hazard timing and two saves to agree. Ship v1 with
 the run ending when the host leaves and decide M5 separately.
+
+## 10. Decisions (owner, 2026-11-14)
+
+1. **Lives:** shared run lives, one HUD number.
+2. **Downed player:** auto-revive after 6 s while a teammate is still up; a revive does not cost an extra life.
+3. **Records and coins:** co-op clears and first-clear coins are written on each player's save; the UI says so.
+4. **Seats:** two players per room.
+5. **Lobby:** a room may start with one human plus a teammate bot, so a friend can take the seat later.
+6. **Host migration:** not needed for v1. If the host leaves, the run ends and the players return to the hub.
+
+These settle section 8's questions; M1-M4 are in scope, M5 is out.
