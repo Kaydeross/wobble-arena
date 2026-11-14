@@ -20,6 +20,13 @@ extends RefCounted
 ## K.O.s are summed, damage scale is per seat, a downed seat auto-revives after REVIVE_TIME (no life lost) while a teammate
 ## is still up, and only every seat down fails the attempt (one shared life). `_pay()` returns the per-seat rewards so the
 ## net layer can hand each client its share; this process still writes one save (the local player's).
+##
+## ONLINE CO-OP (M1, docs/PROTOCOL.md 6.4): `new_online(start.arc, is_host)` turns the run into the online authority
+## (`online = true`). The HOST keeps every rule in this file (crew, stages, lives, events, coins on its own save) and sends
+## the display state as `am` (~5 Hz + on change); its seats are the room's slots 0/1, which HostMatch turns into ghosts
+## (humans) or keeps as teammate bots. The GUEST is presentation only: `begin_stage` rebuilds the stage's site from
+## `arc.seed`, `stage_ready` maps its seats onto the net ghosts and shows a "Waiting for the host" card, and
+## `handle_remote` takes the host's `am`. No step, combat or event code runs on the guest.
 
 signal stage_started(index: int)
 signal stage_cleared(index: int, summary: Dictionary)
@@ -86,6 +93,17 @@ var seat_dmg: Array = []
 var seat_down := {}
 ## Seat -> PlayerControl for an extra locally controlled seat (offline co-op / tests); null for the world's own seat.
 var seat_controls: Array = []
+# ---------------- online co-op (M1) ----------------
+## Online co-op room: the net layer owns the slots (seats + crew), the host is the only run authority.
+var online := false
+## true = the host (runs everything and sends `am`), false = a guest (presentation only, `handle_remote`).
+var host_mode := false
+## Seat index -> its room slot (`arc.seats`): slot k <-> seat k, but kept explicit so a seat maps to `start.slots`.
+var seat_slots: Array = [0]
+## The guest's last `am` from the host (tests / the guest's cards and HUD).
+var am: Dictionary = {}
+var _am_t := 0.0
+var _am_state := ""
 # ---------------- the stage in play ----------------
 var world: Node = null
 var sim: MatchSim = null
@@ -160,6 +178,32 @@ static func launch(seed_value: int = 0, p_diff: String = DEFAULT_DIFF, p_class: 
 
 # ---------------- the run ----------------
 
+## An Arcade co-op run built from `start.arc` (docs/PROTOCOL.md 6.4): the host adopts the run as its own authority, a
+## guest builds the same stage from the same seeds for presentation. `world.arcade = new_online(...)` before the world
+## enters the tree; `begin_stage` then loads `arc.st` (host: 0) on the site of `arc.seed`.
+static func new_online(arc: Dictionary, is_host: bool) -> ArcadeManager:
+	var m := ArcadeManager.new()
+	m.init_online(arc, is_host)
+	return m
+
+## new_online's body on an existing instance (headless net tests build it from a runtime-loaded script, so the net layer
+## and the tests never statically depend on this DLC script before the autoloads exist).
+func init_online(arc: Dictionary, is_host: bool) -> void:
+	online = true
+	host_mode = is_host
+	seed_base = maxi(1, int(arc.get("run", 1)))
+	diff = ArcadeCoop.norm_diff(str(arc.get("diff", DEFAULT_DIFF)))
+	stage = clampi(int(arc.get("st", 0)), 0, maxi(0, count() - 1))
+	attempt = 0
+	lives = int(arc.get("lv", ArcadeCoop.lives_for(diff)))
+	state = str(arc.get("state", "intro"))
+	if not (state in ArcadeCoop.STATES): state = "intro"
+	seat_slots = (arc.get("seats", [0]) as Array).duplicate()
+	seat_count = clampi(seat_slots.size(), 1, ArcadeCoop.SEATS)
+	rng.seed = seed_base
+	_seed_saved = SiteMap.current_seed
+	running = self
+
 func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF) -> void:
 	diff = p_diff if difficulties().has(p_diff) else DEFAULT_DIFF
 	seed_base = p_seed if p_seed > 0 else randi_range(1, 900000)
@@ -181,9 +225,12 @@ func end_run() -> void:
 	hud = null
 	events = null
 	enemies.clear(); downed.clear(); kit.clear()
-	if sim != null: sim.set_meta("pve_seats", [])          # no stale seat list for a later match in this process
+	if sim != null:
+		sim.set_meta("pve_seats", [])          # no stale seat list for a later match in this process
+		if sim.has_meta("arcade_run"): sim.remove_meta("arcade_run")
 	seats = []; seat_down = {}; seat_controls = []
 	boss = null; sim = null; world = null
+	online = false; host_mode = false; seat_slots = [0]; am = {}; _am_t = 0.0; _am_state = ""
 	state = "idle"
 
 func stage_seed() -> int:
@@ -201,10 +248,37 @@ func first_clear() -> bool:
 # ---------------- World hooks ----------------
 
 ## Top of World.load_map: the stage's site and match settings. Returns the map id to build.
+## Online co-op: the stage/seed/lives come from `start.arc` (which the host rewrites with this stage's live values before
+## HostMatch.setup, so the outgoing `start` carries them); a guest rebuilds the same site from `arc.seed`.
 func begin_stage(w: Node) -> String:
 	world = w
-	var d := stage_def()
 	var mp := site_map()
+	var a: Dictionary = {}
+	if online:
+		a = w.start_msg.get("arc", {}) if w.start_msg.get("arc") is Dictionary else {}
+		seat_count = clampi((a.get("seats", [0, 0]) as Array).size(), 1, ArcadeCoop.SEATS)
+		seat_slots = (a.get("seats", ArcadeCoop.seat_slots(seat_count)) as Array).duplicate()
+		if host_mode:
+			state = "intro"                                       # this stage starts at its intro card
+			w.start_msg["slots"] = _online_slots(w)               # seats (kept) + the NEW stage's crew
+			a = ArcadeCoop.stage_arc(self)                        # the host's live run is the authority
+			w.start_msg["arc"] = a                                 # ... and it travels with this stage's `start`
+		else:
+			stage = clampi(int(a.get("st", stage)), 0, maxi(0, count() - 1))
+			diff = ArcadeCoop.norm_diff(str(a.get("diff", diff)))
+			lives = int(a.get("lv", lives))
+			state = "intro"
+		seat_names = _slot_seat_names(w)
+		seed_base = maxi(1, int(a.get("run", seed_base)))
+		var sd := int(a.get("seed", stage_seed()))
+		if mp == "sitegen": SiteMap.set_seed(sd)
+		w.mode_id = "construction"
+		w.bot_count = ArcadeCoop.crew_count(stage) + maxi(0, seat_count - 1)   # seats first, then the stage's crew
+		w.dyn_choice = "off"
+		w.difficulty = _stage_skill()
+		rng.seed = hash([seed_base, stage, attempt])
+		return mp
+	var d := stage_def()
 	if mp == "sitegen": SiteMap.set_seed(stage_seed())
 	w.mode_id = "construction"
 	w.bot_count = (d["bots"] as Array).size() + maxi(0, seat_count - 1)   # seats first, then the stage's crew
@@ -215,15 +289,55 @@ func begin_stage(w: Node) -> String:
 	state = "intro"
 	return mp
 
-## After MatchSim.setup: the stage's fighters, tools, health and the scripted events.
+## The bot skill of the stage's first bot (ArcadeManager.begin_stage's pick; difficulty_override wins for tests).
+func _stage_skill() -> String:
+	var d := stage_def()
+	var bots: Array = d.get("bots", [])
+	var sk := str((bots[0] as Dictionary).get("difficulty", "normal")) if bots.size() > 0 and bots[0] is Dictionary else "normal"
+	return difficulty_override if difficulty_override != "" else sk
+
+## The room-slot display names of the player seats, from the `start.slots` table (P1 You / P2 Bluey on the HUD).
+func _slot_seat_names(w: Node) -> Array:
+	var out: Array = []
+	var slots: Array = w.start_msg.get("slots", []) if w.start_msg.get("slots") is Array else []
+	for k in seat_count:
+		var slot := int(seat_slots[k]) if k < seat_slots.size() else k
+		out.append(str((slots[slot] as Dictionary).get("name", "")) if slot >= 0 and slot < slots.size() and slots[slot] is Dictionary else "")
+	return out
+
+## The next stage's `start.slots` on the host: the two player seats exactly as they are now (a human guest stays a human,
+## a seat nobody plays stays the teammate bot) and then the new stage's crew entries. HostMatch.setup rewrites the crew
+## entries with the real bot info before the `start` goes out.
+func _online_slots(w: Node) -> Array:
+	var old: Array = w.start_msg.get("slots", []) if w.start_msg.get("slots") is Array else []
+	var out: Array = []
+	for k in seat_count:
+		if k < old.size() and old[k] is Dictionary:
+			var x: Dictionary = (old[k] as Dictionary).duplicate()
+			x["kind"] = "human" if str(x.get("kind", "")) == "human" else "bot"
+			x["id"] = k
+			out.append(x)
+		else:
+			out.append(ArcadeCoop.teammate_slot(k, {}))
+	for c: Dictionary in ArcadeCoop.crew_slots(diff, stage): out.append(c)
+	return out
+
+## After MatchSim.setup: the stage's fighters, tools, health and the scripted events. On a guest it is presentation only:
+## the seats are mapped onto the net ghosts in stage_ready and no stage event runs here.
 func setup_sim(s: MatchSim) -> void:
 	sim = s
+	if online and not host_mode:
+		s.combat.ffa = false
+		seats = []; enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []
+		seat_down = {}; t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0; state = "intro"
+		return
 	var d := stage_def()
 	var c := s.combat
 	c.ffa = false                              # the crew fights you, not each other
 	_bind_seats(s)                             # the player seats (slot k <-> seat k), the rest is crew
 	enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []; seat_down = {}
 	t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0
+	if online and host_mode: _dress_teammate_seats(s)   # a seat nobody took is a teammate bot, not a tradie
 	var specs: Array = d["bots"]
 	var bots: Array = s.fighters.slice(seats.size())
 	var giant := _giant_scale(d) > 1.0
@@ -239,8 +353,35 @@ func setup_sim(s: MatchSim) -> void:
 	_deaths0 = []
 	for f: FighterState in seats: _deaths0.append(int(f.st["deaths"]))
 	s.set_meta("pve_seats", seats)             # BotBrain.pick_target: the crew hunts every seat, a seat bot hunts the crew
+	if online and host_mode: s.set_meta("arcade_run", self)   # HostSession's drop/rejoin seat re-flag (no static dep)
 	events = StageEvents.new()
 	events.setup(self, s, d, rng)
+
+## Online host: a player seat the room did not fill (`start.slots[k].kind == "bot"`) is the teammate bot. It keeps the
+## BotBrain MatchSim gave it (PlayerControl in coop would be wrong) but is dressed like a player seat, so it fights the
+## crew (BotBrain's pve_seats branch) and its drops restore the same look.
+func _dress_teammate_seats(s: MatchSim) -> void:
+	if seats.is_empty() or world == null: return
+	var slots: Array = world.start_msg.get("slots", []) if world.start_msg.get("slots") is Array else []
+	for k in range(1, seats.size()):
+		var f: FighterState = seats[k]
+		if f == null or f.is_ghost: continue
+		var slot := int(seat_slots[k]) if k < seat_slots.size() else k
+		var kind := str((slots[slot] as Dictionary).get("kind", "")) if slot >= 0 and slot < slots.size() and slots[slot] is Dictionary else ""
+		if kind != "bot": continue
+		_dress_teammate_seat(s, f, k)
+
+## One teammate bot seat as a player seat: the host's class and a friendly (non-tradie) look, a K.O.-clear head, and the
+## name the HUD/cards use. Also runs when a guest leaves mid-stage and a bot takes the seat back (refresh_seats(slot)).
+func _dress_teammate_seat(s: MatchSim, f: FighterState, k: int) -> void:
+	var base: FighterState = seats[0] if seats.size() > 0 else s.player
+	f.is_player = true
+	f.set_class(base.class_id, s.combat.classes.get(base.class_id, {}))
+	f.hp = s.combat.max_hp(f)
+	f.dmg_scale = base.dmg_scale
+	f.name = ArcadeCoop.TEAMMATE_NAME
+	s.looks[f] = {"skin": str(Settings.get_value("skin", "none")), "hat": str(Settings.get_value("hat", "none")),
+		"color": 0x4a90d9 if k % 2 == 1 else 0xe86fa5}
 
 ## The run's player seats for this stage: sim.fighters[0..seat_count-1] in slot order. Seat 0 is the world's own player;
 ## an extra seat the net layer made a ghost stays a ghost, and an extra offline seat becomes a second locally played
@@ -282,15 +423,34 @@ func _bind_seats(s: MatchSim) -> void:
 func _refresh_seats() -> void:
 	for k in range(1, seats.size()):
 		var f: FighterState = seats[k]
+		if f == null: continue
 		if f.is_ghost:
 			f.is_player = false
 			if k < seat_controls.size(): seat_controls[k] = null
 		elif not f.left:
 			f.is_player = true
 
+## The net layer re-flagged a seat (a guest dropped -> its seat is the teammate bot again, or rejoined -> a ghost):
+## HostSession calls this after bot_to_human / human_to_bot. `bot_slot` = the room slot that fell back to a bot, re-dressed
+## as a teammate seat (it must not keep the tradie name/look MatchSim gave the placeholder). Never called offline.
+func refresh_seats(bot_slot: int = -1) -> void:
+	_refresh_seats()
+	if bot_slot < 0 or not host_mode or sim == null: return
+	var k := seat_slots.find(bot_slot)
+	if k <= 0 or k >= seats.size(): return
+	var f: FighterState = seats[k]
+	if f == null or f.is_ghost or f.left: return
+	_dress_teammate_seat(sim, f, k)
+
 ## End of World.load_map (the fighters have views): the HUD strip and the stage's intro card.
 func stage_ready(w: Node) -> void:
 	world = w
+	if online and not host_mode:
+		state = "intro"
+		stage_started.emit(stage)
+		_bind_guest_seats()
+		w.show_panel(_guest_card())
+		return
 	if hud == null or not is_instance_valid(hud):
 		hud = ArcadeBossHud.new()
 		var ui: Node = w.get_node("UI")
@@ -303,6 +463,50 @@ func stage_ready(w: Node) -> void:
 	state = "intro"
 	_stage_first = first_clear()
 	w.show_panel(ArcadePanels.intro(self, stage_def(), _on_start_pressed))
+	_am_send()                                  # "intro" straight away, so the guest shows its waiting card
+
+## A guest's seats are its own fighter and the host's, mapped through the net slots (`arc.seats`: slot k <-> seat k).
+## The crew and the boss stay ghosts; they are only presentation here.
+func _bind_guest_seats() -> void:
+	seats = []; seat_controls = []; seat_down = {}
+	var nm: NetMatch = world.net_match if world != null else null
+	for k in seat_count:
+		var slot := int(seat_slots[k]) if k < seat_slots.size() else k
+		var f: FighterState = nm.slot_fighter(slot) if nm != null else null
+		if f == null and nm != null: f = nm.sim.player
+		seats.append(f)
+	if seats.is_empty() and sim != null: seats = [sim.player]
+
+## The guest's stage card: what stage of how many, and that the host starts the fight.
+func _guest_card() -> Control:
+	var p := PanelContainer.new()
+	p.name = "ArcadeGuestIntro"
+	p.custom_minimum_size = Vector2(420, 0)
+	var box := VBoxContainer.new()
+	box.name = "Box"
+	box.add_theme_constant_override("separation", 10)
+	p.add_child(box)
+	var title := Label.new()
+	title.name = "Title"
+	title.theme_type_variation = &"TitleLabel"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.text = tr("Stage %d of %d") % [stage + 1, count()]
+	box.add_child(title)
+	var nm := Label.new()
+	nm.name = "StageName"
+	nm.theme_type_variation = &"MutedLabel"
+	nm.add_theme_font_size_override("font_size", 24)
+	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	nm.text = tr(str(stage_def().get("name", "")))
+	box.add_child(nm)
+	var wait := Label.new()
+	wait.name = "Waiting"
+	wait.add_theme_font_size_override("font_size", 22)
+	wait.add_theme_color_override("font_color", UiTheme.ACCENT)
+	wait.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wait.text = tr("Waiting for the host")
+	box.add_child(wait)
+	return p
 
 func _on_start_pressed() -> void:
 	begin_fight()
@@ -314,15 +518,63 @@ func begin_fight() -> void:
 	if world != null:
 		world.close_panel()
 		if world.hud != null: world.hud.toast(tr("Stage %d of %d: %s") % [stage + 1, count(), tr(str(stage_def()["name"]))])
+	_am_send()                                  # the guests' "Waiting for the host" card closes with the host's Start
 
 ## After every sim step (World.sim_step).
 func step(dt: float) -> void:
+	if online and not host_mode: return           # a guest runs no stage logic (the host's `am` drives it)
 	if sim == null: return
+	_am_tick(dt)
 	match state:
 		"fight": _fight(dt)
 		"clearing", "failing":
 			_t_end -= dt
 			if _t_end <= 0.0: _finish_attempt()
+
+# ---------------- online co-op: the host's `am` display state / the guest's copy ----------------
+
+## Client-safe view of an `am` message from a Godot host (docs/PROTOCOL.md 6.4). Display only: it never advances a
+## stage, pays coins or damages anyone here. The guest agent fills the cards / HUD from it (state, lives, boss fraction,
+## shrink size, downed slots, the stage summary each save pays from, the victory flag).
+func handle_remote(m: Dictionary) -> void:
+	if not online or host_mode: return
+	var st := int(m.get("st", stage))
+	if st != stage: return                       # a stale `am` from before the stage's own `start` rebuilt the world
+	am = m.duplicate(true)
+	stage = clampi(st, 0, maxi(0, count() - 1))
+	lives = int(m.get("lv", lives))
+	if m.get("last") is Dictionary and not (m["last"] as Dictionary).is_empty(): last = m["last"]
+	state = str(m.get("s", state))
+	if state == "fight" and world != null: world.close_panel()
+
+## The host's `am` every ~5 Hz, plus at once when the state changes (intro -> fight -> cleared ...).
+func _am_tick(dt: float) -> void:
+	if not online or not host_mode: return
+	_am_t -= dt
+	if _am_t <= 0.0 or state != _am_state: _am_send()
+
+## `{t:"am", st, of, s(state), lv(lives), hf(boss hp fraction), sh(shrink size), dn:[downed seat slots], last, won}`.
+func _am_payload() -> Dictionary:
+	var sh := 0.0
+	if sim != null:
+		var r: Dictionary = sim.combat.rules.shrink
+		if not r.is_empty(): sh = float(r.get("size", 0.0))
+	var dn: Array = []
+	for k in downed_seats(): dn.append(int(seat_slots[k]) if k < seat_slots.size() else k)
+	var p := {"t": "am", "st": stage, "of": count(), "s": state, "lv": lives, "hf": boss_frac(), "sh": sh,
+		"dn": dn, "last": last, "won": state == "won"}
+	if not victory.is_empty(): p["vic"] = victory                # the guest pays the victory bonus from its own save
+	if phase_n > 0: p["ph"] = phase_n                            # boss phase (the guest's bar / toasts)
+	return p
+
+## Send `am` to every guest through the room (HostSession.arcade_send). Also remembers the state, so step's 5 Hz timer
+## only sends again when the state moves (intro -> fight -> cleared) or 0.2 s passed.
+func _am_send() -> void:
+	_am_t = 0.2
+	_am_state = state
+	if not online or not host_mode or world == null: return
+	var s = world.session          # HostSession (typed as GuestSession on World: RefCounted, not a Node)
+	if s != null and s.has_method("arcade_send"): s.call("arcade_send", _am_payload())
 
 func _fight(dt: float) -> void:
 	t_stage += dt

@@ -242,7 +242,20 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
 
 ## 11. Milestone status
 
-- **M1 (net layer): not started** (another track).
+- **M1 (net layer): protocol + host + stage sync + entry point done; guest presentation pending (second agent).**
+  `construction` is in `NetMatch.GODOT_MODES` and an Arcade room (`arcade` host opt, hub "Play co-op" →
+  `main.play_arcade_coop`) plays it app-only on the generated site, two seats + the stage's crew, with a web guest
+  refused. `start.arc` (`godot/dlc/construction/arcade_coop.gd`: `{run, st, of, diff, seed, seats, crew, boss, big,
+  state, lv}`) travels with every stage's `start` (the transition mechanism) and with a mid-run join/rejoin; the host
+  rebuilds slots as seats + the new stage's crew, adopts the crew fighters `MatchSim.setup` made, and sends `am`
+  (~5 Hz + on change: stage, state, lives, boss fraction, shrink, downed seats, stage summary, victory). The guest
+  rebuilds the site from `arc.seed`, maps the seats onto the net ghosts (`NetMatch.slot_fighter(arc.seats[k])`), shows a
+  stage number + "Waiting for the host" card and stores `am`; its HUD/cards/downed/coins presentation is the remaining
+  M1 work. Test: `npm run test:godot-host` scenario D ("arcade") — host room with the teammate bot, a Godot guest joins
+  mid-run, stage 1 → 2 (`start.arc.st` 0 → 1, matching fresh seeds), the guest sees the host seat / every crew slot / the
+  boss as ghosts and receives `am`; the guest leaving turns seat 1 back into the teammate bot while the host keeps
+  running; host and guest exit clean. Not done: guest HUD/cards, the rejoin leg (the seat flag refresh hook and the
+  current-stage `start` exist; the fighter handover is M3), and web guests are simply refused.
 - **M2 (Arcade seats): done, offline-verified.** `ArcadeManager` is seat-aware: `seat_count` (1 or 2) and `seat_names`
   set before the first `load_map`; the seats are `sim.fighters[0..seat_count-1]` in room-slot order (crew after) and are
   read with `seat(k)`, `seat_name/label(k)`, `seat_alive`, `seat_is_down`, `seat_revive_left`, `living_seats`,

@@ -336,10 +336,11 @@ static func clean_start(m: Dictionary, my_slot: int) -> Dictionary:
 		info["kind"] = kind
 		slots.append(info)
 	var map_id: Variant = m.get("map")
-	return {"slots": slots, "map": map_id if map_id is String and data("maps").has(map_id) else "arena",
+	return {"slots": slots, "map": map_id if map_id is String and (data("maps").has(map_id) or map_id == "sitegen") else "arena",
 		"custom": m.get("custom") if m.get("custom") is Dictionary else {}, "limit": maxi(0, NetSnapshot.to_int32(m.get("limit"))),
 		"rules": m.get("rules") if m.get("rules") is Dictionary else {}, "rs": m.get("rs") if m.get("rs") is Array else null,
-		"rsx": m.get("rsx") if m.get("rsx") is Dictionary else {}}
+		"rsx": m.get("rsx") if m.get("rsx") is Dictionary else {},
+		"arc": m.get("arc") if m.get("arc") is Dictionary else null}     # Godot-only: the Arcade co-op run (6.4)
 
 ## res://data/<name>.json, read once (static: the net code also runs in headless tests before autoloads exist).
 static var _data := {}

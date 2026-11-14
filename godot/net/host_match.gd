@@ -15,6 +15,7 @@ extends NetMatch
 const EMPTY_INFO := {"name": "", "skin": "none", "hat": "none", "color": 0xcccccc, "cls": "wobbler"}
 
 var host: WeakRef                ## the HostSession
+var arc: Dictionary = {}         ## Arcade co-op: this stage's run snapshot (`start.arc`); {} in a normal match
 var ai := {}                     ## slot -> FighterState: bots this host runs
 var brains := {}                 ## slot -> the bot's controller, kept while a guest plays that slot
 var orig := {}                   ## slot -> {cls, name, look, dmg, speed}: the bot as MatchSim made it
@@ -47,6 +48,7 @@ func setup(start: Dictionary) -> Dictionary:
 	slots = (start["slots"] as Array).duplicate(true)
 	limit = int(start.get("limit", 0))
 	rules = start.get("rules", {})
+	arc = (start["arc"] as Dictionary).duplicate(true) if start.get("arc") is Dictionary else {}
 	var resuming: bool = start.get("rs") is Array
 	sim.net = self
 	sim.pickups.remote = false

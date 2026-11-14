@@ -13,6 +13,9 @@ extends GuestSession
 ## (`mode` stays Classic for the web); with a web guest in the room the match plays Classic and the host is told, and
 ## a web guest cannot join an app-only match that is running (`kick` with the reason).
 ## Host migration (take_over): a Godot guest the relay promotes carries the running match on from its last state.
+## Arcade co-op (docs/ARCADE_COOP_PLAN.md M1, docs/PROTOCOL.md 6.4): an `arcade` room starts from the Construction hub
+## ("Play co-op"), plays the app-only `construction` mode, has two seats and sends the run as `start.arc` with every
+## stage's `start`; the stage transition reuses the same "a new `start` rebuilds the world" path as a rematch.
 
 signal hosted(code: String)                  ## the room is open (code = room id)
 
@@ -33,6 +36,9 @@ const KBS := [0.5, 1.0, 1.5, 2.0, 3.0]
 const CRATES := ["slow", "normal", "fast", "chaos"]
 
 var pub := false
+var arcade := false              ## an Arcade co-op room (options `arcade: true`): app-only, 2 seats, crew after them
+var arcade_diff := "normal"      ## the Arcade difficulty of an arcade room (Settings "arcade_diff" from the hub)
+var arc: Dictionary = {}         ## the current stage's run snapshot (`start.arc`); {} = a normal room
 var opt_max := 4
 var opt_bots := true             ## free seats get bots (and a bot takes the seat of a guest who leaves)
 var bot_n := NET_MAX             ## how many of the free seats get a bot at Start (the rest stay empty for late joiners)
@@ -73,6 +79,8 @@ var _dt0 := 0.0                  ## the arena clock the next match starts at (a 
 
 ## Start hosting. `opts`: name, pub, max (2..8 seats), bots (bool = every free seat / int = how many), lim (-1 auto),
 ## bhv, diff, mode, map, dyn, hp, grav, kb, crate, inf. `info` = {name, skin, hat, color, cls}.
+## `arcade: true` (plus `arcade_diff`) opens an Arcade co-op room instead: Construction mode on the generated site, two
+## seats, a teammate bot, a private room, the stage table's own HP / gravity / knockback / crates / K.O. limit.
 ## Returns false when it could not even start (no address).
 func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String = "") -> bool:
 	url = p_url.strip_edges()
@@ -90,8 +98,18 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 	opt_bots = bot_n > 0
 	bhv = "dummy" if opts.get("bhv") == "dummy" else "brawl"
 	diff = str(opts.get("diff", "normal"))
+	arcade = bool(opts.get("arcade", false))
 	var m := str(opts.get("map", "arena"))
-	map_id = m if data("maps").has(m) else "arena"
+	map_id = m if data("maps").has(m) or m == "sitegen" else "arena"
+	arc = {}
+	if arcade:
+		# Arcade co-op: private, two seats, a teammate bot, and none of the Host sheet's rules (the stages own them)
+		pub = false
+		opt_max = ArcadeCoop.SEATS; bot_n = 1; opt_bots = true
+		want_mode = "construction"
+		arcade_diff = ArcadeCoop.norm_diff(str(opts.get("arcade_diff", opts.get("diff", ArcadeCoop.DEFAULT_DIFF))))
+		map_id = ArcadeCoop.site_map()
+		hp = 200; grav = 1.0; kb = 1.0; crate = "normal"; inf = false; opt_lim = 0; dyn_kind = "off"
 	set_rules(opts)
 	net.player_name = my_info["name"]; net.token = token
 	phase = Phase.CONNECTING
@@ -104,7 +122,9 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 ## The rules part of the Host sheet (also between matches / in the lobby): mode, lim, hp, grav, kb, crate, inf, dyn.
 ## Keys left out keep their value. The next `start` uses them; the lobby hears the new roster.
 func set_rules(opts: Dictionary) -> void:
-	if opts.has("mode"): want_mode = online_mode(str(opts["mode"]))
+	if opts.has("mode"):
+		var md := str(opts["mode"])
+		want_mode = "construction" if arcade and md == "construction" else online_mode(md)
 	if opts.has("lim"): opt_lim = clampi(int(opts["lim"]), -1, 999)
 	if opts.has("hp"): hp = int(opts["hp"]) if HPS.has(int(opts["hp"])) else 200
 	if opts.has("grav"): grav = float(opts["grav"]) if GRAVS.has(float(opts["grav"])) else 1.0
@@ -126,7 +146,10 @@ func is_host() -> bool:
 
 ## netMode for the Godot host: modes the web game knows (shared modes.json), not team modes, not Sandbox /
 ## Construction, and not Pillars (its `pp` / `pt` are not hosted for the web); anything else plays Classic.
-static func net_mode(m: String) -> String:
+## An Arcade co-op room plays Construction: it is app-only (a web guest is refused, never downgraded) and the map, lives
+## and crew come from the run.
+func net_mode(m: String) -> String:
+	if arcade and m == "construction": return "construction"
 	var md: Dictionary = data("modes").get(m, {})
 	if md.is_empty() or md.get("teams") or m in ["sandbox", "construction", "pillars"]: return "classic"
 	return m
@@ -161,9 +184,11 @@ func web_guests() -> Array:
 		if int(r.get("id", -1)) != 0 and not r.has("gd"): out.append(str(r.get("name", "?")))
 	return out
 
-## The mode the next match plays: the pick, or Classic when it is app-only and a web guest is here.
+## The mode the next match plays: the pick, or Classic when it is app-only and a web guest is here. An Arcade room keeps
+## Construction (a web guest is refused instead: there is no Classic version of a run).
 func _refresh_mode() -> void:
 	if started: return
+	if arcade: mode_id = "construction"; return
 	mode_id = want_mode if not app_only(want_mode) or web_guests().is_empty() else "classic"
 
 ## The K.O. limit a match of `m` plays to (0 in lives / ladder modes).
@@ -367,6 +392,7 @@ func _close_later(cid: int) -> void:
 	_closing.append([0.4, cid])
 
 func _cap() -> int:
+	if arcade: return ArcadeCoop.SEATS           # the crew slots after the seats are not joinable
 	if not _resume.is_empty(): return maxi(NET_MAX, (_resume["slots"] as Array).size())
 	return slots.size() if started and not slots.is_empty() else NET_MAX
 
@@ -407,6 +433,11 @@ func _hello(cid: int, m: Dictionary) -> void:
 	var gd := NetSnapshot.to_int32(m.get("gd")) > 0
 	var info := clean_info(m, 0)
 	if gd: info["gd"] = NetClient.GD
+	if arcade and not gd:                                   # an Arcade run is app-only: never a Classic downgrade
+		_to(cid, {"t": "kick", "msg": "The Arcade co-op room is app-only: join from the Wobblers Arena app."})
+		_close_later(cid)
+		_set_status(tr("%s tried to join from the web browser: the Arcade co-op room is app-only.") % info["name"])
+		return
 	if started and not gd and app_only(mode_id):            # a web player cannot play an app-only mode
 		_to(cid, {"t": "kick", "msg": "This room is playing %s, which only the Wobblers Arena app has. Ask the host to pick a Classic-style mode." % mode_label()})
 		_close_later(cid)
@@ -430,9 +461,10 @@ func _hello(cid: int, m: Dictionary) -> void:
 	if started and hm != null:                     # joining a running match: a bot makes room
 		hm.bot_to_human(id, info)
 		slots = hm.slots
-		_to(cid, {"t": "start", "slots": slots, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap(true)})
+		_to(cid, start_msg_for(hm))
 		_to(cid, {"t": "crates", "list": hm.crate_list()})
 		_all({"t": "slot", "slot": id, "kind": "human", "info": slots[id]}, cid)
+		if arcade: arcade_refresh(hm)
 	else:
 		_refresh_mode()
 		_all(roster_msg())
@@ -457,6 +489,12 @@ func _drop(cid: int) -> void:
 	if started and hm != null:
 		var info := hm.human_to_bot(id, opt_bots)
 		slots = hm.slots
+		if arcade:
+			arcade_refresh(hm, id)                           # the seat is the teammate bot again (re-dressed)
+			var f := hm.slot_fighter(id)
+			if f != null: hm.slots[id] = hm.bot_info(f, id)  # ... and its slot table entry must match
+			slots = hm.slots
+			info = slots[id]
 		var kind := str(info.get("kind", "empty"))
 		_all({"t": "slot", "slot": id, "kind": kind, "info": info})
 		if who != "": hm.combat.ev({"type": "toast", "text": (tr("%s left, a bot took their place") if kind == "bot" else tr("%s left")) % who})
@@ -466,6 +504,29 @@ func _drop(cid: int) -> void:
 	if who != "": _set_status(tr("%s left.") % who)
 	roster_changed.emit(roster)
 	push_info()
+
+## The `start` for a guest joining (or re-joining) a running match: the same fields a fresh match sends, plus the run.
+func start_msg_for(hm: HostMatch) -> Dictionary:
+	var m := {"t": "start", "slots": slots, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap(true)}
+	if not hm.arc.is_empty(): m["arc"] = hm.arc.duplicate(true)
+	return m
+
+## Arcade co-op: the slot model changed (a guest took a seat / a seat fell back to its bot); let the run re-flag the
+## fighters (a ghost seat is not a locally played one, a teammate-bot seat is). The run registers itself on the sim's
+## metadata (ArcadeManager.setup_sim), so this file never statically depends on the DLC script: the net tests compile the
+## net layer before the autoloads the DLC script needs exist.
+func arcade_refresh(hm: HostMatch, bot_slot: int = -1) -> void:
+	if hm.sim == null or not hm.sim.has_meta("arcade_run"): return
+	var m: Variant = hm.sim.get_meta("arcade_run")
+	if m != null: m.call("refresh_seats", bot_slot)
+
+## Arcade co-op run state (display only) out to every guest: `am` (docs/PROTOCOL.md 6.4). The host's ArcadeManager calls
+## this through World.session; a non-arcade room ignores it.
+func arcade_send(m: Dictionary) -> void:
+	if not arcade or phase < Phase.LOBBY or phase == Phase.CLOSED: return
+	if record: sent.append(m)
+	m["t"] = "am"
+	_all(m)
 
 ## netGuard: a guest may only speak for its own fighter. Returns the fixed message, or {} to drop it.
 func guard(m: Dictionary, s: int) -> Dictionary:
@@ -512,8 +573,12 @@ func guard(m: Dictionary, s: int) -> Dictionary:
 ## srvInfo: what the room list shows (`mode` web-compatible, `modeName` the mode really played).
 func srv_info() -> Dictionary:
 	return {"name": room_name, "host": str(my_info.get("name", "?")), "mode": net_mode(mode_id), "modeName": mode_label(),
-		"map": map_label(), "max": slots.size() if started and not slots.is_empty() else opt_max, "started": started,
-		"build": NetClient.BUILD}
+		"map": map_label(), "max": room_max(), "started": started, "build": NetClient.BUILD}
+
+## The room's seat count for the room list: an Arcade run has two joinable seats, the crew slots are not players.
+func room_max() -> int:
+	if arcade: return ArcadeCoop.SEATS
+	return slots.size() if started and not slots.is_empty() else opt_max
 
 ## netPushInfo: refresh the room-list entry when it changed.
 func push_info() -> void:
@@ -531,13 +596,15 @@ func room_info() -> Dictionary:
 		for x: Dictionary in slots: if x.get("kind") == "human": n += 1
 	else: n = roster.size()
 	return {"t": "info", "build": NetClient.BUILD, "name": room_name, "host": str(my_info.get("name", "?")), "mode": net_mode(mode_id),
-		"modeName": mode_label(), "map": map_label(), "n": n, "max": slots.size() if started and not slots.is_empty() else opt_max,
-		"started": started, "pub": pub}
+		"modeName": mode_label(), "map": map_label(), "n": n, "max": room_max(), "started": started, "pub": pub}
 
 func mode_label() -> String:
 	return mode_name(mode_id)
 
+const SITE_MAP_LABEL := "Building Site"       ## SiteMap.header()'s name for the runtime-registered `sitegen` map
+
 func map_label() -> String:
+	if map_id == "sitegen": return SITE_MAP_LABEL
 	return str(data("maps").get(map_id, {}).get("name", map_id)).substr(0, 24)
 
 ## The rules as the lobby shows them (`rl` in roster, Godot-only): want (the pick), mode (what plays), lim (the
@@ -600,9 +667,15 @@ func host_match() -> HostMatch:
 	return _match.get_ref() as HostMatch if _match != null else null
 
 ## Start (host only, from the lobby): every seat up to the room size is a human, a bot or empty (netStartHosted).
+## Arcade co-op: the two player seats from the roster (an empty one is the teammate bot) and then the stage's crew.
 func start_match() -> bool:
 	if phase != Phase.LOBBY or started: return false
 	_resume = {}; _resume_t = -1.0
+	if arcade:
+		arc = ArcadeCoop.run_start_arc(randi_range(1, 900000), arcade_diff)
+		var sl := arcade_slots()
+		_begin_match(sl)
+		return true
 	var need := opt_max
 	for r: Dictionary in roster: need = maxi(need, int(r["id"]) + 1)
 	var s: Array = []
@@ -619,10 +692,26 @@ func start_match() -> bool:
 	_begin_match(s)
 	return true
 
+## An Arcade co-op room's `start.slots`: the two player seats (the host, then the guest or the teammate bot) followed by
+## the first stage's crew entries. The crew never counts as a joinable seat (`_cap` is 2).
+func arcade_slots() -> Array:
+	var s: Array = []
+	for k in ArcadeCoop.SEATS:
+		var h: Dictionary = {}
+		for r: Dictionary in roster:
+			if int(r.get("id", -1)) == k: h = r
+		if not h.is_empty():
+			var x := h.duplicate(); x["kind"] = "human"; s.append(x)
+		else:
+			s.append(ArcadeCoop.teammate_slot(k, my_info))
+	for c: Dictionary in ArcadeCoop.crew_slots(arcade_diff, 0): s.append(c)
+	return s
+
 ## netStartMatch (host): a fresh arena seed (or `keep_seed` for a resumed match), the world builds the match from
 ## `start_msg` (match_started), then HostMatch.setup calls match_ready and the `start` goes out with the bots' names.
 func _begin_match(s: Array, keep_seed: int = -1) -> void:
 	rv.clear(); rv_list = []; rv_total = 0; voted = false; rv_timer = -1.0
+	if not arcade: arc = {}
 	_refresh_mode()
 	started = true
 	phase = Phase.MATCH
@@ -632,18 +721,22 @@ func _begin_match(s: Array, keep_seed: int = -1) -> void:
 	dseed = keep_seed if keep_seed >= 0 else randi()
 	start_msg = {"slots": s, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap()}
 	start_msg.merge(_start_x)
+	if not arc.is_empty(): start_msg["arc"] = arc.duplicate(true)   # Arcade co-op: the run travels with the start
 	_set_status("Match started" if _start_x.is_empty() else "You're the host now: the match goes on.")
 	match_started.emit(start_msg)
 
-## The world's HostMatch is set up: send the `start` (bots now have names) and refresh the room list.
+## The world's HostMatch is set up: send the `start` (bots now have names) and refresh the room list. An Arcade co-op
+## stage rebuilds the world the same way: the run's `arc` goes out with the stage's `start`.
 func match_ready(hm: HostMatch) -> void:
 	_match = weakref(hm)
 	slots = hm.slots
 	start_msg["slots"] = slots
 	var r := rule_snap()
 	start_msg["rules"] = r
+	if not hm.arc.is_empty(): start_msg["arc"] = hm.arc
 	var m := {"t": "start", "slots": slots, "map": map_id, "custom": {}, "limit": limit, "rules": r}
 	m.merge(_start_x)
+	if not hm.arc.is_empty(): m["arc"] = hm.arc
 	_start_x = {}; _dt0 = 0.0
 	_all(m)
 	push_info()

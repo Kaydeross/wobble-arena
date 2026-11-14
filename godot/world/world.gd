@@ -1137,8 +1137,11 @@ func _unbind_net() -> void:
 		if (sig[0] as Signal).is_connected(sig[1]): (sig[0] as Signal).disconnect(sig[1])
 	session.resume_provider = Callable()
 
-## Host migration: the running match as this client sees it (NetMatch.capture_resume).
+## Host migration: the running match as this client sees it (NetMatch.capture_resume). An Arcade co-op run is NOT carried
+## across a migration for v1 (the owner's decision: if the host leaves, the run ends and the players return to the hub),
+## so this returns {} and the promoted guest lands in the lobby.
 func _resume_state() -> Dictionary:
+	if arcade != null: return {}
 	return net_match.capture_resume() if net_match != null and _results == null else {}
 
 ## The host left and another player hosts now: the arena stays until their `start` (or `rehosted` ends it).
@@ -1157,6 +1160,9 @@ func _on_net_promoted(hs: GuestSession) -> void:
 		_to_title(hs.status)
 
 func _on_net_message(m: Dictionary) -> void:
+	if m.get("t") == "am" and arcade != null:   # Arcade co-op: the host's run display state (docs/PROTOCOL.md 6.4)
+		arcade.handle_remote(m)
+		return
 	if net_match != null: net_match.handle(m)
 
 ## `start` again: a rematch (or the host restarted). Rebuild the match from it.

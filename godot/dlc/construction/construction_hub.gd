@@ -6,10 +6,12 @@ extends UiPage
 ## when short) and "Enter code" opens the code sheet. Owned: Classic opens a small pre-match card (bots 1..7, bot skill,
 ## the site seed with Random / Re-roll, Start). Start writes the Settings keys mode, bots, difficulty, offline_map
 ## ("sitegen" when that map exists, else "siteyard") and site_seed (0 = a new site every match), then `start_requested`
-## (scripts/main.gd: play_offline). Arcade: `arcade_requested` (the arcade manager hooks it), "Coming soon" until it exists.
+## (scripts/main.gd: play_offline). Arcade: `arcade_requested` (the arcade manager hooks it), "Coming soon" until it exists,
+## and "Play co-op" on the class / difficulty steps (`arcade_coop_requested`: the two-seat online run, main.play_arcade_coop).
 
 signal start_requested(opts: Dictionary)
 signal arcade_requested
+signal arcade_coop_requested   ## the Arcade "Play co-op" card: host the two-seat Arcade room (scripts/main.gd)
 
 const ARCADE_MANAGER := "res://dlc/construction/arcade_manager.gd"
 const BOT_MIN := 1
@@ -42,6 +44,7 @@ var arc_class_box: VBoxContainer
 var arc_diff_box: HBoxContainer
 var arc_foot: HBoxContainer
 var arc_next: Button
+var arc_coop: Button              ## "Play co-op": the two-seat online Arcade room (M1)
 var _diff_cards := {}             ## difficulty id -> its card Button
 var _bot_bs := {}
 var _diff_bs := {}
@@ -299,14 +302,23 @@ func _build_arcade() -> void:
 	arc_foot.name = "ArcadeFoot"
 	arc_foot.visible = false
 	arc_foot.alignment = BoxContainer.ALIGNMENT_CENTER
+	arc_foot.add_theme_constant_override("separation", UiTheme.SP_3)
 	col.add_child(arc_foot)
 	arc_next = Button.new()
 	arc_next.name = "ArcadeNext"
 	arc_next.theme_type_variation = &"PrimaryButton"
-	arc_next.custom_minimum_size = Vector2(340, 62)
+	arc_next.custom_minimum_size = Vector2(300, 62)
 	arc_next.add_theme_font_size_override("font_size", 28)
 	arc_next.pressed.connect(arcade_next)
 	arc_foot.add_child(arc_next)
+	arc_coop = Button.new()
+	arc_coop.name = "ArcadeCoop"
+	arc_coop.text = "Play co-op"
+	arc_coop.tooltip_text = "Host a room for two: the same boss rush, a friend can take the second seat (or a bot does)."
+	arc_coop.custom_minimum_size = Vector2(200, 62)
+	arc_coop.add_theme_font_size_override("font_size", 24)
+	arc_coop.pressed.connect(arcade_coop)
+	arc_foot.add_child(arc_coop)
 	JuicyButton.attach_all(arc_foot)
 
 func _diff_card(d: String, grp: ButtonGroup) -> Button:
@@ -440,6 +452,13 @@ func arcade_next() -> void:
 		Settings.set_value("arcade_diff", arc_diff)
 		Settings.set_value("class", arcade_class())
 		arcade_requested.emit()
+
+## Play co-op: the same run, hosted online for two (main.play_arcade_coop). The difficulty picked so far and the selected
+## class are kept, so the room's run matches what the cards show.
+func arcade_coop() -> void:
+	Settings.set_value("arcade_diff", arc_diff)
+	Settings.set_value("class", arcade_class())
+	arcade_coop_requested.emit()
 
 # ---------------- the pre-match card ----------------
 
