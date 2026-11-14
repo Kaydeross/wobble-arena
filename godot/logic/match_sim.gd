@@ -354,6 +354,9 @@ func _ring_out() -> void:
 		if d.phys.py >= ring_out_y or d.elim or d.is_ghost or d.dead: continue
 		var a := d.last_attacker
 		var knocked := a != null and a != d and combat.time - d.last_hit_time < 10.0
+		# Arcade (PvE): a stage enemy that is shoved off the site is NOT a K.O. for the player (it is revived on the floor by
+		# ArcadeManager), so it must not pay K.O. coins, count a K.O./streak or flash "K.O.!" - only a plain fall is logged.
+		if knocked and not combat.pve_seats.is_empty() and not combat.pve_seats.has(d): knocked = false
 		d.st["streak"] = 0; d.st["multi"] = 0; d.st["deaths"] += 1; d.st["falls"] += 1
 		if knocked: combat.add_ko(a, d)
 		else: combat.ev({"type": "ko", "killer": null, "victim": d, "weapon": "", "fall": true})

@@ -194,6 +194,8 @@ weapon's `dash` is a fixed impulse, identical for the player and every boss.
 | Project Manager | 5.13 / 6.21 | 7.12 / 8.61 | 6.00 -> 6.60 | normal |
 | The Client | 5.91 / 7.15 | 8.20 / 9.92 | 6.72 -> 7.39 | normal |
 
+A ring-out is also not a K.O. for the player: `MatchSim._ring_out` skips the K.O. credit (no K.O. coins, count, streak or "K.O.!" toast) for an Arcade enemy (any fighter outside `combat.pve_seats` while a run is on); it is logged as a plain fall and the enemy is revived.
+
 The co-op column is the root cause of the report: `_dress` overrode HP/speed but left the placeholder **class** multipliers
 on the fighter, and the class comes from the bot's slot (`BOT_CLASS_ORDER`): a solo boss was a Bruiser (`spd 0.88`, `kb
 0.65`, `dmg 1.12`) and a two-seat co-op boss a Scamp (`spd 1.22` = **39 % faster**, `kb 1.3` = 2x the knockback taken,

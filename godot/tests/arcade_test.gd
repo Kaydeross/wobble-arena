@@ -1109,6 +1109,43 @@ func _boss_ring_out() -> void:
 		check(arc.state == "clearing" and arc.downed.has(b) and b.hp <= 0.0,
 			"stage %d: only hp <= 0 clears it (%s, hp %.1f)" % [si + 1, arc.state, b.hp])
 		await _free_world(w)
+	# The REAL fall, with the player as the last attacker (the hammer shove the owner reported): the boss is thrown off the
+	# slab by its own velocity (no teleport below the ring-out line), MatchSim._ring_out sees it, and the fall must not pay
+	# the player: no K.O. coins, no K.O. count, no streak, no "K.O.!" toast (only a plain fall), and the boss revives once.
+	for si in [2, 5]:
+		var wk := _launch(si, true, 1.0)
+		var arck = wk.arcade
+		_start_fight(wk)
+		var simk: MatchSim = wk.sim
+		var bk: FighterState = arck.boss
+		var coins1: int = sv.coins
+		var kos1: int = int(sv.stats["kos"])
+		var ko1: int = simk.player.ko
+		bk.invuln = 0.0
+		bk.hp = simk.combat.max_hp(bk) * 0.6
+		bk.phys.place(31.5, 0.5, 0.0)
+		bk.phys.vx = 14.0
+		bk.last_attacker = simk.player
+		bk.last_hit_time = simk.combat.time
+		var falls1 := 0
+		for k in 400:
+			_keep_seats_alive(wk)
+			wk.tick(FRAME)
+			if bk.st["falls"] != falls1 and falls1 == 0: falls1 = int(bk.st["falls"])
+			if falls1 > 0 and k > 0 and not bk.dead and bk.phys.py > simk.ring_out_y and bk.phys.py < 2.0 and int(arck.revived.get(bk, 0)) == 1: break
+		check(int(bk.st["falls"]) == 1 and int(arck.revived.get(bk, 0)) == 1, "real fall (%s): one fall, one revive (falls %s, revived %s)" % [bk.name, bk.st["falls"], arck.revived.get(bk, 0)])
+		check(arck.state == "fight" and not bk.dead and not arck.downed.has(bk), "real fall (%s): the fight goes on (%s)" % [bk.name, arck.state])
+		check(simk.player.ko == ko1 and int(sv.stats["kos"]) == kos1, "real fall (%s): no K.O. is credited to the player (%d -> %d)" % [bk.name, ko1, simk.player.ko])
+		check(sv.coins == coins1, "real fall (%s): no K.O. coins are paid (%d -> %d)" % [bk.name, coins1, sv.coins])
+		check(int(simk.player.st["streak"]) == 0, "real fall (%s): no K.O. streak" % bk.name)
+		# the revived boss re-targets: it walks toward the player again (distance shrinks over 3 s)
+		var d0 := Vector2(bk.phys.px - simk.player.phys.px, bk.phys.pz - simk.player.phys.pz).length()
+		for k in 180:
+			_keep_seats_alive(wk)
+			wk.tick(FRAME)
+		var d1 := Vector2(bk.phys.px - simk.player.phys.px, bk.phys.pz - simk.player.phys.pz).length()
+		check(d1 < d0 - 4.0 or d1 < 3.0, "real fall (%s): the revived boss hunts the player again (%.1f -> %.1f m)" % [bk.name, d0, d1])
+		await _free_world(wk)
 	# The old clear decider was `dead && !fell_t`: any path that lost that transient flag between the fall and the
 	# manager's step (a bot respawn timer, a net re-build, a later code change) read as a K.O. and cleared the stage.
 	# The invariant is hp now, so a dead fighter with health left is a fall whatever the flag says.
