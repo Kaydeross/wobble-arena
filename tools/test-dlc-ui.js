@@ -13,8 +13,9 @@ const out = (r.stdout || '') + (r.stderr || '');
 const lines = out.split('\n').filter(l => /^(DLC UI|FAIL)|SCRIPT ERROR|^ERROR/.test(l));
 console.log(lines.join('\n'));
 if (r.status !== 0 || !/^DLC UI ok/m.test(out) || isFatal(out)) {
-  if (!lines.length) console.log(out.slice(0, 3000));
-  console.log('dlc_ui_test FAILED');
+  console.log(`dlc_ui_test FAILED (exit ${r.status}, signal ${r.signal || 'none'})`);
+  const raw = out.trim().split('\n');
+  console.log(raw.slice(-50).join('\n'));      // last lines: on Linux CI this run dies before its summary line
   process.exit(1);
 }
 console.log('godot dlc ui test passes');
