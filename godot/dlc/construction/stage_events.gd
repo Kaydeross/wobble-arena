@@ -129,16 +129,19 @@ func _load_test(p: Dictionary) -> void:
 	var n := int(p.get("crate_count", 3))
 	var warn := float(p.get("warning_time", 2.5))
 	var spots := _floor_spots()
+	var live: Array = m.living_seats()               # one crate near each player seat first (solo: near you)
+	if live.is_empty(): live = [sim.player]
 	_fire("load_test")
 	_toast(TranslationServer.translate("Load test incoming! Crates falling!"))
 	for i in n:
 		var x := 0.0
 		var z := 0.0
-		if i == 0:                                 # the first one lands near you: stay on your toes
+		if i < live.size():                            # the first ones land near the players: stay on your toes
+			var seat: FighterState = live[i]
 			var a := rng.randf_range(0.0, TAU)
 			var r := rng.randf_range(0.5, 3.0)
-			x = sim.player.phys.px + cos(a) * r
-			z = sim.player.phys.pz + sin(a) * r
+			x = seat.phys.px + cos(a) * r
+			z = seat.phys.pz + sin(a) * r
 		else:
 			var sp: Array = spots[rng.randi() % spots.size()]
 			x = float(sp[0]); z = float(sp[1])
@@ -310,8 +313,8 @@ func _change_request(n: int) -> void:
 	_toast(TranslationServer.translate("Change request approved! Weapons swapped!"))
 	if m.boss != null and not m.boss.dead:
 		m.give_weapon(m.boss, _random_tool(str(m.kit.get(m.boss, ""))))
-	var p := sim.player
-	if not p.dead:                                 # you get a new tool too
+	for p: FighterState in m.living_seats():       # every live player seat gets a new tool too
+		if p.dead: continue
 		var cur := ""
 		if p.slot >= 0 and p.slots[p.slot] != null: cur = str(p.slots[p.slot]["key"])
 		var key := _random_tool(cur)

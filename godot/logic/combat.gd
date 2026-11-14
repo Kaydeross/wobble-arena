@@ -134,8 +134,10 @@ func max_hp(f: FighterState) -> float:
 	return hp_setting * (2.0 if giant or f.big_t > 0.0 else 1.0) * f.cls_hp
 
 ## Bots only hurt each other in a free-for-all brawl.
+## Arcade co-op (docs/ARCADE_COOP_PLAN.md §4.4): a co-op seat is a ghost on the host (net_human), so the crew must be able
+## to hit it like a player. ffa is false only in the Arcade's PvE mode, so the other modes are untouched.
 func bots_can_hit(a: FighterState, e: FighterState) -> bool:
-	return a.is_player or e.is_player or (ffa and brawl)
+	return a.is_player or e.is_player or e.net_human or (ffa and brawl)
 
 func ev(e: Dictionary) -> void:
 	events.append(e)
@@ -203,7 +205,11 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		if attacker.is_player:
 			ev({"type": "dmg_number", "f": v, "dmg": dmg, "head": head, "part": part, "pct": pct}); attacker.st["hits"] += 1
 		v.flash = 0.12
-		var msg := NetSnapshot.encode_hit(v.net_slot if v.net_human else 0, v.net_slot, attacker.net_slot, dmg, dx, dy, dz, force, head)
+		# The hit goes to the ghost's owner (net_human) and names the fighter that dealt it. The Arcade's crew are
+		# host-owned bots with a net slot, so a crew hit on a co-op ghost seat reaches its owner through this same path
+		# (docs/ARCADE_COOP_PLAN.md §4.4). A host-run bot's ghost is told slot 0, exactly as before.
+		var to_seat := v.net_slot if v.net_human else 0
+		var msg := NetSnapshot.encode_hit(to_seat, v.net_slot, attacker.net_slot, dmg, dx, dy, dz, force, head)
 		ev({"type": "net", "msg": msg})
 		r["applied"] = true; r["sent"] = msg
 		return r

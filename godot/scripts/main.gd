@@ -116,6 +116,7 @@ func _ready() -> void:
 	add_child(hub)
 	hub.start_requested.connect(play_offline)
 	hub.arcade_requested.connect(play_arcade)
+	hub.arcade_coop_requested.connect(play_arcade_coop)
 	hub.closed.connect(func() -> void:
 		_coins_sub()
 		if Tier.is_pc(): dlc_b.grab_focus.call_deferred())
@@ -642,14 +643,20 @@ func _on_roster(r: Array) -> void:
 		_fill_lobby()
 		show_lobby(true)
 
-## `start` from the host: into the match (the world takes the session over).
+## `start` from the host: into the match (the world takes the session over). An Arcade co-op `start` carries `arc`: the
+## world gets the run (host or guest side) and the generated site's map, and the usual hooks rebuild each stage.
 func _enter_match(s: Dictionary) -> void:
 	if not is_inside_tree(): return
+	var run: Variant = s.get("arc")
 	_unbind_session()
 	show_lobby(false)
 	var world: Node = load(WORLD).instantiate()
 	world.session = session
 	world.start_msg = s
+	if ArcadeCoop.arc_valid(run):
+		world.arcade = ArcadeManager.new_online(run, session is HostSession)
+		world.map_id = str(s.get("map", ArcadeCoop.site_map()))
+		world.mode_id = "construction"
 	session = null
 	get_tree().change_scene_to_node.call_deferred(world)
 
@@ -678,6 +685,35 @@ func play_arcade() -> void:
 	if world == null: return
 	if session != null: session.leave("")
 	get_tree().change_scene_to_node(world)
+
+## The Construction hub's Arcade "Play co-op" card: host the two-seat Arcade room directly (no Host sheet: the stages own
+## the rules and the room is private + app-only). The friend joins with the code; an empty seat is the teammate bot, so the
+## run can start alone. `Settings arcade_diff` (the hub's difficulty pick) is the run's difficulty.
+func play_arcade_coop() -> void:
+	if not DlcUnlock.owned() or session != null and session.is_active(): return
+	if _remote_online_blocked():
+		_status("Online play is temporarily unavailable. You can keep playing offline." if not RemoteConfig.update_required()
+			else "Please update Wobblers Arena before playing online.")
+		show_tab(true)
+		return
+	var url := str(Settings.get_value("server_url")).strip_edges()
+	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
+	if nm == "": nm = str(Settings.get_value("name", "Player")).strip_edges().substr(0, 12)
+	if nm == "": nm = "Player"
+	Settings.set_value("name", nm)
+	var cls := str(Settings.get_value("class", "wobbler"))
+	if not Content.classes.has(cls) or not SetupWizard.owns_class(cls): cls = "wobbler"
+	var diff := ArcadeCoop.norm_diff(str(Settings.get_value("arcade_diff", "normal")))
+	if hub.visible: hub.close()
+	show_tab(true)
+	session = HostSession.new()
+	_bind_session()
+	(session as HostSession).begin_host(url, {"name": tr("%s's co-op run") % nm, "pub": false, "max": 2, "bots": 1,
+		"mode": "construction", "map": ArcadeCoop.site_map(), "arcade": true, "arcade_diff": diff, "diff": diff,
+		"dyn": "off", "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "lim": 0},
+		{"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
+		"color": Settings.get_value("color", 0x39b5a8), "cls": cls}, str(Settings.get_value("token", "")))
+	_refresh_buttons()
 
 # ---------------- hosting and the lobby ----------------
 
@@ -968,6 +1004,9 @@ func host_room() -> void:
 func _on_hosted(_code: String) -> void:
 	_fill_lobby()
 	show_lobby(true)
+	if session is HostSession and (session as HostSession).arcade:
+		# the Arcade room has no Host sheet: say exactly what to do (the code is in the lobby card)
+		_status(tr("Share the room code. Start when your friend is in."))
 
 ## Host migration while on the title / lobby: the new HostSession replaces the guest one.
 func _on_promoted(hs: GuestSession) -> void:

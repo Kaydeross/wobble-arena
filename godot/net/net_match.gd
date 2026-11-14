@@ -18,7 +18,9 @@ const PREDICT_MAX := 0.2         ## seconds a snapshot is carried forward
 const EASE := 22.0               ## k = 1 - exp(-dt * EASE)
 const SNAP := 6.0                ## metres: further off than this, jump straight there
 ## Modes only Godot clients play online (the web client's netMode turns them into Classic): sent as `rules.gmode`.
-const GODOT_MODES := ["tdm", "deathmatch", "sudden", "chaos", "pillars", "lowg", "duel", "t2", "t3", "t4"]
+## "construction" is the Arcade co-op room (docs/ARCADE_COOP_PLAN.md M1): app-only like the rest, and the only one whose
+## map/HP/lives/crew come from the Arcade run (`start.arc`) instead of the Host sheet.
+const GODOT_MODES := ["tdm", "deathmatch", "sudden", "chaos", "pillars", "lowg", "duel", "t2", "t3", "t4", "construction"]
 
 ## Squat flag holder so MatchSim's crouch easing works for ghosts (the web game reads g.squat).
 class GhostControl:

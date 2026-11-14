@@ -98,6 +98,17 @@ static func _buttons(box: Control, a: Button, b: Button = null) -> void:
 	box.add_child(row)
 	JuicyButton.attach_all(row)
 
+## A guest's card has no button of its own: the host decides (Start / Next / Retry / Quit). The disabled button says so.
+static func _waiting(box: Control) -> void:
+	var b := Button.new()
+	b.name = "Wait"
+	b.text = TranslationServer.translate("Waiting for the host")
+	b.disabled = true
+	b.custom_minimum_size = Vector2(0, 58)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.add_theme_font_size_override("font_size", 22)
+	box.add_child(b)
+
 static func _coin_row(box: Control, text: String) -> void:
 	var row := HBoxContainer.new()
 	row.name = "Coins"
@@ -115,7 +126,7 @@ static func _coin_row(box: Control, text: String) -> void:
 
 # ---------------- the cards ----------------
 
-static func intro(m: ArcadeManager, d: Dictionary, on_start: Callable) -> Control:
+static func intro(m: ArcadeManager, d: Dictionary, on_start: Callable, waiting := false) -> Control:
 	var fr := _frame("ArcadeIntro")
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
@@ -154,53 +165,79 @@ static func intro(m: ArcadeManager, d: Dictionary, on_start: Callable) -> Contro
 	_line(box, "Tag", "%s · %s · %s" % [tag, TranslationServer.translate(ConstructionHub.diff_name(m.diff)), TranslationServer.translate("Lives %d") % m.lives], 18, false, UiTheme.ACCENT)
 	if m.first_clear():
 		_line(box, "Reward", TranslationServer.translate("First clear: %d coins") % m.stage_coins(d), 18)
-	_buttons(box, _button(TranslationServer.translate("Start"), "Start", true, on_start))
+	if waiting: _waiting(box)
+	else: _buttons(box, _button(TranslationServer.translate("Start"), "Start", true, on_start))
 	return p
 
-static func clear(m: ArcadeManager, s: Dictionary, on_next: Callable, on_quit: Callable) -> Control:
+## The seats' line on a card ("K.O.s: You 3 · Bluey 2"), or "" with one seat (single-player cards unchanged).
+static func _seats_line(m: ArcadeManager, key: String, values: Array) -> String:
+	if m.seats.size() < 2: return ""
+	var parts := PackedStringArray()
+	for k in m.seats.size():
+		parts.append("%s %s" % [m.seat_name(k), str(values[k])])
+	return TranslationServer.translate(key) + ": " + " · ".join(parts)
+
+static func clear(m: ArcadeManager, s: Dictionary, on_next: Callable, on_quit: Callable, waiting := false) -> Control:
 	var fr := _frame("ArcadeClear")
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
 	_title(box, TranslationServer.translate("Stage clear!"))
 	_line(box, "StageName", TranslationServer.translate(str(s["name"])), 24, false, Color.WHITE)
 	_line(box, "Stats", "%s · %s" % [TranslationServer.translate("Time %s") % ArcadeManager.fmt_time(float(s["time"])), TranslationServer.translate("K.O.s %d") % int(s["kos"])], 20)
+	if m.seats.size() > 1:
+		var kos: Array = []
+		for r: Dictionary in s.get("seats", []): kos.append(int(r.get("kos", 0)))
+		_line(box, "Seats", _seats_line(m, "K.O.s", kos), 18)
 	if int(s["coins"]) > 0:
 		_coin_row(box, TranslationServer.translate("+%d coins") % int(s["coins"]))
 		_line(box, "Bonus", TranslationServer.translate("%d clear + %d first clear bonus") % [int(s["reward"]), int(s["bonus"])], 17)
+		if m.seats.size() > 1: _line(box, "CoopCoins", TranslationServer.translate("Each player's save gets the coins and records"), 16)
 	else:
 		_line(box, "Bonus", TranslationServer.translate("Cleared before: no coins this time"), 17)
-	_buttons(box, _button(TranslationServer.translate("Next stage"), "Next", true, on_next), _button(TranslationServer.translate("Quit run"), "Quit", false, on_quit))
+	if waiting: _waiting(box)
+	else: _buttons(box, _button(TranslationServer.translate("Next stage"), "Next", true, on_next), _button(TranslationServer.translate("Quit run"), "Quit", false, on_quit))
 	return p
 
-static func failed(m: ArcadeManager, on_retry: Callable, on_quit: Callable) -> Control:
+static func failed(m: ArcadeManager, on_retry: Callable, on_quit: Callable, waiting := false) -> Control:
 	var fr := _frame("ArcadeFailed")
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
 	_title(box, TranslationServer.translate("Stage failed"), Color(1, 0.8, 0.72))
 	_line(box, "StageName", TranslationServer.translate(str(m.stage_def()["name"])), 24, false, Color.WHITE)
 	_line(box, "Lives", TranslationServer.translate("Lives left: %d") % m.lives, 22, false, UiTheme.ACCENT)
+	if m.seats.size() > 1:
+		var names := PackedStringArray()
+		for k in m.seats.size(): names.append(m.seat_name(k))
+		_line(box, "Seats", "%s: %s" % [TranslationServer.translate("Down"), " · ".join(names)], 18)
 	_line(box, "Hint", TranslationServer.translate("A fresh site, a fresh try."), 18)
-	_buttons(box, _button(TranslationServer.translate("Retry stage"), "Retry", true, on_retry), _button(TranslationServer.translate("Quit run"), "Quit", false, on_quit))
+	if waiting: _waiting(box)
+	else: _buttons(box, _button(TranslationServer.translate("Retry stage"), "Retry", true, on_retry), _button(TranslationServer.translate("Quit run"), "Quit", false, on_quit))
 	return p
 
-static func over(m: ArcadeManager, on_quit: Callable) -> Control:
+static func over(m: ArcadeManager, on_quit: Callable, waiting := false) -> Control:
 	var fr := _frame("ArcadeOver")
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
 	_title(box, TranslationServer.translate("Run over"), Color(1, 0.8, 0.72))
 	_line(box, "Reached", TranslationServer.translate("You reached stage %d of %d: %s") % [m.stage + 1, ArcadeManager.count(), TranslationServer.translate(str(m.stage_def()["name"]))], 22, false, Color.WHITE)
+	if m.seats.size() > 1:
+		var names := PackedStringArray()
+		for k in m.seats.size(): names.append(m.seat_name(k))
+		_line(box, "Seats", " · ".join(names), 18)
 	if m.run_coins > 0: _coin_row(box, TranslationServer.translate("+%d coins") % m.run_coins)
 	_line(box, "Hint", TranslationServer.translate("Out of lives. The site wins this time."), 18)
-	_buttons(box, _button(TranslationServer.translate("Back to title"), "Quit", true, on_quit))
+	if waiting: _waiting(box)
+	else: _buttons(box, _button(TranslationServer.translate("Back to title"), "Quit", true, on_quit))
 	return p
 
-static func won(m: ArcadeManager, on_quit: Callable) -> Control:
+static func won(m: ArcadeManager, on_quit: Callable, waiting := false) -> Control:
 	var fr := _frame("ArcadeVictory")
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
 	_title(box, TranslationServer.translate("Site cleared!"))
 	_line(box, "Sub", TranslationServer.translate("The Client signed off. Every tradie is back on smoko."), 20)
 	_coin_row(box, TranslationServer.translate("+%d coins") % m.run_coins)
+	if m.seats.size() > 1: _line(box, "CoopCoins", TranslationServer.translate("Each player's save gets the coins and records"), 16)
 	var hat := TranslationServer.translate(LockerData.hat_name(ArcadeManager.FOREMAN_HAT))
 	if bool(m.victory.get("hat_first", false)):
 		_line(box, "Hat", TranslationServer.translate("New hat: %s. Pick it in the Walldrobe") % hat, 19, false, UiTheme.GOOD)
@@ -210,5 +247,6 @@ static func won(m: ArcadeManager, on_quit: Callable) -> Control:
 		_line(box, "Hat", TranslationServer.translate("Win on Normal or Nightmare for the Site Foreman hat"), 19, false, UiTheme.ACCENT)
 	if bool(m.victory.get("first", false)):
 		_line(box, "Bonus", TranslationServer.translate("Includes %d victory bonus coins") % int(m.victory.get("coins", 0)), 17)
-	_buttons(box, _button(TranslationServer.translate("Back to title"), "Quit", true, on_quit))
+	if waiting: _waiting(box)
+	else: _buttons(box, _button(TranslationServer.translate("Back to title"), "Quit", true, on_quit))
 	return p

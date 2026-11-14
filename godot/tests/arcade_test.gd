@@ -52,6 +52,7 @@ func _run() -> void:
 	await _gate()
 	await _full_run()
 	await _lives()
+	await _coop()
 	await _events()
 	await _boss_weapon_crates()
 	await _phases()
@@ -149,6 +150,71 @@ func _free_world(w: Node) -> void:
 	w.queue_free()
 	await _wait_frames(3)
 
+## A world on a new Arcade run with two locally controlled player seats (offline co-op, docs/ARCADE_COOP_PLAN.md §4.1):
+## seat 0 is the world's own player, seat 1 gets its own PlayerControl + InputState from ArcadeManager._bind_seats.
+func _launch_coop(stage := 0, easy := true, dmg := 1.0, diff := "nightmare", cls := "", bot1 := false, dmg1 := 1.0) -> Node:
+	var w: Node = AM.call("launch", 4242, diff, cls)
+	var arc = w.arcade
+	if easy: arc.difficulty_override = "easy"
+	arc.player_dmg = dmg
+	arc.fixed_seed = 900
+	arc.stage = stage
+	arc.seat_count = 2
+	arc.seat_names = ["You", "Bluey"]
+	arc.seat_bot = [false, bot1]
+	arc.seat_dmg = [dmg, dmg1]
+	w.auto_run = false
+	root.add_child(w)
+	return w
+
+## The enemy nearest to a given seat (co-op version of _nearest_enemy).
+func _nearest_enemy_to(w: Node, f: FighterState) -> FighterState:
+	var arc = w.arcade
+	var best: FighterState = null
+	var bd := 1e9
+	for e: FighterState in arc.enemies:
+		if e.dead or arc.downed.has(e): continue
+		var d := Vector2(e.phys.px - f.phys.px, e.phys.pz - f.phys.pz).length()
+		if d < bd: bd = d; best = e
+	return best
+
+## One scripted frame for ANY seat: face the nearest enemy, close in, swing. Seat 0 uses the world's camera/input,
+## seat 1+ its own PlayerControl (cam_yaw + InputState), the same way the single-seat helper drives the world's.
+func _seat_frame(w: Node, k: int, i: int) -> void:
+	var arc = w.arcade
+	var p: FighterState = arc.seats[k]
+	var ctl: PlayerControl = w.control if k == 0 else arc.seat_control(k)
+	if ctl == null: return
+	var st: InputState = ctl.input
+	var tg := _nearest_enemy_to(w, p)
+	var go := Vector2.ZERO
+	var fire := false
+	if tg != null:
+		var d := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
+		ctl.cam_yaw = atan2(d.x, d.y)
+		if d.length() > 7.0 and i % 40 == 0:
+			var away := (-d).normalized() * 1.7
+			p.phys.place(tg.phys.px + away.x, tg.phys.py + 0.05, tg.phys.pz + away.y)
+		go = Vector2(0, 1) if d.length() > 1.6 else Vector2.ZERO
+		fire = d.length() < 2.6
+		if i % 131 == 0: st.press("kick")
+	st.set_move("script", go)
+	st.hold("script", "fire", fire)
+	st.hold("script", "jump", i % 197 < 3)
+
+## The invulnerable seats + enemies tick, so a test can observe AI state without anyone dying.
+func _tick_safe(w: Node, n: int) -> void:
+	var arc = w.arcade
+	for i in n:
+		for f: FighterState in arc.seats: f.invuln = 5.0
+		for e: FighterState in arc.enemies: e.invuln = 5.0
+		w.tick(FRAME)
+
+func _kill_seat(w: Node, k: int) -> void:
+	var f: FighterState = w.arcade.seats[k]
+	f.invuln = 0.0; f.shield_t = 0.0
+	w.sim.combat.hit(f, 1e6, 0.0, 1.0, 0.0, 5.0, false, null)
+
 # ---------------- 1. the gate ----------------
 
 func _gate() -> void:
@@ -245,6 +311,7 @@ func _full_run() -> void:
 		check(sv.coins - c0 >= want_coins, "stage %d coins in the wallet (+%d)" % [si + 1, sv.coins - c0])
 		check(DlcSave.best(sv.dlc, "nightmare") == si + 1, "arcade_best = %d (%s)" % [si + 1, sv.dlc["arcade_best"]])
 		check(DlcSave.has_cleared(sv.dlc, str(d["id"]), "nightmare") and not DlcSave.has_cleared(sv.dlc, str(d["id"]), "easy"), "%s is in the Nightmare arcade_clears only" % d["id"])
+		check((arc.last["seats"] as Array).size() == 1 and int(arc.last["seats"][0]["kos"]) == int(arc.last["kos"]), "stage %d: single-player pay is the one seat's share" % (si + 1))
 		if si < 5:
 			var card := _ui(w, "ArcadeClear")
 			check(card != null and arc.state == "cleared", "stage %d: the clear card" % (si + 1))
@@ -258,6 +325,7 @@ func _full_run() -> void:
 	check(DlcSave.won_diff(sv.dlc, "nightmare"), "victory remembered")
 	check(_hats().has("foreman"), "the Site Foreman hat is unlocked")
 	check(arc.victory.get("hat", "") == "foreman" and bool(arc.victory["first"]), "victory grants the hat once (%s)" % [arc.victory])
+	check((arc.victory["seats"] as Array).size() == 1 and int(arc.victory["seats"][0]["coins"]) == int(arc.victory["coins"]), "victory returns the seat's share")
 	print("FULL RUN stages=%d coins=%d time=%.0fs" % [arc.history.size(), arc.run_coins, arc.run_time])
 	await _free_world(w)
 	check(_running() == null, "the arcade flag is cleared when the world goes")
@@ -326,6 +394,202 @@ func _lives() -> void:
 			check(_ui(w, "ArcadeOver") != null, "the run over card shows")
 	arc.retry_stage()
 	check(arc.state == "over", "no retry after the run is over")
+	await _free_world(w)
+
+# ---------------- 3b. two seats (offline co-op) ----------------
+
+## The M2 acceptance: seats, nearest-living-seat targeting, 6 s auto-revive without a life, all-down = one shared life,
+## summed K.O.s, per-seat rewards, the clear card advancing BOTH seats to the next stage, and the PvE combat gates.
+func _coop() -> void:
+	_unlock()
+	# -- seats / damage scale / HUD lines --
+	var w := _launch_coop(0)
+	var arc = w.arcade
+	var sim: MatchSim = w.sim
+	check(arc.seat_count == 2 and arc.seats.size() == 2, "co-op: two player seats (%d)" % arc.seats.size())
+	check(arc.seats[0] == sim.player and arc.seats[1] != sim.player, "co-op: seats are sim.fighters[0..1]")
+	var p2: FighterState = arc.seats[1]
+	check(p2.is_player and not p2.is_ghost and not p2.elim, "co-op: seat 2 is a full player (player flags, not a ghost)")
+	check(arc.seat_control(1) != null and arc.seat_control(1).input != null, "co-op: seat 2 has its own PlayerControl + InputState")
+	check(arc.enemies.size() == 4 and not arc.enemies.has(p2), "co-op: stage 1 has its 4 crew, the seats are not crew")
+	check(is_equal_approx(p2.dmg_scale, 1.0) and is_equal_approx(sim.player.dmg_scale, 1.0), "co-op: damage scale applied per seat")
+	check(w.views.has(p2), "co-op: seat 2 has a view")
+	_start_fight(w)
+	_tick_safe(w, 20)
+	check(arc.hud.visible and arc.hud.plates.size() == 2 and arc.hud.plates[1].visible, "co-op: the HUD shows one line per seat")
+	check(arc.hud.plates[1].text.contains("Bluey"), "co-op: the seat line names seat 2 (%s)" % arc.hud.plates[1].text)
+	# the load test's first crates land near a living seat each
+	var spots0: int = arc.events._crates.size()
+	arc.events._load_test({"crate_count": 3, "warning_time": 2.5})
+	var near := 0
+	for h: Dictionary in arc.events._crates.slice(spots0):
+		var d2 := Vector2(float(h["x"]) - p2.phys.px, float(h["z"]) - p2.phys.pz).length()
+		var d0 := Vector2(float(h["x"]) - sim.player.phys.px, float(h["z"]) - sim.player.phys.pz).length()
+		if minf(d0, d2) < 3.2: near += 1
+	check(near >= 2, "co-op: load-test crates land near the seats (%d of 3)" % near)
+	arc.events.finish()
+	await _free_world(w)
+	# -- per-seat damage multiplier --
+	w = _launch_coop(0, true, 1.0, "nightmare", "", false, 2.0)
+	arc = w.arcade
+	check(is_equal_approx(arc.seats[0].dmg_scale, 1.0) and is_equal_approx(arc.seats[1].dmg_scale, 2.0), "co-op: each seat's own damage multiplier (%s)" % [arc.seats[1].dmg_scale])
+	await _free_world(w)
+	# -- the crew and the boss go for the nearest LIVING seat --
+	w = _launch_coop(1)                              # stage 2: one boss
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	var boss: FighterState = arc.boss
+	sim.player.phys.place(-30.0, 0.05, -30.0)
+	arc.seats[1].phys.place(0.0, 0.05, 0.0)
+	boss.phys.place(2.0, 0.05, 0.0)
+	_tick_safe(w, 90)
+	var brain: BotBrain = sim.controllers.get(boss)
+	check(brain != null and brain.target == arc.seats[1], "co-op: the boss targets the nearest living seat (seat 2)")
+	sim.player.phys.place(0.0, 0.05, 0.0)
+	arc.seats[1].phys.place(-30.0, 0.05, -30.0)
+	boss.phys.place(2.0, 0.05, 0.0)
+	_tick_safe(w, 90)
+	check(brain != null and brain.target == sim.player, "co-op: the boss switches to seat 1 when it is nearest")
+	# a downed seat is not a target
+	_kill_seat(w, 1)
+	w.tick(FRAME)
+	sim.player.phys.place(-30.0, 0.05, -30.0)
+	boss.phys.place(2.0, 0.05, 0.0)
+	_tick_safe(w, 90)
+	check(brain != null and brain.target == sim.player, "co-op: a downed seat is not targeted (nearest living seat only)")
+	await _free_world(w)
+	# -- a teammate BOT seat (room rule: 1 human + 1 bot) is a valid target and fights the crew --
+	w = _launch_coop(1, true, 1.0, "nightmare", "", true)
+	arc = w.arcade
+	sim = w.sim
+	var bseat: FighterState = arc.seats[1]
+	var sbrain: BotBrain = sim.controllers.get(bseat)
+	check(bseat.is_player and sbrain != null and arc.seat_control(1) == null, "co-op: a bot seat keeps its BotBrain and has no local control")
+	_start_fight(w)
+	boss = arc.boss
+	sim.player.phys.place(-30.0, 0.05, -30.0)
+	bseat.phys.place(0.0, 0.05, 0.0)
+	boss.phys.place(2.0, 0.05, 0.0)
+	_tick_safe(w, 150)
+	check((sim.controllers.get(boss) as BotBrain).target == bseat, "co-op: the crew targets a teammate bot seat")
+	check(sbrain != null and sbrain.target != null and arc.enemies.has(sbrain.target), "co-op: the teammate bot fights the crew (%s)" % [sbrain.target])
+	await _free_world(w)
+	# -- one seat down: 6 s auto-revive, no life lost --
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	_tick_safe(w, 20)
+	var lives0: int = arc.lives
+	var downed_hits := [0]
+	var revived_hits := [0]
+	arc.seat_downed.connect(func(k: int, secs: float) -> void: if k == 1 and is_equal_approx(secs, 6.0): downed_hits[0] += 1)
+	arc.seat_revived.connect(func(k: int) -> void: if k == 1: revived_hits[0] += 1)
+	var pos0 := Vector2(p2.phys.px, p2.phys.pz)
+	_kill_seat(w, 1)
+	w.tick(FRAME)                                    # the manager sees the death and downs the seat
+	check(arc.seat_is_down(1) and arc.seat_alive(0), "co-op: only seat 2 is down (%s)" % [arc.downed_seats()])
+	check(downed_hits[0] == 1, "co-op: seat_downed carries the 6 s revive")
+	check(arc.lives == lives0 and arc.state == "fight", "co-op: a downed seat does not cost a life or fail the stage")
+	check(arc.hud.plates[1].text.contains("Down"), "co-op: the HUD counts the seat down (%s)" % arc.hud.plates[1].text)
+	var t := 0.0
+	while arc.seat_is_down(1) and t < 9.0:
+		sim.player.invuln = 5.0
+		w.tick(FRAME); t += FRAME
+	check(not arc.seat_is_down(1) and revived_hits[0] == 1, "co-op: seat 2 auto-revives (%.2f s)" % t)
+	check(absf(t - 6.0) < 0.25, "co-op: the auto-revive takes ~6 s (%.2f)" % t)
+	check(arc.lives == lives0 and arc.state == "fight", "co-op: the revive costs no life")
+	check(not p2.dead and not p2.elim and p2.invuln > 0.0, "co-op: the revived seat is a live fighter again")
+	check(p2.hp >= sim.combat.max_hp(p2) - 0.01, "co-op: revived at full health for its class (%.0f/%.0f)" % [p2.hp, sim.combat.max_hp(p2)])
+	check(Vector2(p2.phys.px, p2.phys.pz).distance_to(Vector2(sim.player.phys.px, sim.player.phys.pz)) > 3.0 or Vector2(p2.phys.px, p2.phys.pz).distance_to(pos0) > 2.0, "co-op: the revive places the seat on a safe spot")
+	check(arc.hud.plates[1].text.contains("K.O.s"), "co-op: the HUD line is back to normal (%s)" % arc.hud.plates[1].text)
+	await _free_world(w)
+	# -- every seat down: exactly one shared life, same stage retried, both seats back --
+	w = _launch_coop(1)                              # stage 2
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	_tick_safe(w, 20)
+	lives0 = arc.lives
+	_kill_seat(w, 0)
+	_kill_seat(w, 1)
+	var n := 0
+	while (arc.state == "fight" or arc.state == "failing") and n < 900:
+		w.tick(FRAME); n += 1
+	check(arc.state == "failed", "co-op: both seats down fails the attempt (%s)" % arc.state)
+	check(arc.lives == lives0 - 1, "co-op: exactly one shared life lost (%d -> %d)" % [lives0, arc.lives])
+	check(_ui(w, "ArcadeFailed") != null and arc.stage == 1, "co-op: the failed card shows once, same stage")
+	check(arc.seats[0].elim and arc.seats[1].elim and arc.seats[0].dead and arc.seats[1].dead, "co-op: every downed seat is out (eliminated/pinned) behind the card")
+	_press(_ui(w, "ArcadeFailed"), "Retry")
+	await _wait_frames(4)
+	check(arc.stage == 1 and arc.attempt == 1 and arc.lives == lives0 - 1, "co-op: retry retries stage 2 with the shared lives")
+	check(arc.seats.size() == 2 and arc.seats[1].is_player and arc.seat_control(1) != null, "co-op: both seats are back on the retry")
+	check(_ui(w, "ArcadeIntro") != null, "co-op: the retry opens the intro card again")
+	await _free_world(w)
+	# -- summed K.O.s, per-seat rewards, the clear card advances both seats --
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	_tick_safe(w, 20)
+	var sv := _sv()
+	var coins0: int = sv.coins
+	arc.seats[0].ko = 2
+	arc.seats[1].ko = 3
+	for e: FighterState in arc.enemies.duplicate():   # the crew falls (no attacker: no extra K.O. credit)
+		e.invuln = 0.0
+		sim.combat.hit(e, 1e6, 0.0, 1.0, 0.0, 5.0, false, null)
+	for i in 10: w.tick(FRAME)
+	check(arc.state == "clearing", "co-op: the stage clears with both seats in (%s)" % arc.state)
+	check(int(arc.last["kos"]) == 5 and arc.run_kos == 5, "co-op: run K.O.s are the seats' sum (%d)" % int(arc.last["kos"]))
+	check((arc.last["seats"] as Array).size() == 2 and int(arc.last["seats"][1]["kos"]) == 3, "co-op: the summary carries each seat's K.O.s")
+	check(int(arc.last["coins"]) > 0 and sv.coins - coins0 == int(arc.last["coins"]), "co-op: one local save paid once, each seat's share in the summary")
+	check((arc.last["seats"] as Array).all(func(r: Dictionary) -> bool: return int(r["coins"]) == int(arc.last["coins"])), "co-op: every seat's share is the stage coins")
+	for i in int((arc.CLEAR_DELAY + 0.3) / FRAME): w.tick(FRAME)
+	var card := _ui(w, "ArcadeClear")
+	check(card != null and card.find_child("Seats", true, false) != null, "co-op: the clear card has the per-seat line")
+	check(card != null and card.find_child("CoopCoins", true, false) != null, "co-op: the clear card says each player's save gets the coins")
+	_press(card, "Next")
+	await _wait_frames(4)
+	check(arc.stage == 1 and arc.state == "intro", "co-op: Next stage advances the run (%d, %s)" % [arc.stage, arc.state])
+	check(arc.seats.size() == 2 and arc.seats[0] == w.sim.player and arc.seats[1].is_player, "co-op: both seats advance to the next stage")
+	check(arc.seat_control(1) != null and w.sim.fighters.size() == 2 + 1, "co-op: the next stage rebuilds both seats and the stage's crew")
+	check(_ui(w, "ArcadeIntro") != null, "co-op: the next stage's intro card")
+	await _free_world(w)
+	# -- the single-player path is unchanged: one seat, the crew still hunts sim.player --
+	_unlock()
+	w = _launch(0)
+	arc = w.arcade
+	sim = w.sim
+	check(arc.seat_count == 1 and arc.seats == [sim.player], "single: one seat, [sim.player]")
+	_start_fight(w)
+	_tick_safe(w, 90)
+	check(sim.controllers.get(arc.enemies[0]).target == sim.player, "single: the crew still targets the player")
+	await _free_world(w)
+	# -- PvE combat gates: a co-op ghost seat is hittable and the crew's hit is relayed to its owner --
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	var crew: FighterState = arc.enemies[0]
+	var ghost: FighterState = arc.seats[1]
+	ghost.net_human = true; ghost.net_slot = 1; ghost.is_ghost = true; ghost.invuln = 0.0
+	crew.net_slot = 0
+	check(sim.combat.bots_can_hit(crew, ghost), "gates: the crew can hit a co-op ghost seat (bots_can_hit e.net_human)")
+	sim.combat.net_started = true
+	sim.combat.events.clear()
+	var r: Dictionary = sim.combat.hit(ghost, 10.0, 0.0, 1.0, 0.0, 4.0, false, crew)
+	var nets: Array = sim.combat.events.filter(func(e: Dictionary) -> bool: return e.get("type") == "net")
+	var msg: Dictionary = nets[0]["msg"] if nets.size() > 0 else {}
+	check(bool(r.get("applied", false)) and nets.size() == 1, "gates: the crew's hit on the ghost is relayed (%d)" % nets.size())
+	check(int(msg.get("to", -1)) == 1 and int(msg.get("vs", -1)) == 1 and int(msg.get("from", -1)) == 0, "gates: the hit names the ghost's slot as target and victim (%s)" % [msg])
+	check(is_equal_approx(ghost.hp, sim.combat.max_hp(ghost)), "gates: the host does not apply the ghost's damage locally")
+	sim.combat.events.clear()
+	arc.seats[0].net_slot = 0
+	var r2: Dictionary = sim.combat.hit(ghost, 10.0, 0.0, 1.0, 0.0, 4.0, false, arc.seats[0])
+	var nets2: Array = sim.combat.events.filter(func(e: Dictionary) -> bool: return e.get("type") == "net")
+	check(bool(r2.get("applied", false)) and nets2.size() == 1, "gates: the player-attacker path still relays its hit")
+	check(sim.combat.bots_can_hit(arc.seats[0], crew) and not sim.combat.bots_can_hit(crew, arc.enemies[1]), "gates: crew vs crew is still not a fight")
 	await _free_world(w)
 
 # ---------------- 4. events ----------------

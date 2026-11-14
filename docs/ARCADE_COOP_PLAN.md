@@ -228,3 +228,65 @@ an **L/XL effort, with M3's fighter handover and M2's PvE bot AI as the sharp ed
 the shared web protocol (`S`/`h`/`ko` stay byte-identical; the new fields are Godot-only like `gm`). Full host migration
 inside a run is the one case that is not clean: it needs run state, hazard timing and two saves to agree. Ship v1 with
 the run ending when the host leaves and decide M5 separately.
+
+## 10. Decisions (owner, 2026-11-14)
+
+1. **Lives:** shared run lives, one HUD number.
+2. **Downed player:** auto-revive after 6 s while a teammate is still up; a revive does not cost an extra life.
+3. **Records and coins:** co-op clears and first-clear coins are written on each player's save; the UI says so.
+4. **Seats:** two players per room.
+5. **Lobby:** a room may start with one human plus a teammate bot, so a friend can take the seat later.
+6. **Host migration:** not needed for v1. If the host leaves, the run ends and the players return to the hub.
+
+These settle section 8's questions; M1-M4 are in scope, M5 is out.
+
+## 11. Milestone status
+
+- **M1 (net layer): done, offline + net verified.**
+  `construction` is in `NetMatch.GODOT_MODES` and an Arcade room (`arcade` host opt, hub "Play co-op" →
+  `main.play_arcade_coop`) plays it app-only on the generated site, two seats + the stage's crew, with a web guest
+  refused. `start.arc` (`godot/dlc/construction/arcade_coop.gd`: `{run, st, of, diff, seed, seats, crew, boss, big,
+  state, lv}`) travels with every stage's `start` (the transition mechanism) and with a mid-run join/rejoin; the host
+  rebuilds slots as seats + the new stage's crew, adopts the crew fighters `MatchSim.setup` made, and sends `am`
+  (~5 Hz + on change: stage, state, lives, boss fraction, shrink, downed seats, stage summary, victory). The guest
+  rebuilds the site from `arc.seed`, maps the seats onto the net ghosts (`NetMatch.slot_fighter(arc.seats[k])`) and binds
+  the same `ArcadeBossHud`. The GUEST PRESENTATION is done too: its HUD strip names the stage/lives and its boss bar is
+  driven by `am.hf` (`arc.big` gives the ghost the 1.5x look), the intro/clear/failed/over/won cards are rebuilt from
+  `am.s`/`am.last`/`am.won` with the host's buttons disabled ("Waiting for the host"), `am.sh` sets its own shrinking
+  floor (`rules.shrink` + visuals), `am.dn`/`am.dnt` pin its own fighter behind a "Down! Back in N" overlay (no local
+  respawn) and `am.rv` places it at the host's safe spot/health fraction with 1.5 s invulnerability, and each clear
+  (`am.cn`) pays ITS OWN save once (its own `DlcSave.has_cleared`/first-clear bonus/`mark_cleared`/`set_best`/`Save.coins`/
+  `Save.commit`) — a retry pays nothing twice; the victory (`am.won`/`am.vic`) pays the bonus and hat conditions on its
+  own save too. Test: `npm run test:godot-host` scenario D ("arcade") — host room with the teammate bot, a Godot guest
+  joins mid-fight, the down/revive round trip, a stage-1 clear and retry (350 then 0 guest coins), stage 1 → 2
+  (`start.arc.st` 0 → 1, matching fresh seeds), the guest's HUD ("Normal · Stage 2 / 6 · Lives 3"), boss fraction
+  (0.42) and shrinking floor (50 m), the guest leaving (seat 1 becomes a fighting teammate bot with its class), the
+  guest rejoining mid-run (current stage `start`, seat 1 human again) and the host winning/leaving (victory paid on the
+  guest's save, then "The host left. The Arcade run is over."); host and guests exit clean. Web guests are simply
+  refused. Remaining: M4 only (hazard `am.ev` visuals, weapon takes, guest `arc` button requests, phase toasts).
+- **M2 (Arcade seats): done, offline-verified.** `ArcadeManager` is seat-aware: `seat_count` (1 or 2) and `seat_names`
+  set before the first `load_map`; the seats are `sim.fighters[0..seat_count-1]` in room-slot order (crew after) and are
+  read with `seat(k)`, `seat_name/label(k)`, `seat_alive`, `seat_is_down`, `seat_revive_left`, `living_seats`,
+  `downed_seats`, `all_seats_down`, `seat_control(k)`. Rules: per-seat damage scale, a downed seat auto-revives after
+  `REVIVE_TIME` (6 s) at full class health on a safe spot with no life lost while a teammate is up, all seats down loses
+  exactly one shared life and retries the same stage, K.O.s are summed, `_pay()`/`_win()` return a `seats` array with
+  each seat's share (one local save is written), the HUD shows one line per seat with the down countdown, and the cards
+  name the seats. Crew/boss targeting is nearest living seat (`BotBrain.pick_target` via the `pve_seats` sim meta; a
+  `bot:true` seat is a full target and fights the crew); the 1-seat path is unchanged (`npm run test:godot-bots` parity
+  untouched). `combat.bots_can_hit` accepts a co-op ghost seat (`net_human`), and `Combat.hit`'s ghost branch already
+  relays a host crew bot's hit to that seat's owner. Offline two-seat harness in `godot/tests/arcade_test.gd`
+  (`npm run test:godot-arcade`); single-player tests and their numbers are unchanged. Remaining for the net layer:
+  slot→seat mapping (`seat_count`/`seat_names`/`seat_bot` before a stage), mirror `seat_downed`/`seat_revived` as the
+  downed-state messages (`am.dn` + revive countdown, ideally from `seat_is_down`/`seat_revive_left`), and deliver
+  `last["seats"]`/`victory["seats"]` to each client so every save is paid on its own client (never two saves here).
+
+- **M3 (drop → bot → rejoin): done, net-verified.** `HostMatch.ghost_to_bot` is the arcade seat handover: a guest that
+  drops keeps its fighter (class/look/name/weapon, alive if it was downed at the time) and the saved BotBrain drives it as
+  a player seat (it targets the crew through `pve_seats`); `ArcadeManager.refresh_seats(slot, keep)` only re-flags it and
+  `am.bt` marks the bot-played seat. A rejoin mid-run gets `start_msg_for(hm)` (current `arc.st`/seed, seat 1 human again)
+  and `bot_to_human` rebuilds the ghost with the class from the guest's hello. Because the relay promotes the remaining
+  guest when the host leaves, an Arcade world intercepts `promoted`: it closes the promoted room instead of migrating and
+  returns with "The host left. The Arcade run is over." (`ArcadeManager.end_reason`; the host's own message is "The
+  Arcade run is over."). Test: the same scenario D covers drop (seat bot keeps `kid`/the player's name and targets
+  "Engineer"), rejoin (`REJOIN` with `arc.st` 1 and matching seed, `slots[1].kind == "human"`) and host-left (the
+  rejoining guest prints `HOSTLEFT` with the run-over reason). M5 (migration inside a run) stays cut.

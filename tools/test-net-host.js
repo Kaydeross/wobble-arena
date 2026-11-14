@@ -17,7 +17,15 @@
    B. a room whose guests are all Godot clients (`gd: 1`: the Godot peer and a protocol guest saying gd) plays every
       app-only mode to its end in turn (rules.gmode, gteam, pp, grav 0.15, hp 300; gm Chaos events; pend);
    C. host migration: the Godot host leaves mid-match, the relay promotes the Godot guest, which carries the match on
-      (`start` with `rs`: same seats, K.O.s, bot, arena seed and clock); the web guest re-joins it with a plain hello. */
+      (`start` with `rs`: same seats, K.O.s, bot, arena seed and clock); the web guest re-joins it with a plain hello.
+   D. Arcade co-op (godot/tests/net_arcade_host.gd + net_arcade_peer.gd): a private app-only Construction room from the
+      hub's "Play co-op" (2 seats, teammate bot, no Host sheet) starts alone; a Godot guest takes seat 1 mid-fight; the
+      host puts that seat down (guest pins itself from `am.dn`) and revives it (`am.rv`); a stage clear and a retry pay
+      the guest's OWN save once then nothing; the run advances to stage 2 (a new `start` with `arc.st` 1 and a fresh
+      site seed, the same seed on both sides) where the guest's HUD/boss bar/shrink mirror `am`; the guest leaves (its
+      seat becomes a fighting teammate bot with its class) and rejoins (current stage's `start`, seat 1 human again);
+      the host wins and leaves (the guest pays the victory on its own save, then gets the run-over reason).
+      `ONLY=arcade npm run test:godot-host` runs this scenario alone (dev aid). */
 const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -48,7 +56,7 @@ function runGodot(script, args, tag) {
   return out;
 }
 
-let host = null, peer = null;
+let host = null, peer = null, peer2 = null;
 const MODES = ['tdm', 'deathmatch', 'sudden', 'chaos', 'pillars', 'explosive', 'lowg', 'gungame'];
 const r2 = v => +v.toFixed(2);
 
@@ -224,10 +232,253 @@ async function migration(url) {
   assert.equal(cp, 0, 'new host exit code');
   console.log('C. host migration passes');
 }
+// D. Arcade co-op: the hub's "Play co-op" room (app-only Construction), 1 human + teammate bot, a Godot guest takes
+//    seat 1 mid-run, the host puts that seat down and revives it, clears/retries stage 1 (the guest pays its OWN save
+//    once, then not again), advances to stage 2 (a new `start` with arc.st=1 and a fresh site seed), the guest mirrors
+//    the HUD/boss fraction/shrink; the guest leaves (seat -> fighting teammate bot keeping its class) and REJOINS
+//    (current stage's `start`, seat 1 human again); the host wins and leaves (run over for the guest).
+async function arcadeCoop(url) {
+  host = runGodot('res://tests/net_arcade_host.gd', [url], 'ahost');
+  const jl = s => JSON.parse(s.slice(s.indexOf(' ') + 1));
+  const hosted = jl(await host.waitLine(/^HOSTED /, 30000));
+  const code = hosted.code;
+  const S1 = jl(await host.waitLine(/^START1 /, 60000));
+  console.log('arcade host start: ' + JSON.stringify({ slots: S1.slots, kinds: S1.kinds, map: S1.map, arc: S1.arc, rules: S1.rules }));
+  assert.equal(S1.map, 'sitegen', 'the arcade room plays the generated site');
+  assert.equal(S1.slots, 6, 'slots = 2 seats + the 4 Tradies crew');
+  assert.ok(S1.slots <= 8, 'seats + crew within the 8-slot snapshot budget');
+  assert.deepEqual(S1.kinds, ['human', 'bot', 'bot', 'bot', 'bot', 'bot'], 'seat 0 human, seat 1 the teammate bot, then crew');
+  assert.equal(S1.arc.st, 0); assert.equal(S1.arc.of, 6); assert.equal(S1.arc.diff, 'normal');
+  assert.deepEqual(S1.arc.seats, [0, 1], 'start.arc.seats');
+  assert.deepEqual(S1.arc.crew, [2, 3, 4, 5], 'start.arc.crew follows the seats');
+  assert.equal(S1.arc.boss, -1, 'stage 1 has no boss');
+  assert.equal(S1.arc.state, 'intro'); assert.equal(S1.arc.lv, 4, 'normal difficulty = 4 shared lives');
+  assert.equal(S1.rules.gmode, 'construction', 'app-only construction gmode');
+  const H0 = jl(await host.waitLine(/^HOST_STAGE /, 30000));
+  console.log('arcade stage 1 (host): ' + JSON.stringify(H0));
+  assert.equal(H0.st, 0); assert.equal(H0.seats, 2); assert.equal(H0.enemies, 4, 'the stage crew');
+  assert.equal(H0.boss, -1); assert.equal(H0.count, 6);
+  assert.equal(H0.arc_seed, S1.arc.seed, 'the arc seed is the stage site seed');
+  const HF0 = jl(await host.waitLine(/^HOST_FIGHT /, 30000));
+  assert.equal(HF0.st, 0); assert.equal(HF0.state, 'fight');
+
+  // the guest joins a RUNNING stage-1 fight (its start.arc state is the stage's intro; am closes the card)
+  peer = runGodot('res://tests/net_arcade_peer.gd', [url, code, 'main'], 'apeer');
+  const J = jl(await peer.waitLine(/^JOINED /, 40000));
+  console.log('arcade guest joined: ' + JSON.stringify(J));
+  assert.equal(J.slot, 1, 'the guest takes the second seat (never a crew slot)');
+  const P1 = jl(await peer.waitLine(/^START1 /, 40000));
+  console.log('arcade guest start: ' + JSON.stringify({ slots: P1.slots, kinds: P1.kinds, arc: P1.arc }));
+  assert.equal(P1.slots, 6); assert.equal(P1.map, 'sitegen');
+  assert.equal(P1.arc.st, 0); assert.deepEqual(P1.arc.seats, [0, 1]); assert.deepEqual(P1.arc.crew, [2, 3, 4, 5]);
+  const PI = jl(await host.waitLine(/^PEER_IN /, 30000));
+  console.log('arcade host after the join: ' + JSON.stringify(PI));
+  assert.equal(PI.seat1_kind, 'human', 'seat 1 is the guest now');
+  assert.equal(PI.seat1_ghost, true, 'the host runs the guest seat as a ghost');
+  assert.equal(PI.seat1_player, false, 'the ghost seat is not a locally played fighter');
+  assert.equal(PI.state, 'fight', 'the guest joined mid-fight');
+  const PS1 = jl(await peer.waitLine(/^PEER_STAGE /, 40000));
+  console.log('arcade stage 1 (guest): ' + JSON.stringify(PS1));
+  assert.equal(PS1.st, 0); assert.equal(PS1.count, 6); assert.equal(PS1.map, 'sitegen');
+  assert.equal(PS1.seed, H0.seed, 'the guest rebuilt the same site seed');
+  assert.equal(PS1.arc_seed, H0.seed);
+  assert.equal(PS1.host_ghost, true, 'the host seat is a ghost on the guest');
+  assert.equal(PS1.crew_ghosts, 4, 'every crew slot is a ghost on the guest');
+  assert.equal(PS1.crew_n, 4); assert.equal(PS1.my_slot, 1);
+  assert.equal(PS1.own_seat, 1); assert.equal(PS1.own_is_me, true, 'seat 1 is this guest own fighter');
+
+  // -- the host puts the guest seat down: am.dn pins the guest (no local respawn), the overlay counts 6 s --
+  const DN = jl(await host.waitLine(/^DOWN_SENT /, 30000));
+  console.log('arcade down: ' + JSON.stringify(DN));
+  assert.deepEqual(DN.dn, [1], 'the host says seat 1 is down');
+  assert.equal(DN.lives, 4, 'a downed seat costs no life');
+  const PD = jl(await peer.waitLine(/^DOWNED /, 30000));
+  console.log('arcade guest downed: ' + JSON.stringify(PD));
+  assert.equal(PD.seat, 1); assert.equal(PD.slot, 1);
+  assert.equal(PD.pinned, true, 'the guest pins its own fighter (dead + elim) instead of respawning');
+  assert.equal(PD.pinned_flag, true);
+  assert.ok(/^Down! Back in \d/.test(PD.overlay), 'the guest shows the revive countdown overlay: ' + PD.overlay);
+  assert.ok(PD.revive_left >= 5.0, 'the mirror counts the 6 s revive (' + PD.revive_left + ')');
+
+  // -- the host auto-revives it: am.rv places the guest fighter at the host's spot/health fraction --
+  const UP = jl(await host.waitLine(/^REVIVED_HOST /, 30000));
+  console.log('arcade revive (host): ' + JSON.stringify(UP));
+  assert.equal(UP.state, 'fight'); assert.equal(UP.lives, 4, 'a revive costs no life');
+  assert.ok(UP.next_revive && UP.next_revive.n >= 1, 'the host recorded the revive instruction');
+  const PR = jl(await peer.waitLine(/^REVIVED /, 30000));
+  console.log('arcade guest revived: ' + JSON.stringify(PR));
+  assert.equal(PR.alive, true, 'the guest fighter is back');
+  assert.equal(PR.pinned_flag, false, 'the guest is no longer pinned');
+  assert.equal(PR.seat_down, false);
+  assert.ok(Math.abs(PR.hp_frac - PR.rv_hf) < 0.06, 'the guest took the host health fraction (' + PR.hp_frac + ' vs ' + PR.rv_hf + ')');
+  assert.ok(PR.invuln > 0.0, 'the revive is invulnerable for a moment');
+  assert.ok(PR.dxz < 0.6, 'the guest was placed at the host safe spot (' + PR.dxz + ' m)');
+
+  // -- a real stage clear: the guest applies it to ITS OWN save exactly once --
+  const C1 = jl(await host.waitLine(/^CLEAR1_H /, 30000));
+  console.log('arcade clear 1 (host): ' + JSON.stringify(C1));
+  assert.equal(C1.first, true); assert.ok(C1.coins > 0); assert.ok(C1.first_bonus > 0);
+  const G1 = jl(await peer.waitLine(/^GUEST_SAVE .*"cn":1/, 30000));
+  console.log('arcade guest save 1: ' + JSON.stringify(G1));
+  assert.equal(G1.cn, C1.cn, 'the guest paid the am.cn the host paid');
+  assert.equal(G1.first, true, 'the guest first clear is ITS OWN save check');
+  assert.equal(G1.coins, C1.reward + C1.first_bonus, 'its own first-clear bonus: ' + G1.coins + ' = ' + C1.reward + ' + ' + C1.first_bonus);
+  assert.equal(G1.cleared, true, 'DlcSave.mark_cleared wrote the guest save');
+  assert.ok(G1.best >= 1, 'DlcSave.set_best wrote the guest record');
+  assert.ok(G1.save_coins >= G1.coins, 'Save.coins got the guest coins (' + G1.save_coins + ')');
+  const CARD1 = jl(await peer.waitLine(/^GUEST_CARD .*ArcadeClear/, 15000));
+  console.log('arcade guest clear card: ' + JSON.stringify(CARD1));
+  assert.equal(CARD1.name, 'ArcadeClear'); assert.equal(CARD1.wait, true, 'the guest card has host-controlled buttons');
+  assert.equal(CARD1.wait_text, 'Waiting for the host');
+
+  // -- a retry of the same stage pays NOTHING twice (same seeds rebuilt from a fresh start) --
+  const RT = jl(await host.waitLine(/^RETRY /, 30000));
+  const P2 = jl(await peer.waitLine(/^START2 /, 40000));
+  console.log('arcade retry start: ' + JSON.stringify({ host: RT, guest: P2.arc }));
+  assert.equal(P2.arc.st, 0, 'the retry is the same stage');
+  assert.equal(RT.seed, Number(P2.arc.seed), 'the retry start carries the retry site seed');
+  const PF2 = jl(await peer.waitLine(/^PEER_STAGE .*"n":2/, 40000));
+  assert.equal(PF2.seed, RT.seed, 'the guest rebuilt the retry site seed');
+  const C2 = jl(await host.waitLine(/^CLEAR2_H /, 60000));
+  console.log('arcade clear 2 (host): ' + JSON.stringify(C2));
+  assert.equal(C2.first, false, 'the host save already cleared the stage');
+  assert.equal(C2.coins, 0);
+  const G2 = jl(await peer.waitLine(/^GUEST_SAVE .*"cn":2/, 40000));
+  console.log('arcade guest save 2: ' + JSON.stringify(G2));
+  assert.equal(G2.cn, C2.cn);
+  assert.equal(G2.first, false, 'the guest save already cleared the stage');
+  assert.equal(G2.coins, 0, 'a retry pays the guest nothing twice');
+  assert.equal(G2.save_coins, G1.save_coins, 'the guest coin total did not move on the retry');
+
+  // -- stage 2: a new start (fresh seed), the guest mirrors the HUD, the boss fraction and the shrinking floor --
+  const ADV = jl(await host.waitLine(/^ADVANCING /, 30000));
+  assert.equal(ADV.to, 1);
+  const H2 = jl(await host.waitLine(/^HOST_STAGE .*"st":1/, 60000));
+  console.log('arcade stage 2 (host): ' + JSON.stringify(H2));
+  assert.equal(H2.st, 1); assert.equal(H2.enemies, 1, 'stage 2 is the Engineer alone');
+  assert.equal(H2.boss, 2, 'the boss is the first crew slot');
+  assert.notEqual(H2.seed, H0.seed, 'a stage transition gets a fresh site seed');
+  const P3 = jl(await peer.waitLine(/^START3 /, 60000));
+  console.log('arcade stage 2 (start): ' + JSON.stringify({ slots: P3.slots, kinds: P3.kinds, arc: P3.arc }));
+  assert.equal(P3.arc.st, 1, 'the next stage travels as a new start with arc.st = 1');
+  assert.deepEqual(P3.arc.seats, [0, 1]); assert.deepEqual(P3.arc.crew, [2]); assert.equal(P3.arc.boss, 2);
+  assert.equal(P3.arc.seed, H2.arc_seed, 'the stage 2 start carries the host stage seed');
+  assert.equal(P3.slots, 3, 'stage 2: two seats and one crew slot');
+  const PS2 = jl(await peer.waitLine(/^PEER_STAGE .*"n":3/, 60000));
+  console.log('arcade stage 2 (guest): ' + JSON.stringify(PS2));
+  assert.equal(PS2.st, 1); assert.equal(PS2.count, 6); assert.equal(PS2.map, 'sitegen');
+  assert.equal(PS2.seed, H2.seed, 'stage 2: guest seed == host seed (' + H2.seed + ')');
+  assert.equal(PS2.seed, Number(P3.arc.seed));
+  assert.equal(PS2.crew_ghosts, 1); assert.equal(PS2.crew_n, 1);
+  assert.equal(PS2.boss, 2); assert.equal(PS2.boss_ghost, true, 'the boss slot is a ghost on the guest');
+  assert.equal(PS2.host_ghost, true);
+  const HHF = jl(await host.waitLine(/^HOST_HF /, 30000));
+  console.log('arcade stage 2 display state (host): ' + JSON.stringify(HHF));
+  assert.ok(Math.abs(HHF.hf - 0.42) < 0.02, 'host boss fraction set to 0.42 (' + HHF.hf + ')');
+  assert.equal(HHF.lives, 3);
+  const PHUD = jl(await peer.waitLine(/^PEER_HUD /, 30000));
+  console.log('arcade guest HUD: ' + JSON.stringify(PHUD));
+  assert.ok(/Stage 2 \/ 6/.test(PHUD.strip), 'the guest HUD names the stage: ' + PHUD.strip);
+  assert.ok(/Lives 3/.test(PHUD.strip), 'the guest HUD mirrors am.lv: ' + PHUD.strip);
+  assert.equal(PHUD.boss_visible, true, 'the guest boss bar is visible');
+  assert.ok(Math.abs(PHUD.hf - PHUD.am_hf) < 0.05, 'the guest bar mirrors am.hf (' + PHUD.hf + ' vs ' + PHUD.am_hf + ')');
+  assert.ok(Math.abs(PHUD.am_hf - HHF.hf) < 0.06, 'the guest saw the host boss fraction (' + PHUD.am_hf + ' vs ' + HHF.hf + ')');
+  assert.equal(PHUD.lives, 3, 'the guest mirrors am.lv');
+  const PSH = jl(await peer.waitLine(/^SHRINK /, 30000));
+  console.log('arcade guest shrink: ' + JSON.stringify(PSH));
+  assert.ok(Math.abs(PSH.size - PSH.sh) < 0.5, 'the guest floor size mirrors am.sh (' + PSH.size + ' vs ' + PSH.sh + ')');
+  assert.equal(PSH.mesh, true, 'the guest built the shrinking floor visual');
+
+  // -- the guest leaves: its seat is a teammate bot that keeps fighting with the player's class/kit --
+  await peer.waitLine(/^DONE /, 60000);
+  const PO = jl(await host.waitLine(/^PEER_OUT /, 30000));
+  console.log('arcade host after the guest left: ' + JSON.stringify(PO));
+  assert.equal(PO.seat1_kind, 'bot', 'the guest leaving turns seat 1 into a bot');
+  assert.equal(PO.seat1_ghost, false, 'the dropped seat is no longer a ghost');
+  assert.equal(PO.seat1_player, true, 'the teammate-bot seat is a player seat (it fights the crew)');
+  assert.equal(PO.seat1_cls, 'kid', 'the bot keeps the class the player picked');
+  assert.ok(PO.seat1_name.startsWith('GodotArcadeP'), 'the bot keeps the player fighter/name (M3 handover): ' + PO.seat1_name);
+  assert.ok(PO.bt.includes(1), 'am marks the bot-played seat');
+  assert.equal(PO.started, true, 'the room keeps running after the guest leaves');
+  assert.equal(PO.state, 'fight', 'the host is still in the stage 2 fight');
+  const SB = jl(await host.waitLine(/^SEAT_BOT /, 30000));
+  console.log('arcade teammate bot seat: ' + JSON.stringify(SB));
+  assert.equal(SB.alive, true); assert.equal(SB.is_ghost, false); assert.equal(SB.is_player, true);
+  assert.equal(SB.cls, 'kid', 'the teammate bot fights with the dropped player class');
+  assert.equal(SB.brain, true, 'a BotBrain drives the seat');
+  assert.ok(SB.weapon !== '', 'the seat bot keeps the player kit in hand (' + SB.weapon + ')');
+  assert.ok(SB.target !== '', 'the seat bot targets the crew (' + SB.target + ')');
+
+  // -- the guest REJOINS mid-run: current stage start + its own seat + its class back --
+  peer2 = runGodot('res://tests/net_arcade_peer.gd', [url, code, 'rejoin'], 'apeer2');
+  const J2 = jl(await peer2.waitLine(/^JOINED /, 40000));
+  console.log('arcade guest rejoined: ' + JSON.stringify(J2));
+  assert.equal(J2.slot, 1, 'the rejoin gets the same seat');
+  const R = jl(await host.waitLine(/^REJOIN /, 30000));
+  console.log('arcade host after the rejoin: ' + JSON.stringify(R));
+  assert.equal(R.arc_st, 1, 'the rejoin start is the CURRENT stage');
+  assert.equal(R.arc_seed, H2.arc_seed);
+  assert.equal(R.seat1_kind, 'human'); assert.equal(R.seat1_ghost, true); assert.equal(R.seat1_human, true);
+  assert.ok(R.seat1_name.startsWith('GodotArcadeP'));
+  const P4 = jl(await peer2.waitLine(/^START1 /, 40000));
+  console.log('arcade rejoin start: ' + JSON.stringify({ slots: P4.slots, kinds: P4.kinds, cls: P4.slots_cls, arc: P4.arc }));
+  assert.equal(P4.arc.st, 1, 'the rejoining guest builds the current stage');
+  assert.equal(Number(P4.arc.seed), R.arc_seed);
+  assert.equal(P4.kinds[1], 'human', 'seat 1 is a human seat in the rejoin start');
+  assert.equal(P4.slots_cls[1], 'kid', 'seat 1 has the class the player picked');
+  const PS4 = jl(await peer2.waitLine(/^PEER_STAGE /, 40000));
+  assert.equal(PS4.st, 1); assert.equal(PS4.seed, H2.seed, 'the rejoining guest rebuilt the current site');
+  assert.equal(PS4.my_slot, 1); assert.equal(PS4.own_is_me, true);
+  const W = jl(await host.waitLine(/^HOST_WON /, 30000));
+  console.log('arcade victory (host): ' + JSON.stringify(W));
+  assert.equal(W.first, true); assert.ok(W.coins > 0); assert.equal(W.hat_first, true);
+  const V = jl(await peer2.waitLine(/^GUEST_VICTORY /, 30000));
+  console.log('arcade victory (guest save): ' + JSON.stringify(V));
+  assert.equal(V.first, true, 'the victory bonus is paid on the guest OWN save');
+  assert.ok(V.coins > 0); assert.equal(V.hat_first, true, 'the guest wins the Site Foreman hat on its own save');
+  assert.ok(V.save_coins >= V.coins);
+  const HL = jl(await peer2.waitLine(/^HOSTLEFT /, 30000));
+  console.log('arcade host left: ' + JSON.stringify(HL));
+  assert.equal(HL.raw, 'promoted', 'the relay promotes the remaining player');
+  assert.equal(HL.reason, 'The host left. The Arcade run is over.', 'the guest is told the run is over');
+  const LEAVE = jl(await host.waitLine(/^LEAVE /, 30000));
+  assert.equal(LEAVE.reason, 'The Arcade run is over.', 'the host own leave reason');
+  await host.waitLine(/^DONE /, 30000);
+  await peer2.waitLine(/^DONE /, 30000);
+
+  const [ch, cp, cp2] = await Promise.all([Promise.race([host.exited, sleep(60000).then(() => 'hang')]),
+    Promise.race([peer.exited, sleep(60000).then(() => 'hang')]),
+    Promise.race([peer2.exited, sleep(60000).then(() => 'hang')])]);
+  if (ch === 'hang') host.p.kill(); if (cp === 'hang') peer.p.kill(); if (cp2 === 'hang') peer2.p.kill();
+  const ht = host.lines.map(x => x.l), pt = peer.lines.map(x => x.l), p2t = peer2.lines.map(x => x.l);
+  console.log(ht.filter(l => /^(START|HOST_STAGE|PEER_IN|HOST_FIGHT|DOWN_SENT|REVIVED_HOST|CLEAR1_H|RETRY|CLEAR2_H|ADVANCING|HOST_HF|PEER_OUT|SEAT_BOT|REJOIN|HOST_WON|LEAVE|AM_SENT|DONE|FAIL)/.test(l)).map(l => 'ahost: ' + l).join('\n'));
+  console.log(pt.filter(l => /^(JOINED|START|PEER_STAGE|AM|DOWNED|REVIVED|GUEST_SAVE|GUEST_CARD|PEER_HUD|SHRINK|DONE|FAIL)/.test(l)).map(l => 'apeer: ' + l).join('\n'));
+  console.log(p2t.filter(l => /^(JOINED|START|PEER_STAGE|GUEST_VICTORY|HOSTLEFT|DONE|FAIL)/.test(l)).map(l => 'apeer2: ' + l).join('\n'));
+  const errs = [...ht, ...pt, ...p2t].filter(l => ERR.test(l));
+  for (const l of errs) console.log('godot:', l);
+  assert.equal(errs.length, 0, 'no Godot errors (arcade co-op)');
+  const ams = pt.filter(l => /^AM /.test(l)).map(jl);
+  assert.ok(ams.some(a => a.st === 0 && a.s === 'fight'), 'the guest got the stage 1 fight am');
+  assert.ok(ams.some(a => a.st === 1 && a.s === 'fight'), 'the guest got the stage 2 fight am');
+  assert.ok(ams.some(a => Array.isArray(a.dn) && a.dn.includes(1)), 'am carried the downed seat slot');
+  assert.ok(ams.some(a => a.rv && Number(a.rv.n) > 0), 'am carried the revive instruction');
+  const amSent = jl(ht.find(l => /^AM_SENT /.test(l)));
+  assert.ok(amSent.n > 30, 'the host sent am all along (' + amSent.n + ')');
+  assert.ok(ht.some(l => /^HOST_FIGHT .*"st":0/.test(l)) && ht.some(l => /^HOST_FIGHT .*"st":1/.test(l)), 'the host started both fights');
+  assert.ok(pt.some(l => /^DONE .*"stage":1/.test(l)), 'the first guest finished on stage 2');
+  assert.equal(ch, 0, 'arcade host exit code'); assert.equal(cp, 0, 'arcade guest exit code'); assert.equal(cp2, 0, 'arcade rejoin exit code');
+  console.log('D. arcade co-op passes');
+}
+
 (async () => {
   spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
   await srv.start(0);
   const url = 'ws://127.0.0.1:' + srv.server.address().port + '/ws';
+  if (process.env.ONLY === 'arcade') {                     // dev aid: iterate on scenario D alone
+    await arcadeCoop(url);
+    console.log('godot net host test (arcade only) passes');
+    await srv.stop(); process.exit(0);
+  }
 
   // 0. the relay is unreachable: a clear error, no hang
   {
@@ -382,9 +633,10 @@ async function migration(url) {
   console.log('godot net host test (mixed room) passes');
   await modesRoom(url);
   await migration(url);
+  await arcadeCoop(url);
   console.log('godot net host test passes');
   await srv.stop(); process.exit(0);
 })().catch(async e => {
-  for (const [n, o] of [['host', host], ['peer', peer]]) if (o) { console.log(o.lines.map(x => x.l).filter(l => !/^(GHOST|ME|BOT|SLOTS|HP) /.test(l)).slice(-40).map(l => n + ': ' + l).join('\n')); try { o.p.kill(); } catch (x) { /* x */ } }
-  console.error('FAIL', e.message); try { await srv.stop(); } catch (x) { /* x */ } process.exit(1);
+  for (const [n, o] of [['host', host], ['peer', peer], ['rejoin', peer2]]) if (o) { console.log(o.lines.map(x => x.l).filter(l => !/^(GHOST|ME|BOT|SLOTS|HP) /.test(l)).slice(-40).map(l => n + ': ' + l).join('\n')); try { o.p.kill(); } catch (x) { /* x */ } }
+  console.error('FAIL', e.stack || e.message); try { await srv.stop(); } catch (x) { /* x */ } process.exit(1);
 });
