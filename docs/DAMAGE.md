@@ -38,6 +38,12 @@ The multiplier is applied to the weapon damage before `Combat.hit()`; class, rag
 
 `npm run test:godot-damage` (`godot/tests/damage_test.gd`): zone geometry (incl. turned and giant victims), every part on hitscan, a `headMul` gun, knife, arrow and melee under both rules, splash without a part, and the online fallback.
 
+The balance overlay's numbers and rules are checked by `npm run test:godot-arcade` (`godot/tests/arcade_test.gd`, "balance
+overlay"): the tuned flame/blower values versus the shared ones, the flame contact cap (a 60-tick stream cannot carry a
+stunned target, one contact adds at most `maxForce` m/s, further ticks add nothing and a new contact after 0.4 s pushes
+again) and the blower's per-puff damage (shared blower still does none). `npm run test:godot-gunfeel` covers the rest of
+the overlay.
+
 ## Balance and cooldowns
 
 Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` are untouched. `godot/data/extra/weapon_tuning.json` is an overlay that `MatchSim._init` merges (`Combat.apply_tuning`) next to `damage_rule = "zones"`. It is used only while `Combat.tuning_active()`, which is the same gate as the zones table (`zones_active()`): offline matches, or online with `net_zones`. A bare `Combat` (the JS parity tests, `combat_test`) and any match on the classic rule (`bots_parity_test`) see the shared numbers. Online, web peers keep the old numbers too; damage is computed by the attacker, so a Godot player online also uses the web numbers until `net_zones` is turned on.
@@ -60,7 +66,33 @@ Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` ar
 | Minigun | `force` / `maxForce` | 2 / 2.6 | 1.4 / 1.8 | a held stream pushed people off ledges |
 | Snowball Cannon | `force` | 30 | 24 | |
 | Giant Mallet | `force` / `topple` | 30 / 0.85 | 26 / 0.75 | |
+| Flamethrower | `force` / `maxForce` | 1.2 / 1.6 | 0.6 / 1.2 | per-tick push; a stream pinned whoever could not walk against it |
+| Air Blower | `dmg` | - (no damage) | 2.5 per puff | it was not a weapon: only a push |
 | crates | Meteor weight (`drops.json` base) | 1.4 | 0.6 | `drops` in the overlay, read by `Pickups.pick_crate_key` |
+
+### Flamethrower knockback (overlay only)
+
+A flame-style weapon (`flame`, and the Construction's Angle Grinder) hits on every damage tick (0.06 s). The shared
+numbers add `force` 1.2 to the target's velocity on every tick: 16.7 pushes a second, i.e. a constant ~6.4 m/s² shove
+that adds up faster than a stunned target (12 % of its walk accel) can walk it off.
+
+The overlay lowers the per-tick push to `force` 0.6 and makes `maxForce` the **total knockback velocity one contact may
+add to a target**: `Combat.hit` keeps a per-victim contact budget (`Combat.flame_push`) and each flame hit spends its
+push from it, so once a stream has added `maxForce` 1.2 m/s to a target the rest of that contact adds nothing. A new
+contact (and a fresh 1.2 m/s) starts after `Combat.FLAME_RESET` 0.4 s with the flame off that target; `Combat.place_at`
+clears it on a new life. The first ticks still push (0.19 m/s each) but no amount of held fire can carry a target: even a
+stunned target with no walk input stays put (verified in `arcade_test.gd`: the shared numbers carry it > 3 m in a 3.6 s
+stream, the tuned stream < 1 m). Everything is gated on `Combat.tuning_active()`; the web game and the parity tests keep
+the shared numbers and never run the contact budget.
+
+### Air Blower damage (overlay only)
+
+The `blower` type had no `dmg` at all: its `blower_tick` only pushes, stuns and drains. The overlay adds `dmg` 2.5 and
+`Weapons.blower_tick` applies it through `Combat.hit` **once per puff** (the weapon's 0.06 s `cooldown`, not once per
+120 Hz physics step), so it is a real but low-DPS weapon: 2.5 / 0.06 s ≈ 42 damage per second, below every automatic gun
+(AK-47 tuned ≈ 60, SMG ≈ 62, Minigun ≈ 71, Uzi ≈ 57), and a full 100-ammo tank (3.6 s of jet) is ≈ 150 damage. Its job
+stays control (the strong push and stun); the damage just means the jet is no longer free to stand in. The web game /
+parity tests keep the no-damage blower (`tuning_active()` gate).
 
 ### Optional weapon fields (overlay only)
 

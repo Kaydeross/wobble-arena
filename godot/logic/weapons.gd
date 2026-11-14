@@ -186,8 +186,10 @@ func clear() -> void:
 ## Air Blower (type `blower`), the blower branch of playerControl (public/index.html ~9827). Runs every sim step
 ## while the fire button is held: drains `drain` ammo per second, pushes everyone in a 0.86 cone within `range`
 ## along the arm (stronger up close), lifts and stuns them a little, blames the blower for a ring-out, pushes the
-## user back, puffs/whooshes on its `cooldown`, and drops the blower when empty. No damage. Bots never use it
+## user back, puffs/whooshes on its `cooldown`, and drops the blower when empty. Bots never use it
 ## (botThink treats it like an empty hand), same as the web game. Returns true if it blew.
+## Balance overlay only (docs/DAMAGE.md): a tuned blower also does its overlay `dmg` once per puff (the weapon's
+## `cooldown`, not one hit per physics step), so it finally works as a weapon; the web game keeps the pure push.
 func blower_tick(p: FighterState, held: bool, dt: float) -> bool:
 	var w := combat.wdata(p.weapon)
 	var s: Variant = p.current_slot()
@@ -198,6 +200,8 @@ func blower_tick(p: FighterState, held: bool, dt: float) -> bool:
 	var dy := p.arm_y
 	var dz := p.arm_z
 	var rng_max := float(w["range"])
+	var puff := p.cool <= 0.0                         # this step is a damage tick (one per cooldown)
+	var bdmg := float(w.get("dmg", 0.0)) if combat.tuning_active() else 0.0
 	for e: FighterState in combat.fighters:
 		if e == p or e.dead: continue
 		var cx := e.chest_x - p.hand_x
@@ -217,6 +221,8 @@ func blower_tick(p: FighterState, held: bool, dt: float) -> bool:
 		var ha := combat.rng.range_f(-1, 1) * k * 60.0 * dt
 		var hb := combat.rng.range_f(-1, 1) * k * 60.0 * dt
 		combat.kick_head(e, ha, hb)
+		if bdmg > 0.0 and puff:                        # force 0: the shove above is the blower's knockback, this is damage
+			combat.hit(e, bdmg * p.dmg_scale, cx, cy, cz, 0.0, false, p)
 	p.phys.vx -= dx * 6.0 * dt; p.phys.vz -= dz * 6.0 * dt
 	if p.cool <= 0.0:
 		p.cool = float(w["cooldown"])

@@ -100,6 +100,10 @@ var online := false
 var host_mode := false
 ## Seat index -> its room slot (`arc.seats`): slot k <-> seat k, but kept explicit so a seat maps to `start.slots`.
 var seat_slots: Array = [0]
+## Co-op friendly fire between the two seats: false (owner decision, the default on every difficulty) = a seat's weapon,
+## projectile or explosion cannot hurt the other seat; the crew and enemy fire are unaffected. Carried in `start.arc.ff`
+## and set from Settings "arcade_ff" by launch() / the net layer; Combat.seat_mates() enforces it.
+var friendly_fire := false
 ## The guest's last `am` from the host (tests / the guest's cards and HUD).
 var am: Dictionary = {}
 var _am_t := 0.0
@@ -182,13 +186,15 @@ static func site_map() -> String:
 	return "sitegen" if Content.maps.has("sitegen") else "siteyard"
 
 ## The title's Arcade card: builds a World for a new run (null when the DLC is not owned or the table is missing).
-## The caller puts it in the tree (scripts/main.gd: change_scene_to_node).
-static func launch(seed_value: int = 0, p_diff: String = DEFAULT_DIFF, p_class: String = "") -> Node:
+## The caller puts it in the tree (scripts/main.gd: change_scene_to_node). `p_ff` overrides the co-op friendly-fire option
+## for tests; null (the game) reads Settings "arcade_ff" (the hub's toggle, off by default).
+static func launch(seed_value: int = 0, p_diff: String = DEFAULT_DIFF, p_class: String = "", p_ff: Variant = null) -> Node:
 	if not DlcUnlock.owned() or count() == 0: return null
 	var w: Node = load("res://world/world.tscn").instantiate()
 	var run := ArcadeManager.new()
 	run.start_run(seed_value, p_diff)
 	run.player_class = p_class
+	run.friendly_fire = bool(p_ff) if p_ff != null else bool(Settings.get_value("arcade_ff", false))
 	if p_class != "": w.player_class = p_class
 	w.arcade = run
 	w.map_id = site_map()
@@ -219,6 +225,7 @@ func init_online(arc: Dictionary, is_host: bool) -> void:
 	if not (state in ArcadeCoop.STATES): state = "intro"
 	seat_slots = (arc.get("seats", [0]) as Array).duplicate()
 	seat_count = clampi(seat_slots.size(), 1, ArcadeCoop.SEATS)
+	friendly_fire = bool(arc.get("ff", false))
 	rng.seed = seed_base
 	_seed_saved = SiteMap.current_seed
 	run_coins = 0; run_kos = 0; run_time = 0.0
@@ -236,6 +243,7 @@ func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF) -> void:
 	history = []; last = {}; victory = {}
 	seats = []; seat_down = {}; seat_controls = []
 	_seed_saved = SiteMap.current_seed
+	friendly_fire = false
 	running = self
 
 ## Back to normal: the site seed the game had, the arcade flag cleared. Safe to call twice.
@@ -252,6 +260,7 @@ func end_run() -> void:
 		sim.set_meta("pve_seats", [])          # no stale seat list for a later match in this process
 		if sim.has_meta("arcade_run"): sim.remove_meta("arcade_run")
 	seats = []; seat_down = {}; seat_controls = []
+	if sim != null: sim.combat.pve_seats.clear()
 	boss = null; sim = null; world = null
 	online = false; host_mode = false; seat_slots = [0]; am = {}; _am_t = 0.0; _am_state = ""
 	state = "idle"
@@ -286,6 +295,7 @@ func begin_stage(w: Node) -> String:
 		a = w.start_msg.get("arc", {}) if w.start_msg.get("arc") is Dictionary else {}
 		seat_count = clampi((a.get("seats", [0, 0]) as Array).size(), 1, ArcadeCoop.SEATS)
 		seat_slots = (a.get("seats", ArcadeCoop.seat_slots(seat_count)) as Array).duplicate()
+		friendly_fire = bool(a.get("ff", friendly_fire))
 		if host_mode:
 			state = "intro"                                       # this stage starts at its intro card
 			w.start_msg["slots"] = _online_slots(w)               # seats (kept) + the NEW stage's crew
@@ -363,6 +373,8 @@ func setup_sim(s: MatchSim) -> void:
 	sim = s
 	if online and not host_mode:
 		s.combat.ffa = false
+		s.combat.friendly_fire = friendly_fire
+		s.combat.pve_seats = []                       # _bind_guest_seats fills them once the seats are mapped to ghosts
 		seats = []; enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []
 		seat_down = {}; t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0; state = "intro"
 		return
@@ -370,6 +382,7 @@ func setup_sim(s: MatchSim) -> void:
 	var c := s.combat
 	c.ffa = false                              # the crew fights you, not each other
 	_bind_seats(s)                             # the player seats (slot k <-> seat k), the rest is crew
+	_apply_friendly_fire(s)                    # ... and the co-op rule between those seats (owner: off by default)
 	enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []; seat_down = {}
 	t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0
 	if online and host_mode: _dress_teammate_seats(s)   # a seat nobody took is a teammate bot, not a tradie
@@ -453,6 +466,12 @@ func _bind_seats(s: MatchSim) -> void:
 		s.controllers[f] = pc
 		seat_controls.append(pc)
 
+## The co-op friendly-fire rule for this stage's Combat (docs/CONSTRUCTION_DLC.md "Unit D"): only the two player seats are
+## paired by it. The crew and the enemies are never in `pve_seats`, so their fire still hurts every seat.
+func _apply_friendly_fire(s: MatchSim) -> void:
+	s.combat.friendly_fire = friendly_fire
+	s.combat.pve_seats = seats.duplicate()
+
 ## After the net layer dressed the stage (HostMatch.setup runs between setup_sim and stage_ready): a seat that became a
 ## ghost belongs to a remote client, so it must not carry local-player flags here. A host-run bot seat stays a player seat.
 func _refresh_seats() -> void:
@@ -533,6 +552,7 @@ func _bind_guest_seats() -> void:
 		if nm != null and nm.my_slot == slot: _guest_own = k
 	if seats.is_empty() and sim != null: seats = [sim.player]
 	if _guest_own < 0 and seats.size() > 1: _guest_own = 1
+	if sim != null: _apply_friendly_fire(sim)     # the guest's seats are its own ghost and the host's: the same rule
 
 ## The guest's boss: the crew slot `arc.boss`, its ghost gives the bar its name; `arc.big` gives it the 1.5x look.
 func _bind_guest_boss() -> void:
