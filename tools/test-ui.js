@@ -3,6 +3,7 @@
    and desktop sizes; the HUD, touch layer and FPS overlay build and update headless. Needs Godot (GODOT env var or
    the macOS default). Run: npm run test:godot-ui */
 const { spawnSync } = require('child_process');
+require('./ensure-fresh')();
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
