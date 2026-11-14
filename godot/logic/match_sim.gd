@@ -16,6 +16,10 @@ const BOT_POOL := ["Bot Wibble", "Bot Bonk", "Bot Gus", "Bot Pip", "Bot Moxie", 
 	"Bot Crumb", "Bot Zigzag"]
 const RING_OUT_Y := -25.0
 const TUNING_PATH := "res://data/extra/weapon_tuning.json"   ## Godot-only balance overlay (docs/DAMAGE.md)
+## Random start: a real match starts the player on a random safe spot of the map, at least this many metres from the
+## void. Spots closer than this to a ring-out edge are skipped (a couple of bot spots are that close on volcano /
+## crossroads); the map's own player / spawns / bots points are the candidates, so these are all designed-safe points.
+const START_MARGIN := 2.0
 
 var combat := Combat.new()
 var pickups: Pickups
@@ -67,8 +71,11 @@ func dispose() -> void:
 	player = null
 
 ## loadMap + setBotCfg: the player (class from the caller, usually Settings) and `bot_count` bots in the JS class order.
+## `random_start`: true / false force the random starting spot (see start_points / random_start_point) on / off; -1 (the
+## default) turns it on for a real match and off when the runner passed --no-save (every test / benchmark runner does,
+## so the bot-parity tests keep the map's fixed player spot).
 func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Array, player_class: String, player_control: PlayerControl,
-		bot_count: int = 3, p_diff: String = "normal") -> void:
+		bot_count: int = 3, p_diff: String = "normal", random_start: Variant = -1) -> void:
 	map_id = p_map_id
 	map = p_map
 	solids = FighterPhysics.solids_from_map(map)
@@ -94,12 +101,19 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	player.name = "You"
 	controllers[player] = player_control
 	var pp: Array = map.get("player", [0, 0])
-	var rand_spawn: bool = map.get("randSpawn", false) and combat.spawns.size() > 0
+	# A real match starts on a random safe spot (a test / benchmark keeps the map's fixed player spot: see random_start).
+	# The range's dummies are placed by PracticeRange, so the range keeps its fixed spot too.
+	var want_random := start_randomised(random_start) and not rng_map
+	var start_spot: Array = random_start_point(map, solids, ring_out_y, new_start_rng()) if want_random else []
+	if start_spot.size() == 3:
+		pp = start_spot
+	var rand_spawn: bool = map.get("randSpawn", false) and combat.spawns.size() > 0 and start_spot.size() < 3
 	if rand_spawn:                                    # Pillars: the player starts on a random pillar, facing the middle
 		var sp0: Array = combat.spawns[int(floor(combat.rng.next() * combat.spawns.size()))]
 		pp = [sp0[0], sp0[1], pp[2] if pp.size() > 2 else map.get("spawnY", 0.01)]
+	var face_middle: bool = start_spot.size() == 3 or rand_spawn
 	combat.place_at(player, float(pp[0]), float(pp[1]), float(pp[2]) if pp.size() > 2 else 0.01)
-	player.yaw = atan2(-float(pp[0]), -float(pp[1])) if rand_spawn else PI; player.face_yaw = player.yaw
+	player.yaw = atan2(-float(pp[0]), -float(pp[1])) if face_middle else PI; player.face_yaw = player.yaw
 
 	# bots start in a different spot every match: bot spots + spawns, not next to the player, shuffled
 	var pool: Array = []
@@ -154,6 +168,93 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		if combat.mode_id == "ninja": looks[b]["skin"] = "shadow"     # dressBots
 	if combat.mode_id == "construction": _dress_tradies(bots)
 	combat.rules.setup_shrink(map_id, map, solids)
+
+# ============================== random starting spot ==============================
+
+## The random-start seed counter: two setups in the same microsecond still get different RNGs (the unit test builds
+## several matches in a row and wants different spots).
+static var _start_serial := 0
+
+## Is the player's starting spot random? `flag` is setup()'s `random_start`: true / false force it, -1 = auto. Auto is
+## off under --no-save (the parity / benchmark runs keep the fixed spot, so the bots' decisions stay identical to the web
+## reference) and in a headless run (every test runner is headless). A dedicated RNG is used, never combat.rng, so the
+## bot AI's random stream is untouched.
+static func start_randomised(flag: Variant) -> bool:
+	if flag is bool: return flag
+	if OS.get_cmdline_user_args().has("--no-save"): return false
+	if DisplayServer.get_name() == "headless": return false
+	return true
+
+## A fresh RNG for the starting spot, seeded from the real time (never combat.rng: the bot AI's stream stays the same).
+static func new_start_rng() -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	_start_serial += 1
+	rng.seed = int(Time.get_ticks_usec()) + _start_serial * 7919 + randi()
+	return rng
+
+## The map's own starting points (player + spawns + bots, deduplicated), the spots its author designed as safe, each as
+## [x, z, y]: y is the spot's third component, else the map's `spawnY`, else 0.01 (place_at / the bots' rule).
+static func start_points(map: Dictionary) -> Array:
+	var spawn_y := float(map.get("spawnY", 0.01))
+	var out: Array = []
+	var seen := {}
+	var player: Variant = map.get("player", [])
+	if player is Array and (player as Array).size() >= 2:
+		_add_start_point(out, seen, player as Array, spawn_y)
+	var spawns: Variant = map.get("spawns", [])
+	if spawns is Array:
+		for sp: Variant in spawns:
+			if sp is Array: _add_start_point(out, seen, sp, spawn_y)
+	var bots: Variant = map.get("bots", [])
+	if bots is Array:
+		for sp: Variant in bots:
+			if sp is Array: _add_start_point(out, seen, sp, spawn_y)
+	return out
+
+static func _add_start_point(out: Array, seen: Dictionary, sp: Array, spawn_y: float) -> void:
+	if sp.size() < 2 or sp[0] == null or sp[1] == null: return
+	var x := float(sp[0])
+	var z := float(sp[1])
+	var y := float(sp[2]) if sp.size() > 2 and sp[2] != null else spawn_y
+	var key := "%.3f,%.3f" % [x, z]
+	if seen.has(key): return
+	seen[key] = true
+	out.append([x, z, y])
+
+## True when (x, z, y) is a safe starting spot on `solids`: standing on a floor (not inside a solid, not below it) and
+## at least START_MARGIN metres from the void (a point 2 m out in any direction still has floor under it). A handful of
+## box checks per candidate, run once per match.
+static func start_point_safe(solids: Array, x: float, z: float, y: float, ring_out_y: float) -> bool:
+	var floor_y := -INF
+	for b: Dictionary in solids:
+		var min_x := float(b["minX"]); var max_x := float(b["maxX"])
+		var min_z := float(b["minZ"]); var max_z := float(b["maxZ"])
+		var bottom := float(b["bottom"]); var top := float(b["top"])
+		var over := x > min_x + 0.01 and x < max_x - 0.01 and z > min_z + 0.01 and z < max_z - 0.01
+		if over and bottom + 0.01 < y and y < top - 0.01: return false       # inside a solid
+		if over and top <= y + 0.5 and top > ring_out_y: floor_y = maxf(floor_y, top)
+	if floor_y == -INF or absf(y - floor_y) > 0.5: return false            # no floor under the feet
+	for i in 12:                                                          # the void ring: 2 m out, floor everywhere
+		var a := float(i) * PI / 6.0
+		var sx := x + cos(a) * START_MARGIN
+		var sz := z + sin(a) * START_MARGIN
+		var supported := false
+		for b: Dictionary in solids:
+			if sx >= float(b["minX"]) and sx <= float(b["maxX"]) and sz >= float(b["minZ"]) and sz <= float(b["maxZ"]) \
+					and float(b["top"]) <= y + 0.5 and float(b["top"]) > ring_out_y:
+				supported = true; break
+		if not supported: return false
+	return true
+
+## A random safe starting spot for the player from start_points(map), or [] when the map has none. The map's own points
+## are designed safe; the safety check only drops the rare one that is inside a prop or close to a ring-out edge.
+static func random_start_point(map: Dictionary, solids: Array, ring_out_y: float, rng: RandomNumberGenerator) -> Array:
+	if solids.is_empty() or rng == null: return []
+	var safe: Array = []
+	for sp: Array in start_points(map):
+		if start_point_safe(solids, float(sp[0]), float(sp[1]), float(sp[2]), ring_out_y): safe.append(sp)
+	if safe.is_empty(): return []
+	return safe[rng.randi_range(0, safe.size() - 1)]
 
 ## Construction DLC: every bot is a tradie in the Builder's hi-vis vest and a hard hat, with a trade nickname. Presentation only
 ## (names and looks): no random draws, nothing the simulation reads.
