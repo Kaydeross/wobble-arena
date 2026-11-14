@@ -284,8 +284,9 @@ async function migration(url) {
     sent++;
   }, 1000 / 30);
 
-  // the host's hit on me (slot 1) comes to me only
-  const h1 = await web.wait(m => m.op === 'msg' && m.m.t === 'h', 15000);
+  // the host's hit on me (slot 1) comes to me only. Wait for THAT hit (from slot 0, d 30): under CI load the host's
+  // bot (slot 3) can land its first, and any-`h` would flake here (seen on the Linux runner).
+  const h1 = await web.wait(m => m.op === 'msg' && m.m.t === 'h' && m.m.from === 0 && m.m.to === 1 && m.m.d === 30, 15000);
   console.log('host hit: ' + JSON.stringify(h1.m));
   assert.ok(h1.m.to === 1 && h1.m.vs === 1 && h1.m.from === 0 && h1.m.d === 30, 'host h routed to its victim');
   hpWeb = 170;
