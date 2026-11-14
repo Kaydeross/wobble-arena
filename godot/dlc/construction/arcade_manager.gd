@@ -12,15 +12,28 @@ extends RefCounted
 ## RandomNumberGenerator (seeded from the run seed, never the combat RNG), so scripting never moves a random draw.
 ## World hooks (world/world.gd): begin_stage (top of load_map), setup_sim (after MatchSim.setup), stage_ready (end of load_map),
 ## step (after every sim step), plus show_panel / close_panel for the cards. The bot AI, physics and combat maths are untouched.
+##
+## Player SEATS (docs/ARCADE_COOP_PLAN.md §4.1, §5): the run is seat-aware. A seat is one human's fighter; single-player is
+## one seat (`[sim.player]`, today's behaviour verbatim), a co-op room has two in room-slot order. The net layer (M1) maps
+## its slots onto `seats`: `seat_count` and `seat_names` must be set before the first stage loads, and the world it builds
+## puts the seats first in `sim.fighters` (slot k <-> seat k), the stage's crew after. Everything else here loops the seats:
+## K.O.s are summed, damage scale is per seat, a downed seat auto-revives after REVIVE_TIME (no life lost) while a teammate
+## is still up, and only every seat down fails the attempt (one shared life). `_pay()` returns the per-seat rewards so the
+## net layer can hand each client its share; this process still writes one save (the local player's).
 
 signal stage_started(index: int)
 signal stage_cleared(index: int, summary: Dictionary)
 signal stage_failed(index: int)
 signal run_over
 signal run_won
+## Co-op seats: a seat went down (`seconds` until its auto-revive) / came back. The net layer mirrors these as its
+## downed-state messages; offline co-op uses them for the HUD.
+signal seat_downed(index: int, seconds: float)
+signal seat_revived(index: int)
 
 const STAGES_PATH := "res://data/extra/construction/stages.json"
 const LIVES := 3
+const REVIVE_TIME := 6.0               ## a downed seat comes back after this long while a teammate is still up
 const RETRY_SEED_STEP := 1009
 const FAIL_DELAY := 1.8                ## seconds the world runs on after you fall, before the card
 const CLEAR_DELAY := 1.4               ## ... and after the last enemy goes down
@@ -57,6 +70,22 @@ var victory: Dictionary = {}           ## {coins, hat, first_hat} once won
 var difficulty_override := ""
 var player_dmg := 1.0
 var fixed_seed := 0                    ## > 0: the match RNG seed of every stage (World.rng_seed), for reproducible tests
+# ---------------- the seats (player slots) ----------------
+## How many player seats the run has: 1 = today's single player, 2 = a co-op room. Set by the net layer (or a couch test)
+## before the first load_map; the stage then creates `seat_count` players first in sim.fighters and the crew after.
+var seat_count := 1
+## Seat order = room-slot order: seats[k] is sim.fighters[k] (slot k). Rebuilt by setup_sim every stage.
+var seats: Array = []
+## Display names per seat ("" = the game's own label: "You" for seat 0, "Player N" otherwise).
+var seat_names: Array = []
+## Test/net: a seat played by a bot (still a full seat for down/revive/targeting). Empty = all seats are human.
+var seat_bot: Array = []
+## Per-seat damage multiplier test aid (k missing or empty -> player_dmg). A seat's dmg_scale gets multiplied by it.
+var seat_dmg: Array = []
+## Seat index -> seconds left on its auto-revive (only downed seats are in here).
+var seat_down := {}
+## Seat -> PlayerControl for an extra locally controlled seat (offline co-op / tests); null for the world's own seat.
+var seat_controls: Array = []
 # ---------------- the stage in play ----------------
 var world: Node = null
 var sim: MatchSim = null
@@ -71,7 +100,7 @@ var phase_log: Array = []              ## [stage time, phase number] (tests)
 var t_stage := 0.0
 var _t_end := 0.0
 var _kit_t := 0.0
-var _deaths0 := 0
+var _deaths0: Array = []              ## per seat: st["deaths"] when the stage started (a fall counts as going down)
 var _seed_saved := -1
 var _stage_first := false
 
@@ -138,6 +167,7 @@ func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF) -> void:
 	lives = int(diff_def().get("lives", LIVES)); stage = 0; attempt = 0; state = "idle"
 	run_coins = 0; run_kos = 0; run_time = 0.0
 	history = []; last = {}; victory = {}
+	seats = []; seat_down = {}; seat_controls = []
 	_seed_saved = SiteMap.current_seed
 	running = self
 
@@ -151,6 +181,8 @@ func end_run() -> void:
 	hud = null
 	events = null
 	enemies.clear(); downed.clear(); kit.clear()
+	if sim != null: sim.set_meta("pve_seats", [])          # no stale seat list for a later match in this process
+	seats = []; seat_down = {}; seat_controls = []
 	boss = null; sim = null; world = null
 	state = "idle"
 
@@ -175,7 +207,7 @@ func begin_stage(w: Node) -> String:
 	var mp := site_map()
 	if mp == "sitegen": SiteMap.set_seed(stage_seed())
 	w.mode_id = "construction"
-	w.bot_count = (d["bots"] as Array).size()
+	w.bot_count = (d["bots"] as Array).size() + maxi(0, seat_count - 1)   # seats first, then the stage's crew
 	w.dyn_choice = "off"                       # a floor that stays put: the shrink is the stage's own event
 	w.difficulty = difficulty_override if difficulty_override != "" else str((d["bots"] as Array)[0].get("difficulty", "normal"))
 	if fixed_seed > 0: w.rng_seed = fixed_seed + stage * 17 + attempt
@@ -189,10 +221,11 @@ func setup_sim(s: MatchSim) -> void:
 	var d := stage_def()
 	var c := s.combat
 	c.ffa = false                              # the crew fights you, not each other
-	enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []
+	_bind_seats(s)                             # the player seats (slot k <-> seat k), the rest is crew
+	enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []; seat_down = {}
 	t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0
 	var specs: Array = d["bots"]
-	var bots: Array = s.fighters.slice(1)
+	var bots: Array = s.fighters.slice(seats.size())
 	var giant := _giant_scale(d) > 1.0
 	for i in mini(bots.size(), specs.size()):
 		_dress(bots[i], specs[i], giant and bool(d.get("boss", false)), i == 0 and bool(d.get("boss", false)))
@@ -200,10 +233,60 @@ func setup_sim(s: MatchSim) -> void:
 	if bool(d.get("boss", false)) and enemies.size() > 0: boss = enemies[0]
 	s.pickups.armed_weapon_crates = is_boss_stage()
 	s.pickups.armed_weapon_crate_owner = boss
-	s.player.dmg_scale *= player_dmg
-	_deaths0 = int(s.player.st["deaths"])
+	for k in seats.size():
+		var f: FighterState = seats[k]
+		f.dmg_scale *= float(seat_dmg[k]) if k < seat_dmg.size() and seat_dmg[k] != null else player_dmg
+	_deaths0 = []
+	for f: FighterState in seats: _deaths0.append(int(f.st["deaths"]))
+	s.set_meta("pve_seats", seats)             # BotBrain.pick_target: the crew hunts every seat, a seat bot hunts the crew
 	events = StageEvents.new()
 	events.setup(self, s, d, rng)
+
+## The run's player seats for this stage: sim.fighters[0..seat_count-1] in slot order. Seat 0 is the world's own player;
+## an extra seat the net layer made a ghost stays a ghost, and an extra offline seat becomes a second locally played
+## fighter (its own PlayerControl + InputState) or, with seat_bot[k], keeps the BotBrain MatchSim gave it.
+func _bind_seats(s: MatchSim) -> void:
+	seats = []; seat_controls = []
+	var online: bool = world != null and world.session != null   # HostMatch.setup dresses the seats right after this
+	var n := clampi(seat_count, 1, s.fighters.size())
+	for k in n: seats.append(s.fighters[k])
+	if seats.is_empty(): seats = [s.player]
+	for k in seats.size():
+		var f: FighterState = seats[k]
+		if k == 0:                                           # the world's own player: PlayerControl is the world's
+			seat_controls.append(null)
+			continue
+		if f.is_ghost:                                       # online co-op seat: the net layer owns it
+			seat_controls.append(null)
+			continue
+		f.is_player = true                                   # a full player seat: crew can hit it, bots pick it, HUD shows it
+		if online:                                           # the net layer (HostMatch) dresses and controls this fighter;
+			seat_controls.append(null)                       # keep MatchSim's BotBrain so human_to_bot has one to restore
+			continue
+		f.dmg_scale = 1.0                                    # MatchSim made it a bot: class/health/speed as a player
+		f.set_class(s.player.class_id, s.combat.classes.get(s.player.class_id, {}))
+		f.hp = s.combat.max_hp(f)
+		f.name = seat_name(k)
+		# the same outfit as seat 0, a different hi-vis colour (the crew's tradie look would read as an enemy)
+		s.looks[f] = {"skin": str(Settings.get_value("skin", "none")), "hat": str(Settings.get_value("hat", "none")),
+			"color": 0x4a90d9 if k % 2 == 1 else 0xe86fa5}
+		if k < seat_bot.size() and bool(seat_bot[k]):        # a teammate BOT seat: keep its brain, the crew is its prey
+			seat_controls.append(null)
+			continue
+		var pc := PlayerControl.new(InputState.new())        # an extra couch seat: a real local PlayerControl
+		s.controllers[f] = pc
+		seat_controls.append(pc)
+
+## After the net layer dressed the stage (HostMatch.setup runs between setup_sim and stage_ready): a seat that became a
+## ghost belongs to a remote client, so it must not carry local-player flags here. A host-run bot seat stays a player seat.
+func _refresh_seats() -> void:
+	for k in range(1, seats.size()):
+		var f: FighterState = seats[k]
+		if f.is_ghost:
+			f.is_player = false
+			if k < seat_controls.size(): seat_controls[k] = null
+		elif not f.left:
+			f.is_player = true
 
 ## End of World.load_map (the fighters have views): the HUD strip and the stage's intro card.
 func stage_ready(w: Node) -> void:
@@ -215,6 +298,7 @@ func stage_ready(w: Node) -> void:
 		ui.move_child(hud, w.hud.get_index() + 1)
 	hud.bind(self)
 	events.world = w
+	_refresh_seats()                           # the net layer (if any) has dressed the stage by now
 	stage_started.emit(stage)
 	state = "intro"
 	_stage_first = first_clear()
@@ -243,7 +327,6 @@ func step(dt: float) -> void:
 func _fight(dt: float) -> void:
 	t_stage += dt
 	run_time += dt
-	var p := sim.player
 	_kit_t -= dt
 	if _kit_t <= 0.0:
 		_kit_t = KIT_EVERY
@@ -266,8 +349,66 @@ func _fight(dt: float) -> void:
 	if clear:
 		_cleared()
 		return
-	if p.dead or int(p.st["deaths"]) > _deaths0:
+	_seats(dt)
+
+# ---------------- seats: down / auto-revive / fail ----------------
+
+## Every seat every step: a dead (or fallen) seat goes down; downed seats count their 6 s and come back while a teammate is
+## still up; when every seat is down the attempt fails (one shared life). One seat reproduces the old rule exactly: the
+## stage fails the same frame its only player dies.
+func _seats(dt: float) -> void:
+	for k in seats.size():
+		if seat_down.has(k): continue
+		var f: FighterState = seats[k]
+		if f.dead or int(f.st["deaths"]) > int(_deaths0[k]): _seat_down(k)
+	var up := living_seats()
+	if up.is_empty():
 		_failed()
+		return
+	for k: int in seat_down.keys():
+		seat_down[k] = maxf(float(seat_down[k]) - dt, 0.0)
+	for k: int in seat_down.keys().duplicate():
+		if float(seat_down[k]) <= 0.0: _seat_up(k)
+
+## A seat is down: pinned like a solo player's death (MatchSim must not respawn it) and revived by the manager after 6 s.
+func _seat_down(k: int) -> void:
+	var f: FighterState = seats[k]
+	if not f.dead:                             # a fall/ring-out: the seat is out too, but let the revive bring it back
+		f.dead = true
+		sim.combat.clear_inventory(f)
+		sim.combat.set_weapon(f, "")
+	f.elim = true; f.death_t = 1e9
+	seat_down[k] = REVIVE_TIME
+	seat_downed.emit(k, REVIVE_TIME)
+
+## The seat comes back on the floor, at full health for its class (a fresh fighter: the K.O. cleared its hands), away from
+## the fight, with a short invulnerability. No life is lost (lives are the shared run lives).
+func _seat_up(k: int) -> void:
+	if not seat_down.has(k): return
+	seat_down.erase(k)
+	var f: FighterState = seats[k]
+	var best := _safe_spot()
+	sim.combat.place_at(f, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else sim.combat.spawn_y)
+	f.elim = false; f.dead = false; f.death_t = 0.0; f.fell_t = false; f.invuln = 2.5
+	seat_revived.emit(k)
+
+## The safest of a few random bot spots: the farthest from the nearest living seat. The same six draws the old
+## single-player revive used (so a solo run's scripted RNG is untouched).
+func _safe_spot() -> Array:
+	var c := sim.combat
+	var spots: Array = sim.map.get("bots", []) + sim.map.get("spawns", [])
+	var sh: Dictionary = c.rules.shrink
+	if not sh.is_empty():                       # the Project Manager's closing floor: only spots still on it
+		var half := float(sh["size"]) / 2.0 - 2.5
+		spots = spots.filter(func(sp: Array) -> bool: return absf(float(sp[0])) <= half and absf(float(sp[1])) <= half)
+	if spots.is_empty(): spots = [[0.0, 0.0]]
+	var best: Array = spots[0]
+	var far := -1.0
+	for i in 6:
+		var sp: Array = spots[rng.randi() % spots.size()]
+		var dd := _nearest_seat_dist(float(sp[0]), float(sp[1]))
+		if dd > far: far = dd; best = sp
+	return best
 
 func _down(e: FighterState) -> void:
 	downed[e] = true
@@ -280,18 +421,7 @@ func _down(e: FighterState) -> void:
 func _revive(e: FighterState) -> void:
 	var c := sim.combat
 	var frac := clampf(e.hp / c.max_hp(e), 0.05, 1.0)
-	var spots: Array = sim.map.get("bots", []) + sim.map.get("spawns", [])
-	var sh: Dictionary = c.rules.shrink
-	if not sh.is_empty():                       # the Project Manager's closing floor: only spots still on it
-		var half := float(sh["size"]) / 2.0 - 2.5
-		spots = spots.filter(func(sp: Array) -> bool: return absf(float(sp[0])) <= half and absf(float(sp[1])) <= half)
-	if spots.is_empty(): spots = [[0.0, 0.0]]
-	var best: Array = spots[0]
-	var far := -1.0
-	for k in 6:                                # a bot spot, the farthest of a few picks from the player
-		var sp: Array = spots[rng.randi() % spots.size()]
-		var dd := Vector2(float(sp[0]) - sim.player.phys.px, float(sp[1]) - sim.player.phys.pz).length()
-		if dd > far: far = dd; best = sp
+	var best := _safe_spot()
 	c.place_at(e, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else c.spawn_y)
 	e.hp = c.max_hp(e) * frac
 	e.death_t = 0.0
@@ -300,12 +430,12 @@ func _revive(e: FighterState) -> void:
 	var key: String = str(kit.get(e, ""))
 	if key != "": give_weapon(e, key)          # the fall cleared its hands: it comes back with its trade tool
 
-## The crew gives up when the boss falls: the rest go down with it (K.O.s count for the player).
+## The crew gives up when the boss falls: the rest go down with it (the K.O. goes to the nearest living seat).
 func _cleared() -> void:
 	for e: FighterState in enemies:
 		if downed.has(e): continue
 		e.invuln = 0.0
-		if not e.dead: sim.combat.hit(e, 1e6, 0.0, 1.0, 0.0, 8.0, false, sim.player)
+		if not e.dead: sim.combat.hit(e, 1e6, 0.0, 1.0, 0.0, 8.0, false, _nearest_seat(e))
 		_down(e)
 	if events != null: events.finish()
 	state = "clearing"
@@ -315,12 +445,97 @@ func _cleared() -> void:
 
 func _failed() -> void:
 	if events != null: events.finish()
+	for k in seats.size():                      # every downed seat stays down behind the card (solo: the one player)
+		var f: FighterState = seats[k]
+		if seat_down.has(k) or f.dead or int(f.st["deaths"]) > int(_deaths0[k]):
+			f.death_t = 1e9
 	sim.player.death_t = 1e9
 	state = "failing"
 	_t_end = FAIL_DELAY
 	stage_failed.emit(stage)
 
-## Coins and records for the stage just cleared (once per first clear).
+# ---------------- the seat API (the net layer maps its room slots onto these) ----------------
+
+## The fighter of seat k (null out of range). Seats are in room-slot order: seat k is sim.fighters[k].
+func seat(k: int) -> FighterState:
+	return seats[k] if k >= 0 and k < seats.size() else null
+
+## The seat index of a fighter, -1 when it is not a player seat (crew, minion).
+func seat_index(f: FighterState) -> int:
+	return seats.find(f)
+
+## The seat's display name: "You" for seat 0 (the world's own player), seat_names[k] when the net layer set one, else
+## "Player N". The HUD and the cards use it.
+func seat_name(k: int) -> String:
+	if k < 0: return ""
+	if k < seat_names.size() and str(seat_names[k]) != "": return str(seat_names[k])
+	return tr("You") if k == 0 else tr("Player %d") % (k + 1)
+
+## "P1 You" / "P2 Bluey": short enough for the run strip on a phone.
+func seat_label(k: int) -> String:
+	return "P%d %s" % [k + 1, seat_name(k)]
+
+## A seat is in the fight: not downed, not dead.
+func seat_alive(k: int) -> bool:
+	var f := seat(k)
+	return f != null and not seat_down.has(k) and not f.dead and not f.elim
+
+func seat_is_down(k: int) -> bool:
+	return seat_down.has(k)
+
+## Seconds until seat k's auto-revive (0 = up).
+func seat_revive_left(k: int) -> float:
+	return float(seat_down.get(k, 0.0))
+
+## The seats still in the fight, in seat order.
+func living_seats() -> Array:
+	var out: Array = []
+	for k in seats.size():
+		if seat_alive(k): out.append(seats[k])
+	return out
+
+## The seat indexes that are down (in seat order).
+func downed_seats() -> Array:
+	var out: Array = []
+	for k in seats.size():
+		if seat_down.has(k): out.append(k)
+	return out
+
+func all_seats_down() -> bool:
+	for k in seats.size():
+		if not seat_down.has(k) and not seats[k].dead: return false
+	return not seats.is_empty()
+
+## The PlayerControl of an extra locally controlled seat (offline co-op / tests); null for seat 0 (the world's own
+## PlayerControl) and for a net-layer ghost.
+func seat_control(k: int) -> PlayerControl:
+	return seat_controls[k] if k >= 0 and k < seat_controls.size() else null
+
+## The living seat nearest to `from` (the nearest-player rule for K.O. credit / enemy revives).
+func _nearest_seat(from: FighterState) -> FighterState:
+	var best: FighterState = null
+	var bd := 1e9
+	for f: FighterState in living_seats():
+		var dx := f.phys.px - from.phys.px
+		var dz := f.phys.pz - from.phys.pz
+		var dd := dx * dx + dz * dz
+		if dd < bd: bd = dd; best = f
+	if best != null: return best
+	return seats[0] if not seats.is_empty() else sim.player
+
+## Distance from (x, z) to the NEAREST living seat (enemy revives and minion spawns keep away from the whole team).
+func _nearest_seat_dist(x: float, z: float) -> float:
+	var bd := -1.0
+	for f: FighterState in living_seats():
+		var dx := f.phys.px - x
+		var dz := f.phys.pz - z
+		var dd := sqrt(dx * dx + dz * dz)
+		if bd < 0.0 or dd < bd: bd = dd
+	return maxf(bd, 0.0)
+
+## Coins and records for the stage just cleared (once per first clear). The card summary keeps its single-player keys
+## (kos = the seats' K.O.s summed, coins = what this save gets); `seats` carries each seat's share so the net layer can
+## pay every client without this process writing a second save.
 func _pay() -> Dictionary:
 	var d := stage_def()
 	var id := str(d["id"])
@@ -332,11 +547,18 @@ func _pay() -> Dictionary:
 	DlcSave.set_best(Save.dlc, diff, stage + 1)
 	if coins > 0: Save.coins += coins
 	Save.commit()
-	var kos := int(sim.player.ko)
+	var per: Array = []
+	var kos := 0
+	for k in seats.size():
+		var sk := int(seats[k].ko)
+		kos += sk
+		per.append({"seat": k, "name": seat_name(k), "kos": sk, "coins": coins, "first": first,
+			"reward": scaled(int(d.get("coin_reward", 0))), "bonus": scaled(int(d.get("first_clear_bonus", 0))) if first else 0})
 	run_coins += coins
 	run_kos += kos
 	var out := {"id": id, "stage": stage, "name": str(d["name"]), "time": t_stage, "kos": kos, "coins": coins, "first": first,
-		"reward": scaled(int(d.get("coin_reward", 0))), "bonus": scaled(int(d.get("first_clear_bonus", 0))) if first else 0}
+		"reward": scaled(int(d.get("coin_reward", 0))), "bonus": scaled(int(d.get("first_clear_bonus", 0))) if first else 0,
+		"seats": per}
 	history.append(out)
 	return out
 
@@ -355,7 +577,8 @@ func _finish_attempt() -> void:
 			state = "failed"
 			world.show_panel(ArcadePanels.failed(self, retry_stage, quit_run))
 
-## The final victory: bonus coins and the Site Foreman hat, once.
+## The final victory: bonus coins and the Site Foreman hat, once. As with _pay(), each seat's share is in `seats`; this
+## process pays this save once.
 func _win() -> void:
 	var first := not DlcSave.won_diff(Save.dlc, diff)     # the victory bonus is paid once per difficulty
 	var hat_first := DlcSave.HAT_DIFFS.has(diff) and not DlcSave.won_arcade(Save.dlc)
@@ -366,7 +589,13 @@ func _win() -> void:
 		Save.coins += coins
 		Save.commit()
 		run_coins += coins
-	victory = {"coins": coins, "hat": FOREMAN_HAT, "first": first, "hat_first": hat_first, "hat_owned": DlcSave.won_arcade(Save.dlc), "diff": diff}
+	var hat_owned := DlcSave.won_arcade(Save.dlc)
+	victory = {"coins": coins, "hat": FOREMAN_HAT, "first": first, "hat_first": hat_first, "hat_owned": hat_owned, "diff": diff}
+	var per: Array = []
+	for k in seats.size():
+		per.append({"seat": k, "name": seat_name(k), "coins": coins, "first": first,
+			"hat_first": hat_first, "hat_owned": hat_owned})
+	victory["seats"] = per
 	state = "won"
 	run_won.emit()
 	world.show_panel(ArcadePanels.won(self, quit_run))
@@ -470,9 +699,9 @@ func spawn_minion(name_hint: String = "") -> FighterState:
 		if spots.is_empty(): spots = [[0.0, 0.0]]
 	var best: Array = [0.0, 0.0]
 	var far := -1.0
-	for k in 6:                                # a bot spot, the farthest of a few picks from the player
+	for k in 6:                                # a bot spot, the farthest of a few picks from the nearest seat
 		var sp: Array = spots[rng.randi() % spots.size()] if spots.size() > 0 else [0.0, 0.0]
-		var dd := Vector2(float(sp[0]) - sim.player.phys.px, float(sp[1]) - sim.player.phys.pz).length()
+		var dd := _nearest_seat_dist(float(sp[0]), float(sp[1]))
 		if dd > far: far = dd; best = sp
 	sim.combat.place_at(f, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else sim.combat.spawn_y)
 	f.yaw = rng.randf_range(0.0, TAU); f.face_yaw = f.yaw

@@ -239,3 +239,22 @@ the run ending when the host leaves and decide M5 separately.
 6. **Host migration:** not needed for v1. If the host leaves, the run ends and the players return to the hub.
 
 These settle section 8's questions; M1-M4 are in scope, M5 is out.
+
+## 11. Milestone status
+
+- **M1 (net layer): not started** (another track).
+- **M2 (Arcade seats): done, offline-verified.** `ArcadeManager` is seat-aware: `seat_count` (1 or 2) and `seat_names`
+  set before the first `load_map`; the seats are `sim.fighters[0..seat_count-1]` in room-slot order (crew after) and are
+  read with `seat(k)`, `seat_name/label(k)`, `seat_alive`, `seat_is_down`, `seat_revive_left`, `living_seats`,
+  `downed_seats`, `all_seats_down`, `seat_control(k)`. Rules: per-seat damage scale, a downed seat auto-revives after
+  `REVIVE_TIME` (6 s) at full class health on a safe spot with no life lost while a teammate is up, all seats down loses
+  exactly one shared life and retries the same stage, K.O.s are summed, `_pay()`/`_win()` return a `seats` array with
+  each seat's share (one local save is written), the HUD shows one line per seat with the down countdown, and the cards
+  name the seats. Crew/boss targeting is nearest living seat (`BotBrain.pick_target` via the `pve_seats` sim meta; a
+  `bot:true` seat is a full target and fights the crew); the 1-seat path is unchanged (`npm run test:godot-bots` parity
+  untouched). `combat.bots_can_hit` accepts a co-op ghost seat (`net_human`), and `Combat.hit`'s ghost branch already
+  relays a host crew bot's hit to that seat's owner. Offline two-seat harness in `godot/tests/arcade_test.gd`
+  (`npm run test:godot-arcade`); single-player tests and their numbers are unchanged. Remaining for the net layer:
+  slot→seat mapping (`seat_count`/`seat_names`/`seat_bot` before a stage), mirror `seat_downed`/`seat_revived` as the
+  downed-state messages (`am.dn` + revive countdown, ideally from `seat_is_down`/`seat_revive_left`), and deliver
+  `last["seats"]`/`victory["seats"]` to each client so every save is paid on its own client (never two saves here).

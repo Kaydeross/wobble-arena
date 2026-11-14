@@ -1,13 +1,17 @@
 class_name ArcadeBossHud
 extends Control
 ## The Arcade run's top-centre HUD: a small run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its health bar in the
-## stage's bar colour (name inside, phase ticks at 66 / 33 %). World._update_mode_ui calls place() every frame: it hangs under
-## the toast band (MatchHud.TOP_STACK, the slot the team board uses), between the K.O. panel and the radar (and the kill feed
-## when it reaches this far), and returns where the mode line may start, so nothing here overlaps the toast, team board or
-## mode line (docs/UI_REVIEW.md: MIN_FONT, MIN_GAP). Pure presentation: it reads the ArcadeManager and never changes it.
+## stage's bar colour (name inside, phase ticks at 66 / 33 %). Co-op adds one line per player seat under the strip (the
+## shared lives stay one number); a downed seat's line turns red and counts its auto-revive down ("P2 Bluey · Down! Back in
+## 4"). World._update_mode_ui calls place() every frame: it hangs under the toast band (MatchHud.TOP_STACK, the slot the team
+## board uses), between the K.O. panel and the radar (and the kill feed when it reaches this far), and returns where the mode
+## line may start, so nothing here overlaps the toast, team board or mode line (docs/UI_REVIEW.md: MIN_FONT, MIN_GAP). Pure
+## presentation: it reads the ArcadeManager and never changes it.
 
 const STRIP_FONT := 17
 const BAR_FONT := 15
+const PLATE_FONT := 15
+const PLATE_H := 20.0
 const BAR_H := 24.0
 const STRIP_H := 24.0
 const MIN_W := 170.0
@@ -16,6 +20,8 @@ const GAP := 6.0
 
 var m: ArcadeManager
 var strip: Label
+var seats_box: Control
+var plates: Array = []                 ## one Label per player seat (visible in co-op)
 var bar: Control
 var name_l: Label
 var pct_l: Label
@@ -34,6 +40,10 @@ func _ready() -> void:
 	strip.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(strip)
+	seats_box = Control.new()
+	seats_box.name = "Seats"
+	seats_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(seats_box)
 	bar = Control.new()
 	bar.name = "Bar"
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -41,6 +51,25 @@ func _ready() -> void:
 	add_child(bar)
 	name_l = _bar_label("BossName", HORIZONTAL_ALIGNMENT_LEFT)
 	pct_l = _bar_label("BossPct", HORIZONTAL_ALIGNMENT_RIGHT)
+
+## One seat line: shown in co-op only, updated in place() every frame.
+func _plate(i: int) -> Label:
+	while plates.size() <= i:
+		var l := Label.new()
+		l.name = "Seat%d" % plates.size()
+		l.theme_type_variation = &"HudLabel"
+		l.add_theme_font_size_override("font_size", PLATE_FONT)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		l.add_theme_constant_override("outline_size", 5)
+		l.add_theme_color_override("font_outline_color", Color(0.04, 0.07, 0.09, 0.95))
+		seats_box.add_child(l)
+		plates.append(l)
+	return plates[i]
+
+## The label text a downed seat shows (tests / the net layer's display state): "Down! Back in 6".
+func down_text(k: int) -> String:
+	return tr("Down! Back in %d") % maxi(1, ceili(m.seat_revive_left(k)))
 
 func _bar_label(n: String, align: HorizontalAlignment) -> Label:
 	var l := Label.new()
@@ -86,7 +115,9 @@ func place(w: Node, top: float, delta: float = 0.0) -> float:
 	var rd: Control = hud.get_node("Radar")
 	hi = rd.position.x - 10.0
 	var show_bar := m.boss_active()
-	var h := STRIP_H + (BAR_H + 2.0 if show_bar else 0.0)
+	var show_seats: bool = m.seats.size() > 1
+	var seat_h := PLATE_H * m.seats.size() if show_seats else 0.0
+	var h := STRIP_H + seat_h + (BAR_H + 2.0 if show_bar else 0.0)
 	var fd: Control = hud.get_node_or_null("Feed")
 	if fd != null and fd.get_child_count() > 0 and fd.position.y < top + h:    # a kill feed that reaches under the radar
 		hi = minf(hi, fd.position.x - 10.0)
@@ -99,9 +130,25 @@ func place(w: Node, top: float, delta: float = 0.0) -> float:
 	strip.add_theme_font_size_override("font_size", fs)
 	strip.size = Vector2(width, STRIP_H)
 	strip.position = Vector2.ZERO
+	seats_box.visible = show_seats
+	if show_seats:                                            # co-op: the shared lives above, one state line per seat here
+		seats_box.size = Vector2(width, seat_h)
+		seats_box.position = Vector2(0.0, STRIP_H)
+		for k in m.seats.size():
+			var pl := _plate(k)
+			pl.visible = true
+			pl.size = Vector2(width, PLATE_H)
+			pl.position = Vector2(0.0, PLATE_H * k)
+			if m.seat_is_down(k):
+				pl.text = "%s · %s" % [m.seat_label(k), down_text(k)]
+				pl.add_theme_color_override("font_color", Color(1.0, 0.62, 0.5))
+			else:
+				pl.text = "%s · %s" % [m.seat_label(k), tr("K.O.s %d") % int(m.seat(k).ko)]
+				pl.add_theme_color_override("font_color", Color(1, 1, 1, 0.92))
+		for i in range(m.seats.size(), plates.size()): plates[i].visible = false
 	bar.visible = show_bar
 	if show_bar:
-		bar.position = Vector2(0.0, STRIP_H + 2.0)
+		bar.position = Vector2(0.0, STRIP_H + seat_h + 2.0)
 		bar.size = Vector2(width, BAR_H)
 		var f := m.boss_frac()
 		_shown = move_toward(_shown, f, maxf(delta, 0.0) * 1.2) if delta > 0.0 else f

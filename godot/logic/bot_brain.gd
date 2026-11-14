@@ -107,11 +107,24 @@ func _init(difficulty: Dictionary, p_diff: String) -> void:
 	diff = p_diff
 
 ## pickTarget: the nearest enemy, with a slight preference for the human.
+## Arcade co-op (docs/ARCADE_COOP_PLAN.md §4.4, 2+ seats only): MatchSim carries the run's player seats in the
+## "pve_seats" meta (ArcadeManager.setup_sim). Then the crew (a bot with is_player false) hunts the nearest LIVING seat -
+## a teammate bot seat included - and a teammate bot seat (is_player true) hunts the crew. One seat / no meta = the
+## single-player path below, unchanged: the web parity reference never sees this branch.
 func pick_target(b: FighterState, sim: MatchSim) -> FighterState:
 	var best: FighterState = null
 	var bd := 1e9
-	for f: FighterState in (sim.fighters if sim.combat.ffa else [sim.player]):
+	var pve: Array = sim.get_meta("pve_seats", [])
+	var cands: Array
+	if pve.size() > 1:
+		cands = pve if not b.is_player else sim.fighters.filter(func(f: FighterState) -> bool: return not pve.has(f))
+	elif sim.combat.ffa:
+		cands = sim.fighters
+	else:
+		cands = [sim.player]
+	for f: FighterState in cands:
 		if f == b or f.dead or sim.combat.is_friend(b, f): continue
+		if pve.size() > 1 and f.elim: continue
 		var dd := sqrt((f.phys.px - b.phys.px) * (f.phys.px - b.phys.px) + (f.phys.pz - b.phys.pz) * (f.phys.pz - b.phys.pz)) + (0.0 if f.is_player else 3.0)
 		if dd < bd: bd = dd; best = f
 	return best
