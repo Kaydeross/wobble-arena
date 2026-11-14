@@ -1046,7 +1046,11 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 
 ## An Arcade run's card (stage intro / clear / failed / run over / victory) over the frozen match, like the results panel.
 func show_panel(p: Control) -> void:
-	if _results: _results.queue_free()
+	if _results:                            # out of the tree at once: the old card's node name is free for the new one
+		var old := _results
+		_results = null
+		if old.get_parent() != null: old.get_parent().remove_child(old)
+		old.queue_free()
 	_banner.visible = false
 	p.set_anchors_preset(Control.PRESET_CENTER)
 	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -1111,7 +1115,12 @@ func _build_shrink_view() -> void:
 	_update_shrink_view()
 
 func _update_shrink_view() -> void:
-	if _shrink_mesh == null: return
+	if _shrink_mesh == null:
+		# An Arcade guest has no shrinking floor when the stage loads: the host's `am.sh` creates it later (ArcadeManager
+		# only holds the local mode clock still and sets the size), so build the mesh the first time the floor shrinks.
+		if arcade != null and sim != null and not sim.combat.rules.shrink.is_empty() and map_node != null:
+			_build_shrink_view()
+		return
 	var s: Dictionary = sim.combat.rules.shrink
 	var k: float = s["size"] / s["S0"]
 	_shrink_mesh.scale = Vector3(k, 1.0, k if s["both"] else 1.0)
@@ -1151,6 +1160,15 @@ func _on_net_host_changing(old_host: String) -> void:
 ## The relay made me the host: the HostSession carries the match on (its `start` rebuilds the arena) or, with no
 ## match running, the lobby takes over.
 func _on_net_promoted(hs: GuestSession) -> void:
+	if arcade != null:
+		# The relay promotes the remaining player when the host leaves. An Arcade co-op run is NOT carried across a
+		# migration (owner decision: M5 is cut), so the run ends here with a plain run-over message for everyone.
+		var msg := arcade.end_reason("host left")
+		_unbind_net()
+		(hs as HostSession).leave(msg)               # do not leave the player hosting an empty room
+		session = null
+		_to_title(msg)
+		return
 	_unbind_net()
 	session = hs
 	_bind_net()
@@ -1171,14 +1189,19 @@ func _on_net_start(s: Dictionary) -> void:
 	load_map.call_deferred(str(s["map"]))
 
 func _on_net_ended(reason: String) -> void:
-	_to_title(reason)
+	# An Arcade co-op run does not migrate: the host leaving ends it for everyone, and the reason says so (not the
+	# generic "the host left the room"). A host that quits says the run is over.
+	_to_title(arcade.end_reason(reason) if arcade != null else reason)
 
 func _on_net_rehosted() -> void:
 	_to_title("The host left. Waiting for the new host to start…")
 
 func _on_title_pressed() -> void:
 	if session != null:
-		session.leave("You left the room.")     # _on_net_ended goes to the title
+		var msg := "You left the room."
+		if arcade != null and session is HostSession and (session as HostSession).arcade:
+			msg = tr("The Arcade run is over.")  # the guests see "The host left. The Arcade run is over."
+		session.leave(msg)                       # _on_net_ended goes to the title
 	else:
 		get_tree().change_scene_to_file("res://scenes/main.tscn")
 

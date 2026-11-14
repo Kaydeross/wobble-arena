@@ -121,6 +121,25 @@ var _kit_t := 0.0
 var _deaths0: Array = []              ## per seat: st["deaths"] when the stage started (a fall counts as going down)
 var _seed_saved := -1
 var _stage_first := false
+## Seat -> seconds of grace after its auto-revive, so a guest still reporting dead for a frame does not re-down it.
+var _seat_grace := {}
+# ---------------- online co-op: the host's / the guest's extra state ----------------
+var _am_seq := 0                        ## bumped by _pay/_win: the guest applies a clear/victory exactly once per bump
+var _rv_n := 0                          ## bumped by _seat_up: the guest applies each revive exactly once (needs in `am.rv`)
+var _last_revive: Dictionary = {}       ## the latest revive instruction for `am.rv`: {n, k (room slot), x, y, z, hf, iv}
+var guest_ready := false                ## guest: stage_ready has run for the current stage (cards may be shown)
+var host_last: Dictionary = {}          ## guest: the host's latest `am.last` (the numbers its own save is paid from)
+var _guest_own := -1                    ## guest: my seat index in `seats` (-1 = not bound yet)
+var _guest_boss_slot := -1              ## guest: `arc.boss`' room slot
+var _guest_big := false                 ## guest: `arc.big`, the 1.5x Client visual
+var _guest_hf := 1.0                    ## guest: boss health fraction from `am.hf`
+var _guest_sh := 0.0                    ## guest: shrink size from `am.sh`
+var _guest_paid_cn := 0                 ## guest: the `am.cn` whose clear/victory this save already paid
+var _guest_t_stage := 0.0               ## guest: the stage time it counts itself (its own card line)
+var _guest_rv_n := 0                    ## guest: the `am.rv.n` it already applied
+var _guest_pinned := false              ## guest: my fighter is pinned down (waiting for the host's revive)
+var _guest_card := ""                   ## guest: which card is up ("intro", "clear", "failed", "over", "won")
+var _down_l: Label = null               ## guest: the "Down! Back in N" overlay
 
 # ---------------- the table ----------------
 
@@ -202,6 +221,10 @@ func init_online(arc: Dictionary, is_host: bool) -> void:
 	seat_count = clampi(seat_slots.size(), 1, ArcadeCoop.SEATS)
 	rng.seed = seed_base
 	_seed_saved = SiteMap.current_seed
+	run_coins = 0; run_kos = 0; run_time = 0.0
+	history = []; last = {}; victory = {}; host_last = {}; seat_down = {}
+	_am_seq = 0; _rv_n = 0; _last_revive = {}; guest_ready = false; _guest_own = -1
+	_guest_paid_cn = 0; _guest_t_stage = 0.0; _guest_rv_n = 0; _guest_pinned = false; _guest_card = ""
 	running = self
 
 func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF) -> void:
@@ -232,6 +255,11 @@ func end_run() -> void:
 	boss = null; sim = null; world = null
 	online = false; host_mode = false; seat_slots = [0]; am = {}; _am_t = 0.0; _am_state = ""
 	state = "idle"
+	_seat_grace = {}; _am_seq = 0; _rv_n = 0; _last_revive = {}; guest_ready = false; host_last = {}
+	_guest_own = -1; _guest_boss_slot = -1; _guest_big = false; _guest_hf = 1.0; _guest_sh = 0.0
+	_guest_paid_cn = 0; _guest_t_stage = 0.0; _guest_rv_n = 0; _guest_pinned = false; _guest_card = ""
+	if _down_l != null and is_instance_valid(_down_l): _down_l.queue_free()
+	_down_l = null
 
 func stage_seed() -> int:
 	return seed_base + int(stage_def().get("map_seed_offset", 0)) + attempt * RETRY_SEED_STEP
@@ -277,6 +305,13 @@ func begin_stage(w: Node) -> String:
 		w.dyn_choice = "off"
 		w.difficulty = _stage_skill()
 		rng.seed = hash([seed_base, stage, attempt])
+		_guest_own = -1; guest_ready = false; host_last = {}; _guest_card = ""
+		_guest_boss_slot = int(a.get("boss", -1))
+		_guest_big = bool(a.get("big", false))
+		_guest_rv_n = 0; _guest_pinned = false; _guest_t_stage = 0.0
+		_guest_sh = 0.0; _guest_hf = 1.0
+		seat_down = {}
+		_rv_n = 0; _last_revive = {}; _seat_grace = {}
 		return mp
 	var d := stage_def()
 	if mp == "sitegen": SiteMap.set_seed(stage_seed())
@@ -426,6 +461,7 @@ func _refresh_seats() -> void:
 		if f == null: continue
 		if f.is_ghost:
 			f.is_player = false
+			_seat_bot_flag(k, false)
 			if k < seat_controls.size(): seat_controls[k] = null
 		elif not f.left:
 			f.is_player = true
@@ -433,30 +469,39 @@ func _refresh_seats() -> void:
 ## The net layer re-flagged a seat (a guest dropped -> its seat is the teammate bot again, or rejoined -> a ghost):
 ## HostSession calls this after bot_to_human / human_to_bot. `bot_slot` = the room slot that fell back to a bot, re-dressed
 ## as a teammate seat (it must not keep the tradie name/look MatchSim gave the placeholder). Never called offline.
-func refresh_seats(bot_slot: int = -1) -> void:
+## `keep` = the seat keeps the dropped player's fighter (class/look/name/kit) instead of becoming the generic teammate
+## bot: that is the M3 handover for an Arcade co-op seat (HostMatch.ghost_to_bot did the fighter part).
+func refresh_seats(bot_slot: int = -1, keep: bool = false) -> void:
 	_refresh_seats()
 	if bot_slot < 0 or not host_mode or sim == null: return
-	var k := seat_slots.find(bot_slot)
+	var k := _seat_of_slot(bot_slot)
 	if k <= 0 or k >= seats.size(): return
 	var f: FighterState = seats[k]
 	if f == null or f.is_ghost or f.left: return
+	_seat_bot_flag(k, true)
+	if keep:
+		f.is_player = true
+		return
 	_dress_teammate_seat(sim, f, k)
+
+## Test/host aid (`seat_bot` is M2's offline flag): remember that seat k is played by a bot (the HUD/`am.bt` say so).
+func _seat_bot_flag(k: int, on: bool) -> void:
+	while seat_bot.size() <= k: seat_bot.append(false)
+	seat_bot[k] = on
 
 ## End of World.load_map (the fighters have views): the HUD strip and the stage's intro card.
 func stage_ready(w: Node) -> void:
 	world = w
+	_ensure_hud(w)
 	if online and not host_mode:
 		state = "intro"
-		stage_started.emit(stage)
+		guest_ready = true
 		_bind_guest_seats()
-		w.show_panel(_guest_card())
+		_bind_guest_boss()
+		_ensure_down_overlay(w)
+		stage_started.emit(stage)
+		_guest_sync(true)                               # intro card ("Waiting for the host") or the am's card
 		return
-	if hud == null or not is_instance_valid(hud):
-		hud = ArcadeBossHud.new()
-		var ui: Node = w.get_node("UI")
-		ui.add_child(hud)
-		ui.move_child(hud, w.hud.get_index() + 1)
-	hud.bind(self)
 	events.world = w
 	_refresh_seats()                           # the net layer (if any) has dressed the stage by now
 	stage_started.emit(stage)
@@ -465,48 +510,91 @@ func stage_ready(w: Node) -> void:
 	w.show_panel(ArcadePanels.intro(self, stage_def(), _on_start_pressed))
 	_am_send()                                  # "intro" straight away, so the guest shows its waiting card
 
+## The run strip: created once per world (the guest needs it too, driven by `am`).
+func _ensure_hud(w: Node) -> void:
+	if hud == null or not is_instance_valid(hud):
+		hud = ArcadeBossHud.new()
+		var ui: Node = w.get_node("UI")
+		ui.add_child(hud)
+		ui.move_child(hud, w.hud.get_index() + 1)
+	hud.bind(self)
+
 ## A guest's seats are its own fighter and the host's, mapped through the net slots (`arc.seats`: slot k <-> seat k).
 ## The crew and the boss stay ghosts; they are only presentation here.
 func _bind_guest_seats() -> void:
 	seats = []; seat_controls = []; seat_down = {}
+	_guest_own = -1
 	var nm: NetMatch = world.net_match if world != null else null
 	for k in seat_count:
 		var slot := int(seat_slots[k]) if k < seat_slots.size() else k
 		var f: FighterState = nm.slot_fighter(slot) if nm != null else null
 		if f == null and nm != null: f = nm.sim.player
 		seats.append(f)
+		if nm != null and nm.my_slot == slot: _guest_own = k
 	if seats.is_empty() and sim != null: seats = [sim.player]
+	if _guest_own < 0 and seats.size() > 1: _guest_own = 1
 
-## The guest's stage card: what stage of how many, and that the host starts the fight.
-func _guest_card() -> Control:
-	var p := PanelContainer.new()
-	p.name = "ArcadeGuestIntro"
-	p.custom_minimum_size = Vector2(420, 0)
-	var box := VBoxContainer.new()
-	box.name = "Box"
-	box.add_theme_constant_override("separation", 10)
-	p.add_child(box)
-	var title := Label.new()
-	title.name = "Title"
-	title.theme_type_variation = &"TitleLabel"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.text = tr("Stage %d of %d") % [stage + 1, count()]
-	box.add_child(title)
-	var nm := Label.new()
-	nm.name = "StageName"
-	nm.theme_type_variation = &"MutedLabel"
-	nm.add_theme_font_size_override("font_size", 24)
-	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	nm.text = tr(str(stage_def().get("name", "")))
-	box.add_child(nm)
-	var wait := Label.new()
-	wait.name = "Waiting"
-	wait.add_theme_font_size_override("font_size", 22)
-	wait.add_theme_color_override("font_color", UiTheme.ACCENT)
-	wait.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	wait.text = tr("Waiting for the host")
-	box.add_child(wait)
-	return p
+## The guest's boss: the crew slot `arc.boss`, its ghost gives the bar its name; `arc.big` gives it the 1.5x look.
+func _bind_guest_boss() -> void:
+	boss = null
+	if _guest_boss_slot < 0 or world == null or world.net_match == null: return
+	var f: FighterState = world.net_match.slot_fighter(_guest_boss_slot)
+	if f == null or not f.is_ghost: return
+	boss = f
+	if _guest_big and f.big_t <= 0.0:
+		f.big_t = 1e9                       # the Client's 1.5x model/hit spheres (the host dressed the real boss)
+
+## The guest's "Down! Back in N" overlay above the cards.
+func _ensure_down_overlay(w: Node) -> void:
+	if _down_l != null and is_instance_valid(_down_l): return
+	var l := Label.new()
+	l.name = "ArcadeDown"
+	l.theme_type_variation = &"TitleLabel"
+	l.add_theme_font_size_override("font_size", 52)
+	l.add_theme_color_override("font_color", Color(1.0, 0.62, 0.5))
+	l.add_theme_constant_override("outline_size", 10)
+	l.add_theme_color_override("font_outline_color", Color(0.04, 0.07, 0.09, 0.95))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	l.visible = false
+	w.get_node("UI").add_child(l)
+	l.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	var vs := (w as Node).get_viewport().get_visible_rect().size if w.is_inside_tree() else Vector2(1170, 540)
+	l.position = Vector2(vs.x / 2.0 - l.size.x / 2.0, 210.0)
+	_down_l = l
+
+## What the guest shows when it is down: the overlay text ("" when up). Tests read it.
+func down_overlay_text() -> String:
+	return str(_down_l.text) if _down_l != null and is_instance_valid(_down_l) and _down_l.visible else ""
+
+## The card the guest shows for the host's current state, rebuilt only when the state's card changes.
+## No card means the fight is running: any card (the intro included) closes.
+func _guest_sync(force := false) -> void:
+	if world == null or not guest_ready: return
+	var want := ""
+	match state:
+		"intro": want = "intro"
+		"cleared": want = "clear"
+		"failed", "over": want = state
+		"won": want = "won"
+		_: want = ""                        # fight / clearing / failing: no card
+	if want == "":
+		if _guest_card != "":
+			world.close_panel()
+			_guest_card = ""
+		return
+	if want == _guest_card and not force: return
+	_guest_card = want
+	match want:
+		"intro": world.show_panel(ArcadePanels.intro(self, stage_def(), Callable(), true))
+		"clear": world.show_panel(ArcadePanels.clear(self, last, Callable(), Callable(), true))
+		"failed": world.show_panel(ArcadePanels.failed(self, Callable(), Callable(), true))
+		"over": world.show_panel(ArcadePanels.over(self, Callable(), true))
+		"won": world.show_panel(ArcadePanels.won(self, Callable(), true))
+
+## The guest's seat index of its own fighter (-1 before the stage is bound).
+func own_seat() -> int:
+	return _guest_own
 
 func _on_start_pressed() -> void:
 	begin_fight()
@@ -522,7 +610,9 @@ func begin_fight() -> void:
 
 ## After every sim step (World.sim_step).
 func step(dt: float) -> void:
-	if online and not host_mode: return           # a guest runs no stage logic (the host's `am` drives it)
+	if online and not host_mode:
+		_guest_step(dt)                           # presentation only: the host's `am` drives it
+		return
 	if sim == null: return
 	_am_tick(dt)
 	match state:
@@ -531,21 +621,166 @@ func step(dt: float) -> void:
 			_t_end -= dt
 			if _t_end <= 0.0: _finish_attempt()
 
+## Guest per-step: its own stage clock (for its card), the revive countdown and the downed overlay.
+func _guest_step(dt: float) -> void:
+	if sim == null: return
+	if state == "fight": _guest_t_stage += dt
+	for k: int in seat_down.keys():
+		seat_down[k] = maxf(float(seat_down[k]) - dt, 0.0)
+	_guest_overlay()
+
+func _guest_overlay() -> void:
+	if _down_l == null or not is_instance_valid(_down_l): return
+	var shown := _guest_pinned and _guest_own >= 0 and seat_is_down(_guest_own)
+	_down_l.visible = shown
+	if not shown: return
+	_down_l.text = tr("Down! Back in %d") % maxi(1, ceili(seat_revive_left(_guest_own)))
+	_down_l.reset_size()
+	if world != null and world.is_inside_tree():
+		var vs: Vector2 = world.get_viewport().get_visible_rect().size
+		_down_l.position = Vector2(vs.x / 2.0 - _down_l.size.x / 2.0, 210.0)
+
+
 # ---------------- online co-op: the host's `am` display state / the guest's copy ----------------
 
-## Client-safe view of an `am` message from a Godot host (docs/PROTOCOL.md 6.4). Display only: it never advances a
-## stage, pays coins or damages anyone here. The guest agent fills the cards / HUD from it (state, lives, boss fraction,
-## shrink size, downed slots, the stage summary each save pays from, the victory flag).
+## Client-safe view of an `am` message from a Godot host (docs/PROTOCOL.md 6.4). Presentation only: it never advances a
+## stage, damages anyone or pays the HOST's save. What it does drive here: the stage/lives/boss bar, the shrinking floor,
+## my own down/revive (pinned until `am.rv`), the cards ("Waiting for the host"), the run-over/victory cards, and MY OWN
+## save (coins/records, first-clear bonus, victory hat) exactly once per clear/victory.
 func handle_remote(m: Dictionary) -> void:
-	if not online or host_mode: return
+	if not online or host_mode or world == null: return
 	var st := int(m.get("st", stage))
 	if st != stage: return                       # a stale `am` from before the stage's own `start` rebuilt the world
 	am = m.duplicate(true)
 	stage = clampi(st, 0, maxi(0, count() - 1))
 	lives = int(m.get("lv", lives))
-	if m.get("last") is Dictionary and not (m["last"] as Dictionary).is_empty(): last = m["last"]
+	_guest_hf = clampf(float(m.get("hf", _guest_hf)), 0.0, 1.0)
+	_guest_sh = maxf(0.0, float(m.get("sh", _guest_sh)))
+	if m.get("last") is Dictionary and not (m["last"] as Dictionary).is_empty():
+		host_last = (m["last"] as Dictionary).duplicate(true)
+	var prev := state
 	state = str(m.get("s", state))
-	if state == "fight" and world != null: world.close_panel()
+	var cn := int(m.get("cn", 0))
+	_guest_shrink()
+	_guest_downed(m)
+	_guest_revive(m)
+	if state in ["clearing", "cleared"] and cn > _guest_paid_cn: _guest_pay(cn)
+	elif state == "won" and cn > _guest_paid_cn: _guest_win(cn)
+	if state != prev or state == "cleared": _guest_sync()
+
+## The downed seats from `am.dn` (room slots) + `am.dnt` (seconds to the revive): mirror them for the HUD lines and pin my
+## own fighter while it is down. Only the host's `am.rv` brings it back (the guest never respawns it on its own).
+func _guest_downed(m: Dictionary) -> void:
+	var dn: Array = m.get("dn", []) if m.get("dn") is Array else []
+	var dnt: Array = m.get("dnt", []) if m.get("dnt") is Array else []
+	var down := {}
+	for i in dn.size():
+		var slot := int(dn[i])
+		var k := _seat_of_slot(slot)
+		if k < 0 or k >= seats.size(): continue
+		down[k] = maxf(0.0, float(dnt[i])) if i < dnt.size() else REVIVE_TIME
+	seat_down = down
+	if _guest_own < 0: return
+	if seat_down.has(_guest_own) and not _guest_pinned: _guest_pin()
+	_guest_overlay()
+
+## Pin my fighter: no input (PlayerControl treats dead as incapacitated), no local respawn, no inventory.
+func _guest_pin() -> void:
+	var f := seat(_guest_own)
+	if f == null or sim == null: return
+	_guest_pinned = true
+	f.dead = true; f.elim = true; f.death_t = 1e9; f.hp = 0.0
+	sim.combat.clear_inventory(f); sim.combat.set_weapon(f, "")
+
+## The host revived my seat: put me where it says, with its health fraction and a short invulnerability.
+func _guest_revive(m: Dictionary) -> void:
+	var rv: Variant = m.get("rv")
+	if not (rv is Dictionary) or (rv as Dictionary).is_empty(): return
+	var d: Dictionary = rv
+	var n := int(d.get("n", 0))
+	if n <= _guest_rv_n: return
+	_guest_rv_n = n
+	if _guest_own < 0 or _seat_of_slot(int(d.get("k", -1))) != _guest_own: return
+	var f := seat(_guest_own)
+	if f == null or sim == null: return
+	f.elim = false; f.dead = false; f.death_t = 0.0; f.fell_t = false
+	sim.combat.place_at(f, float(d.get("x", 0.0)), float(d.get("z", 0.0)), float(d.get("y", sim.combat.spawn_y)))
+	f.hp = sim.combat.max_hp(f) * clampf(float(d.get("hf", 1.0)), 0.05, 1.0)
+	f.invuln = maxf(0.15, float(d.get("iv", 1.5)))
+	_guest_pinned = false
+	seat_down.erase(_guest_own)
+	_guest_overlay()
+
+## The guest's own copy of the host's shrinking floor (`am.sh`): the site never shrinks by itself here (no stage events
+## run on a guest), so hold the local mode clock still and set the size the host sends. World._update_shrink_view then
+## draws/scales the floor, and the floor collision box follows.
+func _guest_shrink() -> void:
+	if sim == null or _guest_sh <= 0.0 or _guest_sh >= 1.0e8: return
+	var rules: ModeRules = sim.combat.rules
+	if rules.shrink.is_empty():
+		if sim.solids.is_empty(): return
+		var box: Dictionary = sim.solids[0]
+		var s0 := maxf(1.0, float(box.get("maxX", _guest_sh)) - float(box.get("minX", 0.0)))   # the slab before it shrinks
+		rules.shrink = {"S0": s0, "size": _guest_sh, "start": s0, "min": 4.0, "max": s0, "dir": -1,
+			"cycle": 0, "hold": 1.0e9, "both": true, "D": s0, "rate": 1.0, "rest": -1.0, "box": box,
+			"id": sim.map_id}
+	else:
+		rules.shrink["size"] = _guest_sh
+		rules.shrink["hold"] = 1.0e9             # never tick locally: the host's am.sh is the only length authority
+	var s: Dictionary = rules.shrink
+	var hd := _guest_sh / 2.0 if bool(s.get("both", true)) else float(s.get("D", _guest_sh)) / 2.0
+	for key: Array in [["minX", -_guest_sh / 2.0], ["maxX", _guest_sh / 2.0], ["minZ", -hd], ["maxZ", hd]]:
+		(s["box"] as Dictionary)[key[0]] = key[1]
+
+## Pay MY OWN save for a stage the host says is cleared: my own DlcSave.has_cleared decides whether my first-clear bonus
+## is due (the host's does not), then mark_cleared / set_best / Save.coins / Save.commit. Never twice for one `am.cn`.
+func _guest_pay(cn: int) -> void:
+	if host_last.is_empty(): return
+	var d := stage_def()
+	var id := str(host_last.get("id", d.get("id", "")))
+	if id == "": id = str(d.get("id", ""))
+	var first := not DlcSave.has_cleared(Save.dlc, id, diff)
+	var reward := int(host_last.get("reward", scaled(int(d.get("coin_reward", 0)))))
+	var bonus := int(host_last.get("first_bonus", scaled(int(d.get("first_clear_bonus", 0)))))
+	var coins := (reward + bonus) if first else 0     # the reward+bonus is the FIRST clear's pay, like ArcadeManager._pay
+	if first: DlcSave.mark_cleared(Save.dlc, id, diff)
+	DlcSave.set_best(Save.dlc, diff, stage + 1)
+	if coins > 0: Save.coins += coins
+	Save.commit()
+	var per: Array = []
+	var kos := 0
+	for k in seats.size():
+		var sk := int(seats[k].ko) if seats[k] != null else 0
+		kos += sk
+		per.append({"seat": k, "name": seat_name(k), "kos": sk, "coins": coins, "first": first,
+			"reward": reward, "bonus": bonus if first else 0})
+	run_coins += coins
+	run_kos += kos
+	last = {"id": id, "stage": stage, "name": str(d.get("name", "")), "time": _guest_t_stage, "kos": kos, "coins": coins,
+		"first": first, "reward": reward, "bonus": bonus if first else 0, "seats": per}
+	history.append(last)
+	_guest_paid_cn = cn
+
+## The final victory on MY OWN save: the victory bonus once per difficulty and the Site Foreman hat conditions, exactly
+## as the host does on its own save (never two saves in one process).
+func _guest_win(cn: int) -> void:
+	var first := not DlcSave.won_diff(Save.dlc, diff)
+	var hat_first := DlcSave.HAT_DIFFS.has(diff) and not DlcSave.won_arcade(Save.dlc)
+	var coins := 0
+	if first:
+		coins = scaled(VICTORY_COINS)
+		DlcSave.mark_cleared(Save.dlc, DlcSave.VICTORY, diff)
+		Save.coins += coins
+		run_coins += coins
+	Save.commit()
+	var hat_owned := DlcSave.won_arcade(Save.dlc)
+	victory = {"coins": coins, "hat": FOREMAN_HAT, "first": first, "hat_first": hat_first, "hat_owned": hat_owned, "diff": diff}
+	var per: Array = []
+	for k in seats.size():
+		per.append({"seat": k, "name": seat_name(k), "coins": coins, "first": first,
+			"hat_first": hat_first, "hat_owned": hat_owned})
+	victory["seats"] = per
+	_guest_paid_cn = cn
 
 ## The host's `am` every ~5 Hz, plus at once when the state changes (intro -> fight -> cleared ...).
 func _am_tick(dt: float) -> void:
@@ -553,19 +788,39 @@ func _am_tick(dt: float) -> void:
 	_am_t -= dt
 	if _am_t <= 0.0 or state != _am_state: _am_send()
 
-## `{t:"am", st, of, s(state), lv(lives), hf(boss hp fraction), sh(shrink size), dn:[downed seat slots], last, won}`.
+## `{t:"am", st, of, s(state), lv(lives), hf(boss hp fraction), sh(shrink size), dn:[downed slots], dnt:[s to revive],
+## rv:{n,k,x,y,z,hf,iv}, bt:[bot-played slots], cn (clear/victory counter), last, won, ph?, vic?}`.
 func _am_payload() -> Dictionary:
 	var sh := 0.0
 	if sim != null:
 		var r: Dictionary = sim.combat.rules.shrink
 		if not r.is_empty(): sh = float(r.get("size", 0.0))
 	var dn: Array = []
-	for k in downed_seats(): dn.append(int(seat_slots[k]) if k < seat_slots.size() else k)
+	var dnt: Array = []
+	for k in downed_seats():
+		dn.append(_seat_slot(k))
+		dnt.append(snappedf(seat_revive_left(k), 0.1))
+	var bt: Array = []
+	for k in range(1, seats.size()):
+		var f: FighterState = seats[k]
+		if f != null and not f.is_ghost and sim != null and sim.controllers.get(f) is BotBrain: bt.append(_seat_slot(k))
 	var p := {"t": "am", "st": stage, "of": count(), "s": state, "lv": lives, "hf": boss_frac(), "sh": sh,
-		"dn": dn, "last": last, "won": state == "won"}
-	if not victory.is_empty(): p["vic"] = victory                # the guest pays the victory bonus from its own save
-	if phase_n > 0: p["ph"] = phase_n                            # boss phase (the guest's bar / toasts)
+		"dn": dn, "dnt": dnt, "bt": bt, "cn": _am_seq, "last": last, "won": state == "won"}
+	if not _last_revive.is_empty(): p["rv"] = _last_revive            # the guest places its own fighter from this once
+	if not victory.is_empty(): p["vic"] = victory                    # the guest pays the victory bonus from its own save
+	if phase_n > 0: p["ph"] = phase_n                                # boss phase (the guest's bar / toasts)
 	return p
+
+## The room slot of seat k (`arc.seats`; k when it was never mapped). `arc.seats` arrives through JSON, so its numbers are
+## floats: compare ints, never `Array.find` (a float 1 and an int 1 do not match there).
+func _seat_slot(k: int) -> int:
+	return int(seat_slots[k]) if k >= 0 and k < seat_slots.size() else k
+
+## The seat index of a room slot, -1 when the slot is not one of the player seats.
+func _seat_of_slot(slot: int) -> int:
+	for k in seat_slots.size():
+		if int(seat_slots[k]) == slot: return k
+	return -1
 
 ## Send `am` to every guest through the room (HostSession.arcade_send). Also remembers the state, so step's 5 Hz timer
 ## only sends again when the state moves (intro -> fight -> cleared) or 0.2 s passed.
@@ -609,8 +864,10 @@ func _fight(dt: float) -> void:
 ## still up; when every seat is down the attempt fails (one shared life). One seat reproduces the old rule exactly: the
 ## stage fails the same frame its only player dies.
 func _seats(dt: float) -> void:
+	for k: int in _seat_grace.keys():
+		_seat_grace[k] = maxf(float(_seat_grace[k]) - dt, 0.0)
 	for k in seats.size():
-		if seat_down.has(k): continue
+		if seat_down.has(k) or float(_seat_grace.get(k, 0.0)) > 0.0: continue
 		var f: FighterState = seats[k]
 		if f.dead or int(f.st["deaths"]) > int(_deaths0[k]): _seat_down(k)
 	var up := living_seats()
@@ -634,14 +891,20 @@ func _seat_down(k: int) -> void:
 	seat_downed.emit(k, REVIVE_TIME)
 
 ## The seat comes back on the floor, at full health for its class (a fresh fighter: the K.O. cleared its hands), away from
-## the fight, with a short invulnerability. No life is lost (lives are the shared run lives).
+## the fight, with a short invulnerability. No life is lost (lives are the shared run lives). Online, the guest places its
+## OWN fighter from `am.rv` (same spot, health fraction and invulnerability), so this records that instruction.
 func _seat_up(k: int) -> void:
 	if not seat_down.has(k): return
 	seat_down.erase(k)
 	var f: FighterState = seats[k]
 	var best := _safe_spot()
 	sim.combat.place_at(f, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else sim.combat.spawn_y)
-	f.elim = false; f.dead = false; f.death_t = 0.0; f.fell_t = false; f.invuln = 2.5
+	f.elim = false; f.dead = false; f.death_t = 0.0; f.fell_t = false; f.invuln = 1.5
+	_seat_grace[k] = 1.0                       # its owner's "still dead" snapshot may arrive after this revive
+	_rv_n += 1
+	_last_revive = {"n": _rv_n, "k": _seat_slot(k), "x": snappedf(f.phys.px, 0.01), "y": snappedf(f.phys.py, 0.01),
+		"z": snappedf(f.phys.pz, 0.01), "hf": snappedf(clampf(f.hp / maxf(1.0, sim.combat.max_hp(f)), 0.05, 1.0), 0.01),
+		"iv": 1.5}
 	seat_revived.emit(k)
 
 ## The safest of a few random bot spots: the farthest from the nearest living seat. The same six draws the old
@@ -808,9 +1071,12 @@ func _pay() -> Dictionary:
 			"reward": scaled(int(d.get("coin_reward", 0))), "bonus": scaled(int(d.get("first_clear_bonus", 0))) if first else 0})
 	run_coins += coins
 	run_kos += kos
+	var reward := scaled(int(d.get("coin_reward", 0)))
+	var first_bonus := scaled(int(d.get("first_clear_bonus", 0)))
 	var out := {"id": id, "stage": stage, "name": str(d["name"]), "time": t_stage, "kos": kos, "coins": coins, "first": first,
-		"reward": scaled(int(d.get("coin_reward", 0))), "bonus": scaled(int(d.get("first_clear_bonus", 0))) if first else 0,
-		"seats": per}
+		"reward": reward, "bonus": first_bonus if first else 0,
+		"first_bonus": first_bonus, "seats": per}
+	_am_seq += 1                                  # a guest's own save pays this clear on its own `am.cn`, once
 	history.append(out)
 	return out
 
@@ -849,6 +1115,7 @@ func _win() -> void:
 			"hat_first": hat_first, "hat_owned": hat_owned})
 	victory["seats"] = per
 	state = "won"
+	_am_seq += 1                                  # ... and pays the victory bonus on its own `am.won` + `am.vic`, once
 	run_won.emit()
 	world.show_panel(ArcadePanels.won(self, quit_run))
 
@@ -868,6 +1135,14 @@ func _reload() -> void:
 
 func quit_run() -> void:
 	if world != null: world._on_title_pressed()
+
+## The room is over (World._on_net_ended): an Arcade co-op run does not migrate (M5 is cut), so a guest whose host left
+## gets a plain run-over message instead of the generic "host left the room". The host's own leave says the run is over.
+func end_reason(reason: String) -> String:
+	if not online: return reason
+	if host_mode: return tr("The Arcade run is over.")
+	if reason.to_lower().contains("host left"): return tr("The host left. The Arcade run is over.")
+	return reason
 
 # ---------------- fighters ----------------
 
@@ -969,12 +1244,17 @@ func alive_enemies() -> int:
 		if not downed.has(e): n += 1
 	return n
 
+## The boss health fraction: the host reads its fighter, a guest mirrors the host's `am.hf` (its boss is a ghost it never
+## simulates, so its own hp is not the authority).
 func boss_frac() -> float:
+	if online and not host_mode: return clampf(_guest_hf, 0.0, 1.0)
 	if boss == null: return 0.0
 	return clampf(boss.hp / sim.combat.max_hp(boss), 0.0, 1.0) if not boss.dead else 0.0
 
 ## The boss' fight is on: the bar shows.
 func boss_active() -> bool:
+	if online and not host_mode:
+		return _guest_boss_slot >= 0 and state in ["fight", "clearing", "failing"] and _guest_hf > 0.0
 	return boss != null and state == "fight" and not downed.has(boss)
 
 ## Boss phases: at 66 % and 33 % health the boss gets faster and hits harder, with a toast; the stage's change request

@@ -340,7 +340,7 @@ New room messages (host → all unless noted):
 |---|---|---|
 | `gm` | `k: "st"`, `ko[]`, `dt[]`, `gg[]`, `pt?` | 1 Hz mode state: every slot's K.O.s, deaths and Weapon Ladder rung, the Pillars clock. Godot guests take it over (team scores are the sums of `ko` by `gteam`). |
 | `gm` | `k: "cw"` / `"cs"` / `"ce"`, `id`, `fl?`, `g?` | Chaos: an event was announced (3 s countdown) / started / ended. `id` = `crates`, `gravity`, `knockback`, `giant`, `speed`, `floor`; `fl` = the floor it forces; `g` = the giant's slot. Guests apply it (gravity, knockback, speed, giant, floor) instead of rolling their own. |
-| `am` | `st`, `of`, `s`, `lv`, `hf`, `sh`, `dn[]`, `last?`, `won`, `ph?`, `vic?` | Arcade co-op run state (`6.4`): stage index / count, state (`intro`/`fight`/`clearing`/`cleared`/`failing`/`failed`/`over`/`won`), shared lives, boss health fraction 0–1, shrinking-floor size in metres (0 = none), the downed player seats' slots, the stage summary (`_pay()`: `seats[]` with each seat's K.O.s and the coins that save gets), `won`, the boss phase and the victory summary. Display state only: it never advances a stage, pays coins or damages anyone on the guest. |
+| `am` | `st`, `of`, `s`, `lv`, `hf`, `sh`, `dn[]`, `dnt[]`, `rv?`, `bt[]`, `cn`, `last?`, `won`, `ph?`, `vic?` | Arcade co-op run state (`6.4`): stage index / count, state (`intro`/`fight`/`clearing`/`cleared`/`failing`/`failed`/`over`/`won`), shared lives, boss health fraction 0–1, shrinking-floor size in metres (0 = none), the downed player seats' slots and seconds to their revive, the latest revive instruction, the bot-played seats, the clear/victory counter, the stage summary (`_pay()`: `seats[]` with each seat's K.O.s, `reward`/`bonus`, and the coins that save gets), `won`, the boss phase and the victory summary. Display state only: it never advances a stage or damages anyone; it does drive the guest's own cards/HUD/floor and its own save (per player, once per `cn`). |
 | `emote` | `id`, `e` | guest → host → others (and the host's own): player `id` plays emote `e` (an id of `godot/data/extra/locker.json` `emotes`). The host stamps `id`, drops unknown ids and more than one per 0.4 s. |
 
 Rules a Godot host follows:
@@ -373,8 +373,11 @@ is no Classic version of a run), the room is private and has two seats.
 | `arcade: true` | host opts (`begin_host`) | Not a wire field: the room reads Construction from the run instead of the Host sheet (HP, gravity, knockback, crates and the K.O. limit come from the stage table) and caps at two seats. The hub's "Play co-op" calls this directly. |
 | `start.slots` | `start` | `[seat0, seat1, crew0, crew1, …]` — the two player seats first, then the stage's crew bots (the boss is `crew[0]`). `MatchSim.setup` gets `bot_count = slots.size() - 1`, so the host has a fighter for every slot; `HostMatch.setup` turns seat slots into ghosts (humans) or keeps them as teammate bots and keeps the crew as its AI bots. **The crew slots are not joinable**: a joining/rejoining guest only ever gets slot 1. `slots.size() <= 8` (stage 1: 2 + 4). |
 | `start.arc` | `start` | `{run, st, of, diff, seed, seats, crew, boss, big, state, lv}`: the run seed, this stage (0-based) and the stage count, the difficulty, this stage's generated-site seed (`SiteMap.set_seed` — the guest rebuilds the identical site from it), the seat/crew slots, the boss' slot (-1 on a stage without one), the 1.5x Client visual flag, the state (always `intro` for a stage's start) and the shared lives. **A new `start` per stage is the stage-transition mechanism**, exactly like a rematch: the guest's world rebuilds (`_on_net_start` → `load_map`), so no stale map, crates, hazards or crew survive. A mid-run join/rejoin gets the same `start` with the current stage's `arc`. |
-| `am` | host → all | Run display state, ~5 Hz + on every state change (table in `6.3`): stage/count, state, shared lives, boss hp fraction, shrink size, downed seats, the stage summary and the victory flag. The guest applies it for its cards/HUD; it is presentation only. Coins and records are per player: the host writes its own save, and each guest applies `am.last.seats` / `am.vic` to its own save (never a second save on the host). |
-| `am.dn` | host → all | The downed player seats' **room slots** (from `arc.seats`), for the guest's HUD/revive countdown. The 6 s auto-revive and "all seats down" rule stay host-side (`ArcadeManager`). |
+| `am` | host → all | Run display state, ~5 Hz + on every state change (table in `6.3`): stage/count, state, shared lives, boss hp fraction, shrink size, downed seats (`dn`+`dnt`), the revive instruction (`rv`), bot-played seats (`bt`), the clear/victory counter (`cn`), the stage summary and the victory flag. The guest applies it for its cards/HUD, its own shrinking floor and its own down/revive; it is presentation only (it never advances a stage or damages anyone). Coins and records are per player: the host writes its own save, and each guest applies its own `DlcSave.has_cleared` to `last` / `vic` and pays its own save once per `cn` (never a second save on the host, never a guest save on the host). |
+| `am.dn` / `am.dnt` | host → all | The downed player seats' **room slots** (from `arc.seats`) and the seconds left on their 6 s auto-revive, for the guest's HUD lines and its "Down! Back in N" overlay. A guest whose own slot is in `dn` pins its own fighter (no input, no local respawn); the 6 s auto-revive and the "all seats down" rule stay host-side (`ArcadeManager`). |
+| `am.rv` | host → all | The latest revive, applied once by its `n`: `{n, k (room slot), x, y, z, hf (health fraction), iv (invulnerability s)}`. The guest places its own fighter at that safe spot with that health fraction and invulnerability; without it the guest never brings its own fighter back. |
+| `am.cn` | host → all | A monotonic counter bumped by the host's stage clear (`_pay`) and final victory (`_win`). The guest pays its own save for a clear/victory only when `cn` moves past what it already paid, so repeated `am`s and a stage retry pay nothing twice. |
+| `am.bt` | host → all | The room slots played by a **bot** (a dropped guest's seat, or the teammate bot the room started with): `am` marks them so the HUD/cards can say so. The seat stays a player seat (it fights the crew) and is joinable again. |
 
 Rules a Godot host follows for this room (implemented in `host_session.gd` / `host_match.gd` / `arcade_manager.gd`):
 
@@ -382,15 +385,23 @@ Rules a Godot host follows for this room (implemented in `host_session.gd` / `ho
   the `start` carries `rules.gmode = "construction"` so Godot guests play Construction.
 - The run's stage/seed/lives/crew live in the host's `ArcadeManager`; `next_stage`/`retry_stage` reload the world, and the
   new `start` (with the stage's `arc`) goes out from `match_ready` like any other match start.
-- A teammate bot fills an empty seat: the room may start 1 human + 1 bot, and the bot takes the seat again if the friend
-  leaves; the friend rejoins the same slot and gets the current stage's `start`. Seat flags (`is_player`) are re-applied
-  when a seat changes owner.
-- If the host leaves, the run is over (no host migration inside a run for v1; `capture_resume` never carries a run).
+- A teammate bot fills an empty seat: the room may start 1 human + 1 bot. If the friend leaves mid-run the seat becomes a
+  bot that KEEPS the player's fighter (class, look, name, weapon; `HostMatch.ghost_to_bot`) and fights the crew
+  (`ghost_to_bot` + `ArcadeManager.refresh_seats(keep)`), and `am.bt` marks it; the friend rejoins the same slot, gets the
+  current stage's `start` (current `arc.st`/seed) and `bot_to_human` gives the seat back with the class from its hello.
+  Seat flags (`is_player`) are re-applied when a seat changes owner.
+- If the host leaves, the run is over: no host migration inside an Arcade run for v1 (`capture_resume` never carries one).
+  The relay promotes the remaining player, but the Arcade world does not resume it: it closes the promoted room and both
+  sides return with "The host left. The Arcade run is over." (the host's own message is "The Arcade run is over.").
 
-Test: `npm run test:godot-host`, scenario D ("arcade"): a host starts the room with the teammate bot, a Godot guest joins
-mid-run, the run advances to stage 2 (a new `start` with a fresh seed), the guest reports the same site seed and sees the
-host seat, every crew slot and the boss as ghosts, and receives `am`; the guest leaving turns seat 1 back into the
-re-dressed teammate bot while the room keeps running.
+Test: `npm run test:godot-host`, scenario D ("arcade"): a host starts the room with the teammate bot; a Godot guest joins
+mid-fight and reports the same site seed, the host seat / every crew slot / the boss as ghosts, and `am`; the host puts
+the guest seat down (`am.dn`) and auto-revives it (`am.rv`: the guest pins itself, then is placed at the host's spot with
+its health fraction); a real clear and a retry clear pay the guest's OWN save once (350 coins) and then nothing (the
+`GUEST_SAVE` lines); the HUD names "Stage 2 / 6" with the boss bar at `am.hf`, and `am.sh` sets the guest's shrinking
+floor; the guest leaves and seat 1 becomes a teammate bot that keeps the player's class and targets the crew; the guest
+REJOINS mid-run and gets a `start` with the current `arc.st`/seed and seat 1 (`slots[1].kind == "human"`, its class);
+the host wins (the guest pays the victory bonus + hat on its own save) and leaves (the run-over reason).
 
 ---
 

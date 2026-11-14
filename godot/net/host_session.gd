@@ -487,10 +487,12 @@ func _drop(cid: int) -> void:
 	rv.erase(id)
 	var hm := host_match()
 	if started and hm != null:
-		var info := hm.human_to_bot(id, opt_bots)
+		# Arcade co-op: the seat keeps the player's fighter (class/kit/look) and a teammate bot drives it (M3's handover);
+		# every other mode restores the seat's original placeholder bot. Both keep the seat for a rejoin.
+		var info: Dictionary = hm.ghost_to_bot(id, opt_bots) if arcade else hm.human_to_bot(id, opt_bots)
 		slots = hm.slots
 		if arcade:
-			arcade_refresh(hm, id)                           # the seat is the teammate bot again (re-dressed)
+			arcade_refresh(hm, id, true)                     # seat flags only: do not re-dress the kept fighter
 			var f := hm.slot_fighter(id)
 			if f != null: hm.slots[id] = hm.bot_info(f, id)  # ... and its slot table entry must match
 			slots = hm.slots
@@ -515,10 +517,10 @@ func start_msg_for(hm: HostMatch) -> Dictionary:
 ## fighters (a ghost seat is not a locally played one, a teammate-bot seat is). The run registers itself on the sim's
 ## metadata (ArcadeManager.setup_sim), so this file never statically depends on the DLC script: the net tests compile the
 ## net layer before the autoloads the DLC script needs exist.
-func arcade_refresh(hm: HostMatch, bot_slot: int = -1) -> void:
+func arcade_refresh(hm: HostMatch, bot_slot: int = -1, keep: bool = false) -> void:
 	if hm.sim == null or not hm.sim.has_meta("arcade_run"): return
 	var m: Variant = hm.sim.get_meta("arcade_run")
-	if m != null: m.call("refresh_seats", bot_slot)
+	if m != null: m.call("refresh_seats", bot_slot, keep)
 
 ## Arcade co-op run state (display only) out to every guest: `am` (docs/PROTOCOL.md 6.4). The host's ArcadeManager calls
 ## this through World.session; a non-arcade room ignores it.

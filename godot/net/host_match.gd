@@ -161,6 +161,32 @@ func _place(f: FighterState) -> void:
 	var p: Array = sp[randi() % sp.size()] if sp.size() > 0 else [0, 0]
 	combat.place_at(f, float(p[0]), float(p[1]), float(sim.map.get("spawnY", 0.01)))
 
+## Arcade co-op (M3, docs/ARCADE_COOP_PLAN.md §6): the guest in slot `k` dropped mid-run. Unlike human_to_bot, which
+## restores the seat's original placeholder bot, the seat KEEPS the player's fighter - class, look, name, weapon and the
+## health it had - and a teammate bot takes over driving it. The ArcadeManager keeps the seat a player seat (is_player,
+## `pve_seats`), so BotBrain hunts the crew instead of the host; the next stage rebuilds the seat from the slot table and
+## a rejoining guest gets the seat back through bot_to_human (same ghost, its class from its own hello). Without bots the
+## seat empties exactly like the other modes.
+func ghost_to_bot(k: int, bots: bool) -> Dictionary:
+	var g: FighterState = ghosts.get(k)
+	if g == null: return slots[k] if k < slots.size() else {}
+	if not bots:
+		remove_ghost(k)
+		slots[k] = {"kind": "empty", "id": k, "name": "", "skin": "none", "hat": "none", "color": 0, "cls": "wobbler"}
+		return slots[k]
+	ghosts.erase(k); ns.erase(k)
+	g.is_ghost = false; g.net_human = false; g.is_player = true
+	if g.dead or g.hp <= 0.0 or g.left:       # a dropped player caught down/fallen comes back with the bot, not pinned
+		g.hp = combat.max_hp(g); g.elim = false; g.death_t = 0.0; g.fell_t = false
+	g.dead = false; g.left = false
+	if g.weapon == "": ghost_equip(g, "spatula")
+	var brain: Variant = brains.get(k)
+	sim.controllers[g] = brain if brain != null else GhostControl.new()
+	ai[k] = g
+	slots[k] = bot_info(g, k)
+	combat.ev({"type": "relook", "f": g})
+	return slots[k]
+
 ## netStep's host check: in a lives mode, when players left and only one is still in, that one wins.
 func _before_report(dt: float) -> void:
 	gm_t -= dt
