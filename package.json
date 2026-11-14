@@ -73,7 +73,8 @@
     "test": "node tools/check-version.js && node tools/export-content.js --check && node tools/sync-shared.js --check && node tools/i18n.js --check && node tools/check-maps.js --quiet && node tools/test-server.js",
     "test:godot-touch-layout": "node tools/test-touch-layout.js",
     "test:godot-kids": "node tools/test-kids.js",
-    "test:godot-ranking": "node tools/test-ranking.js"
+    "test:godot-ranking": "node tools/test-ranking.js",
+    "test:godot-destruct": "node tools/test-godot-destruct.js"
   },
   "engines": {
     "node": ">=18"

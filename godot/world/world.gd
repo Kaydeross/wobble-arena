@@ -35,6 +35,7 @@ const RANK_MIN_MS := 2500
 @export var rng_seed := 0          ## 0 = random
 @export var hp_setting := 200.0    ## cfg.hp (the web menu offers 100 / 150 / 200 / 300 / 500)
 @export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
+@export var destruct_choice := ""  ## destructible props offline: "" = Settings "destructible"; on/off force it (docs/DESTRUCTIBLE.md)
 @export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
 @export var difficulty := ""       ## bot skill offline: "" = Settings "difficulty" (easy / normal / hard / insane, default normal)
@@ -133,6 +134,7 @@ func _ready() -> void:
 		elif a.begins_with("--bots="): bot_count = int(a.substr(7))
 		elif a.begins_with("--seed="): rng_seed = int(a.substr(7))
 		elif a.begins_with("--dyn="): dyn_choice = a.substr(6)
+		elif a.begins_with("--destruct="): destruct_choice = a.substr(11)
 		elif a.begins_with("--mode="): mode_id = a.substr(7)
 		elif a.begins_with("--limit="): ko_limit = int(a.substr(8))
 	Tier.configure_viewport(get_viewport())
@@ -227,6 +229,13 @@ func load_map(id: String) -> void:
 	else:
 		var mode := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
 		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
+		# Destructible environment mode (docs/DESTRUCTIBLE.md): OFFLINE only, opt-in, never on the Practice Range, the
+		# Sandbox, Construction or the Arcade. Off means no solids, no meshes and no code path at all.
+		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode):
+			var want: bool = bool(Settings.get_value("destructible", false)) if destruct_choice == "" else destruct_choice == "on"
+			if want and Destruct.has_arena(id):      # only arenas with authored props: everywhere else the mode is a no-op
+				sim.destructible = true
+				sim.view_parent = map_node   # prop meshes are new children of the built map, never a rebuild of it
 		sim.dyn_choice = "off" if build_mode else (dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random")))
 		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
 			sim.dyn_choice = "random"            # Chaos: a random floor unless the player picked a moving one
@@ -438,6 +447,8 @@ func _drain_events() -> void:
 					_toast(tr("Got %s") % tr(sim.pickups.label(c2["key"])))
 			"toast":
 				_toast(str(e["text"]))
+			"break":
+				_on_break(e)             # destructible props (docs/DESTRUCTIBLE.md): pooled debris + dust + a short shake
 			"match_end":
 				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
@@ -469,6 +480,23 @@ func _drain_events() -> void:
 			"chaos_end":
 				if e["id"] != "crates": _toast("Back to normal")
 	evs.clear()
+
+## A breakable prop broke (docs/DESTRUCTIBLE.md): a burst of its own coloured chips, a little dust, an optional ground
+## ring and a short camera shake. Presentation only, and every particle comes from the existing pooled MultiMeshes, so a
+## full arena of breaks still costs no new draw calls and stays inside the MID FX caps (<= 24 chips + 2 dust per break).
+func _on_break(e: Dictionary) -> void:
+	var at := Vector3(float(e["x"]), float(e["y"]) + float(e["h"]) * 0.4, float(e["z"]))
+	var base := Vector3(float(e["x"]), float(e["y"]) + 0.08, float(e["z"]))
+	var col := MapBuilder.hex(int(e.get("color", 0xffffff)))
+	var trim := Color(minf(1.0, col.r + 0.22), minf(1.0, col.g + 0.22), minf(1.0, col.b + 0.22))
+	if fx:
+		var w := float(e.get("w", 1.4))
+		fx.chips(at, [col, trim, col.darkened(0.35)], mini(24, fx.cnt(12)), 5.5 + w * 0.6,
+			clampf(w * 0.16, 0.16, 0.28), 0.9, 18.0, 1.2)
+		fx.dust(base, mini(2, fx.cnt(2)), 3.0)
+		if fx.lv >= 1:
+			fx.ring(base + Vector3(0, -0.01, 0), trim, maxf(w, float(e.get("d", 1.4))) * 0.9, 0.3, 0.5)
+		add_shake(clampf(0.11 - at.distance_to(player_pos()) * 0.006, 0.03, 0.1))
 
 func _on_ko(e: Dictionary) -> void:
 	var k: FighterState = e.get("killer")
@@ -858,6 +886,7 @@ func _update_mode_ui(delta: float) -> void:
 	var ins := SafeArea.insets(get_viewport())
 	var board := session == null and sim.combat.teams > 0 and spectating == null
 	var t := sim.combat.rules.hud_text(sim.player, not board) if session == null else ""
+	if sim.destruct != null and sim.destruct.total() > 0: t += ("   " if t != "" else "") + tr("Breakables")
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
