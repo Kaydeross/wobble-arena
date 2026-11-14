@@ -58,6 +58,8 @@ func _run() -> void:
 	await _events()
 	await _boss_weapon_crates()
 	await _phases()
+	await _boss_ring_out()
+	await _boss_speeds()
 	await _replay_and_reload()
 	await _difficulties()
 	await _class_pick()
@@ -1005,7 +1007,8 @@ func _phases() -> void:
 	sim.combat.events.clear()
 	for k in 3: w.tick(FRAME)
 	check(arc.phase_n == 1, "phase 1 at 66 %% (%d)" % arc.phase_n)
-	check(absf(b.phys.speed - spd0 * 1.1) < 0.001 and absf(b.dmg_scale - dmg0 * 1.2) < 0.001, "phase 1: faster and harder")
+	check(absf(b.phys.speed - minf(spd0 * 1.05, 7.4)) < 0.001 and absf(b.dmg_scale - dmg0 * 1.2) < 0.001,
+		"phase 1: +5 % speed (additive) and harder")
 	check(int(arc.events.counts.get("change_request", 0)) == 1, "the change request fired")
 	var key1: String = arc.kit[b]
 	check(key1 != key0, "the Client swapped tools (%s -> %s)" % [key0, key1])
@@ -1017,7 +1020,7 @@ func _phases() -> void:
 	b.hp = mx * 0.32
 	for k in 3: w.tick(FRAME)
 	check(arc.phase_n == 2, "phase 2 at 33 percent")
-	check(absf(b.phys.speed - spd0 * 1.21) < 0.001, "phase 2: faster again")
+	check(absf(b.phys.speed - minf(spd0 * 1.10, 7.4)) < 0.001, "phase 2: +10 % in total (additive, not x1.21)")
 	check(int(arc.events.counts.get("change_request", 0)) == 2, "second change request")
 	b.hp = mx * 0.05
 	for k in 3: w.tick(FRAME)
@@ -1041,6 +1044,260 @@ func _phases() -> void:
 	check(arc.phase_n == 1 and seen_toast[0], "Engineer phase 1 announces itself")
 	check(arc.kit[b] == "drill", "the Engineer keeps its cordless drill")
 	await _free_world(w)
+
+# ---------------- 5b. a boss falling off the edge is not a K.O. ----------------
+
+## The table id of stage `si`.
+func _stage_id(si: int) -> String:
+	return str((AM.call("stages") as Array)[si]["id"])
+
+## Knock a fighter off the site: exactly what MatchSim._ring_out sees when a fighter crosses ring_out_y (the owner's
+## "boss drop off from edge"). All player seats are kept invulnerable by the callers, so only the fall is under test.
+func _ring_out(f: FighterState, sim: MatchSim) -> void:
+	f.phys.place(f.phys.px, sim.ring_out_y - 5.0, f.phys.pz)
+
+func _keep_seats_alive(w: Node) -> void:
+	for f: FighterState in w.arcade.seats: f.invuln = 5.0
+
+## The owner report ("boss drop off from edge = stage clear"): a ring-out leaves the enemy dead with its health intact and
+## must never be a defeat. The boss comes back on the floor with the health it had, its trade tool and a short
+## invulnerability, the fight goes on, and only a real K.O. (hp <= 0) clears the stage.
+func _boss_ring_out() -> void:
+	_unlock()
+	var sv := _sv()
+	var diff := "nightmare"
+	# every boss stage: one fall -> one revive, health and tool kept, no pay/record, then a real K.O. clears
+	for si in [1, 2, 3, 4, 5]:
+		var w := _launch(si, true, 1.0)
+		var arc = w.arcade
+		_start_fight(w)
+		var sim: MatchSim = w.sim
+		var b: FighterState = arc.boss
+		var mx := sim.combat.max_hp(b)
+		b.hp = mx * 0.8
+		b.invuln = 0.0
+		var frac0 := b.hp / mx
+		var kit0: String = arc.kit[b]
+		var falls0 := int(b.st["falls"])
+		var coins0: int = sv.coins
+		_keep_seats_alive(w)
+		_ring_out(b, sim)
+		for k in 3: w.tick(FRAME)
+		check(arc.state == "fight", "stage %d: a boss ring-out never clears the stage (%s)" % [si + 1, arc.state])
+		check(not b.dead and not arc.downed.has(b), "stage %d: the boss is back on its feet" % (si + 1))
+		check(absf(b.hp / mx - frac0) < 0.02, "stage %d: it keeps its pre-fall health fraction (%.2f -> %.2f)" % [si + 1, frac0, b.hp / mx])
+		check(str(arc.kit[b]) == kit0 and b.weapon == kit0, "stage %d: its trade tool is back in hand (%s)" % [si + 1, b.weapon])
+		check(b.invuln > 0.0, "stage %d: it revives with a short invulnerability" % (si + 1))
+		check(b.phys.py > sim.ring_out_y and b.phys.py < 2.0, "stage %d: it is back on the floor (y %.2f)" % [si + 1, b.phys.py])
+		check(arc.hud.boss_visible(), "stage %d: the boss bar still shows" % (si + 1))
+		check(int(b.st["falls"]) == falls0 + 1, "stage %d: exactly one fall (no fall/revive churn)" % (si + 1))
+		check(int(arc.revived.get(b, 0)) == 1, "stage %d: revived once (%s)" % [si + 1, arc.revived.get(b, 0)])
+		var away := Vector2(b.phys.px - sim.player.phys.px, b.phys.pz - sim.player.phys.pz).length()
+		check(away > 2.5, "stage %d: it comes back away from the player (%.1f m)" % [si + 1, away])
+		check(sv.coins == coins0 and arc.history.is_empty() and not DlcSave.has_cleared(sv.dlc, _stage_id(si), diff),
+			"stage %d: a ring-out pays nothing and records no clear" % (si + 1))
+		# the fight really continues: 1.5 s later the boss is still up and did not fall again
+		for k in 90:
+			_keep_seats_alive(w)
+			w.tick(FRAME)
+		check(arc.state == "fight" and not b.dead and int(b.st["falls"]) == falls0 + 1 and int(arc.revived.get(b, 0)) == 1,
+			"stage %d: no repeated fall/revive churn (state %s, falls %s)" % [si + 1, arc.state, b.st["falls"]])
+		# ... and a later real kill still clears
+		b.invuln = 0.0
+		sim.combat.hit(b, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim.player)
+		for k in 3: w.tick(FRAME)
+		check(arc.state == "clearing" and arc.downed.has(b) and b.hp <= 0.0,
+			"stage %d: only hp <= 0 clears it (%s, hp %.1f)" % [si + 1, arc.state, b.hp])
+		await _free_world(w)
+	# The old clear decider was `dead && !fell_t`: any path that lost that transient flag between the fall and the
+	# manager's step (a bot respawn timer, a net re-build, a later code change) read as a K.O. and cleared the stage.
+	# The invariant is hp now, so a dead fighter with health left is a fall whatever the flag says.
+	var wf := _launch(2, true, 1.0)            # Designer
+	var arcf = wf.arcade
+	_start_fight(wf)
+	var simf: MatchSim = wf.sim
+	var bf: FighterState = arcf.boss
+	_keep_seats_alive(wf)
+	bf.hp = simf.combat.max_hp(bf) * 0.7
+	bf.dead = true
+	bf.fell_t = false                          # the flag lost: the pre-fix code called this a K.O. and cleared the stage
+	bf.death_t = 5.0
+	bf.phys.place(0.0, simf.ring_out_y - 5.0, 0.0)
+	wf.tick(FRAME)
+	check(arcf.state == "fight" and not bf.dead and not arcf.downed.has(bf) and absf(bf.hp / simf.combat.max_hp(bf) - 0.7) < 0.02,
+		"a dead-with-health boss is a fall whatever fell_t says (state %s, hp %.0f)" % [arcf.state, bf.hp])
+	await _free_world(wf)
+	# a clear after a fall pays and records exactly like a normal clear (Engineer, first clear on a fresh profile)
+	_unlock()
+	var w2 := _launch(1, true, 1.0)
+	var arc2 = w2.arcade
+	_start_fight(w2)
+	var sim2: MatchSim = w2.sim
+	var b2: FighterState = arc2.boss
+	var t2: Dictionary = (AM.call("stages") as Array)[1]
+	b2.hp = sim2.combat.max_hp(b2) * 0.5
+	b2.invuln = 0.0
+	_keep_seats_alive(w2)
+	_ring_out(b2, sim2)
+	for k in 3: w2.tick(FRAME)
+	check(arc2.state == "fight" and arc2.history.is_empty(), "the fall itself pays no clear")
+	var c0: int = sv.coins
+	b2.invuln = 0.0
+	sim2.combat.hit(b2, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim2.player)
+	for k in 3: w2.tick(FRAME)
+	check(arc2.state == "clearing", "the real K.O. starts the existing clear flow (%s)" % arc2.state)
+	for k in int((arc2.CLEAR_DELAY + 0.3) / FRAME): w2.tick(FRAME)
+	check(arc2.state == "cleared", "the clear card comes up after the delay (%s)" % arc2.state)
+	var paid: int = sv.coins - c0
+	var want: int = arc2.stage_coins(t2)
+	check(paid >= want and paid < want + 60, "the post-fall clear pays the stage coins once (%d, K.O. coins included)" % paid)
+	check(arc2.history.size() == 1 and DlcSave.has_cleared(sv.dlc, "engineer", diff) and DlcSave.best(sv.dlc, diff) == 2,
+		"the post-fall clear records the stage once (%s)" % [arc2.history])
+	await _free_world(w2)
+	# a second fall revives a second time: each fall is exactly one revive, still no defeat in between
+	var w3 := _launch(2, true, 1.0)            # Designer
+	var arc3 = w3.arcade
+	_start_fight(w3)
+	var sim3: MatchSim = w3.sim
+	var b3: FighterState = arc3.boss
+	for n in 2:
+		_keep_seats_alive(w3)
+		b3.invuln = 0.0
+		_ring_out(b3, sim3)
+		for k in 3: w3.tick(FRAME)
+		check(arc3.state == "fight" and not b3.dead, "fall %d: the fight continues" % (n + 1))
+	check(int(b3.st["falls"]) == 2 and int(arc3.revived.get(b3, 0)) == 2 and arc3.downed.is_empty(),
+		"two falls -> two revives, never a downed boss (%s)" % [arc3.revived.get(b3, 0)])
+	await _free_world(w3)
+	# a crew ring-out on a BOSS stage: the crew member revives too and only the boss' hp decides the clear
+	var w4 := _launch(1, true, 1.0)
+	var arc4 = w4.arcade
+	_start_fight(w4)
+	var sim4: MatchSim = w4.sim
+	var crew: FighterState = arc4.spawn_minion()
+	check(crew != null and arc4.enemies.has(crew), "a backup tradie joins the boss stage")
+	_keep_seats_alive(w4)
+	crew.invuln = 0.0
+	_ring_out(crew, sim4)
+	for k in 3: w4.tick(FRAME)
+	check(arc4.state == "fight" and not crew.dead and not arc4.downed.has(crew),
+		"a crew ring-out on a boss stage revives too, no clear")
+	check(int(crew.st["falls"]) == 1 and int(arc4.revived.get(crew, 0)) == 1 and not arc4.downed.has(arc4.boss),
+		"the crew member is revived once and the boss is untouched")
+	await _free_world(w4)
+	# a stage WITHOUT a boss: a tradie fall is not a clear either; the stage clears when every enemy is really down
+	var w5 := _launch(0, true, 1.0)
+	var arc5 = w5.arcade
+	_start_fight(w5)
+	var sim5: MatchSim = w5.sim
+	var e0: FighterState = arc5.enemies[0]
+	_keep_seats_alive(w5)
+	e0.invuln = 0.0
+	_ring_out(e0, sim5)
+	for k in 3: w5.tick(FRAME)
+	check(arc5.state == "fight" and not e0.dead, "a tradie ring-out on stage 1 does not clear the stage")
+	for e: FighterState in arc5.enemies:
+		e.invuln = 0.0
+		sim5.combat.hit(e, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim5.player)
+	for k in 3: w5.tick(FRAME)
+	check(arc5.state == "clearing", "stage 1 clears once every tradie is really down (%s)" % arc5.state)
+	await _free_world(w5)
+
+# ---------------- 5c. boss movement speeds ----------------
+
+## The speed audit (owner report: "the Designer with its speed buff is too fast"): every boss walks inside a band under
+## the player's 7.5 m/s, the phases add a small ADDITIVE step (never the old x1.21 compounding), a Speed Boost pickup is
+## a short burst that cannot pass the 8.5 m/s cap, and co-op gets exactly the same numbers as solo.
+func _boss_speeds() -> void:
+	_unlock()
+	var player := 7.5          # FighterPhysics.speed (a Wobbler): the yardstick every band is under
+	var cap := 7.4             # permanent base + phase speed the manager enforces
+	var buff_cap := 8.5        # a temporary Speed Boost burst may reach this
+	var bands := [[5.0, 6.0], [6.0, 7.2], [6.8, 7.4]]
+	var ids: Array = []
+	for d: Dictionary in AM.call("stages"): ids.append(str(d["id"]))
+	var speeds := {}
+	var lines := {}
+	for si in [1, 2, 3, 4, 5]:
+		var w := _launch(si, false, 1.0, "nightmare")     # the table's own bot skills, Nightmare speed scaling
+		var arc = w.arcade
+		_start_fight(w)
+		var b: FighterState = arc.boss
+		var base := b.phys.speed
+		speeds[ids[si]] = base
+		lines[ids[si]] = _line(b)
+		var in_band := false
+		for band: Array in bands:
+			if base >= float(band[0]) - 0.001 and base <= float(band[1]) + 0.001: in_band = true
+		check(base > 4.5 and in_band, "%s walks at %.2f m/s inside a boss band %s" % [ids[si], base, bands])
+		check(base <= player, "%s' base walk (%.2f) is at most the player's %.1f" % [ids[si], base, player])
+		# the phases: +5 %, then +10 % of the base in total -- additive, not x1.1 each time -- and capped
+		var mx: float = w.sim.combat.max_hp(b)
+		b.hp = mx * 0.65
+		for k in 3: w.tick(FRAME)
+		check(arc.phase_n == 1 and absf(b.phys.speed - minf(base * 1.05, cap)) < 0.001,
+			"%s phase 1: +5 %% (%.2f -> %.2f)" % [ids[si], base, b.phys.speed])
+		b.hp = mx * 0.32
+		for k in 3: w.tick(FRAME)
+		check(arc.phase_n == 2 and absf(b.phys.speed - minf(base * 1.10, cap)) < 0.001,
+			"%s phase 2: +10 %% in total, additive (%.2f -> %.2f, not x1.21)" % [ids[si], base, b.phys.speed])
+		check(b.phys.speed <= cap, "%s' phase speed stays under the permanent cap %.1f" % [ids[si], cap])
+		# a Speed Boost pickup: a short burst, never past the buff cap and never over the player's speed from the base
+		b.spd_t = 12.0
+		w.tick(FRAME)
+		var eff := b.phys.speed * b.phys.speed_mul * (1.4 if b.spd_t > 0.0 else 1.0)
+		check(eff <= buff_cap + 0.001, "%s with a Speed Boost walks at %.2f (burst cap %.1f)" % [ids[si], eff, buff_cap])
+		check(b.spd_t <= 2.0, "%s' Speed Boost is a short burst (%.1f s left)" % [ids[si], b.spd_t])
+		check(b.spd_t <= 0.0 or b.phys.speed * b.phys.speed_mul <= player,
+			"%s' burst starts from a speed the player can run (%.2f)" % [ids[si], b.phys.speed * b.phys.speed_mul])
+		await _free_world(w)
+	print("BOSS SPEEDS %s" % [speeds])
+	# the same boss in a two-seat co-op run: the same fixed stat line (speed, knockback taken, damage, rate, reload,
+	# ammo, acceleration, air control, jump). Before the fix the placeholder class leaked in: solo bosses were Bruisers
+	# (x0.88 speed, x0.65 knockback taken, x1.12 damage), two-seat co-op bosses Scamps (x1.22 speed = 39 % faster,
+	# x1.3 knockback taken = 2x, x0.92 damage) -- the owner's "Designer too fast with its speed buff".
+	var w2 := _launch_coop(2, false, 1.0, "nightmare")     # Designer, the reported boss
+	var arc2 = w2.arcade
+	_start_fight(w2)
+	var cb: FighterState = arc2.boss
+	var solo: Array = lines["designer"]
+	var coop := _line(cb)
+	check(_same_nums(coop, solo), "the co-op Designer has the solo stat line (%s vs %s)" % [coop, solo])
+	check(absf(cb.phys.speed - float(speeds["designer"])) < 0.001,
+		"co-op Designer walks %.2f like the solo one (%.2f)" % [cb.phys.speed, speeds["designer"]])
+	check(cb.phys.speed * cb.phys.speed_mul <= 7.4, "the co-op boss stays under the permanent cap (%.2f)" % (cb.phys.speed * cb.phys.speed_mul))
+	await _free_world(w2)
+	# the stage crew is class-neutral too: solo and co-op tradies walk alike, under the crew cap
+	var w3 := _launch(0, false, 1.0, "nightmare")
+	var arc3 = w3.arcade
+	_start_fight(w3)
+	var solo_crew: Array = []
+	for e: FighterState in arc3.enemies:
+		check(e.phys.speed <= 7.0, "%s walks at %.2f, under the crew cap 7.0" % [e.name, e.phys.speed])
+		check(absf(e.phys.speed_mul - 1.0) < 0.001 and absf(e.cls_dmg - 1.0) < 0.001 and absf(e.cls_kb - 1.0) < 0.001,
+			"%s uses the fixed Arcade line" % e.name)
+		solo_crew.append(_line(e))
+	await _free_world(w3)
+	var w4 := _launch_coop(0, false, 1.0, "nightmare")
+	var arc4 = w4.arcade
+	_start_fight(w4)
+	for i in mini(arc4.enemies.size(), solo_crew.size()):
+		var e: FighterState = arc4.enemies[i]
+		check(_same_nums(_line(e), solo_crew[i]), "co-op %s has the solo stat line" % e.name)
+	await _free_world(w4)
+
+## A fighter's effective stat line for the solo/co-op comparison: walk speed, damage, knockback taken, rate, reload, ammo,
+## acceleration, air control, jump. Every value is the one the simulation reads (class multiplier x table value).
+func _line(f: FighterState) -> Array:
+	return [f.phys.speed * f.phys.speed_mul, f.dmg_scale * f.cls_dmg, f.cls_kb, f.cls_rate, f.cls_reload, f.cls_ammo,
+		f.phys.accel_mul, f.phys.air_mul, f.phys.jump_mul]
+
+## Two rows of floats equal within a thousandth.
+func _same_nums(a: Array, b: Array) -> bool:
+	if a.size() != b.size(): return false
+	for i in a.size():
+		if absf(float(a[i]) - float(b[i])) > 0.001: return false
+	return true
 
 # ---------------- 6. replay pays nothing, saved and reloaded ----------------
 

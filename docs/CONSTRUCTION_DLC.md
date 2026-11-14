@@ -153,14 +153,57 @@ The scripted player is a crude yardstick (it only walks at the nearest enemy and
 
 **Melee retune (balance pass 3).** With the bosses on melee tools the scripted player's hammer could stunlock the low-force early bosses (Engineer 8/8 with 90 % health left on Normal, 8/8 with 75 % on Nightmare) while the Supervisor's Pipe Wrench (force 24, not scaled by `dmg_scale`) stunlocked the player (1/8 Normal, 0/8 Nightmare). The early bosses take the biggest buffs: Engineer hp 2.0 / damage 1.0 / speed 1.05 -> 2.8 / 1.6 / 1.2, Designer 3.0 / 1.45 / 1.2 -> 3.4 / 1.8 / 1.3. The Supervisor becomes a tanky, low-damage summoner: hp 3.0 -> 3.6, damage 0.9 -> 0.6 (the data floor), speed 0.95 -> 0.9; it keeps its one-tradie backup call at 50 % health. The Project Manager moves to 4.0 / 1.4 / 1.08 and The Client stays at 4.8 / 1.35 / 1.05 (the giant mallet already hurts). Boss health now climbs Engineer 2.8 < Designer 3.4 < Supervisor 3.6 < Project Manager 4.0 < The Client 4.8 at every difficulty (the floors keep the same order on Easy), checked in `arcade_test.gd`. The Supervisor is still the hardest stage for the non-dodging probe (2/8 Normal, 0/8 Nightmare): its damage is already at the `dmg_scale` floor of 0.6, so the rest of its sting is the pipe wrench's knockback; a human who keeps away, as the melee change intends, has a much better time than the probe.
 
-**Ring-out fix (found by the balance probe).** `MatchSim._ring_out` leaves a bot that falls off the site dead, and `ArcadeManager._fight` counted every dead enemy as a defeat, so the player's hammer could shove a melee boss through a fence gate (or off the arena edge) and "win" the stage: the probe cleared the Project Manager and The Client stages at 100 % health in 2-3 s on one seed of every difficulty. A ring-out is now recognised (`FighterState.fell_t`) and the enemy is put back on the last safe bot spot with the health it had, its trade tool in hand and a short invulnerability, so only a real K.O. counts. The AFTER table above is measured with the fix; the BEFORE one included those free ring-outs.
+**Ring-out rule (owner report: "boss drop off from edge = stage clear").** `MatchSim._ring_out` leaves a bot that falls off
+the site `dead` with its health intact and `fell_t` set. A fall is **never a K.O.**: `ArcadeManager._fight` now decides by
+health, not by the transient `fell_t` flag, so only `hp <= 0` marks an enemy down — no flag, respawn or clear path can turn
+a ring-out into a stage clear. A fallen enemy (boss or crew, boss stages and Tradies alike) is put back **on the floor**
+(the bot spot farthest from the nearest living player, via `_safe_spot()`), with the **health fraction it had**, its trade
+tool in hand and 1.5 s of invulnerability; the fight continues. One fall is exactly one revive (`ArcadeManager.revived`
+counts them; no fall/revive churn), a ring-out pays nothing and records no clear, and a later real K.O. still pays and
+records the stage exactly once. Checked in `arcade_test.gd` (`_boss_ring_out`: every boss stage, a `fell_t`-lost case,
+two falls in a row, crew on a boss stage, Tradies, the clear flow after a fall). On this build the plain shove was already
+revived by the M2 `fell_t` path; the `fell_t`-lost case reproduces the owner's clear on the old decider (`dead && !fell_t`
+called `_down` -> `_cleared` -> paid and recorded), and now revives. The AFTER balance table above is measured with the fix;
+the BEFORE one included free ring-outs.
 
 **Last-two-stage fixes.** (1) The Client (and any Giant: Chaos mode too) was drawn away from his own body. `World.present` scaled the Fighter node by 1.5 about the world origin, but the wobbler places itself in world space, so the model sat at 1.5 x his position (about 15 m off near the arena edge) and the hand / shoulder points his swings read back from the rig were off too: he looked like he walked through things and his hits missed (about a quarter of a normal boss's damage with the same swings). The view now scales about his feet (node position = feet x (1 - k)). (2) The Project Manager's deadline closed the collision floor while the visible ground (`FloorPad`, a flat 58 m plane) stayed full size, so everyone dropped off ground that still looked solid; the pad now shrinks with the floor. (3) Scope-creep / backup workers could spawn on a spot the shrunk floor no longer covers and fall straight off; they now spawn on the remaining floor. Checked in `arcade_test.gd`.
 
 **What the stage table drives** (`ArcadeManager._dress`): each bot's name, skin, hat, colour, tool (`give_weapon`, topped up every 0.5 s so tools never run dry), `hp` (x the
-Health setting, via `cls_hp`), `dmg_scale` (x the skill's damage), `speed` (x the skill's speed) and `difficulty` (its own `BotBrain`; `bot_brain.gd` itself is untouched).
-Bots are not hostile to each other (`combat.ffa = false`). The Client's `giant_scale` makes him a Giant (`big_t`, 1.5 x model; health and damage are divided back so the
-table's numbers hold). Boss phases at 66 % and 33 % health: speed x1.1, damage x1.2 each, a toast; stages with `change_request` also swap tools.
+Health setting, via `cls_hp`), `dmg_scale` (x the skill's damage), `speed` (see "Boss movement speeds" below) and `difficulty` (its own `BotBrain`; `bot_brain.gd` itself is untouched).
+The stage table is the ONLY stat authority: `_arcade_line()` neutralises every multiplier the placeholder fighter class
+carries (`cls_dmg`, `cls_kb`, `cls_rate`, `cls_reload`, `cls_ammo`, `speed_mul`, `accel_mul`, `air_mul`, `jump_mul`), because
+the placeholder class is a bit of `BOT_CLASS_ORDER` slot bookkeeping, not a design stat. Bots are not hostile to each other
+(`combat.ffa = false`). The Client's `giant_scale` makes him a Giant (`big_t`, 1.5 x model; health and damage are divided
+back so the table's numbers hold). Boss phases at 66 % and 33 % health: damage x1.2 each and a small additive speed step
+(+5 %, then +10 % of the base in total, never compounding), with a toast; stages with `change_request` also swap tools.
+
+**Boss movement speeds (owner report: "the Designer is too fast with its speed buff").** Measured against the player's
+7.5 m/s base (`FighterPhysics.speed`), every boss now walks in a band: slow melee tank 5.0-6.0, normal 6.0-7.2, fast
+6.8-7.4. The base is the table's bot-skill speed x the entry's `speed` multiplier, clamped into the band, then x the
+difficulty's `speed_mul` (Easy 0.85). The permanent boss cap is **7.4** (base + phase steps, a player can always outrun
+it); a temporary Speed Boost pickup may reach **8.5** and is a short 2 s burst (the player's boost is still 12 s), and a
+burst that would pass the cap is cancelled instead of making a near-cap boss slower. The phase speed steps are additive
+(+5 %, then +10 %, never the old x1.1 per phase = x1.21) and capped. No melee lunge multiplier exists in the port: a
+weapon's `dash` is a fixed impulse, identical for the player and every boss.
+
+| Boss | Before: solo base / phase 2 | Before: co-op base / phase 2 | After: base -> phase 2 | Band |
+| --- | --- | --- | --- | --- |
+| Engineer | 5.70 / 6.90 | 7.91 / 9.57 | 6.48 -> 7.13 | normal |
+| Designer | 6.18 / 7.48 | 8.56 / 10.36 | 7.02 -> 7.40 | fast |
+| Supervisor | 4.28 / 5.18 | 5.93 / 7.17 | 5.00 -> 5.50 | slow |
+| Project Manager | 5.13 / 6.21 | 7.12 / 8.61 | 6.00 -> 6.60 | normal |
+| The Client | 5.91 / 7.15 | 8.20 / 9.92 | 6.72 -> 7.39 | normal |
+
+The co-op column is the root cause of the report: `_dress` overrode HP/speed but left the placeholder **class** multipliers
+on the fighter, and the class comes from the bot's slot (`BOT_CLASS_ORDER`): a solo boss was a Bruiser (`spd 0.88`, `kb
+0.65`, `dmg 1.12`) and a two-seat co-op boss a Scamp (`spd 1.22` = **39 % faster**, `kb 1.3` = 2x the knockback taken,
+`dmg 0.92`, `air 1.3`). The class line is neutralised now, so a boss (and the crew) has exactly the same walk speed,
+knockback, damage, attack rate, reload, ammo, acceleration, air control and jump in solo and co-op. Tests:
+`arcade_test.gd` `_boss_speeds` asserts each boss' band, the stage cap, the additive phase steps, the burst cap and
+duration, and identical solo/co-op stat lines for a boss and the Tradies crew; `_phases` checks the +5/+10 % steps.
+The "Difficulty tuning" probe table above predates the Arcade stat line (solo bosses dealt x1.12 damage and took x0.65
+knockback through the Bruiser class), so re-run `godot/tests/arcade_balance.gd` before the next tuning pass; a 2-seed
+Normal sanity run after the change stayed in the same range (no free ring-out wins, 20-40 s fights).
 
 **Events** (`stage_events.gd`, driven by `ArcadeManager.step` after each sim step; own RNG = the run's, never the combat RNG):
 
@@ -188,4 +231,7 @@ checks it at every phone / tablet size, both handedness settings (`npm run test:
 `godot/tests/arcade_test.gd` (the full run walks the whole table) and run `npm run test:godot-arcade`.
 
 Tests: `npm run test:godot-arcade` (`godot/tests/arcade_test.gd`: all six stages with a boosted hammer, lives / retry / run over, events, phases, once-only coins, saved
-records and the hat, two-seat co-op (seats, auto-revive, shared lives, per-seat pay) and co-op friendly fire (off by default, the option, crew unaffected), a Classic match afterwards). Screenshots: `godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot arcade-<intro|fight|engineer|client|clear|victory> --out FILE.png`.
+records and the hat, two-seat co-op (seats, auto-revive, shared lives, per-seat pay) and co-op friendly fire (off by default, the option, crew unaffected), the
+ring-out rule (a fall never clears/pays/records, one revive per fall, the boss back on the floor with its health and tool, a later real K.O. still clears and pays,
+crew and Tradies falls too) and the speed audit (boss bands, permanent cap, additive phase steps, the short burst cap, and identical solo/co-op stat lines), a
+Classic match afterwards). Screenshots: `godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot arcade-<intro|fight|engineer|client|clear|victory> --out FILE.png`.
