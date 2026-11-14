@@ -1,108 +1,137 @@
 <div align="center">
 
-  <img src="docs/img/banner.jpg" alt="Wobblers Arena Cinematic Banner" width="100%" />
+<img src="docs/readme/banner.png" alt="Wobblers Arena: a wobbly low-poly party brawler" width="100%" />
 
-  # 🥊 WOBBLERS ARENA
-  **Fast-paced, physics-fuelled low-poly arena brawling.**  
-  *Grab a spatula, pick your fighter, and knock your mates out of the yard.*
+<br />
 
-  [![Play on TestFlight](https://img.shields.io/badge/iOS_Beta-TestFlight_0.1.0_(130)-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/v1/app/6833812750)
-  [![Play on Web](https://img.shields.io/badge/Web_Build-Play_in_Browser-FF5722?style=for-the-badge&logo=googlechrome&logoColor=white)](#)
-  [![Engine](https://img.shields.io/badge/Godot_4.x-478cbf?style=for-the-badge&logo=godotengine&logoColor=white)](#)
+[![iOS beta on TestFlight](https://img.shields.io/badge/iOS_beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/v1/app/6833812750)
+![Version 0.3.0](https://img.shields.io/badge/version-0.3.0-FFCF4D?style=for-the-badge)
+![Godot 4.7](https://img.shields.io/badge/Godot-4.7-478CBF?style=for-the-badge&logo=godotengine&logoColor=white)
+![iOS, Android, macOS, Windows, Web](https://img.shields.io/badge/iOS_·_Android_·_macOS_·_Windows_·_Web-17323A?style=for-the-badge)
 
 </div>
 
----
+## About the game
 
-## 🎮 About the Game
+**Wobblers Arena** is a third-person party brawler where blocky, wobbly fighters knock each other around small low-poly arenas. Weapons drop from the sky in crates, every hit sends someone ragdolling, and the floor itself may tilt, quake or drift under your feet.
 
-**Wobblers Arena** is a chaotic 3D party brawler where blocky, wobbly fighters clash in tight, hazard-filled arenas. Built around snappy movement, momentum-based knockback, and over-the-top melee swings, every match is a scramble for positioning and survival.
-
-Whether you are dashing across the arena with an oversized kitchen spatula or swinging heavy tradie gear in the **Site Yard**, every hit lands with punchy shader flashes, procedural weapon ribbon trails, and physics-driven chaos.
-
-* 📱 **iOS Beta (TestFlight):** [Install Wobblers Arena on TestFlight](https://testflight.apple.com/v1/app/6833812750) (iOS 15.0+)
-* 🌐 **Instant Host Multiplayer:** Spin up peer-to-peer matches directly from a Godot host client—no dedicated server required—or jump straight into offline solo play.
-
----
-
-## 📸 Screenshots & Gameplay
+Play offline against computer players, or open a room and play online with friends using a public room or a code. Matches are short, a round takes a few minutes, and the game is built for phones in landscape as much as for a keyboard and mouse.
 
 <div align="center">
-  <table>
-    <tr>
-      <td width="50%">
-        <img src="docs/style/godot-fx-melee.png" alt="Arena Combat" width="100%" />
-        <p align="center"><em>High-impact melee brawling with procedural ribbon trails & hit-flash shaders</em></p>
-      </td>
-      <td width="50%">
-        <img src="docs/style/godot-ui-construction.png" alt="Site Yard Mode" width="100%" />
-        <p align="center"><em>Scaffold Construction mode inside the Site Yard arena</em></p>
-      </td>
-    </tr>
-    <tr>
-      <td width="50%">
-        <img src="docs/style/godot-locker-class.png" alt="Main Menu & Class Select" width="100%" />
-        <p align="center"><em>3D class showcase & cosmetic loadout selection</em></p>
-      </td>
-      <td width="50%">
-        <img src="docs/style/godot-gfx-moonbase-after.png" alt="Mobile Landscape Controls" width="100%" />
-        <p align="center"><em>Landscape HUD at 852×393: hotbar, health and radar</em></p>
-      </td>
-    </tr>
-  </table>
+  <img src="docs/readme/match.jpg" alt="A Classic match on Sunny Arena, with the health bar, weapon slots and radar" width="100%" />
+  <em>A Classic match on Sunny Arena: crates drop from the sky, and whoever grabs the weapon first gets the swing.</em>
 </div>
 
----
+## What's in it
 
-## 🦸 Meet the Fighters
+- **11 classes.** Five to start with (Wobbler, Bruiser, Scamp, Gramps and Zorp) and six more to buy or unlock by playing. Each has its own health, speed, jump and knockback.
+- **39 weapons.** A spatula, bats, mallets and katanas; shotguns, snipers and miniguns; rocket and cluster launchers; and odd ones like the Net Gun, Snake Shooter and Twin Fang Bow.
+- **30+ arenas.** A sunny arena, an ice rink, a volcano rim, a moon base, a candy land, a pirate ship, a haunted hollow and many more, plus a Sandbox where you build your own from blocks.
+- **20+ game types.** Classic, Melee Only, Guns Only, Ninja, Explosive, Weapon Ladder, Deathmatch, Sudden Death, team games from 1v1 to 5v5 Chaos, low-gravity Moon Drift and a Practice Range.
+- **Moving floors.** Pick Steady, Wobble, Tilt, Quake or Drift for any arena, or leave it on Random.
+- **Offline and online.** Computer players in four difficulties, and online rooms for up to 8 players. The Godot game and the web game can play in the same room.
+- **Walldrobe and Shop.** Earn coins from matches and daily goals, then spend them on outfits, hats, colours, emotes and classes.
+- **Replays.** A short slow-motion replay of each K.O.
+- **Six languages.** English, 繁體中文, 简体中文, 日本語, Français and Español.
 
-Pick from five distinct low-poly 3D classes, each with its own silhouette, stats, and brawl style:
+## Screenshots
 
-<p align="center">
-  <img src="docs/style/godot-wobbler-classes.png" alt="The five classes" width="80%" />
-</p>
+<table>
+  <tr>
+    <td width="50%"><img src="docs/readme/title.jpg" alt="Title screen" /><br /><sub>Title screen: play offline, play online, or visit the Walldrobe, Shop and Goals.</sub></td>
+    <td width="50%"><img src="docs/readme/game-types.jpg" alt="Game type picker" /><br /><sub>Pick a game type.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme/arena-select.jpg" alt="Arena picker with moving floor options" /><br /><sub>Pick an arena and how its floor moves.</sub></td>
+    <td><img src="docs/readme/walldrobe.jpg" alt="Walldrobe class page" /><br /><sub>The Walldrobe: classes, outfits, hats, colours and emotes.</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme/replay.jpg" alt="Slow-motion K.O. replay" /><br /><sub>Slow-motion replay of a K.O.</sub></td>
+    <td><img src="docs/readme/site-yard.jpg" alt="Construction mode on Site Yard" /><br /><sub>Construction on Site Yard, fought with tradie tools.</sub></td>
+  </tr>
+</table>
+
+## Arenas
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/readme/arena-candy.jpg" alt="Candy Land" /><br /><sub>Candy Land</sub></td>
+    <td width="33%"><img src="docs/readme/arena-volcano.jpg" alt="Volcano Rim" /><br /><sub>Volcano Rim</sub></td>
+    <td width="33%"><img src="docs/readme/arena-farm.jpg" alt="Sunny Farm" /><br /><sub>Sunny Farm</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/readme/arena-dojo.jpg" alt="Moonlit Dojo" /><br /><sub>Moonlit Dojo</sub></td>
+    <td><img src="docs/readme/arena-moonbase.jpg" alt="Moon Base" /><br /><sub>Moon Base</sub></td>
+    <td><img src="docs/readme/arena-rooftops.jpg" alt="Rooftops" /><br /><sub>Rooftops</sub></td>
+  </tr>
+</table>
+
+## Classes
 
 <div align="center">
-  <table>
-    <tr>
-      <td align="center" width="20%">
-        <strong>Wobbler</strong><br />
-        <sub><strong>All-Rounder</strong><br />Balanced speed, weight, and swing recovery built for pure arena fundamentals.</sub>
-      </td>
-      <td align="center" width="20%">
-        <strong>Bruiser</strong><br />
-        <sub><strong>Heavy Tank</strong><br />High knockback resistance and crushing melee force that sends rivals flying.</sub>
-      </td>
-      <td align="center" width="20%">
-        <strong>Scamp</strong><br />
-        <sub><strong>Speedster</strong><br />Hyper-agile dasher built for hit-and-run strikes and baiting heavy swings.</sub>
-      </td>
-      <td align="center" width="20%">
-        <strong>Gramps</strong><br />
-        <sub><strong>Veteran Brawler</strong><br />Stubborn footing, deceptive weapon reach, and punishing counter-hits.</sub>
-      </td>
-      <td align="center" width="20%">
-        <strong>Zorp</strong><br />
-        <sub><strong>Cosmic Wildcard</strong><br />Floaty momentum and erratic movement timings that keep opponents guessing.</sub>
-      </td>
-    </tr>
-  </table>
+  <img src="docs/readme/classes.jpg" alt="Wobbler, Bruiser, Scamp, Gramps and Zorp" width="80%" />
 </div>
 
----
+| Class | In the game's words |
+| --- | --- |
+| **Wobbler** | Balanced. No surprises, just wobbles |
+| **Bruiser** | Big, slow, hard to shove. Hugs hurt |
+| **Scamp** | Tiny and zippy. Flies like a frisbee |
+| **Gramps** | Sharp steering, quick reloads. Back in my day… |
+| **Zorp** | Fragile, floaty, great tech. Comes in peace, mostly |
 
-## 🛠️ Weapons, Modes & Features
+Six more are in the Shop or unlock as you play: **Bulwark**, **Zippy**, **Ace**, **Boo**, **Champ** and **Rampage**.
 
-* **Tradie & Kitchen Arsenal:** Trade blows with classic **Kitchen Spatulas**, heavy-duty **Site Yard Tradie Weapons** (wrenches, hammers, levels, and site gear), and unlockable cosmetics.
-* **Scaffold Construction Mode (`Site Yard`):** Battle across multi-tiered scaffolding and construction hazards in the Site Yard, with full offline mode support.
-* **Juicy Combat VFX:** Every swing and dash drives custom 3D lighting, hit-flash character shaders, procedural weapon ribbons, and impact particle bursts.
-* **Serverless Godot Host Multiplayer:** Host lobbies directly from your device without needing a dedicated backend server, or play offline anytime.
-* **Built for Mobile & Desktop:** Tuned for widescreen mobile landscape (`852×393`) with dedicated virtual joysticks, dash/attack buttons, and clean HUD framing.
+## Construction and Arcade
 
----
+Behind the DON'T ENTER sign on the title screen is the Construction set: a worksite arena, nine tradie weapons (Pipe Wrench, Nail Gun, Jackhammer, Spirit Level, Tape Measure, Cement Bucket, Cone Launcher, Angle Grinder and Cordless Drill) and **Arcade**, a six-stage boss rush. Fight through the Tradies, the Engineer, the Designer, the Supervisor and the Project Manager to reach The Client, on Easy, Normal or Nightmare.
 
-## 🗺️ Project & Developer Docs
+## Play it
 
-Looking for architecture details, build pipelines, or upcoming milestones?
-* 🧭 **[Roadmap](docs/ROADMAP.md)** — Upcoming modes, visual passes, and feature milestones.
-* 🗂️ **[Codemap](docs/CODEMAP.md)** — Project structure, networking flow, and Godot scene breakdown.
+- **iPhone and iPad:** join the [TestFlight beta](https://testflight.apple.com/v1/app/6833812750).
+- **Mac, Windows, Android and Web:** build from source for now. See below, [docs/BUILD_ANDROID.md](docs/BUILD_ANDROID.md) and [docs/BUILD_IOS.md](docs/BUILD_IOS.md).
+
+## Run from source
+
+You need [Godot 4.7](https://godotengine.org/download) and, for the server and tests, Node 18 or newer.
+
+Run the game:
+
+```bash
+godot --path godot
+```
+
+Run the room server for online play (a room list and message relay, on Node):
+
+```bash
+npm install
+```
+
+```bash
+npm start
+```
+
+Run the checks. `npm test` covers content, translations, maps and the server; the `test:godot-*` scripts drive the Godot game itself, for example:
+
+```bash
+npm test
+```
+
+```bash
+npm run test:godot-combat
+```
+
+## What's in this repository
+
+| Path | What it is |
+| --- | --- |
+| [`godot/`](godot) | The game, in Godot 4.7 (GDScript) |
+| [`shared/`](shared) | Classes, weapons, arenas and game types as JSON, shared by every client |
+| [`server.js`](server.js), [`accounts.js`](accounts.js) | Room list, message relay and accounts |
+| [`index.html`](index.html), [`public/`](public) | The original web game |
+| [`tools/`](tools) | Tests, content export and screenshot scripts |
+| [`docs/`](docs) | Design and build notes |
+
+Good places to start reading: the [Roadmap](docs/ROADMAP.md), the [Codemap](docs/CODEMAP.md), the [Godot architecture](docs/GODOT_ARCH.md) and the [network protocol](docs/PROTOCOL.md).
+
+The screenshots on this page are rendered from the game by the scripts in `tools/shoot-godot-*.sh`.
