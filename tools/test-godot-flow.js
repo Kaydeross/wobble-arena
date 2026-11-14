@@ -53,5 +53,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     if (host) host.close();
     if (old) old.close();
     await srv.stop();
+    // WebSocket close events can keep Node alive after every assertion has passed.
+    process.exit(process.exitCode || 0);
   }
 })();
