@@ -59,6 +59,9 @@ jobs:
       - run: npm run test:godot-gunfeel
       - run: npm run test:godot-fx
       - run: npm run test:godot-perf
+      - run: npm run test:godot-countdown
+      - run: npm run test:godot-start-spots
+      - run: npm run test:godot-quick-play
       - run: npm run test:godot-killcam
       - run: npm run test:godot-camera
       - run: npm run test:godot-construction-data
