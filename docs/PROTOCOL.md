@@ -255,7 +255,12 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 
 Password change and reset revoke every token for the account. Reset and password change return one fresh token for the current device. Account deletion also revokes every token. Do not attach a purchasable wallet to an account with automatic expiry enabled.
 
-Error shape: `{ok:false, err, msg}` with HTTP 400/401/409/413/429/500. Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
+Error shape: `{ok:false, err, msg}` with HTTP 400/401/409/413/429/500. An unknown `/api/*` path (or a method a
+route does not support) is `404 {ok:false, err:"none", msg:"Not found."}` — **always JSON**. `server.js` answers every
+`/api/*` path the account handler did not with that JSON 404 and never falls through to the static-file handler, so a
+client can tell "this server build has no such endpoint" apart from "the game file is missing". A build that predates
+an endpoint may still answer its 404 with the plain text `not found`; clients must treat both as the same condition.
+Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
 
 The `data` blob is the whole client save (settings, coins, owned cosmetics, stats). Its schema belongs to the web client today; see §7 for why the server must own the economy before iOS ships.
 
@@ -278,10 +283,26 @@ weighted by difficulty: `easy` x1, `normal` x2, `nightmare` x3, so Nightmare 2 =
 - **Kids mode** is not ranked: `godot/net/account_api.gd` `submit_rank()` refuses before any request when
   `Settings.kids_mode` is true, `world/world.gd` submits only after a result when signed in and not in Kids mode, and the
   RankingSheet says so. Reading a board is still allowed.
+- **Old servers / server too old.** The rank endpoints ship with leaderboards. A host still running an older
+  `server.js`/`accounts.js` answers `/api/rank` with `404` — the current server as
+  `{ok:false, err:"none", msg:"Not found."}` (see the JSON 404 convention above), an older one as the static-file
+  handler's plain text `not found`. The Godot client classifies both in `AccountApi.rank_failure()` as `unsupported` and
+  the RankingSheet shows *"This server is running an older build without leaderboards. Update the server to enable
+  rankings."* with a Retry button; the raw server text is never shown. A `404` on another function's endpoint (e.g. an
+  old `/api/rank`) is the same condition. The fix is on the host: update it to this `server.js` + `accounts.js`
+  (`docs/SERVER_PLAN.md` §7). Clients must not retry a 404 as if it were a network error.
+- **Sync.** `AccountApi.rank_stats(profile)` is the single payload builder for the automatic submit after a match
+  result (`world/world.gd`) and the RankingSheet's **Sync my score** button: the local career totals (`Save.stats`
+  `kos`/`wins`/`matches`) plus the weighted Arcade best from `Save.dlc.arcade_best`. `POST /api/rank` also accepts an
+  optional `board`, which picks the board its reply describes: the Sync sends the tab the player is looking at, so a
+  Sync from the Wins or Arcade tab refreshes that board (the automatic submit leaves it at the server default `kos`). The button is disabled with a one-line reason when signed out or in Kids mode.
 
-Client: `AccountApi.fetch_rank(board, cb)` / `AccountApi.submit_rank(stats, cb)`; UI `godot/ui/ranking_sheet.gd`
-(tabs, loading/empty/error states, the player's row highlighted, the server badge + host in the header), opened from the
-Account sheet's Leaderboard button. Gameplay never waits for a submit.
+Client: `AccountApi.fetch_rank(board, cb)` / `AccountApi.submit_rank(stats, cb, board)`; UI
+`godot/ui/ranking_sheet.gd` (server badge + host in the header, tabs, explicit loading / rows / empty / error /
+unsupported-404 / offline states with Retry, the player's `you` record as a highlighted pill below the table when it is
+outside the shown top N — with the `estimated` marker when the server says so — the in-table own row highlighted, and
+sign-in / Sync actions), opened from the Account sheet's Leaderboard button. Failure classification lives in
+`AccountApi.rank_failure()` (`unsupported | offline | auth | error`). Gameplay never waits for a submit.
 
 ---
 
