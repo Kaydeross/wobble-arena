@@ -10,7 +10,7 @@ extends SceneTree
 
 const MAIN := "res://scenes/main.tscn"
 const MIN_TOUCH := 44.0
-const QUICK := "Safe/Col/Body/Home/Quick"
+const QUICK := "Safe/Col/Body/Home/Cols/Left/Quick"
 ## The smallest supported landscape sizes (with and without phone insets), the design canvas and portrait; `mode` is the
 ## Settings ui_scale (ui/ui_scale.gd) the layout test uses. 926x428 at the Large scale is the tightest title in the game.
 const CASES := [
