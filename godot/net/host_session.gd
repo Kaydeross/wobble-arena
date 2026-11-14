@@ -13,13 +13,16 @@ extends GuestSession
 ## (`mode` stays Classic for the web); with a web guest in the room the match plays Classic and the host is told, and
 ## a web guest cannot join an app-only match that is running (`kick` with the reason).
 ## Host migration (take_over): a Godot guest the relay promotes carries the running match on from its last state.
-## Arcade co-op (docs/ARCADE_COOP_PLAN.md M1, docs/PROTOCOL.md 6.4): an `arcade` room starts from the Construction hub
-## ("Play co-op"), plays the app-only `construction` mode, has two seats and sends the run as `start.arc` with every
-## stage's `start`; the stage transition reuses the same "a new `start` rebuilds the world" path as a rematch.
+## Arcade co-op (docs/ARCADE_COOP_PLAN.md M1, docs/PROTOCOL.md 6.4): an `arcade` room is created from the online Host
+## sheet's "Room type: Arcade co-op" (scripts/main.gd: host_room), plays the app-only `construction` mode, has two seats
+## and sends the run as `start.arc` with every stage's `start`; the stage transition reuses the same "a new `start`
+## rebuilds the world" path as a rematch. Its lobby starts only when two players are in (Start), or with one and the
+## teammate bot (Start with bot), so a co-op run is never silently started alone.
 
 signal hosted(code: String)                  ## the room is open (code = room id)
 
 const GUEST_MSGS := ["s", "S", "sw", "f", "k", "h", "ko", "take", "chat", "emote"]
+const ARCADE_LABEL := "Arcade co-op"         ## the room kind's human label on the wire (`kindName`/`modeName`, 1.1)
 const REMATCH_WAIT := 20.0
 const CONNECT_WAIT := 8.0
 const RESUME_WAIT := 3.0         ## host migration: seconds the new host waits for the guests' hello before resuming
@@ -81,8 +84,9 @@ var _dt0 := 0.0                  ## the arena clock the next match starts at (a 
 
 ## Start hosting. `opts`: name, pub, max (2..8 seats), bots (bool = every free seat / int = how many), lim (-1 auto),
 ## bhv, diff, mode, map, dyn, hp, grav, kb, crate, inf. `info` = {name, skin, hat, color, cls}.
-## `arcade: true` (plus `arcade_diff`) opens an Arcade co-op room instead: Construction mode on the generated site, two
-## seats, a teammate bot, a private room, the stage table's own HP / gravity / knockback / crates / K.O. limit.
+## `arcade: true` (plus `arcade_diff` / `arcade_ff`) opens an Arcade co-op room instead: Construction mode on the
+## generated site, two seats, a teammate bot, the stage table's own HP / gravity / knockback / crates / K.O. limit. It is
+## app-only but can be public or private like any room (`pub` from the Host sheet); the room list shows its kind.
 ## Returns false when it could not even start (no address).
 func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String = "") -> bool:
 	url = p_url.strip_edges()
@@ -106,8 +110,8 @@ func begin_host(p_url: String, opts: Dictionary, info: Dictionary, token: String
 	map_id = m if data("maps").has(m) or m == "sitegen" else "arena"
 	arc = {}
 	if arcade:
-		# Arcade co-op: private, two seats, a teammate bot, and none of the Host sheet's rules (the stages own them)
-		pub = false
+		# Arcade co-op: two seats, a teammate bot, and none of the Host sheet's rules (the stages own them). Public or
+		# private is the Host sheet's pick (the room list shows kind: "arcade-coop").
 		opt_max = ArcadeCoop.SEATS; bot_n = 1; opt_bots = true
 		want_mode = "construction"
 		arcade_diff = ArcadeCoop.norm_diff(str(opts.get("arcade_diff", opts.get("diff", ArcadeCoop.DEFAULT_DIFF))))
@@ -594,17 +598,17 @@ func srv_info() -> Dictionary:
 		"map": map_label(), "max": room_max(), "started": started, "build": NetClient.BUILD,
 		"kind": room_kind(), "arcade": arcade, "kindName": kind_label()}
 
-## The room kind on the wire: "arcade-coop" for the Construction hub's two-seat run, "pvp" for every other room.
+## The room kind on the wire: "arcade-coop" for the Construction DLC's two-seat co-op run, "pvp" for every other room.
 func room_kind() -> String:
 	return "arcade-coop" if arcade else "pvp"
 
 ## What a room list shows as the mode: an Arcade co-op room says so; other rooms use the mode's name.
 func list_mode_label() -> String:
-	return "Arcade co-op" if arcade else mode_label()
+	return ARCADE_LABEL if arcade else mode_label()
 
 ## A short human kind for the lobby line.
 func kind_label() -> String:
-	return "Arcade co-op" if arcade else "PvP"
+	return ARCADE_LABEL if arcade else "PvP"
 
 ## The room's seat count for the room list: an Arcade run has two joinable seats, the crew slots are not players.
 func room_max() -> int:
@@ -698,10 +702,25 @@ func rule_snap(joiner: bool = false) -> Dictionary:
 func host_match() -> HostMatch:
 	return _match.get_ref() as HostMatch if _match != null else null
 
+## The players in the room (humans; bots are never in the roster). An Arcade co-op Start needs two of them.
+func human_count() -> int:
+	return roster.size()
+
+## May the host start now? A normal room always may (empty seats get bots as the sheet says). An Arcade co-op room
+## needs two players; `with_bot` is the lobby's "Start with bot" (one player + the teammate bot, for solo testing).
+func can_start(with_bot := false) -> bool:
+	if not arcade: return true
+	if with_bot: return roster.size() >= 1
+	return roster.size() >= ArcadeCoop.SEATS
+
 ## Start (host only, from the lobby): every seat up to the room size is a human, a bot or empty (netStartHosted).
-## Arcade co-op: the two player seats from the roster (an empty one is the teammate bot) and then the stage's crew.
-func start_match() -> bool:
+## Arcade co-op: refused with fewer than two players unless it is the explicit "Start with bot"; then the two player
+## seats come from the roster (an empty one is the teammate bot) and the stage's crew follows.
+func start_match(with_bot := false) -> bool:
 	if phase != Phase.LOBBY or started: return false
+	if arcade and not can_start(with_bot):
+		_set_status(tr("Start needs two players. Wait for a friend, or start with the teammate bot."))
+		return false
 	_resume = {}; _resume_t = -1.0
 	if arcade:
 		arc = ArcadeCoop.run_start_arc(randi_range(1, 900000), arcade_diff, ArcadeCoop.SEATS, arcade_ff)

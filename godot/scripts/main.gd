@@ -3,10 +3,12 @@ extends Control
 ## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), a smaller "Quick play" under it
 ## (logic/quick_play.gd: an all-random offline match straight away, no wizard: random arena and mode), one secondary
 ## "Play online with friends" (its sub line says it needs internet, or the room state while connected). The online
-## panel: your name, the public room list (ui/room_browser.gd: tap a room to join, Refresh, empty / error states),
-## "Join with a code" for private rooms (GuestSession), "Host a room" (the host sheet: room name, public / private,
-## seats, bots -> HostSession) and an account button; both roles wait in the lobby sheet (the players, Start for the
-## host, Leave).
+## panel: your name, the public room list (ui/room_browser.gd: tap a room to join, Refresh, the row / kind of room,
+## empty / error states), "Join with a code" for private rooms (GuestSession), "Host a room" (the host sheet: room name,
+## room type Versus / Arcade co-op, public / private, seats, bots -> HostSession) and an account button; both roles wait
+## in the lobby sheet (the players, Start for the host, Leave). An Arcade co-op room is the Construction DLC's two-seat
+## boss rush: its lobby starts with two players, or with one and the teammate bot ("Start with bot"); a guest cannot
+## start it.
 ## A chip saying who you are ("Guest" or "Signed in as NAME"; tap it for the Account sheet, ui/account_sheet.gd),
 ## a gear for the Settings screen (ui/settings_screen.gd: Controls, Camera, Graphics, Audio, Gameplay, Account,
 ## About) and a small tip line. On the very first launch the how-to cards (ui/intro_cards.gd) show once.
@@ -81,10 +83,12 @@ var auto_news: Variant = null
 var _ui := {}
 var account: AccountSheet           ## the Account sheet (title chip)
 var chip: PanelContainer
-var host_sheet: Control             ## "Host a room": name, public / private, seats, bots
-var lobby: Control                  ## the room's lobby: players, Start (host only), Leave
-var _host := {"pub": false, "max": 4, "bots": 2, "mode": "classic", "lim": -1, "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "dyn": "off"}
-var _host_bs := {}                  ## "pub_0/1", "max_N", "bots_N" -> Button
+var host_sheet: Control             ## "Host a room": name, room type, public / private, seats, bots
+var lobby: Control                  ## the room's lobby: players, Start / Start with bot (host only), Leave
+var _host := {"type": "versus", "pub": false, "max": 4, "bots": 2, "mode": "classic", "lim": -1, "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "dyn": "off"}
+var _host_bs := {}                  ## "type_versus/coop", "pub_0/1", "max_N", "bots_N" -> Button
+var _host_tab := "Room"             ## the Host sheet's current tab
+var _join_kind := ""                ## the room-list row's kind the next join expects ("" = any kind)
 
 func _ready() -> void:
 	wizard = SetupWizard.new()
@@ -122,7 +126,6 @@ func _ready() -> void:
 	add_child(hub)
 	hub.start_requested.connect(play_offline)
 	hub.arcade_requested.connect(play_arcade)
-	hub.arcade_coop_requested.connect(play_arcade_coop)
 	hub.closed.connect(func() -> void:
 		_coins_sub()
 		if Tier.is_pc(): dlc_b.grab_focus.call_deferred())
@@ -605,14 +608,23 @@ func _refresh_buttons() -> void:
 		_ui["roster"].text = ""
 		show_lobby(false)
 
-## A room from the public list.
+## A room from the public list: the row says what kind of room it is (`kind`), so the join asks the server for that
+## kind (a PvP screen never mistakes an Arcade co-op room for a normal one, docs/PROTOCOL.md 1.1/1.2).
 func join_room_id(id: String) -> void:
 	if session != null and session.is_active(): return
 	_ui["room"].text = id
+	_join_kind = ""
+	for r: Dictionary in browser.rooms:
+		if str(r.get("id", "")) == id:
+			var k := str(r.get("kind", ""))
+			if k == "pvp" or k == "arcade-coop": _join_kind = k
+			break
 	join_room()
 
 func join_room() -> void:
 	if session != null and session.is_active(): return
+	var expect_kind := _join_kind
+	_join_kind = ""
 	var url := str(Settings.get_value("server_url")).strip_edges()
 	var room := str(_ui["room"].text).strip_edges()      # the server matches codes case-insensitively
 	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
@@ -624,7 +636,7 @@ func join_room() -> void:
 	session = GuestSession.new()
 	_bind_session()
 	session.begin(url, room, {"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
-		"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}, str(Settings.get_value("token", "")))
+		"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}, str(Settings.get_value("token", "")), expect_kind)
 	_refresh_buttons()
 
 func _bind_session() -> void:
@@ -704,33 +716,56 @@ func play_arcade() -> void:
 	if session != null: session.leave("")
 	get_tree().change_scene_to_node(world)
 
-## The Construction hub's Arcade "Play co-op" card: host the two-seat Arcade room directly (no Host sheet: the stages own
-## the rules and the room is private + app-only). The friend joins with the code; an empty seat is the teammate bot, so the
-## run can start alone. `Settings arcade_diff` (the hub's difficulty pick) is the run's difficulty.
-func play_arcade_coop() -> void:
-	if not DlcUnlock.owned() or session != null and session.is_active(): return
-	if _remote_online_blocked():
-		_status("Online play is temporarily unavailable. You can keep playing offline." if not RemoteConfig.update_required()
-			else "Please update Wobblers Arena before playing online.")
-		show_tab(true)
+## The online co-op entry: the Host sheet's "Room type: Arcade co-op" creates one of these through host_room(). The run
+## owns the rules (HP, gravity, knockback, crates and the K.O. limit come from the stage table), so only the name, who
+## can join, the kind and `Settings arcade_diff` / `arcade_ff` matter. Two seats; an empty one is the teammate bot, so the
+## host may start with one player ("Start with bot", lobby) or wait for a friend. The run is the same as before: the
+## `arcade` room opts and `start.arc` / `am` messages are unchanged (docs/PROTOCOL.md 6.4).
+func coop_host_opts() -> Dictionary:
+	var diff := ArcadeCoop.norm_diff(str(Settings.get_value("arcade_diff", "normal")))
+	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
+	if nm == "": nm = "Player"
+	var rn := str(_ui["rname"].text).strip_edges().substr(0, 24) if _ui.has("rname") else ""
+	if rn == "": rn = tr("%s's co-op run") % nm
+	return {"name": rn, "pub": bool(_host["pub"]), "max": ArcadeCoop.SEATS, "bots": 1, "mode": "construction",
+		"map": ArcadeCoop.site_map(), "arcade": true, "arcade_diff": diff, "arcade_ff": bool(Settings.get_value("arcade_ff", false)),
+		"diff": diff, "dyn": "off", "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "lim": 0}
+
+## The host's own player info for a co-op room (a class the player owns, else the default).
+func coop_host_info() -> Dictionary:
+	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
+	if nm == "": nm = "Player"
+	var cls := str(Settings.get_value("class", "wobbler"))
+	if not Content.classes.has(cls) or not SetupWizard.owns_class(cls): cls = "wobbler"
+	return {"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
+		"color": Settings.get_value("color", 0x39b5a8), "cls": cls}
+
+## Create the room from the Host sheet: a normal Versus room, or (Room type: Arcade co-op) the two-seat Construction
+## boss rush. Both share the same lobby, code sharing, room browser and HostSession.
+func host_room() -> void:
+	if session != null and session.is_active(): return
+	var coop := str(_host["type"]) == "coop"
+	if coop and not DlcUnlock.owned():
+		_status(tr("Unlock Construction first: the Arcade co-op room is part of the Construction DLC."))
 		return
 	var url := str(Settings.get_value("server_url")).strip_edges()
 	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
-	if nm == "": nm = str(Settings.get_value("name", "Player")).strip_edges().substr(0, 12)
 	if nm == "": nm = "Player"
 	Settings.set_value("name", nm)
-	var cls := str(Settings.get_value("class", "wobbler"))
-	if not Content.classes.has(cls) or not SetupWizard.owns_class(cls): cls = "wobbler"
-	var diff := ArcadeCoop.norm_diff(str(Settings.get_value("arcade_diff", "normal")))
-	if hub.visible: hub.close()
-	show_tab(true)
+	Settings.set_value("host_opts", _host.duplicate())
+	var mode := HostSession.online_mode(str(_host["mode"]))
+	show_host(false)
 	session = HostSession.new()
 	_bind_session()
-	(session as HostSession).begin_host(url, {"name": tr("%s's co-op run") % nm, "pub": false, "max": 2, "bots": 1,
-		"mode": "construction", "map": ArcadeCoop.site_map(), "arcade": true, "arcade_diff": diff, "diff": diff,
-		"dyn": "off", "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "lim": 0},
-		{"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
-		"color": Settings.get_value("color", 0x39b5a8), "cls": cls}, str(Settings.get_value("token", "")))
+	if coop:
+		(session as HostSession).begin_host(url, coop_host_opts(), coop_host_info(), str(Settings.get_value("token", "")))
+	else:
+		(session as HostSession).begin_host(url, {"name": str(_ui["rname"].text), "pub": _host["pub"], "max": _host["max"], "bots": int(_host["bots"]),
+			"mode": mode, "map": _host_map(mode), "dyn": str(_host["dyn"]), "diff": str(Settings.get_value("difficulty", "normal")),
+			"lim": int(_host["lim"]), "hp": int(_host["hp"]), "grav": float(_host["grav"]), "kb": float(_host["kb"]), "crate": str(_host["crate"]),
+			"inf": bool(_host["inf"])},
+			{"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
+			"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}, str(Settings.get_value("token", "")))
 	_refresh_buttons()
 
 # ---------------- hosting and the lobby ----------------
@@ -854,14 +889,39 @@ func _build_host_sheet() -> void:
 		pg.add_theme_constant_override("separation", UiTheme.SP_3)
 		box.add_child(pg)
 	var room: VBoxContainer = box.get_node("Room")
+	var name_row := HBoxContainer.new()               # the room name and the room type share one row (the sheet fits a phone)
+	name_row.name = "NameRow"
+	name_row.add_theme_constant_override("separation", UiTheme.SP_3)
+	room.add_child(name_row)
 	var nm := LineEdit.new()
 	nm.name = "RoomName"
 	nm.placeholder_text = "Room name"
 	nm.max_length = 24
 	nm.custom_minimum_size = Vector2(0, HOST_ROW_H)
+	nm.size_flags_horizontal = SIZE_EXPAND_FILL
 	nm.add_theme_font_size_override("font_size", 18)
-	room.add_child(nm)
+	name_row.add_child(nm)
 	_ui["rname"] = nm
+	var tll := Label.new()
+	tll.name = "TypeLabel"
+	tll.text = "Type"
+	tll.theme_type_variation = &"MutedLabel"
+	tll.add_theme_font_size_override("font_size", 18)
+	tll.size_flags_vertical = SIZE_SHRINK_CENTER
+	name_row.add_child(tll)
+	var tgroup := ButtonGroup.new()                  # Versus / Arcade co-op: the kind of room (docs/PROTOCOL.md 1.1)
+	for pair: Array in [["versus", "Versus"], ["coop", "Arcade co-op"]]:
+		var b := Button.new()
+		b.name = "P" + str(pair[0])
+		b.text = str(pair[1])
+		b.theme_type_variation = &"TabButton"
+		b.toggle_mode = true
+		b.button_group = tgroup
+		b.custom_minimum_size = Vector2(92 if pair[0] == "versus" else 156, HOST_ROW_H)
+		b.add_theme_font_size_override("font_size", 18)
+		b.pressed.connect(set_host_type.bind(str(pair[0])))
+		name_row.add_child(b)
+		_host_bs["type_" + str(pair[0])] = b
 	_pill_row(room, "Vis", "Who can join", [0, 1], ["Private (code)", "Public"], "pub_", func(k: int) -> void: _host["pub"] = k == 1)
 	_pill_row(room, "Max", "Seats", [2, 3, 4, 5, 6, 7, 8], ["2", "3", "4", "5", "6", "7", "8"], "max_", func(k: int) -> void: _host["max"] = k)
 	_pill_row(room, "Bots", "Bots", [0, 1, 2, 3, 4, 5, 6, 7], ["0", "1", "2", "3", "4", "5", "6", "7"], "bots_", func(k: int) -> void: _host["bots"] = k)
@@ -947,14 +1007,39 @@ func _build_host_sheet() -> void:
 	_host_bs["crate_" + str(_host["crate"])].button_pressed = true
 	show_host_tab("Room")
 	_show_host_mode()
+	set_host_type(str(_host["type"]))
 
 ## One tab of the Host sheet.
 func show_host_tab(t: String) -> void:
+	if str(_host["type"]) == "coop" and t != "Room": t = "Room"
+	_host_tab = t
 	var box := host_sheet.get_node("Center/Card/Box")
 	for n: String in HOST_TABS:
 		(box.get_node(n) as Control).visible = n == t
 		(box.get_node("Head/Tabs/" + n) as Button).set_pressed_no_signal(n == t)
 	_host_hint()
+
+## The Host sheet's room type: "versus" (a normal PvP room) or "coop" (the two-seat Arcade co-op room). An Arcade room
+## has fixed seats (two, the empty one is the teammate bot) and no Host-sheet rules, so Seats/Bots and the Mode/Rules
+## tabs are hidden/disabled; it can still be public or private like any room. Only DLC owners can open one.
+func set_host_type(t: String) -> void:
+	var coop := t == "coop" and DlcUnlock.owned()
+	if t == "coop" and not coop:
+		_status(tr("Unlock Construction first: the Arcade co-op room is part of the Construction DLC."))
+	_host["type"] = "coop" if coop else "versus"
+	if _host_bs.has("type_versus"):
+		(_host_bs["type_versus"] as Button).set_pressed_no_signal(not coop)
+		(_host_bs["type_coop"] as Button).set_pressed_no_signal(coop)
+		(_host_bs["type_coop"] as Button).disabled = not DlcUnlock.owned()
+	var box := host_sheet.get_node("Center/Card/Box")
+	(box.get_node("Room/Max") as Control).visible = not coop
+	(box.get_node("Room/Bots") as Control).visible = not coop
+	for t2: String in ["Mode", "Rules"]:
+		(box.get_node("Head/Tabs/" + t2) as Button).disabled = coop
+	if coop and _host_tab != "Room":
+		show_host_tab("Room")
+	else:
+		_host_hint()
 
 ## ‹ / ›: the previous / next online game type.
 func step_host_mode(d: int) -> void:
@@ -977,12 +1062,24 @@ func _show_host_mode() -> void:
 	(box.get_node("ModeHint") as Label).text = t
 	_host_hint()
 
-## Under the tabs: the arena the room plays (the last Play setup's, if the game type allows it).
+## Under the tabs: what the room plays. An Arcade co-op room says so (its rules come from the stage table and its
+## difficulty/friendly fire from the Arcade screen's Settings); a Versus room names its arena (the last Play setup's).
 func _host_hint() -> void:
 	if host_sheet == null: return
 	var hint: Label = host_sheet.get_node("Center/Card/Box/Hint")
+	if str(_host["type"]) == "coop":
+		hint.custom_minimum_size.y = 44.0                      # two wrapped lines at font 15
+		hint.text = tr("Arcade co-op: two seats, a teammate bot fills the empty one, the stages set the rules. Difficulty: %s.") \
+			% tr(_arcade_diff_name())
+		return
+	hint.custom_minimum_size.y = 20.0
 	var mp := _host_map(str(_host["mode"]))
 	hint.text = tr("Arena: %s (from your last Play setup).") % str(Content.get_map(mp).get("name", mp))
+
+## The Arcade difficulty the co-op room will play (Settings arcade_diff, picked on the Arcade screen).
+func _arcade_diff_name() -> String:
+	return ConstructionHub.diff_name(ArcadeCoop.norm_diff(str(Settings.get_value("arcade_diff", "normal"))))
+
 
 ## The arena for game type `mode`: the last Play setup's if allowed online, else the mode's first one.
 func _host_map(mode: String) -> String:
@@ -994,37 +1091,22 @@ func _host_map(mode: String) -> String:
 func show_host(on: bool) -> void:
 	host_sheet.visible = on
 	if on:
+		var coop_b: Button = _host_bs["type_coop"]
+		coop_b.disabled = not DlcUnlock.owned()
+		coop_b.tooltip_text = (tr("Two seats on the Construction boss rush: a friend takes the second one, or a bot does.")
+			if DlcUnlock.owned() else tr("Unlock Construction first"))
+		set_host_type(str(_host["type"]))
 		if str(_ui["rname"].text) == "": _ui["rname"].text = tr("%s's room") % (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player")
 		show_host_tab("Room")
 		if Tier.is_pc(): (_ui["rname"] as LineEdit).grab_focus.call_deferred()
-
-## Create room: a HostSession with the sheet's room options and rules; the arena and bot skill come from the last Play
-## setup (Settings).
-func host_room() -> void:
-	if session != null and session.is_active(): return
-	var url := str(Settings.get_value("server_url")).strip_edges()
-	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
-	if nm == "": nm = "Player"
-	Settings.set_value("name", nm)
-	Settings.set_value("host_opts", _host.duplicate())
-	var mode := HostSession.online_mode(str(_host["mode"]))
-	show_host(false)
-	session = HostSession.new()
-	_bind_session()
-	(session as HostSession).begin_host(url, {"name": str(_ui["rname"].text), "pub": _host["pub"], "max": _host["max"], "bots": int(_host["bots"]),
-		"mode": mode, "map": _host_map(mode), "dyn": str(_host["dyn"]), "diff": str(Settings.get_value("difficulty", "normal")),
-		"lim": int(_host["lim"]), "hp": int(_host["hp"]), "grav": float(_host["grav"]), "kb": float(_host["kb"]), "crate": str(_host["crate"]),
-		"inf": bool(_host["inf"])},
-		{"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
-		"color": Settings.get_value("color", 0x39b5a8), "cls": Settings.get_value("class", "wobbler")}, str(Settings.get_value("token", "")))
-	_refresh_buttons()
 
 func _on_hosted(_code: String) -> void:
 	_fill_lobby()
 	show_lobby(true)
 	if session is HostSession and (session as HostSession).arcade:
-		# the Arcade room has no Host sheet: say exactly what to do (the code is in the lobby card)
-		_status(tr("Share the room code. Start when your friend is in."))
+		# the Arcade co-op room is hosted from the online Host sheet: say exactly how the run starts (the code is in the card)
+		_status((tr("Your Arcade co-op room is open and in the room list. ") if (session as HostSession).pub
+			else tr("Share the room code. ")) + tr("Start needs two players, or start with the teammate bot."))
 
 ## Host migration while on the title / lobby: the new HostSession replaces the guest one.
 func _on_promoted(hs: GuestSession) -> void:
@@ -1072,29 +1154,62 @@ func _build_lobby() -> void:
 	lv.add_theme_font_size_override("font_size", 20)
 	lv.pressed.connect(func() -> void: if session: session.leave("You left the room."))
 	row.add_child(lv)
+	var sb := Button.new()
+	sb.name = "StartBot"; sb.text = "Start with bot"     # Arcade co-op only: 1 human + the teammate bot (solo testing)
+	sb.custom_minimum_size = Vector2(0, 60)
+	sb.add_theme_font_size_override("font_size", 20)
+	sb.pressed.connect(_lobby_start.bind(true))
+	row.add_child(sb)
 	var st := Button.new()
 	st.name = "Start"; st.text = "Start"
 	st.theme_type_variation = &"PrimaryButton"
 	st.size_flags_horizontal = SIZE_EXPAND_FILL
 	st.custom_minimum_size = Vector2(0, 60)
 	st.add_theme_font_size_override("font_size", 22)
-	st.pressed.connect(func() -> void: if session is HostSession: (session as HostSession).start_match())
+	st.pressed.connect(_lobby_start.bind(false))
 	row.add_child(st)
+
+## Start from the lobby (host only). `with_bot` = the co-op "Start with bot": one player and the teammate bot; a plain
+## Start on an Arcade co-op room is refused until a second player is in (HostSession.can_start / start_match guard).
+func _lobby_start(with_bot := false) -> void:
+	if not (session is HostSession): return
+	var hs := session as HostSession
+	if hs.arcade and not with_bot and not hs.can_start():
+		_status(tr("Start needs two players. Wait for a friend, or start with the teammate bot."))
+		_fill_lobby()
+		return
+	hs.start_match(with_bot)
+
+## The room is an Arcade co-op room (a Godot host says so; a guest reads the kind label the host puts in the roster).
+func _is_coop_room() -> bool:
+	if session == null: return false
+	if session is HostSession: return (session as HostSession).arcade
+	return str(session.lobby.get("modeName", "")) == HostSession.ARCADE_LABEL
 
 func show_lobby(on: bool) -> void:
 	if lobby: lobby.visible = on
 
-## The lobby card from the session: room name / code, a line per player (the host first), the rules (a Godot host's,
-## else the web host's mode and arena), Start for the host.
+## The lobby card from the session: room name / kind / code, a line per player (the host first), what the room plays,
+## Leave and Start for the host. An Arcade co-op room also has "Start with bot" while the room has one player, and its
+## Start stays disabled until a second player is in; a guest always waits for the host.
 func _fill_lobby() -> void:
 	var box := lobby.get_node("Center/Card/Box")
 	var hs: HostSession = session as HostSession if session is HostSession else null
 	var roster: Array = session.roster if session != null else []
+	var coop := _is_coop_room()
 	(box.get_node("Title") as Label).text = (session.room_name if session != null and session.room_name != "" else tr("Lobby")).substr(0, 24)
 	var code: Label = box.get_node("Code")
-	if session == null: code.text = ""
-	elif hs != null: code.text = (tr("Public room · %s") % hs.room_code) if hs.pub else (tr("Room code %s") % hs.room_code)
-	else: code.text = tr("Room code %s") % session.room_code.to_upper()
+	if session == null:
+		code.text = ""
+	elif hs != null:
+		if hs.arcade:
+			code.text = (tr("Arcade co-op · public room %s") % hs.room_code) if hs.pub else (tr("Arcade co-op · room code %s") % hs.room_code)
+		else:
+			code.text = (tr("Public room · %s") % hs.room_code) if hs.pub else (tr("Room code %s") % hs.room_code)
+	elif coop:
+		code.text = tr("Arcade co-op · room code %s") % session.room_code.to_upper()
+	else:
+		code.text = tr("Room code %s") % session.room_code.to_upper()
 	var grid: GridContainer = box.get_node("Players")
 	for c in grid.get_children(): c.queue_free()
 	for r: Dictionary in roster:
@@ -1108,15 +1223,32 @@ func _fill_lobby() -> void:
 		grid.add_child(l)
 	var seats := hs.opt_max if hs != null else int(session.lobby.get("max", 0)) if session != null else 0
 	var info: Label = box.get_node("Info")
-	info.text = tr("%d / %d players") % [roster.size(), seats] + (tr(" · empty seats get bots") if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
-		+ ("" if hs != null else tr(" · waiting for the host to start"))
+	if coop:
+		if hs != null:
+			info.text = (tr("%d / %d players · ready to start") % [roster.size(), seats]) if hs.can_start() \
+				else tr("1 / 2 players · waiting for a friend (or start with the bot)")
+		else:
+			info.text = tr("%d / %d players · waiting for the host to start") % [roster.size(), seats]
+	else:
+		info.text = tr("%d / %d players") % [roster.size(), seats] + (tr(" · empty seats get bots") if (hs != null and hs.opt_bots) or (hs == null and session != null and session.lobby.get("bots", false)) else "") \
+			+ ("" if hs != null else tr(" · waiting for the host to start"))
 	var rl: Label = box.get_node("Rules")
-	if hs != null: rl.text = HostSession.rules_text(hs.rules_list())
+	if coop:
+		if hs != null:
+			rl.text = tr("Arcade co-op · %s difficulty · the stages set the rules") % tr(_arcade_diff_name())
+		else:
+			rl.text = tr("Arcade co-op · the stages set the rules")
+	elif hs != null:
+		rl.text = HostSession.rules_text(hs.rules_list())
 	elif session != null and session.lobby.get("rl") is Dictionary: rl.text = HostSession.rules_text(session.lobby["rl"])
 	elif session != null and str(session.lobby.get("modeName", "")) != "": rl.text = "%s · %s" % [session.lobby["modeName"], session.lobby.get("map", "")]
 	else: rl.text = ""
 	rl.visible = rl.text != ""
-	(box.get_node("Buttons/Start") as Button).visible = hs != null
+	var start_b: Button = box.get_node("Buttons/Start")
+	var bot_b: Button = box.get_node("Buttons/StartBot")
+	start_b.visible = hs != null
+	bot_b.visible = hs != null and hs.arcade and not hs.can_start()
+	start_b.disabled = hs != null and hs.arcade and not hs.can_start()
 
 # ---------------- Construction title (the DON'T ENTER wipe) ----------------
 

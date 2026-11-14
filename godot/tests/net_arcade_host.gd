@@ -2,28 +2,35 @@ extends SceneTree
 ## Arcade co-op HOST test, headless (run by tools/test-net-host.js scenario "arcade", tests/net_arcade_peer.gd as the
 ## guest):  godot --headless --path godot --script res://tests/net_arcade_host.gd -- ws://127.0.0.1:PORT/ws --no-save
 ##
-## Opens the Construction hub's "Play co-op" room directly through HostSession (opts `arcade: true`, 2 seats, 1 teammate bot,
-## Construction on the generated site, normal difficulty) and starts ALONE: seat 1 is the teammate bot, then the four
-## Tradies crew. It walks the run through the M1/M3 guest-side path and prints what the host did, for the Node side to
-## line up with the guest's own prints:
-##   - starts the stage-1 fight, so the Godot guest joins mid-fight (its `start.arc` state is the stage's intro);
-##   - puts guest seat 1 down (`_seat_down`): `am.dn`/`am.dnt` go out, then the 6 s auto-revive sends `am.rv`;
-##   - clears stage 1 for real (`_cleared` -> `_pay`), then retries the same stage and clears it again (no double pay);
-##   - advances to stage 2 (new `start` + fresh site seed), sets 0.42 boss health / 3 lives / a 50 m shrinking floor for
-##     the guest's HUD and shrink checks;
-##   - the guest leaves: the seat becomes a teammate bot that keeps fighting and keeps the player's class/kit (M3);
-##   - the guest REJOINS: `_hello` sends the current stage's `start` and `bot_to_human` hands seat 1 back;
-##   - the host wins (`_win`: victory bonus on its own save) and leaves: the run ends for the guest.
-## Prints JSON lines the Node side asserts: HOSTED, START<n>, HOST_STAGE, HOST_FIGHT, PEER_IN, DOWN_SENT, REVIVED_HOST,
-## CLEAR1_H, RETRY, HOST_FIGHT2, CLEAR2_H, ADVANCING, HOST_HF, PEER_OUT, SEAT_BOT, REJOIN, HOST_WON, AM_SENT, LEAVE, DONE.
+## Creates the room through the ONLINE flow (owner's entry refactor): the real title scene, Play online -> Host a room ->
+## Room type: Arcade co-op -> Create room (a public room), then takes that HostSession over. That proves the room kind
+## on the wire (`kind: "arcade-coop"`) comes from the online create-room path. Then the start gate:
+##   - a plain Start with one player is REFUSED (`START_REFUSED`, no `start` sent);
+##   - a second client joining makes Start possible (`CAN_START`), then leaving brings it back (`CAN_START_BACK`) and a
+##     guest's forged `start` is dropped (`GUARDED_DROPPED`: a guest cannot start);
+##   - "Start with bot" starts the run with seat 1 as the teammate bot (`START_BOT` -> `START1`).
+## After that the M1/M3 run flow is the same as before: starts the stage-1 fight so the Godot guest joins mid-fight, puts
+## guest seat 1 down (`am.dn`/`am.dnt`) and revives it (`am.rv`), clears stage 1 and retries it (no double pay), advances to
+## stage 2 (new `start` + fresh seed), the guest leaves (seat -> teammate bot with its class/kit) and rejoins mid-run,
+## the host wins and leaves (the run ends for the guest).
+## Prints JSON lines the Node side asserts: HOSTED, START_REFUSED, CAN_START, CAN_START_BACK, GUARDED_DROPPED, START_BOT,
+## START<n>, HOST_STAGE, HOST_FIGHT, PEER_IN, DOWN_SENT, REVIVED_HOST, CLEAR1_H, RETRY, HOST_FIGHT2, CLEAR2_H, ADVANCING,
+## HOST_HF, PEER_OUT, SEAT_BOT, REJOIN, HOST_WON, AM_SENT, LEAVE, DONE.
 
-var session := HostSession.new()
+var session: HostSession = null
+var main: Control = null
+var vp: SubViewport = null
 var world: Node = null
 var starts := 0
 var t := 0.0
 var t_total := 0.0
+var pre_t := 0.0
+var refused := false
+var saw_two := false
+var saw_one := false
+var bot_started := false
+var last_guarded := 0
 var fails := 0
-var started := false
 var began := false
 var stage_printed := -1
 var peer_in_at := -1.0
@@ -71,27 +78,36 @@ func _initialize() -> void:
 	Engine.max_fps = 60
 	process_frame.connect(_begin.bind(args), CONNECT_ONE_SHOT)
 
+## The online create-room path: the real title scene, the DLC owned (an Arcade co-op room is part of Construction),
+## Play online -> Host a room -> Room type: Arcade co-op -> Public -> Create room.
 func _begin(args: PackedStringArray) -> void:
 	var settings: Node = root.get_node("Settings")
 	settings.set_value("class", "wobbler")
 	settings.set_value("name", "GodotArcadeHost")
-	session.record = true
-	session.hosted.connect(func(code: String) -> void: print("HOSTED ", JSON.stringify({"code": code})))
-	session.ended.connect(func(r: String) -> void: print("ENDED ", r))
-	session.roster_changed.connect(_on_roster)
-	session.match_started.connect(_on_start)
-	session.status_changed.connect(func(s: String) -> void: print("STATUS ", s))
-	var ok := session.begin_host(args[0], {"name": "Arcade co-op", "pub": false, "max": 2, "bots": 1,
-		"mode": "construction", "map": "sitegen", "arcade": true, "arcade_diff": "normal", "diff": "normal",
-		"dyn": "off", "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "lim": 0},
-		{"name": "GodotArcadeHost", "skin": "none", "hat": "none", "color": 0x39b5a8, "cls": "wobbler"})
-	if not ok: fail("begin_host refused")
+	settings.set_value("server_url", str(args[0]))
+	var sv: Node = root.get_node("Save")
+	var dlc: Dictionary = sv.get("dlc") if sv.get("dlc") is Dictionary else {}
+	dlc["owned"] = true
+	vp = SubViewport.new()
+	vp.size = Vector2i(1170, 540)
+	vp.disable_3d = true
+	root.add_child(vp)
+	main = load("res://scenes/main.tscn").instantiate()
+	main.auto_intro = false
+	main.auto_news = false
+	vp.add_child(main)
+	main.browser.auto_refresh = false
+	main._ui["name"].text = "GodotArcadeHost"
+	main.show_tab(true)
+	main.show_host(true)
+	main.set_host_type("coop")
+	main._host_bs["pub_1"].pressed.emit()                 # a public co-op room: the room browser must list it (kind)
+	main._ui["rname"].text = "Arcade co-op"
+	print("ONLINE_CREATE ", JSON.stringify({"type": str(main._host["type"]), "pub": bool(main._host["pub"])}))
+	main.host_room()
 
 func _on_roster(r: Array) -> void:
 	print("ROSTER ", JSON.stringify({"n": r.size(), "started": session.started, "arcade": session.arcade, "mode": session.mode_id}))
-	if not started and not session.started:
-		started = true
-		print("STARTING ", JSON.stringify({"ok": session.start_match()}))
 
 func _on_start(s: Dictionary) -> void:
 	starts += 1
@@ -110,12 +126,54 @@ func _on_start(s: Dictionary) -> void:
 	world.mode_id = "construction"
 	root.add_child(world)
 
+## Before the run: wait for the online flow to make the room, take its HostSession over, then the lobby start gate.
+func _prestart(dt: float) -> void:
+	pre_t += dt
+	if session.guarded != last_guarded:
+		last_guarded = session.guarded
+		print("GUARDED_DROPPED ", JSON.stringify({"guarded": session.guarded, "relayed": session.relayed}))
+	if not refused:
+		if pre_t <= 1.0: return
+		refused = true
+		print("START_REFUSED ", JSON.stringify({"ok": session.start_match(), "can_start": session.can_start(),
+			"humans": session.human_count(), "status": session.status}))
+		return
+	if not saw_two and session.human_count() >= 2:
+		saw_two = true
+		print("CAN_START ", JSON.stringify({"humans": session.human_count(), "can_start": session.can_start()}))
+		return
+	if saw_two and not saw_one and session.human_count() <= 1:
+		saw_one = true
+		print("CAN_START_BACK ", JSON.stringify({"humans": session.human_count(), "can_start": session.can_start()}))
+		return
+	if saw_one and not bot_started:
+		bot_started = true
+		print("START_REFUSED_AGAIN ", JSON.stringify({"ok": session.start_match(), "can_start": session.can_start()}))
+		print("START_BOT ", JSON.stringify({"ok": session.start_match(true), "humans": session.human_count(),
+			"arcade": session.arcade, "status": session.status}))
+		return
+
 func _process(dt: float) -> bool:
 	t_total += dt
-	if t_total > 300.0:
+	if t_total > 360.0:
 		fail("timeout"); _finish(1); return false
+	if session == null:
+		if main != null and main.session is HostSession and (main.session as HostSession).phase >= GuestSession.Phase.LOBBY \
+				and (main.session as HostSession).room_code != "":
+			session = main.session as HostSession
+			main._unbind_session()
+			main.session = null
+			session.record = true
+			session.status_changed.connect(func(s: String) -> void: print("STATUS ", s))
+			session.ended.connect(func(r: String) -> void: print("ENDED ", r))
+			session.roster_changed.connect(_on_roster)
+			session.match_started.connect(_on_start)
+			print("HOSTED ", JSON.stringify({"code": session.room_code, "kind": session.room_kind(), "arcade": session.arcade,
+				"pub": session.pub, "max": session.room_max(), "name": session.room_name}))
+		return false
 	if world == null:
 		session.poll(dt)
+		_prestart(dt)
 		return false
 	var m = world.arcade
 	var nm: HostMatch = world.net_match as HostMatch
@@ -260,4 +318,8 @@ func _finish(code: int) -> void:
 	session.leave("test done")
 	if world != null and is_instance_valid(world): world.queue_free()
 	world = null
+	if vp != null and is_instance_valid(vp):
+		vp.queue_free()
+		vp = null
+		main = null
 	quit(1 if fails > 0 or code != 0 else 0)

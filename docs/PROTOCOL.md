@@ -66,7 +66,7 @@ Messages are processed in order, but while an `auth` check is running the messag
 | `max` | int | clamped 2–8 |
 | `started` | bool | |
 | `build` | string | 16 |
-| `kind` | string | `pvp` (a normal room) or `arcade-coop` (the Construction hub's Arcade co-op); default `pvp`, derived from `mode: "construction"` for older hosts |
+| `kind` | string | `pvp` (a normal room) or `arcade-coop` (an Arcade co-op room, created from Play online > Host a room > Room type: Arcade co-op); default `pvp`, derived from `mode: "construction"` for older hosts |
 | `arcade` | bool | `true` exactly when `kind` is `arcade-coop` |
 | `kindName` | string | 24, a human label (`Arcade co-op`, otherwise the mode name) |
 
@@ -414,13 +414,14 @@ Rules a Godot host follows:
 
 ## 6.4 Arcade co-op room (Godot only, additive)
 
-The Construction DLC's boss rush can be played by two players (`docs/ARCADE_COOP_PLAN.md`, M1). It is an **app-only**
+The Construction DLC's boss rush can be played by two players (`docs/ARCADE_COOP_PLAN.md`, M1/§12). It is an **app-only**
 room: `mode` / `rules.gmode` are `construction`, a web guest is refused with `kick` (never downgraded to Classic: there
-is no Classic version of a run), the room is private and has two seats.
+is no Classic version of a run), the room has two seats and is public or private like any other room (the room list
+shows `kind: "arcade-coop"` / `kindName: "Arcade co-op"`).
 
 | Field | Where | Meaning |
 |---|---|---|
-| `arcade: true` | host opts (`begin_host`) | Opens an Arcade co-op room: it reads Construction from the run instead of the Host sheet (HP, gravity, knockback, crates and the K.O. limit come from the stage table) and caps at two seats. The hub's "Play co-op" calls this directly. **On the wire** the room's `info` and the room list carry `kind: "arcade-coop"`, `arcade: true` and `kindName: "Arcade co-op"` (1.1), and `join` may send `kind: "arcade-coop"` to be sure a code is this kind of room. |
+| `arcade: true` | host opts (`begin_host`) | Opens an Arcade co-op room: it reads Construction from the run instead of the Host sheet (HP, gravity, knockback, crates and the K.O. limit come from the stage table) and caps at two seats. The online Host sheet's **Room type: Arcade co-op** calls this directly (`scripts/main.gd: host_room`, `coop_host_opts`), reading `Settings arcade_diff` / `arcade_ff`. **On the wire** the room's `info` and the room list carry `kind: "arcade-coop"`, `arcade: true` and `kindName: "Arcade co-op"` (1.1), and `join` may send `kind: "arcade-coop"` to be sure a code is this kind of room. |
 | `start.slots` | `start` | `[seat0, seat1, crew0, crew1, …]` — the two player seats first, then the stage's crew bots (the boss is `crew[0]`). `MatchSim.setup` gets `bot_count = slots.size() - 1`, so the host has a fighter for every slot; `HostMatch.setup` turns seat slots into ghosts (humans) or keeps them as teammate bots and keeps the crew as its AI bots. **The crew slots are not joinable**: a joining/rejoining guest only ever gets slot 1. `slots.size() <= 8` (stage 1: 2 + 4). |
 | `start.arc` | `start` | `{run, st, of, diff, seed, seats, crew, boss, big, state, lv}`: the run seed, this stage (0-based) and the stage count, the difficulty, this stage's generated-site seed (`SiteMap.set_seed` — the guest rebuilds the identical site from it), the seat/crew slots, the boss' slot (-1 on a stage without one), the 1.5x Client visual flag, the state (always `intro` for a stage's start) and the shared lives. **A new `start` per stage is the stage-transition mechanism**, exactly like a rematch: the guest's world rebuilds (`_on_net_start` → `load_map`), so no stale map, crates, hazards or crew survive. A mid-run join/rejoin gets the same `start` with the current stage's `arc`. |
 | `am` | host → all | Run display state, ~5 Hz + on every state change (table in `6.3`): stage/count, state, shared lives, boss hp fraction, shrink size, downed seats (`dn`+`dnt`), the revive instruction (`rv`), bot-played seats (`bt`), the clear/victory counter (`cn`), the stage summary and the victory flag. The guest applies it for its cards/HUD, its own shrinking floor and its own down/revive; it is presentation only (it never advances a stage or damages anyone). Coins and records are per player: the host writes its own save, and each guest applies its own `DlcSave.has_cleared` to `last` / `vic` and pays its own save once per `cn` (never a second save on the host, never a guest save on the host). |
@@ -431,6 +432,9 @@ is no Classic version of a run), the room is private and has two seats.
 
 Rules a Godot host follows for this room (implemented in `host_session.gd` / `host_match.gd` / `arcade_manager.gd`):
 
+- **Lobby start gate:** a plain Start is refused while the room has fewer than two players (`HostSession.can_start` /
+  `start_match`: no `start` goes out); the lobby's **Start with bot** button starts with one player and the teammate bot
+  in the empty seat. A guest can never start (the guard drops a guest `start`).
 - `net_mode("construction")` returns `construction` for an arcade room (else Classic for anything the web cannot play);
   the `start` carries `rules.gmode = "construction"` so Godot guests play Construction.
 - The run's stage/seed/lives/crew live in the host's `ArcadeManager`; `next_stage`/`retry_stage` reload the world, and the
@@ -444,7 +448,12 @@ Rules a Godot host follows for this room (implemented in `host_session.gd` / `ho
   The relay promotes the remaining player, but the Arcade world does not resume it: it closes the promoted room and both
   sides return with "The host left. The Arcade run is over." (the host's own message is "The Arcade run is over.").
 
-Test: `npm run test:godot-host`, scenario D ("arcade"): the room's relay metadata carries `kind: "arcade-coop"` / `arcade: true`, a probe asking to join it as `pvp` is refused with `nojoin {reason: "kind"}` while a made-up code is `reason: "none"`, and a real join's `joined` reply carries the kind; then a host starts the room with the teammate bot; a Godot guest joins
+Test: `npm run test:godot-host`, scenario D ("arcade"): the room is created from the online create-room sheet
+(Room type: Arcade co-op, public), its relay metadata and its room-list row carry `kind: "arcade-coop"` / `arcade: true`
+/ `kindName: "Arcade co-op"`, a probe asking to join it as `pvp` is refused with `nojoin {reason: "kind"}` while a
+made-up code is `reason: "none"`, and a real join's `joined` reply carries the kind; a plain Start with one player is
+refused (no `start`), a second client joining makes Start possible, that guest's forged `start` is dropped by the host's
+guard (a guest cannot start), and "Start with bot" then starts the room with the teammate bot; a Godot guest joins
 mid-fight and reports the same site seed, the host seat / every crew slot / the boss as ghosts, and `am`; the host puts
 the guest seat down (`am.dn`) and auto-revives it (`am.rv`: the guest pins itself, then is placed at the host's spot with
 its health fraction); a real clear and a retry clear pay the guest's OWN save once (350 coins) and then nothing (the

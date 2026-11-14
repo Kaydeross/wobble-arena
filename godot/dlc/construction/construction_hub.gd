@@ -6,13 +6,14 @@ extends UiPage
 ## when short) and "Enter code" opens the code sheet. Owned: Classic opens a small pre-match card (bots 1..7, bot skill,
 ## the site seed with Random / Re-roll, Start). Start writes the Settings keys mode, bots, difficulty, offline_map
 ## ("sitegen" when that map exists, else "siteyard") and site_seed (0 = a new site every match), then `start_requested`
-## (scripts/main.gd: play_offline). Arcade: `arcade_requested` (the arcade manager hooks it), "Coming soon" until it exists,
-## and "Play co-op" on the class / difficulty steps (`arcade_coop_requested`: the two-seat online run, main.play_arcade_coop).
-## The difficulty step also has the co-op friendly-fire toggle (Settings arcade_ff, off by default; it travels in start.arc.ff).
+## (scripts/main.gd: play_offline). Arcade: `arcade_requested` (the arcade manager hooks it), "Coming soon" until it exists.
+## The Arcade card is the SOLO run; the two-seat online co-op run is an online room now (Play online > Host a room >
+## Room type: Arcade co-op, scripts/main.gd: host_room), so this hub has no co-op entry point.
+## The difficulty step also has the co-op friendly-fire toggle (Settings arcade_ff, off by default; the online co-op room
+## reads it and it travels in start.arc.ff).
 
 signal start_requested(opts: Dictionary)
 signal arcade_requested
-signal arcade_coop_requested   ## the Arcade "Play co-op" card: host the two-seat Arcade room (scripts/main.gd)
 
 const ARCADE_MANAGER := "res://dlc/construction/arcade_manager.gd"
 const BOT_MIN := 1
@@ -45,8 +46,7 @@ var arc_class_box: VBoxContainer
 var arc_diff_box: HBoxContainer
 var arc_foot: HBoxContainer
 var arc_next: Button
-var arc_coop: Button              ## "Play co-op": the two-seat online Arcade room (M1)
-var arc_ff: CheckButton           ## co-op friendly fire (Settings arcade_ff; off by default, difficulty step only)
+var arc_ff: CheckButton           ## co-op friendly fire (Settings arcade_ff; off by default; the online co-op room reads it)
 var _diff_cards := {}             ## difficulty id -> its card Button
 var _bot_bs := {}
 var _diff_bs := {}
@@ -314,16 +314,8 @@ func _build_arcade() -> void:
 	arc_next.add_theme_font_size_override("font_size", 28)
 	arc_next.pressed.connect(arcade_next)
 	arc_foot.add_child(arc_next)
-	arc_coop = Button.new()
-	arc_coop.name = "ArcadeCoop"
-	arc_coop.text = "Play co-op"
-	arc_coop.tooltip_text = "Host a room for two: the same boss rush, a friend can take the second seat (or a bot does)."
-	arc_coop.custom_minimum_size = Vector2(200, 62)
-	arc_coop.add_theme_font_size_override("font_size", 24)
-	arc_coop.pressed.connect(arcade_coop)
-	arc_foot.add_child(arc_coop)
-	# Co-op friendly fire (owner decision: off by default). A plain English label like the co-op button, shown on the
-	# difficulty step only; it writes Settings arcade_ff, which main.play_arcade_coop's room and the net layer pick up.
+	# Co-op friendly fire (owner decision: off by default). A plain English label like before, shown on the difficulty
+	# step only; it writes Settings arcade_ff, which the online co-op room (hosted from Play online) reads for its run.
 	arc_ff = CheckButton.new()
 	arc_ff.name = "ArcadeFF"
 	arc_ff.text = "Friendly fire"
@@ -454,7 +446,7 @@ func pick_diff(d: String) -> void:
 	for k: String in _diff_cards: (_diff_cards[k] as Button).set_pressed_no_signal(k == arc_diff)
 	refresh()
 
-## The co-op friendly-fire toggle: remembered in Settings (read by main.play_arcade_coop -> the room -> start.arc.ff).
+## The co-op friendly-fire toggle: remembered in Settings (read by the online Arcade co-op room's begin_host).
 func _set_arc_ff(on: bool) -> void:
 	Settings.set_value("arcade_ff", on)
 
@@ -471,13 +463,6 @@ func arcade_next() -> void:
 		Settings.set_value("arcade_diff", arc_diff)
 		Settings.set_value("class", arcade_class())
 		arcade_requested.emit()
-
-## Play co-op: the same run, hosted online for two (main.play_arcade_coop). The difficulty picked so far and the selected
-## class are kept, so the room's run matches what the cards show.
-func arcade_coop() -> void:
-	Settings.set_value("arcade_diff", arc_diff)
-	Settings.set_value("class", arcade_class())
-	arcade_coop_requested.emit()
 
 # ---------------- the pre-match card ----------------
 
