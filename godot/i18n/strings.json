@@ -846,6 +846,13 @@
   "fr": "Un nouveau chantier à chaque fois : une cour clôturée avec une grue, une pelleteuse, un bulldozer, des tas de terre, des conteneurs, des tours d'échafaudage et une tranchée avec un tremplin. Grimpez aux échelles, sautez de machine en machine et méfiez-vous des portails ouverts.",
   "es": "Una obra nueva cada vez: un recinto vallado con grúa, excavadora, bulldozer, montones de tierra, contenedores, torres de andamio y una zanja con trampolín. Sube escaleras, salta de máquina en máquina y cuidado con las puertas abiertas."
  },
+ "A new title screen: Play on the left, the rest on the right": {
+  "zh_TW": "全新標題畫面：左邊是開始遊戲，其餘在右邊",
+  "zh_CN": "全新标题画面：左边是开始游戏，其余在右边",
+  "ja": "新しいタイトル画面：左にプレイ、右にそのほか",
+  "fr": "Un nouvel écran titre : Jouer à gauche, le reste à droite",
+  "es": "Una nueva pantalla de título: Jugar a la izquierda, lo demás a la derecha"
+ },
  "A plus-shaped street high above the city. Four arms, a raised hub and nothing but sky in the corners, so every shove can be the last. Bounce pads fling you back toward the middle.": {
   "zh_TW": "高懸於城市之上的十字形街道。四條臂、一個高起的中心，四角只有天空，所以每一次推擠都可能是最後一次。彈跳墊會把你彈回中間。",
   "zh_CN": "高悬于城市之上的十字形街道。四条臂、一个高起的中心，四角只有天空，所以每一次推挤都可能是最后一次。弹跳垫会把你弹回中间。",
@@ -1118,6 +1125,13 @@
   "ja": "アーケードのボス連戦：作業員からクライアントまで3ライフで挑戦。現場監督のヘルメットも手に入る",
   "fr": "Série de boss Arcade : des Ouvriers jusqu'au Client, avec 3 vies, et le casque de Chef de chantier à gagner",
   "es": "Maratón de jefes Arcade: de los Obreros al Cliente con 3 vidas, y el casco de Capataz como premio"
+ },
+ "Arcade co-op: two players online beat the boss rush together, and a bot takes over if your mate leaves": {
+  "zh_TW": "街機合作：兩名玩家連線一起挑戰頭目連戰，隊友離開時由機器人接手",
+  "zh_CN": "街机合作：两名玩家联机一起挑战头目连战，队友离开时由机器人接手",
+  "ja": "アーケード協力：2人でオンラインのボスラッシュに挑戦。仲間が抜けたらボットが代わりに参戦",
+  "fr": "Arcade en coop : à deux en ligne contre l'enchaînement de boss, et un bot prend le relais si ton pote part",
+  "es": "Arcade cooperativo: dos jugadores en línea contra la tanda de jefes, y un bot toma el relevo si tu colega se va"
  },
  "Arena": {
   "zh_TW": "競技場",
@@ -4542,6 +4556,13 @@
   "fr": "Partie commencée",
   "es": "Partida iniciada"
  },
+ "Matches start with a countdown, and you spawn on a random safe spot": {
+  "zh_TW": "比賽以倒數開始，你會出生在隨機的安全位置",
+  "zh_CN": "比赛以倒数开始，你会出生在随机的安全位置",
+  "ja": "試合はカウントダウンで開始、スタート地点はランダムな安全な場所",
+  "fr": "Les matchs démarrent par un compte à rebours, et tu apparais sur un point sûr au hasard",
+  "es": "Las partidas empiezan con cuenta atrás, y apareces en un punto seguro al azar"
+ },
  "Medium": {
   "zh_TW": "中",
   "zh_CN": "中",
@@ -4569,6 +4590,13 @@
   "ja": "近接のみ",
   "fr": "Corps à corps uniquement",
   "es": "Solo cuerpo a cuerpo"
+ },
+ "Melee bosses fixed, and the stuck FIRE button is gone": {
+  "zh_TW": "修正近戰頭目，並解決開火鍵卡住的問題",
+  "zh_CN": "修复近战头目，并解决开火键卡住的问题",
+  "ja": "近接ボスを修正し、FIREボタンが固まる問題も解消",
+  "fr": "Boss de mêlée corrigés, et le bouton TIR ne reste plus coincé",
+  "es": "Jefes cuerpo a cuerpo arreglados, y el botón de DISPARO ya no se queda atascado"
  },
  "Menus, HUD and touch buttons. Auto keeps buttons finger-sized on this screen.": {
   "zh_TW": "選單、HUD 與觸控按鈕。自動會讓按鈕在這個畫面上保持適合手指點按的大小。",
@@ -5668,6 +5696,13 @@
   "ja": "地震",
   "fr": "Séisme",
   "es": "Sismo"
+ },
+ "Quick play: one tap for a random arena and mode": {
+  "zh_TW": "快速遊戲：一鍵進入隨機場地和模式",
+  "zh_CN": "快速游戏：一键进入随机场地和模式",
+  "ja": "クイックプレイ：ワンタップでランダムなアリーナとモードへ",
+  "fr": "Partie rapide : un tap pour une arène et un mode au hasard",
+  "es": "Juego rápido: un toque para una arena y un modo al azar"
  },
  "Quit match": {
   "zh_TW": "結束比賽",
@@ -7257,6 +7292,13 @@
   "ja": "強い衝撃や爆発でカメラが揺れます",
   "fr": "La caméra tremble lors des gros coups et des explosions",
   "es": "La cámara tiembla con los golpes fuertes y las explosiones"
+ },
+ "The co-op update": {
+  "zh_TW": "合作大更新",
+  "zh_CN": "合作大更新",
+  "ja": "協力プレイアップデート",
+  "fr": "La mise à jour Coop",
+  "es": "La actualización cooperativa"
  },
  "The first app build! Every arena, every weapon and the bots that live in them came over from the web game": {
   "zh_TW": "首個 App 版本！每座競技場、每把武器，還有住在裡面的電腦玩家，全都從網頁版搬過來了",
