@@ -102,6 +102,74 @@ function create(store) {
   const signups = new Map();                                          // ip -> {n, t}: sign-ups in the last hour
   const lastSave = new Map();                                         // account -> time of the last save (one a second at most)
   const reports = new Map();                                          // account -> time of its last safety report (one per 10 s)
+  const rankRates = new Map();                                        // account -> {n, t}: ranking updates in the current window
+
+  /* ---------------- ranking (docs/PROTOCOL.md 4.1) ----------------
+     The account record keeps each player's lifetime best (`u.rk`) and is only ever raised, never lowered. Each board has
+     one small cache key (`rank:<board>`) with the top RANK.top entries; a submit updates the player's record and then
+     merges the new score into those caches. A GET is a single store read. This works the same on both store kinds
+     (file and Upstash) because it only uses get/set. */
+  const RANK = {
+    boards: ['kos', 'wins', 'arcade'],
+    top: 100, defaultLimit: 20, maxLimit: 100,
+    statsMax: 10000000, stageMax: 6,
+    diffs: ['easy', 'normal', 'nightmare'], diffWeight: { easy: 1, normal: 2, nightmare: 3 },
+    windowMs: 10000, perWindow: 6,
+    key: b => 'rank:' + b,
+  };
+  const boardArg = b => { const s = String(b === undefined || b === null ? '' : b).trim(); return RANK.boards.includes(s) ? s : null; };
+  const limitArg = n => { const v = n === undefined || n === null || n === '' ? RANK.defaultLimit : Number(n); return Number.isFinite(v) ? Math.max(1, Math.min(RANK.maxLimit, Math.floor(v))) : RANK.defaultLimit; };
+  const isStat = v => typeof v === 'number' && Number.isFinite(v) && Number.isInteger(v);
+  const int0 = v => (Number.isFinite(Number(v)) ? Math.max(0, Math.floor(Number(v))) : 0);
+  function optStat(v, name, cap) {
+    if (v === undefined || v === null) return null;
+    if (!isStat(v) || v < 0 || v > cap) throw new Fail(400, 'stats', name + ' must be a whole number from 0 to ' + cap + '.');
+    return v;
+  }
+  function readStats(b) {
+    const out = {};
+    for (const k of ['kos', 'wins', 'matches']) { const v = optStat(b[k], k, RANK.statsMax); if (v !== null) out[k] = v; }
+    const stage = optStat(b.arcade_best, 'arcade_best', RANK.stageMax);
+    if (stage !== null) {
+      const d = String(b.arcade_diff === undefined || b.arcade_diff === null ? 'normal' : b.arcade_diff);
+      if (!RANK.diffs.includes(d)) throw new Fail(400, 'stats', 'arcade_diff must be easy, normal or nightmare.');
+      out.arcade_best = stage; out.arcade_diff = d;
+    }
+    if (!Object.keys(out).length) throw new Fail(400, 'stats', 'Send kos, wins, matches or arcade_best.');
+    return out;
+  }
+  /** One number per board so the three boards share the sort/view code. Arcade is the furthest stage weighted by difficulty. */
+  function rankScore(u, board) {
+    const rk = (u && u.rk && typeof u.rk === 'object') ? u.rk : {};
+    if (board === 'kos') return int0(rk.kos);
+    if (board === 'wins') return int0(rk.wins);
+    const a = (rk.arcade && typeof rk.arcade === 'object') ? rk.arcade : {};
+    let best = 0;
+    for (const d of RANK.diffs) best = Math.max(best, int0(a[d]) * RANK.diffWeight[d]);
+    return best;
+  }
+  function rankCompare(a, b) {
+    return (b.score - a.score) || ((a.t || 0) - (b.t || 0)) || String(a.name).localeCompare(String(b.name)) || String(a.l).localeCompare(String(b.l));
+  }
+  async function readBoard(board) {
+    try { const raw = await store.get(RANK.key(board)); const o = raw ? JSON.parse(raw) : null; return o && Array.isArray(o.top) ? o.top : []; } catch (e) { return []; }
+  }
+  const writeBoard = (board, top) => store.set(RANK.key(board), JSON.stringify({ t: Date.now(), top: top.slice(0, RANK.top) }));
+  function rankOf(top, l, score, at) {
+    const i = top.findIndex(e => e && e.l === l);
+    if (i >= 0) return { rank: i + 1, score: top[i].score, updated: top[i].t || 0 };
+    let better = 0;
+    for (const e of top) if (e && e.score > score) better++;
+    return { rank: better + 1, score, updated: at || 0, estimated: true };   // below the cached top: position is a lower bound
+  }
+  function rankView(top, limit, me) {
+    return top.slice(0, limit).map((e, i) => {
+      const out = { rank: i + 1, name: String(e.name || 'Player'), score: int0(e.score), updated: int0(e.t) };
+      if (me && e.l === me) out.me = true;
+      return out;
+    });
+  }
+
 
   const getUser = async l => { const v = await store.get('user:' + l); try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
   const putUser = (l, u) => store.set('user:' + l, JSON.stringify(u));
@@ -270,8 +338,57 @@ function create(store) {
       await store.set('mod:' + now + ':' + id, JSON.stringify({ reporter: a.l, target, room, reason, details, at: now }), { ex: 90 * 86400 });
       return { ok: true, id };
     },
+    /* GET /api/rank?board=kos|wins|arcade&limit=N: the top scores (public; a valid token also gets `you`). */
+    async rankList(b, ctx) {
+      if (b.board !== undefined && boardArg(b.board) === null) throw new Fail(400, 'board', 'board must be kos, wins or arcade.');
+      const board = boardArg(b.board) || 'kos', limit = limitArg(b.limit);
+      const top = await readBoard(board);
+      let you = null, me = '';
+      if (ctx.token) {
+        const a = await who(ctx.token);
+        if (a) { me = a.l; you = rankOf(top, a.l, rankScore(a.u, board), int0(a.u.rk && a.u.rk.at)); }
+      }
+      return { ok: true, board, entries: rankView(top, limit, me), you };
+    },
+    /* POST /api/rank: store this account's lifetime best (only ever raised) and return the board it asked for.
+       Body: {kos?, wins?, matches?, arcade_best?, arcade_diff?, board?, limit?}. */
+    async rankSubmit(b, ctx) {
+      const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
+      if (b.board !== undefined && boardArg(b.board) === null) throw new Fail(400, 'board', 'board must be kos, wins or arcade.');
+      const stats = readStats(b);                                                       // validate first: junk never uses the rate budget
+      const now = Date.now(), rl = rankRates.get(a.l);
+      if (rl && now - rl.t < RANK.windowMs) {
+        if (rl.n >= RANK.perWindow) throw new Fail(429, 'slow', 'Ranking updates too fast. Wait a few seconds and try again.');
+        rl.n++;
+      } else rankRates.set(a.l, { n: 1, t: now });
+      const old = (a.u.rk && typeof a.u.rk === 'object') ? a.u.rk : {};
+      const oldArc = (old.arcade && typeof old.arcade === 'object') ? old.arcade : {};
+      const rk = { kos: int0(old.kos), wins: int0(old.wins), matches: int0(old.matches), at: int0(old.at),
+        arcade: { easy: int0(oldArc.easy), normal: int0(oldArc.normal), nightmare: int0(oldArc.nightmare) } };
+      if (stats.kos !== undefined) rk.kos = Math.max(rk.kos, stats.kos);                 // monotonic: never decrease
+      if (stats.wins !== undefined) rk.wins = Math.max(rk.wins, stats.wins);
+      if (stats.matches !== undefined) rk.matches = Math.max(rk.matches, stats.matches);
+      if (stats.arcade_best !== undefined) rk.arcade[stats.arcade_diff] = Math.max(rk.arcade[stats.arcade_diff], stats.arcade_best);
+      rk.at = now;
+      a.u.rk = rk;
+      await putUser(a.l, a.u);
+      for (const board of RANK.boards) {
+        const score = rankScore(a.u, board);
+        if (score <= 0) continue;
+        const top = await readBoard(board), i = top.findIndex(e => e && e.l === a.l);
+        if (i >= 0 && int0(top[i].score) >= score) continue;                             // no change: keep its earlier `updated` time
+        const next = top.filter(e => e && e.l !== a.l);
+        next.push({ l: a.l, name: filterDisplayName(a.u.u), score, t: now });
+        next.sort(rankCompare);
+        await writeBoard(board, next);
+      }
+      const board = boardArg(b.board) || 'kos', limit = limitArg(b.limit);
+      const top = await readBoard(board);
+      return { ok: true, board, entries: rankView(top, limit, a.l), you: rankOf(top, a.l, rankScore(a.u, board), rk.at),
+        stats: { kos: rk.kos, wins: rk.wins, matches: rk.matches, arcade: { easy: rk.arcade.easy, normal: rk.arcade.normal, nightmare: rk.arcade.nightmare } } };
+    },
   };
-  const map = { '/api/signup': ['POST', 'signup'], '/api/claim': ['POST', 'claim'], '/api/protect': ['POST', 'protect'], '/api/login': ['POST', 'login'], '/api/me': ['GET', 'me'], '/api/save': ['PUT', 'save'], '/api/logout': ['POST', 'logout'], '/api/password': ['POST', 'password'], '/api/recovery': ['POST', 'recovery'], '/api/reset': ['POST', 'reset'], '/api/delete': ['POST', 'remove'], '/api/report': ['POST', 'report'] };
+  const map = { '/api/signup': ['POST', 'signup'], '/api/claim': ['POST', 'claim'], '/api/protect': ['POST', 'protect'], '/api/login': ['POST', 'login'], '/api/me': ['GET', 'me'], '/api/save': ['PUT', 'save'], '/api/logout': ['POST', 'logout'], '/api/password': ['POST', 'password'], '/api/recovery': ['POST', 'recovery'], '/api/reset': ['POST', 'reset'], '/api/delete': ['POST', 'remove'], '/api/report': ['POST', 'report'], '/api/rank': { GET: 'rankList', POST: 'rankSubmit' } };
 
   const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS', 'access-control-max-age': '86400' };
   const reply = (res, status, obj) => { res.writeHead(status, Object.assign({ 'content-type': 'application/json', 'cache-control': 'no-store' }, CORS)); res.end(JSON.stringify(obj)); };
@@ -289,10 +406,15 @@ function create(store) {
     if (!url.startsWith('/api/')) return false;
     if (req.method === 'OPTIONS') { res.writeHead(204, CORS); res.end(); return true; }
     const r = map[url];
-    if (!r || r[0] !== req.method) { reply(res, 404, { ok: false, err: 'none', msg: 'Not found.' }); return true; }
+    const name = Array.isArray(r) ? (r[0] === req.method ? r[1] : '') : (r && typeof r === 'object' ? (r[req.method] || '') : '');
+    if (!name) { reply(res, 404, { ok: false, err: 'none', msg: 'Not found.' }); return true; }
     const auth = String(req.headers.authorization || ''), token = auth.startsWith('Bearer ') ? auth.slice(7).trim() : '';
     (async () => {
-      try { const b = req.method === 'GET' ? {} : await readBody(req); const out = await routes[r[1]](b, { ip, token }); reply(res, out.ok === false ? 409 : 200, out); }
+      try {
+        const q = (req.url || '').split('?')[1] || '';
+        const b = req.method === 'GET' ? Object.fromEntries(new URLSearchParams(q)) : await readBody(req);   // GET query: board/limit for /api/rank
+        const out = await routes[name](b, { ip, token }); reply(res, out.ok === false ? 409 : 200, out);
+      }
       catch (e) {
         if (e instanceof Fail) reply(res, e.status, { ok: false, err: e.err, msg: e.message });
         else { console.error('accounts error:', e && e.message); reply(res, 500, { ok: false, err: 'server', msg: 'The server had a problem. Try again in a moment.' }); }

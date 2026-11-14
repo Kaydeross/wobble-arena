@@ -46,7 +46,7 @@ Messages are processed in order, but while an `auth` check is running the messag
 | `list` | – | Replies `rooms`. |
 | `create` | `pub` (bool), `info` | Needs auth unless the server runs with `REQUIRE_LOGIN=0`. Replies `created` or `nocreate`. |
 | `update` | `info` | Host only. Refreshes the room-list entry. |
-| `join` | `id`, `build` | `id` is case-insensitive. Replies `joined` or `nojoin`. |
+| `join` | `id`, `build`, `kind?` | `id` is case-insensitive. `kind` (optional) is the kind of room this screen expects: `pvp` or `arcade-coop`. Replies `joined` or `nojoin`; a valid `kind` that does not match the room answers `{reason: "kind", kind: <the room's kind>}` (see 1.4). |
 | `quick` | `mode`, `build` | Joins the fullest public room of that mode. Replies `joined` or `nomatch`. |
 | `tohost` | `m` (object) | Guest → host. Server wraps it as `msg {from: cid, m}`. |
 | `to` | `cid`, `m` | Host → one guest. |
@@ -66,6 +66,12 @@ Messages are processed in order, but while an `auth` check is running the messag
 | `max` | int | clamped 2–8 |
 | `started` | bool | |
 | `build` | string | 16 |
+| `kind` | string | `pvp` (a normal room) or `arcade-coop` (the Construction hub's Arcade co-op); default `pvp`, derived from `mode: "construction"` for older hosts |
+| `arcade` | bool | `true` exactly when `kind` is `arcade-coop` |
+| `kindName` | string | 24, a human label (`Arcade co-op`, otherwise the mode name) |
+
+An Arcade co-op room is Construction-only: when a client sends `arcade: true` (or `kind: "arcade-coop"`) with another
+`mode`, the server keeps it a normal `pvp` room rather than mislabelling a classic match.
 
 ### 1.2 Server → client
 
@@ -77,8 +83,8 @@ Messages are processed in order, but while an `auth` check is running the messag
 | `rooms` | `rooms[]`, `online` | Each: `{id, name, host, mode, modeName, map, n, max, started, build, pub:true}`. Public rooms only, fullest first. |
 | `created` | `id`, `pub` | You are the host (cid 0). Public rooms are `r<base36 counter>`; private rooms are a 5-char code from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. |
 | `nocreate` | `reason` | `auth`, `inroom`, `busy` |
-| `joined` | `cid`, `id`, `pub` | You are a guest. `cid` is the server's connection id inside the room (1, 2, …) and is **not** the game slot. |
-| `nojoin` | `reason` | `auth`, `inroom`, `none`, `full`, `build` |
+| `joined` | `cid`, `id`, `pub`, `kind`, `arcade` | You are a guest. `cid` is the server's connection id inside the room (1, 2, …) and is **not** the game slot. `kind`/`arcade` say what kind of room you just joined (1.4). |
+| `nojoin` | `reason`, `kind?` | `auth`, `inroom`, `none`, `full`, `build`, `kind`. `kind` means the room exists but its kind differs from the `kind` you asked for (and carries the room's real `kind`/`arcade`); `none` means no room with that code **on this server**. |
 | `nomatch` | `reason?` | No suitable public room, or `auth`/in a room. |
 | `msg` | `from?`, `m` | To the host: `from` = guest cid. To a guest: no `from` (it is from the host). |
 | `peer` | `cid`, `ev` | Host only. `ev` = `open` (a guest joined) or `close` (a guest left). |
@@ -97,6 +103,24 @@ host leaves ──────┴─► longest-standing guest gets promoted; th
 ```
 
 Host migration: the room's `started` flag resets to false, guest cids are re-issued (the new host is cid 0, others keep their cids), and **every guest must send `hello` again**. The web client does not carry the match over (`netMigrate()`); a promoted Godot client does (6.3).
+
+---
+
+### 1.4 Server identity (which server is this?)
+
+A room code is only a key on the server that created it: a code from the Official server will never be found on a
+Local/Custom one and vice versa. The client names the server it is on (`godot/logic/server_info.gd`, UI chip
+`godot/ui/server_badge.gd`) and shows the mismatch hint when a code cannot be found:
+
+| Kind | What it matches | Notes |
+|---|---|---|
+| `official` | exactly the shipped `url` in `godot/data/extra/server.json` (after ignoring a trailing `/` and `/ws`) | the real server; release builds default to it |
+| `local` | `localhost`, `127.x`, `10/8`, `172.16/12`, `192.168/16`, `169.254/16`, Tailscale/CGNAT `100.64/10`, `*.ts.net`, `*.tailscale.net`, `*.local`, `*.lan`, `*.home` | the editor and `npm start`; only this device/LAN/tailnet |
+| `custom` | any other `ws://` / `wss://` URL | typed into Settings > About |
+
+`ServerInfo.mismatch_hint(other_url)` returns "" when both sides are the same server, and plain words otherwise ("That
+room is on the Official server, but this device is on the local server …"), which is what a "room not found" screen
+shows next to the code. The relay cannot see its own public URL, so this hint is computed on the client.
 
 ---
 
@@ -221,6 +245,8 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 | `/api/recovery` | POST | `password` | `{ok, recovery}` (new code; old one stops working) |
 | `/api/reset` | POST | `id`, `code`, `password` | `{ok, token, user, data, t, recovery}` |
 | `/api/delete` | POST | `password` (not needed for a name-only account) | `{ok}` — revokes every session; **required by App Store 5.1.1(v)** |
+| `/api/rank` | GET | query `board=kos\|wins\|arcade`, `limit?` | `{ok, board, entries: [{rank, name, score, updated, me?}], you?}` — public; a valid Bearer token adds `you` |
+| `/api/rank` | POST | `kos?`, `wins?`, `matches?`, `arcade_best?`, `arcade_diff?` (`easy`\|`normal`\|`nightmare`, default `normal`), `board?`, `limit?` | `{ok, board, entries, you, stats}` — authenticated; stores the account's bests (monotonic) and returns the requested board |
 | `/health` | GET | – | `{ok, rooms, players, accounts, saved}` |
 
 `user` is `{username, email, created, hasPassword}` (`email` is `''` for a name-only account).
@@ -232,6 +258,30 @@ Password change and reset revoke every token for the account. Reset and password
 Error shape: `{ok:false, err, msg}` with HTTP 400/401/409/413/429/500. Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
 
 The `data` blob is the whole client save (settings, coins, owned cosmetics, stats). Its schema belongs to the web client today; see §7 for why the server must own the economy before iOS ships.
+
+### 4.1 Ranking (leaderboard)
+
+Three boards: `kos` (lifetime K.O.s), `wins` (lifetime matches won) and `arcade` (the furthest Arcade co-op stage,
+weighted by difficulty: `easy` x1, `normal` x2, `nightmare` x3, so Nightmare 2 = 6 ranks above Normal 2 = 4).
+
+- **Storage.** The account record gets a `rk` object (`{kos, wins, matches, arcade: {easy, normal, nightmare}, at}`),
+  raised only: a lower value in a later submit is ignored, so an old device or a replayed request can never lower a
+  best. Each board has one small cache key `rank:<board>` with its top 100 entries; both store kinds (file `db.json`,
+  Upstash) use the same get/set calls. `accounts.js` holds all of it; `GET` is one store read.
+- **Validation.** `kos`/`wins`/`matches` are whole numbers `0..10000000`; `arcade_best` is `0..6` (the number of stages);
+  anything else (string, float, negative, NaN/Infinity, too large) is `400 err:"stats"`, and an unknown `board` or
+  `arcade_diff` is refused too. At least one stat field is required. Authenticated: no/invalid token is `401 err:"auth"`.
+- **Rate limit.** 6 accepted submits per account per 10 s (`429 err:"slow"`); rejected bodies do not use the budget.
+- **Ordering.** `score` descending, then the earlier `updated` time, then name. `updated` is the epoch milliseconds of
+  the submit that first reached that score. `rank` is 1-based; `you.rank` is estimated (`top.length + 1`) when the player
+  is below the cached top, and `you.estimated` is true while it is not the exact position.
+- **Kids mode** is not ranked: `godot/net/account_api.gd` `submit_rank()` refuses before any request when
+  `Settings.kids_mode` is true, `world/world.gd` submits only after a result when signed in and not in Kids mode, and the
+  RankingSheet says so. Reading a board is still allowed.
+
+Client: `AccountApi.fetch_rank(board, cb)` / `AccountApi.submit_rank(stats, cb)`; UI `godot/ui/ranking_sheet.gd`
+(tabs, loading/empty/error states, the player's row highlighted, the server badge + host in the header), opened from the
+Account sheet's Leaderboard button. Gameplay never waits for a submit.
 
 ---
 
@@ -370,7 +420,7 @@ is no Classic version of a run), the room is private and has two seats.
 
 | Field | Where | Meaning |
 |---|---|---|
-| `arcade: true` | host opts (`begin_host`) | Not a wire field: the room reads Construction from the run instead of the Host sheet (HP, gravity, knockback, crates and the K.O. limit come from the stage table) and caps at two seats. The hub's "Play co-op" calls this directly. |
+| `arcade: true` | host opts (`begin_host`) | Opens an Arcade co-op room: it reads Construction from the run instead of the Host sheet (HP, gravity, knockback, crates and the K.O. limit come from the stage table) and caps at two seats. The hub's "Play co-op" calls this directly. **On the wire** the room's `info` and the room list carry `kind: "arcade-coop"`, `arcade: true` and `kindName: "Arcade co-op"` (1.1), and `join` may send `kind: "arcade-coop"` to be sure a code is this kind of room. |
 | `start.slots` | `start` | `[seat0, seat1, crew0, crew1, …]` — the two player seats first, then the stage's crew bots (the boss is `crew[0]`). `MatchSim.setup` gets `bot_count = slots.size() - 1`, so the host has a fighter for every slot; `HostMatch.setup` turns seat slots into ghosts (humans) or keeps them as teammate bots and keeps the crew as its AI bots. **The crew slots are not joinable**: a joining/rejoining guest only ever gets slot 1. `slots.size() <= 8` (stage 1: 2 + 4). |
 | `start.arc` | `start` | `{run, st, of, diff, seed, seats, crew, boss, big, state, lv}`: the run seed, this stage (0-based) and the stage count, the difficulty, this stage's generated-site seed (`SiteMap.set_seed` — the guest rebuilds the identical site from it), the seat/crew slots, the boss' slot (-1 on a stage without one), the 1.5x Client visual flag, the state (always `intro` for a stage's start) and the shared lives. **A new `start` per stage is the stage-transition mechanism**, exactly like a rematch: the guest's world rebuilds (`_on_net_start` → `load_map`), so no stale map, crates, hazards or crew survive. A mid-run join/rejoin gets the same `start` with the current stage's `arc`. |
 | `am` | host → all | Run display state, ~5 Hz + on every state change (table in `6.3`): stage/count, state, shared lives, boss hp fraction, shrink size, downed seats (`dn`+`dnt`), the revive instruction (`rv`), bot-played seats (`bt`), the clear/victory counter (`cn`), the stage summary and the victory flag. The guest applies it for its cards/HUD, its own shrinking floor and its own down/revive; it is presentation only (it never advances a stage or damages anyone). Coins and records are per player: the host writes its own save, and each guest applies its own `DlcSave.has_cleared` to `last` / `vic` and pays its own save once per `cn` (never a second save on the host, never a guest save on the host). |
@@ -394,7 +444,7 @@ Rules a Godot host follows for this room (implemented in `host_session.gd` / `ho
   The relay promotes the remaining player, but the Arcade world does not resume it: it closes the promoted room and both
   sides return with "The host left. The Arcade run is over." (the host's own message is "The Arcade run is over.").
 
-Test: `npm run test:godot-host`, scenario D ("arcade"): a host starts the room with the teammate bot; a Godot guest joins
+Test: `npm run test:godot-host`, scenario D ("arcade"): the room's relay metadata carries `kind: "arcade-coop"` / `arcade: true`, a probe asking to join it as `pvp` is refused with `nojoin {reason: "kind"}` while a made-up code is `reason: "none"`, and a real join's `joined` reply carries the kind; then a host starts the room with the teammate bot; a Godot guest joins
 mid-fight and reports the same site seed, the host seat / every crew slot / the boss as ghosts, and `am`; the host puts
 the guest seat down (`am.dn`) and auto-revives it (`am.rv`: the guest pins itself, then is placed at the host's spot with
 its health fraction); a real clear and a retry clear pay the guest's OWN save once (350 coins) and then nothing (the
