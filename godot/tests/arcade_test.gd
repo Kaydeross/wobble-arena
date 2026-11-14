@@ -608,6 +608,15 @@ func _coop() -> void:
 	check(p2.hp >= sim.combat.max_hp(p2) - 0.01, "co-op: revived at full health for its class (%.0f/%.0f)" % [p2.hp, sim.combat.max_hp(p2)])
 	check(Vector2(p2.phys.px, p2.phys.pz).distance_to(Vector2(sim.player.phys.px, sim.player.phys.pz)) > 3.0 or Vector2(p2.phys.px, p2.phys.pz).distance_to(pos0) > 2.0, "co-op: the revive places the seat on a safe spot")
 	check(arc.hud.plates[1].text.contains("K.O.s"), "co-op: the HUD line is back to normal (%s)" % arc.hud.plates[1].text)
+	# The revived seat must STAY up: the death that put it down is still counted in st["deaths"], so after the 1 s
+	# re-down grace the manager must not mark it down again (bug: respawn -> health back to zero -> down/revive loop).
+	var t_up := 0.0
+	while t_up < 2.5:
+		sim.player.invuln = 5.0
+		p2.invuln = 5.0
+		w.tick(FRAME); t_up += FRAME
+	check(not arc.seat_is_down(1) and not p2.dead and p2.hp > 0.0 and revived_hits[0] == 1 and downed_hits[0] == 1,
+		"co-op: the revived seat stays up past the re-down grace (downed %d, revived %d, down now %s)" % [downed_hits[0], revived_hits[0], str(arc.downed_seats())])
 	await _free_world(w)
 	# -- every seat down: exactly one shared life, same stage retried, both seats back --
 	w = _launch_coop(1)                              # stage 2

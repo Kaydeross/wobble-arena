@@ -907,6 +907,7 @@ func _seat_down(k: int) -> void:
 		sim.combat.clear_inventory(f)
 		sim.combat.set_weapon(f, "")
 	f.elim = true; f.death_t = 1e9
+	_deaths0[k] = int(f.st["deaths"])           # consume this death: `_seats()` must not re-down the seat for it later
 	seat_down[k] = REVIVE_TIME
 	seat_downed.emit(k, REVIVE_TIME)
 
@@ -920,6 +921,10 @@ func _seat_up(k: int) -> void:
 	var best := _safe_spot()
 	sim.combat.place_at(f, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else sim.combat.spawn_y)
 	f.elim = false; f.dead = false; f.death_t = 0.0; f.fell_t = false; f.invuln = 1.5
+	# Re-baseline the seat's death count: `_seats()` downs a seat whose st["deaths"] rose above the stage-start value, and
+	# the death that triggered THIS revive is still counted there. Without this the seat is marked down again the moment
+	# the re-down grace ends - respawn -> health to zero -> down/revive loop (co-op bug report).
+	_deaths0[k] = int(f.st["deaths"])
 	_seat_grace[k] = 1.0                       # its owner's "still dead" snapshot may arrive after this revive
 	_rv_n += 1
 	_last_revive = {"n": _rv_n, "k": _seat_slot(k), "x": snappedf(f.phys.px, 0.01), "y": snappedf(f.phys.py, 0.01),
