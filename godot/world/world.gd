@@ -93,7 +93,7 @@ var _debris: PropDebris = null       ## broken props shatter into pieces here (u
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
-var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event, breakables left)
+var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event)
 var _team_board: TeamBoard         ## team modes: coloured chips with each team's score and a YOU tag on yours
 var _banner: Label                 ## "YOU WIN!" at the end of a match
 var _banner_t := 0.0
