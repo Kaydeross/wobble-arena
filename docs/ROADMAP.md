@@ -3,6 +3,8 @@
 _Approved 2026-11-12. Supersedes the plan and decisions in docs/IOS_PLAN.md (sections 1-4 of that file remain a useful review of build b76)._
 
 
+> **2026-11-14 update:** the next-steps plan (fixes, VFX/audio/combat, ads-first money model, store readiness, optimisation) is in [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md). It supersedes the "Next" list below.
+
 ## Status (2026-11-13)
 
 Honest state of the Godot port after the unattended build-out. "Done" means ported, parity/behaviour tests passing in the repo and merged to main; it does **not** mean verified on a real iPhone (nobody has measured phone GPU time or thermals yet, and the TestFlight builds have only been played briefly by one person).
