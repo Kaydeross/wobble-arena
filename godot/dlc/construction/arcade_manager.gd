@@ -198,6 +198,8 @@ func setup_sim(s: MatchSim) -> void:
 		_dress(bots[i], specs[i], giant and bool(d.get("boss", false)), i == 0 and bool(d.get("boss", false)))
 		enemies.append(bots[i])
 	if bool(d.get("boss", false)) and enemies.size() > 0: boss = enemies[0]
+	s.pickups.armed_weapon_crates = is_boss_stage()
+	s.pickups.armed_weapon_crate_owner = boss
 	s.player.dmg_scale *= player_dmg
 	_deaths0 = int(s.player.st["deaths"])
 	events = StageEvents.new()
@@ -247,9 +249,11 @@ func _fight(dt: float) -> void:
 		_kit_t = KIT_EVERY
 		for e: FighterState in enemies:
 			if not downed.has(e) and not e.dead: keep_kit(e)
-	# enemies that went down stay down (no respawn)
+	# enemies that went down stay down (no respawn) - but a ring-out is not a K.O. (see _revive)
 	for e: FighterState in enemies:
-		if not downed.has(e) and e.dead: _down(e)
+		if downed.has(e) or not e.dead: continue
+		if e.fell_t: _revive(e)
+		else: _down(e)
 	if events != null: events.update(dt)
 	_phases()
 	# the stage is cleared: the boss is down, or everyone is
@@ -269,6 +273,32 @@ func _down(e: FighterState) -> void:
 	downed[e] = true
 	e.elim = true
 	e.death_t = 1e9
+
+## A fall off the site is not a K.O.: the fighter goes back on the floor with the health it had. The player's hammer can
+## shove a melee boss through a fence gate and off the edge (the probe won stages 5/6 at full health in 2-3 s that way), so
+## counting a ring-out as "down" cleared the stage for free. MatchSim._ring_out flags it with fell_t and empties the hands.
+func _revive(e: FighterState) -> void:
+	var c := sim.combat
+	var frac := clampf(e.hp / c.max_hp(e), 0.05, 1.0)
+	var spots: Array = sim.map.get("bots", []) + sim.map.get("spawns", [])
+	var sh: Dictionary = c.rules.shrink
+	if not sh.is_empty():                       # the Project Manager's closing floor: only spots still on it
+		var half := float(sh["size"]) / 2.0 - 2.5
+		spots = spots.filter(func(sp: Array) -> bool: return absf(float(sp[0])) <= half and absf(float(sp[1])) <= half)
+	if spots.is_empty(): spots = [[0.0, 0.0]]
+	var best: Array = spots[0]
+	var far := -1.0
+	for k in 6:                                # a bot spot, the farthest of a few picks from the player
+		var sp: Array = spots[rng.randi() % spots.size()]
+		var dd := Vector2(float(sp[0]) - sim.player.phys.px, float(sp[1]) - sim.player.phys.pz).length()
+		if dd > far: far = dd; best = sp
+	c.place_at(e, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else c.spawn_y)
+	e.hp = c.max_hp(e) * frac
+	e.death_t = 0.0
+	e.fell_t = false
+	e.invuln = 1.5
+	var key: String = str(kit.get(e, ""))
+	if key != "": give_weapon(e, key)          # the fall cleared its hands: it comes back with its trade tool
 
 ## The crew gives up when the boss falls: the rest go down with it (K.O.s count for the player).
 func _cleared() -> void:
@@ -409,11 +439,13 @@ func give_weapon(f: FighterState, key: String) -> void:
 	for i in 3:
 		if f.slots[i] != null and f.slots[i]["key"] == key and f.slot != i: c.equip_slot(f, i)
 
-## Keeps the tool and its ammo up (the tradies' tools wear out, bosses never run dry).
+## Keeps the melee kit and its ammo up. A gun taken from a crate is deliberately not part of the kit: it runs dry and
+## the boss goes back to melee, rather than becoming an endless turret.
 func keep_kit(f: FighterState) -> void:
 	var key: String = kit.get(f, "")
 	if key == "": return
 	var wd := sim.combat.wdata(key)
+	if str(wd.get("type", "")) != "melee": return
 	var have := false
 	for sl: Variant in f.slots:
 		if sl != null and sl["key"] == key:

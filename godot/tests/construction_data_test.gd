@@ -12,6 +12,7 @@ const EXPECTED_STAGES := [
 ]
 
 var fails := 0
+const MELEE := ["hammer", "wirewhip", "pipewrench", "spiritlevel", "tapemeasure", "drill", "mallet", "bat", "katana", "trident", "spatula", "glove"]
 
 func check(ok: bool, what: String) -> void:
 	if not ok:
@@ -214,6 +215,8 @@ func _test_stages() -> void:
 
 		var bots: Array = st.get("bots", [])
 		check(bots.size() > 0, "stage %s has bots" % sid)
+		if bool(st.get("boss", false)):
+			check(not bots.is_empty() and MELEE.has(str((bots[0] as Dictionary).get("weapon", ""))), "boss %s starts with a melee tool" % sid)
 		for b in bots:
 			check(b is Dictionary, "bot in stage %s is dictionary" % sid)
 			if not (b is Dictionary): continue

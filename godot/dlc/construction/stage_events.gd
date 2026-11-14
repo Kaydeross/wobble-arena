@@ -10,8 +10,10 @@ extends RefCounted
 ##   deadline_shrink the floor shrinks with the Mega / Shrink mode machinery (ModeRules.shrink): holds `every` s, then
 ##                   closes in at `rate` m/s down to min_floor, breathes back out and closes again.
 ##   scope_creep     every N s: spawn_extra more tradies, at most max_extra alive at once.
-##   change_request  at the boss phases (66 / 33 % health): the boss (and you) get a random different tool; giant_scale
-##                   makes the boss a Giant (the manager flags big_t).
+##   change_request  at the boss phases (66 / 33 % health): the boss (and you) get a random different melee tool;
+##                   giant_scale makes the boss a Giant (the manager flags big_t).
+##   weapon_drop     every N s on a boss stage: a gun or thrown tool arrives as a real pickup crate. The boss may take
+##                   it while holding its melee kit; its ammo is not topped up.
 ## `counts` / `fired` record what fired and when (tests).
 
 const CRATE_R := 2.8
@@ -22,6 +24,7 @@ const PAD_R := 1.5
 const PAD_BASE_POWER := 17.0
 const PAD_COUNT := 3
 const SHRINK_BOTH_D := 64.0
+const BOSS_RANGED := ["nailgun", "jackhammer", "anglegrinder", "conelauncher", "cementbucket"]
 
 var m: ArcadeManager
 var world: Node
@@ -35,6 +38,7 @@ var _crates: Array = []                ## {x, z, gy, left, dur, node, ring}
 var _pads: Array = []                  ## {pad, left, node}
 var _root: Node3D = null
 var _swap_pool: Array = []
+var _weapon_drop_cid := 900000
 var _was_holding := true
 
 func setup(manager: ArcadeManager, s: MatchSim, stage: Dictionary, p_rng: RandomNumberGenerator) -> void:
@@ -47,7 +51,7 @@ func setup(manager: ArcadeManager, s: MatchSim, stage: Dictionary, p_rng: Random
 		evs.append({"type": str(e["type"]), "every": every, "params": e.get("params", {}), "t": every, "done": false})
 	for k: String in ["hammer", "wirewhip", "blower", "pipewrench", "nailgun", "jackhammer", "spiritlevel", "tapemeasure", "cementbucket",
 			"conelauncher", "anglegrinder", "drill"]:
-		if not s.combat.wdata(k).is_empty(): _swap_pool.append(k)
+		if str(s.combat.wdata(k).get("type", "")) == "melee": _swap_pool.append(k)
 	for e: Dictionary in evs:
 		if e["type"] == "deadline_shrink": _setup_deadline(e)
 
@@ -77,6 +81,7 @@ func update(dt: float) -> void:
 					"load_test": _load_test(e["params"])
 					"revision_pads": _revision(e["params"])
 					"scope_creep": _creep(e["params"])
+					"weapon_drop": _weapon_drop(e["params"])
 		elif e["type"] == "backup_call" and not e["done"]:
 			var p: Dictionary = e["params"]
 			if m.boss != null and not m.boss.dead and m.boss_frac() <= float(p.get("hp_threshold", 0.5)):
@@ -250,6 +255,24 @@ func _creep(p: Dictionary) -> void:
 	_fire("scope_creep")
 	_toast(TranslationServer.translate("Scope creep! Extra workers arriving!"))
 	for i in mini(int(p.get("spawn_extra", 1)), room): m.spawn_minion()
+
+# ---------------- weapon_drop ----------------
+
+## A boss-stage weapon crate. The stage owns the random draw; the crate pickup itself stays on the normal physics path,
+## so either the player or the boss can claim it. Only the boss is allowed to take it while already holding a melee tool.
+func _weapon_drop(p: Dictionary) -> void:
+	if m.boss == null or m.boss.dead or m.downed.has(m.boss): return
+	var keys: Array = BOSS_RANGED.filter(func(k: String) -> bool: return not sim.combat.wdata(k).is_empty())
+	if keys.is_empty() or sim.pickups.spots.is_empty(): return
+	_fire("weapon_drop")
+	_toast(TranslationServer.translate("Tool crate incoming! First to it keeps the advantage."))
+	var count := maxi(1, int(p.get("weapon_count", 1)))
+	for i in count:
+		var key: String = keys[rng.randi() % keys.size()]
+		var spots := _floor_spots()
+		var sp: Array = spots[rng.randi() % spots.size()]
+		_weapon_drop_cid += 1
+		sim.pickups.spawn_at(key, sp, _weapon_drop_cid)
 
 # ---------------- deadline_shrink ----------------
 

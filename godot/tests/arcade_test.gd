@@ -53,6 +53,7 @@ func _run() -> void:
 	await _full_run()
 	await _lives()
 	await _events()
+	await _boss_weapon_crates()
 	await _phases()
 	await _replay_and_reload()
 	await _difficulties()
@@ -381,13 +382,13 @@ func _events() -> void:
 	check(arc.enemies.size() == 1, "no backup above 50 %")
 	boss.hp = sim.combat.max_hp(boss) * 0.49
 	_idle(w, 1.0)
-	check(arc.enemies.size() == 3 and sim.fighters.size() == n0 + 2, "backup call: 2 tradies join (%d enemies)" % arc.enemies.size())
+	check(arc.enemies.size() == 2 and sim.fighters.size() == n0 + 1, "backup call: 1 tradie joins (%d enemies)" % arc.enemies.size())
 	check(w.views.size() == sim.fighters.size(), "the new tradies have views")
 	check(int(arc.events.counts.get("backup_call", 0)) == 1, "backup called once")
 	boss.hp = sim.combat.max_hp(boss) * 0.2
 	_idle(w, 1.0)
-	check(arc.enemies.size() == 3, "never a second backup call")
-	check(arc.enemies[1].name == "Bluey" and arc.enemies[2].name == "Sparky", "the named tradies come (%s, %s)" % [arc.enemies[1].name, arc.enemies[2].name])
+	check(arc.enemies.size() == 2, "never a second backup call")
+	check(arc.enemies[1].name == "Bluey", "the named tradie comes (%s)" % arc.enemies[1].name)
 	await _free_world(w)
 	# Project Manager: the floor closes in after 20 s; scope creep every 25 s (at most 3 extra)
 	w = _launch(4, true, 1.0)
@@ -420,6 +421,40 @@ func _events() -> void:
 	check(absf(ct[0] - 25.0) < 0.1, "scope creep at 25 s (%s)" % [ct])
 	await _free_world(w)
 
+## Bosses may swap melee for a ranged crate, but kit refills never turn the picked-up gun into endless ammo.
+func _boss_weapon_crates() -> void:
+	_unlock()
+	var w := _launch(1, true, 1.0)
+	var arc = w.arcade
+	_start_fight(w)
+	var sim: MatchSim = w.sim
+	var b: FighterState = arc.boss
+	check(arc.kit[b] == "drill" and b.weapon == "drill", "the Engineer starts on melee")
+	check(sim.pickups.armed_weapon_crates and sim.pickups.bot_wants(b, {"key": "nailgun"}), "an armed Arcade boss wants a ranged crate")
+	var before := sim.pickups.list.size()
+	arc.events._weapon_drop({"weapon_count": 1})
+	check(sim.pickups.list.size() == before + 1 and arc.events.BOSS_RANGED.has(str(sim.pickups.list[-1]["key"])), "a boss-stage weapon crate spawns a ranged tool")
+	sim.pickups._take(b, "nailgun")
+	check(b.weapon == "nailgun", "the boss equips the ranged weapon it picked up (%s)" % b.weapon)
+	var drill_ammo := 0.0
+	var gun_ammo := 0.0
+	for i in 3:
+		var sl: Variant = b.slots[i]
+		if sl == null: continue
+		if sl["key"] == "drill": drill_ammo = float(sl["ammo"]); sl["ammo"] = 0.0
+		if sl["key"] == "nailgun": gun_ammo = float(sl["ammo"]); sl["ammo"] = 5.0
+	arc.keep_kit(b)
+	for i in 3:
+		var sl: Variant = b.slots[i]
+		if sl == null: continue
+		if sl["key"] == "drill": drill_ammo = float(sl["ammo"])
+		if sl["key"] == "nailgun": gun_ammo = float(sl["ammo"])
+	check(drill_ammo >= float(sim.combat.wdata("drill")["ammo"]), "the melee kit is topped up")
+	check(is_equal_approx(gun_ammo, 5.0), "the picked-up gun is not topped up (%.0f ammo)" % gun_ammo)
+	sim.combat.drop_slot(b)
+	check(b.weapon == "drill", "the boss returns to its melee kit when the gun runs out (%s)" % b.weapon)
+	await _free_world(w)
+
 # ---------------- 5. boss phases ----------------
 
 func _phases() -> void:
@@ -433,7 +468,7 @@ func _phases() -> void:
 	var spd0 := b.phys.speed
 	var dmg0 := b.dmg_scale
 	var key0: String = arc.kit[b]
-	check(key0 == "jackhammer", "the Client starts with the jackhammer")
+	check(key0 == "mallet", "the Client starts with the Giant Mallet")
 	check(b.big_t > 0.0, "the Client is a Giant (big_t)")
 	check(arc.phase_n == 0, "no phase at full health")
 	# the Giant is drawn where he fights: the rig scales about his feet, so his hand and shoulder (read back from it, and the
@@ -457,6 +492,7 @@ func _phases() -> void:
 	check(int(arc.events.counts.get("change_request", 0)) == 1, "the change request fired")
 	var key1: String = arc.kit[b]
 	check(key1 != key0, "the Client swapped tools (%s -> %s)" % [key0, key1])
+	check(str(sim.combat.wdata(key1).get("type", "")) == "melee", "the Client's change request stays melee (%s)" % key1)
 	check(b.weapon == key1 or b.slots.any(func(s: Variant) -> bool: return s != null and s["key"] == key1), "... and holds %s" % key1)
 	b.hp = mx * 0.5
 	for k in 3: w.tick(FRAME)
@@ -486,7 +522,7 @@ func _phases() -> void:
 	for e: Dictionary in sim.combat.events:
 		if e.get("type") == "toast" and str(e.get("text")).contains("fired up"): seen_toast[0] = true
 	check(arc.phase_n == 1 and seen_toast[0], "Engineer phase 1 announces itself")
-	check(arc.kit[b] == "nailgun", "the Engineer keeps its nail gun")
+	check(arc.kit[b] == "drill", "the Engineer keeps its cordless drill")
 	await _free_world(w)
 
 # ---------------- 6. replay pays nothing, saved and reloaded ----------------
