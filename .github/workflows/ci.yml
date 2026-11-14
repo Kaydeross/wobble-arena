@@ -99,6 +99,8 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-gunfeel
         if: matrix.shard == 'rest'
+      - run: npm run test:godot-weapons-aim
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-fx
         if: matrix.shard == 'rest'
       - run: npm run test:godot-perf
