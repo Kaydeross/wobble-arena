@@ -1,10 +1,12 @@
 extends Control
 ## Title scene, readable in two seconds: the logo, one big "Play" (offline, against computer players: opens the setup
-## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), one secondary "Play online with
-## friends" (its sub line says it needs internet, or the room state while connected). The online panel: your name,
-## the public room list (ui/room_browser.gd: tap a room to join, Refresh, empty / error states), "Join with a code"
-## for private rooms (GuestSession), "Host a room" (the host sheet: room name, public / private, seats, bots ->
-## HostSession) and an account button; both roles wait in the lobby sheet (the players, Start for the host, Leave).
+## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), a smaller "Quick play" under it
+## (logic/quick_play.gd: an all-random offline match straight away, no wizard: random arena and mode), one secondary
+## "Play online with friends" (its sub line says it needs internet, or the room state while connected). The online
+## panel: your name, the public room list (ui/room_browser.gd: tap a room to join, Refresh, empty / error states),
+## "Join with a code" for private rooms (GuestSession), "Host a room" (the host sheet: room name, public / private,
+## seats, bots -> HostSession) and an account button; both roles wait in the lobby sheet (the players, Start for the
+## host, Leave).
 ## A chip saying who you are ("Guest" or "Signed in as NAME"; tap it for the Account sheet, ui/account_sheet.gd),
 ## a gear for the Settings screen (ui/settings_screen.gd: Controls, Camera, Graphics, Audio, Gameplay, Account,
 ## About) and a small tip line. On the very first launch the how-to cards (ui/intro_cards.gd) show once.
@@ -25,7 +27,8 @@ const DLC_TIPS := [
 ]
 const TIP_MIN_H := 600.0           ## canvas px: the tip line needs a taller title than the iPhone landscape canvas has
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
-const COMPACT_H := 530.0                  ## safe height (canvas px) below which the title tightens up
+const COMPACT_H := 620.0                  ## safe height (canvas px) below which the title tightens up (Quick play needs the room)
+const TINY_H := 505.0                     ## the very shortest canvases (iPhone X / 13 mini at the 44 pt scale): smallest title
 const TIPS := [
 	"Tip: push the stick to the edge to sprint.",
 	"Tip: knock other players off the edge to score.",
@@ -53,6 +56,7 @@ const O := "Safe/Col/Body/Online/Box/"
 @onready var online_panel: Control = $Safe/Col/Body/Online
 @onready var play: Button = $Safe/Col/Body/Home/Play
 @onready var online_b: Button = $Safe/Col/Body/Home/Online
+var quick_b: Button                ## Quick play: a random arena and mode straight into an offline match (logic/quick_play.gd)
 @onready var status: Label = get_node(O + "Foot/Status")
 var wizard: SetupWizard
 var locker: LockerScreen            ## the Walldrobe / Shop screen (hidden until opened)
@@ -93,6 +97,7 @@ func _ready() -> void:
 	safe.add_child(locker)
 	locker.closed.connect(close_locker)
 	_build_more()
+	_build_quick_play()
 	play.pressed.connect(func() -> void: if dlc: open_hub() else: open_wizard())   # on the Construction title Play opens the hub
 	online_b.pressed.connect(show_tab.bind(true))
 	(get_node(O + "Head/Back") as Button).pressed.connect(show_tab.bind(false))
@@ -233,6 +238,54 @@ func _build_more() -> void:
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
 
+## Quick play, under Play: one tap and a random arena and mode (logic/quick_play.gd) starts at once, no wizard. The sub
+## line says what it does (docs/WRITING.md); it is secondary to the big Play button.
+func _build_quick_play() -> void:
+	quick_b = Button.new()
+	quick_b.name = "Quick"
+	quick_b.custom_minimum_size = Vector2(520, 64)
+	quick_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quick_b.tooltip_text = tr("Random arena and mode")
+	quick_b.pressed.connect(quick_play)
+	var st := VBoxContainer.new()
+	st.name = "Stack"
+	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	st.offset_left = 20; st.offset_right = -20
+	st.alignment = BoxContainer.ALIGNMENT_CENTER
+	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	st.add_theme_constant_override("separation", 0)
+	quick_b.add_child(st)
+	var bl := Label.new()
+	bl.name = "Big"
+	bl.text = tr("Quick play")
+	bl.add_theme_font_size_override("font_size", 28)
+	bl.add_theme_font_override("font", UiTheme.font(700))
+	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	st.add_child(bl)
+	var sl := Label.new()
+	sl.name = "Sub"
+	sl.text = tr("Random arena and mode")
+	sl.theme_type_variation = &"MutedLabel"
+	sl.add_theme_font_size_override("font_size", 16)
+	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	sl.clip_text = true
+	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	st.add_child(sl)
+	home.add_child(quick_b)
+	home.move_child(quick_b, play.get_index() + 1)   # under Play (no reparenting: the layout tests know Play's path)
+	quick_b.visible = not dlc
+
+## Quick play: a random game type, arena, class, floor, bot count and bot skill; straight into the offline match (no
+## wizard). The world takes the class and the floor from Settings, so those two are written first (like the
+## Construction hub's Start); play_offline gets the four keys it takes.
+func quick_play() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var over := QuickPlay.pick(rng)
+	Settings.set_value("class", str(over["class"]))
+	Settings.set_value("dyn", str(over["dyn"]))
+	play_offline({"mode": over["mode"], "map": over["map"], "bots": over["bots"], "difficulty": over["difficulty"]})
+
 ## The DLC entry: a wide hazard-tape "DON'T ENTER" sign under the cards row. Pressing it plays the tape wipe into the
 ## Construction title (and, once inside, "EXIT SITE" wipes back). Drawn in code, no images.
 func _build_dlc_banner() -> void:
@@ -336,7 +389,7 @@ func show_tab(online: bool) -> void:
 			else "Please update Wobblers Arena before playing online.")
 		return
 	home.visible = not online
-	($Safe/Col/Top/Logo as WobbleLogo).font_size = 46 if online else 68     # a compact header: the room list needs the height
+	($Safe/Col/Top/Logo as WobbleLogo).font_size = _logo_font(online)     # a compact header: the room list needs the height
 	online_panel.visible = online
 	$Safe/Col/Build.visible = not online      # (the version line waits for the title: the room list needs the height)
 	_tip_room()
@@ -407,25 +460,46 @@ func _status(t: String) -> void:
 	sub.text = (tr("Connected · %s") % t) if on else tr(ONLINE_SUB)
 	sub.tooltip_text = sub.text
 
+## The logo size: smaller when the title is compact, so the Quick play button fits under Play without the title column
+## overflowing the safe area on the shortest canvases (the layout test checks 926x428 at the Large scale too).
+func _logo_font(online: bool) -> int:
+	if online: return 46
+	var safe_h := _safe_height()
+	return 50 if safe_h < TINY_H else (58 if safe_h < COMPACT_H else 68)
+
+## The safe area's height in canvas px (the viewport minus the phone insets).
+func _safe_height() -> float:
+	var i := SafeArea.insets(get_viewport())
+	return get_viewport_rect().size.y - float(i[1]) - float(i[3])
+
 ## Safe-area insets (notch, home indicator) plus our own padding.
 func apply_safe_area() -> void:
 	var i := SafeArea.insets(get_viewport())
-	# short canvas (small phones at the 44 pt UI scale, UiScale): tighter padding and a lower Play button
-	var short: bool = get_viewport_rect().size.y - float(i[1]) - float(i[3]) < COMPACT_H
+	# short canvas (small phones at the 44 pt UI scale, UiScale): tighter padding, a smaller logo and a shorter Play,
+	# Online and Construction row so the Quick play button fits under Play without the title column overflowing the
+	# safe area
+	var safe_h := _safe_height()
+	var short := safe_h < COMPACT_H
+	var tiny := safe_h < TINY_H
 	var m: Vector4 = MARGIN * (Vector4(1, 0.45, 1, 0.45) if short else Vector4.ONE)
 	safe.add_theme_constant_override("margin_left", int(m.x + i[0]))
 	safe.add_theme_constant_override("margin_top", int(m.y + i[1]))
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
-	play.custom_minimum_size.y = 102.0 if short else 146.0   # (the Construction banner sits below the cards row)
-	(play.get_node("Stack/Big") as Label).add_theme_font_size_override("font_size", 66 if short else 84)
+	($Safe/Col/Top/Logo as WobbleLogo).font_size = _logo_font(online_panel.visible)
+	play.custom_minimum_size.y = 60.0 if tiny else (84.0 if short else 146.0)   # (the Construction banner sits below the cards row)
+	(play.get_node("Stack/Big") as Label).add_theme_font_size_override("font_size", 34 if tiny else (54 if short else 84))
+	(play.get_node("Stack/Sub") as Label).add_theme_font_size_override("font_size", 15 if tiny else (19 if short else 21))
+	online_b.custom_minimum_size.y = 60.0 if short else 84.0
+	quick_b.custom_minimum_size.y = 60.0 if short else 64.0
+	if dlc_b: dlc_b.custom_minimum_size.y = 60.0 if short else 62.0
+	col.add_theme_constant_override("separation", 11 if tiny else (UiTheme.SP_3 if short else UiTheme.SP_4))
 	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
 		var cc := get_node_or_null(sheet + "/Center") as Control
 		if cc:
 			cc.offset_left = float(i[0]); cc.offset_top = float(i[1]); cc.offset_right = -float(i[2]); cc.offset_bottom = -float(i[3])
 	var hint := get_node_or_null("HostSheet/Center/Card/Box/Hint")
 	if hint: hint.visible = get_viewport_rect().size.y >= 500.0      # on the shortest canvases the arena hint gives way (it is in the tooltip too)
-	col.add_theme_constant_override("separation", UiTheme.SP_3 if short else UiTheme.SP_4)
 
 # ---------------- online ----------------
 
@@ -1014,6 +1088,7 @@ func _apply_dlc(on: bool) -> void:
 	sub.text = tr("Construction · Classic or Arcade") if on else _play_sub_default
 	var tip := $Safe/Col/Tip as Label
 	tip.text = tr((DLC_TIPS if on else TIPS)[randi() % (DLC_TIPS if on else TIPS).size()])
+	if quick_b: quick_b.visible = not on      # the Construction title starts through its hub, not a quick random match
 
 ## Logo and Play button thump in after the tape clears.
 func _drop_in() -> void:
