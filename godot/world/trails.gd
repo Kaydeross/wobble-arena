@@ -128,20 +128,34 @@ func _build() -> void:
 			var k1 := 1.0 - r.t[j + 1] / r.life
 			var ca := Color(r.col.r, r.col.g, r.col.b, r.col.a * k0)
 			var cb := Color(r.col.r, r.col.g, r.col.b, r.col.a * k1)
-			var cb_tip := Color(cb.r, cb.g, cb.b, cb.a * 0.15)       # the inner edge fades: a soft blade arc
-			var ca_tip := Color(ca.r, ca.g, ca.b, ca.a * 0.15)
+			var cb_tip := Color(cb.r, cb.g, cb.b, cb.a * 0.07)       # the inner edge fades into the blade arc
+			var ca_tip := Color(ca.r, ca.g, ca.b, ca.a * 0.07)
+			if j == 0:                                          # a hot leading edge makes the swing direction immediate
+				ca = ca.lerp(Color(1, 1, 1, ca.a), 0.62)
+				ca.a = minf(1.0, ca.a * 1.25)
 			im.surface_set_color(ca_tip); im.surface_add_vertex(r.a[j])
 			im.surface_set_color(ca); im.surface_add_vertex(r.b[j])
 			im.surface_set_color(cb); im.surface_add_vertex(r.b[j + 1])
 			im.surface_set_color(ca_tip); im.surface_add_vertex(r.a[j])
 			im.surface_set_color(cb); im.surface_add_vertex(r.b[j + 1])
 			im.surface_set_color(cb_tip); im.surface_add_vertex(r.a[j + 1])
+			# Narrow bright blade core along the leading edge.
+			var ia := r.a[j].lerp(r.b[j], 0.78)
+			var ib := r.a[j + 1].lerp(r.b[j + 1], 0.78)
+			var core_a := Color(ca.r, ca.g, ca.b, ca.a * 0.82)
+			var core_b := Color(cb.r, cb.g, cb.b, cb.a * 0.72)
+			im.surface_set_color(core_a); im.surface_add_vertex(ia)
+			im.surface_set_color(core_a); im.surface_add_vertex(r.b[j])
+			im.surface_set_color(core_b); im.surface_add_vertex(r.b[j + 1])
+			im.surface_set_color(core_a); im.surface_add_vertex(ia)
+			im.surface_set_color(core_b); im.surface_add_vertex(r.b[j + 1])
+			im.surface_set_color(core_b); im.surface_add_vertex(ib)
 	im.surface_end()
 
 ## Triangles drawn this frame (bench).
 func tri_count() -> int:
 	var t := 0
-	for r: Ribbon in live.values(): t += maxi(0, r.n - 1) * 2
+	for r: Ribbon in live.values(): t += maxi(0, r.n - 1) * 4
 	return t
 
 
