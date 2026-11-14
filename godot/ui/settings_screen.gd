@@ -11,7 +11,10 @@ extends UiPage
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
 ##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), knock-out replays (kill cam), damage numbers
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
-##   About     version and build, privacy policy, credits, the game server address (advanced)
+##   About     version and build, privacy policy, credits, the game server address (advanced) and, last and clearly
+##             apart from the rest, the bright-red "Reset game…" row (ui/reset_dialog.gd, logic/reset_game.gd,
+##             docs/RESET.md). It is not offered in a match: resetting drops the room / match, so it lives on the title's
+##             Settings only.
 ## Every control writes its Settings key at once (Settings persists it and emits `changed`, the game applies it live)
 ## and follows `changed` from elsewhere (F3 toggles the FPS, for example).
 
@@ -38,6 +41,7 @@ var help: ControlsHelp
 var intro: IntroCards
 var code_sheet: DlcCodeSheet      ## the Construction code field: tap the version line 7 times in About (not in a match)
 var layout_editor: TouchLayoutEditor   ## Settings > Controls > Move buttons (ui/touch_layout_editor.gd)
+var reset_dialog: ResetDialog     ## Settings > About > Reset game: the irreversible confirmation (ui/reset_dialog.gd)
 var _ver_taps := 0
 var _ver_t := 0
 
@@ -97,6 +101,10 @@ func _ready() -> void:
 	code_sheet = DlcCodeSheet.new()
 	add_child(code_sheet)
 	code_sheet.closed.connect(_focus_tab)
+	reset_dialog = ResetDialog.new()
+	add_child(reset_dialog)
+	reset_dialog.closed.connect(_focus_tab)
+	reset_dialog.confirmed.connect(_on_reset_confirmed)
 	layout_editor = TouchLayoutEditor.new()
 	add_child(layout_editor)
 	layout_editor.closed.connect(_on_layout_closed)
@@ -112,8 +120,9 @@ func open_section(s: String) -> void:
 	open()
 	show_section(s)
 
-## One step back: the controls picture or the how-to first, then the screen.
+## One step back: the reset prompt, the controls picture or the how-to first, then the screen.
 func back() -> bool:
+	if reset_dialog.visible: reset_dialog.close(); return true   # the prompt is on top and its safe answer is Cancel
 	if layout_editor.visible: layout_editor.close(); return true
 	if code_sheet.visible: return code_sheet.back()
 	if intro.visible: intro.finish(); return true
@@ -122,13 +131,19 @@ func back() -> bool:
 	return true
 
 func close() -> void:
+	if reset_dialog != null and reset_dialog.visible:
+		reset_dialog.close()   # no hidden prompt left waiting behind the closed page
 	if layout_editor != null and layout_editor.visible:
 		layout_editor.close()   # never leave the editor's touch-layer mute behind a hidden page
 	_show_page_body(true)
 	super.close()
 
 func _focus_tab() -> void:
-	if Tier.is_pc() and visible: (tabs[section] as Button).grab_focus.call_deferred()
+	if Tier.is_pc() and visible: _grab_tab_focus.call_deferred()
+
+## Deferred and guarded: after a confirmed reset the title scene is being replaced, so the page may have left the tree.
+func _grab_tab_focus() -> void:
+	if is_inside_tree() and visible and tabs.has(section): (tabs[section] as Button).grab_focus()
 
 # ============================== sections ==============================
 
@@ -201,6 +216,7 @@ func show_section(s: String) -> void:
 			_info("Credits", "Credits", "Made by Kaydeross. Built with the Godot Engine (godotengine.org). Font: Fredoka (SIL Open Font License).")
 			_field("server_url", "Game server (advanced)", "Only change this if a friend runs their own server")
 			_server_extras()
+			if not in_match: _reset_row()   # last row, clearly apart: the deliberate "start from scratch" switch
 	JuicyButton.attach_all(rows)
 	scroll.scroll_vertical = 0
 	_focus_tab()
@@ -443,6 +459,48 @@ func _server_extras() -> void:
 	rows.add_child(lab)
 	ui["server_active"] = lab
 	_buttons("server_reset", [["server_reset", "Reset to default", func() -> void: Settings.reset("server_url")]])
+
+## Settings > About > Reset game: the prompt (ui/reset_dialog.gd). Nothing is deleted until its red button, which lands
+## in _on_reset_confirmed.
+func open_reset_dialog() -> void:
+	if reset_dialog != null: reset_dialog.open()
+
+## The prompt said "Reset everything": sign out, wipe the profile and every preference, remove the known profile files
+## and reload the title as a new install (logic/reset_game.gd).
+func _on_reset_confirmed() -> void:
+	ResetGame.wipe_all()
+
+## The last row of About: a short red warning over one bright-red, full-width button, clearly apart from the normal
+## settings rows (the prompt makes it a deliberate two-step action; it is not shown in a match).
+func _reset_row() -> void:
+	var gap := Control.new()
+	gap.name = "ResetGap"
+	gap.custom_minimum_size = Vector2(0, UiTheme.SP_5)
+	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rows.add_child(gap)
+	var cap := Label.new()
+	cap.name = "ResetWarning"
+	cap.text = "Deletes all progress and settings. Cannot be undone."
+	cap.add_theme_color_override("font_color", UiTheme.BAD)
+	cap.add_theme_font_size_override("font_size", 17)
+	cap.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cap.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rows.add_child(cap)
+	var r := HBoxContainer.new()
+	r.name = "Row_reset_game"
+	r.custom_minimum_size = Vector2(0, TOUCH)
+	r.add_theme_constant_override("separation", UiTheme.SP_3)
+	rows.add_child(r)
+	var b := Button.new()
+	b.name = "ResetGame"
+	b.text = "Reset game…"                       # styled by ResetDialog.style_danger: bright red, white bold text
+	b.custom_minimum_size = Vector2(0, TOUCH)
+	b.size_flags_horizontal = SIZE_EXPAND_FILL
+	b.size_flags_vertical = SIZE_SHRINK_CENTER
+	b.pressed.connect(open_reset_dialog)
+	ResetDialog.style_danger(b, 21)
+	r.add_child(b)
+	ui["reset_game"] = b
 
 func _on_version_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT: version_tap()

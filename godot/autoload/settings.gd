@@ -135,3 +135,25 @@ func reset(key: String) -> void:
 		if persist:
 			_cfg.save(PATH)
 		changed.emit(key, get_value(key))
+
+## Back to a new install (Settings > About > Reset game, logic/reset_game.gd): every stored value is forgotten, so
+## DEFAULTS apply again, and the file is removed. `changed` is emitted for each key that actually changed so the
+## autoloads that apply a preference (Lang, Sfx, Music, Perf, Save's look mirror) fall back to the defaults still in
+## this session; the file is deleted last, so a listener that writes while reacting cannot recreate it.
+## Under `--no-save` (tests) the in-memory values are wiped too, but the player's real file is never touched.
+func wipe_all() -> void:
+	var before := {}
+	if _cfg.has_section(SECTION):
+		for k: String in _cfg.get_section_keys(SECTION):
+			before[k] = _cfg.get_value(SECTION, k)
+	for k: String in DEFAULTS:                       # keys that were never stored still had a default
+		if not before.has(k): before[k] = get_value(k)
+	_cfg = ConfigFile.new()
+	for k: String in before:
+		var v: Variant = get_value(k) if DEFAULTS.has(k) else null   # (a stored key with no default is simply gone)
+		if before[k] != v: changed.emit(k, v)
+	_cfg = ConfigFile.new()                          # a listener may have stored a default value again: forget it
+	if not persist: return
+	for p: String in [PATH, PATH + ".tmp"]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))

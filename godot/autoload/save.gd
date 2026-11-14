@@ -115,6 +115,13 @@ func reset() -> void:
 	_quest_before = []
 	_seen_classes = []
 
+## Back to a new install in memory (Settings > About > Reset game, logic/reset_game.gd): the fresh profile plus no
+## cloud time / source. ResetGame removes the profile.json files (and only under a real, persisted run).
+func wipe() -> void:
+	reset()
+	cloud_t = 0
+	loaded_from = "new"
+
 # ============================== the blob (web snapshot shape) ==============================
 
 func get_blob() -> Dictionary:
