@@ -22,6 +22,7 @@ var _ko_n: Label
 var _clock: Label
 var _leader: Label
 var _crown: Control
+var _kids: Label          ## "Kids mode · half coins · no leaderboard" badge (Settings kids_mode)
 var _radar: Control
 var _feed: VBoxContainer
 var _feed_items: Array = []      ## [node, time left]
@@ -162,6 +163,12 @@ func _build_ko() -> void:
 	_leader = _lbl(lrow, 15, UiTheme.MUTED)
 	_leader.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_leader.custom_minimum_size.x = 120
+	# Kids mode (Settings kids_mode, docs/KIDS_MODE.md): say what it changes. Hidden in normal play, so the score pill
+	# (and every HUD layout test) is unchanged outside kids mode.
+	_kids = _lbl(col, UiTheme.MIN_FONT, UiTheme.ACCENT)
+	_kids.name = "KidsBadge"
+	_kids.text = "Kids mode · half coins · no leaderboard"
+	_kids.visible = false
 
 func _build_toast() -> void:
 	_toast = PanelContainer.new()
@@ -257,6 +264,7 @@ func update(delta: float) -> void:
 	var touch_on: bool = touch.visible
 	var p := sim.player
 	# --- score pill + leader
+	_kids.visible = KidsAssist.is_enabled()
 	if p.ko != _last_ko:
 		if _last_ko >= 0 and p.ko > _last_ko:
 			var tw := _ko_n.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
