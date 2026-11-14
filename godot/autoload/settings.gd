@@ -67,7 +67,8 @@ const DEFAULTS := {
 	"site_seed": 0,         # Construction: the building-site seed (0 = a new random site every match; the hub's Re-roll fixes one)
 	# --- the Settings screen (ui/settings_screen.gd) ---
 	"mouse_sens": 1.0,      # look sensitivity for the mouse and a controller's right stick (input/player_input.gd); touch uses `sens`
-	"aim_mode": "hold",     # keyboard / mouse / controller aim: hold | toggle (touch always double-taps to toggle)
+	"aim_button": "hold",   # keyboard / mouse / controller aim BUTTON: hold | toggle (touch always double-taps to toggle)
+	"aim_mode": "normal",   # aiming system: normal (aim assist, standard damage) | advanced (no assist, +25% damage offline); docs/AIM.md
 	"damage_numbers": true, # floating damage numbers over the fighter you hit (read by the world's effects)
 	"sfx_volume": 1.0,      # sound effects bus 0..1 (autoload Sfx); `volume` stays the master volume
 	"music_volume": 0.5,    # music bus 0..1 (autoload Music; the web settings.music)
@@ -83,8 +84,23 @@ func _init() -> void:
 		persist = false
 		return
 	_cfg.load(PATH)   # missing file = defaults
-	if migrate_server_url(_cfg, server_default()):
+	var changed := migrate_server_url(_cfg, server_default())
+	changed = migrate_aim_button(_cfg) or changed
+	if changed:
 		_cfg.save(PATH)
+
+## Before the aim modes, `aim_mode` was the mouse/controller aim BUTTON (hold | toggle). That key now holds the aiming
+## system (normal | advanced, docs/AIM.md), so move an old value to `aim_button`. Returns true when `cfg` changed.
+static func migrate_aim_button(cfg: ConfigFile) -> bool:
+	if not cfg.has_section_key(SECTION, "aim_mode"):
+		return false
+	var v := str(cfg.get_value(SECTION, "aim_mode")).strip_edges()
+	if v != "hold" and v != "toggle":
+		return false
+	if not cfg.has_section_key(SECTION, "aim_button"):
+		cfg.set_value(SECTION, "aim_button", v)
+	cfg.erase_section_key(SECTION, "aim_mode")
+	return true
 
 ## Builds before 0.2.0 (15) stored the dev address as the player's server. When this build ships a different default,
 ## drop that stale localhost value so the player gets the real server. Returns true when it changed `cfg`.

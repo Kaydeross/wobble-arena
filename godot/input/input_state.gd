@@ -4,7 +4,7 @@ extends RefCounted
 ## Sources are kept apart so releasing a key does not cancel the same action held on the touch screen.
 ##
 ## Held actions:  jump, fire, sprint, crouch      -> is_held(action)
-## Taps (edges):  swap, reload, shove, kick, dash, pause, spatula, slot1..3 -> consume(action) once per press
+## Taps (edges):  swap, reload, shove, kick, dash, pause, spatula, spatula_equip, slot1..3 -> consume(action) once per press
 ## Toggles:       aim (scope toggle on touch; held on mouse/gamepad) -> aiming()
 ## Move:          move = Vector2(right, forward), length <= 1
 ## Look:          look = radians to add to (yaw, pitch) this frame (already scaled by sensitivity); World calls take_look()
