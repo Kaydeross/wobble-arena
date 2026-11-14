@@ -256,6 +256,10 @@ func _test_modes_and_crates() -> void:
 	var c_allow: Array = modes["construction"].get("allowWeapons", [])
 	for tid in EXPECTED_TOOLS:
 		check(c_allow.has(tid), "construction mode allowWeapons contains %s" % tid)
+	# The 9 tools also need crate weights: shared/drops.json is the web export and cannot carry Godot-only keys.
+	var c_weights: Dictionary = modes["construction"].get("dropWeights", {})
+	for tid in EXPECTED_TOOLS:
+		check(c_weights.has(tid) and float(c_weights.get(tid, 0.0)) > 0.0, "construction crate weights contain %s" % tid)
 
 	# Verify no other mode allows the extra tools
 	for mid: String in modes:

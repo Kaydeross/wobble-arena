@@ -53,7 +53,8 @@ func _tuning() -> void:
 	var bare := Combat.new()
 	bare.load_content()
 	var shared_head := float(bare.wdata("mammoth")["headMul"])
-	ok(not bare.tuning_active() and shared_head > 15.0, "bare Combat: shared numbers (headMul %s)" % shared_head)
+	ok(not bare.tuning_active() and is_equal_approx(shared_head, 8.0), "bare Combat: shared numbers, Mammoth headMul %s (no online one-shot)" % shared_head)
+	ok(is_equal_approx(float(bare.wdata("mallet")["ammo"]), 6.0), "shared Giant Mallet has 6 swings per pickup (%.0f)" % float(bare.wdata("mallet")["ammo"]))
 	var sim := MatchSim.new()
 	var c := sim.combat
 	ok(c.tuning_active(), "MatchSim offline: tuning on")
@@ -66,6 +67,9 @@ func _tuning() -> void:
 		var s := bare.wdata(k)
 		ok(float(t["cooldown"]) > float(s["cooldown"]) and float(t["ammo"]) < float(s["ammo"]), "%s: slower and less ammo" % k)
 		ok(t.get("burst") is Dictionary, "%s has a burst pool" % k)
+	ok(is_equal_approx(float(c.wdata("rocket")["burst"]["regen"]), 3.5) and is_equal_approx(float(c.wdata("glauncher")["burst"]["regen"]), 3.0) \
+		and is_equal_approx(float(c.wdata("meteor")["burst"]["regen"]), 4.5), "heavy launchers recharge in 3.0-4.5 s")
+	ok(is_equal_approx(float(c.wdata("blower")["dmg"]), 2.8), "Air Blower puff does 2.8 (a full tank can finish a 150 HP class)")
 	ok(float(c.wdata("minigun")["force"]) < float(bare.wdata("minigun")["force"]), "minigun knockback lowered")
 	ok(float(c.tuned_drops.get("meteor", 9.0)) < float(sim.pickups.drops["base"]["meteor"]), "meteor crate weight lowered")
 	ok(c.wdata("spatula") == bare.wdata("spatula"), "untuned weapons unchanged")

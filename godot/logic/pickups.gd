@@ -48,18 +48,25 @@ func set_map(map: Dictionary) -> void:
 	drop_timer = 1.0
 
 ## pickCrateKey: weighted by each weapon's rarity setting, only what the mode allows. "" = nothing allowed.
+## A Godot-only mode may add crate weights (`dropWeights` in data/extra/construction/modes.json) for weapons the shared
+## drops.json cannot carry: the Construction DLC tools are not in the web export, so they enter the pool here.
 func pick_crate_key() -> String:
 	var tot := 0.0
 	var ents: Array = []
 	var al: Dictionary = drops.get("allow", {})
 	var allow: Array = al.get(combat.mode_id, combat.mode["dropAllow"] if combat.mode.get("dropAllow") is Array else al.get(str(combat.mode.get("dropsAs", "")), []))   # Godot-only modes borrow a pool
 	var base: Dictionary = drops.get("base", {})
+	var extra: Dictionary = combat.mode.get("dropWeights", {}) if combat.mode.get("dropWeights") is Dictionary else {}
+	var keys: Array = base.keys()
+	for k: String in extra:
+		if not base.has(k): keys.append(k)
 	var mult: Dictionary = drops.get("mult", {})
 	var tuned: Dictionary = combat.tuned_drops if combat.tuning_active() else {}   # weapon_tuning.json crate weights
-	for k: String in base:
-		if not allow.has(k): continue
+	for k: String in keys:
+		if not allow.has(k) and not extra.has(k): continue     # an explicit mode weight is an allow entry
 		if ported_only and not usable(k): continue
-		var w := float(tuned.get(k, base[k])) * float(mult.get(wstate.get(k, "normal"), 1.0))
+		var wt := float(extra.get(k, base.get(k, 0.0)))
+		var w := float(tuned.get(k, wt)) * float(mult.get(wstate.get(k, "normal"), 1.0))
 		if combat.mode_id == "ninja":   # Ninja: fewer shuriken, more of the other ninja weapons
 			w *= float({"shuriken": 0.4, "knife": 1.3, "katana": 1.5, "typhoon": 1.5}.get(k, 1.0))
 		if w > 0.0:
@@ -162,11 +169,14 @@ func label(key: String) -> String:
 
 ## botWants: bots grab health when hurt, every power-up, and a weapon only when empty-handed. Arcade bosses may also
 ## take a ranged weapon crate while their melee kit is in hand; the crate replaces what they hold for that pickup.
+## Arcade enemies never chase Rage or Shield: a phase-2 boss with Rage would hit for x2.16 and a Shield would double
+## its effective HP for 12 s. Speed stays allowed (the manager already caps it to a short burst).
 func bot_wants(b: FighterState, p: Dictionary) -> bool:
 	if not combat.brawl: return false
 	var key: String = p["key"]
 	if key == "heal": return b.hp < combat.max_hp(b) * 0.85
-	if drops.get("powerups", {}).has(key): return true
+	if drops.get("powerups", {}).has(key):
+		return not (b.arcade_enemy and (key == "rage" or key == "shield"))
 	var w := combat.wdata(key)
 	var is_ranged := BOT_GUNS.has(key) or (combat.mode_id == "construction" and ["gun", "knife", "ball"].has(str(w.get("type", ""))))
 	if not is_ranged: return false

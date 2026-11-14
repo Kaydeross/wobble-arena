@@ -46,6 +46,9 @@ var cls_rate := 1.0
 var cls_reload := 1.0
 var cls_ammo := 1.0
 var dmg_scale := 1.0             ## bots deal less (DIFFS dmg / dummies 0.45)
+var melee_force_mul := 1.0       ## outgoing melee force multiplier (Arcade difficulty; 1 = the weapon's own force)
+var melee_topple_mul := 1.0      ## outgoing melee topple chance multiplier (Arcade difficulty)
+var arcade_enemy := false        ## Arcade boss-rush enemy: never chases Rage / Shield crates (Pickups.bot_wants)
 
 # --- health and status ---
 var yaw := 0.0

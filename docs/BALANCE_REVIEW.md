@@ -2,6 +2,11 @@
 Manual-review snapshot of the Construction DLC worktree (`claude/balance-review`). It is a **read-only**
 analysis: no gameplay value was changed. Every number is derived from the shipped files listed in
 [How the numbers were derived](#how-the-numbers-were-derived); inferred values are marked **[i]**.
+
+> **Follow-up:** the implemented balance pass is in [BALANCE_FIXES.md](BALANCE_FIXES.md). The numbers below are the
+> snapshot that motivated it; where they disagree (Mammoth `headMul`, Giant Mallet ammo, Air Blower damage, heavy
+> launcher regen, Construction crates, Arcade Rage/Shield, offline K.O. limits, Supervisor summons), the fix doc is
+> current.
 ## Legend and reference numbers
 - **HP/TTK@150**: Godot offline is fixed at **200** HP (web default 200; the web lobby also offers 100/150/200/300/500).
   The 150 column is the owner's reference, reachable only through the web's 150 HP option; for Godot offline multiply

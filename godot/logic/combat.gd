@@ -895,13 +895,13 @@ func melee_sweep(f: FighterState) -> void:
 			var d := norm3(cn[0] * 0.6 + bx, 0.05 if f.slam else float(w.get("lift", 0.0)), cn[2] * 0.6 + bz)
 			var slam_mul := float(w.get("slamMul", 1.3)) if w.get("slamMul", 0) else 1.3
 			var dmg := float(w["dmg"]) * f.dmg_scale * (slam_mul if f.slam else (1.6 if f.cyclone else 1.0))
-			var force := float(w["force"]) * (1.1 if f.slam else (1.5 if f.cyclone else 1.0))
+			var force := float(w["force"]) * f.melee_force_mul * (1.1 if f.slam else (1.5 if f.cyclone else 1.0))
 			# body part: a bat on the head only counts as a headshot when the table allows melee heads (classic: never)
 			var part := body_part(e, tp_at[0], tp_at[1], tp_at[2], tp_head and bool(zone_table().get("meleeHead", false)))
 			var pm := part_mul(part)
 			dmg *= pm
 			if hit(e, dmg, d[0], d[1], d[2], force, part == "head", f, zone_info(part, pm, tp_at[0], tp_at[1], tp_at[2]))["applied"]:
-				var tp := float(w.get("topple", 0.0))
+				var tp := float(w.get("topple", 0.0)) * f.melee_topple_mul
 				if tp and rng.next() < tp: topple(e, 1.1)
 				ev({"type": "sfx", "name": w.get("hitSfx", "clink"), "f": e})
 	for i in n * 3: prev[i] = now[i]
