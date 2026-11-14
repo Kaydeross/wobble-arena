@@ -44,6 +44,20 @@ func is_held(action: String) -> bool:
 			return true
 	return false
 
+## The actions held right now, per source: "touch fire+jump | key sprint". Empty sources are omitted; "" when nothing
+## is held. Shown by the performance readout (ui/perf_overlay.gd) so a stuck touch control is visible on device.
+func held_report() -> String:
+	var parts := PackedStringArray()
+	for s in SOURCES:
+		var acts := PackedStringArray()
+		for a in _held[s].keys():
+			acts.append(str(a))
+		if acts.is_empty():
+			continue
+		acts.sort()
+		parts.append("%s %s" % [s, "+".join(acts)])
+	return " | ".join(parts)
+
 func press(action: String) -> void:
 	_pressed[action] = int(_pressed.get(action, 0)) + 1
 
