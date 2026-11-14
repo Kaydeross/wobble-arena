@@ -492,6 +492,14 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		var head := false
 		var wt := ray_walls(o[0], o[1], o[2], dx, dy, dz, rng_range)
 		if wt >= 0.0: best_t = wt
+		# Destructible props (docs/DESTRUCTIBLE.md), only when the mode is on: the nearest breakable solid along this
+		# pellet's line takes the damage and stops the shot. `best_t` already includes every solid (walls and props),
+		# so a prop behind a wall or behind a fighter is never reached, by construction.
+		var prop_i := -1
+		if combat.destruct != null:
+			var ph: Array = combat.destruct.ray_hit(o[0], o[1], o[2], dx, dy, dz, rng_range)
+			if ph.size() == 2 and (wt < 0.0 or float(ph[0]) <= best_t + 1e-6):
+				prop_i = int(ph[1]); best_t = float(ph[0])
 		for e: FighterState in combat.fighters:
 			if e == f or e.dead: continue
 			for s: Array in e.spheres(giant):
@@ -517,6 +525,12 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 			rec["dx"] += dx; rec["dy"] += dy; rec["dz"] += dz
 			rec["head"] = rec["head"] or head
 			victims[victim] = rec
+		elif prop_i >= 0:                  # the pellet stopped on a breakable prop: damage it (nothing behind it is hit)
+			var pfo := 1.0
+			if w.has("falloff"):
+				var fl2: Array = w["falloff"]
+				pfo = Combat.lerp_js(1.0, fl2[2], Combat.clampf_js((best_t - fl2[0]) / (fl2[1] - fl2[0]), 0.0, 1.0))
+			combat.destruct.break_hit(prop_i, float(w["dmg"]) * f.dmg_scale * pfo, [dx, dy, dz])
 		combat.ev({"type": "tracer", "f": f, "key": key, "ox": o[0], "oy": o[1], "oz": o[2],
 			"ex": o[0] + dx * best_t, "ey": o[1] + dy * best_t, "ez": o[2] + dz * best_t, "hit": victim != null})
 	var max_force := float(w.get("maxForce", 20.0)) if w.get("maxForce", 0) else 20.0
@@ -865,6 +879,9 @@ func explode(x: float, y: float, z: float, owner: FighterState, w: Dictionary) -
 		var ds := owner.dmg_scale if owner != null else 1.0
 		combat.hit(f, float(w["dmg"]) * k * ds * (0.5 if f == owner else 1.0), n[0], n[1], n[2], float(w["force"]) * (0.35 + 0.65 * k), false, owner)
 		if k > 0.4: combat.topple(f, 1.5)
+	# Destructible props (docs/DESTRUCTIBLE.md): same radius, same linear falloff as the fighters above. Off = no path.
+	if combat.destruct != null:
+		combat.destruct.break_blast(x, y, z, rad, float(w["dmg"]))
 
 ## updateRockets: the meteor's delayed bomblets first, then every rocket.
 func step_rockets(dt: float) -> void:

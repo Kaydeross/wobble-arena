@@ -73,6 +73,8 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-touch
         if: matrix.shard == 'rest'
+      - run: npm run test:godot-destruct
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-touch-layout
         if: matrix.shard == 'rest'
       - run: npm run test:godot-kids

@@ -2,7 +2,8 @@ class_name SetupWizard
 extends VBoxContainer
 ## Offline match setup, one choice per page (title screen Play opens it):
 ##   1 Game type (cards for ModeRules.PLAYABLE, read from code),
-##   2 Arena (cards for the maps that game type allows, and the Moving floor row: Settings "dyn"), 3 Players (you + 1..7 bots, team modes fix the count; bot
+##   2 Arena (cards for the maps that game type allows, the Moving floor row: Settings "dyn", and the Breakable props
+##   opt-in row: Settings "destructible", docs/DESTRUCTIBLE.md), 3 Players (you + 1..7 bots, team modes fix the count; bot
 ##   skill), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
 ##   of the four picks, each row jumps back to its page, and the big Start button).
 ## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, class), so the next Play
@@ -38,6 +39,7 @@ var class_only := false     ## set before add_child: only the Character page (no
 var map_id := "arena"
 var mode_id := "classic"
 var dyn := "random"
+var destruct := false       ## optional destructible environment mode (Settings "destructible"; offline only, docs/DESTRUCTIBLE.md)
 var bots := 3
 var diff := "normal"
 var cls := "wobbler"
@@ -63,6 +65,7 @@ var _mode_bs := {}
 var _class_bs := {}
 var _class_art := {}        ## class id -> TextureRect
 var _dyn_bs := {}
+var _dest_bs := {}
 var _bot_bs := {}
 var _diff_bs := {}
 var _sum_bs: Array = []
@@ -193,6 +196,7 @@ func load_settings() -> void:
 	if stale: mode_id = "classic" if ms.has("classic") else ms[0]
 	dyn = str(Settings.get_value("dyn", "random"))
 	if not Dynamics.KINDS.has(dyn): dyn = "random"
+	destruct = bool(Settings.get_value("destructible", false))
 	bots = clampi(int(Settings.get_value("bots", 3)), BOT_MIN, BOT_MAX)
 	diff = str(Settings.get_value("difficulty", "normal"))
 	if not DIFFS.has(diff): diff = "normal"
@@ -234,6 +238,20 @@ func set_dyn(k: String) -> void:
 	Settings.set_value("dyn", k)
 	_refresh()
 
+## Optional destructible environment mode: off | on. Offline only; the Practice Range, Sandbox and Construction ignore it.
+func set_destruct(k: String) -> void:
+	destruct = k == "on"
+	Settings.set_value("destructible", destruct)
+	_refresh()
+
+## True when the current game type allows the destructible mode at all (the range / sandbox / construction never do).
+func destruct_available() -> bool:
+	return not ["practice", "sandbox", "construction"].has(mode_id)
+
+## True when the current arena has authored breakable props (docs/DESTRUCTIBLE.md).
+func destruct_arena_ok() -> bool:
+	return destruct_available() and Destruct.has_arena(map_id)
+
 func set_bots(n: int) -> void:
 	bots = clampi(n, BOT_MIN, BOT_MAX)
 	Settings.set_value("bots", bots)
@@ -252,7 +270,7 @@ func set_class(id: String) -> void:
 
 ## Writes every choice (Start does this once more, so a match always starts from what is on screen).
 func save() -> void:
-	for kv in [["offline_map", map_id], ["mode", mode_id], ["dyn", dyn], ["bots", bots], ["difficulty", diff], ["class", cls]]:
+	for kv in [["offline_map", map_id], ["mode", mode_id], ["dyn", dyn], ["destructible", destruct], ["bots", bots], ["difficulty", diff], ["class", cls]]:
 		Settings.set_value(kv[0], kv[1])
 
 # ---------------- navigation ----------------
@@ -679,6 +697,8 @@ func _build_arena(p: Control) -> void:
 	for k: String in Dynamics.KINDS: names.append(Dynamics.NAMES[k])
 	var row := _pills(p, "Floor", "Moving floor", Dynamics.KINDS, names, _dyn_bs, set_dyn)
 	row.tooltip_text = "Does the arena floor move? Random = a different moving floor every match"
+	var drow := _pills(p, "Props", "Breakable props", ["off", "on"], ["Off", "On"], _dest_bs, set_destruct)
+	drow.tooltip_text = "Optional offline mode: crates and barricades that break under bullets and explosions. Only some arenas have them (Sunny Arena, Space Capsule, Neon Crossroads)."
 	_grid_page(p, P_ARENA, MAP_CARD.x)
 	_rebuild_maps()
 
@@ -821,6 +841,9 @@ func _refresh() -> void:
 	_select(_mode_bs, mode_id)
 	if detail_l: detail_l.text = tr("%s: %s") % [tr(mode_name(mode_id)), tr(mode_long(mode_id))]
 	_select(_dyn_bs, dyn)
+	var prop_ok := destruct_arena_ok()
+	_select(_dest_bs, "on" if destruct and prop_ok else "off")
+	for k in _dest_bs: (_dest_bs[k] as Button).disabled = not prop_ok
 	_select(_class_bs, cls)
 	_select(_diff_bs, diff)
 	var team := is_team_mode()
@@ -841,7 +864,8 @@ func _refresh() -> void:
 		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = mode_name(mode_id)
-		_sum_vals[1].text = tr("%s · Floor: %s") % [tr(map_name(map_id)), tr(Dynamics.NAMES.get(dyn, dyn))]
+		var prop_line := (" · " + tr("Props")) if destruct and destruct_arena_ok() else ""
+		_sum_vals[1].text = tr("%s · Floor: %s") % [tr(map_name(map_id)), tr(Dynamics.NAMES.get(dyn, dyn))] + prop_line
 		_sum_vals[2].text = tr("%s · %s") % [_players_text(), tr(diff.capitalize())]
 		_sum_vals[3].text = class_name_of(cls)
 
