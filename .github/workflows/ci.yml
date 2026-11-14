@@ -14,17 +14,24 @@ jobs:
       - run: npm test
   godot:
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     env:
       GODOT: /opt/godot/godot
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
+      - uses: actions/cache@v4
+        with:
+          path: /opt/godot
+          key: godot-4.7.2-linux-${{ runner.os }}
       - name: Install Godot 4.7.2 (headless tests, no export templates needed)
         run: |
-          mkdir -p /opt/godot && cd /opt/godot
-          curl -fsSL -o g.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-          unzip -q g.zip && mv Godot_v4.7.2-stable_linux.x86_64 godot && chmod +x godot
+          if [ ! -x /opt/godot/godot ]; then
+            mkdir -p /opt/godot && cd /opt/godot
+            curl -fsSL -o g.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+            unzip -q g.zip && mv Godot_v4.7.2-stable_linux.x86_64 godot && chmod +x godot
+          fi
       - run: npm ci || npm install
       - run: timeout 180 $GODOT --headless --path godot --import || true
       - run: npm run test:godot-physics
@@ -41,4 +48,65 @@ jobs:
       - run: npm run test:godot-modes
       - run: npm run test:godot-whats-new
       - run: npm run test:godot-flow
+      - run: npm run test:godot-touch
       - run: npm run test:godot-ui
+      - run: npm run test:godot-audio
+      - run: npm run test:godot-settings
+      - run: npm run test:godot-save
+      - run: npm run test:godot-locker
+      - run: npm run test:godot-damage
+      - run: npm run test:godot-skills
+      - run: npm run test:godot-gunfeel
+      - run: npm run test:godot-fx
+      - run: npm run test:godot-perf
+      - run: npm run test:godot-killcam
+      - run: npm run test:godot-camera
+      - run: npm run test:godot-construction-data
+      - run: npm run test:godot-dlc-ui
+      - run: npm run test:godot-site-map
+      - run: npm run test:godot-sandbox
+      - run: npm run test:godot-range
+      - run: npm run test:godot-maps
+      - run: npm run test:godot-dynamics
+      - run: npm run test:godot-ragdoll
+      - run: npm run test:godot-integration
+      - run: npm run test:godot-construction
+      - run: npm run test:godot-arcade
+      - run: npm run test:godot-account
+      - run: npm run test:godot-remote-config
+      - run: npm run test:godot-services
+      - run: BOTS_MINUTES=2 npm run test:godot-bots
+
+  export-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT: /opt/godot/godot
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: /opt/godot
+          key: godot-export-4.7.2-linux-${{ runner.os }}
+      - name: Install Godot and web export templates
+        run: |
+          mkdir -p /opt/godot
+          if [ ! -x /opt/godot/godot ]; then
+            cd /opt/godot
+            curl -fsSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+            unzip -q godot.zip && mv Godot_v4.7.2-stable_linux.x86_64 godot && chmod +x godot
+          fi
+          TPL="$HOME/.local/share/godot/export_templates/4.7.2.stable"
+          if [ ! -f "$TPL/web_release.zip" ]; then
+            mkdir -p /tmp/godot-templates "$TPL"
+            curl -fsSL -o /tmp/godot-templates/templates.tpz https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz
+            unzip -q /tmp/godot-templates/templates.tpz -d /tmp/godot-templates
+            cp -R /tmp/godot-templates/templates/. "$TPL/"
+          fi
+      - run: timeout 180 $GODOT --headless --path godot --import || true
+      - name: Export web build
+        run: |
+          mkdir -p build/web
+          timeout 300 $GODOT --headless --path godot --export-release "Web" "$PWD/build/web/index.html"
+          test -s build/web/index.html
+          test -s build/web/index.pck

@@ -217,15 +217,17 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 | `/api/me` | GET | – | `{ok, user, data, t, hasRecovery, hasPassword}`, renews the token |
 | `/api/save` | PUT | `data`, `base?`, `force?` | `{ok, t}`; if another device saved newer: `409 {ok:false, err:'stale', data, t}` |
 | `/api/logout` | POST | – | `{ok}` |
-| `/api/password` | POST | `old`, `next` | `{ok}` (400 `nopass` on a name-only account: use `/api/protect`) |
+| `/api/password` | POST | `old`, `next` | `{ok, token}` — revokes every old session and returns a replacement token (400 `nopass` on a name-only account: use `/api/protect`) |
 | `/api/recovery` | POST | `password` | `{ok, recovery}` (new code; old one stops working) |
 | `/api/reset` | POST | `id`, `code`, `password` | `{ok, token, user, data, t, recovery}` |
-| `/api/delete` | POST | `password` (not needed for a name-only account) | `{ok}` — **required by App Store 5.1.1(v)** |
+| `/api/delete` | POST | `password` (not needed for a name-only account) | `{ok}` — revokes every session; **required by App Store 5.1.1(v)** |
 | `/health` | GET | – | `{ok, rooms, players, accounts, saved}` |
 
 `user` is `{username, email, created, hasPassword}` (`email` is `''` for a name-only account).
 
-**Unused names are freed.** The server keeps a `lastSeen` per account (written by `/api/me`, `/api/save`, `/api/login` and the relay `auth` op, at most once an hour per account). A sweep at start-up and every 6 hours erases accounts whose `lastSeen` is older than `ACCOUNT_TTL_DAYS` (default 30; `0` = never), with their cloud save, tokens and email, so the name can be picked again. Accounts created before `lastSeen` existed get `lastSeen = now` the first time the sweep sees them (nobody is erased by the upgrade). The server logs counts only, never names. Clients tell players: "Names nobody uses for 30 days are freed."
+**Inactive accounts are retained by default.** The server keeps a `lastSeen` per account (written by `/api/me`, `/api/save`, `/api/login` and the relay `auth` op, at most once an hour per account). A sweep at start-up and every 6 hours can erase accounts older than an explicitly configured positive `ACCOUNT_TTL_DAYS`; the default `0` never erases them. Erasure removes the account, cloud save, every token and the email and frees the name. Accounts created before `lastSeen` existed get `lastSeen = now` the first time the sweep sees them. The server logs counts only, never names.
+
+Password change and reset revoke every token for the account. Reset and password change return one fresh token for the current device. Account deletion also revokes every token. Do not attach a purchasable wallet to an account with automatic expiry enabled.
 
 Error shape: `{ok:false, err, msg}` with HTTP 400/401/409/413/429/500. Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
 

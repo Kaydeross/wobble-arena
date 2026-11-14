@@ -116,7 +116,7 @@ PY
 ensure_editor_sdk_paths
 
 VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' "$ROOT/godot/project.godot")"
-VERSION="${VERSION:-0.1.0}"
+[ -n "$VERSION" ] || fail "godot/project.godot has no application/config/version."
 BUILD_NUMBER="${BUILD_NUMBER:-$(git -C "$ROOT" rev-list --count HEAD)}"
 COMMIT="$(git -C "$ROOT" rev-parse --short HEAD)"
 echo "Godot $GV, version $VERSION, code $BUILD_NUMBER ($COMMIT)"

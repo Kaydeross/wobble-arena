@@ -42,6 +42,7 @@ func _initialize() -> void:
 	_bursts()
 	_swap()
 	_recover()
+	_parry()
 	_physics()
 	_controls()
 	print("SKILLS %d checks, %d failed" % [checks, fails])
@@ -194,6 +195,33 @@ func _recover() -> void:
 	ok(Skills.recover_offer(p, sim), "knocked: touch button offers RECOVER")
 	ok(Skills.recover_min_y(-25.0) > -25.0 + 10.0, "free falls cannot be saved (min y %s)" % Skills.recover_min_y(-25.0))
 	p.dead = false
+	sim.dispose()
+
+# 4b. tuned shove: a short front-facing window cancels melee and staggers the attacker; classic stays untouched
+func _parry() -> void:
+	var sim := new_sim(0)
+	var c := sim.combat
+	var v := sim.player
+	var a := sim.add_fighter("bruiser")
+	v.phys.place(0.0, 0.0, 0.0); a.phys.place(0.0, 0.0, 2.0)
+	v.face_yaw = 0.0; a.face_yaw = PI
+	v.hp = c.max_hp(v); a.hp = c.max_hp(a)
+	v.parry_t = 0.0; v.down_t = 0.0; a.down_t = 0.0
+	c.shove(v, 0.0)
+	ok(v.parry_t > 0.0, "tuned shove opens a parry window")
+	c.events.clear(); a.stun = 0.0
+	a.weapon = "bat"; a.swing = 0.5
+	var hp0 := v.hp
+	ok(c.try_parry(v, a), "a front-facing hit inside the window is parried")
+	ok(is_equal_approx(v.hp, hp0), "the parry itself does not damage the defender")
+	ok(a.swing < 0.0 and a.stun >= 0.6, "the parried attacker has the swing cancelled and is staggered")
+	ok(c.events.any(func(e: Dictionary) -> bool: return e.get("type") == "parry"), "the parry emits a visual/audio event")
+	ok(not c.try_parry(v, a), "one shove deflects only one incoming hit")
+	v.face_yaw = PI; v.parry_t = 0.22
+	ok(not c.try_parry(v, a), "a hit from behind is not deflected")
+	c.damage_rule = "classic"
+	v.parry_t = 1.0
+	ok(not c.try_parry(v, a), "classic/web combat never applies the tuned parry")
 	sim.dispose()
 
 # 5. physics: the default (recover_air_t = 0) is unchanged; the boost keeps the burst and steers it

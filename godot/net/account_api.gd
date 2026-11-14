@@ -139,8 +139,8 @@ func _finish(op: String, ok: bool, msg: String) -> void:
 
 # ============================== account calls ==============================
 
-## Pick a name: a password-less account (POST /api/claim). This device's profile becomes its first cloud save. Names
-## nobody uses for 30 days are freed by the server.
+## Pick a name: a password-less account (POST /api/claim). This device's profile becomes its first cloud save.
+## Inactive accounts are retained by default; automatic expiry is an explicit server-side operator choice.
 func claim(username: String) -> void:
 	var data: Variant = profile.get_blob() if profile else null
 	call_api(HTTPClient.METHOD_POST, "/api/claim", {"name": username.strip_edges(), "data": data}, "",
@@ -214,6 +214,8 @@ func change_password(old: String, next: String) -> void:
 	call_api(HTTPClient.METHOD_POST, "/api/password", {"old": old, "next": next}, str(getv("token")),
 		func(r: Dictionary) -> void:
 			if _auth_failed(r): _finish("password", false, str(r["msg"])); return
+			if r["ok"] and r.get("token") is String and str(r["token"]) != "":
+				setv("token", str(r["token"]))   # every other session was revoked; keep this device signed in
 			_finish("password", bool(r["ok"]), "Password changed." if r["ok"] else str(r.get("msg", "Couldn't change your password. Try again in a moment."))))
 
 ## A new recovery code (needs the password); the old one stops working.

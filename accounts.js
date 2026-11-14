@@ -7,7 +7,8 @@
     - otherwise in a file (./data/db.json, or DATA_DIR). Fine on your own computer. On Render's free plan that file is wiped every redeploy.
 
   Names: POST /api/claim makes a password-less account from just a name (add a password later with /api/protect). An account nobody used for
-  ACCOUNT_TTL_DAYS (30; 0 = never) is erased by a sweep (startup and every 6 hours), which frees the name; `s` on the user record is lastSeen.
+  ACCOUNT_TTL_DAYS (default 0 = never) is erased by a sweep (startup and every 6 hours), which frees the name; `s` on the user record is lastSeen.
+  A positive TTL is an explicit operator choice. Store purchases must never be attached to an account that can expire silently.
 
   Passwords are never stored: only a salted scrypt hash. Logging in gives a random token that the game keeps in the browser.
 */
@@ -63,9 +64,20 @@ function makeStore() {
 /* ---------------- helpers ---------------- */
 const TOKEN_DAYS = 365, SAVE_MAX = 250 * 1024;
 const DAY = 86400000, TOUCH_MS = 3600000, SWEEP_MS = 6 * 3600000;       // lastSeen is written at most once an hour per account; the sweep runs every 6 hours
-const ttlDays = () => { const n = Number(process.env.ACCOUNT_TTL_DAYS); return process.env.ACCOUNT_TTL_DAYS !== undefined && process.env.ACCOUNT_TTL_DAYS !== '' && isFinite(n) && n >= 0 ? n : 30; };   // 0 = never erase
+const ttlDays = () => { const n = Number(process.env.ACCOUNT_TTL_DAYS); return process.env.ACCOUNT_TTL_DAYS !== undefined && process.env.ACCOUNT_TTL_DAYS !== '' && isFinite(n) && n >= 0 ? n : 0; };   // 0 = never erase
 const RESERVED = new Set(['admin', 'administrator', 'mod', 'moderator', 'owner', 'staff', 'support', 'guest', 'system', 'server', 'wobble', 'wobblearena', 'root', 'null', 'undefined']);
 const USER_RE = /^[A-Za-z0-9_]{3,16}$/, EMAIL_RE = /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{2,}$/;
+const BLOCKED_NAME_TERMS = ['nigger', 'nigga', 'faggot', 'retard', 'rape', 'hitler', 'nazi', 'kkk', 'porn', 'whore', 'slut'];
+function nameKey(s) {
+  return String(s || '').normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase()
+    .replace(/[013457@$]/g, c => ({ '0': 'o', '1': 'i', '3': 'e', '4': 'a', '5': 's', '7': 't', '@': 'a', '$': 's' })[c])
+    .replace(/[^a-z]/g, '');
+}
+function badName(s) { const k = nameKey(s); return BLOCKED_NAME_TERMS.some(term => k.includes(term)); }
+function filterDisplayName(s) {
+  const clean = String(s || '').replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e]/g, '').trim().slice(0, 24);
+  return badName(clean) ? 'Player' : clean;
+}
 const scrypt = (pw, salt) => new Promise((res, rej) => crypto.scrypt(pw, salt, 64, { N: 16384, r: 8, p: 1 }, (e, k) => (e ? rej(e) : res(k))));
 async function hashPw(pw) { const salt = crypto.randomBytes(16); return 's1$' + salt.toString('hex') + '$' + (await scrypt(pw, salt)).toString('hex'); }
 async function checkPw(pw, stored) {
@@ -89,10 +101,14 @@ function create(store) {
   const addFail = k => { const f = fails.get(k); if (f && Date.now() - f.t <= WINDOW) f.n++; else fails.set(k, { n: 1, t: Date.now() }); };
   const signups = new Map();                                          // ip -> {n, t}: sign-ups in the last hour
   const lastSave = new Map();                                         // account -> time of the last save (one a second at most)
+  const reports = new Map();                                          // account -> time of its last safety report (one per 10 s)
 
   const getUser = async l => { const v = await store.get('user:' + l); try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
   const putUser = (l, u) => store.set('user:' + l, JSON.stringify(u));
   async function issue(l) { const t = newToken(); await store.set('tok:' + t, l, { ex: TOKEN_DAYS * 86400 }); return t; }
+  async function revokeSessions(l) {
+    for (const k of await store.scan('tok:')) if ((await store.get(k)) === l) await store.del(k);
+  }
   async function who(token) {                                          // token -> account record, or null; counts as a visit (lastSeen)
     if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null;
     const l = await store.get('tok:' + token); if (!l) return null;
@@ -106,8 +122,8 @@ function create(store) {
   const needPass = a => { if (!a.u.p) throw new Fail(400, 'nopass', 'This name has no password yet. Protect it with a password first.'); };
   async function loadData(l) { const v = await store.get('data:' + l); try { return v ? JSON.parse(v) : null; } catch (e) { return null; } }
 
-  async function eraseUser(l, u) { await store.del('user:' + l); if (u.e) await store.del('email:' + lname(u.e)); await store.del('data:' + l); }
-  /* Erase accounts nobody has used for ACCOUNT_TTL_DAYS (default 30; 0 = never): the account, its saves and its tokens, which frees the name.
+  async function eraseUser(l, u) { await revokeSessions(l); await store.del('user:' + l); if (u.e) await store.del('email:' + lname(u.e)); await store.del('data:' + l); }
+  /* Erase accounts nobody has used for an explicitly enabled ACCOUNT_TTL_DAYS (default 0 = never): the account, its saves and its tokens.
      Accounts from before lastSeen existed get lastSeen = now the first time, so nobody is erased by the upgrade. Returns counts only. */
   async function sweepAccounts(now) {
     now = now || Date.now(); const ttl = ttlDays(); const out = { checked: 0, erased: 0, migrated: 0 };
@@ -134,6 +150,7 @@ function create(store) {
       const un = String(b.username || '').trim(), em = String(b.email || '').trim(), pw = String(b.password || '');
       if (!USER_RE.test(un)) throw new Fail(400, 'username', 'Usernames are 3 to 16 letters, numbers or underscores.');
       if (RESERVED.has(lname(un))) throw new Fail(400, 'username', 'That username isn\'t allowed. Pick another one.');
+      if (badName(un)) throw new Fail(400, 'username', 'That username isn\'t allowed. Pick another one.');
       if (em.length > 100 || !EMAIL_RE.test(em)) throw new Fail(400, 'email', 'That email doesn\'t look right. Check it and try again.');
       if (pw.length < 6 || pw.length > 72) throw new Fail(400, 'password', 'Passwords need 6 to 72 characters.');
       const s = newSignups(ctx.ip);
@@ -152,6 +169,7 @@ function create(store) {
       const un = String(b.name || b.username || '').trim();
       if (!USER_RE.test(un)) throw new Fail(400, 'username', 'Usernames are 3 to 16 letters, numbers or underscores.');
       if (RESERVED.has(lname(un))) throw new Fail(400, 'username', 'That username isn\'t allowed. Pick another one.');
+      if (badName(un)) throw new Fail(400, 'username', 'That username isn\'t allowed. Pick another one.');
       const s = newSignups(ctx.ip), l = lname(un);
       if (await store.get('user:' + l)) throw new Fail(409, 'username', 'That username is taken. Pick another one.');
       const now = Date.now(), user = { u: un, e: '', p: '', r: '', c: now, l: now, s: now };
@@ -191,7 +209,10 @@ function create(store) {
       const j = JSON.stringify(b.data); if (j.length > SAVE_MAX) throw new Fail(413, 'big', 'That save is too big.');
       const now = Date.now(), last = lastSave.get(a.l) || 0; if (now - last < 800) throw new Fail(429, 'fast', 'Saving too fast. Wait a moment and try again.');
       const cur = await loadData(a.l);
-      if (cur && b.base !== undefined && (b.base | 0) < (cur.t | 0) && !b.force) return { ok: false, err: 'stale', msg: 'This account was saved on another device.', data: cur.d, t: cur.t };
+      const base = Number(b.base);
+      const curT = Number(cur && cur.t);
+      if (cur && b.base !== undefined && Number.isFinite(base) && Number.isFinite(curT) && base < curT && !b.force)
+        return { ok: false, err: 'stale', msg: 'This account was saved on another device.', data: cur.d, t: cur.t };
       lastSave.set(a.l, now);
       await store.set('data:' + a.l, JSON.stringify({ t: now, d: b.data }));
       return { ok: true, t: now };
@@ -203,7 +224,9 @@ function create(store) {
       if (np.length < 6 || np.length > 72) throw new Fail(400, 'password', 'Passwords need 6 to 72 characters.');
       if (failCount('acc:' + a.l) >= 8) throw new Fail(429, 'slow', 'Too many wrong tries. Wait 10 minutes and try again.');
       if (!(await checkPw(String(b.old || ''), a.u.p))) { addFail('acc:' + a.l); throw new Fail(401, 'wrong', 'That password is wrong.'); }
-      a.u.p = await hashPw(np); await putUser(a.l, a.u); return { ok: true };
+      a.u.p = await hashPw(np); await putUser(a.l, a.u);
+      await revokeSessions(a.l);
+      return { ok: true, token: await issue(a.l) };
     },
     async recovery(b, ctx) {                                              // make a new recovery code (needs the password); the old one stops working
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.'); needPass(a);
@@ -222,6 +245,7 @@ function create(store) {
       if (!u || !u.r || !(await checkPw(code, u.r))) { addFail('ip:' + ctx.ip); if (l0) addFail('acc:' + l0); throw new Fail(401, 'wrong', 'That username and recovery code don\'t match. Check the code (letters and numbers, no mix-ups between O and 0).'); }
       fails.delete('acc:' + l0);
       const rc = newRecovery(); u.p = await hashPw(np); u.r = await hashPw(cleanRecovery(rc)); u.l = u.s = Date.now(); await putUser(l0, u);
+      await revokeSessions(l0);
       const d = await loadData(l0);
       return { ok: true, token: await issue(l0), user: pub(u), data: d ? d.d : null, t: d ? d.t : 0, recovery: rc };
     },
@@ -229,11 +253,25 @@ function create(store) {
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
       if (failCount('acc:' + a.l) >= 8) throw new Fail(429, 'slow', 'Too many wrong tries. Wait 10 minutes and try again.');
       if (a.u.p && !(await checkPw(String(b.password || ''), a.u.p))) { addFail('acc:' + a.l); throw new Fail(401, 'wrong', 'That password is wrong.'); }   // a name-only account has no password to ask for
-      await eraseUser(a.l, a.u); await store.del('tok:' + ctx.token);
+      await eraseUser(a.l, a.u);
       return { ok: true };
     },
+    async report(b, ctx) {
+      const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
+      const now = Date.now(), last = reports.get(a.l) || 0;
+      if (now - last < 10000) throw new Fail(429, 'slow', 'You just sent a report. Wait a moment before sending another.');
+      const rawTarget = String(b.target || '').replace(/[\u0000-\u001f\u007f\u200b-\u200f\u202a-\u202e]/g, '').trim().slice(0, 24);
+      const target = badName(rawTarget) ? '[filtered name]' : filterDisplayName(rawTarget), room = String(b.room || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 16);
+      const reason = String(b.reason || 'other'), details = String(b.details || '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, 240);
+      if (!rawTarget || target === 'Player' || !['harassment', 'name', 'cheating', 'spam', 'other'].includes(reason))
+        throw new Fail(400, 'report', 'Choose a player and a reason.');
+      const id = crypto.randomBytes(8).toString('hex');
+      reports.set(a.l, now);
+      await store.set('mod:' + now + ':' + id, JSON.stringify({ reporter: a.l, target, room, reason, details, at: now }), { ex: 90 * 86400 });
+      return { ok: true, id };
+    },
   };
-  const map = { '/api/signup': ['POST', 'signup'], '/api/claim': ['POST', 'claim'], '/api/protect': ['POST', 'protect'], '/api/login': ['POST', 'login'], '/api/me': ['GET', 'me'], '/api/save': ['PUT', 'save'], '/api/logout': ['POST', 'logout'], '/api/password': ['POST', 'password'], '/api/recovery': ['POST', 'recovery'], '/api/reset': ['POST', 'reset'], '/api/delete': ['POST', 'remove'] };
+  const map = { '/api/signup': ['POST', 'signup'], '/api/claim': ['POST', 'claim'], '/api/protect': ['POST', 'protect'], '/api/login': ['POST', 'login'], '/api/me': ['GET', 'me'], '/api/save': ['PUT', 'save'], '/api/logout': ['POST', 'logout'], '/api/password': ['POST', 'password'], '/api/recovery': ['POST', 'recovery'], '/api/reset': ['POST', 'reset'], '/api/delete': ['POST', 'remove'], '/api/report': ['POST', 'report'] };
 
   const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS', 'access-control-max-age': '86400' };
   const reply = (res, status, obj) => { res.writeHead(status, Object.assign({ 'content-type': 'application/json', 'cache-control': 'no-store' }, CORS)); res.end(JSON.stringify(obj)); };
@@ -265,4 +303,4 @@ function create(store) {
   return { handle, who, store, kind: store.kind, routes, sweep: sweepAccounts, startSweeps, stopSweeps, TOUCH_MS };
 }
 
-module.exports = { create, makeStore, fileStore, upstashStore };
+module.exports = { create, makeStore, fileStore, upstashStore, badName, filterDisplayName };

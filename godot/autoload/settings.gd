@@ -28,6 +28,9 @@ const DEFAULTS := {
 	"perf_overlay": false,  # device readout in the top-left corner: fps, frame ms, CPU / GPU, draws, tier, thermal (ui/perf_overlay.gd)
 	"effects": "auto",      # combat effects level: auto (= graphics tier) | low | medium | high (world/fx.gd)
 	"screen_shake": true,   # camera shake on big hits, explosions and K.O.s (world/follow_camera.gd)
+	"haptics": true,        # short vibration on hits, being hit, K.O.s and explosions (phones; autoload Haptics)
+	"fps_cap": 60,          # frame rate cap: 30 | 60 | 120 | 0 = unlimited (autoload Perf)
+	"render_scale": 1.0,    # 3D render scale 0.6..1.0; the interface stays at full resolution (autoload Perf)
 	"class": "wobbler",     # character class (shared/classes.json id)
 	"color": 0x39b5a8,      # body colour (the web player's default)
 	"volume": 0.5,          # sound volume 0..1 (web settings.vol; autoload Sfx)
@@ -46,6 +49,7 @@ const DEFAULTS := {
 	"cloud_user": "",       # lower-case account the local profile was last synced with ("" = none / guest)
 	"kill_cam": true,       # short slow-mo replay after a fast K.O. you score (offline, world/kill_cam.gd)
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
+	"blocked_names": "[]",  # lower-case player display names blocked on this device (autoload Safety)
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
 	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE; the Construction hub sets construction)
 	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20

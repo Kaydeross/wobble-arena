@@ -152,6 +152,8 @@ func show_section(s: String) -> void:
 			_toggle("screen_shake", "Screen shake", "The camera shakes on big hits and explosions")
 			_toggle("show_fps", "Show frame rate (FPS)", "F3 or a three-finger tap also toggles it")
 			_toggle("perf_overlay", "Performance readout", "Top-left: fps, frame time, CPU / GPU, draws, thermal. For testing on a device.")
+			_choice("fps_cap", "Frame rate cap", "A lower cap saves battery and heat on a phone. Max removes the cap.", [30, 60, 120, 0], ["30", "60", "120", "Max"])
+			_slider("render_scale", "Render scale", "Renders the 3D scene at a lower resolution; buttons and text stay sharp.", 0.6, 1.0, 0.05, _pct)
 			if not in_match:
 				_info("soak", "15-minute soak test", "An offline Chaos 5v5 bot match logs the frame rate every second. Leave the phone alone: the screen stays on. At the end, tap Copy summary to share the result.")
 				_buttons("Soak", [["soak", "Start soak test", func() -> void: SoakRun.launch(get_tree())]])
@@ -160,6 +162,7 @@ func show_section(s: String) -> void:
 			_slider("volume", "Main volume", "", 0.0, 1.0, 0.05, _pct)
 			_slider("sfx_volume", "Sound effects", "", 0.0, 1.0, 0.05, _pct)
 			_slider("music_volume", "Music", "", 0.0, 1.0, 0.05, _pct)
+			_toggle("haptics", "Haptics (vibration)", "A short vibration on hits, K.O.s and explosions. Phones only.")
 		"gameplay":
 			_language()
 			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")

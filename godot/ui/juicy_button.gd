@@ -1,13 +1,15 @@
 class_name JuicyButton
 extends Node
-## Button micro-interaction: a small scale bounce and a brightness shift on hover and press (Tween).
+## Button micro-interaction: a small scale bounce, a brightness shift and a soft click sound on hover and press (Tween).
 ## Add as a child of any BaseButton, or call JuicyButton.attach(button) / JuicyButton.attach_all(root).
-## Purely visual: it never touches the button's signals or state.
+## The press sound is the web engine's "click" (public/index.html SOUNDS, docs/AUDIO.md) at a deliberately low volume:
+## UI feedback, not a hit. It never touches the button's signals or state.
 
 const HOVER_SCALE := 1.04
 const PRESS_SCALE := 0.94
 const HOVER_BRIGHT := 1.12
 const PRESS_BRIGHT := 0.9
+const CLICK_VOL := 0.5
 
 var _b: BaseButton
 var _tw: Tween
@@ -32,9 +34,18 @@ func _ready() -> void:
 	_b.resized.connect(_pivot)
 	_b.mouse_entered.connect(func(): _hover = true; _to(HOVER_SCALE, HOVER_BRIGHT, 0.12))
 	_b.mouse_exited.connect(func(): _hover = false; _to(1.0, 1.0, 0.16))
-	_b.button_down.connect(func(): _to(PRESS_SCALE, PRESS_BRIGHT, 0.06))
+	_b.button_down.connect(func(): _to(PRESS_SCALE, PRESS_BRIGHT, 0.06); _click())
 	_b.button_up.connect(_release)
 	_pivot()
+
+## A soft UI click on every press (the web game's `click`), skipped for disabled buttons. The sound is the only
+## non-visual part: the scale / brightness tween still never touches the button's signals or state. The `Sfx` autoload
+## is looked up through the tree instead of as a bare global: a test's main loop can pull this script in before the
+## autoload globals are registered, where `Sfx.play(...)` would fail to compile (same as world/fx.gd).
+func _click() -> void:
+	if _b.disabled: return
+	var sfx := get_node_or_null("/root/Sfx")
+	if sfx: sfx.call("play", "click", CLICK_VOL)
 
 func _pivot() -> void:
 	_b.pivot_offset = _b.size / 2.0

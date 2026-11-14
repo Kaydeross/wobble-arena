@@ -1,7 +1,7 @@
 class_name PauseMenu
 extends Control
 ## The in-match pause menu (world.tscn UI/Pause): Resume, Settings (ui/settings_screen.gd, without the Account
-## sheet), Controls (ui/controls_help.gd: the touch layout and gestures) and Quit to title, which asks first while a
+## sheet), Controls (ui/controls_help.gd: the touch layout and gestures), Report or block (online) and Quit to title, which asks first while a
 ## match is running ("Leave room" online: the world then leaves the room cleanly with session.leave).
 ## Back (Escape, controller B, Android back) closes the top page: Settings / Controls / the question -> the menu ->
 ## resume. The world connects `resume_requested` and `quit_requested`, sets `online` and `match_running`.
@@ -14,11 +14,13 @@ var online := false:                ## the label says Leave room and the questio
 		online = v
 		if quit_b: _texts()
 var match_running: Callable = func() -> bool: return true   ## false once the match is over (no question then)
+var players: Callable = func() -> Array: return []          ## online display names (world supplies the live roster)
 var card: PanelContainer
 var box: VBoxContainer
 var resume_b: Button
 var settings_b: Button
 var help_b: Button
+var report_b: Button
 var quit_b: Button
 var confirm: PanelContainer
 var confirm_l: Label
@@ -26,6 +28,7 @@ var stay_b: Button
 var go_b: Button
 var settings: SettingsScreen
 var help: ControlsHelp
+var safety: SafetySheet
 
 func _init() -> void:
 	name = "Pause"
@@ -61,6 +64,7 @@ func _ready() -> void:
 	resume_b = _btn("Resume", "Resume", true, func() -> void: resume_requested.emit())
 	settings_b = _btn("Settings", "Settings", false, open_settings)
 	help_b = _btn("Controls", "Controls", false, open_help)
+	report_b = _btn("Safety", "Report or block", false, open_safety)
 	quit_b = _btn("Title", "Quit to title", false, ask_quit)
 	confirm = PanelContainer.new()
 	confirm.name = "Confirm"
@@ -103,6 +107,9 @@ func _ready() -> void:
 	help = ControlsHelp.new()
 	add_child(help)
 	help.closed.connect(func() -> void: show_page("menu"))
+	safety = SafetySheet.new()
+	add_child(safety)
+	safety.closed.connect(func() -> void: show_page("menu"))
 	_texts()
 	JuicyButton.attach_all(card)
 	JuicyButton.attach_all(confirm)
@@ -120,6 +127,7 @@ func _btn(n: String, text: String, primary: bool, cb: Callable) -> Button:
 
 func _texts() -> void:
 	quit_b.text = tr("Leave room") if online else tr("Quit to title")
+	report_b.visible = online
 	confirm_l.text = tr("Leave the room? You'll leave this match and go back to the title.") if online \
 		else tr("Quit this match? It won't count, and you'll go back to the title.")
 	stay_b.text = tr("Keep playing")
@@ -134,10 +142,12 @@ func open() -> void:
 func show_page(p: String) -> void:
 	card.visible = p == "menu"
 	confirm.visible = p == "confirm"
+	safety.visible = p == "safety"
 	if p == "settings": settings.open()
 	elif settings.visible: settings.visible = false
 	if p == "help": help.open()
 	elif help.visible: help.visible = false
+	if p == "safety": safety.open(players.call())
 	if Tier.is_pc() and visible:
 		if p == "menu": resume_b.grab_focus.call_deferred()
 		elif p == "confirm": stay_b.grab_focus.call_deferred()
@@ -145,11 +155,13 @@ func show_page(p: String) -> void:
 func page() -> String:
 	if settings.visible: return "settings"
 	if help.visible: return "help"
+	if safety.visible: return "safety"
 	if confirm.visible: return "confirm"
 	return "menu"
 
 func open_settings() -> void: show_page("settings")
 func open_help() -> void: show_page("help")
+func open_safety() -> void: show_page("safety")
 
 ## Quit / Leave room: straight away when the match is already over, else ask first.
 func ask_quit() -> void:
@@ -161,6 +173,7 @@ func back() -> void:
 	match page():
 		"settings": settings.back()
 		"help": help.back()
+		"safety": safety.back()
 		"confirm": show_page("menu")
 		_: resume_requested.emit()
 

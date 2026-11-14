@@ -67,6 +67,25 @@ static func level() -> int:
 		"high": return 2
 	return MapBuilder.gfx_q()
 
+## Autoloads are looked up through the tree, never as bare global identifiers: a `class_name` script can be compiled
+## before the autoloads are registered (a test's main loop pulls FxSystem in at startup), where `Haptics` / `Music`
+## would fail to compile. Same reason `level()` reads Settings through the tree.
+static func _autoload(n: String) -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null(n) if tree and tree.root else null
+
+## Haptic feedback for the moments that should be felt, not just seen (autoload `Haptics`, which enforces the Settings
+## toggle and the platform limits by itself). `weight`: "hit" (light), "hurt" (medium), "heavy" (a K.O. / explosion).
+func _buzz(weight: String) -> void:
+	var h := _autoload("Haptics")
+	if h: h.call(weight)
+
+## A short dip of the score under a big one-off sound (autoload `Music.duck`), so a K.O. or an explosion reads clearly
+## without stopping the track.
+func _duck(db: float, seconds: float) -> void:
+	var m := _autoload("Music")
+	if m: m.call("duck", db, seconds)
+
 func _init(p_level := -1) -> void:
 	name = "Fx"
 	rng.seed = 0x5eed
@@ -366,6 +385,8 @@ func on_event(e: Dictionary) -> void:
 			if f: ko_burst(Vector3(f.phys.px, f.phys.py, f.phys.pz))
 		"ko":
 			_on_ko(e)
+		"explode":
+			_on_explode(Vector3(e["x"], e["y"], e["z"]), float(e.get("rad", 1.0)))
 		"tracer":
 			tracer(Vector3(e["ox"], e["oy"], e["oz"]), Vector3(e["ex"], e["ey"], e["ez"]))
 		"crate_land":
@@ -419,6 +440,11 @@ func _on_hit(e: Dictionary, f: FighterState) -> void:
 	var me: FighterState = world.sim.player
 	var a := attacker
 	if f == me or a == me:
+		# The final blow also emits "ko" (which gets the heavy weight): buzz the hit weights only while the victim is
+		# still standing, so one moment never buzzes twice.
+		if f.hp > 0.0:
+			if f == me: _buzz("hurt")       # a hit you take: the medium weight
+			elif a == me: _buzz("hit")      # a hit you land: the light one
 		if dmg >= 6.0: world.hitstop(2 if dmg < 20.0 else (3 if dmg < 40.0 else 4))
 		var s := 0.0
 		if f == me: s = clampf(0.06 + dmg * 0.002, 0.06, 0.16)
@@ -440,6 +466,19 @@ func _on_ko(e: Dictionary) -> void:
 	if world != null and (k == world.sim.player or v == world.sim.player):
 		world.add_shake(0.18)
 		if k == world.sim.player: world.hitstop(4)
+		_buzz("heavy")                      # a K.O. is the one moment that should be felt in the hand
+		_duck(-6.0, 0.5)                    # and the score steps back so the K.O. sting lands
+
+## A nearby explosion (rocket, grenade, barrel) is felt and briefly ducks the music; one across the arena is distant
+## and must not buzz a phone in your hand. Presentation only, like the rest of FxSystem.
+func _on_explode(at: Vector3, rad: float) -> void:
+	if world == null: return
+	var me: FighterState = world.sim.player
+	if me == null: return
+	var p := me.phys
+	if at.distance_to(Vector3(p.px, p.py + 1.0, p.pz)) > maxf(14.0, rad * 2.5): return
+	_buzz("heavy")
+	_duck(-5.0, 0.35)
 
 # ================================================================ fighter motion (landings, footsteps, stops)
 

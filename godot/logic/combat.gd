@@ -80,8 +80,15 @@ func dispose() -> void:
 	fighters.clear()
 	events.clear()
 
+## Parsed content is immutable between releases. Every caller receives a deep copy so one match can merge or alter its
+## own tuning without changing later matches; repeated matches avoid decoding the same JSON again.
+static var _json_cache := {}
+
 static func read_json(path: String) -> Variant:
-	return JSON.parse_string(FileAccess.get_file_as_string(path))
+	if not _json_cache.has(path):
+		_json_cache[path] = JSON.parse_string(FileAccess.get_file_as_string(path))
+	var value: Variant = _json_cache[path]
+	return value.duplicate(true) if value is Dictionary or value is Array else value
 
 ## Load weapons/classes/modes from a folder holding copies of shared/*.json (the Content autoload will call this later).
 func load_content(dir: String = "res://data") -> void:
@@ -323,7 +330,7 @@ func timers(f: FighterState, dt: float) -> void:
 	if f.spd_t > 0.0: f.spd_t -= dt
 	if f.rage_t > 0.0: f.rage_t -= dt
 	if f.shield_t > 0.0: f.shield_t -= dt
-	f.cool -= dt * f.cls_rate; f.melee_cool -= dt; f.shove_cool -= dt; f.kick_cool -= dt; f.pad_cool -= dt
+	f.cool -= dt * f.cls_rate; f.melee_cool -= dt; f.shove_cool -= dt; f.parry_t -= dt; f.kick_cool -= dt; f.pad_cool -= dt
 	if f.invuln > 0.0: f.invuln -= dt
 	if f.flash > 0.0: f.flash -= dt
 	if f.trap_t > 0.0:                 # stuck under a net
@@ -393,7 +400,7 @@ func respawn(f: FighterState) -> void:
 func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
-	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null
+	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null; f.parry_t = 0.0
 	Skills.reset(f)
 	clear_inventory(f); set_weapon(f, "spatula")
 	var start: Variant = mode.get("start")
@@ -607,6 +614,7 @@ func shove(f: FighterState, yaw: float) -> void:
 	if f.shove_cool > 0.0 or f.dead or f.down_t > 0.0:
 		return
 	f.shove_cool = 0.9
+	if tuning_active(): f.parry_t = 0.22
 	var fx_ := sin(yaw)
 	var fz_ := cos(yaw)
 	kick_lean(f, -2.5, 0.0)
@@ -618,6 +626,23 @@ func shove(f: FighterState, yaw: float) -> void:
 		if d < 2.6 and d > 0.001 and (dx * fx_ + dz * fz_) / d > 0.3:
 			var n := norm3(dx / d, 0.2, dz / d)
 			hit(e, 2.0, n[0], n[1], n[2], 11.0, false, f)
+
+## A tuned offline shove is also a short parry. Only a melee hit from roughly in front counts; the attacker's swing is
+## cancelled and they are staggered away. The web/classic path never reaches this (tuning_active is false).
+func try_parry(v: FighterState, attacker: FighterState) -> bool:
+	if not tuning_active() or v == null or attacker == null or v.parry_t <= 0.0 or v.dead or attacker.dead: return false
+	var dx := attacker.phys.px - v.phys.px
+	var dz := attacker.phys.pz - v.phys.pz
+	var d := sqrt(dx * dx + dz * dz)
+	if d <= 0.001: return false
+	var facing := (dx * sin(v.face_yaw) + dz * cos(v.face_yaw)) / d
+	if facing < 0.2: return false
+	v.parry_t = 0.0
+	attacker.swing = -1.0; attacker.cool = maxf(attacker.cool, 0.45); attacker.stun = maxf(attacker.stun, 0.65)
+	attacker.phys.vx += dx / d * 3.5; attacker.phys.vz += dz / d * 3.5
+	kick_lean(attacker, 2.8, 0.0)
+	ev({"type": "parry", "f": v, "attacker": attacker, "x": v.phys.px, "y": v.phys.py + 1.4, "z": v.phys.pz})
+	return true
 
 # ============================== melee ==============================
 
@@ -773,6 +798,7 @@ func melee_sweep(f: FighterState) -> void:
 						if dx * dx + dy * dy + dz * dz < rr * rr:
 							touched = true; tp_at = [ax, ay, az]; tp_head = sp[4]; break
 			if not touched: continue
+			if try_parry(e, f): continue
 			f.swing_hit[e] = true
 			# knock them the way the weapon was moving, mixed with "away from the swinger"
 			var j := (n - 1) * 3

@@ -35,6 +35,13 @@ var _cross: Control
 var _hint: Label
 var _center: Label
 var _last_ko := -1
+var _lowhp_t := 0.0             ## seconds to the next low-health heartbeat (0 = not playing)
+
+## The `Sfx` autoload by tree lookup, never as a bare global identifier: a test's main loop can compile this class
+## before the autoloads are registered (see world/fx.gd for the same pattern).
+static func _sfx() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("Sfx") if tree and tree.root else null
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -235,7 +242,7 @@ func add_feed(killer: FighterState, victim: FighterState, weapon: String, fell: 
 	tw.tween_property(item, "modulate:a", 1.0, 0.18)
 
 func _who(f: FighterState) -> String:
-	return "You" if f == sim.player else f.name
+	return "You" if f == sim.player else Safety.display_name(f.name)
 
 func _who_color(f: FighterState) -> Color:
 	return UiTheme.ACCENT if f == sim.player else Color.WHITE
@@ -263,7 +270,7 @@ func update(delta: float) -> void:
 	for f: FighterState in sim.fighters:
 		if f.ko > 0 and (lead == null or f.ko > lead.ko): lead = f
 	_crown.visible = lead != null
-	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [lead.name, lead.ko]) if lead else "No leader yet. Be first!"
+	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [Safety.display_name(lead.name), lead.ko]) if lead else "No leader yet. Be first!"
 	_leader.add_theme_color_override("font_color", UiTheme.ACCENT if lead == p else UiTheme.MUTED)
 	# keep clear of the touch layer's pause button
 	var pause_r := Rect2()
@@ -297,6 +304,17 @@ func update(delta: float) -> void:
 	_health.set_value(k, "%d / %d" % [ceili(maxf(p.hp, 0.0)) if not p.dead else 0, roundi(mx)],
 		tr(str(sim.combat.classes.get(p.class_id, {}).get("name", p.class_id))))
 	_health.tick(delta)
+	# Low-health heartbeat (docs/AUDIO.md): under 25 % a soft double-thump about once a second. It follows the health
+	# bar itself (no new setting), stays quiet, and stops the moment you heal back up, go down or the results open.
+	var low: bool = not p.dead and p.hp > 0.0 and p.hp < mx * 0.25 and not world.paused and not world.results_open()
+	if low:
+		_lowhp_t -= delta
+		if _lowhp_t <= 0.0:
+			_lowhp_t = 1.05
+			var sfx := _sfx()
+			if sfx: sfx.call("play", "lowhp", 0.55)
+	else:
+		_lowhp_t = 0.0
 	var hy := safe.end.y - _health.size.y
 	_health.position = Vector2(safe.end.x - _health.size.x if lefty else safe.position.x, hy)
 	# --- hotbar: centred, or fitted between the health bar and the touch buttons

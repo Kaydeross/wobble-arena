@@ -19,7 +19,7 @@ The iOS app reads one address, `wss://<your hostname>/ws`; the REST API is deriv
 |---|---|---|
 | `PORT` | `3000` | Listen port inside the container. |
 | `DATA_DIR` | `/data` (compose) | Folder for `db.json` (accounts, cloud saves). Must be a persistent volume. The image default `/tmp/wobble-data` is wiped on redeploy (Render). |
-| `ACCOUNT_TTL_DAYS` | `30` | Accounts nobody used for this many days are erased (account, cloud save, tokens, email) by a sweep at start-up and every 6 hours, which frees the name. `0` disables it. Accounts from before this setting existed start their 30 days on the first sweep. Only counts are logged. |
+| `ACCOUNT_TTL_DAYS` | `0` | Optional inactivity deletion. `0` (the default) keeps accounts forever. With a positive value, a sweep at start-up and every 6 hours erases older accounts, cloud saves, tokens and emails, freeing the name. Leave this at `0` once purchases or a server wallet exist. Only counts are logged. |
 | `REQUIRE_LOGIN` | `1` | Online play needs a signed-in account. `0` lets anyone connect. Keep `1`. |
 | `TRUST_PROXY` | off | Where the per-IP limit gets the client address. Unset/`0`: the socket address. `1`: last `x-forwarded-for` entry (one proxy hop you control). `cloudflare`: `cf-connecting-ip`, else the last `x-forwarded-for`. The compose file sets `cloudflare`. Never enable it when the port is reachable without the proxy, or clients can spoof their address. |
 | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | unset | Optional: store accounts in Upstash instead of `db.json`. Both must be set. Only needed if you want the data off the NAS. |
@@ -85,8 +85,9 @@ What you need to supply: **a domain** (about US$10/yr, on Cloudflare DNS) and **
 - Keep `REQUIRE_LOGIN=1`. Put the app behind the tunnel only; remove the LAN port mapping so `wobble` is reachable only through `cloudflared`.
 - Set `TRUST_PROXY` only to match your real proxy. With `cloudflare`/`1`, direct access to port 3000 would let a client forge its address and dodge per-IP limits, hence the advice above.
 - The server is a relay: the host client is authoritative, so the room server cannot stop cheating (see roadmap B). Do not treat client coin counts as trusted until the server wallet exists.
+- Password change/reset and account deletion revoke every session. The token is still stored in regular settings in this build, so Keychain/Keystore storage is a launch blocker.
 - Keep the NAS OS, Docker and the `cloudflared` image updated; the image runs as the non-root `node` user.
-- Back up `db.json` (section 7); it is the only state.
+- Back up `db.json` (section 7); it is the only state. `render.yaml` is not a production account store until a persistent Render disk or Upstash credentials are configured; a free Render redeploy wipes the file.
 - Limits in `server.js` (`LIMITS`: rooms, connections, per-IP, rate) already guard abuse; adjust if your NAS is small.
 
 ## 9. Roadmap (rough effort)
