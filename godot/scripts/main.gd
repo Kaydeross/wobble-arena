@@ -54,8 +54,8 @@ const O := "Safe/Col/Body/Online/Box/"
 @onready var gear: Button = $Safe/Col/Top/Gear
 @onready var home: Control = $Safe/Col/Body/Home
 @onready var online_panel: Control = $Safe/Col/Body/Online
-@onready var play: Button = $Safe/Col/Body/Home/Play
-@onready var online_b: Button = $Safe/Col/Body/Home/Online
+@onready var play: Button = $Safe/Col/Body/Home/Cols/Left/Play
+@onready var online_b: Button = $Safe/Col/Body/Home/Cols/Left/Online
 var quick_b: Button                ## Quick play: a random arena and mode straight into an offline match (logic/quick_play.gd)
 @onready var status: Label = get_node(O + "Foot/Status")
 var wizard: SetupWizard
@@ -96,8 +96,14 @@ func _ready() -> void:
 	locker.visible = false
 	safe.add_child(locker)
 	locker.closed.connect(close_locker)
+	var top := $Safe/Col/Top as HBoxContainer       # chip and gear on the left, the logo over the right column (hand sketch)
+	top.move_child($Safe/Col/Top/GuestChip, 0)
+	top.move_child(gear, 1)
+	top.move_child($Safe/Col/Top/Spacer, 2)
+	top.move_child($Safe/Col/Top/Logo, 3)
 	_build_more()
 	_build_quick_play()
+	_stretch_title()
 	play.pressed.connect(func() -> void: if dlc: open_hub() else: open_wizard())   # on the Construction title Play opens the hub
 	online_b.pressed.connect(show_tab.bind(true))
 	(get_node(O + "Head/Back") as Button).pressed.connect(show_tab.bind(false))
@@ -219,11 +225,13 @@ func maps_for(mode: String) -> Array:
 ## The Walldrobe / Shop / Goals row under Play online: clear buttons, each with a one-line sub (the Shop's shows your
 ## coins, the Goals one how many goals wait to be claimed).
 func _build_more() -> void:
-	var more := HBoxContainer.new()
+	var right := home.get_node("Cols/Right") as VBoxContainer
+	var more := VBoxContainer.new()
 	more.name = "More"
-	more.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	more.add_theme_constant_override("separation", UiTheme.SP_4)   # three cards: What's new moved up beside the account chip
-	home.add_child(more)
+	more.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	more.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	more.add_theme_constant_override("separation", 12)   # right column under the logo: Walldrobe, Shop, Goals stacked
+	right.add_child(more)
 	home.add_theme_constant_override("separation", UiTheme.SP_3)
 	locker_b = _small_button("Walldrobe", "What you own")
 	locker_b.name = "Locker"
@@ -239,13 +247,21 @@ func _build_more() -> void:
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
 
+## The two title columns are 70 / 30 wide (Play and the modes are the main thing, the three cards the side) and share
+## the height: Play takes the biggest share on the left, the three cards split the right column evenly, so both columns end at the same line above the DON'T ENTER sign (the buttons' minimums stay the floor).
+func _stretch_title() -> void:
+	home.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	for b: Button in [play, quick_b, online_b, locker_b, shop_b, goals_b]:
+		b.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	play.size_flags_stretch_ratio = 2.4
+
 ## Quick play, under Play: one tap and a random arena and mode (logic/quick_play.gd) starts at once, no wizard. The sub
 ## line says what it does (docs/WRITING.md); it is secondary to the big Play button.
 func _build_quick_play() -> void:
 	quick_b = Button.new()
 	quick_b.name = "Quick"
-	quick_b.custom_minimum_size = Vector2(520, 64)
-	quick_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	quick_b.custom_minimum_size = Vector2(0, 56)
+	quick_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	quick_b.tooltip_text = tr("Random arena and mode")
 	quick_b.pressed.connect(quick_play)
 	var st := VBoxContainer.new()
@@ -272,8 +288,8 @@ func _build_quick_play() -> void:
 	sl.clip_text = true
 	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	st.add_child(sl)
-	home.add_child(quick_b)
-	home.move_child(quick_b, play.get_index() + 1)   # under Play (no reparenting: the layout tests know Play's path)
+	play.get_parent().add_child(quick_b)
+	play.get_parent().move_child(quick_b, play.get_index() + 1)   # under Play (no reparenting: the layout tests know Play's path)
 	quick_b.visible = not dlc
 
 ## Quick play: a random game type, arena, class, floor, bot count and bot skill; straight into the offline match (no
@@ -292,8 +308,8 @@ func quick_play() -> void:
 func _build_dlc_banner() -> void:
 	var b := DontEnterSign.new()
 	b.name = "Construction"
-	b.custom_minimum_size = Vector2(752, 62)
-	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.custom_minimum_size = Vector2(0, 56)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.pressed.connect(toggle_dlc)
 	home.add_child(b)
 	dlc_b = b
@@ -319,7 +335,8 @@ func _news_dot() -> void:
 func _small_button(big: String, sub: String) -> Button:
 	var b := Button.new()
 	b.name = big
-	b.custom_minimum_size = Vector2(240, 60)
+	b.custom_minimum_size = Vector2(0, 60)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var st := VBoxContainer.new()
 	st.name = "Stack"
 	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -457,7 +474,7 @@ func _status(t: String) -> void:
 	status.text = t
 	status.tooltip_text = t
 	var on := session != null and session.is_active()
-	var sub: Label = $Safe/Col/Body/Home/Online/Stack/Sub
+	var sub: Label = $Safe/Col/Body/Home/Cols/Left/Online/Stack/Sub
 	sub.text = (tr("Connected · %s") % t) if on else tr(ONLINE_SUB)
 	sub.tooltip_text = sub.text
 
@@ -488,11 +505,12 @@ func apply_safe_area() -> void:
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
 	($Safe/Col/Top/Logo as WobbleLogo).font_size = _logo_font(online_panel.visible)
-	play.custom_minimum_size.y = 60.0 if tiny else (84.0 if short else 146.0)   # (the Construction banner sits below the cards row)
+	play.custom_minimum_size.y = 54.0 if tiny else (72.0 if short else 100.0)   # (the Construction banner sits below the cards row)
 	(play.get_node("Stack/Big") as Label).add_theme_font_size_override("font_size", 34 if tiny else (54 if short else 84))
 	(play.get_node("Stack/Sub") as Label).add_theme_font_size_override("font_size", 15 if tiny else (19 if short else 21))
-	online_b.custom_minimum_size.y = 60.0 if short else 84.0
-	quick_b.custom_minimum_size.y = 60.0 if short else 64.0
+	online_b.custom_minimum_size.y = 52.0 if short else 64.0
+	quick_b.custom_minimum_size.y = 52.0 if short else 56.0
+	for b: Button in [locker_b, shop_b, goals_b]: b.custom_minimum_size.y = 52.0 if short else 60.0
 	if dlc_b: dlc_b.custom_minimum_size.y = 60.0 if short else 62.0
 	col.add_theme_constant_override("separation", 11 if tiny else (UiTheme.SP_3 if short else UiTheme.SP_4))
 	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
