@@ -119,6 +119,8 @@ orientation, not where a planted sole is.
 - `npm run test:godot-ragdoll` (`godot/tests/ragdoll_test.gd`): classic vs ragdoll gameplay points bit-identical,
   finite/bounded pose, feet planted while idle and never skating, grip on the sim hand, collapse and get-up,
   frame-time budget with 8/10 fighters, plus the M0 leg-wobble checks: `leg_wobble = 0` reproduces the pre-M0
-  digest bit for bit, 1 changes the legs, same seed+frames replays, different seeds differ, planted soles stay on
-  the floor, the Settings default/live change, and the seeded identity from fighter id / net_slot.
+  pose (its digest is platform-scoped - the macOS value was captured from the pre-M0 build, the Linux CI value is
+  pinned there because transform maths differs in the last bits across platforms), 1 changes the legs, same
+  seed+frames replays, different seeds differ, planted soles stay on the floor, the Settings default/live change,
+  and the seeded identity from fighter id / net_slot.
 - `sh tools/shoot-godot-ragdoll.sh [classic]` renders `docs/style/godot-ragdoll-*.png`.
