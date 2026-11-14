@@ -106,6 +106,19 @@ func _settings(st: Node) -> void:
 		await process_frame
 		check(s.section == sec and s.rows.get_child_count() > 0, "Settings > %s has rows" % sec)
 	s.tabs["controls"].pressed.emit()
+	check(s.ctl.has("aim_button"), "Controls: the Aim button row")
+	s.tabs["gameplay"].pressed.emit()
+	await process_frame
+	check(s.ctl.has("aim_mode"), "Gameplay: the Aim mode row exists")
+	if s.ctl.has("aim_mode"):
+		var aim_ctl: Dictionary = s.ctl["aim_mode"]
+		check(aim_ctl.has("normal") and aim_ctl.has("advanced"), "Aim mode offers Normal and Advanced")
+		check(str(st.get_value("aim_mode")) == "normal", "aim mode defaults to Normal")
+		(aim_ctl["advanced"] as Button).pressed.emit()
+		check(str(st.get_value("aim_mode")) == "advanced", "choosing Advanced saves at once")
+		(aim_ctl["normal"] as Button).pressed.emit()
+		check(str(st.get_value("aim_mode")) == "normal", "choosing Normal saves at once")
+	s.tabs["controls"].pressed.emit()
 	s.ui["help"].pressed.emit()
 	check(s.help.visible, "Controls > See the controls")
 	m.go_back()
@@ -184,6 +197,15 @@ func _pause() -> void:
 	w.rng_seed = 5
 	root.add_child(w)
 	await frames(3)
+	# HUD: the Advanced aim badge follows the setting live (docs/AIM.md)
+	var st: Node = root.get_node("Settings")
+	st.set_value("aim_mode", "advanced")
+	w.tick(1.0 / 60.0)
+	var aim_badge: Label = w.hud.find_child("AimBadge", true, false)
+	check(aim_badge != null and aim_badge.visible, "Advanced aim badge shows in a match")
+	st.set_value("aim_mode", "normal")
+	w.tick(1.0 / 60.0)
+	check(aim_badge != null and not aim_badge.visible, "the aim badge hides in Normal")
 	var pm: Control = w.pause_menu
 	var quit := [false]
 	pm.quit_requested.disconnect(w._on_title_pressed)   # (no scene change in a --script test)

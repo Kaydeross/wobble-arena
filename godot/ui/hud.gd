@@ -23,6 +23,7 @@ var _clock: Label
 var _leader: Label
 var _crown: Control
 var _kids: Label          ## "Kids mode · half coins · no leaderboard" badge (Settings kids_mode)
+var _aim: Label           ## "Advanced aim · +25% damage" badge (Settings aim_mode, docs/AIM.md)
 var _radar: Control
 var _feed: VBoxContainer
 var _feed_items: Array = []      ## [node, time left]
@@ -169,6 +170,11 @@ func _build_ko() -> void:
 	_kids.name = "KidsBadge"
 	_kids.text = "Kids mode · half coins · no leaderboard"
 	_kids.visible = false
+	# Aim modes (Settings aim_mode, docs/AIM.md): Advanced is a deliberate trade off (no aim assist, +25% damage
+	# offline). Shown live in a match, hidden in the default Normal mode so the HUD layout tests are unchanged.
+	_aim = _lbl(col, UiTheme.MIN_FONT, UiTheme.MUTED)
+	_aim.name = "AimBadge"
+	_aim.visible = false
 
 func _build_toast() -> void:
 	_toast = PanelContainer.new()
@@ -265,6 +271,11 @@ func update(delta: float) -> void:
 	var p := sim.player
 	# --- score pill + leader
 	_kids.visible = KidsAssist.is_enabled()
+	var advanced := str(Settings.get_value("aim_mode", "normal")) == "advanced"
+	_aim.visible = advanced
+	if advanced:
+		_aim.text = "Advanced aim · no bonus online" if sim.combat.net_started else "Advanced aim · +25% damage"
+		_aim.add_theme_color_override("font_color", UiTheme.MUTED if sim.combat.net_started else UiTheme.ACCENT)
 	if p.ko != _last_ko:
 		if _last_ko >= 0 and p.ko > _last_ko:
 			var tw := _ko_n.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

@@ -163,6 +163,32 @@ func _initialize() -> void:
 	var sp := last_number()
 	ok(sp["dmg"] > 0.0 and sp["part"] == "" and sp["pct"] == 0, "explosion: no body part (%s)" % [sp])
 
+	# 5. aim modes (docs/AIM.md): Advanced is +25% for the LOCAL player's own hits, OFFLINE only
+	c.damage_rule = "classic"
+	c.aim_mode = "normal"
+	near(shoot("tgun", T["torso"])["dmg"], 20.0, "normal aim: standard damage")
+	c.aim_mode = "advanced"
+	near(shoot("tgun", T["torso"])["dmg"], 25.0, "advanced aim: +25% for the local player")
+	var kn0 := 0.0
+	c.aim_mode = "normal"; kn0 = knife(T["torso"])["dmg"]
+	c.aim_mode = "advanced"
+	near(knife(T["torso"])["dmg"], kn0 * 1.25, "advanced aim: every hit path is boosted (thrown knife)")
+	A.is_player = false
+	reset()
+	var bot_hit := c.hit(V, 20.0, 0.0, 0.0, 1.0, 3.0, false, A)
+	near(float(bot_hit.get("dmg", -1.0)), 20.0, "advanced aim: a bot attacker gets no bonus")
+	A.is_player = true
+	c.net_started = true
+	near(shoot("tgun", T["torso"])["dmg"], 20.0, "advanced aim: online keeps the shared damage")
+	# a hit relayed to a ghost carries the shared number (the ghost's owner applies it), never the buff
+	A.net_slot = 0; V.is_ghost = true; V.net_slot = 1
+	reset()
+	var g := c.hit(V, 20.0, 0.0, 0.0, 1.0, 3.0, false, A)
+	ok(bool(g.get("applied", false)) and is_equal_approx(float(g["sent"]["d"]), 20.0),
+		"advanced aim: a ghost-relayed hit is not buffed (%s)" % [g.get("sent", {})])
+	V.is_ghost = false; V.net_slot = -1; A.net_slot = -1; c.net_started = false
+	c.aim_mode = "normal"
+
 	c.dispose(); A = null; V = null
 	print("DAMAGE checks=%d failures=%d" % [checks, fails])
 	quit(0 if fails == 0 else 1)

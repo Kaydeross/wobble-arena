@@ -75,9 +75,9 @@ func mouse_captured() -> bool:
 func _sens() -> float:
 	return float(Settings.get_value("mouse_sens", 1.0))
 
-## Settings `aim_mode` "toggle": a press of the aim key / button / trigger turns the scope on or off.
+## Settings `aim_button` "toggle": a press of the aim key / button / trigger turns the scope on or off.
 func _aim_toggles() -> bool:
-	return str(Settings.get_value("aim_mode", "hold")) == "toggle"
+	return str(Settings.get_value("aim_button", "hold")) == "toggle"
 
 func _inv() -> float:
 	return -1.0 if bool(Settings.get_value("invert_y", false)) else 1.0

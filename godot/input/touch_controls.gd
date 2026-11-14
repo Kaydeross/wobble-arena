@@ -12,8 +12,9 @@ extends Control
 ##           burst", logic/skills.gd; a ring shows the charge coming back), else RELOAD (gun with a magazine and spare
 ##           ammo; shows the reload progress).
 ##   AIM     double-tap the look area to toggle the scope (tap again twice to leave it).
-##   weapons tap a hotbar slot to equip it (the Spatula slot is the quick melee, like Q); tap the slot already in hand to
-##           swap back to the last weapon; swipe sideways across the hotbar to cycle.
+##   weapons tap a hotbar slot to equip it; the fourth tile is the spatula, a real slot like the others (tap it again to
+##           go back to the weapon it replaced); tap a weapon slot already in hand to swap back to the previous one;
+##           swipe sideways across the hotbar to cycle.
 ##   pause   the button at the top corner.
 ##   spectate `spectate_mode` (the player is out, World spectates): only the pause button; any other tap emits
 ##           spectate_tap (World follows the next fighter).
@@ -370,20 +371,33 @@ func _slot_filled(i: int) -> bool:
 	var sl: Array = hotbar.get("slots") if hotbar else []
 	return i >= 0 and i < sl.size() and not sl[i].get("empty", true)
 
-## Tap on hotbar slot i: equip it (Spatula = quick melee); on the slot in hand, swap back to the previous one.
+## Tap on hotbar slot i: equip it. The fourth tile is the spatula, a real slot like the others: with a weapon in hand a
+## tap puts the spatula in hand (PlayerControl's "spatula_equip"), and a tap while the spatula is already in hand goes
+## back to the weapon it replaced. A tap on a weapon slot already in hand swaps back to the previous one.
 func _hotbar_tap(i: int) -> void:
 	var cur := _active_slot()
+	if i == 3:
+		if cur == 3:                                 # already holding the spatula: back to the weapon it replaced
+			if _prev_slot >= 0 and _prev_slot < 3 and _slot_filled(_prev_slot):
+				state.press("slot%d" % (_prev_slot + 1))
+				_prev_slot = -1
+			return
+		if cur < 0:                                  # no slot in hand (dead / spectating): nothing to select
+			return
+		_prev_slot = cur
+		state.press("spatula_equip")
+		return
 	var go := i
-	if i == cur and i != 3:
+	if i == cur:
 		if not _slot_filled(_prev_slot) or _prev_slot == cur:
 			return
 		go = _prev_slot
+	if go == 3:                                       # the weapon it replaced was the spatula
+		state.press("spatula_equip")
+		return
 	if not _slot_filled(go):
 		return
-	if go == 3:
-		state.press("spatula")
-		return
-	if cur >= 0 and cur != 3:
+	if cur >= 0:
 		_prev_slot = cur
 	state.press("slot%d" % (go + 1))
 

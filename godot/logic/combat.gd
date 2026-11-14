@@ -48,6 +48,27 @@ var damage_rule := "classic"
 ## Online matches stay classic (web clients compute their own shots that way) unless every client knows the table.
 var net_zones := false
 
+# --- aim modes (Settings `aim_mode`, docs/AIM.md) ---
+## Normal (default): aim assist on (PlayerControl pulls the crosshair point toward a near enemy), standard damage.
+## Advanced: no aim assist, and the LOCAL player's own hits deal +25% damage OFFLINE only: online the shooter's game
+## decides every hit, so a damage buff here would break cross-play parity with the web game (and bots/ghosts keep the
+## shared numbers).
+## PlayerControl.think() writes this from the Settings row every local-player step, so the row applies live; tests and
+## the JS parity fixtures just leave it at "normal" (a bare Combat never reads Settings, so the shared numbers are
+## deterministic: docs/AIM.md).
+const ADVANCED_DAMAGE := 1.25
+var aim_mode := "normal"
+
+## The Settings autoload's `aim_mode` right now ("normal" | "advanced"), for PlayerControl to copy into `aim_mode`.
+static func settings_aim_mode() -> String:
+	var tree := Engine.get_main_loop() as SceneTree
+	var st: Node = tree.root.get_node_or_null("Settings") if tree != null and tree.root != null else null
+	return str(st.get_value("aim_mode", "normal")) if st != null else "normal"
+
+## Advanced aim mode: no aim assist, +25% damage for the local player offline (docs/AIM.md).
+func aim_advanced() -> bool:
+	return aim_mode == "advanced"
+
 # --- balance overlay (res://data/extra/weapon_tuning.json, docs/DAMAGE.md "Balance and cooldowns") ---
 ## Weapon key -> the weapons.json entry with the overlay merged in (empty = no overlay: a bare Combat, the parity tests).
 ## Used only while tuning_active(), the same gate as the zones rule, so web peers and the JS references keep the
@@ -261,6 +282,11 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		dmg *= 1.5
 	if attacker != null and attacker != v and attacker.big_t > 0.0:    # Chaos giant (Godot-only)
 		dmg *= 1.5
+	# Aim modes (docs/AIM.md): Advanced pays +25% damage for the local player's own hits, OFFLINE only. Bots, ghosts,
+	# other players' relayed hits and every online match keep the shared numbers (the shooter decides the damage it
+	# sends, so a local buff online would make the same shot hurt differently depending on who fired it).
+	if attacker != null and attacker != v and attacker.is_player and not attacker.is_ghost and not net_started and aim_advanced():
+		dmg *= ADVANCED_DAMAGE
 	if v.shield_t > 0.0:
 		dmg *= 0.5
 	if v.down_t > 0.0 and not (v.trap_t > 0.0):
