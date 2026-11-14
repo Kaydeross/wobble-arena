@@ -405,27 +405,24 @@ func _world_paths() -> void:
 	c.clear_inventory(p); c.pickup(p, "ak"); c.equip_slot(p, 0)
 	for mode: String in ["normal", "advanced"]:
 		st.set_value("aim_mode", mode)
-		p.phys.place(0.0, 0.01, 0.0)
-		world.cam.yaw = 0.0; world.cam.pitch = 0.0
 		world.input.state.hold("script", "fire", true)
-		_frames(world, 2)
-		var cap: Vector3 = world.cam.aim_point
-		var sd := Combat.norm3(cap.x - p.shoulder_x, cap.y - p.shoulder_y, cap.z - p.shoulder_z)
-		# the enemy stands 12 m out, 1.5 degrees off the crosshair (inside the full-strength core)
-		var tx: float = p.shoulder_x + sd[0] * 12.0 + 0.3
-		var tz: float = p.shoulder_z + sd[2] * 12.0
-		var ty: float = p.shoulder_y + sd[1] * 12.0 - 1.22
 		e.invuln = 5.0; e.hp = c.max_hp(e)
-		for k in 6:
+		# Everything the camera and the animation move is re-derived every frame (the camera eases, the shoulder
+		# sways), so the enemy keeps standing 12 m out, ~1.4 degrees off the crosshair (inside the full-strength core).
+		var raw: Array = []
+		for k in 10:
 			p.phys.place(0.0, 0.01, 0.0)
-			e.phys.place(tx, maxf(ty, 0.01), tz)
+			world.cam.yaw = 0.0; world.cam.pitch = 0.0
+			var cap: Vector3 = world.cam.aim_point
+			var sd := Combat.norm3(cap.x - p.shoulder_x, cap.y - p.shoulder_y, cap.z - p.shoulder_z)
+			var side := Vector3(sd[2], 0.0, -sd[0]).normalized() * 0.3      # sideways, perpendicular to the aim
+			e.phys.place(p.shoulder_x + sd[0] * 12.0 + side.x, maxf(p.shoulder_y + sd[1] * 12.0 - 1.22, 0.01), p.shoulder_z + sd[2] * 12.0 + side.z)
 			world.tick(FRAME)
-		cap = world.cam.aim_point
-		var raw := [cap.x, cap.y, cap.z]
+			raw = (world.control.aim_point as Array).duplicate()           # what PlayerControl used in that step
 		var d_raw := _aim_dot(p, e, raw)
 		var d_used := _aim_dot(p, e, p.aim_pt)
 		if mode == "normal":
-			check(d_used > d_raw and d_used > 0.9995, "world: Normal pulls the fired aim point onto the enemy (%.5f -> %.5f)" % [d_raw, d_used])
+			check(d_raw > 0.9985 and d_used > d_raw and d_used > 0.9995, "world: Normal pulls the fired aim point onto the enemy (%.5f -> %.5f)" % [d_raw, d_used])
 		else:
 			check(_same3(p.aim_pt, raw), "world: Advanced fires exactly along the camera ray")
 	world.input.state.hold("script", "fire", false)
