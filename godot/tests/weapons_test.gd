@@ -88,6 +88,8 @@ func _run() -> void:
 	_assist()
 	_settings_checks()
 	await _badge()
+	_assist_edge()
+	await _world_paths()
 	_settings().set_value("aim_mode", "normal")
 	print("WEAPONS %s" % ("ok (%d checks)" % checks if fails == 0 else "failed (%d checks, %d failed)" % [checks, fails]))
 	quit(0 if fails == 0 else 1)
@@ -274,5 +276,156 @@ func _badge() -> void:
 		st.set_value("aim_mode", "normal")
 		world.tick(FRAME); world.tick(FRAME)
 		check(not badge.visible, "HUD: the badge hides in Normal")
+	world.free()
+	await process_frame
+
+# ============================== 5. the cycle in both directions, the assist at its cone edge ==============================
+
+func _assist_edge() -> void:
+	var d := _duel()
+	var sim: MatchSim = d["sim"]
+	var p: FighterState = d["p"]
+	var pc: PlayerControl = d["pc"]
+	var c := sim.combat
+	c.pickup(p, "ak"); c.pickup(p, "revolver")
+	c.equip_slot(p, 0)
+	pc.input.press("swap_back"); pc.think(p, sim, DT)
+	check(p.slot == -1 and p.weapon == "spatula", "cycle back: wheel up from the first weapon reaches the spatula (web cycleBack)")
+	pc.input.press("swap_back"); pc.think(p, sim, DT)
+	check(p.slot == 1, "cycle back: and wraps to the last filled slot")
+	pc.input.press("swap_back"); pc.think(p, sim, DT)
+	check(p.slot == 0, "cycle back: then walks down the slots")
+	pc.input.press("swap"); pc.think(p, sim, DT)
+	check(p.slot == 1, "cycle: swap still walks forward")
+	sim.dispose()
+	# The assist must fade out at the edge of its cone: sweep the crosshair across it in tiny steps and the aim point
+	# the shots use may never jump (a flat 85 % pull that switched on at the edge snapped the aim by ~6 degrees).
+	_settings().set_value("aim_mode", "normal")
+	d = _duel()
+	sim = d["sim"]; p = d["p"]; pc = d["pc"]
+	var e := _enemy(sim, 0.0, 10.0)
+	_pose(p); _pose(e)
+	pc.input.hold("script", "fire", true)
+	var prev: Array = []
+	var worst := 0.0
+	var first_pull := -1.0
+	var x := 1.6                                   # ~9 deg off: outside the cone
+	while x > 0.0:
+		var raw := [x, 1.22, 10.0]
+		pc.aim_point = raw
+		pc.think(p, sim, DT)
+		var sd_raw := Combat.norm3(raw[0] - p.shoulder_x, raw[1] - p.shoulder_y, raw[2] - p.shoulder_z)
+		var sd_now := Combat.norm3(p.aim_pt[0] - p.shoulder_x, p.aim_pt[1] - p.shoulder_y, p.aim_pt[2] - p.shoulder_z)
+		var moved := acos(clampf(sd_raw[0] * sd_now[0] + sd_raw[1] * sd_now[1] + sd_raw[2] * sd_now[2], -1.0, 1.0))
+		if prev.size() == 1:
+			worst = maxf(worst, absf(moved - float(prev[0])))
+		if first_pull < 0.0 and moved > 1e-6: first_pull = moved
+		prev = [moved]
+		x -= 0.002
+	check(first_pull >= 0.0 and first_pull < deg_to_rad(0.1), "aim assist: the pull starts from nothing at the cone edge (%.3f deg)" % rad_to_deg(maxf(first_pull, 0.0)))
+	check(worst < deg_to_rad(0.15), "aim assist: no jump while the crosshair crosses the cone (%.3f deg/step)" % rad_to_deg(worst))
+	pc.input.hold("script", "fire", false)
+	sim.dispose()
+
+# ============================== 6. the real runtime path: keys, hotbar, melee, aim ==============================
+
+func _key(code: int) -> void:
+	var e := InputEventKey.new()
+	e.physical_keycode = code; e.pressed = true
+	root.push_input(e)                              # through PlayerInput._unhandled_input like a real key press
+
+func _hot(world: Node) -> String:
+	var out := ""
+	for sl: Dictionary in (world.hud.find_child("Hotbar", true, false) as Control).get("slots"):
+		out += "A" if sl["active"] else ("." if sl["empty"] else "o")
+	return out
+
+func _frames(world: Node, n: int) -> void:
+	for i in n: world.tick(FRAME)
+
+func _world_paths() -> void:
+	var st := _settings()
+	st.set_value("aim_mode", "normal")
+	var world: Node = load("res://world/world.tscn").instantiate()
+	world.auto_run = false
+	world.bot_count = 1
+	world.dyn_choice = "off"
+	root.add_child(world)
+	await process_frame
+	var sim: MatchSim = world.sim
+	var c := sim.combat
+	var p: FighterState = sim.player
+	var e: FighterState = null
+	for f: FighterState in sim.fighters:
+		if f != p: e = f
+	c.clear_inventory(p)
+	c.pickup(p, "ak"); c.pickup(p, "revolver")
+	c.equip_slot(p, 0)
+	_frames(world, 3)
+	check(_hot(world) == "Ao.o", "world: hotbar shows the gun in hand (%s)" % _hot(world))
+	_key(KEY_1); _frames(world, 2)
+	check(p.slot == -1 and p.weapon == "spatula" and _hot(world) == "oo.A", "world: the 1 key (the held weapon's slot) returns to the spatula and the hotbar follows (%s)" % _hot(world))
+	_key(KEY_2); _frames(world, 2)
+	check(p.slot == 1 and _hot(world) == "oA.o", "world: the 2 key equips slot 2 and the hotbar follows (%s)" % _hot(world))
+	_key(KEY_3); _frames(world, 2)
+	check(p.slot == 1, "world: an empty slot key does nothing")
+	# the touch tile through the real HUD hotbar
+	world.touch._hotbar_tap(3); _frames(world, 2)
+	check(p.slot == -1 and _hot(world) == "oo.A", "world: the touch Spatula tile equips it (%s)" % _hot(world))
+	world.touch._hotbar_tap(3); _frames(world, 2)
+	check(p.slot == 1 and _hot(world) == "oA.o", "world: tapping the tile again returns to the weapon it replaced (%s)" % _hot(world))
+	# a held spatula really hurts: the full path (fire held -> melee swing -> animation hand -> sweep -> Combat.hit)
+	c.equip_slot(p, -1)
+	var hit_at := -1
+	for k in 160:
+		e.hp = c.max_hp(e); e.invuln = 0.0; e.dead = false; e.down_t = 0.0
+		e.phys.place(0.0, 0.01, 1.2); p.phys.place(0.0, 0.01, 0.0)
+		world.cam.yaw = 0.0
+		world.input.state.hold("script", "fire", k % 40 < 20)
+		world.tick(FRAME)
+		if e.hp < c.max_hp(e) - 0.01 and hit_at < 0: hit_at = k
+	world.input.state.hold("script", "fire", false)
+	check(hit_at >= 0 and p.weapon == "spatula", "world: the held spatula swings and damages through the real sim (hit at frame %d)" % hit_at)
+	# the held weapon runs out: next weapon in hand, the hotbar follows
+	c.clear_inventory(p)
+	c.pickup(p, "revolver"); c.pickup(p, "ak")
+	c.equip_slot(p, 0)
+	p.slots[0]["ammo"] = 1; p.slots[0]["mag"] = 1
+	for k in 120:
+		e.hp = c.max_hp(e); e.invuln = 5.0
+		e.phys.place(0.0, 0.01, 12.0)
+		world.cam.yaw = 0.0
+		world.input.state.hold("script", "fire", true)
+		world.tick(FRAME)
+		if p.slots[0] == null: break
+	world.input.state.hold("script", "fire", false)
+	_frames(world, 2)
+	check(p.slots[0] == null and p.slot == 1 and p.weapon == "ak" and _hot(world) == ".A.o", "world: an empty weapon falls to the next one (%s)" % _hot(world))
+	# aim assist end to end: Normal pulls the aim point the weapon fires at, Advanced leaves the camera ray alone
+	c.clear_inventory(p); c.pickup(p, "ak"); c.equip_slot(p, 0)
+	for mode: String in ["normal", "advanced"]:
+		st.set_value("aim_mode", mode)
+		world.input.state.hold("script", "fire", true)
+		e.invuln = 5.0; e.hp = c.max_hp(e)
+		# Everything the camera and the animation move is re-derived every frame (the camera eases, the shoulder
+		# sways), so the enemy keeps standing 12 m out, ~1.4 degrees off the crosshair (inside the full-strength core).
+		var raw: Array = []
+		for k in 10:
+			p.phys.place(0.0, 0.01, 0.0)
+			world.cam.yaw = 0.0; world.cam.pitch = 0.0
+			var cap: Vector3 = world.cam.aim_point
+			var sd := Combat.norm3(cap.x - p.shoulder_x, cap.y - p.shoulder_y, cap.z - p.shoulder_z)
+			var side := Vector3(sd[2], 0.0, -sd[0]).normalized() * 0.3      # sideways, perpendicular to the aim
+			e.phys.place(p.shoulder_x + sd[0] * 12.0 + side.x, maxf(p.shoulder_y + sd[1] * 12.0 - 1.22, 0.01), p.shoulder_z + sd[2] * 12.0 + side.z)
+			world.tick(FRAME)
+			raw = (world.control.aim_point as Array).duplicate()           # what PlayerControl used in that step
+		var d_raw := _aim_dot(p, e, raw)
+		var d_used := _aim_dot(p, e, p.aim_pt)
+		if mode == "normal":
+			check(d_raw > 0.9985 and d_used > d_raw and d_used > 0.9995, "world: Normal pulls the fired aim point onto the enemy (%.5f -> %.5f)" % [d_raw, d_used])
+		else:
+			check(_same3(p.aim_pt, raw), "world: Advanced fires exactly along the camera ray")
+	world.input.state.hold("script", "fire", false)
+	st.set_value("aim_mode", "normal")
 	world.free()
 	await process_frame

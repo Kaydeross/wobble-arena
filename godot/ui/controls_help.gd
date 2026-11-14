@@ -5,7 +5,7 @@ extends UiPage
 ## shove, hold = kick), the context button (dash / reload), hotbar taps, pause and the emote button. A line under it
 ## lists the keyboard and controller keys. Opened from the pause menu and from Settings > Controls.
 
-const KEYS := "Keyboard: WASD move · mouse look · click fire · right-click aim · Space jump · E shove · F kick · Q quick melee · 1-3 weapons · T G H emotes · Esc pause. Controller: sticks move and look · RT fire · LT aim · A jump · RB shove · B kick · Start pause."
+const KEYS := "Keyboard: WASD move · mouse look · click fire · right-click aim · Space jump · E shove · F kick · Q quick melee · 1-3 weapons (press the one in hand again for the spatula) · wheel cycles weapons · T G H emotes · Esc pause. Controller: sticks move and look · RT fire · LT aim · A jump · RB shove · B kick · Y next weapon · Start pause."
 
 var pic: Control
 var keys_l: Label

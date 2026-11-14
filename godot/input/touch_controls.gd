@@ -506,7 +506,7 @@ func _touch_up(i: int, p: Vector2 = Vector2.INF) -> void:
 	elif what == "hotbar":
 		var dx: float = p.x - (_hb["p0"] as Vector2).x
 		if absf(dx) > HOTBAR_SWIPE:
-			state.press("swap")              # swipe across the hotbar: next weapon
+			state.press("swap" if dx > 0.0 else "swap_back")   # swipe across the hotbar: right = next weapon, left = previous
 		elif p.distance_to(_hb["p0"]) < 30.0:
 			_hotbar_tap(int(_hb["i"]))
 		_hb = {"i": -1, "p0": Vector2.ZERO}
