@@ -55,7 +55,7 @@ command -v xcodebuild >/dev/null || fail "xcodebuild not found. Install Xcode an
 echo "Godot $GV, $(xcodebuild -version | head -1), team $TEAM_ID"
 
 VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' "$ROOT/godot/project.godot")"
-VERSION="${VERSION:-0.1.0}"
+[ -n "$VERSION" ] || fail "godot/project.godot has no application/config/version."
 BUILD_NUMBER="${BUILD_NUMBER:-$(git -C "$ROOT" rev-list --count HEAD)}"
 COMMIT="$(git -C "$ROOT" rev-parse --short HEAD)"
 echo "Version $VERSION, build $BUILD_NUMBER ($COMMIT)"

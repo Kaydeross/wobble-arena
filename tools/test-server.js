@@ -61,6 +61,7 @@ const { Client } = require('./wa-client');
     assert.equal((await api('POST', '/api/claim', { name: 'PICKLE_7' })).err, 'username');
     assert.equal((await api('POST', '/api/claim', { name: 'ab' })).status, 400, 'name rules are the same as sign-up');
     assert.equal((await api('POST', '/api/claim', { name: 'Admin' })).status, 400, 'reserved names are refused');
+    assert.equal((await api('POST', '/api/claim', { name: 'N1gg3r' })).status, 400, 'blocked display names are refused');
     assert.equal((await api('POST', '/api/signup', { username: 'PICKLE_7', email: 'p@example.com', password: 'secret1' })).status, 409, 'sign-up respects claimed names');
     const me = await api('GET', '/api/me', null, c1.token); assert.ok(me.ok && me.hasPassword === false);
     assert.equal((await api('POST', '/api/login', { id: 'Pickle_7', password: 'anything' })).status, 401, 'a name-only account cannot log in with a password');
@@ -70,12 +71,40 @@ const { Client } = require('./wa-client');
     const pr = await api('POST', '/api/protect', { password: 'secret1' }, c1.token);
     assert.ok(pr.ok && /^[A-Z2-9]{4}(-[A-Z2-9]{4}){3}$/.test(pr.recovery) && pr.user.hasPassword, 'protect sets a password and gives a recovery code');
     assert.equal((await api('POST', '/api/protect', { password: 'secret2' }, c1.token)).status, 409, 'protect is only for name-only accounts');
+    const rep = await api('POST', '/api/report', { target: 'Rude_Randy', room: 'ABCDE', reason: 'harassment', details: 'test report' }, c1.token);
+    assert.ok(rep.ok && /^[0-9a-f]{16}$/.test(rep.id), 'an authenticated player can submit a safety report');
+    assert.equal((await api('POST', '/api/report', { target: 'Another', room: 'ABCDE', reason: 'spam' }, c1.token)).status, 429, 'reports are rate limited');
     const li = await api('POST', '/api/login', { id: 'pickle_7', password: 'secret1' }); assert.ok(li.ok && li.user.username === 'Pickle_7', 'protected name logs in on another device');
     assert.equal((await api('POST', '/api/save', { data: {} }, c1.token)).status, 404);
     assert.ok((await api('PUT', '/api/save', { data: { wallet: { coins: 5 } } }, c1.token)).ok);
     const c2 = await api('POST', '/api/claim', { name: 'Plain_Pat', data: { wallet: { coins: 9 } } }); assert.equal(c2.t > 0, true, 'claim can carry the guest progress');
     assert.ok((await api('POST', '/api/delete', {}, c2.token)).ok, 'a name-only account can be deleted without a password');
     assert.ok((await api('POST', '/api/claim', { name: 'plain_pat' })).ok, 'a deleted name is free again');
+
+    // Changing a password or resetting it revokes every old session and returns one fresh token.
+    const r0 = await api('POST', '/api/claim', { name: 'Revoke_Rita' });
+    const rp = await api('POST', '/api/protect', { password: 'first-pass1' }, r0.token);
+    const r1 = await api('POST', '/api/login', { id: 'Revoke_Rita', password: 'first-pass1' });
+    const rp2 = await api('POST', '/api/password', { old: 'first-pass1', next: 'second-pass2' }, r1.token);
+    assert.ok(rp2.ok && /^[0-9a-f]{64}$/.test(rp2.token), 'changing the password returns a replacement session');
+    assert.equal((await api('GET', '/api/me', null, r0.token)).status, 401, 'password change revokes older sessions');
+    assert.equal((await api('GET', '/api/me', null, r1.token)).status, 401, 'password change revokes the session that made it');
+    assert.equal((await api('GET', '/api/me', null, rp2.token)).status, 200, 'the replacement session works');
+    const rr = await api('POST', '/api/reset', { id: 'Revoke_Rita', code: rp.recovery, password: 'third-pass3' });
+    assert.ok(rr.ok && /^[0-9a-f]{64}$/.test(rr.token), 'reset returns a fresh session');
+    assert.equal((await api('GET', '/api/me', null, rp2.token)).status, 401, 'reset revokes every old session');
+    assert.equal((await api('GET', '/api/me', null, rr.token)).status, 200, 'the reset session works');
+    const rd1 = await api('POST', '/api/login', { id: 'Revoke_Rita', password: 'third-pass3' });
+    const rd2 = await api('POST', '/api/login', { id: 'Revoke_Rita', password: 'third-pass3' });
+    assert.ok((await api('POST', '/api/delete', { password: 'third-pass3' }, rd1.token)).ok);
+    assert.equal((await api('GET', '/api/me', null, rr.token)).status, 401, 'delete revokes all sessions, including another device');
+    assert.equal((await api('GET', '/api/me', null, rd2.token)).status, 401, 'delete revokes every token');
+
+    // Cloud timestamps are 64-bit in JavaScript terms: a 32-bit cast must not let an older save overwrite a newer one.
+    const ts = await api('POST', '/api/claim', { name: 'Timestamp_Tess', data: { x: 2 } });
+    await A.store.set('data:timestamp_tess', JSON.stringify({ t: 2147483650, d: { x: 2 } }));
+    const staleTs = await api('PUT', '/api/save', { data: { x: 1 }, base: 2147483647 }, ts.token);
+    assert.equal(staleTs.err, 'stale', 'save conflict comparison does not truncate the timestamp to 32 bits');
 
     // lastSeen: written on use, but at most once an hour
     const c3 = await api('POST', '/api/claim', { name: 'Seen_Sam' });
@@ -90,7 +119,8 @@ const { Client } = require('./wa-client');
     const em = await api('POST', '/api/signup', { username: 'Mail_Mo', email: 'mo@example.com', password: 'secret1' });
     await put('Old_Olly', u => { u.s = Date.now() - 31 * DAY; }); await put('Fresh_Fay', u => { u.s = Date.now() - 29 * DAY; }); await put('Mail_Mo', u => { u.s = Date.now() - 40 * DAY; });
     process.env.ACCOUNT_TTL_DAYS = '0'; const off = await A.sweep(); assert.equal(off.erased, 0, 'ACCOUNT_TTL_DAYS=0 disables the sweep'); assert.ok(await rec('Old_Olly'));
-    delete process.env.ACCOUNT_TTL_DAYS; const sw = await A.sweep(); assert.equal(sw.erased, 2, 'the sweep erased exactly the two accounts unused for 31 and 40 days (counts only)');
+    delete process.env.ACCOUNT_TTL_DAYS; const safe = await A.sweep(); assert.equal(safe.erased, 0, 'idle account deletion is off by default');
+    process.env.ACCOUNT_TTL_DAYS = '30'; const sw = await A.sweep(); assert.equal(sw.erased, 2, 'an explicit 30-day TTL erases exactly the two old accounts (counts only)');
     assert.equal(await A.store.get('user:old_olly'), null); assert.equal(await A.store.get('data:old_olly'), null, 'the save is erased'); assert.equal(await A.store.get('email:mo@example.com'), null, 'the email is freed');
     assert.equal(await A.who(old.token), null, 'its token is gone'); assert.equal(await A.store.get('tok:' + old.token), null);
     assert.ok(await rec('Fresh_Fay') && await A.who(fresh.token), 'a 29-day-old account is kept');
@@ -98,7 +128,7 @@ const { Client } = require('./wa-client');
     // accounts made before lastSeen: not erased by the upgrade, they get lastSeen = now
     await A.store.set('user:legacy_lou', JSON.stringify({ u: 'Legacy_Lou', e: 'lou@example.com', p: 'x', r: 'x', c: Date.now() - 400 * DAY, l: Date.now() - 200 * DAY }));
     const mg = await A.sweep(); assert.equal(mg.migrated, 1); const lou = await rec('Legacy_Lou'); assert.ok(lou && Math.abs(lou.s - Date.now()) < 5000, 'legacy account got lastSeen = now');
-    assert.equal((await A.sweep()).erased, 0, 'and survives the next sweep'); }
+    assert.equal((await A.sweep()).erased, 0, 'and survives the next sweep'); delete process.env.ACCOUNT_TTL_DAYS; }
   [g1, g2, ...full].forEach(c => c.close());
   console.log('server integration tests pass'); await srv.stop(); process.exit(0);
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

@@ -16,7 +16,7 @@ Unit A introduces 9 new construction-themed tools, a 6-stage Arcade boss rush co
 | `tapemeasure` | Tape Measure | `melee` | 20 | 10 | 0.6s | 10 | Long whip-like melee (tip 3.3m), high lift 0.75 |
 | `cementbucket` | Cement Bucket | `ball` | 26 | 28 | 1.3s | 3 | Thrown ball projectile with slow lob, throwSpeed 9.5m/s |
 | `conelauncher` | Cone Launcher | `knife` | 34 | 14 | 0.75s | 6 | Thrown traffic cone projectile, speed 30m/s |
-| `anglegrinder` | Angle Grinder | `gun` (flame) | 2.2 | 1.4 | 0.06s | 60 | Close-range (6.5m) spark shower, burn 2.5s DPS |
+| `anglegrinder` | Angle Grinder | `gun` (flame) | 1.5 | 1.2 | 0.08s | 30 | Short-range (5m) spark shower, burn 1.5s, limited fuel |
 | `drill` | Cordless Drill | `melee` | 12 | 6 | 0.28s | 18 | Very fast stab-like melee, swingTime 0.18s, tip 1.35m |
 
 ## Boss Rush Stages Table
@@ -24,11 +24,15 @@ Unit A introduces 9 new construction-themed tools, a 6-stage Arcade boss rush co
 | Stage | ID | Name | Boss | HP Bar Color | Bots | Events | Rewards (Clear / First) |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1 | `tradies` | Tradies | No | `#ffa500` (16753920) | Dazza (Claw Hammer), Bluey (Pipe Wrench), Sparky (Live Wire), Chippy (Tape Measure) | None | 100 / 250 coins |
-| 2 | `engineer` | Engineer | Mini-boss | `#4aa3d8` (4891608) | Chief Engineer (Nail Gun, 2.5x HP, hard) | Falling load test crates every 12s | 150 / 350 coins |
-| 3 | `designer` | Designer | Boss | `#e53935` (15022389) | Lead Designer (Spirit Level, 2.8x HP, speed 1.25x) | Revision boost pads every 15s | 200 / 450 coins |
-| 4 | `supervisor` | Supervisor | Boss | `#ff8000` (16744448) | Site Supervisor (Angle Grinder, 3.5x HP) | Backup call at 50% HP (2 tradies) | 250 / 600 coins |
-| 5 | `project_manager` | Project Manager | Boss | `#8ec27a` (9356410) | Project Manager (Cone Launcher, 4.2x HP) | Deadline floor shrink; Scope creep extra bot spawns | 350 / 800 coins |
-| 6 | `the_client` | The Client | Final Boss | `#ffd700` (16766720) | The Client (Jackhammer, 5.5x HP, insane) | Giant 1.5x scale; Change request weapon swaps at 66% & 33% HP | 500 / 1500 coins |
+| 2 | `engineer` | Engineer | Mini-boss | `#4aa3d8` (4891608) | Engineer (Cordless Drill, 2.8x HP, damage 1.6x, speed 1.2x, hard) | Falling load test crates every 12s; tool crates | 150 / 350 coins |
+| 3 | `designer` | Designer | Boss | `#e53935` (15022389) | Lead Designer (Spirit Level, 3.4x HP, damage 1.8x, speed 1.3x) | Revision boost pads every 15s; tool crates | 200 / 450 coins |
+| 4 | `supervisor` | Supervisor | Boss | `#ff8000` (16744448) | Supervisor (Pipe Wrench, 3.6x HP, damage 0.6x, speed 0.9x) | Backup call at 50% HP (1 tradie); tool crates | 250 / 600 coins |
+| 5 | `project_manager` | Project Manager | Boss | `#8ec27a` (9356410) | Project Manager (Tape Measure, 4x HP, damage 1.4x, speed 1.08x) | Deadline floor shrink; Scope creep; tool crates | 350 / 800 coins |
+| 6 | `the_client` | The Client | Final Boss | `#ffd700` (16766720) | The Client (Giant Mallet, 4.8x HP, damage 1.35x, speed 1.05x, insane) | Giant 1.5x scale; melee change requests at 66% & 33% HP; tool crates | 500 / 1500 coins |
+
+Bosses start with melee tools. Nail Guns, Angle Grinders, Jackhammers, Cone Launchers and Cement Buckets arrive only in
+boss-stage weapon crates. A boss may claim a ranged crate while carrying melee, then returns to melee when its limited
+ammo runs out; the periodic kit refill applies only to the melee tool.
 
 ## Data Files & Merge Pipeline
 
@@ -123,29 +127,31 @@ down (stages with `boss: true`; the crew that is left gives up) or every enemy i
 
 | | hp x | hp floor (crew / boss) | damage x | speed x | events x slower | lives | coins x |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Easy | 0.4 | 0.8 / 1.5 | 0.35 | 0.85 | 1.5 | 5 | 0.6 |
-| Normal | 0.7 | 0.9 / 1.5 | 0.65 | 1.0 | 1.15 | 4 | 1.0 |
+| Easy | 0.4 | 0.8 / 1.2 | 0.35 | 0.85 | 1.5 | 5 | 0.6 |
+| Normal | 0.7 | 0.9 / 1.4 | 0.65 | 1.0 | 1.15 | 4 | 1.0 |
 | Nightmare | 1.0 | none | 1.0 | 1.0 | 1.0 | 3 | 1.5 |
 
 The result is x the table's hp, never below the floor and never above the table's own value; boss phases (66 / 33 %) are unchanged. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
 
-**Difficulty tuning.** `godot/tests/arcade_balance.gd` (not in `npm test`, about 5 minutes per 8 seeds of two difficulties; run the difficulties in parallel processes): `godot --headless --path godot --script res://tests/arcade_balance.gd -- --no-save --seeds=8 --diffs=easy --stages=1,2,3`. The scripted melee player of `arcade_test.gd` (the starting Wobbler, normal damage, no healing, one life, 100 s limit) fights each stage once per seed against the table's own bot skills. Wins out of the seeds, and the player's average health left on a win:
+**Difficulty tuning.** `godot/tests/arcade_balance.gd` (not in `npm test`, about 25 minutes for the full 3 difficulties x 6 stages x 8 seeds; run the difficulties in parallel processes): `godot --headless --path godot --script res://tests/arcade_balance.gd -- --no-save --seeds=8`. The scripted melee player of `arcade_test.gd` (the starting Wobbler, normal damage, no healing, one life, 100 s limit) fights each stage once per seed against the table's own bot skills. Wins out of the seeds, and the player's average health left on a win. These are the numbers for the table as it stands after the melee retune (below):
 
-| Stage | Easy (8 seeds) | Normal (8 seeds) | Nightmare (6 seeds) |
+| Stage | Easy (8 seeds) | Normal (8 seeds) | Nightmare (8 seeds) |
 | --- | --- | --- | --- |
-| 1 Tradies | 7/8, 75 % hp left | 6/8, 51 % | 3/6, 22 % |
-| 2 Engineer | 8/8, 69 % | 4/8, 14 % | 2/6, 37 % |
-| 3 Designer | 7/8, 91 % | 8/8, 67 % | 6/6, 46 % |
-| 4 Supervisor | 6/8, 39 % | 5/8, 36 % | 2/6, 52 % |
-| 5 Project Manager | 6/8, 57 % | 6/8, 46 % | 3/6, 60 % |
-| 6 The Client | 6/8, 54 % | 3/8, 69 % | 1/6, 100 % |
-| All stages | 40/48 (83 %) | 32/48 (67 %) | 17/36 (47 %) |
+| 1 Tradies | 7/8, 76 % hp left | 6/8, 42 % | 3/8, 32 % |
+| 2 Engineer | 8/8, 95 % | 8/8, 75 % | 7/8, 47 % |
+| 3 Designer | 8/8, 85 % | 7/8, 54 % | 3/8, 33 % |
+| 4 Supervisor | 7/8, 71 % | 2/8, 24 % | 0/8 |
+| 5 Project Manager | 8/8, 85 % | 3/8, 28 % | 0/8 |
+| 6 The Client | 7/8, 55 % | 3/8, 27 % | 0/8 |
+| All stages | 45/48 (94 %) | 29/48 (60 %) | 13/48 (27 %) |
 
-Easy is beatable on every stage including the final boss (6/8), Normal is a fair fight (about two wins in three, the Engineer and the final boss the hardest), Nightmare is the old balance (the final boss 1/6). Before tuning (Easy damage 0.6 / Normal 0.85) the same player won only 2/6 on Easy stage 2 and 0/6 on Normal stage 2, hence the lower damage multipliers. The first Easy / Normal pass used the lead's starting numbers (Easy 0.6, Normal 0.85 damage); the Easy speed went from 0.9 to 0.85.
+The scripted player is a crude yardstick (it only walks at the nearest enemy and swings, never dodges, and is weak against several attackers), so use the numbers for the ordering Easy > Normal > Nightmare and not as absolute difficulty: a real player who keeps away from a melee boss fares much better than the probe, which stands in the Pipe Wrench / Giant Mallet. The deterministic checks are in `arcade_test.gd`: the tuned multipliers, Easy < Normal < Nightmare health for every enemy and boss, the boss health ladder Engineer < Designer < Supervisor at every difficulty, lives, per-difficulty coins and the hat rule. Before this pass the same probe read (8 seeds): Engineer Normal 8/8 with 90 % health left, Designer Normal 8/8 with 78 %, Supervisor Normal 1/8 and Nightmare 0/8 (the two ends of "trivial" and "unfair"); the melee retune below fixes both.
 
-The scripted player is a crude yardstick (it only walks at the nearest enemy and swings, never dodges, and is weak against several attackers and the Engineer's nail gun, strong against slow bosses), so use the numbers for the ordering Easy > Normal > Nightmare and not as absolute difficulty. The deterministic checks are in `arcade_test.gd`: the tuned multipliers, Easy < Normal < Nightmare health for every enemy and boss, lives, per-difficulty coins and the hat rule.
+**Health Packs and the early bosses (balance pass 2).** Enemies that grab a Health Pack used to heal 60 % of their max health, which made the bosses almost unkillable on Easy. Arcade enemies now heal `boss_heal` of their max health per pack: 5 % Easy, 8 % Normal, 10 % Nightmare (`FighterState.heal_frac`, set in `ArcadeManager._dress`; the player's pack is still 60 %). The boss health floors are 1.2 (Easy) and 1.4 (Normal); Nightmare keeps the table's health as written.
 
-**Health Packs and the early bosses (balance pass 2).** Enemies that grab a Health Pack used to heal 60 % of their max health, which made the bosses almost unkillable on Easy. Arcade enemies now heal `boss_heal` of their max health per pack: 5 % Easy, 8 % Normal, 10 % Nightmare (`FighterState.heal_frac`, set in `ArcadeManager._dress`; the player's pack is still 60 %). The ladder was also uneven: the Engineer (stage 2) was the hardest early fight and the Designer (stage 3) the easiest, so the Engineer went from hp 2.5 / damage 1.1 to 2.0 / 1.0, the Designer from hp 2.8 / damage 1.15 to 3.2 / 1.45, and the boss health floors from 1.5 to 1.2 (Easy) and 1.4 (Normal). Scripted player, 6 seeds, before to after: Engineer Normal 4/8 with 14 % health left to 6/6 with 52 %, Engineer Easy 8/8 with 69 % to 6/6 with 68 %; Designer Normal 8/8 with 67 % to 6/6 with 70 %. The scripted player never dodges, so the Designer still reads easier than it will for a person; boss health now climbs Engineer < Designer < Supervisor at every difficulty (checked in `arcade_test.gd`).
+**Melee retune (balance pass 3).** With the bosses on melee tools the scripted player's hammer could stunlock the low-force early bosses (Engineer 8/8 with 90 % health left on Normal, 8/8 with 75 % on Nightmare) while the Supervisor's Pipe Wrench (force 24, not scaled by `dmg_scale`) stunlocked the player (1/8 Normal, 0/8 Nightmare). The early bosses take the biggest buffs: Engineer hp 2.0 / damage 1.0 / speed 1.05 -> 2.8 / 1.6 / 1.2, Designer 3.0 / 1.45 / 1.2 -> 3.4 / 1.8 / 1.3. The Supervisor becomes a tanky, low-damage summoner: hp 3.0 -> 3.6, damage 0.9 -> 0.6 (the data floor), speed 0.95 -> 0.9; it keeps its one-tradie backup call at 50 % health. The Project Manager moves to 4.0 / 1.4 / 1.08 and The Client stays at 4.8 / 1.35 / 1.05 (the giant mallet already hurts). Boss health now climbs Engineer 2.8 < Designer 3.4 < Supervisor 3.6 < Project Manager 4.0 < The Client 4.8 at every difficulty (the floors keep the same order on Easy), checked in `arcade_test.gd`. The Supervisor is still the hardest stage for the non-dodging probe (2/8 Normal, 0/8 Nightmare): its damage is already at the `dmg_scale` floor of 0.6, so the rest of its sting is the pipe wrench's knockback; a human who keeps away, as the melee change intends, has a much better time than the probe.
+
+**Ring-out fix (found by the balance probe).** `MatchSim._ring_out` leaves a bot that falls off the site dead, and `ArcadeManager._fight` counted every dead enemy as a defeat, so the player's hammer could shove a melee boss through a fence gate (or off the arena edge) and "win" the stage: the probe cleared the Project Manager and The Client stages at 100 % health in 2-3 s on one seed of every difficulty. A ring-out is now recognised (`FighterState.fell_t`) and the enemy is put back on the last safe bot spot with the health it had, its trade tool in hand and a short invulnerability, so only a real K.O. counts. The AFTER table above is measured with the fix; the BEFORE one included those free ring-outs.
 
 **Last-two-stage fixes.** (1) The Client (and any Giant: Chaos mode too) was drawn away from his own body. `World.present` scaled the Fighter node by 1.5 about the world origin, but the wobbler places itself in world space, so the model sat at 1.5 x his position (about 15 m off near the arena edge) and the hand / shoulder points his swings read back from the rig were off too: he looked like he walked through things and his hits missed (about a quarter of a normal boss's damage with the same swings). The view now scales about his feet (node position = feet x (1 - k)). (2) The Project Manager's deadline closed the collision floor while the visible ground (`FloorPad`, a flat 58 m plane) stayed full size, so everyone dropped off ground that still looked solid; the pad now shrinks with the floor. (3) Scope-creep / backup workers could spawn on a spot the shrunk floor no longer covers and fall straight off; they now spawn on the remaining floor. Checked in `arcade_test.gd`.
 

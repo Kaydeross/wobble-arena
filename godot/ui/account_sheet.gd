@@ -104,7 +104,7 @@ func _build() -> void:
 	have.flat = true
 	have.add_theme_color_override("font_color", UiTheme.MUTED)
 	p.add_child(have)
-	var keep := _text(p, "Note", "Names nobody uses for 30 days are freed.")
+	var keep := _text(p, "Note", "Inactive names are kept. Protect this name with a password to use it on another device.")
 	keep.add_theme_color_override("font_color", UiTheme.MUTED)
 	keep.add_theme_font_size_override("font_size", 16)
 

@@ -1686,6 +1686,33 @@ const SOUNDS = {
     v.tone({ f0: 880, f1: 820, env: { a: 0.002, peak: 0.12, d: 0.05 } });
     v.noise({ env: { a: 0.001, peak: 0.06, d: 0.02 }, filter: { type: 'bandpass', f0: 1200, Q: 2 } }); } },
 
+  // big match moments, rendered for the Godot client (docs/AUDIO.md): a ring-out fall whistle, a respawn shimmer,
+  // the pre-match 3-2-1 tick, the results fanfares and the low-health heartbeat. Data only — the web game's own
+  // gameplay never calls these; they exist so tools/render-sfx.js can render them like every other effect.
+  fall: { pri: 1, vary: 0.04, fn: v => {                // knocked out of the arena: a long descending whistle
+    v.tone({ type: 'triangle', f0: 1560, f1: 210, glide: 0.95, env: { a: 0.008, peak: 0.15, d: 0.95 }, vib: { rate: 7, depth: 0.012 } });
+    v.noise({ color: 'pink', env: { a: 0.04, peak: 0.09, d: 0.9 }, filter: { type: 'bandpass', f0: 2200, f1: 380, Q: 1.1, t: 0.9 } }); } },
+  respawn: { pri: 1, vary: 0.03, fn: v => {             // back in: a short rising four-note "you're up"
+    [[72, 0], [76, 0.09], [79, 0.18], [84, 0.27]].forEach(([m, at]) => v.tone({ type: 'triangle', f0: midiHz(m), at, env: { a: 0.004, peak: 0.09, d: 0.16 }, filter: { type: 'lowpass', f0: 3400 } }));
+    v.tone({ f0: 180, f1: 520, glide: 0.36, env: { a: 0.02, peak: 0.1, d: 0.4 } });
+    v.noise({ at: 0.05, color: 'pink', env: { a: 0.03, peak: 0.1, d: 0.3 }, filter: { type: 'bandpass', f0: 700, f1: 3200, Q: 1.4 } }); } },
+  countdown: { gap: 0.02, vary: 0.02, fn: v => {         // the 3-2-1 countdown tick: a dry, short woodblock blip
+    v.tone({ f0: 660, f1: 540, env: { a: 0.002, peak: 0.2, d: 0.1 } });
+    v.tone({ type: 'triangle', f0: 1320, f1: 1080, env: { a: 0.002, peak: 0.06, d: 0.07 } });
+    v.noise({ env: { a: 0.001, peak: 0.1, d: 0.02 }, filter: { type: 'bandpass', f0: 2600, Q: 2 } }); } },
+  win: { pri: 1, vary: 0.02, fn: v => {                 // results screen, you won: a bright five-note fanfare
+    [[60, 0], [64, 0.12], [67, 0.24], [72, 0.36], [76, 0.48], [79, 0.48], [84, 0.48]].forEach(([m, at], i) => {
+      v.tone({ type: 'triangle', f0: midiHz(m), at, env: { a: 0.004, peak: 0.13, d: 0.2, s: 0.5, hold: i > 4 ? 0.55 : 0.03, r: 0.35 } });
+      if (i > 3) v.tone({ type: 'sine', f0: midiHz(m + 12), at, env: { a: 0.002, peak: 0.04, d: 0.5 } }); });
+    v.tone({ f0: midiHz(36), at: 0.48, env: { a: 0.01, peak: 0.24, d: 0.1, s: 0.5, hold: 0.5, r: 0.5 } }); } },
+  lose: { pri: 1, vary: 0.02, fn: v => {                // results screen, you lost: a slow detuned descending sigh
+    [[57, 0], [56, 0.2], [55, 0.4], [51, 0.62]].forEach(([m, at], i) => {
+      for (const det of [-12, 11]) v.tone({ type: 'sawtooth', f0: midiHz(m), f1: midiHz(m - 2), glide: i === 3 ? 0.9 : 0.35, at, det, env: { a: 0.006, peak: 0.055, d: 0.12, s: 0.6, hold: i === 3 ? 0.7 : 0.12, r: i === 3 ? 0.8 : 0.15 }, filter: { type: 'lowpass', f0: 2200 - i * 300, f1: 200, t: 0.9, Q: 2 } }); }); } },
+  lowhp: { pri: 1, gap: 0.5, vary: 0.03, fn: v => {      // under 25 % health: a soft double heartbeat, not a blip
+    v.tone({ f0: 62, f1: 40, env: { a: 0.004, peak: 0.3, d: 0.15 } });
+    v.tone({ f0: 58, f1: 38, at: 0.16, env: { a: 0.004, peak: 0.2, d: 0.18 } });
+    v.noise({ env: { a: 0.002, peak: 0.04, d: 0.09 }, filter: { type: 'lowpass', f0: 260 } }); } },
+
   // bouncy, wobbly cartoon springs (the house sound)
   boing: { vary: 0.06, fn: v => {
     v.tone({ f0: 210, f1: 540, glide: 0.22, env: { a: 0.005, peak: 0.22, d: 0.42 }, vib: { rate: 14, depth: 0.08 } });

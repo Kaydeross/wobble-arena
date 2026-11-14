@@ -9,3 +9,9 @@ services:
     envVars:
       - key: TRUST_PROXY   # Render's load balancer appends the real client address to x-forwarded-for
         value: "1"
+      - key: ACCOUNT_TTL_DAYS
+        value: "0"
+      - key: UPSTASH_REDIS_REST_URL   # Required before production; a free Render redeploy wipes file storage.
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false

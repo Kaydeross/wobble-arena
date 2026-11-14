@@ -58,6 +58,31 @@ func _run() -> void:
 	await process_frame
 	check(sfx.get_child_count() == kids and int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)) == nodes0, "play() allocates no nodes")
 
+	# priority: a full pool of rapid short fire must not cut a boom (12 players, boom priority 2, shots priority 0)
+	sfx.stop_all()
+	for i in 3: await process_frame
+	var boom_stream: AudioStream = sfx.streams.get("boom")
+	sfx.play("boom")
+	for i in 20: sfx.play("shot")             # far more than the pool: the shots recycle each other, never the boom
+	var boom_alive := false
+	for p: AudioStreamPlayer in sfx.get_children():
+		if p.playing and p.stream == boom_stream: boom_alive = true
+	check(boom_alive, "an important sound survives a full pool of short fire")
+
+	# per-play jitter: pitch about +-4 %, volume about +-1.5 dB around what the caller asked for
+	sfx.stop_all()
+	for i in 3: await process_frame
+	sfx.play("click", 0.8)
+	var one: AudioStreamPlayer = null
+	for p: AudioStreamPlayer in sfx.get_children():
+		if p.playing: one = p
+	check(one != null, "a player started for the variation check")
+	if one != null:
+		check(absf(one.pitch_scale - 1.0) <= 0.041, "pitch variation about +-4%% (got %.3f)" % one.pitch_scale)
+		check(absf(one.volume_db - linear_to_db(0.8)) <= 1.6, "volume variation about +-1.5 dB (got %.2f)" % one.volume_db)
+	sfx.stop_all()
+	for i in 3: await process_frame
+
 	# settings
 	var settings: Node = root.get_node("Settings")
 	var bus := AudioServer.get_bus_index("Master")

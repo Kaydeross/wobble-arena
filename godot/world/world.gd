@@ -89,6 +89,15 @@ var _shrink_pad: Node3D            ## the map's flat floor pad (the visible grou
 ## surviving fighter; tap / click / jump cycles to the next one (spectate_next). null = following the player.
 var spectating: FighterState = null
 var _spect_jump := false
+## Sound cues driven from the presentation state (docs/AUDIO.md): the last sampled player `grounded` / vertical speed
+## for jump and landing sounds, and the time to the next footstep.
+var _sfx_g := true
+var _sfx_vy := 0.0
+var _sfx_step := 0.0
+## Pre-match countdown ticks left (-1 = finished) and seconds to the next one. Presentation only: the sim is not
+## frozen by it, so it can never change the match.
+var _count_n := -1
+var _count_t := 0.0
 ## Kill cam (world/kill_cam.gd): a short side-on slow-mo replay after a fast K.O. you score. Offline only, Settings
 ## `kill_cam` (default on), not in team modes, not while spectating or once the match is over; a tap skips it.
 var kill_cam := KillCam.new()
@@ -119,6 +128,12 @@ func _ready() -> void:
 	pause_menu.resume_requested.connect(_toggle_pause)
 	pause_menu.quit_requested.connect(_on_title_pressed)
 	pause_menu.match_running = func() -> bool: return _results == null
+	pause_menu.players = func() -> Array:
+		var names: Array = []
+		if sim != null:
+			for player: FighterState in sim.fighters:
+				if player != sim.player and not names.has(player.name): names.append(player.name)
+		return names
 	pause_menu.visible = false
 	_fighters_root = Node3D.new(); _fighters_root.name = "Fighters"; add_child(_fighters_root)
 	proj_views = ProjectileViews.new(); proj_views.name = "Projectiles"; add_child(proj_views)
@@ -142,6 +157,7 @@ func _ready() -> void:
 		add_child(soak)
 
 func _exit_tree() -> void:
+	if Ads.in_match: Ads.on_match_finished(session != null)
 	if arcade != null: arcade.end_run()
 	if net_match:
 		net_match.dispose()
@@ -170,6 +186,7 @@ func load_map(id: String) -> void:
 	spectating = null; touch.spectate_mode = false
 	_reward = {}
 	Save.begin_match()
+	Ads.on_match_started(session != null)
 	map_id = id
 	if build_mode:                       # the blocks are BuildHud's (meshes + solids it can change); no crates
 		id = "custom"; map_id = id
@@ -237,6 +254,8 @@ func load_map(id: String) -> void:
 	cam.reset_view()
 	feed.clear()
 	acc = 0.0
+	_sfx_g = true; _sfx_vy = 0.0; _sfx_step = 0.0
+	_count_n = 3; _count_t = 0.35
 	hud.bind(self)
 	_setup_build()
 	if arcade != null: arcade.stage_ready(self)           # Arcade: the run strip and the stage's intro card
@@ -311,6 +330,7 @@ func tick(delta: float) -> void:
 	present(dt if (not paused or net_match != null) else 0.0)
 	_update_spectate()
 	_update_hud(delta)
+	_update_countdown(delta)
 	if kill_cam_enabled() and not paused and not finished:
 		kill_cam.record(dt)
 		if kill_cam.due():
@@ -345,6 +365,7 @@ func present(dt: float) -> void:
 		v.present(dt)
 	sim.sweep()
 	_drain_events()
+	_audio_motion(dt)
 	_update_crates(dt)
 	_update_dyn_views()
 	_update_shrink_view()
@@ -409,6 +430,11 @@ func _drain_events() -> void:
 				if f:
 					hud.add_feed(null, f, "", false)
 					_toast("You're out! Big wobble" if f == sim.player else tr("%s is out!") % f.name)
+			"respawn":                       # the player is back on their feet: forget the fall for the landing cue
+				if f == sim.player:
+					_sfx_g = true
+					_sfx_vy = 0.0
+					_sfx_step = 0.0
 			"relook":
 				_relook(f)
 			"emote":                         # another player's emote (online)
@@ -427,6 +453,11 @@ func _on_ko(e: Dictionary) -> void:
 	var v: FighterState = e.get("victim")
 	if v == null: return
 	var melee := k != null and (k.weapon == "" or str(sim.combat.wdata(k.weapon).get("type", "")) == "melee")
+	# Big-moment audio: only when the player is involved (a bot-vs-bot K.O. across the arena is not their moment).
+	# A ring-out gets the falling whistle; a normal K.O. gets the punchy sting (Sfx priority keeps it from being cut).
+	if k == sim.player or v == sim.player:
+		if bool(e.get("fall", false)): Sfx.play("fall", 0.9)
+		else: Sfx.play("ko", 0.9)
 	Save.on_ko(k == sim.player and v != sim.player, v == sim.player, melee)
 	var txt := ""
 	if k == null: txt = "%s fell off" % v.name if e.get("fall", false) else "%s was K.O.'d" % v.name
@@ -436,6 +467,46 @@ func _on_ko(e: Dictionary) -> void:
 	hud.add_feed(k, v, str(e.get("weapon", "")), bool(e.get("fall", false)))
 	if k == sim.player: _toast("K.O.!")
 	if k == sim.player and v != sim.player and kill_cam_enabled(): kill_cam.on_ko(k, v)
+
+# ============================== sound cues from the presentation state ==============================
+
+## The local player's own movement sounds (the web game's jump / step / land). Only the player, so bots do not turn the
+## arena into a tap-dance, and the footsteps are quiet and about three a second while actually running. Reads the state,
+## never writes it: like every other presentation cue this leaves the sim hash untouched.
+func _audio_motion(dt: float) -> void:
+	if dt <= 0.0 or sim == null or sim.player == null: return
+	var st := sim.player
+	var p := st.phys
+	var g := p.grounded and not st.dead
+	if _sfx_g and not g and p.vy > 4.0 and st.pad_cool <= 0.0:
+		Sfx.play("jump", 0.5)               # a jump impulse; a bounce pad has its own "pad" sound, a ledge none at all
+	elif not _sfx_g and g:
+		var v := maxf(-_sfx_vy, 0.0)        # the downward speed just before touchdown
+		if v > 3.0: Sfx.play("land", clampf(0.18 + v * 0.05, 0.18, 0.85))
+	if g:
+		var sp := sqrt(p.vx * p.vx + p.vz * p.vz)
+		_sfx_step -= dt
+		if sp > 3.0 and _sfx_step <= 0.0:
+			_sfx_step = 0.36
+			Sfx.play("step", clampf(0.10 + sp * 0.012, 0.10, 0.26))
+	_sfx_g = g
+	_sfx_vy = p.vy
+
+## Pre-match 3-2-1: a countdown tick and a banner for each number, then "GO!". Presentation only — the sim already
+## runs, so this cannot gate the match (and tests that step the world by hand see the same sim with or without it).
+func _update_countdown(dt: float) -> void:
+	if _count_n < 0 or paused or _results != null: return
+	_count_t -= dt
+	if _count_t > 0.0: return
+	_count_t = 0.7
+	if _count_n > 0:
+		Sfx.play("countdown", 0.9)
+		_show_banner(str(_count_n), "", true, 0.55)
+		_count_n -= 1
+	else:
+		Sfx.play("countdown", 1.0)
+		_show_banner("GO!", "", true, 0.5)
+		_count_n = -1
 
 # ============================== materials (crates) ==============================
 
@@ -787,8 +858,10 @@ func _end_kill_cam() -> void:
 
 ## finishMatch offline: the result with Play again / Title (themed, centred, over the HUD).
 func _show_offline_results(won: bool, winner_name: String) -> void:
+	Ads.on_match_finished(false)
 	if _results: _results.queue_free()
 	_banner.visible = false
+	Sfx.play("win" if won else "lose", 0.8)     # the results fanfare / sigh (Music keeps a calm loop under it)
 	var p := PanelContainer.new()
 	p.name = "Results"
 	p.set_anchors_preset(Control.PRESET_CENTER)
@@ -803,7 +876,7 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	l.add_theme_color_override("font_color", UiTheme.ACCENT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	var teams := sim.combat.teams != 0
-	l.text = ("Your team wins!" if won else "Enemy team wins!") if teams else ("You win!" if won else tr("%s wins!") % winner_name)
+	l.text = ("Your team wins!" if won else "Enemy team wins!") if teams else ("You win!" if won else tr("%s wins!") % Safety.display_name(winner_name))
 	box.add_child(l)
 	var info := Label.new()
 	info.theme_type_variation = &"MutedLabel"
@@ -988,7 +1061,9 @@ func _relook(f: FighterState) -> void:
 
 ## pend: the host ended the match. Results + rematch vote (themed panel, centred, over the HUD).
 func _show_results(winner: String) -> void:
+	Ads.on_match_finished(true)
 	if _results: _results.queue_free()
+	Sfx.play("win" if winner == "You" else "lose", 0.8)   # the results fanfare / sigh
 	var p := PanelContainer.new()
 	p.name = "Results"
 	p.set_anchors_preset(Control.PRESET_CENTER)
@@ -1002,7 +1077,7 @@ func _show_results(winner: String) -> void:
 	l.theme_type_variation = &"TitleLabel"
 	l.add_theme_color_override("font_color", UiTheme.ACCENT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.text = ("You win!" if winner == "You" else tr("%s wins!") % winner)
+	l.text = ("You win!" if winner == "You" else tr("%s wins!") % Safety.display_name(winner))
 	box.add_child(l)
 	var votes := Label.new()
 	votes.theme_type_variation = &"MutedLabel"

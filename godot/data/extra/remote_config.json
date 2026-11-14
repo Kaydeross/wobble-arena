@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "featured_mode": "classic",
+  "news": "",
+  "minimum_version": "0.3.0",
+  "ads": {
+    "enabled": false,
+    "interstitial_every_matches": 3,
+    "interstitial_min_gap_s": 180,
+    "first_session_grace_s": 300,
+    "rewarded_enabled": false
+  },
+  "kill_switches": {
+    "online": false,
+    "ads": false,
+    "purchases": false
+  },
+  "analytics": false,
+  "updated": ""
+}

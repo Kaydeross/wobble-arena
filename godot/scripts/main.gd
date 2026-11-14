@@ -131,8 +131,10 @@ func _ready() -> void:
 		elif Tier.is_pc(): gear.grab_focus.call_deferred())
 	Save.cloud.done.connect(func(_op: String, _ok: bool, _msg: String) -> void: _refresh_login())
 	Save.cloud.changed.connect(_refresh_login)
+	RemoteConfig.refreshed.connect(func(_ok: bool) -> void: _refresh_remote_gates())
 	_build_chip()
 	_build_online()
+	_refresh_remote_gates()
 	_status(tr(notice) if notice != "" else tr("Pick a room, or join a friend with their code."))
 	if session != null:
 		_bind_session()
@@ -329,6 +331,10 @@ func close_locker() -> void:
 ## The title (Play / Play online with friends) or the online panel.
 func show_tab(online: bool) -> void:
 	browser.url = str(Settings.get_value("server_url"))
+	if online and session == null and _remote_online_blocked():
+		_status("Online play is temporarily unavailable. You can keep playing offline." if not RemoteConfig.update_required()
+			else "Please update Wobblers Arena before playing online.")
+		return
 	home.visible = not online
 	($Safe/Col/Top/Logo as WobbleLogo).font_size = 46 if online else 68     # a compact header: the room list needs the height
 	online_panel.visible = online
@@ -336,6 +342,15 @@ func show_tab(online: bool) -> void:
 	_tip_room()
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
 	elif not online and Tier.is_pc(): online_b.grab_focus.call_deferred()
+
+func _remote_online_blocked() -> bool:
+	return RemoteConfig.killed("online") or RemoteConfig.update_required()
+
+func _refresh_remote_gates() -> void:
+	var blocked := _remote_online_blocked()
+	online_b.disabled = blocked and session == null
+	online_b.tooltip_text = ("Update the game to play online." if RemoteConfig.update_required()
+		else ("Online play is temporarily unavailable." if RemoteConfig.killed("online") else ONLINE_SUB))
 
 ## The tip line shows on the title only when the canvas is tall enough for it after the Construction banner (the
 ## tip is the Play button's tooltip too); the room list needs the height.
@@ -423,7 +438,9 @@ func _build_online() -> void:
 	_ui["roster"] = get_node(O + "Foot/Roster")
 	_ui["room"].text = str(Settings.get_value("room_code", ""))
 	_ui["name"].text = str(Settings.get_value("name", "Player"))
-	_ui["name"].text_changed.connect(func(t: String) -> void: if t.strip_edges() != "": Settings.set_value("name", t.strip_edges().substr(0, 12)))
+	_ui["name"].text_changed.connect(func(t: String) -> void:
+		var clean := Safety.clean_name(t).substr(0, 12)
+		if clean != "" and not Safety.bad_name(clean): Settings.set_value("name", clean))
 	_ui["join"].pressed.connect(join_room)
 	_ui["room"].text_submitted.connect(func(_t: String) -> void: join_room())
 	var side: VBoxContainer = get_node(O + "Main/Side")
@@ -545,7 +562,7 @@ func _on_ended(_reason: String) -> void:
 
 func _on_roster(r: Array) -> void:
 	var names: Array = []
-	for e: Dictionary in r: names.append(e["name"])
+	for e: Dictionary in r: names.append(Safety.display_name(str(e.get("name", ""))))
 	_ui["roster"].text = tr("In the room: %s") % ", ".join(names)
 	if session != null and session.is_active() and (session.slot >= 0 or session.is_host()) and not session.started:
 		_fill_lobby()

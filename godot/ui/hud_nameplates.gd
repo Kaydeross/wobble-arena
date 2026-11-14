@@ -44,7 +44,7 @@ func tick(dt: float) -> void:
 		_shown_hp[f] = s
 		keep[f] = true
 		var alpha := clampf(1.5 - float(n[0]) / 22.0, 0.3, 1.0)
-		_plates.append([sp, alpha, f.name, s, Color.hex((int(sim.looks.get(f, {}).get("color", 0xffffff)) << 8) | 0xff)])
+		_plates.append([sp, alpha, Safety.display_name(f.name), s, Color.hex((int(sim.looks.get(f, {}).get("color", 0xffffff)) << 8) | 0xff)])
 	for f in _shown_hp.keys():
 		if not keep.has(f): _shown_hp.erase(f)
 	_spread()

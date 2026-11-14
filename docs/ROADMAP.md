@@ -2,33 +2,49 @@
 
 _Approved 2026-11-12. Supersedes the plan and decisions in docs/IOS_PLAN.md (sections 1-4 of that file remain a useful review of build b76)._
 
+> **2026-11-14 update:** the plan (fixes, VFX/audio/combat, ads-first money model, store readiness, optimisation) is in [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md); the execution order, exit criteria and current status are in [STORE_READINESS_PLAN.md](STORE_READINESS_PLAN.md). Together they supersede the "Next" list below.
 
-> **2026-11-14 update:** the next-steps plan (fixes, VFX/audio/combat, ads-first money model, store readiness, optimisation) is in [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md). It supersedes the "Next" list below.
 
-## Status (2026-11-13)
+## Status (2026-11-14)
 
 Honest state of the Godot port after the unattended build-out. "Done" means ported, parity/behaviour tests passing in the repo and merged to main; it does **not** mean verified on a real iPhone (nobody has measured phone GPU time or thermals yet, and the TestFlight builds have only been played briefly by one person).
 
 | Phase | State | What is in | What is open |
 |---|---|---|---|
-| 0 Clean up and unblock | Done | export pipeline, signing, TestFlight upload (`tools/build-ios.sh`, 0.2.0 train), App Store Connect record "Wobblers Arena" | API key for CI uploads; Keychain use is Phase 5 |
+| 0 Clean up and unblock | Done | export pipeline, signing, TestFlight upload (`tools/build-ios.sh`, 0.3.0), App Store Connect record "Wobblers Arena", one version source enforced by `npm run check:version` | API key for CI uploads; Keychain use is a launch item |
 | 1 Vertical slice | Done | map builder, Wobbler rig, combat core, input, net guest, look baseline | none |
 | 2 Gameplay parity | Done for offline; online mostly | all weapons (batch 1 and 2), 20 offline modes in `ModeRules.PLAYABLE` plus Construction, incl. Godot-only ones (Team Deathmatch, Death Match, Sudden Death, Chaos 5v5, Pillars + Lava Pillars, Explosive, Moon Drift, Practice Range, Sandbox), full bot AI at 4 difficulties, all 34 maps with decor, body-part damage zones, Godot host role (web and app guests, host migration, rules sheet), Godot-only balance overlay with weapon cooldowns and shot charges, and the air-recovery move (#72), offline and `net_zones` rooms only | web guests only play Classic online; host cannot change rules from the lobby; no wstate editor; mixed web/Godot rooms need a manual phone-to-browser check (docs/CROSSPLAY_TEST.md section 5) |
 | 3 Interface and meta | Done | theme, wizard (game type, arena, players, character, start; refined with sections, an Arena floor row and class stat bars), title, HUD, 4-button touch layout, locker (plus 3 paid and 3 secret Godot-only classes, data/extra/classes.json), Walldrobe (owned items only), shop (outfits, emotes, classes), Goals (daily / weekly coin goals, milestones, play streak), What's new card, 5 languages (繁體中文, 简体中文, 日本語, Français, Español) with bundled CJK fonts, emotes, results with coins, accounts + cloud sync + in-app deletion, kill cam, room browser, Settings screen, pause menu + controls help, first-run how-to, UI scale (44 pt targets) | aim-assist toggle; big-emote props; Keychain token storage; daily gift / redeem codes; full UI clean-up pass (in progress) |
 | 4 Graphics | Done in code | tone mapping + grade, sky/clouds, tiered shadows, stylised materials, tree wind, animated scenery, ragdoll wobble rig, pooled particles, trails, squash and stretch, hitstop, shake; per-tier budgets in `docs/GRAPHICS.md` (CPU under 4 ms in the benchmark) | **phone GPU time and 15-minute thermal run not measured**; particle depth sorting; some far-scenery gaps (birds) |
-| 5 Store platforms | Not started | | Game Center, haptics, Keychain, orientation lock, privacy manifest, Android/PC/web exports |
-| 6 Store readiness | Not started | | wallet and StoreKit, server host, App Review items |
+| 5 Store platforms | In progress | haptics (autoload `Haptics`, Settings switch), frame-rate cap and render scale (Settings > Graphics, autoload `Perf`) | Game Center, Keychain token storage, orientation lock, privacy manifest, Android/PC/web exports |
+| 6 Store readiness | In progress | provider-neutral `Ads` / `Entitlements` / `RemoteConfig` / `Safety` policy with tests, session revocation and retention safety, name filter and report/block, remote config, CI export smoke build | native AdMob and StoreKit plugins, consent forms, analytics and crash reporting, server wallet, production server host, App Review items |
 | Online infra | In progress | NAS self-hosting runbook (`docs/SERVER_PLAN.md`), `deploy/nas` compose, `TRUST_PROXY` and production server URL config (#70) | production server URL not yet set, so TestFlight builds cannot play online yet |
 
-Release tracking: TestFlight 0.2.0 builds 1 to 14 are uploaded (internal testers). External group "Friends": build 115 (0.1.0) is in testing, and the newest 0.2.0 build is being submitted to Beta App Review (only one 0.2.0 build can be in review at a time). The Phase 3 and 4 exit criteria ("a new player can install and reach a match with no dead ends", "60 fps on iPhone 12 for 15 minutes without thermal throttling") need device play and cannot be signed off from tests alone.
+Release tracking: the checked-in native version is 0.3.0. Historical TestFlight builds are not a substitute for testing the current commit. The Phase 3 and 4 exit criteria ("a new player can install and reach a match with no dead ends", "60 fps on iPhone 12 for 15 minutes without thermal throttling") need device play and cannot be signed off from tests alone.
 
-Next (approved 2026-11-13), in order:
+## Money model and execution order (approved 2026-11-14)
 
-1. Online for real on the NAS, plus reconnect, per-weapon damage caps, and report/block.
-2. Device perf overlay and a 15-minute soak log.
-3. Full UI clean-up pass.
-4. Phase 5 iOS essentials: privacy manifest, Keychain, haptics, orientation lock, Game Center.
-5. Online parity gaps.
+**Free with ads at launch.** One free app: rewarded ads the player chooses (double coins on the results screen, the
+daily bonus, an Arcade continue) plus one capped ad between matches, and no banners. A single non-consumable "Remove
+ads" purchase sits inside the same app. Coins, DLC and a subscription come only after the server owns the wallet and
+the entitlements. Paid playable content stays a sidegrade or cosmetic (classes remain earnable) and there are no
+random paid items.
+
+The plan with exit criteria for every stage is in `docs/STORE_READINESS_PLAN.md`. Order:
+
+0. Fixes: melee Construction bosses, the stuck FIRE touch button.
+1. **A. Feel and measure:** haptics, audio quick wins and big-moment sound, the #105 look decision, frame cap and
+   render scale, device soak, benchmark re-run.
+2. **B. Launch essentials:** ads and consent, Remove ads, account and server safety, analytics and crash reporting,
+   remote config, App Review items, CI.
+3. **C. Charm and depth:** title screen, a playable first fight, faces, results moment, timed defence, class
+   signature moves, weapon identity.
+4. **D. Soft launch:** 2-3 small markets, tune ad caps, retention and balance, then global.
+5. **E. Paid content:** server wallet and purchase verification, then coin packs, DLC and a subscription once content
+   ships on a rhythm.
+
+The previous next list (online on the NAS, perf overlay and soak, UI clean-up, Phase 5 iOS essentials, online parity)
+folds into A and B; the online items remain launch blockers.
 
 ## Context
 

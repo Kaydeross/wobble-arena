@@ -13,8 +13,10 @@ const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
-const accounts = require('./accounts').create();
+const accountStore = require('./accounts');
+const accounts = accountStore.create();
 const config = { requireAuth: process.env.REQUIRE_LOGIN !== '0' };     // online play needs a logged-in account (REQUIRE_LOGIN=0 turns that off)
+const REMOTE_CONFIG_PATH = process.env.REMOTE_CONFIG || path.join(__dirname, 'remote-config.json');
 
 const PORT = +process.env.PORT || 3000;
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
@@ -79,9 +81,23 @@ const ipOf = req => {
   return req.socket.remoteAddress || '?';
 };
 const server = http.createServer((req, res) => {
-  if (accounts.handle(req, res, ipOf(req))) return;
   let url = '/';
   try { url = decodeURIComponent((req.url || '/').split('?')[0]); } catch (e) { res.writeHead(400); res.end('bad request'); return; }
+  if (url === '/api/config') {
+    try {
+      const body = fs.readFileSync(REMOTE_CONFIG_PATH, 'utf8');
+      const parsed = JSON.parse(body);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('config is not an object');
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff' });
+      res.end(req.method === 'HEAD' ? undefined : body);
+    } catch (e) {
+      console.error('remote config unavailable:', e.message);
+      res.writeHead(503, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: false, err: 'config', msg: 'Configuration is temporarily unavailable.' }));
+    }
+    return;
+  }
+  if (accounts.handle(req, res, ipOf(req))) return;
   if (url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     res.end(JSON.stringify({ ok: true, rooms: rooms.size, players: totalConns, accounts: accounts.kind, saved: accounts.kind === 'upstash' }));
@@ -101,8 +117,8 @@ const str = (v, n) => String(v === undefined || v === null ? '' : v).replace(/[\
 function cleanInfo(i, old) {
   i = i && typeof i === 'object' ? i : {};
   const o = Object.assign({ name: 'Room', host: '?', mode: 'classic', modeName: 'Classic', map: '', max: 4, started: false, build: '' }, old || {});
-  if (i.name !== undefined) o.name = str(i.name, 24) || 'Room';
-  if (i.host !== undefined) o.host = str(i.host, 12) || '?';
+  if (i.name !== undefined) o.name = accountStore.filterDisplayName(str(i.name, 24)) || 'Room';
+  if (i.host !== undefined) o.host = accountStore.filterDisplayName(str(i.host, 12)) || '?';
   if (i.mode !== undefined) o.mode = str(i.mode, 16);
   if (i.modeName !== undefined) o.modeName = str(i.modeName, 24);
   if (i.map !== undefined) o.map = str(i.map, 24);
@@ -231,7 +247,12 @@ const beat = setInterval(() => {                                      // drop co
 const sweep = setInterval(() => { for (const [id, r] of rooms) if (r.host.readyState > 1) leaveRoom(r.host); }, 30000);
 
 function start(port) {
-  return new Promise(res => server.listen(port === undefined ? PORT : port, () => { console.log('Wobblers Arena server on port ' + server.address().port + ' (game files: ' + PUBLIC_DIR + ')'); accounts.startSweeps(); res(server); }));
+  return new Promise(res => server.listen(port === undefined ? PORT : port, () => {
+    console.log('Wobblers Arena server on port ' + server.address().port + ' (game files: ' + PUBLIC_DIR + ')');
+    if (accounts.kind === 'file' && (process.env.RENDER || process.env.NODE_ENV === 'production'))
+      console.warn('WARNING: accounts use file storage. Configure Upstash or a persistent DATA_DIR before launch; a redeploy can erase this file.');
+    accounts.startSweeps(); res(server);
+  }));
 }
 function stop() { accounts.stopSweeps(); clearInterval(beat); clearInterval(sweep); if (accounts.store.flush) accounts.store.flush(); for (const ws of wss.clients) ws.terminate(); return new Promise(res => server.close(() => res())); }
 if (require.main === module) { start(); process.on('SIGTERM', () => stop().then(() => process.exit(0))); }

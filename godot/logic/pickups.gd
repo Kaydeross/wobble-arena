@@ -30,6 +30,9 @@ var perm_q: Array = []
 var _next_id := 0
 ## Online guest: only the host drops crates; they arrive as `crate`/`crates` messages (spawn_at) and leave on `take`.
 var remote := false
+## Arcade boss stages: their owner may take a ranged weapon crate even while carrying its melee kit.
+var armed_weapon_crates := false
+var armed_weapon_crate_owner: FighterState = null
 
 func _init(c: Combat, drops_data: Dictionary, rates_data: Dictionary) -> void:
 	combat = c
@@ -157,13 +160,17 @@ func label(key: String) -> String:
 	if pu.has(key): return str(pu[key].get("name", key))
 	return str(combat.wdata(key).get("name", key))
 
-## botWants: bots grab health when hurt, every power-up, and a weapon only when empty-handed.
+## botWants: bots grab health when hurt, every power-up, and a weapon only when empty-handed. Arcade bosses may also
+## take a ranged weapon crate while their melee kit is in hand; the crate replaces what they hold for that pickup.
 func bot_wants(b: FighterState, p: Dictionary) -> bool:
 	if not combat.brawl: return false
 	var key: String = p["key"]
 	if key == "heal": return b.hp < combat.max_hp(b) * 0.85
 	if drops.get("powerups", {}).has(key): return true
-	return BOT_GUNS.has(key) and b.slot < 0
+	var w := combat.wdata(key)
+	var is_ranged := BOT_GUNS.has(key) or (combat.mode_id == "construction" and ["gun", "knife", "ball"].has(str(w.get("type", ""))))
+	if not is_ranged: return false
+	return b.slot < 0 or (armed_weapon_crates and (armed_weapon_crate_owner == null or armed_weapon_crate_owner == b))
 
 ## updatePickups: drop timer, falling, landing, being picked up, expiring.
 func update(dt: float) -> void:
@@ -214,4 +221,10 @@ func _take(f: FighterState, key: String) -> void:
 		f.set(PU_TIMERS[key], 12.0)
 		if f.is_player: combat.ev({"type": "toast", "text": str(drops.get("powerups", {}).get(key, {}).get("msg", key))})
 	else:
+		var boss_pickup := armed_weapon_crates and armed_weapon_crate_owner == f
 		combat.pickup(f, key)
+		if boss_pickup:
+			for i in 3:
+				if f.slots[i] != null and str(f.slots[i]["key"]) == key:
+					combat.equip_slot(f, i)
+					break

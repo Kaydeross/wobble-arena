@@ -88,18 +88,19 @@ room inside 16.6 ms. Draw calls and primitives do not depend on the device; ~10 
 cascades) are most of the draws, the level itself is a few dozen. Metal on an A14 handles ~1000 simple draws per
 frame; MID stays under 800.
 
-Measured (dev Mac, 1170x540 window, this branch):
+Re-measured 2026-11-14 on the 0.3.0 tree (Godot 4.7.2, Apple M2 Pro, 1170x540 window), after the #105 / #107 /
+#110 combat-VFX changes. Every row is under the CPU / draw / primitive budget above; frames ran at 8.33-8.59 ms on
+HIGH / MID and 10.1-11.2 ms on LOW (vsync off; the game's own frame cap is bypassed in benchmark runs):
 
 | Tier | Farm | Candy | Crater Dome |
 |---|---|---|---|
-| HIGH | cpu 1.59 ms, 955 draws, 112k prims | 1.52 ms, 1104, 70k | 1.46 ms, 1237, 50k |
-| MID | 1.60 ms, 492 draws, 82k prims | 1.48 ms, 692, 63k | 1.42 ms, 662, 41k |
-| LOW | 1.56 ms, 394 draws, 67k prims | 1.44 ms, 463, 56k | 1.39 ms, 512, 35k |
+| HIGH | cpu 2.15 ms (p95 2.91), 902 draws, 116k prims | 2.04 (2.52), 1063, 73k | 1.98 (2.46), 1151, 52k |
+| MID | 2.17 (3.17), 472 draws, 85k prims | 2.02 (2.59), 677, 64k | 2.02 (2.69), 651, 43k |
+| LOW | 2.05 (2.63), 358 draws, 67k prims | 1.98 (2.36), 445, 56k | 1.91 (2.35), 485, 35k |
 
-Frames ran at the display's 8.33 ms on HIGH / MID and 8.5-9.5 ms on LOW (p95 under 11.1 ms).
-
-Before this pass (main, same bench): HIGH 609-816 draws / 41-83k prims (2 cascades), MID 572-730 / 39-70k (one
-cascade), LOW 578-779 / 40-71k, CPU 1.4-1.7 ms on every tier.
+Compared with the previous (pre-VFX) pass: CPU rose from 1.4-1.7 ms to about 2.0 ms on a normal match (the effects
+stress is the worst case, 3.2 ms), while draw calls and primitives are essentially unchanged (HIGH 902-1151 draws
+now vs 955-1237 before). Everything still has headroom against the budgets.
 
 What is not measured here: GPU time on a phone and thermals (ROADMAP: 15 min on an iPhone 12 without throttling); that
 needs a TestFlight build and the soak below ("Measuring on device"). Fill rate is the MID risk: the vignette and the cloud layer are two blended layers (the
@@ -267,19 +268,18 @@ of the real fight, synthetic events: 2 hits with sparks, an explosion every 6 fr
 a dash every 10, a K.O. confetti burst every 20. Pools run at their caps. Same budgets as the maps, plus a check that
 no pool or the ribbons ever go over their cap.
 
-Measured (dev Mac, 1170x540 window, this branch):
+Re-measured 2026-11-14 on the 0.3.0 tree (Godot 4.7.2, Apple M2 Pro, 1170x540 window):
 
 | Tier | Farm (no stress) | `fx` stress (Farm) | fx peaks |
 |---|---|---|---|
-| HIGH | cpu 1.96 ms, 902 draws, 116k prims | cpu 3.08 ms (p95 3.69), 1021 draws, 139k prims | 709 / 240 / 112 / 21 / 124, 3 ribbons |
-| MID | cpu 1.88 ms, 472 draws, 85k prims | cpu 2.44 ms (p95 2.96), 563 draws, 97k prims | 320 / 120 / 56 / 16 / 64, 3 ribbons |
-| LOW | cpu 1.90 ms, 358 draws, 67k prims | cpu 2.11 ms (p95 2.52), 498 draws, 74k prims | 96 / 24 / 16 / 6 / 14, 3 ribbons |
+| HIGH | cpu 2.15 ms, 902 draws, 116k prims | cpu 3.23 ms (p95 3.83), 1021 draws, 139k prims | 709 / 240 / 112 / 21 / 124, 3 ribbons |
+| MID | cpu 2.17 ms, 472 draws, 85k prims | cpu 2.60 ms (p95 3.15), 563 draws, 97k prims | 320 / 120 / 56 / 16 / 64, 3 ribbons |
+| LOW | cpu 2.05 ms, 358 draws, 67k prims | cpu 2.24 ms (p95 2.71), 498 draws, 74k prims | 96 / 24 / 16 / 6 / 14, 3 ribbons |
 
-All under the 4 ms CPU / 1400-800-650 draw / 200k-130k-110k primitive budgets; frames stayed at the display's
-8.33 ms (LOW p95 10.6 ms; the latest MID stress p95 was 6.83 ms). The effects add at most ~7 draw calls (five pools,
-trails, specks) plus the labels; the cost is CPU (~1 ms at HIGH caps, ~0.2 ms at LOW), i.e. under ~3 ms of an iPhone
-12 frame at MID worst case. A normal match
-stays far below the caps (40 s, 8 fighters, HIGH: bits peak ~110, blobs 24, streaks 23).
+All under the 4 ms CPU / 1400-800-650 draw / 200k-130k-110k primitive budgets. The effects add at most ~7 draw calls
+(five pools, trails, specks) plus the labels; the cost is CPU (~1 ms at HIGH caps, ~0.2 ms at LOW), i.e. under ~3 ms of
+an iPhone 12 frame at MID worst case. A normal match stays far below the caps (40 s, 8 fighters, HIGH: bits peak ~110,
+blobs 24, streaks 23).
 
 ## Still off
 

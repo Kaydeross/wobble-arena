@@ -3,6 +3,7 @@
    at the iPhone / iPad sizes in English, French and Japanese). Needs Godot (GODOT env var or the macOS default).
    Run: npm run test:godot-dlc-ui */
 const { spawnSync } = require('child_process');
+const { isFatal } = require('./godot-log');
 const path = require('path');
 const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
@@ -11,9 +12,10 @@ const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://test
 const out = (r.stdout || '') + (r.stderr || '');
 const lines = out.split('\n').filter(l => /^(DLC UI|FAIL)|SCRIPT ERROR|^ERROR/.test(l));
 console.log(lines.join('\n'));
-if (r.status !== 0 || !/^DLC UI ok/m.test(out) || /SCRIPT ERROR|^ERROR/m.test(out)) {
-  if (!lines.length) console.log(out.slice(0, 3000));
-  console.log('dlc_ui_test FAILED');
+if (r.status !== 0 || !/^DLC UI ok/m.test(out) || isFatal(out)) {
+  console.log(`dlc_ui_test FAILED (exit ${r.status}, signal ${r.signal || 'none'})`);
+  const raw = out.trim().split('\n');
+  console.log(raw.slice(-50).join('\n'));      // last lines: on Linux CI this run dies before its summary line
   process.exit(1);
 }
 console.log('godot dlc ui test passes');

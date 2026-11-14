@@ -158,6 +158,11 @@ func _input(e: InputEvent) -> void:
 			visible = true   # a touch screen on a laptop or in a browser: show the controls once it is used
 		if not visible or state == null:
 			return
+		if e.canceled:
+			# The OS took the touch away (Control Centre, a notification, a gesture): drop it without tap actions.
+			_drop_touch(e.index)
+			get_viewport().set_input_as_handled()
+			return
 		var p: Vector2 = (make_input_local(e) as InputEventScreenTouch).position
 		if spectate_mode:
 			if e.pressed:
@@ -223,6 +228,9 @@ func _hotbar_tap(i: int) -> void:
 # ---------------- touches ----------------
 
 func _touch_down(i: int, p: Vector2) -> void:
+	# iOS recycles finger indices: a new down on an index that is still marked down must not orphan what that finger
+	# held before (a dropped FIRE release). Drop the old role first, without firing its tap actions.
+	_drop_touch(i)
 	if pause_rect().grow(6).has_point(p):
 		_touch[i] = "pause"
 		_anim["pause"] = 1.0
@@ -236,7 +244,19 @@ func _touch_down(i: int, p: Vector2) -> void:
 		var r := button_rect(b)
 		if p.distance_to(r[0]) <= r[1] + 4.0:
 			if _down.has(id):
-				continue
+				# Another finger already holds this button (e.g. a FIRE release that never arrived). Take the button
+				# over instead of ignoring the press, so releasing this finger clears it.
+				_disown(id, i)
+				_touch[i] = id; _last[i] = p
+				match id:
+					"melee":
+						_melee = {"t": 0.0, "p0": p, "kicked": false}   # restart the hold timer
+					"context":
+						pass   # the other finger already fired the tap; do not fire it twice
+					_:
+						state.hold("touch", b[2], true)                 # stays held
+				queue_redraw()
+				return
 			_touch[i] = id; _last[i] = p; _down[id] = true
 			match id:
 				"melee":
@@ -325,6 +345,40 @@ func _touch_up(i: int, p: Vector2 = Vector2.INF) -> void:
 				state.hold("touch", b[2], false)
 	queue_redraw()
 
+## Drop one finger's role without emitting any tap action (index reused, touch cancelled, focus lost). A held MELEE
+## that has not kicked yet is dropped, not shoved.
+func _drop_touch(i: int) -> void:
+	if not _touch.has(i):
+		return
+	var what: String = _touch[i]
+	_touch.erase(i); _last.erase(i); _look0.erase(i)
+	match what:
+		"move":
+			state.set_move("touch", Vector2.ZERO)
+			state.hold("touch", "sprint", false)
+		"hotbar":
+			_hb = {"i": -1, "p0": Vector2.ZERO}
+		"pause":
+			pass
+		_:
+			if _down.has(what):
+				_down.erase(what)
+				if what == "melee":
+					_melee = {"t": 0.0, "p0": Vector2.ZERO, "kicked": true}
+				var b := button(what)
+				if not b.is_empty() and b[6]:
+					state.hold("touch", b[2], false)
+	queue_redraw()
+
+## A new finger takes button `id` over: the other fingers' claims on it are dropped, so their later release does not
+## clear the action the new owner still holds.
+func _disown(id: String, keep: int) -> void:
+	for i in _touch.keys():
+		if i != keep and _touch[i] == id:
+			_touch.erase(i)
+			_last.erase(i)
+			_look0.erase(i)
+
 func _kick() -> void:
 	_melee["kicked"] = true
 	state.press("kick")
@@ -347,14 +401,28 @@ func _look(d: Vector2) -> void:
 func look_held() -> bool:
 	return _touch.values().has("look") or _touch.values().has("fire")
 
-## Let go of every touch (pause, leaving the match). A held MELEE that has not kicked yet is dropped, not shoved.
+## Let go of every touch (pause, leaving the match, focus lost). A held MELEE that has not kicked yet is dropped, not shoved.
 func release_all() -> void:
 	_melee["kicked"] = true
 	for i in _touch.keys():
 		_touch_up(i)
-	_touch.clear(); _down.clear(); _look0.clear()
-	if state:
+	if state != null:
+		for id in _down.keys():   # a held button whose touch entry was lost must not stay held either
+			var b := button(id)
+			if not b.is_empty() and b[6]:
+				state.hold("touch", b[2], false)
+		state.set_move("touch", Vector2.ZERO)
+		state.hold("touch", "sprint", false)
 		state.aim_toggle = false
+	_touch.clear(); _down.clear(); _look0.clear(); _last.clear()
+
+## Focus loss / backgrounding takes the touches away without a release event (Control Centre, a notification banner,
+## the app switcher). Let go of everything so a held FIRE cannot keep firing when the app comes back.
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_FOCUS_OUT, NOTIFICATION_WM_WINDOW_FOCUS_OUT, NOTIFICATION_APPLICATION_PAUSED:
+			if state != null:
+				release_all()
 
 # ---------------- per frame ----------------
 
@@ -383,6 +451,21 @@ func _refresh_context() -> void:
 
 func _process(dt: float) -> void:
 	_refresh_context()
+	# Fail-safe: every held button must have a finger on it. A release the OS never delivered (or a lost touch
+	# record) would otherwise leave FIRE held forever; release it instead of firing on.
+	if state != null and not _down.is_empty():
+		var roles := _touch.values()
+		for id in _down.keys():
+			if roles.has(id):
+				continue
+			_down.erase(id)
+			if id == "melee":
+				_melee = {"t": 0.0, "p0": Vector2.ZERO, "kicked": true}   # an orphaned MELEE is dropped, not shoved
+			else:
+				var b := button(id)
+				if not b.is_empty() and b[6]:
+					state.hold("touch", b[2], false)
+		queue_redraw()
 	if _down.has("melee") and not _melee["kicked"]:
 		_melee["t"] += dt
 		if _melee["t"] >= HOLD_KICK:

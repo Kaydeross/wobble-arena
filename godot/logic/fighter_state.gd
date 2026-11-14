@@ -91,6 +91,7 @@ var rl_loaded := 0
 var cool := 0.0
 var melee_cool := 0.0
 var shove_cool := 0.0
+var parry_t := 0.0               ## tuned offline combat: a shove briefly deflects a melee hit from the front
 var kick_cool := 0.0
 var pad_cool := 0.0
 var climb := 0.0
