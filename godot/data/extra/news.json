@@ -2,6 +2,17 @@
  "_note": "Patch notes for the What's new card (ui/whats_new.gd), newest first. `version` matches application/config/version in project.godot: the card opens by itself once when the newest version here is one the player hasn't seen. Voice and rules: docs/WRITING.md. Short lines, no trailing full stop, one silly beat at most.",
  "entries": [
   {
+   "version": "0.4.0",
+   "title": "The co-op update",
+   "notes": [
+    "Arcade co-op: two players online beat the boss rush together, and a bot takes over if your mate leaves",
+    "Quick play: one tap for a random arena and mode",
+    "A new title screen: Play on the left, the rest on the right",
+    "Matches start with a countdown, and you spawn on a random safe spot",
+    "Melee bosses fixed, and the stuck FIRE button is gone"
+   ]
+  },
+  {
    "version": "0.3.0",
    "title": "The Construction update",
    "notes": [
