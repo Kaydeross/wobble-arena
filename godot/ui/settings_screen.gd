@@ -197,6 +197,7 @@ func show_section(s: String) -> void:
 			_language()
 			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
+			_toggle("enemy_arrows", "Enemy arrows", "Small arrows point to enemies off screen")
 		"account":
 			var u := _account_line()
 			_info("Who", u[0], u[1])

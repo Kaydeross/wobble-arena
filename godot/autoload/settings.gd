@@ -51,6 +51,7 @@ const DEFAULTS := {
 	"cloud_dirty": false,   # the profile changed since the last cloud save (pushed when online again)
 	"cloud_user": "",       # lower-case account the local profile was last synced with ("" = none / guest)
 	"kill_cam": true,       # short slow-mo replay after a fast K.O. you score (offline, world/kill_cam.gd)
+	"enemy_arrows": true,   # small arrows at the screen edge point to living enemies that are off screen (ui/enemy_indicators.gd)
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
 	"blocked_names": "[]",  # lower-case player display names blocked on this device (autoload Safety)
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)

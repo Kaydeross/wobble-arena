@@ -11,7 +11,7 @@ const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot
 const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 let failed = false;
-for (const t of ['ui_layout_test', 'hud_test']) {
+for (const t of ['ui_layout_test', 'hud_test', 'enemy_indicators_test']) {
   // The full multilingual/resolution matrix now includes the 44 pt Small layout and takes close to
   // five minutes on a cold GitHub runner. Keep the same coverage, but leave headroom for that host.
   const logPath = path.join(os.tmpdir(), `wobble-${t}-${process.pid}.log`);
