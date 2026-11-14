@@ -8,6 +8,7 @@ extends UiPage
 ## ("sitegen" when that map exists, else "siteyard") and site_seed (0 = a new site every match), then `start_requested`
 ## (scripts/main.gd: play_offline). Arcade: `arcade_requested` (the arcade manager hooks it), "Coming soon" until it exists,
 ## and "Play co-op" on the class / difficulty steps (`arcade_coop_requested`: the two-seat online run, main.play_arcade_coop).
+## The difficulty step also has the co-op friendly-fire toggle (Settings arcade_ff, off by default; it travels in start.arc.ff).
 
 signal start_requested(opts: Dictionary)
 signal arcade_requested
@@ -45,6 +46,7 @@ var arc_diff_box: HBoxContainer
 var arc_foot: HBoxContainer
 var arc_next: Button
 var arc_coop: Button              ## "Play co-op": the two-seat online Arcade room (M1)
+var arc_ff: CheckButton           ## co-op friendly fire (Settings arcade_ff; off by default, difficulty step only)
 var _diff_cards := {}             ## difficulty id -> its card Button
 var _bot_bs := {}
 var _diff_bs := {}
@@ -134,6 +136,7 @@ func open() -> void:
 	if not DIFFS.has(diff): diff = "normal"
 	site_seed = clampi(int(Settings.get_value("site_seed", 0)), 0, SEED_MAX)
 	arc_diff = DlcSave.norm(str(Settings.get_value("arcade_diff", "normal")))
+	if arc_ff != null: arc_ff.set_pressed_no_signal(bool(Settings.get_value("arcade_ff", false)))
 	show_arcade(0)
 	show_pre(false)
 	refresh()
@@ -319,6 +322,16 @@ func _build_arcade() -> void:
 	arc_coop.add_theme_font_size_override("font_size", 24)
 	arc_coop.pressed.connect(arcade_coop)
 	arc_foot.add_child(arc_coop)
+	# Co-op friendly fire (owner decision: off by default). A plain English label like the co-op button, shown on the
+	# difficulty step only; it writes Settings arcade_ff, which main.play_arcade_coop's room and the net layer pick up.
+	arc_ff = CheckButton.new()
+	arc_ff.name = "ArcadeFF"
+	arc_ff.text = "Friendly fire"
+	arc_ff.tooltip_text = "Online co-op: let the two players hurt each other. Off by default."
+	arc_ff.add_theme_font_size_override("font_size", 20)
+	arc_ff.custom_minimum_size = Vector2(0, 48)
+	arc_ff.toggled.connect(_set_arc_ff)
+	arc_foot.add_child(arc_ff)
 	JuicyButton.attach_all(arc_foot)
 
 func _diff_card(d: String, grp: ButtonGroup) -> Button:
@@ -407,6 +420,8 @@ func show_arcade(step: int) -> void:
 	arc_class_box.visible = step == 1
 	arc_diff_box.visible = step == 2
 	arc_foot.visible = on
+	arc_ff.visible = step == 2                     # the co-op/difficulty step owns the friendly-fire option
+	if step == 2: arc_ff.set_pressed_no_signal(bool(Settings.get_value("arcade_ff", false)))
 	if step == 1:
 		if arc_wizard == null:
 			arc_wizard = SetupWizard.new()
@@ -438,6 +453,10 @@ func pick_diff(d: String) -> void:
 	Settings.set_value("arcade_diff", arc_diff)
 	for k: String in _diff_cards: (_diff_cards[k] as Button).set_pressed_no_signal(k == arc_diff)
 	refresh()
+
+## The co-op friendly-fire toggle: remembered in Settings (read by main.play_arcade_coop -> the room -> start.arc.ff).
+func _set_arc_ff(on: bool) -> void:
+	Settings.set_value("arcade_ff", on)
 
 ## The class a run starts with: the wizard's pick (the Settings "class" it keeps), else the saved class.
 func arcade_class() -> String:

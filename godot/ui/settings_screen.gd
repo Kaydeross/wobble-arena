@@ -2,9 +2,10 @@ class_name SettingsScreen
 extends UiPage
 ## The Settings screen (the title's gear, and Settings in the pause menu). A row of section tabs under the header, the
 ## section's rows under them in a phone-style list (DragScroll: drag to scroll, a tap on a row's words flips its switch):
-##   Controls  touch buttons (auto / on / off), button size and opacity, left-handed, look speed for touch and for the
-##             mouse / controller, invert up-down look, aim hold or toggle (mouse / controller), the controls picture
-##             (ui/controls_help.gd) and the how-to cards again (ui/intro_cards.gd)
+##   Controls  touch buttons (auto / on / off), button size and opacity, left-handed, a move-the-buttons editor
+##             (ui/touch_layout_editor.gd) with a reset, look speed for touch and for the mouse / controller, invert
+##             up-down look, aim hold or toggle (mouse / controller), the controls picture (ui/controls_help.gd) and
+##             the how-to cards again (ui/intro_cards.gd)
 ##   Camera    Manual / Auto-centre, distance, field of view
 ##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS, performance readout, 15-minute soak test (world/soak_run.gd)
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
@@ -36,6 +37,7 @@ var ui := {}                      ## other named controls of the current section
 var help: ControlsHelp
 var intro: IntroCards
 var code_sheet: DlcCodeSheet      ## the Construction code field: tap the version line 7 times in About (not in a match)
+var layout_editor: TouchLayoutEditor   ## Settings > Controls > Move buttons (ui/touch_layout_editor.gd)
 var _ver_taps := 0
 var _ver_t := 0
 
@@ -95,6 +97,9 @@ func _ready() -> void:
 	code_sheet = DlcCodeSheet.new()
 	add_child(code_sheet)
 	code_sheet.closed.connect(_focus_tab)
+	layout_editor = TouchLayoutEditor.new()
+	add_child(layout_editor)
+	layout_editor.closed.connect(_on_layout_closed)
 	Settings.changed.connect(_on_setting)
 	super._ready()
 	show_section(section)
@@ -109,11 +114,18 @@ func open_section(s: String) -> void:
 
 ## One step back: the controls picture or the how-to first, then the screen.
 func back() -> bool:
+	if layout_editor.visible: layout_editor.close(); return true
 	if code_sheet.visible: return code_sheet.back()
 	if intro.visible: intro.finish(); return true
 	if help.visible: help.close(); return true
 	close()
 	return true
+
+func close() -> void:
+	if layout_editor != null and layout_editor.visible:
+		layout_editor.close()   # never leave the editor's touch-layer mute behind a hidden page
+	_show_page_body(true)
+	super.close()
 
 func _focus_tab() -> void:
 	if Tier.is_pc() and visible: (tabs[section] as Button).grab_focus.call_deferred()
@@ -134,6 +146,8 @@ func show_section(s: String) -> void:
 			_slider("touch_scale", "Button size", "", 0.7, 1.4, 0.05, _pct)
 			_slider("touch_opacity", "Button opacity", "", 0.3, 1.0, 0.05, _pct)
 			_toggle("touch_lefty", "Left-handed", "Buttons on the left, move on the right")
+			_buttons("TouchLayout", [["layout", "Move buttons", open_touch_layout], ["layout_reset", "Reset buttons", reset_touch_layout]])
+			_toggle("kids_mode", "Kids mode", "Auto-aim and auto-fire, and you can't walk off the edge. Offline: half coins, no leaderboard.")
 			_slider("sens", "Look speed (touch)", "", 0.3, 2.5, 0.05, _times)
 			_slider("mouse_sens", "Look speed (mouse and controller)", "", 0.3, 2.5, 0.05, _times)
 			_toggle("invert_y", "Invert up and down look", "")
@@ -212,6 +226,31 @@ func open_help() -> void:
 
 func open_intro() -> void:
 	intro.open()
+
+## Settings > Controls > Move buttons: drag the real touch buttons anywhere inside the safe area (ui/touch_layout_editor.gd).
+## The Settings page itself is hidden meanwhile, so the editor's dimmed overlay sits over the title / paused match and the
+## player can judge the buttons against the screen they play on.
+func open_touch_layout() -> void:
+	if layout_editor == null:
+		return
+	_show_page_body(false)
+	layout_editor.open()
+
+## Settings > Controls > Reset buttons: back to the device's own default layout at once (phones and tablets differ).
+func reset_touch_layout() -> void:
+	Settings.set_value("touch_layout", "{}")
+
+## The Settings page body (opaque backdrop + margins + rows) <-> the move-buttons editor over what is behind the page.
+func _show_page_body(on: bool) -> void:
+	var bg := get_node_or_null("Bg")
+	if bg != null:
+		(bg as CanvasItem).visible = on
+	if safe != null:
+		safe.visible = on
+
+func _on_layout_closed() -> void:
+	_show_page_body(true)
+	_focus_tab()
 
 # ============================== rows ==============================
 

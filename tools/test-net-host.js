@@ -242,6 +242,30 @@ async function arcadeCoop(url) {
   const jl = s => JSON.parse(s.slice(s.indexOf(' ') + 1));
   const hosted = jl(await host.waitLine(/^HOSTED /, 30000));
   const code = hosted.code;
+  // Read-only room-kind checks (docs/PROTOCOL.md 1.1/1.2): the hub's Arcade co-op room says what it is on the relay, and a
+  // join-by-code validates the expected kind. The host/peer flow below is untouched: a probe with no `hello` never
+  // becomes a roster member, so it cannot change the run.
+  {
+    const room = srv.rooms.get(code);
+    assert.ok(room, 'the Arcade co-op room is on the relay');
+    assert.equal(room.info.kind, 'arcade-coop', 'the room metadata carries the explicit kind');
+    assert.equal(room.info.arcade, true, 'the room metadata carries arcade:true');
+    assert.equal(room.info.mode, 'construction');
+    console.log('arcade room kind: ' + JSON.stringify({ code, kind: room.info.kind, kindName: room.info.kindName, arcade: room.info.arcade, modeName: room.info.modeName, max: room.info.max }));
+    const probe = await new Client(url, 'KindProbe').open();
+    probe.tx({ op: 'join', id: code, kind: 'pvp' });
+    const wrong = await probe.wait(m => m.op === 'nojoin' || m.op === 'joined');
+    assert.equal(wrong.op, 'nojoin', 'a PvP screen can not join an Arcade Co-op room by code');
+    assert.equal(wrong.reason, 'kind', 'the failure names the kind, not a missing code'); assert.equal(wrong.kind, 'arcade-coop');
+    probe.tx({ op: 'join', id: 'ZZZZZ', kind: 'arcade-coop' });
+    const missing = await probe.wait(m => m.op === 'nojoin' || m.op === 'joined');
+    assert.equal(missing.reason, 'none', 'an unknown code is a different failure from a kind mismatch (so the UI can hint the wrong server)');
+    probe.tx({ op: 'join', id: code, kind: 'arcade-coop' });
+    const joined = await probe.wait(m => m.op === 'joined' || m.op === 'nojoin');
+    assert.equal(joined.op, 'joined'); assert.equal(joined.kind, 'arcade-coop', 'the joined reply carries the room kind');
+    probe.tx({ op: 'leave' }); await probe.wait(m => m.op === 'left'); probe.close();
+    await sleep(120);
+  }
   const S1 = jl(await host.waitLine(/^START1 /, 60000));
   console.log('arcade host start: ' + JSON.stringify({ slots: S1.slots, kinds: S1.kinds, map: S1.map, arc: S1.arc, rules: S1.rules }));
   assert.equal(S1.map, 'sitegen', 'the arcade room plays the generated site');

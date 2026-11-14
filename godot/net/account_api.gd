@@ -242,6 +242,53 @@ func delete_account(password: String) -> void:
 				_applying = false
 			_finish("delete", true, "Account deleted. You're playing as a guest."))
 
+# ============================== ranking (docs/PROTOCOL.md 4.1) ==============================
+
+const RANK_BOARDS := ["kos", "wins", "arcade"]
+
+## Kids mode is not ranked (Settings "kids_mode": assist mode, half coins, no leaderboard). Static so a sheet or a test
+## can ask without an AccountApi instance; read on every call, so flipping the setting applies at once.
+static func kids_mode() -> bool:
+	var ml := Engine.get_main_loop()
+	if ml is SceneTree:
+		var tree := ml as SceneTree
+		if tree.root != null:
+			var st := tree.root.get_node_or_null("Settings")
+			if st: return bool(st.get_value("kids_mode"))
+	return false
+
+## May this device submit scores? (submit_rank also checks the login.)
+static func rank_allowed() -> bool:
+	return not kids_mode()
+
+## Why submitting is off ("" = it is on), in plain words for the RankingSheet / a toast.
+func rank_block_reason() -> String:
+	if not signed_in(): return "Sign in to appear on the leaderboard."
+	if kids_mode(): return "Kids mode is on: scores are not sent to the leaderboard."
+	return ""
+
+## GET /api/rank?board=kos|wins|arcade&limit=N: cb({ok, board, entries: [{rank, name, score, updated, me?}], you?}).
+## Guests may read a board; a signed-in read also gets `you`.
+func fetch_rank(board: String, cb: Callable, limit: int = 20) -> void:
+	var b := board if board in RANK_BOARDS else "kos"
+	call_api(HTTPClient.METHOD_GET, "/api/rank?board=%s&limit=%d" % [b, clampi(limit, 1, 100)], null, str(getv("token")),
+		func(r: Dictionary) -> void:
+			if cb.is_valid(): cb.call(r))
+
+## POST /api/rank: this account's lifetime bests (K.O.s, wins, matches, Arcade best stage + difficulty). The server keeps
+## the higher value, so calling it again with an older profile never lowers anybody. Returns through `cb`
+## ({ok, err?, board, entries, you}); a game loop never waits for it and a failure is never an error dialog.
+func submit_rank(stats: Dictionary, cb := Callable()) -> void:
+	if kids_mode():
+		if cb.is_valid(): cb.call({"ok": false, "status": 0, "err": "kids", "msg": "Kids mode is on: scores are not sent to the leaderboard."})
+		return
+	if not signed_in():
+		if cb.is_valid(): cb.call({"ok": false, "status": 0, "err": "auth", "msg": "Sign in to appear on the leaderboard."})
+		return
+	call_api(HTTPClient.METHOD_POST, "/api/rank", stats, str(getv("token")),
+		func(r: Dictionary) -> void:
+			if cb.is_valid(): cb.call(r))
+
 ## At start-up (web verifyLogin): is the saved login still good, and is the cloud save newer than this device's copy?
 func verify() -> void:
 	if not signed_in(): return

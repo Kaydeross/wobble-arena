@@ -413,8 +413,14 @@ func _own_emote(id: String) -> void:
 	var free := slots.find(null)
 	if free >= 0: slots[free] = id
 
+## Coins an award pays right now: half in kids mode (odd awards round down, so a 1-coin award pays nothing and a
+## 0-coin award stays 0), the full amount in every other mode. Kids mode never submits a leaderboard score either
+## (KidsAssist.leaderboard_allowed()). docs/KIDS_MODE.md.
+static func award_coins(n: int) -> int:
+	return KidsAssist.reward_coins(n)
+
 func add_coins(n: int) -> void:
-	coins = maxi(0, coins + n)
+	coins = maxi(0, coins + award_coins(n))
 	_commit()
 
 ## Puts an owned emote in slot `i` (it moves there if it was in another slot, like the web Locker).
@@ -462,16 +468,17 @@ func goal_rows() -> Array:
 func goals_to_claim() -> int:
 	return Quests.claimable(quests, quest_day(), stats)
 
-## Claims a done goal: its coins are added and saved. Returns the coins (0 = nothing to claim).
+## Claims a done goal: its coins are added and saved (half in kids mode, like every other award). Returns the coins
+## added (0 = nothing to claim).
 func claim_goal(key: String) -> int:
-	var n := Quests.claim(quests, key, quest_day(), stats)
+	var n := award_coins(Quests.claim(quests, key, quest_day(), stats))
 	if n > 0:
 		coins += n
 		_commit()
 	return n
 
 ## Coins for a finished match (web endMatch: +40, +60 more for a win) plus the K.O.s in it (web: +5 each, paid as
-## they happen).
+## they happen). This is the full reward; award_coins() pays half of it in kids mode.
 static func match_coins(kos: int, won: bool) -> int:
 	return KO_COINS * kos + MATCH_COINS + (WIN_COINS if won else 0)
 
@@ -494,7 +501,7 @@ func on_ko(mine: bool, died: bool, melee := false) -> void:
 		_streak += 1
 		stats["kos"] += 1
 		stats["best"] = maxi(int(stats["best"]), _streak)
-		coins += KO_COINS
+		coins += award_coins(KO_COINS)
 		changed.emit()
 	if died:
 		_streak = 0
@@ -521,13 +528,13 @@ func finish_match(won: bool, mode_name: String = "", map_name: String = "", onli
 	if online: stats["onl"] += 1
 	hist.push_front({"m": mode_name.substr(0, 24), "map": map_name.substr(0, 24), "ko": match_kos, "d": match_deaths, "w": 1 if won else 0, "o": 1 if online else 0})
 	if hist.size() > 8: hist.resize(8)
-	var bonus := MATCH_COINS + (WIN_COINS if won else 0)
+	var bonus := award_coins(MATCH_COINS + (WIN_COINS if won else 0))
 	coins += bonus
 	var g := Quests.on_match(quests, {"won": won, "kos": match_kos, "hits": match_hits, "heads": match_heads, "mkos": match_mkos,
 		"mode": mode_id, "online": online}, quest_day(), stats, _quest_before)
-	coins += int(g["streak"])
+	coins += award_coins(int(g["streak"]))
 	_quest_before = Quests.done_keys(quests, quest_day(), stats)
-	var out := {"coins": bonus + KO_COINS * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "next": next_unlock(),
+	var out := {"coins": bonus + award_coins(KO_COINS) * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "next": next_unlock(),
 		"goals": g["done"], "streak": int(g["streak"]), "days": int(g["days"])}
 	var fresh: Array = []                               # secret classes this match unlocked (K.O.s count too)
 	for id: String in owned_classes():

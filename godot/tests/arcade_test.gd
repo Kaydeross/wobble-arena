@@ -53,6 +53,8 @@ func _run() -> void:
 	await _full_run()
 	await _lives()
 	await _coop()
+	await _friendly_fire()
+	await _balance()
 	await _events()
 	await _boss_weapon_crates()
 	await _phases()
@@ -152,8 +154,14 @@ func _free_world(w: Node) -> void:
 
 ## A world on a new Arcade run with two locally controlled player seats (offline co-op, docs/ARCADE_COOP_PLAN.md §4.1):
 ## seat 0 is the world's own player, seat 1 gets its own PlayerControl + InputState from ArcadeManager._bind_seats.
-func _launch_coop(stage := 0, easy := true, dmg := 1.0, diff := "nightmare", cls := "", bot1 := false, dmg1 := 1.0) -> Node:
+## `ff` = the Settings "arcade_ff" the run is built with (the hub's co-op friendly-fire toggle; off by default). Settings is
+## put back off right after the launch so the next world in this file starts from the owner's default again.
+func _launch_coop(stage := 0, easy := true, dmg := 1.0, diff := "nightmare", cls := "", bot1 := false, dmg1 := 1.0,
+		ff := false) -> Node:
+	var st := root.get_node("Settings")
+	st.set_value("arcade_ff", ff)
 	var w: Node = AM.call("launch", 4242, diff, cls)
+	st.set_value("arcade_ff", false)
 	var arc = w.arcade
 	if easy: arc.difficulty_override = "easy"
 	arc.player_dmg = dmg
@@ -215,6 +223,96 @@ func _kill_seat(w: Node, k: int) -> void:
 	f.invuln = 0.0; f.shield_t = 0.0
 	w.sim.combat.hit(f, 1e6, 0.0, 1.0, 0.0, 5.0, false, null)
 
+# ---------------- balance overlay helpers (flame knockback, Air Blower damage) ----------------
+
+const FLAME_TICK := 0.06          ## the flame's cooldown: one damage/knockback tick
+
+## An arena MatchSim with a player shooter and one bot target. `tuned` = MatchSim's normal overlay (MatchSim.new applies
+## godot/data/extra/weapon_tuning.json); false clears it, which is exactly the shared web numbers (tuning_active() false).
+func _balance_sim(m: Dictionary, g: Dictionary, tuned: bool) -> MatchSim:
+	var sim := MatchSim.new()
+	sim.combat.rng = CombatRng.new(17)
+	sim.setup("arena", m, g.get("ladders", []), g.get("bouncePads", []), "wobbler", PlayerControl.new(InputState.new()), 1)
+	if not tuned: sim.combat.apply_tuning({})          # empty overlay: the parity/web numbers, no tuned rule
+	return sim
+
+## The body points the flame cone / blower cone and hit() read (MatchSim has no views to write them).
+func _pose(f: FighterState) -> void:
+	var p := f.phys
+	f.head_x = p.px; f.head_y = p.py + 1.95; f.head_z = p.pz
+	f.chest_x = p.px; f.chest_y = p.py + 1.22; f.chest_z = p.pz
+	f.hand_x = p.px; f.hand_y = p.py + 1.3; f.hand_z = p.pz
+	f.shoulder_x = p.px; f.shoulder_y = p.py + 1.55; f.shoulder_z = p.pz
+	f.update_leg()
+
+## One flame stream over 60 damage ticks (3.6 s) on a stunned target (stun scales the walk accel to 12 %: it cannot walk
+## the push off). The hits are exactly Weapons._flame's (direction forward, whole body, no head). Returns how far the
+## target was carried from its start.
+func _flame_stream(sim: MatchSim) -> float:
+	var c := sim.combat
+	var a: FighterState = c.fighters[0]
+	var v: FighterState = c.fighters[1]
+	sim.controllers[v] = PlayerControl.new(InputState.new())   # no bot input: the stream is the only force
+	c.clear_inventory(a); c.clear_inventory(v)
+	c.set_weapon(a, "flame")
+	a.phys.place(0.0, 0.05, 0.0); a.yaw = 0.0; a.face_yaw = 0.0
+	v.phys.place(0.0, 0.05, 4.0); v.yaw = PI; v.face_yaw = PI
+	v.cls_kb = 1.0                                     # the default class knockback multiplier: a clean before/after
+	a.invuln = 0.0; v.invuln = 0.0; v.hp = 1e9
+	_pose(a); _pose(v)
+	var from := Vector2(v.phys.px, v.phys.pz)
+	var force := float(c.wdata("flame")["force"])
+	var dmg := float(c.wdata("flame")["dmg"])
+	for i in 60:
+		sim.step(FLAME_TICK)
+		v.stun = 10.0                                    # a target that cannot walk must still not be carried
+		_pose(a); _pose(v)
+		c.hit(v, dmg, 0.0, 0.0, 1.0, force, false, a)
+		v.burn = 0.0                                     # the burn ticks are not the stream's knockback
+	return Vector2(v.phys.px, v.phys.pz).distance_to(from)
+
+## The flame contact's knockback budget: 40 ticks of one contact add at most the tuned `maxForce` (m/s) in total
+## (no further push while it stays on the target), and after FLAME_RESET s off the target a new contact pushes fully again.
+func _flame_budget(sim: MatchSim) -> Array:
+	var c := sim.combat
+	var a: FighterState = c.fighters[0]
+	var v: FighterState = c.fighters[1]
+	a.weapon = "flame"
+	c.flame_push.clear()
+	v.cls_kb = 1.0
+	v.phys.vx = 0.0; v.phys.vz = 0.0; v.hp = 1e9; v.invuln = 0.0
+	var force := float(c.wdata("flame")["force"])
+	for i in 40:
+		c.time += FLAME_TICK
+		c.hit(v, 1.9, 0.0, 0.0, 1.0, force, false, a)
+	var burst := absf(v.phys.vz)
+	var held := absf(v.phys.vz)
+	c.time += FLAME_TICK
+	c.hit(v, 1.9, 0.0, 0.0, 1.0, force, false, a)
+	held = absf(v.phys.vz) - held                    # a 41st tick in the same contact adds nothing
+	v.phys.vx = 0.0; v.phys.vz = 0.0
+	c.time += 1.0                                    # a real pause (> Combat.FLAME_RESET): a new contact
+	c.hit(v, 1.9, 0.0, 0.0, 1.0, force, false, a)
+	return [burst, held, absf(v.phys.vz)]
+
+## The Air Blower's overlay damage over 0.5 s of held jet (60 physics steps): one hit per puff (cooldown), not per step.
+func _blower_damage(sim: MatchSim) -> float:
+	var c := sim.combat
+	var a: FighterState = c.fighters[0]
+	var v: FighterState = c.fighters[1]
+	c.clear_inventory(a)
+	c.pickup(a, "blower")
+	a.phys.place(0.0, 0.05, 0.0); a.yaw = 0.0; a.face_yaw = 0.0
+	a.dmg_scale = 1.0
+	v.phys.place(0.0, 0.05, 3.0); v.yaw = PI; v.face_yaw = PI
+	a.invuln = 0.0; v.invuln = 0.0; v.hp = c.max_hp(v)
+	_pose(a); _pose(v)
+	var hp0 := v.hp
+	for i in 60:
+		c.weapons.blower_tick(a, true, 1.0 / 120.0)
+		c.timers(a, 1.0 / 120.0)                         # cools the weapon: the next puff comes every cooldown
+	return hp0 - v.hp
+
 # ---------------- 1. the gate ----------------
 
 func _gate() -> void:
@@ -236,6 +334,12 @@ func _gate() -> void:
 	check(got[0] == 0 and hub.arc_step == 1 and hub.arc_class_box.visible, "the card opens the class step first")
 	hub.arcade_next()
 	check(got[0] == 0 and hub.arc_step == 2 and hub.arc_diff_box.visible, "Next opens the difficulty step")
+	# the co-op friendly-fire toggle lives on the difficulty step (owner: default off) and writes Settings arcade_ff
+	check(hub.arc_ff != null and hub.arc_ff.visible and not hub.arc_ff.button_pressed, "co-op friendly fire toggle on the difficulty step, off by default")
+	hub.arc_ff.button_pressed = true
+	check(bool(root.get_node("Settings").get_value("arcade_ff")), "the toggle writes Settings arcade_ff")
+	hub.arc_ff.button_pressed = false
+	check(not bool(root.get_node("Settings").get_value("arcade_ff")), "... and turning it back off clears the setting")
 	hub.pick_diff("easy")
 	check(str(root.get_node("Settings").get_value("arcade_diff")) == "easy", "the pick is remembered (Settings arcade_diff)")
 	hub.arcade_next()
@@ -588,9 +692,149 @@ func _coop() -> void:
 	arc.seats[0].net_slot = 0
 	var r2: Dictionary = sim.combat.hit(ghost, 10.0, 0.0, 1.0, 0.0, 4.0, false, arc.seats[0])
 	var nets2: Array = sim.combat.events.filter(func(e: Dictionary) -> bool: return e.get("type") == "net")
-	check(bool(r2.get("applied", false)) and nets2.size() == 1, "gates: the player-attacker path still relays its hit")
+	check(not bool(r2.get("applied", false)) and nets2.is_empty(), "gates: friendly fire off, so a seat's hit on the teammate ghost is not relayed (%d)" % nets2.size())
+	sim.combat.friendly_fire = true                # the option on: the same seat-to-seat hit travels (online co-op honours arc.ff)
+	sim.combat.events.clear()
+	r2 = sim.combat.hit(ghost, 10.0, 0.0, 1.0, 0.0, 4.0, false, arc.seats[0])
+	nets2 = sim.combat.events.filter(func(e: Dictionary) -> bool: return e.get("type") == "net")
+	check(bool(r2.get("applied", false)) and nets2.size() == 1, "gates: friendly fire on, the player-attacker path relays its hit")
+	sim.combat.friendly_fire = false
 	check(sim.combat.bots_can_hit(arc.seats[0], crew) and not sim.combat.bots_can_hit(crew, arc.enemies[1]), "gates: crew vs crew is still not a fight")
 	await _free_world(w)
+
+# ---------------- 3c. co-op friendly fire (owner decision: off by default, option in the hub) ----------------
+
+## A seat's weapon/projectile/explosion cannot hurt the other seat while Settings arcade_ff is off (the default on every
+## difficulty); the crew and enemy fire still hurt both. Turned on, the same hit lands, and the option travels in the
+## net room's `start.arc.ff` so online co-op uses the same rule on host and guest.
+func _friendly_fire() -> void:
+	_unlock()
+	var st := root.get_node("Settings")
+	# -- off (default): teammate damage ignored, crew and hazards unchanged --
+	var w := _launch_coop(0)
+	var arc = w.arcade
+	var sim: MatchSim = w.sim
+	var c: Combat = sim.combat
+	_start_fight(w)
+	_tick_safe(w, 10)
+	var s0: FighterState = arc.seats[0]
+	var s1: FighterState = arc.seats[1]
+	check(not c.friendly_fire, "ff: off by default (Settings arcade_ff false)")
+	check(c.pve_seats.has(s0) and c.pve_seats.has(s1), "ff: both player seats are in the rule")
+	# seat 0's weapon hit on seat 1 is ignored (every damage path funnels through Combat.hit)
+	s1.invuln = 0.0; s1.hp = c.max_hp(s1)
+	var r: Dictionary = c.hit(s1, 20.0, 0.0, 0.0, 1.0, 8.0, false, s0)
+	check(not bool(r.get("applied", false)) and is_equal_approx(s1.hp, c.max_hp(s1)), "ff off: seat 0's hit leaves seat 1 alone (%s)" % [r])
+	# ... and a hit on the other seat's GHOST is stopped before the net `h` relay
+	s1.net_human = true; s1.net_slot = 1; s1.is_ghost = true
+	s0.net_slot = 0
+	c.net_started = true
+	c.events.clear()
+	r = c.hit(s1, 20.0, 0.0, 0.0, 1.0, 8.0, false, s0)
+	var nets: Array = c.events.filter(func(e: Dictionary) -> bool: return e.get("type") == "net")
+	check(not bool(r.get("applied", false)) and nets.is_empty(), "ff off: the hit on the other ghost seat is never relayed (%d)" % nets.size())
+	s1.is_ghost = false; s1.net_human = false; s1.net_slot = -1; s0.net_slot = -1; c.net_started = false
+	# a seat's projectile/explosion is the same funnel: it cannot hurt the other seat either
+	s1.invuln = 0.0; s1.hp = c.max_hp(s1)
+	c.weapons.explode(s1.phys.px, s1.phys.py + 1.0, s1.phys.pz, s0, c.wdata("rocket"))
+	check(is_equal_approx(s1.hp, c.max_hp(s1)), "ff off: seat 0's rocket explosion leaves seat 1 alone (%.0f/%.0f)" % [s1.hp, c.max_hp(s1)])
+	# the crew still hurts BOTH seats, and a derelict hazard (no attacker) still hits a seat
+	var crew: FighterState = arc.enemies[0]
+	for seat: FighterState in [s0, s1]:
+		seat.invuln = 0.0; seat.hp = c.max_hp(seat)
+		r = c.hit(seat, 10.0, 0.0, 0.0, 1.0, 4.0, false, crew)
+		check(bool(r.get("applied", false)) and seat.hp < c.max_hp(seat), "ff off: the crew still hurts %s (%.0f hp)" % [seat.name, seat.hp])
+	s0.invuln = 0.0; s0.hp = c.max_hp(s0)
+	r = c.hit(s0, 10.0, 0.0, 0.0, 1.0, 4.0, false, null)
+	check(bool(r.get("applied", false)) and s0.hp < c.max_hp(s0), "ff off: an unowned hazard still hurts a seat (%.0f hp)" % s0.hp)
+	await _free_world(w)
+	# -- on: the same seat-to-seat hit lands, the crew is unaffected --
+	var w2 := _launch_coop(0, true, 1.0, "nightmare", "", false, 1.0, true)
+	var arc2 = w2.arcade
+	var c2: Combat = w2.sim.combat
+	_start_fight(w2)
+	_tick_safe(w2, 10)
+	var t0: FighterState = arc2.seats[0]
+	var t1: FighterState = arc2.seats[1]
+	check(arc2.friendly_fire and c2.friendly_fire, "ff on: Settings arcade_ff carries into the run and its Combat")
+	t1.invuln = 0.0; t1.hp = c2.max_hp(t1)
+	r = c2.hit(t1, 20.0, 0.0, 0.0, 1.0, 8.0, false, t0)
+	check(bool(r.get("applied", false)) and t1.hp < c2.max_hp(t1), "ff on: seat 0 really hurts seat 1 (%.0f hp)" % t1.hp)
+	t0.invuln = 0.0; t0.hp = c2.max_hp(t0)
+	var crew2: FighterState = arc2.enemies[0]
+	r = c2.hit(t0, 10.0, 0.0, 0.0, 1.0, 4.0, false, crew2)
+	check(bool(r.get("applied", false)) and t0.hp < c2.max_hp(t0), "ff on: the crew still hurts a seat")
+	await _free_world(w2)
+	# -- online: the option is in the room's start.arc and both managers adopt it --
+	var CO: GDScript = load("res://dlc/construction/arcade_coop.gd")
+	var a: Dictionary = CO.call("arc_for_stage", 7, "normal", 0, 3)
+	check(a.has("ff") and not bool(a["ff"]), "ff arc: start.arc carries it, off by default")
+	var a_on: Dictionary = CO.call("arc_for_stage", 7, "normal", 0, 3, "intro", 2, 0, true)
+	check(bool(a_on.get("ff", false)), "ff arc: start.arc carries the toggle when on")
+	# stage_arc takes the LIVE manager (an Object, not a Dictionary): every later stage's start carries the setting too
+	var mlive = AM.new()
+	mlive.start_run(7, "normal")
+	mlive.friendly_fire = true
+	var live: Dictionary = CO.call("stage_arc", mlive)
+	check(bool(live.get("ff", false)), "ff arc: a live run's stage_arc carries the setting")
+	mlive.end_run()
+	var mh = AM.new()
+	mh.init_online(a_on, true)
+	check(mh.friendly_fire, "ff online: the host manager adopts arc.ff")
+	mh.end_run()
+	var mg = AM.new()
+	mg.init_online(a_on, false)
+	check(mg.friendly_fire, "ff online: the guest manager adopts arc.ff")
+	mg.end_run()
+	st.set_value("arcade_ff", false)
+
+# ---------------- 3d. balance overlay: flame knockback, Air Blower damage ----------------
+
+## The flame's per-tick force used to add up to a constant shove (it could carry a target that cannot walk against it).
+## The overlay lowers it and caps the total knockback one contact may add to a target at `maxForce` m/s; a new contact
+## starts after a short pause off the target. The Air Blower now does its overlay `dmg` once per puff. Both live in the
+## Godot overlay only (tuning_active()).
+func _balance() -> void:
+	var maps: Dictionary = root.get_node("Content").maps
+	var m: Dictionary = maps["arena"]
+	var g: Dictionary = m["geometry"]
+	var tuned := _balance_sim(m, g, true)
+	var before := _balance_sim(m, g, false)
+	var c: Combat = tuned.combat
+	var bare: Combat = before.combat
+	check(c.tuning_active() and not bare.tuning_active(), "balance: overlay on in the tuned match only")
+	check(float(c.wdata("flame")["force"]) < float(bare.wdata("flame")["force"]) * 0.75,
+		"flame: lower per-tick force %.2f (shared %.2f)" % [float(c.wdata("flame")["force"]), float(bare.wdata("flame")["force"])])
+	check(float(c.wdata("flame")["maxForce"]) < float(bare.wdata("flame")["maxForce"]),
+		"flame: lower maxForce %.2f (shared %.2f)" % [float(c.wdata("flame")["maxForce"]), float(bare.wdata("flame")["maxForce"])])
+	check(float(c.wdata("blower").get("dmg", 0.0)) > 0.0 and not bare.wdata("blower").has("dmg"),
+		"blower: damage comes from the overlay only (%.1f)" % float(c.wdata("blower").get("dmg", 0.0)))
+	# a stream cannot carry a stunned target: the shared numbers shove it across the arena, the tuned stream leaves it put
+	var d_before := _flame_stream(before)
+	var d_tuned := _flame_stream(tuned)
+	check(d_before > 3.0, "flame before: a 60-tick stream carries a stunned target %.2f m" % d_before)
+	check(d_tuned < 1.0, "flame tuned: the same stream carries it only %.2f m (sane)" % d_tuned)
+	# the contact cap: one burst adds at most maxForce m/s, further ticks add nothing, and a new contact pushes fully again
+	var tuned_budget := _flame_budget(tuned)
+	var bare_budget := _flame_budget(before)
+	var cap := float(c.wdata("flame")["maxForce"])
+	check(float(tuned_budget[0]) <= cap + 0.05 and float(tuned_budget[0]) > cap * 0.5,
+		"flame: one contact adds %.2f m/s (maxForce %.2f, it still pushes)" % [float(tuned_budget[0]), cap])
+	check(float(bare_budget[0]) > 5.0, "flame before: the same 40 ticks add %.2f m/s" % float(bare_budget[0]))
+	check(is_equal_approx(float(tuned_budget[1]), 0.0),
+		"flame: a further tick of the same contact adds nothing (%.3f m/s)" % float(tuned_budget[1]))
+	check(float(tuned_budget[2]) <= 0.25 and float(tuned_budget[2]) > 0.1,
+		"flame: a new contact %.1f s later pushes fully again (%.2f m/s)" % [Combat.FLAME_RESET, float(tuned_budget[2])])
+	# the blower: 0.5 s of held jet does its overlay dmg once per puff; the shared blower still does no damage
+	var blower_tuned := _blower_damage(tuned)
+	var blower_before := _blower_damage(before)
+	var per_puff := float(c.wdata("blower")["dmg"])
+	check(blower_tuned >= per_puff * 6.0 and blower_tuned <= per_puff * 9.5,
+		"blower tuned: 0.5 s of jet does %.1f damage (~%d puffs x %.1f)" % [blower_tuned, int(round(blower_tuned / per_puff)), per_puff])
+	check(is_equal_approx(blower_before, 0.0), "blower shared (web/parity): still no damage (%.2f)" % blower_before)
+	print("BALANCE flame_carry shared=%.2fm tuned=%.2fm contact=%.2fm/s held=%.3f new_contact=%.2fm/s blower=%.1f (shared %.1f)"
+		% [d_before, d_tuned, float(tuned_budget[0]), float(tuned_budget[1]), float(tuned_budget[2]), blower_tuned, blower_before])
+	tuned.dispose(); before.dispose()
 
 # ---------------- 4. events ----------------
 

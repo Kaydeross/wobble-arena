@@ -32,7 +32,8 @@ const NOJOIN_TEXT := {
 	"build": "That room is running a different version of the game.",
 	"full": "That room is full.",
 	"inroom": "You're already in a room.",
-	"none": "No room with that code. Check the letters, and make sure the host still has the room open.",
+	"none": "No room with that code on this server. Check the letters, make sure the host still has the room open, and that you are both on the same server (a code only works on the server that made it).",
+	"kind": "That code is for a different kind of room (Arcade co-op or a normal PvP room). Check which one you meant to join.",
 }
 
 var net := NetClient.new()

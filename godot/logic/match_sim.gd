@@ -249,8 +249,8 @@ static func start_point_safe(solids: Array, x: float, z: float, y: float, ring_o
 		if over and bottom + 0.01 < y and y < top - 0.01: return false       # inside a solid
 		if over and top <= y + 0.5 and top > ring_out_y: floor_y = maxf(floor_y, top)
 	if floor_y == -INF or absf(y - floor_y) > 0.5: return false            # no floor under the feet
-	for i in 12:                                                          # the void ring: 2 m out, floor everywhere
-		var a := float(i) * PI / 6.0
+	for i in 24:                                                          # the void ring: 2 m out, floor everywhere (every 15 degrees)
+		var a := float(i) * PI / 12.0
 		var sx := x + cos(a) * START_MARGIN
 		var sz := z + sin(a) * START_MARGIN
 		var supported := false

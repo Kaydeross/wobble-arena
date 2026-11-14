@@ -23,6 +23,9 @@ const DEFAULTS := {
 	"touch_scale": 1.0,
 	"touch_opacity": 0.85,
 	"touch_assist": true,
+	"touch_layout": "{}",   # custom per-button offsets from the default touch layout, JSON {id: [dx, dy]} (ui/touch_layout_editor.gd)
+	"kids_mode": false,     # offline assist mode: auto-aim/auto-fire and no walking off the edge; half coins, no leaderboard
+	"arcade_ff": false,     # Arcade co-op friendly fire: false = a teammate's weapon cannot hurt the other seat
 	"ui_scale": "auto",     # menus, HUD and touch buttons: auto | small | normal | large (ui/ui_scale.gd)
 	"show_fps": false,      # FPS / frame-time overlay (F3 or a three-finger tap toggles it)
 	"perf_overlay": false,  # device readout in the top-left corner: fps, frame ms, CPU / GPU, draws, tier, thermal (ui/perf_overlay.gd)
