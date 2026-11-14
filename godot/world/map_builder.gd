@@ -616,32 +616,76 @@ static func _add_decor(root: MapNode, id: String) -> bool:
 	var d := load_decor(id)
 	if d.is_empty():
 		return false
+	_add_decor_nodes(root, d, _decor_haze(root, id))
+	root.decor_tris = 0
+	for g: Dictionary in d:
+		root.decor_tris += (g["idx"] as PackedInt32Array).size() / 3
+	return true
+
+static func _decor_haze(root: MapNode, id: String) -> Vector3:
 	var lk := look(id) if root.map_id != "custom" else look("custom")
-	var haze := _lin(int(lk["fog"][0])) if lk.get("fog") is Array else Vector3(0.75, 0.85, 0.9)
+	return _lin(int(lk["fog"][0])) if lk.get("fog") is Array else Vector3(0.75, 0.85, 0.9)
+
+## One surface's mesh arrays (+ format flags) for a decor group, or for a subset of it: `idx` indexes the group's own
+## vertices. A subset keeps only the vertices it uses (remapped), so an extracted piece is small.
+static func _decor_arrays(g: Dictionary, idx: PackedInt32Array, compact := false) -> Array:
+	var moving: bool = g.has("anim")
+	var pos: PackedVector3Array = g["pos"]
+	var col: PackedColorArray = g["col"]
+	var uv: PackedVector2Array = g.get("uv", PackedVector2Array())
+	var anim: Array = g.get("anim", [])
+	var out_idx := idx
+	if compact:
+		var remap := {}
+		var p2 := PackedVector3Array(); var c2 := PackedColorArray(); var u2 := PackedVector2Array()
+		var a0 := PackedFloat32Array(); var a1 := PackedFloat32Array(); var a3 := PackedFloat32Array()   # value types:
+		var s0: PackedFloat32Array = anim[0] if moving else PackedFloat32Array()                      # append to locals
+		var s1: PackedFloat32Array = anim[1] if moving else PackedFloat32Array()
+		var s3: PackedFloat32Array = anim[2] if moving else PackedFloat32Array()
+		out_idx = PackedInt32Array(); out_idx.resize(idx.size())
+		for k in idx.size():
+			var v := idx[k]
+			if not remap.has(v):
+				remap[v] = p2.size()
+				p2.append(pos[v]); c2.append(col[v])
+				if not uv.is_empty(): u2.append(uv[v])
+				if moving:
+					for e in 4:
+						a0.append(s0[v * 4 + e]); a1.append(s1[v * 4 + e]); a3.append(s3[v * 4 + e])
+			out_idx[k] = remap[v]
+		pos = p2; col = c2; uv = u2; anim = [a0, a1, a3]
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = pos
+	arr[Mesh.ARRAY_COLOR] = col
+	if not uv.is_empty():
+		arr[Mesh.ARRAY_TEX_UV] = uv
+	arr[Mesh.ARRAY_INDEX] = out_idx
+	var flags := 0
+	if moving:
+		arr[Mesh.ARRAY_CUSTOM0] = anim[0]
+		arr[Mesh.ARRAY_CUSTOM1] = anim[1]
+		arr[Mesh.ARRAY_CUSTOM2] = anim[2]
+		flags = (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM2_SHIFT)
+	return [arr, flags]
+
+static func _decor_group_material(g: Dictionary, haze: Vector3) -> ShaderMaterial:
+	var m := decor_material(int(g["kind"]), bool(g["fog"]), float(g["em"]), bool(int(g["shadow"]) & 2), g.has("anim"))
+	m.set_shader_parameter("haze_col", haze)
+	return m
+
+static func _add_decor_nodes(root: MapNode, d: Array, haze: Vector3) -> void:
 	for cast in [true, false]:
 		for moving in [false, true]:
 			var mesh := ArrayMesh.new()
 			for g: Dictionary in d:
 				if bool(int(g["shadow"]) & 1) != cast or g.has("anim") != moving:
 					continue
-				var arr := []
-				arr.resize(Mesh.ARRAY_MAX)
-				arr[Mesh.ARRAY_VERTEX] = g["pos"]
-				arr[Mesh.ARRAY_COLOR] = g["col"]
-				if g.has("uv"):
-					arr[Mesh.ARRAY_TEX_UV] = g["uv"]
-				arr[Mesh.ARRAY_INDEX] = g["idx"]
-				var flags := 0
-				if moving:
-					var a: Array = g["anim"]
-					arr[Mesh.ARRAY_CUSTOM0] = a[0]
-					arr[Mesh.ARRAY_CUSTOM1] = a[1]
-					arr[Mesh.ARRAY_CUSTOM2] = a[2]
-					flags = (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM1_SHIFT) | (Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM2_SHIFT)
-				mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, flags)
-				var m := decor_material(int(g["kind"]), bool(g["fog"]), float(g["em"]), bool(int(g["shadow"]) & 2), moving)
-				m.set_shader_parameter("haze_col", haze)
-				mesh.surface_set_material(mesh.get_surface_count() - 1, m)
+				if (g["idx"] as PackedInt32Array).is_empty():
+					continue
+				var af := _decor_arrays(g, g["idx"])
+				mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, af[0], [], {}, af[1])
+				mesh.surface_set_material(mesh.get_surface_count() - 1, _decor_group_material(g, haze))
 			if mesh.get_surface_count() == 0:
 				continue
 			var mi := MeshInstance3D.new()
@@ -651,10 +695,116 @@ static func _add_decor(root: MapNode, id: String) -> bool:
 			if moving:   # pieces orbit the level: never cull them by their t = 0 box
 				mi.custom_aabb = AABB(Vector3(-700, -120, -700), Vector3(1400, 400, 1400))
 			root.add_child(mi)
-	root.decor_tris = 0
-	for g: Dictionary in d:
-		root.decor_tris += (g["idx"] as PackedInt32Array).size() / 3
-	return true
+
+## Breakable props (logic/destruct.gd): lift the decor that sits ON each column out of the merged decor meshes, so a tree
+## crown, a lollipop head or a lantern goes with the trunk / post it stands on instead of floating once that breaks.
+## cols: [{min_x, max_x, min_z, max_z, lo, hi}] world-space boxes; a level-decor triangle (never the far scenery) whose
+## centre is inside one belongs to it. Returns one entry per column: {mesh: ArrayMesh (world-space vertices, so the
+## node that shows it must sit at the world origin), cast: bool, color: Color (average), aabb: AABB} or {} when nothing
+## sits on it. The merged decor nodes are rebuilt without the lifted triangles.
+static func carve_decor(root: MapNode, cols: Array) -> Array:
+	var out: Array = []
+	for c in cols: out.append({})
+	if cols.is_empty(): return out
+	var id := _decor_id(root.map_id, root.map)
+	var d := load_decor(id)
+	if d.is_empty(): return out
+	var lo := Vector3(INF, INF, INF)
+	var hi := -lo
+	for c: Dictionary in cols:
+		lo = lo.min(Vector3(float(c["min_x"]), float(c["lo"]), float(c["min_z"])))
+		hi = hi.max(Vector3(float(c["max_x"]), float(c["hi"]), float(c["max_z"])))
+	var picked: Array = []          # per column: {group index -> PackedInt32Array}
+	for c in cols: picked.append({})
+	var any := false
+	for gi in d.size():
+		var g: Dictionary = d[gi]
+		if not bool(g["fog"]): continue          # the far scenery ring is never part of the level
+		var pos: PackedVector3Array = g["pos"]
+		var idx: PackedInt32Array = g["idx"]
+		var keep := PackedInt32Array()
+		var changed := false
+		for t in range(0, idx.size() - 2, 3):
+			var a := idx[t]; var b := idx[t + 1]; var e := idx[t + 2]
+			var m := (pos[a] + pos[b] + pos[e]) / 3.0
+			var owner := -1
+			if m.x >= lo.x and m.x <= hi.x and m.y >= lo.y and m.y <= hi.y and m.z >= lo.z and m.z <= hi.z:
+				for ci in cols.size():
+					var c: Dictionary = cols[ci]
+					if m.x >= float(c["min_x"]) and m.x <= float(c["max_x"]) and m.z >= float(c["min_z"]) and m.z <= float(c["max_z"]) \
+							and m.y >= float(c["lo"]) and m.y <= float(c["hi"]):
+						owner = ci
+						break
+			if owner < 0:
+				keep.append(a); keep.append(b); keep.append(e)
+				continue
+			changed = true
+			var per: Dictionary = picked[owner]
+			if not per.has(gi): per[gi] = PackedInt32Array()
+			var pi: PackedInt32Array = per[gi]
+			pi.append(a); pi.append(b); pi.append(e)
+			per[gi] = pi
+		if changed:
+			g["idx"] = keep
+			any = true
+	if not any: return out
+	var haze := _decor_haze(root, id)
+	for ci in cols.size():
+		var per: Dictionary = picked[ci]
+		if per.is_empty(): continue
+		var mesh := ArrayMesh.new()
+		var cast := false
+		var csum := Color(0, 0, 0, 0)
+		var cn := 0
+		var box := AABB()
+		var first := true
+		for gi: int in per:
+			var g: Dictionary = d[gi]
+			var af := _decor_arrays(g, per[gi], true)
+			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, af[0], [], {}, af[1])
+			mesh.surface_set_material(mesh.get_surface_count() - 1, _decor_group_material(g, haze))
+			if int(g["shadow"]) & 1: cast = true
+			var arr: Array = af[0]
+			for v: Vector3 in (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array):
+				if first: box = AABB(v, Vector3.ZERO); first = false
+				else: box = box.expand(v)
+			for c: Color in (arr[Mesh.ARRAY_COLOR] as PackedColorArray):
+				csum += c; cn += 1
+		out[ci] = {"mesh": mesh, "cast": cast, "color": csum / maxf(1.0, float(cn)), "aabb": box}
+	for c in root.get_children():
+		if str(c.name).begins_with("Decor"):
+			root.remove_child(c); c.queue_free()
+	_add_decor_nodes(root, d, haze)
+	return out
+
+## A box as the merged map meshes draw it (box.gdshader faces on MID / HIGH, a plain BoxMesh on LOW), centred on the
+## origin, so a single box (a breakable prop) looks exactly like the map's own boxes.
+static func box_mesh(size: Vector3) -> Mesh:
+	if gfx_q() == 0:
+		var bm := BoxMesh.new()
+		bm.size = size
+		return bm
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	_append_box(st, Vector3.ZERO, size)
+	return st.commit()
+
+## The material that goes with box_mesh(): the map's own box material, optionally darkened (0 = as the map draws it).
+static func box_view_material(color: int, darken := 0.0) -> Material:
+	var k := "boxview_%06x_%d_%.3f" % [color, gfx_q(), darken]
+	if _materials.has(k):
+		return _materials[k]
+	var m: Material
+	if gfx_q() == 0:
+		var sm: StandardMaterial3D = material(color).duplicate()
+		sm.albedo_color = sm.albedo_color.darkened(darken)
+		m = sm
+	else:
+		var shm: ShaderMaterial = box_material(color).duplicate()
+		shm.set_shader_parameter("albedo", hex(color).darkened(darken))
+		m = shm
+	_materials[k] = m
+	return m
 
 ## Reads res://data/extra/decor/<id>.bin: [{kind, fog, shadow, op, em, pos, col, uv?, anim?, idx}] ([] if missing or
 ## bad). anim (groups with shadow bit 2, "WAD2" files) = [CUSTOM0, CUSTOM1, CUSTOM2] as PackedFloat32Arrays.

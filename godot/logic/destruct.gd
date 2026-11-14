@@ -8,7 +8,7 @@ extends RefCounted
 ## ring-out walls, stairs, floor platforms that carry another structure, anything near a spawn / ladder / pad), then picks
 ## a seeded ~`fraction` of the remaining cover components. Those boxes are taken out of the map's merged mesh + collision
 ## and replaced by tagged individual boxes with a mesh, hit points, and a respawn timer. Breaking one removes its solid,
-## hides its mesh and leaves rubble; ~2 minutes later (randomised, docs) the solid and the mesh come back with a fade-in and
+## hides its mesh (the presentation layer shatters it into pieces); ~2 minutes later (randomised, docs) the solid and the mesh come back with a fade-in and
 ## it can be broken again.
 ##
 ## Off is a real null path: `MatchSim.setup` only creates Destruct when `MatchSim.destructible` is true, the analysis never
@@ -24,7 +24,7 @@ extends RefCounted
 ##   setup(sim, map_id, parent, plan)  remove the chosen boxes from map collision, add tagged solids + meshes
 ##   ray_hit(...) / break_hit(...) / break_blast(...) / melee_sweep(f) / flame_hit(...)  the damage hooks
 ##   step(dt)                      respawn timers (MatchSim.step calls it once per fixed step)
-##   is_breakable / props / broken_count / remaining / total / mesh_count / rubble_count / respawn_delay  queries
+##   is_breakable / props / broken_count / remaining / total / mesh_count / respawn_delay  queries
 ##
 ## The selection is not uniform over the eligible set: each component gets a usability score (how close it is to the
 ## map's play centre, how many of its sides are free-standing, how much of it is visible from the surrounding floor and
@@ -32,10 +32,12 @@ extends RefCounted
 ## actually fight around, while another seed still yields another set. A component that cannot be seen from any
 ## standable floor spot is almost never picked (it would be unshootable cover).
 ##
-## Readability: a breakable wears a bright accent frame (top and bottom bands + corner posts, one merged mesh) that is
-## deliberately unlike any map palette, darkens as it takes damage, and pulses on a hit. A hit that does not break it
-## still emits a `prop_hit` event (chips + tap sound + HP colour in the presentation layer), so shooting one never feels
-## like shooting a wall. The HUD shows how many are left.
+## Look: a breakable looks exactly like the map's own boxes (same mesh + material), with no marker. Whatever level decor
+## sits on it (a tree crown on its trunk, a lollipop head on its stick) is lifted out of the merged decor mesh and goes
+## with it (MapBuilder.carve_decor). It darkens a little as it takes damage and squashes on a hit; a hit that does not
+## break it still emits a `prop_hit` event (chips + tap sound), so shooting one never feels like shooting a wall. A break
+## emits `break`, and the presentation layer (world/prop_debris.gd) shatters it into small pieces that settle and sink
+## into the ground.
 
 const DATA_PATH := "res://data/extra/destructible.json"
 const VERSION := 2
@@ -48,7 +50,11 @@ const HARD_MAX_PER_MAP := 60
 const DEFAULT_PER_MAP := 40
 const MIN_FRACTION := 0.05
 const MAX_FRACTION := 1.0
-const RUBBLE_LIFT := 0.018
+const CROWN_THIN := 1.0          ## a component this thin (or thinner) is a post / trunk: decor round its top is its crown
+const CROWN_REACH := 2.4         ## how far round a post / trunk its crown reaches (palm fronds, branches)
+const CROWN_LIP := 0.35          ## how far past a wider block the decor on it may reach
+const CROWN_BELOW := 1.5         ## a crown may start this far below the top (branches)
+const CROWN_ABOVE := 4.0         ## and reach this far above it
 ## Things that must never be picked: ground slabs, roofs, and slivers / decorative boxes that are not cover.
 const GROUND_BOTTOM := -0.25
 const ROOF_MIN_Y := 6.0
@@ -76,7 +82,7 @@ const FLAME_SCALE := 0.4
 
 ## One entry per breakable component:
 ##   {id, kind, index, root, members, boxes, x, y, z, w, h, d, hp, max_hp, color, solid, mesh, mesh_nodes,
-##    rubble, tween, broken, respawn_t, breaks}
+##    crown, tween, broken, respawn_t, breaks}
 var props: Array = []
 var solids: Array = []          ## the live sim.solids array (same reference, so a break is seen by every query)
 var events: Array = []          ## the combat event list (same reference); breaks / respawns append events
@@ -87,9 +93,6 @@ var merge_exclude: Dictionary = {}  ## box index -> true, the map boxes owned by
 var merged_pruned := false      ## true when the built MapNode's merged meshes were rebuilt without those boxes
 var _broken := 0
 var _pending: Array = []        ## prop indices with a running respawn timer (no per-step allocation; break is rare)
-var _mats := {}                 ## "body colour:damage tier" -> tinted / darkened body material
-var _accent_mats: Array = []    ## damage tier -> accent frame material (healthy -> cracked -> about to break)
-var _rubble_mats := {}          ## body colour -> rubble material
 var _respawn_rng := RandomNumberGenerator.new()
 var _cfg: Dictionary = {}
 var _respawn_min := 100.0
@@ -151,7 +154,6 @@ static func config(data: Dictionary = {}) -> Dictionary:
 	var budget: Dictionary = d.get("budget", {}) if d.get("budget") is Dictionary else {}
 	var hp: Dictionary = d.get("hp", {}) if d.get("hp") is Dictionary else {}
 	var rs: Dictionary = d.get("respawn", {}) if d.get("respawn") is Dictionary else {}
-	var col: Dictionary = d.get("colors", {}) if d.get("colors") is Dictionary else {}
 	var sel: Dictionary = d.get("selection", {}) if d.get("selection") is Dictionary else {}
 	return {
 		"version": int(d.get("version", 0)),
@@ -166,9 +168,6 @@ static func config(data: Dictionary = {}) -> Dictionary:
 		"respawn_max": float(rs.get("maxSeconds", 140.0)),
 		"fade": float(rs.get("fadeSeconds", 0.35)),
 		"retry": float(rs.get("retrySeconds", 2.5)),
-		"accent": int(col.get("accent", 0xFF5AC8)),
-		"tint": float(col.get("tint", 0.12)),
-		"rubble": float(col.get("rubble", 0.45)),
 		"spawn_clearance": float(sel.get("spawnClearance", 1.5)),
 		"ladder_clearance": float(sel.get("ladderClearance", 1.5)),
 		"pad_clearance": float(sel.get("padClearance", 0.8)),
@@ -224,7 +223,8 @@ static func validate_config(data: Dictionary) -> Array:
 		if (rs.get("minSeconds") is int or rs.get("minSeconds") is float) and (rs.get("maxSeconds") is int or rs.get("maxSeconds") is float):
 			if float(rs["minSeconds"]) > float(rs["maxSeconds"]):
 				errs.append("respawn.minSeconds must be <= respawn.maxSeconds")
-	errs.append_array(_range_errors(data.get("colors"), "colors", ["accent", "tint", "rubble"], [0.0, 0.0, 0.0], [0xFFFFFF, 0.5, 0.9]))
+	if data.has("colors"):
+		errs.append("colors is gone: a breakable looks like the map's own boxes (no accent frame / tint)")
 	errs.append_array(_range_errors(data.get("selection"), "selection",
 		["spawnClearance", "ladderClearance", "padClearance", "edgeMargin", "minHeight", "maxHeight", "maxSpan", "minThin", "minArea", "stackRatio",
 			"weightCentre", "weightVisible", "weightOpen", "weightHeight", "minVisible"],
@@ -266,13 +266,22 @@ static func target_count(eligible: int, cfg: Dictionary = {}) -> int:
 ## Selection is a seeded weighted sample over the eligible components (see _score_component): the cover players can
 ## actually see and fight around is picked far more often than an unshootable / far-corner piece, while a different seed
 ## still gives a different set. The analyse pass is cached per (map, config, styles) since it is the expensive part.
-static func plan_for(map_id: String, map: Dictionary, seed: int, box_styles: Dictionary = {}) -> Dictionary:
+## `avoid`: map box indices that may not be part of a breakable (the moving floor's drifting blocks).
+static func plan_for(map_id: String, map: Dictionary, seed: int, box_styles: Dictionary = {}, avoid: Dictionary = {}) -> Dictionary:
 	var cfg := config()
 	var plan := {"arena": map_id, "seed": seed, "props": [], "exclude": {}, "eligible": 0, "target": 0,
 		"components": 0, "essential": 0}
 	if not bool(cfg["enabled"]) or not supported(map_id, map): return plan
 	var analysis := _cached_analysis(map_id, map, box_styles)
 	var eligible: Array = analysis["eligible"]
+	if not avoid.is_empty():
+		var free: Array = []
+		for comp: Dictionary in eligible:
+			var hit := false
+			for k: int in comp["members"]:
+				if avoid.has(k): hit = true
+			if not hit: free.append(comp)
+		eligible = free
 	plan["eligible"] = eligible.size()
 	plan["components"] = (analysis["components"] as Array).size()
 	plan["essential"] = (analysis["essential"] as Array).size()
@@ -815,7 +824,8 @@ static func validate(data: Dictionary, maps: Dictionary) -> Array:
 
 ## Called by MatchSim.setup only when the mode is on. `p_plan` is the world's precomputed plan (so it can prune the merged
 ## map meshes before the first frame); when empty the plan is rebuilt from sim.destruct_seed.
-func setup(p_sim: MatchSim, p_map_id: String, p_parent: Node3D = null, p_plan: Dictionary = {}) -> void:
+func setup(p_sim: MatchSim, p_map_id: String, p_parent: Node3D = null, p_plan: Dictionary = {}, p_box_solids: Array = [],
+		p_moving: Dictionary = {}) -> void:
 	arena = p_map_id
 	sim = p_sim
 	solids = p_sim.solids
@@ -830,23 +840,40 @@ func setup(p_sim: MatchSim, p_map_id: String, p_parent: Node3D = null, p_plan: D
 	var plan: Dictionary = p_plan
 	if plan.is_empty():
 		plan = plan_for(arena, p_sim.map, p_sim.destruct_seed)
+	var clash := false                  # a pick is a drifting block: pick again from the cover that stays put
+	for raw: Variant in plan.get("props", []):
+		for k: Variant in (raw as Dictionary).get("members", []):
+			if p_moving.has(int(k)): clash = true
+	if clash:
+		plan = plan_for(arena, p_sim.map, p_sim.destruct_seed, parent.box_styles if parent is MapBuilder.MapNode else {}, p_moving)
 	var raw_props: Variant = plan.get("props", [])
 	if not (raw_props is Array) or (raw_props as Array).is_empty(): return
-	# The mode forces a steady floor (MatchSim), so sim.solids is exactly one dictionary per map box: the selected boxes
-	# are removed by index (descending so earlier indices stay valid) and replaced by one tagged component box each.
+	# The selected boxes are found by map box index. `p_box_solids` is one solid per map box from before the moving
+	# floor split the floor into tiles (MatchSim); without it sim.solids must still be exactly one solid per map box.
 	var boxes: Array = (p_sim.map.get("geometry", {}) as Dictionary).get("boxes", [])
-	if solids.size() != boxes.size():
-		push_error("Destruct: sim.solids (%d) is not one box per map box (%d); no props added" % [solids.size(), boxes.size()])
+	var by_box: Array = p_box_solids if not p_box_solids.is_empty() else solids
+	if by_box.size() != boxes.size():
+		push_error("Destruct: %d box solids for %d map boxes; no props added" % [by_box.size(), boxes.size()])
 		return
-	merge_exclude = (plan.get("exclude", {}) as Dictionary).duplicate()
-	var cut: Array = merge_exclude.keys()
-	cut.sort()
-	cut.reverse()
-	for i: int in cut: solids.remove_at(i)
+	# a component that has a drifting block in it (moving floor "drift") is left as it is
+	var keep_props: Array = []
+	merge_exclude = {}
 	for raw: Variant in raw_props:
+		var members: Array = (raw as Dictionary).get("members", [])
+		var moves := false
+		for k: Variant in members:
+			if p_moving.has(int(k)): moves = true
+		if moves: continue
+		keep_props.append(raw)
+		for k: Variant in members: merge_exclude[int(k)] = true
+	for i: int in merge_exclude.keys():
+		var si := solids.find(by_box[i])
+		if si >= 0: solids.remove_at(si)
+	for raw: Variant in keep_props:
 		var p := _make_prop(raw as Dictionary)
 		props.append(p)
 		solids.append(p["solid"])
+	if props.is_empty(): return
 	_rebuild_respawn_rng()
 	if parent != null: _build_views()
 	if not props.is_empty():
@@ -872,7 +899,7 @@ func _make_prop(raw: Dictionary) -> Dictionary:
 	p["body_cols"] = []
 	p["damage"] = 0
 	p["hit_tween"] = null
-	p["rubble"] = null
+	p["crown"] = null
 	p["tween"] = null
 	p["respawn_t"] = 0.0
 	p["breaks"] = 0
@@ -885,21 +912,38 @@ func _make_prop(raw: Dictionary) -> Dictionary:
 	return p
 
 ## Rebuild the map's merged box meshes without the selected boxes (so the breakable visuals replace them, not overlap
-## them), then build one view root per component. The map's merged meshes are grouped by colour, so this is a handful of
-## meshes (see MapBuilder.rebuild_boxes).
+## them), lift the decor that sits on each component out of the merged decor (a tree crown), then build one view root per
+## component. The map's merged meshes are grouped by colour, so this is a handful of meshes (see MapBuilder.rebuild_boxes).
 func _build_views() -> void:
 	if parent == null: return
-	if not merge_exclude.is_empty() and parent is MapBuilder.MapNode:
-		var boxes: Array = (parent.map.get("geometry", {}) as Dictionary).get("boxes", [])
-		MapBuilder.rebuild_boxes(parent, boxes, merge_exclude)
-		merged_pruned = true
-	for p: Dictionary in props: _build_prop_view(p)
+	var crowns: Array = []
+	if parent is MapBuilder.MapNode:
+		var mn := parent as MapBuilder.MapNode
+		if not merge_exclude.is_empty():
+			var boxes: Array = (mn.map.get("geometry", {}) as Dictionary).get("boxes", [])
+			MapBuilder.rebuild_boxes(mn, boxes, merge_exclude)
+			merged_pruned = true
+		var cols: Array = []
+		for p: Dictionary in props: cols.append(_crown_column(p))
+		crowns = MapBuilder.carve_decor(mn, cols)
+	for i in props.size():
+		_build_prop_view(props[i], crowns[i] if i < crowns.size() else {})
 
-## One prop root per component: one MeshInstance3D per member box (the map's own colour, tinted toward the accent so it
-## reads as "special") plus ONE merged accent frame — a bright band round the top and bottom and a post on each corner.
-## The frame is the same on every map palette, so a breakable is obvious even where the map's own crates are yellow /
-## orange (the arena), and it is one extra draw call per component (no shadow casting, materials shared by colour+tier).
-func _build_prop_view(p: Dictionary) -> void:
+## Where decor counts as sitting ON a component: above its lower part and up to a few metres over its top. A thin post
+## or trunk reaches out wide (a crown / fronds spread round it); a wider block only takes what is right on it.
+static func _crown_column(p: Dictionary) -> Dictionary:
+	var thin := minf(float(p["max_x"]) - float(p["min_x"]), float(p["max_z"]) - float(p["min_z"]))
+	var reach := CROWN_REACH if thin <= CROWN_THIN else CROWN_LIP
+	var bottom := float(p["bottom"])
+	var top := float(p["top"])
+	return {"min_x": float(p["min_x"]) - reach, "max_x": float(p["max_x"]) + reach,
+		"min_z": float(p["min_z"]) - reach, "max_z": float(p["max_z"]) + reach,
+		"lo": maxf(bottom + (top - bottom) * 0.4, top - CROWN_BELOW), "hi": top + CROWN_ABOVE}
+
+## One prop root per component: one MeshInstance3D per member box, the same mesh + material as the map's own boxes (so
+## nothing marks it), plus the decor lifted off it (the crown), shown at the world origin since its vertices are in world
+## space. Shadows: like the map boxes.
+func _build_prop_view(p: Dictionary, crown: Dictionary = {}) -> void:
 	var root := Node3D.new()
 	root.name = "Prop_" + str(p["id"])
 	var base_x := float(p["x"])
@@ -910,25 +954,25 @@ func _build_prop_view(p: Dictionary) -> void:
 	for raw: Variant in (p["boxes"] as Array):
 		var b: Dictionary = raw
 		var mi := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = Vector3(float(b["w"]), float(b["h"]), float(b["d"]))
-		mi.mesh = bm
+		mi.mesh = MapBuilder.box_mesh(Vector3(float(b["w"]), float(b["h"]), float(b["d"])))
 		mi.material_override = _body_mat(int(b["color"]), 0)
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.position = Vector3(float(b["x"]) - base_x, float(b["y"]) - base_y + float(b["h"]) * 0.5, float(b["z"]) - base_z)
 		root.add_child(mi)
 		(p["mesh_nodes"] as Array).append(mi)
 		body_cols.append(int(b["color"]))
 		body_nodes.append(mi)
-	var frame := MeshInstance3D.new()
-	frame.name = "Frame"
-	frame.mesh = _frame_mesh(p)
-	frame.material_override = _accent_mat(0)
-	frame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	frame.position = Vector3((float(p["min_x"]) + float(p["max_x"])) * 0.5 - base_x, 0.0,
-		(float(p["min_z"]) + float(p["max_z"])) * 0.5 - base_z)
-	root.add_child(frame)
-	(p["mesh_nodes"] as Array).append(frame)
+	p["crown"] = null
+	if crown.get("mesh") is Mesh:
+		var cm := MeshInstance3D.new()
+		cm.name = "Crown"
+		cm.mesh = crown["mesh"]
+		cm.position = Vector3(-base_x, -base_y, -base_z)
+		cm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if bool(crown.get("cast", false)) else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(cm)
+		(p["mesh_nodes"] as Array).append(cm)
+		p["crown"] = cm
+		p["crown_color"] = crown.get("color", Color(0.3, 0.6, 0.3))
+		p["crown_aabb"] = crown.get("aabb", AABB())
 	p["body_nodes"] = body_nodes
 	p["body_cols"] = body_cols
 	p["damage"] = 0
@@ -936,67 +980,10 @@ func _build_prop_view(p: Dictionary) -> void:
 	parent.add_child(root)
 	p["mesh"] = root
 
-## The accent frame: two bands and four corner posts of the component's bounding box, merged into one surface.
-func _frame_mesh(p: Dictionary) -> ArrayMesh:
-	var w := maxf(0.02, float(p["max_x"]) - float(p["min_x"]))
-	var d := maxf(0.02, float(p["max_z"]) - float(p["min_z"]))
-	var h := maxf(0.05, float(p["h"]))
-	var band := clampf(minf(0.16, h * 0.16), 0.06, 0.16)
-	var post := clampf(minf(0.1, minf(w, d) * 0.09), 0.05, 0.1)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var parts: Array = [
-		[Vector3(w * 1.025, band, d * 1.025), Vector3(0.0, h - band * 0.5 + 0.005, 0.0)],
-		[Vector3(w * 1.025, band * 0.6, d * 1.025), Vector3(0.0, band * 0.3 + 0.005, 0.0)],
-	]
-	for sx in [-1.0, 1.0]:
-		for sz in [-1.0, 1.0]:
-			parts.append([Vector3(post, h - band * 1.2, post),
-				Vector3(sx * (w * 0.5 + post * 0.3), (h - band * 1.2) * 0.5, sz * (d * 0.5 + post * 0.3))])
-	for part: Array in parts:
-		var bm := BoxMesh.new()
-		bm.size = part[0]
-		st.append_from(bm, 0, Transform3D(Basis(), part[1]))
-	return st.commit()
-
-## Body material for a colour at a damage tier (0 healthy, 1 chipped, 2 cracked): the accent tint makes it read as special
-## and each tier darkens it, so a component shows that it is taking damage before it breaks.
-func _body_mat(color: int, tier: int) -> StandardMaterial3D:
-	var key := "%d:%d" % [color, tier]
-	if _mats.has(key): return _mats[key]
-	var m := MapBuilder.material(color).duplicate() as StandardMaterial3D
-	var accent := MapBuilder.hex(int(_cfg["accent"]))
-	var c: Color = (m.albedo_color as Color).lerp(accent, float(_cfg["tint"]))
-	if tier > 0: c = c.darkened(DAMAGE_DARK * float(tier))
-	m.albedo_color = c
-	_mats[key] = m
-	return m
-
-## Accent frame material per damage tier: bright accent, then a warmed / darkened version, then red-hot.
-func _accent_mat(tier: int) -> StandardMaterial3D:
-	if tier < _accent_mats.size() and _accent_mats[tier] != null: return _accent_mats[tier]
-	var accent := MapBuilder.hex(int(_cfg["accent"]))
-	var m := StandardMaterial3D.new()
-	var col := accent
-	if tier == 1: col = accent.lerp(Color(1.0, 0.55, 0.15), 0.5).darkened(0.12)
-	elif tier >= 2: col = Color(1.0, 0.24, 0.12)
-	m.albedo_color = col
-	m.emission_enabled = true
-	m.emission = col
-	m.emission_energy_multiplier = [0.55, 0.4, 0.7][mini(tier, 2)]
-	while _accent_mats.size() <= mini(tier, 2): _accent_mats.append(null)
-	_accent_mats[mini(tier, 2)] = m
-	return m
-
-func _rubble_mat(color: int) -> StandardMaterial3D:
-	if _rubble_mats.has(color): return _rubble_mats[color]
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	var c := MapBuilder.hex(color)
-	var dark := float(_cfg["rubble"])
-	m.albedo_color = Color(c.r * (1.0 - dark), c.g * (1.0 - dark * 0.9), c.b * (1.0 - dark * 0.8))
-	_rubble_mats[color] = m
-	return m
+## Body material for a colour at a damage tier (0 healthy = exactly the map's box material, 1 chipped, 2 cracked): each
+## tier darkens it a little, so a component shows that it is taking damage before it breaks.
+func _body_mat(color: int, tier: int) -> Material:
+	return MapBuilder.box_view_material(color, DAMAGE_DARK * float(tier))
 
 # ============================== damage / breaks ==============================
 
@@ -1034,8 +1021,7 @@ func break_hit(index: int, dmg: float, dir: Array = []) -> bool:
 			"frac": float(p["hp"]) / maxf(1.0, float(p["max_hp"])), "tier": int(p["damage"]),
 			"x": hit_at[0], "y": hit_at[1], "z": hit_at[2],
 			"cx": float(p["x"]), "cy": float(p["y"]) + float(p["h"]) * 0.5, "cz": float(p["z"]),
-			"w": float(p["w"]), "h": float(p["h"]), "d": float(p["d"]), "color": int(p["color"]),
-			"accent": int(_cfg["accent"])})
+			"w": float(p["w"]), "h": float(p["h"]), "d": float(p["d"]), "color": int(p["color"])})
 		events.append({"type": "sfx", "name": "whack" if str(p["kind"]) == "barricade" else "clink",
 			"x": hit_at[0], "y": hit_at[1], "z": hit_at[2]})
 		return false
@@ -1056,7 +1042,7 @@ func _hit_point(p: Dictionary, dir: Array) -> Array:
 		return [cx + dx * reach, cy + dy * reach, cz + dz * reach]
 	return [cx, cy, cz]
 
-## Damage tier 0..2 from the remaining HP (2/3 and 1/3 thresholds): the body darkens and the accent frame warms up.
+## Damage tier 0..2 from the remaining HP (2/3 and 1/3 thresholds): the body darkens a little per tier.
 func _set_damage_tier(p: Dictionary) -> void:
 	var frac := float(p["hp"]) / maxf(1.0, float(p["max_hp"]))
 	var tier := mini(DAMAGE_TIERS - 1, 2 if frac <= 0.34 else (1 if frac <= 0.67 else 0))
@@ -1068,10 +1054,6 @@ func _set_damage_tier(p: Dictionary) -> void:
 		var mi: Variant = nodes[i]
 		if mi is MeshInstance3D and i < cols.size():
 			(mi as MeshInstance3D).material_override = _body_mat(int(cols[i]), tier)
-	if p.get("mesh") != null:
-		for c in (p["mesh"] as Node3D).get_children():
-			if str(c.name) == "Frame" and c is MeshInstance3D:
-				(c as MeshInstance3D).material_override = _accent_mat(tier)
 
 ## A short squash on the hit so the component reacts; presentation only (the solid never moves), and harmless in the
 ## headless tests (no tween when the mesh node is not in the tree).
@@ -1144,7 +1126,7 @@ func flame_hit(ox: float, oy: float, oz: float, dx: float, dy: float, dz: float,
 	if wall >= 0.0 and wall < t - 0.05: return
 	break_hit(int(ph[1]), dmg * FLAME_SCALE, [dx, dy, dz])
 
-## Take a component out of the world: remove its solid, hide (never free) its mesh, show its rubble patch, start the
+## Take a component out of the world: remove its solid, hide (never free) its mesh, start the
 ## randomised respawn timer and record the presentation events. The mesh is recycled when it respawns.
 func _break(index: int, dir: Array) -> void:
 	var p: Dictionary = props[index]
@@ -1164,34 +1146,14 @@ func _break(index: int, dir: Array) -> void:
 			if raw is MeshInstance3D: (raw as MeshInstance3D).transparency = 0.0
 	p["respawn_t"] = _respawn_rng.randf_range(_respawn_min, _respawn_max)
 	_pending.append(index)
-	_show_rubble(p)
 	var cx := float(p["x"])
 	var cy := float(p["y"])
 	var cz := float(p["z"])
 	events.append({"type": "break", "id": p["id"], "kind": p["kind"], "index": index,
 		"x": cx, "y": cy, "z": cz, "w": float(p["w"]), "h": float(p["h"]), "d": float(p["d"]),
-		"color": int(p["color"]), "accent": int(_cfg["accent"]), "dir": dir, "total": props.size(), "broken": _broken,
+		"color": int(p["color"]), "dir": dir, "total": props.size(), "broken": _broken,
 		"respawn_in": float(p["respawn_t"])})
 	events.append({"type": "sfx", "name": "whack" if str(p["kind"]) == "barricade" else "clink", "x": cx, "y": cy + 0.4, "z": cz})
-
-## A cheap flat patch where the component stood; one unshaded shadowless box, created once per component and reused.
-func _show_rubble(p: Dictionary) -> void:
-	if parent == null or not is_instance_valid(parent): return
-	var rub: Variant = p["rubble"]
-	if rub == null or not is_instance_valid(rub):
-		var mi := MeshInstance3D.new()
-		mi.name = "Rubble_" + str(p["id"])
-		var bm := BoxMesh.new()
-		bm.size = Vector3(float(p["w"]) * 0.92, 0.03, float(p["d"]) * 0.92)
-		mi.mesh = bm
-		mi.material_override = _rubble_mat(int(p["color"]))
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.position = Vector3(float(p["x"]), float(p["y"]) + RUBBLE_LIFT, float(p["z"]))
-		mi.visible = false
-		parent.add_child(mi)
-		p["rubble"] = mi
-		rub = mi
-	(rub as Node3D).visible = true
 
 func _kill_tween(p: Dictionary) -> void:
 	var tw: Variant = p["tween"]
@@ -1256,8 +1218,6 @@ func _respawn(index: int) -> void:
 	solid["breakable"] = true
 	solid["broken"] = false
 	if solids.find(solid) < 0: solids.append(solid)
-	var rub: Variant = p["rubble"]
-	if rub != null and is_instance_valid(rub): (rub as Node3D).visible = false
 	var body_nodes: Array = p.get("body_nodes", [])
 	var body_cols: Array = p.get("body_cols", [])
 	for i in body_nodes.size():
@@ -1266,9 +1226,6 @@ func _respawn(index: int) -> void:
 			(mi as MeshInstance3D).material_override = _body_mat(int(body_cols[i]), 0)
 	var mesh: Variant = p["mesh"]
 	if mesh != null and is_instance_valid(mesh):
-		for c in (mesh as Node3D).get_children():
-			if str(c.name) == "Frame" and c is MeshInstance3D:
-				(c as MeshInstance3D).material_override = _accent_mat(0)
 		(mesh as Node3D).scale = Vector3.ONE
 		(mesh as Node3D).visible = true
 		for raw: Variant in (p["mesh_nodes"] as Array):
@@ -1324,21 +1281,6 @@ func respawn_delay(index: int) -> float:
 func pending_count() -> int:
 	return _pending.size()
 
-func rubble_count() -> int:
-	var n := 0
-	for p: Dictionary in props:
-		var r: Variant = p["rubble"]
-		if r != null and is_instance_valid(r): n += 1
-	return n
-
-## Rubble nodes currently visible (one reused node per component that has ever broken).
-func rubble_visible_count() -> int:
-	var n := 0
-	for p: Dictionary in props:
-		var r: Variant = p["rubble"]
-		if r != null and is_instance_valid(r) and (r as Node3D).visible: n += 1
-	return n
-
 ## A prop's live geometry: {id, kind, index, x, y, z, w, h, d, hp, max_hp, color, broken, respawn_t, breaks}.
 func prop_info(index: int) -> Dictionary:
 	if index < 0 or index >= props.size(): return {}
@@ -1354,7 +1296,7 @@ func mesh_count() -> int:
 		if m != null and is_instance_valid(m): n += 1
 	return n
 
-## Drop every reference. The prop / rubble nodes are children of the map node and are freed with it by World.load_map;
+## Drop every reference. The prop nodes are children of the map node and are freed with it by World.load_map;
 ## a headless test that passed its own parent frees that parent itself.
 func clear() -> void:
 	props.clear()
@@ -1367,9 +1309,6 @@ func clear() -> void:
 	merged_pruned = false
 	_broken = 0
 	_pending.clear()
-	_mats.clear()
-	_accent_mats.clear()
-	_rubble_mats.clear()
 
 # ============================== helpers ==============================
 

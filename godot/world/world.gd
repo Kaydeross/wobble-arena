@@ -35,7 +35,7 @@ const RANK_MIN_MS := 2500
 @export var rng_seed := 0          ## 0 = random
 @export var hp_setting := 200.0    ## cfg.hp (the web menu offers 100 / 150 / 200 / 300 / 500)
 @export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
-@export var destruct_choice := ""  ## destructible props offline: "" = Settings "destructible"; on/off force it (docs/DESTRUCTIBLE.md)
+@export var destruct_choice := ""  ## destructible props offline: always on ("" or "on"); "off" only for tests / soak runs (docs/DESTRUCTIBLE.md)
 @export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
 @export var difficulty := ""       ## bot skill offline: "" = Settings "difficulty" (easy / normal / hard / insane, default normal)
@@ -89,11 +89,11 @@ var _fighters_root: Node3D
 var proj_views: ProjectileViews     ## rockets, grenades, arrows, nets, knives, explosions, flames
 var _touch_was := false
 var _mats := {}
+var _debris: PropDebris = null       ## broken props shatter into pieces here (under the map node, freed with it)
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
 var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event, breakables left)
-var _break_note := ""              ## destructible mode: "" = not wanted, else "Breakables: 0" when the setting is on but the map has none
 var _team_board: TeamBoard         ## team modes: coloured chips with each team's score and a YOU tag on yours
 var _banner: Label                 ## "YOU WIN!" at the end of a match
 var _banner_t := 0.0
@@ -209,7 +209,6 @@ func load_map(id: String) -> void:
 	Save.begin_match()
 	Ads.on_match_started(session != null)
 	map_id = id
-	_break_note = ""
 	if build_mode:                       # the blocks are BuildHud's (meshes + solids it can change); no crates
 		id = "custom"; map_id = id
 		var bm := MapBuilder.custom_map(MapBuilder.saved_custom().merged({"blocks": [], "blockCols": []}, true))
@@ -235,23 +234,17 @@ func load_map(id: String) -> void:
 		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
 			sim.dyn_choice = "random"            # Chaos: a random floor unless the player picked a moving one
 		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
-		# Destructible environment mode (docs/DESTRUCTIBLE.md): OFFLINE only, opt-in, never on the Practice Range, the
-		# Sandbox, Construction or the Arcade. Off means no analysis, no solids, no meshes, no RNG draws. On every real
-		# arena the breakables are picked from the map's own cover boxes, seeded per match (same seed = same set).
-		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode):
-			var want: bool = bool(Settings.get_value("destructible", false)) if destruct_choice == "" else destruct_choice == "on"
-			if want and Destruct.supported(id, map_node.map):
+		# Destructible props (docs/DESTRUCTIBLE.md): part of every OFFLINE arena match (no option), never on the Practice
+		# Range, the Sandbox, Construction or the Arcade. The breakables are picked from the map's own cover boxes, seeded
+		# per match (same seed = same set). A map with no usable cover simply has none.
+		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode) and destruct_choice != "off":
+			if Destruct.supported(id, map_node.map):
 				sim.destruct_seed = Dynamics.hash32(rng_seed, 17, 0, 0) if rng_seed > 0 else randi()
 				var break_plan := Destruct.plan_for(id, map_node.map, sim.destruct_seed, map_node.box_styles)
 				if not (break_plan.get("props", []) as Array).is_empty():
 					sim.destructible = true
 					sim.destruct_plan = break_plan
 					sim.view_parent = map_node   # the component meshes replace the merged map boxes at setup
-				else:
-					_break_note = tr("Breakables") + ": 0"   # the setting is on but this map has no usable cover
-			elif want:
-				# the setting is on but this level type has no breakables (a range, a generated site, a shrinking floor)
-				_break_note = tr("Breakables") + ": 0"
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
@@ -497,22 +490,24 @@ func _drain_events() -> void:
 				if e["id"] != "crates": _toast("Back to normal")
 	evs.clear()
 
-## A breakable prop broke (docs/DESTRUCTIBLE.md): a burst of its own coloured chips, a little dust, an optional ground
-## ring and a short camera shake. Presentation only, and every particle comes from the existing pooled MultiMeshes, so a
-## full arena of breaks still costs no new draw calls and stays inside the MID FX caps (<= 24 chips + 2 dust per break).
+## A breakable prop broke (docs/DESTRUCTIBLE.md): it shatters into small pieces of its own boxes that bounce, settle and
+## sink into the ground, and the decor on it (a tree crown) topples and bursts (PropDebris), plus a little dust and a
+## short camera shake. Presentation only.
 func _on_break(e: Dictionary) -> void:
-	var at := Vector3(float(e["x"]), float(e["y"]) + float(e["h"]) * 0.4, float(e["z"]))
 	var base := Vector3(float(e["x"]), float(e["y"]) + 0.08, float(e["z"]))
-	var col := MapBuilder.hex(int(e.get("color", 0xffffff)))
-	var trim := MapBuilder.hex(int(e.get("accent", 0xFF5AC8)))          # the destructible frame colour, not the body
+	var dir := Vector3.ZERO
+	var dv: Variant = e.get("dir", [])
+	if dv is Array and (dv as Array).size() >= 3: dir = Vector3(float(dv[0]), float(dv[1]), float(dv[2]))
+	var d: Destruct = sim.destruct if sim != null else null
+	var idx := int(e.get("index", -1))
+	if d != null and idx >= 0 and idx < d.props.size() and map_node != null:
+		if _debris == null or not is_instance_valid(_debris):
+			_debris = PropDebris.new()
+			map_node.add_child(_debris)
+		_debris.burst(d.props[idx], dir, fx.lv if fx else 1)
 	if fx:
-		var w := float(e.get("w", 1.4))
-		fx.chips(at, [col, trim, col.darkened(0.35)], mini(24, fx.cnt(12)), 5.5 + w * 0.6,
-			clampf(w * 0.16, 0.16, 0.28), 0.9, 18.0, 1.2)
 		fx.dust(base, mini(2, fx.cnt(2)), 3.0)
-		if fx.lv >= 1:
-			fx.ring(base + Vector3(0, -0.01, 0), trim, maxf(w, float(e.get("d", 1.4))) * 0.9, 0.3, 0.5)
-		add_shake(clampf(0.11 - at.distance_to(player_pos()) * 0.006, 0.03, 0.1))
+		add_shake(clampf(0.11 - base.distance_to(player_pos()) * 0.006, 0.03, 0.1))
 
 ## A breakable was hit but did not break (docs/DESTRUCTIBLE.md): a small burst of its own colour off the face that was
 ## hit, one dust, and the "clink"/"whack" tap from the event. Without this a player shooting cover had no feedback at all
@@ -520,13 +515,10 @@ func _on_break(e: Dictionary) -> void:
 func _on_prop_hit(e: Dictionary) -> void:
 	var at := Vector3(float(e.get("x", 0.0)), float(e.get("y", 0.0)), float(e.get("z", 0.0)))
 	var col := MapBuilder.hex(int(e.get("color", 0xffffff)))
-	var trim := MapBuilder.hex(int(e.get("accent", 0xFF5AC8)))
 	if fx:
 		var n := 2 if int(e.get("tier", 0)) <= 0 else 4
-		fx.chips(at, [col, trim, col.darkened(0.3)], mini(n, fx.cnt(4)), 3.2, 0.1, 0.45, 16.0, 1.4)
+		fx.chips(at, [col, col.darkened(0.15), col.darkened(0.3)], mini(n, fx.cnt(4)), 3.2, 0.1, 0.45, 16.0, 1.4)
 		fx.dust(at, 1, 1.4)
-		if int(e.get("tier", 0)) >= 2 and fx.lv >= 1:
-			fx.ring(at, trim, 0.4, 0.16, 0.6)
 
 ## A breakable component respawned (docs/DESTRUCTIBLE.md): the mesh fades in itself (Destruct), this only adds the
 ## cheap dust at its base so it does not pop silently. Presentation only, from the existing pooled particles.
@@ -719,6 +711,8 @@ func _build_dyn_views() -> void:
 		for e: Dictionary in d.drift: exclude[e["i"]] = true
 	else:
 		exclude[d.plan["floor"]] = true
+	if sim.destruct != null:   # the breakable boxes have their own meshes (Destruct): keep them out of the merged boxes
+		for k: int in sim.destruct.merge_exclude: exclude[k] = true
 	MapBuilder.rebuild_boxes(map_node, boxes, exclude)
 	if d.kind == "drift":
 		for e: Dictionary in d.drift:
@@ -923,12 +917,6 @@ func _update_mode_ui(delta: float) -> void:
 	var ins := SafeArea.insets(get_viewport())
 	var board := session == null and sim.combat.teams > 0 and spectating == null
 	var t := sim.combat.rules.hud_text(sim.player, not board) if session == null else ""
-	var break_line := ""
-	if sim.destruct != null and sim.destruct.total() > 0:
-		break_line = "%s %d/%d" % [tr("Breakables"), sim.destruct.remaining(), sim.destruct.total()]   # how many are left
-	elif _break_note != "":
-		break_line = _break_note                                  # setting on, but this map has nothing breakable
-	if break_line != "": t += ("   " if t != "" else "") + break_line
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()

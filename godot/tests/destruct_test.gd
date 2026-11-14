@@ -18,11 +18,12 @@ extends SceneTree
 ##    randomised delay with collision + mesh restored (and a fade-in) and can be broken again through several cycles; a
 ##    respawn is postponed while a fighter stands in the box; node counts stay flat (no leaks). A non-breaking hit emits
 ##    `prop_hit` + a tap sound and advances the visible damage tier; melee (the starting spatula) and flame damage cover.
-## 5. World wiring AND the real offline match path: the Setup Wizard's Breakable props toggle writes Settings, the world
-##    the wizard starts reads it, the merged map mesh is pruned and every selected component is a tagged solid with its
-##    own mesh; the world's own player then fires the real gun at every selected component until it breaks, the break
-##    reaches the presentation layer (chips/sound) and the HUD count drops; respawn restores it; load_map/rematch rebuilds
-##    fresh; --destruct override; Settings off = no props; the Practice Range / Sandbox gates still hold.
+## 5. World wiring AND the real offline match path: every offline arena match has breakables (no option, no wizard row,
+##    no HUD counter), the merged map mesh is pruned and every selected component is a tagged solid with its own mesh that
+##    looks like the map's boxes (no accent frame); decor standing on a trunk (a tree crown) is lifted out of the merged
+##    decor and goes with it; the world's own player then fires the real gun at every selected component until it breaks,
+##    the break reaches the presentation layer and shatters into PropDebris pieces that sink away; respawn restores it;
+##    load_map/rematch rebuilds fresh; --destruct=off for tests; the Practice Range / Sandbox gates still hold.
 
 const AK := "ak"
 const SEED := 424242
@@ -54,6 +55,7 @@ func _run() -> void:
 	await _behaviour_checks()
 	await _feedback_checks()
 	await _world_checks()
+	await _crown_checks()
 	print("DESTRUCT %s checks=%d fails=%d" % ["ok" if fails == 0 else "FAILED", checks, fails])
 	quit(0 if fails == 0 else 1)
 
@@ -230,7 +232,7 @@ func _config_checks() -> void:
 	var rmax := float(cfg["respawn_max"])
 	check(rmin >= 90.0 and rmax <= 180.0 and rmin < rmax, "respawn is about two minutes and randomised (%.0f..%.0f s)" % [rmin, rmax])
 	check(float(cfg["fade"]) > 0.0, "respawn has a fade-in")
-	check(int(cfg["accent"]) >= 0 and int(cfg["accent"]) <= 0xFFFFFF, "accent colour is a 24-bit colour")
+	check(not (data as Dictionary).has("colors"), "no accent colours: a breakable looks like the map's own boxes")
 	# usability weights: all four are exponents on 0..1 factors (0 = no preference, > 1 = stronger) and minVisible is a
 	# 0..1 sightline fraction, so the validator's bounds are the contract the docs describe.
 	check(float(cfg["weight_centre"]) >= 0.0 and float(cfg["weight_centre"]) <= 8.0, "weightCentre is an exponent (%.2f)" % float(cfg["weight_centre"]))
@@ -255,7 +257,7 @@ func _config_checks() -> void:
 	_expect_error(_mutated(func(d: Dictionary) -> void: d["hp"]["volumeMin"] = 40.0), "hp.volumeMin", "hp volumeMin >= volumeMax")
 	_expect_error(_mutated(func(d: Dictionary) -> void: d["respawn"]["maxSeconds"] = 10.0), "respawn.maxSeconds", "a 10 s respawn max")
 	_expect_error(_mutated(func(d: Dictionary) -> void: d["respawn"]["minSeconds"] = 200.0; d["respawn"]["maxSeconds"] = 100.0), "respawn.minSeconds", "respawn min > max")
-	_expect_error(_mutated(func(d: Dictionary) -> void: d["colors"]["accent"] = -1), "colors.accent", "a negative accent")
+	_expect_error(_mutated(func(d: Dictionary) -> void: d["colors"] = {"accent": 0xFF5AC8}), "colors is gone", "the old accent-frame colours")
 	_expect_error(_mutated(func(d: Dictionary) -> void: d["selection"].erase("minHeight")), "selection.minHeight", "a missing selection rule")
 	_expect_error(_mutated(func(d: Dictionary) -> void: d["selection"]["maxSpan"] = 99.0), "selection.maxSpan", "maxSpan out of range")
 	_expect_error(_mutated(func(d: Dictionary) -> void: d["arenas"] = {}), "arenas is the M0", "the old authored-props schema")
@@ -326,7 +328,37 @@ func _off_checks() -> void:
 	check(on.destruct != null and on.destruct.total() > 0, "on: props are loaded for arena")
 	check(on.combat.rng.state == probe.combat.rng.state, "on: the selection takes no CombatRng draws")
 	probe.dispose()
-	check(on.dyn.kind == "off", "on: the mode runs a steady floor (dyn=%s)" % on.dyn.kind)
+	# breakables and a moving floor together: the floor still moves and the props still replace their boxes
+	for kind: String in ["wobble", "drift"]:
+		var mv := MatchSim.new()
+		mv.combat.rng = CombatRng.new(SEED)
+		mv.dyn_choice = kind
+		mv.dyn_seed = 77
+		mv.destructible = true
+		mv.destruct_seed = SEED
+		var am: Dictionary = maps["arena"]
+		var ag: Dictionary = am.get("geometry", {})
+		mv.setup("arena", am, ag.get("ladders", []), ag.get("bouncePads", []), "wobbler", PlayerControl.new(InputState.new()), 0)
+		check(mv.dyn.kind == kind, "on + %s floor: the floor still moves (dyn=%s)" % [kind, mv.dyn.kind])
+		check(mv.destruct != null and mv.destruct.total() > 0, "on + %s floor: props are loaded" % kind)
+		if mv.destruct != null:
+			var clash := 0
+			for i in mv.destruct.total():
+				for k: int in mv.destruct.props[i]["members"]:
+					for e: Dictionary in mv.dyn.drift:
+						if int(e["i"]) == k: clash += 1
+			check(clash == 0, "on + %s floor: no breakable is a drifting block" % kind)
+			var tagged_n := 0
+			for s2: Dictionary in mv.solids:
+				if s2.has("breakable"): tagged_n += 1
+			check(tagged_n == mv.destruct.total(), "on + %s floor: one tagged solid per breakable (%d)" % [kind, tagged_n])
+			var expect := FighterPhysics.solids_from_map(am).size() - mv.destruct.merge_exclude.size() + mv.destruct.total()
+			if kind != "drift": expect += mv.dyn.tiles.size() - 1      # the floor became tiles
+			check(mv.solids.size() == expect, "on + %s floor: collision = map - picked boxes + props (+ tiles) (%d vs %d)" % [kind, mv.solids.size(), expect])
+			var i0 := 0
+			check(mv.destruct.break_hit(i0, 99999.0) and mv.solids.find(mv.destruct.props[i0]["solid"]) < 0, "on + %s floor: a prop breaks" % kind)
+			_run_steps(mv, 60)
+		mv.dispose()
 	base.dispose(); off.dispose(); on.dispose(); skip_on.dispose()
 	parent.free()
 
@@ -757,7 +789,6 @@ func _behaviour_one(id: String) -> void:
 		if tw != null and tw is Tween and (tw as Tween).is_valid():
 			(tw as Tween).custom_step(1.0)
 		check((nodes[0] as MeshInstance3D).transparency <= 0.01, "%s: the fade completes to fully opaque" % id)
-		check(d.rubble_visible_count() == 0, "%s: rubble hidden after respawn" % id)
 		# break it again straight away: a respawned component can be broken again
 		check(d.break_hit(hit_i, 99999.0), "%s: a respawned component can be broken again" % id)
 		d.step(float(cfg["respawn_max"]) + 1.0)
@@ -812,16 +843,14 @@ func _behaviour_one(id: String) -> void:
 	for i in cd.total():
 		var spot := _stand_point(cycle_sim, cd, i)
 		if bool(spot.get("ok", false)): cyc = i; break
-	# one mesh root per component plus at most one reused rubble node for the component the cycles break
-	var expected_nodes := parent.get_child_count() + (1 if cyc >= 0 else 0)
+	# one mesh root per component, nothing added by the break/respawn cycles (the pieces are the world's PropDebris)
+	var expected_nodes := parent.get_child_count()
 	var orphans_before := int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
 	for k in 3:
 		check(cd.break_hit(cyc, 99999.0), "%s: cycle %d breaks" % [id, k + 1])
 		cd.step(float(cfg["respawn_max"]) + 1.0)
 		check(not bool(cd.props[cyc]["broken"]), "%s: cycle %d respawns" % [id, k + 1])
 	check(cd.mesh_count() == cd.total(), "%s: every mesh recycled across the cycles" % id)
-	check(cd.rubble_visible_count() == 0, "%s: no rubble visible after the cycles" % id)
-	check(cd.rubble_count() <= cd.total(), "%s: rubble nodes are reused, not leaked" % id)
 	check(parent.get_child_count() == expected_nodes, "%s: no node leak through break/respawn cycles (%d -> %d, expected %d)" % [id, expected_nodes, parent.get_child_count(), expected_nodes])
 	await process_frame
 	var orphans_after := int(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT))
@@ -841,46 +870,41 @@ func _world_props(world: Node) -> int:
 	return n
 
 func _world_checks() -> void:
-	var st: Node = root.get_node("Settings")
-	st.set_value("destructible", false)
+	# --destruct=off (tests / soak runs only): no props at all
 	var off: Node = load("res://world/world.tscn").instantiate()
-	off.map_id = "arena"; off.auto_run = false; off.bot_count = 0; off.dyn_choice = "off"
+	off.map_id = "arena"; off.auto_run = false; off.bot_count = 0; off.dyn_choice = "off"; off.destruct_choice = "off"
 	root.add_child(off)
 	await process_frame
-	check(off.sim.destruct == null, "world off: no destructible mode")
-	check(_world_props(off) == 0, "world off: no prop meshes under the map")
-	check(off._mode_l != null and not off._mode_l.text.contains("Breakables"), "world off: the mode line does not mention breakables")
+	check(off.sim.destruct == null, "world --destruct=off: no destructible mode")
+	check(_world_props(off) == 0, "world --destruct=off: no prop meshes under the map")
 	off.queue_free()
 	await process_frame
-	# Enablement through the REAL wizard path: the Arena page's Breakable props row writes Settings "destructible"; the
-	# world launched from the wizard's Start (main.gd play_offline -> wizard.save()) reads that setting. The wizard is
-	# loaded at runtime so this test script compiles before the UI autoloads are up.
-	st.set_value("destructible", false)
+	# no option: the wizard has no Breakable props row and Settings has no "destructible" key
+	check(not (root.get_node("Settings").DEFAULTS as Dictionary).has("destructible"), "no Settings destructible option")
 	var wizard: Node = (load("res://ui/setup_wizard.gd") as Script).new()
-	root.add_child(wizard)
-	await process_frame
-	wizard.load_settings()
-	wizard.set_mode("classic")
-	wizard.set_map("arena")
-	wizard.set_destruct("on")
-	wizard.save()
-	check(bool(st.get_value("destructible")), "enablement: the wizard Breakable props toggle writes Settings destructible")
-	check(str(st.get_value("offline_map")) == "arena", "enablement: the wizard saved arena")
-	check(bool(wizard.destruct_arena_ok()), "enablement: the arena is offered the Breakable props row")
-	wizard.queue_free()
-	await process_frame
+	check(not ("destruct" in wizard) and not wizard.has_method("set_destruct"), "the wizard has no Breakable props option")
+	wizard.free()
+	# a plain offline arena match (no flags, any floor) has breakables
 	var on: Node = load("res://world/world.tscn").instantiate()
-	on.map_id = str(st.get_value("offline_map")); on.mode_id = str(st.get_value("mode"))
+	on.map_id = "arena"; on.mode_id = "classic"
 	on.auto_run = false; on.bot_count = 0; on.dyn_choice = "off"; on.rng_seed = 4242
 	root.add_child(on)
 	await process_frame
-	check(on.sim.destruct != null, "enablement: the world reads the wizard's Settings and turns the mode on")
+	check(on.sim.destruct != null, "a normal offline match always has breakables")
+	check(on._mode_l == null or not on._mode_l.text.contains("Breakables"), "no HUD breakables counter (%s)" % (on._mode_l.text if on._mode_l else ""))
 	var analysis := Destruct.analyze("arena", maps["arena"], _styles("arena"))
 	var want := Destruct.target_count((analysis["eligible"] as Array).size())
 	check(on.sim.destruct != null and on.sim.destruct.total() == want, "world on: %d breakables loaded" % want)
 	check(_world_props(on) == want, "world on: one prop mesh root per component under the map")
-	check(on._mode_l != null and on._mode_l.text.contains("Breakables") and on._mode_l.text.contains("%d/%d" % [want, want]),
-		"world on: the HUD mode line shows the breakable count (%s)" % (on._mode_l.text if on._mode_l else ""))
+	var framed := 0
+	for i in on.sim.destruct.total():
+		for c in (on.sim.destruct.props[i]["mesh"] as Node3D).get_children():
+			if str(c.name) == "Frame": framed += 1
+	check(framed == 0, "world on: no accent frame on any breakable")
+	var p0: Dictionary = on.sim.destruct.props[0]
+	var body0: MeshInstance3D = (p0["body_nodes"] as Array)[0]
+	check(body0.material_override == MapBuilder.box_view_material(int((p0["boxes"] as Array)[0]["color"])),
+		"world on: a breakable wears the map's own box material")
 	check(on.sim.destruct.merged_pruned, "world on: the merged map meshes were rebuilt without the breakable boxes")
 	var base_solids := FighterPhysics.solids_from_map(maps["arena"]).size()
 	check(on.sim.solids.size() == base_solids - on.sim.destruct.merge_exclude.size() + want, "world on: collision matches the swapped boxes")
@@ -910,16 +934,18 @@ func _world_checks() -> void:
 		check(int(on.counts.get("break", 0)) >= fired, "world on: break %d reaches the presentation layer" % fired)
 		check(int(on.counts.get("sfx", 0)) >= fired, "world on: break sounds reach the audio hook")
 	check(fired == want, "world on: the player broke all %d selected components" % want)
+	var deb: PropDebris = on._debris
+	check(deb != null and is_instance_valid(deb) and deb.piece_count() > 0, "world on: a break shatters into debris pieces (%d)" % (deb.piece_count() if deb else 0))
+	for k in 240:     # 4 s of frames: every piece settles and sinks away
+		deb._process(1.0 / 60.0)
+	check(deb.piece_count() == 0 and deb.crown_count() == 0, "world on: the debris sinks away and is freed (%d left)" % deb.piece_count())
 	await process_frame
-	check(on._mode_l != null and on._mode_l.text.contains("Breakables 0/%d" % want),
-		"world on: the HUD counts the breakables left (%s)" % (on._mode_l.text if on._mode_l else ""))
 	# Respawn through the fixed-step path MatchSim.step calls.
 	on.sim.destruct.step(float(cfg["respawn_max"]) + 1.0)
 	on.present(0.0)
 	await process_frame
 	check(on.sim.destruct.pending_count() == 0 and on.sim.destruct.broken_count() == 0, "world on: every component respawned")
 	check(int(on.counts.get("prop_respawn", 0)) >= want, "world on: every respawn reaches the presentation layer")
-	check(on._mode_l.text.contains("Breakables %d/%d" % [want, want]), "world on: the HUD count is back to full (%s)" % on._mode_l.text)
 	# A non-breaking gun hit on the real path must also reach the presentation layer (chips + tap sound).
 	var chip := _fire_shots(sim, d, 0, 1)
 	check(bool(chip.get("ok", false)) and not bool(chip.get("broke", true)), "world on: one gun shot chips a component")
@@ -933,15 +959,6 @@ func _world_checks() -> void:
 	check(on.sim.solids.size() == base_solids - on.sim.destruct.merge_exclude.size() + want, "world on: load_map restores component solids")
 	check(on.sim.destruct.merged_pruned, "world on: load_map prunes the merged meshes again")
 	on.queue_free()
-	await process_frame
-	# --destruct override (the CLI flag the setup wizard / test runners use)
-	st.set_value("destructible", false)
-	var forced: Node = load("res://world/world.tscn").instantiate()
-	forced.map_id = "arena"; forced.auto_run = false; forced.bot_count = 0; forced.dyn_choice = "off"; forced.destruct_choice = "on"; forced.rng_seed = 4242
-	root.add_child(forced)
-	await process_frame
-	check(forced.sim.destruct != null and forced.sim.destruct.total() == want, "--destruct=on forces the mode on")
-	forced.queue_free()
 	await process_frame
 	# offline gating: the Practice Range never gets props, even with the setting on
 	var practice: Node = load("res://world/world.tscn").instantiate()
@@ -960,16 +977,85 @@ func _world_checks() -> void:
 	check(sandbox.sim.destruct == null, "world gate: the Sandbox ignores the mode")
 	sandbox.queue_free()
 	await process_frame
-	# Honest zero state: the setting is on but the level type has no breakables, so the HUD says "Breakables: 0" instead of
-	# silently pretending the mode is active.
-	st.set_value("destructible", true)
-	var none: Node = load("res://world/world.tscn").instantiate()
-	none.map_id = "squeeze"; none.mode_id = "classic"; none.auto_run = false; none.bot_count = 0; none.dyn_choice = "off"
-	root.add_child(none)
+	# a tree: the crown that stands on a breakable trunk is part of the prop (lifted out of the merged decor), so it goes
+	# when the trunk breaks instead of floating, and comes back with it
+	var tree: Node = load("res://world/world.tscn").instantiate()
+	tree.map_id = "haunted"; tree.mode_id = "classic"; tree.auto_run = false; tree.bot_count = 0; tree.dyn_choice = "off"; tree.rng_seed = 777
+	root.add_child(tree)
 	await process_frame
-	check(none.sim.destruct == null, "world zero: a shrinking-floor level has no breakables")
-	check(none._mode_l != null and none._mode_l.text.contains("Breakables") and none._mode_l.text.contains("0"),
-		"world zero: the HUD says Breakables: 0 (%s)" % (none._mode_l.text if none._mode_l else ""))
-	none.queue_free()
-	st.reset("destructible")
+	var td: Destruct = tree.sim.destruct
+	var ti := -1
+	for i in (td.total() if td else 0):
+		if td.props[i].get("crown") != null: ti = i; break
+	check(ti >= 0, "tree: a breakable trunk on haunted carries its crown")
+	if ti >= 0:
+		var tp: Dictionary = td.props[ti]
+		var crown: MeshInstance3D = tp["crown"]
+		check(crown.get_parent() == tp["mesh"], "tree: the crown is part of the prop")
+		var cb: AABB = tp["crown_aabb"]
+		check(cb.position.y + cb.size.y > float(tp["top"]) - 0.5, "tree: the crown sits at the top of the trunk")
+		# the merged decor no longer draws those triangles (no double crown left behind)
+		var carved := 0
+		for c in tree.map_node.get_children():
+			if str(c.name).begins_with("Decor") and c is MeshInstance3D:
+				var mesh: Mesh = (c as MeshInstance3D).mesh
+				for si in mesh.get_surface_count():
+					var arr := mesh.surface_get_arrays(si)
+					var pos: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+					var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+					for t in range(0, idx.size(), 3):
+						var m3 := (pos[idx[t]] + pos[idx[t + 1]] + pos[idx[t + 2]]) / 3.0
+						if cb.grow(-0.05).has_point(m3): carved += 1
+		check(carved == 0, "tree: the merged decor has no crown triangles left (%d)" % carved)
+		td.break_hit(ti, 99999.0, [1.0, 0.0, 0.0])
+		check(not (tp["mesh"] as Node3D).is_visible_in_tree(), "tree: trunk AND crown are gone when it breaks")
+		tree.present(0.0)
+		check(tree._debris != null and tree._debris.crown_count() == 1, "tree: the crown topples as debris")
+		td.step(float(cfg["respawn_max"]) + 1.0)
+		check((tp["mesh"] as Node3D).is_visible_in_tree() and crown.is_visible_in_tree(), "tree: the crown comes back with the trunk")
+	tree.queue_free()
 	await process_frame
+
+# ============================== 6. crowns on every map ==============================
+
+## Every supported map: lifting the decor off its breakables (MapBuilder.carve_decor) keeps every triangle (merged decor
+## after + lifted = merged decor before), every lifted crown is a valid mesh (also swaying decor with its CUSTOM0-2
+## channels), and no surface fails to build.
+func _crown_checks() -> void:
+	var with_crown := 0
+	for id: String in Destruct.supported_ids():
+		var node := MapBuilder.build(id)
+		root.add_child(node)
+		var before := _decor_tris(node)
+		var plan := Destruct.plan_for(id, node.map, 4242, node.box_styles)
+		var cols: Array = []
+		for raw: Variant in plan.get("props", []): cols.append(Destruct._crown_column(raw as Dictionary))
+		var crowns := MapBuilder.carve_decor(node, cols)
+		await process_frame          # the old merged decor nodes are freed
+		var after := _decor_tris(node)
+		var lifted := 0
+		var bad := 0
+		for c: Dictionary in crowns:
+			if c.is_empty(): continue
+			with_crown += 1
+			var mesh: ArrayMesh = c["mesh"]
+			if mesh.get_surface_count() == 0: bad += 1
+			for si in mesh.get_surface_count():
+				var arr := mesh.surface_get_arrays(si)
+				var nv := (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size()
+				lifted += (arr[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3
+				if arr[Mesh.ARRAY_CUSTOM0] != null and (arr[Mesh.ARRAY_CUSTOM0] as PackedFloat32Array).size() != nv * 4: bad += 1
+		check(bad == 0, "%s: every lifted crown is a valid mesh (%d bad)" % [id, bad])
+		check(after + lifted == before, "%s: carving keeps every decor triangle (%d + %d vs %d)" % [id, after, lifted, before])
+		node.queue_free()
+		await process_frame
+	check(with_crown > 0, "some breakables carry decor (%d)" % with_crown)
+
+func _decor_tris(node: Node) -> int:
+	var n := 0
+	for c in node.get_children():
+		if str(c.name).begins_with("Decor") and c is MeshInstance3D and not c.is_queued_for_deletion():
+			var mesh: Mesh = (c as MeshInstance3D).mesh
+			for si in mesh.get_surface_count():
+				n += (mesh.surface_get_arrays(si)[Mesh.ARRAY_INDEX] as PackedInt32Array).size() / 3
+	return n

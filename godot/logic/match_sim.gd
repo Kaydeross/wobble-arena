@@ -98,12 +98,16 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	pads = map_pads
 	diff = p_diff
 	difficulty = (Combat.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
-	if destructible: dyn_choice = "off"   # breakable components stand on a steady floor (docs/DESTRUCTIBLE.md)
+	# The breakables are picked by map box index; the moving floor may split the floor into tiles first, so keep one
+	# solid reference per map box from before (docs/DESTRUCTIBLE.md: breakable cover works on a moving floor too).
+	var box_solids: Array = solids.duplicate() if destructible else []
 	dyn.setup(map_id, map, solids, ladders, pads, dyn_choice, dyn_seed)   # dynSetup: may split the floor into tiles in `solids`
 	combat.solids = solids
 	if destructible:                      # swap the arena's chosen cover boxes for tagged breakable components
+		var moving := {}                  # drifting blocks stay what they are: never breakable
+		for e: Dictionary in dyn.drift: moving[int(e["i"])] = true
 		destruct = Destruct.new()
-		destruct.setup(self, map_id, view_parent, destruct_plan)
+		destruct.setup(self, map_id, view_parent, destruct_plan, box_solids, moving)
 		if destruct.total() > 0: combat.destruct = destruct
 		else:                              # bad config / no eligible cover: fail safe as a normal match
 			destruct.clear()

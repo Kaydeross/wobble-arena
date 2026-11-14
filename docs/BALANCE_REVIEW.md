@@ -190,7 +190,7 @@ condition** — the match only ends by quitting (except lives/ladder/clock modes
 Mode notes: `classic` has no preset limit in `shared/modes.json` (`MODE_DEFAULTS.limit = 0`), and the Godot
 wizard/settings never set `limit`, so **offline Classic is endless** even though the web has 0/5/10/20 buttons.
 Teams modes set `bots = teams × 2 - 1` (Duel 1, 2v2 3, 3v3 5, 4v4 7); TDM makes sides even from an odd bot
-count; Pillars fills 7 pillars; Practice always 10 dummies. The Setup Wizard has five pages (Game type, Arena, Players, Character, Start) and saves mode, map, dynamic arena, destructibles, bots, difficulty and class; it has no HP/crate/KB/gravity/infinite-ammo/K.O.-limit controls. Explosive/Giant/Moon Drift/Construction have neither a limit nor
+count; Pillars fills 7 pillars; Practice always 10 dummies. The Setup Wizard has five pages (Game type, Arena, Players, Character, Start) and saves mode, map, dynamic arena, bots, difficulty and class; it has no HP/crate/KB/gravity/infinite-ammo/K.O.-limit controls. Explosive/Giant/Moon Drift/Construction have neither a limit nor
 lives, so they too never end on their own. Arena pool per mode: `ModeRules.MODE_MAPS` (e.g. Mega only shrink/
 squeeze; Giant playroom + the four big arenas; Chaos the eight large maps).
 ## 5. Arcade bosses (Construction DLC)
