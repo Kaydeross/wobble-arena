@@ -18,9 +18,9 @@ Everything eases in over the first 4 s (`DYN_RAMP`, smoothstep), so nothing move
 Levels that never move: `dynMapAllowed` (noDynamics / shrinks / range / randSpawn, and custom, test, practice, pillars).
 Tile kinds need a single floor slab and >= 30 % free tiles (`dynPlan`); `node tools/test-dynamics.js --table` prints the per-level table.
 
-The optional **destructible environment mode** (`docs/DESTRUCTIBLE.md`) appends static prop solids to the arena, so it forces
-`dyn = off` for its match in M0 (`MatchSim.setup`): props cannot ride a moving tile yet. With the mode off nothing about the
-dynamic arena changes.
+The optional **destructible environment mode** (`docs/DESTRUCTIBLE.md`) swaps a seeded set of the map's cover boxes for
+static breakable component solids, so it forces `dyn = off` for its match (`MatchSim.setup`): components cannot ride a
+moving tile yet. With the mode off nothing about the dynamic arena changes (no analysis, no solids, no RNG draws).
 
 ## Constants (identical in both)
 

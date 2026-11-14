@@ -49,9 +49,13 @@ var dyn_t0 := 0.0
 var think_us := 0
 ## Optional destructible environment mode (docs/DESTRUCTIBLE.md), OFFLINE ONLY and off by default. The caller (World) sets
 ## these before setup(): `destructible` turns the mode on, `view_parent` is the built map node the prop meshes go under
-## (null = logic only, as in the headless destruct test). When false nothing is created and every match path is unchanged.
+## (null = logic only, as in the headless destruct test), `destruct_seed` picks the match's breakable components (same seed
+## = same set, another seed = another set) and `destruct_plan` is World's precomputed selection (so it can prune the merged
+## map meshes). When false nothing is created and every match path is unchanged.
 var destructible := false
 var view_parent: Node3D = null
+var destruct_seed := 0
+var destruct_plan: Dictionary = {}
 var destruct: Destruct = null
 
 func _init(content_dir: String = "res://data") -> void:
@@ -94,13 +98,16 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	pads = map_pads
 	diff = p_diff
 	difficulty = (Combat.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
-	if destructible: dyn_choice = "off"   # M0: breakable props stand on a steady floor (docs/DESTRUCTIBLE.md)
+	if destructible: dyn_choice = "off"   # breakable components stand on a steady floor (docs/DESTRUCTIBLE.md)
 	dyn.setup(map_id, map, solids, ladders, pads, dyn_choice, dyn_seed)   # dynSetup: may split the floor into tiles in `solids`
 	combat.solids = solids
-	if destructible:                      # append the arena's breakable boxes (tagged) before anyone can hit them
+	if destructible:                      # swap the arena's chosen cover boxes for tagged breakable components
 		destruct = Destruct.new()
-		destruct.setup(self, map_id, view_parent)
-		combat.destruct = destruct
+		destruct.setup(self, map_id, view_parent, destruct_plan)
+		if destruct.total() > 0: combat.destruct = destruct
+		else:                              # bad config / no eligible cover: fail safe as a normal match
+			destruct.clear()
+			destruct = null
 	combat.spawns = map.get("spawns", [])
 	combat.spawn_y = float(map["spawnY"]) if map.has("spawnY") else 4.0
 	combat.fighters = []
@@ -303,6 +310,7 @@ func step(dt: float) -> void:
 	combat.time += dt
 	combat.rules.update(dt, pickups, dyn)   # updatePotato / updatePillars / updateShrink (+ the end-of-match countdown)
 	dyn.update(dyn_clock(), fighters)       # updateDyn
+	if destruct != null: destruct.step(dt)  # breakable components materialise again (docs/DESTRUCTIBLE.md)
 	var net_pre: Variant = net.call("pre_step") if net != null else null
 	var t0 := Time.get_ticks_usec()
 	for f: FighterState in fighters:

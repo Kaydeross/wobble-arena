@@ -1,48 +1,22 @@
 {
-  "version": 1,
-  "comment": "Milestone M0 of the optional destructible environment mode (docs/DESTRUCTIBLE.md). A Godot-side authoring overlay: it only ADDS breakable props to the arenas listed here, so every other arena and every normal match is untouched. Boxes are {x, y, z, w, h, d} like shared/maps.json: x/z is the centre, y the bottom, w/d the footprint, h the height. hp is the damage a prop absorbs before it breaks (crates: ~3 rifle hits, barricades: ~5). color is the debris/body 0xRRGGBB tint. `drop` is reserved for M1 and ignored by M0.",
-  "budget": {"total": 40, "perArena": 12},
-  "arenas": {
-    "arena": {
-      "name": "Sunny Arena",
-      "props": [
-        {"id": "crate_sun_1", "kind": "crate", "box": {"x": -3, "y": 0, "z": -14, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 13290059},
-        {"id": "barricade_sun_1", "kind": "barricade", "box": {"x": 0, "y": 0, "z": -8, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 5995934},
-        {"id": "crate_sun_2", "kind": "crate", "box": {"x": -14, "y": 0, "z": -3, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 11036730},
-        {"id": "barricade_sun_2", "kind": "barricade", "box": {"x": 15, "y": 0, "z": 2, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 5995934},
-        {"id": "crate_sun_3", "kind": "crate", "box": {"x": 3, "y": 0, "z": 12, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 13290059},
-        {"id": "barricade_sun_3", "kind": "barricade", "box": {"x": 13, "y": 0, "z": -6, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 8219215},
-        {"id": "crate_sun_4", "kind": "crate", "box": {"x": -16, "y": 0, "z": 7, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 11036730},
-        {"id": "barricade_sun_4", "kind": "barricade", "box": {"x": 0, "y": 0, "z": 4, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 5995934},
-        {"id": "crate_sun_5", "kind": "crate", "box": {"x": 7, "y": 0, "z": -16, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 13290059},
-        {"id": "barricade_sun_5", "kind": "barricade", "box": {"x": -8, "y": 0, "z": 10, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 8219215}
-      ]
-    },
-    "capsule": {
-      "name": "Space Capsule",
-      "props": [
-        {"id": "crate_cap_1", "kind": "crate", "box": {"x": -13, "y": 0, "z": 5, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 10466248},
-        {"id": "barricade_cap_1", "kind": "barricade", "box": {"x": 13, "y": 0, "z": -5, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 5204614},
-        {"id": "crate_cap_2", "kind": "crate", "box": {"x": -6, "y": 0, "z": 11, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 12043990},
-        {"id": "crate_cap_3", "kind": "crate", "box": {"x": 6, "y": 0, "z": -11, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 12043990},
-        {"id": "barricade_cap_2", "kind": "barricade", "box": {"x": -13, "y": 0, "z": -3, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 5204614},
-        {"id": "barricade_cap_3", "kind": "barricade", "box": {"x": 13, "y": 0, "z": 3, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 5204614},
-        {"id": "crate_cap_4", "kind": "crate", "box": {"x": 0, "y": 0, "z": -5, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 10466248},
-        {"id": "crate_cap_5", "kind": "crate", "box": {"x": 0, "y": 0, "z": 5, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 10466248}
-      ]
-    },
-    "crossroads": {
-      "name": "Neon Crossroads",
-      "props": [
-        {"id": "barricade_x_1", "kind": "barricade", "box": {"x": -10, "y": 0, "z": -3, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 11552831},
-        {"id": "barricade_x_2", "kind": "barricade", "box": {"x": 10, "y": 0, "z": 3, "w": 3.0, "h": 1.4, "d": 0.7}, "hp": 40, "color": 11552831},
-        {"id": "barricade_x_3", "kind": "barricade", "box": {"x": 3, "y": 0, "z": -10, "w": 0.7, "h": 1.4, "d": 3.0}, "hp": 40, "color": 4156080},
-        {"id": "barricade_x_4", "kind": "barricade", "box": {"x": -3, "y": 0, "z": 10, "w": 0.7, "h": 1.4, "d": 3.0}, "hp": 40, "color": 4156080},
-        {"id": "crate_x_1", "kind": "crate", "box": {"x": -4, "y": 0, "z": -16, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 13214283},
-        {"id": "crate_x_2", "kind": "crate", "box": {"x": 4, "y": 0, "z": 16, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 13214283},
-        {"id": "crate_x_3", "kind": "crate", "box": {"x": -16, "y": 0, "z": 4, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 9067322},
-        {"id": "crate_x_4", "kind": "crate", "box": {"x": 16, "y": 0, "z": -4, "w": 1.6, "h": 1.5, "d": 1.6}, "hp": 24, "color": 9067322}
-      ]
-    }
+  "version": 2,
+  "comment": "Optional destructible-arena mode (docs/DESTRUCTIBLE.md), M1 'all maps'. A Godot-side CONFIG overlay: it does not author props. On every supported arena map the mode picks ~half of the map's own cover boxes (from maps.json geometry.boxes), seeded per match, excludes floor/ground, boundary walls, ladders, pads, spawns and anything touching them, then swap-breaks them: bullets/explosions remove the box from the collision + merged map mesh, it respawns 100-140 s later with collision and mesh restored. Off by default and a real null path. fraction = share of eligible cover components made breakable; budget.perMap = hard cap per arena (40 default, 60 max). hp scales with component volume: min for a small crate, max for a big block. respawn min/max are seconds (randomised per break, so breaks do not come back metronomically); fadeSeconds is the materialise fade-in; retrySeconds postpones a respawn while a fighter stands in the box. colors.accent is the destructible trim band, tint mixes that accent into the map box colour, rubble is how much the rubble patch darkens the body colour. selection holds the safety rules: spawn/ladder/pad clearances, the ring-out edge margin, and the box-size band that separates cover from floors, roofs, stairs and decorative slivers.",
+  "enabled": true,
+  "fraction": 0.5,
+  "budget": {"perMap": 40},
+  "hp": {"min": 20, "max": 56, "volumeMin": 0.6, "volumeMax": 30.0},
+  "respawn": {"minSeconds": 100, "maxSeconds": 140, "fadeSeconds": 0.35, "retrySeconds": 2.5},
+  "colors": {"accent": 16765286, "tint": 0.12, "rubble": 0.45},
+  "selection": {
+    "spawnClearance": 1.5,
+    "ladderClearance": 1.5,
+    "padClearance": 0.8,
+    "edgeMargin": 0.9,
+    "minHeight": 0.8,
+    "maxHeight": 5.5,
+    "maxSpan": 8.0,
+    "minThin": 0.35,
+    "minArea": 0.5,
+    "stackRatio": 2.0
   }
 }
