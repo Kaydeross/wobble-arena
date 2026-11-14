@@ -2,7 +2,8 @@
 
 Goal: fighters look and feel like floppy ragdolls driven by their legs (Gang Beasts / Human Fall Flat lite), while
 the deterministic match (FighterPhysics capsule, Combat, net snapshots, web cross-play) stays bit-identical.
-Setting: `Settings.wobble_rig` = `"ragdoll"` (default) | `"classic"`.
+Setting: `Settings.wobble_rig` = `"ragdoll"` (default) | `"classic"`. `Settings.leg_wobble` 0..1 (default **0.55**)
+adds the seeded per-fighter leg wobble in ragdoll mode only (see "Leg wobble (M0)" below).
 
 ## What exists today
 
@@ -68,13 +69,58 @@ web); only the pixels change. The overlay saves the classic transforms of the no
 Cost: no per-frame allocations; ~30 us per fighter-frame for the overlay on a desktop dev machine (see the test
 output), i.e. well under 1 ms for 8 fighters even at iPhone-12 speed.
 
+## Leg wobble (M0, seeded gait)
+
+`docs/RAGDOLL_STUDY.md` is the rationale: the legs are straight single-segment sticks and the overlay's stepping is
+perfectly periodic, so M0 adds a deterministic per-fighter "gait personality" to the presentation. It touches no sim,
+net, hit-sphere or classic-pose code: the classic `animate()` pose (and the gameplay points read from it) is exactly
+as before, and the wobble never moves a foot point — it changes step timing, the hip roll and the foot block's
+orientation, not where a planted sole is.
+
+- **Seed.** `Wobbler.gait_identity()` mixes the owning `Fighter.state.net_slot` when online (the slot is the stable
+  per-client identity), else the match `state.id` (unique offline, bots included), with the look (class, skin, hat,
+  colour) through a local FNV-1a/xorshift32. A standalone wobbler (tests/tools) mixes the look and an optional pinned
+  `gait_seed`. Nothing reads the global `randf()`/`randi()`. `Wobbler.overlay()` samples the personality once per
+  fighter (`RagdollRig.set_gait`) when the identity or look changes; `_reset` (teleport/respawn) keeps it.
+- **Sampled once per fighter** from a local xorshift32: phase offset 0..2π, step cadence ×0.85..1.15, swing/lift
+  amplitude ×0.8..1.25, left/right asymmetry ×0.85..1.0, per-step duration/lift jitter ×0.85..1.15 (a pure hash of
+  seed + step count, so it replays), foot flop 0.10..0.25 rad in swing, foot roll ±0.10 rad, stance splay
+  0.02..0.08 rad, landing splay 0.05..0.12 rad, hip-roll step kick. Amplitudes are scaled by
+  `clampf(cls.wob, 0.7, 1.3)` (Kid wobblier, Elder calmer) and by the setting.
+- **Pose.** A small hip-roll `Spring2` is kicked by step starts and hard landings and idles with the phase offset; it
+  only tilts the leg roots, so planted feet stay put. The foot block gets the stance splay, a pitch/roll flop while
+  stepping, and a short splay envelope after a hard landing. While down/K.O. the leg pose gets no wobble (it would
+  fight the 6-point PBD body); only the down-struggle paddle gets the shared phase offset. Classic mode is
+  untouched (the web pose).
+- **Setting.** `Settings.leg_wobble` float 0..1, default **0.55**, slider under Settings > Graphics
+  ("Leg wobble": "Extra random wobble in the legs. Cosmetic only."). It is applied live through `Settings.changed`.
+  **0 is the exact pre-M0 pose**: every extra term is skipped and the step/plant maths runs the old code path
+  (the in-flight step returns to the base cadence immediately).
+- **Zero-proof.** `godot/tests/ragdoll_test.gd` hashes the rendered leg node transforms and foot blocks over 480
+  scripted frames (locomotion, a hop/landing, a hit kick). The pre-M0 build and the new build at `leg_wobble = 0`
+  both produce `00cb48fb5026807c00be8e2497c392aad40ec709df77bbf19d91cbab8d1b2535`.
+- **Determinism.** Same seed + same state frames = the same pose; the per-step jitter is a pure hash of seed + step
+  count; different seeds give different leg poses; a lockstep pair with the same seed matches transform for
+  transform. Online, each client may wobble slightly differently — it is cosmetic (M0 adds **no** wire fields; the
+  seed would have to be published for exact cross-client match, and the web game does not have it).
+- **Cost.** No new nodes, meshes or draw calls, no per-frame allocations: two extra jitter lookups and one `Spring2`
+  step per fighter-frame. Measured (Godot 4.7.2 headless, dev Mac, `test:godot-ragdoll`): overlay
+  **~22.5-25.6 µs**/fighter-frame at 0 and **~26-27 µs** at 0.55 (+3-4 µs, ~15 %), i.e. **0.30-0.34 ms/frame at
+  8 fighters** and **0.41-0.49 ms at 10** (budget 150 µs per fighter). The pre-M0 build measured 22.5 µs / 0.30 ms.
+
 ## Files and tests
 
-- `godot/actors/ragdoll_rig.gd` — the overlay maths (standing controller, stepping, knock-down body, get-up, posing).
-- `godot/actors/wobbler.gd` — `rig_mode`, `overlay(dt)`, classic transform save/restore, `ragdoll_hit()`.
+- `godot/actors/ragdoll_rig.gd` — the overlay maths (standing controller, stepping, knock-down body, get-up, posing)
+  and the seeded gait (`mix_seed`, `set_gait`, step jitter, hip roll, foot splay/flop, landing splay).
+- `godot/actors/wobbler.gd` — `rig_mode`, `overlay(dt)`, classic transform save/restore, `ragdoll_hit()`, the
+  `leg_wobble`/`gait_seed` knobs and `gait_identity()`.
 - `godot/actors/fighter.gd` — reads the sim points, then calls `wobbler.overlay(dt)`; routes `lean` hits.
-- `godot/autoload/settings.gd` — `wobble_rig` key.
+- `godot/autoload/settings.gd` — `wobble_rig`, `leg_wobble` keys. `godot/ui/settings_screen.gd` — both pickers.
 - `npm run test:godot-ragdoll` (`godot/tests/ragdoll_test.gd`): classic vs ragdoll gameplay points bit-identical,
   finite/bounded pose, feet planted while idle and never skating, grip on the sim hand, collapse and get-up,
-  frame-time budget with 8 fighters.
+  frame-time budget with 8/10 fighters, plus the M0 leg-wobble checks: `leg_wobble = 0` reproduces the pre-M0
+  pose (its digest is platform-scoped - the macOS value was captured from the pre-M0 build, the Linux CI value is
+  pinned there because transform maths differs in the last bits across platforms), 1 changes the legs, same
+  seed+frames replays, different seeds differ, planted soles stay on the floor, the Settings default/live change,
+  and the seeded identity from fighter id / net_slot.
 - `sh tools/shoot-godot-ragdoll.sh [classic]` renders `docs/style/godot-ragdoll-*.png`.
