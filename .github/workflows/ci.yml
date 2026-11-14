@@ -3,6 +3,9 @@ on:
   pull_request:
   push:
     branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -14,7 +17,13 @@ jobs:
       - run: npm test
   godot:
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 45
+    # Four parallel shards: the whole suite is ~19 min sequential on a Linux runner; the longest shard is ~5-6 min.
+    # Trade-off: a few more total CI minutes for ~3x shorter wall clock. fail-fast false: every shard reports.
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [ui, sim, net, rest]
     env:
       GODOT: /opt/godot/godot
     steps:
@@ -35,54 +44,96 @@ jobs:
       - run: npm ci || npm install
       - run: timeout 180 $GODOT --headless --path godot --import || true
       - run: npm run test:godot-physics
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-combat
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-spring
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-world
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-wobbler
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-weapons
+        if: matrix.shard == 'sim'
       - run: npm run test:godot
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-netguest
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-host
+        if: matrix.shard == 'net'
       - run: npm run test:godot-music
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-quests
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-modes
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-whats-new
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-flow
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-touch
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-ui
+        if: matrix.shard == 'ui'
       - run: npm run test:godot-audio
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-settings
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-save
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-locker
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-damage
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-skills
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-gunfeel
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-fx
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-perf
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-countdown
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-start-spots
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-quick-play
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-killcam
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-camera
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-construction-data
-      # The DLC layout test dies after its last check under Linux headless (before its summary; macOS passes).
-      # Keep it as a visible, non-blocking signal until that teardown crash is understood; the rest of the job must run.
+        if: matrix.shard == 'net'
       - run: npm run test:godot-dlc-ui
-        continue-on-error: true
+        if: matrix.shard == 'rest'
+        continue-on-error: true   # known Linux headless teardown crash: visible, not blocking
       - run: npm run test:godot-site-map
+        if: matrix.shard == 'net'
       - run: npm run test:godot-sandbox
+        if: matrix.shard == 'net'
       - run: npm run test:godot-range
+        if: matrix.shard == 'net'
       - run: npm run test:godot-maps
+        if: matrix.shard == 'net'
       - run: npm run test:godot-dynamics
+        if: matrix.shard == 'net'
       - run: npm run test:godot-ragdoll
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-integration
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-construction
+        if: matrix.shard == 'net'
       - run: npm run test:godot-arcade
+        if: matrix.shard == 'sim'
       - run: npm run test:godot-account
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-remote-config
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-services
+        if: matrix.shard == 'rest'
       - run: BOTS_MINUTES=2 npm run test:godot-bots
-
+        if: matrix.shard == 'net'
   export-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 30
