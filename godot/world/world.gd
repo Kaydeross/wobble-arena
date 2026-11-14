@@ -93,6 +93,7 @@ var _debris: PropDebris = null       ## broken props shatter into pieces here (u
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
+var _ctf_view: CtfView = null      ## Capture the Flag: the flag on its stand / on the carrier's back (world/ctf_view.gd)
 var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event)
 var _team_board: TeamBoard         ## team modes: coloured chips with each team's score and a YOU tag on yours
 var _banner: Label                 ## "YOU WIN!" at the end of a match
@@ -283,6 +284,7 @@ func load_map(id: String) -> void:
 	kill_cam.setup(views.values())
 	if _kc_l: _kc_l.visible = false
 	_build_shrink_view()
+	_build_ctf_view()
 	cam.reset_view()
 	feed.clear()
 	acc = 0.0
@@ -292,6 +294,15 @@ func load_map(id: String) -> void:
 	hud.bind(self)
 	_setup_build()
 	if arcade != null: arcade.stage_ready(self)           # Arcade: the run strip and the stage's intro card
+
+## Capture the Flag: the stand, the pole and the flag (nothing in other modes).
+func _build_ctf_view() -> void:
+	if _ctf_view != null: _ctf_view.queue_free(); _ctf_view = null
+	if sim.combat.rules.ctf == null: return
+	_ctf_view = CtfView.new()
+	_ctf_view.name = "CtfView"
+	add_child(_ctf_view)
+	_ctf_view.bind(sim.combat.rules.ctf)
 
 ## Build mode on: the palette (BuildHud, last in UI so it sees touches first). Off: back to the normal HUD panels.
 func _setup_build() -> void:
@@ -405,6 +416,7 @@ func present(dt: float) -> void:
 	_update_crates(dt)
 	_update_dyn_views()
 	_update_shrink_view()
+	if _ctf_view != null: _ctf_view.update(dt)
 	if not frozen: proj_views.update(dt)
 	if fx:
 		fx.watch(views, dt)
@@ -915,7 +927,7 @@ func _update_mode_ui(delta: float) -> void:
 	if sim == null or _mode_l == null: return
 	var vs := get_viewport().get_visible_rect().size
 	var ins := SafeArea.insets(get_viewport())
-	var board := session == null and sim.combat.teams > 0 and spectating == null
+	var board := session == null and sim.combat.teams > 0 and spectating == null and sim.combat.rules.ctf == null   # Capture the Flag: the flag line stands in for the score
 	var t := sim.combat.rules.hud_text(sim.player, not board) if session == null else ""
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""

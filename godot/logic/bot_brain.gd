@@ -1,6 +1,6 @@
 class_name BotBrain
 extends RefCounted
-## The web game's bot AI (botThink + pickTarget, botWants, botGround, botPillarHop; public/index.html ~7733-7971), one
+## The web game's bot AI (botThink + pickTarget, botWants, botGround; public/index.html ~7733-7971), one
 ## brain per bot. Ported line by line, in the same order, with every Math.random() replaced by combat.rng in the same
 ## call order, so a seeded match is repeatable and tools/bots-reference.js (the real JS) can check the decisions exactly
 ## (npm run test:godot-bots).
@@ -14,8 +14,7 @@ extends RefCounted
 ##     otherwise chase: guns keep their BOT_PREF range (back off inside 55%, circle-strafe in between), melee walks in.
 ##     Wander when there is nobody to chase.
 ##   - edge awareness: never walk or hop off into the void: probe the floor ahead (1.1, 2.3 m and further with speed),
-##     turn up to +-0.8 / 1.5 rad to find floor, else stop; no jump without somewhere to land. Pillars: stop at the
-##     edge (map.edgeGuard), and hop between pillars with dashes (botPillarHop).
+##     turn up to +-0.8 / 1.5 rad to find floor, else stop; no jump without somewhere to land.
 ##   - stuck watchdog: pushing for over a second without moving 0.8 m -> give up on that crate for 4 s, escape for
 ##     1.6 s to a random wander spot. Hop onto things in the way (stuck 0.18 s), up to a target on a ledge, and the
 ##     odd bouncy hop (DIFFS.jump).
@@ -78,13 +77,11 @@ var wd_on := false               ## wdX !== undefined
 var wd_x := 0.0
 var wd_z := 0.0
 var wd_t := 0.0
-# pillar hops (botPillarHop)
-var hop_bias := -1               ## -1 unset, 0/1: whether a gunner bothers hopping
+# hop state (kept for the web parity dump)
 var hop_t := 0.0
 var hop_n := -1                  ## -1 = unset (undefined in the web game: no air dash before its own jump)
 var hop_y0 := 0.0
 var hop_to := 0
-var hop_approach := false
 var mt := 0.0                    ## b.mt: a range dummy's mover clock (PracticeRange.range_bot)
 ## counters for tests / the HUD (not in the web game): how often the watchdog fired.
 var escapes := 0
@@ -112,6 +109,10 @@ func _init(difficulty: Dictionary, p_diff: String) -> void:
 ## a teammate bot seat included - and a teammate bot seat (is_player true) hunts the crew. One seat / no meta = the
 ## single-player path below, unchanged: the web parity reference never sees this branch.
 func pick_target(b: FighterState, sim: MatchSim) -> FighterState:
+	var ctf: CtfRules = sim.combat.rules.ctf       # Capture the Flag only (null elsewhere: the parity runs never see this)
+	if ctf != null:
+		var ct := ctf.bot_target(b)
+		if ct != null: return ct
 	var best: FighterState = null
 	var bd := 1e9
 	var pve: Array = sim.get_meta("pve_seats", [])
@@ -139,68 +140,6 @@ static func ground_at(solids: Array, py: float, x: float, z: float, up: float = 
 			var top: float = sb["top"]
 			if top <= hi and top >= lo: return true
 	return false
-
-## MAPS.pillars.spawns: the pillar centres ([x, z]); empty on other maps.
-static func pillar_spots(sim: MatchSim) -> Array:
-	return sim.map.get("spawns", []) if sim.combat.mode_id == "pillars" else []
-
-static func _pillar_at(ps: Array, x: float, z: float) -> int:
-	for i in ps.size():
-		if absf(x - float(ps[i][0])) < 4.3 and absf(z - float(ps[i][1])) < 4.3: return i
-	return -1
-
-static func _pillar_near(ps: Array, x: float, z: float) -> int:
-	var bi := 0
-	var bd := 1e9
-	for i in ps.size():
-		var dd := _hyp(x - float(ps[i][0]), z - float(ps[i][1]))
-		if dd < bd: bd = dd; bi = i
-	return bi
-
-## botPillarHop: the target is on another pillar, so walk to the edge and dash across the gap (again if still short).
-func _pillar_hop(b: FighterState, sim: MatchSim, tg: FighterState, ranged: bool, wish: Array) -> void:
-	var rng := sim.combat.rng
-	var p := b.phys
-	if hop_bias < 0: hop_bias = 1 if rng.next() < 0.35 else 0
-	if ranged and hop_bias == 0: return             # some gunners are happy to stay put and shoot across
-	var ps := pillar_spots(sim)
-	var n := ps.size()
-	if n == 0: return
-	var tpi := _pillar_near(ps, tg.phys.px, tg.phys.pz)
-	if not p.grounded:
-		if hop_t > 0.0 and b.dash_n > 0 and b.dash_cd <= 0.0 and hop_n >= 0 and hop_n < 3 and (hop_n > 0 or p.py > hop_y0 + 0.5) and p.py > 6.0:
-			var hp: Array = ps[hop_to]
-			var rx := float(hp[0]) - p.px
-			var rz := float(hp[1]) - p.pz
-			if _hyp(rx, rz) > 8.5 and sim.combat.rules.do_dash(b, rx, rz): hop_n += 1
-		return
-	if hop_t > 0.0:
-		hop_t -= 0.016
-		if hop_t > 0.7: return
-	var pb := _pillar_at(ps, p.px, p.pz)
-	if pb < 0: return
-	var c: Array = ps[pb]
-	if tpi == pb: return                            # the target is on my pillar: just fight
-	var a := (pb + 1) % n
-	var bb := (pb + n - 1) % n
-	var nb := a                                     # the neighbour closest to the target (gaps are only crossable between neighbours)
-	if _hyp(float(ps[bb][0]) - tg.phys.px, float(ps[bb][1]) - tg.phys.pz) < _hyp(float(ps[a][0]) - tg.phys.px, float(ps[a][1]) - tg.phys.pz): nb = bb
-	var tp: Array = ps[nb]
-	var dx := float(tp[0]) - float(c[0])
-	var dz := float(tp[1]) - float(c[1])
-	var dl := sqrt(dx * dx + dz * dz)
-	if dl == 0.0: dl = 1.0
-	var ux := dx / dl
-	var uz := dz / dl
-	var ex := float(c[0]) + ux * 3.3
-	var ez := float(c[1]) + uz * 3.3
-	var ed := _hyp(ex - p.px, ez - p.pz)
-	hop_approach = true
-	if ed > 0.9:
-		wish[0] = (ex - p.px) / ed; wish[1] = (ez - p.pz) / ed; b.face_yaw = atan2(ux, uz); return
-	wish[0] = 0.0; wish[1] = 0.0; b.face_yaw = atan2(ux, uz)
-	if b.dash_n >= 3 and b.dash_cd <= 0.0 and rng.next() < 0.08:
-		p.want_jump = true; hop_t = 1.6; hop_n = 0; hop_y0 = p.py; hop_to = nb     # jump off the edge, then dash
 
 ## botThink, one fixed step.
 func think(b: FighterState, sim: MatchSim, dt: float) -> void:
@@ -254,6 +193,10 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 			var cd := sqrt((c["x"] - p.px) * (c["x"] - p.px) + (c["z"] - p.pz) * (c["z"] - p.pz))
 			if cd < bd and not (tg and dist < 3.5): bd = cd; crate = c
 
+	var goal: Array = []                           # Capture the Flag: [x, z, kind] = walk to the free flag / run with it / stay with the carrier
+	if combat.rules.ctf != null and brawl and not busy:
+		goal = combat.rules.ctf.bot_goal(b)
+		if goal.size() > 0 and goal[2] != "escort": crate = {}
 	var wish := [p.wish_x, p.wish_z]               # kept while stunned, like b.wish
 	var chasing := brawl and tg != null and not (escape_t > 0.0)
 	if not busy and b.swing < 0.0 and b.kick_t < 0.0 and b.stun <= 0.0:
@@ -265,6 +208,14 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 			if cd == 0.0: cd = 1.0
 			wish = [cx / cd, cz / cd]; b.face_yaw = atan2(cx, cz)
 			if dj and p.grounded and jump_t <= 0.0 and rng.next() < dt:
+				p.want_jump = true; jump_t = rng.range_f(1.2, 3)
+		elif goal.size() > 0:
+			var gx: float = goal[0] - p.px
+			var gz: float = goal[1] - p.pz
+			var gd := sqrt(gx * gx + gz * gz)
+			if gd < 0.25: wish = [0.0, 0.0]
+			else: wish = [gx / gd, gz / gd]; b.face_yaw = atan2(gx, gz)
+			if dj and p.grounded and jump_t <= 0.0 and rng.next() < dt * 0.5:
 				p.want_jump = true; jump_t = rng.range_f(1.2, 3)
 		elif chasing:
 			var pref: float = float(PREF.get(b.weapon, 8)) if ranged else 1.7
@@ -288,20 +239,6 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 		else: wish = [0.0, 0.0]
 	elif busy or b.swing >= 0.0 or b.kick_t >= 0.0: wish = [0.0, 0.0]
 
-	hop_approach = false
-	if combat.mode_id == "pillars" and tg and not busy and b.swing < 0.0 and b.stun <= 0.0 and not (escape_t > 0.0):
-		_pillar_hop(b, sim, tg, ranged, wish)
-	if sim.map.get("edgeGuard", false) and not hop_approach and p.grounded and (wish[0] or wish[1]):   # pillars: stop at the edge
-		var wl0 := _hyp(wish[0], wish[1])
-		if wl0 == 0.0: wl0 = 1.0
-		for dd: float in [0.9, 1.8]:
-			var gx: float = p.px + wish[0] / wl0 * dd
-			var gz: float = p.pz + wish[1] / wl0 * dd
-			var ok := false
-			for sb: Dictionary in sim.solids:
-				if gx > sb["minX"] and gx < sb["maxX"] and gz > sb["minZ"] and gz < sb["maxZ"] and sb["top"] <= p.py + 0.6 and sb["top"] >= p.py - 1.2:
-					ok = true; break
-			if not ok: wish = [0.0, 0.0]; break
 	# stuck watchdog: pushing for over a second without getting anywhere (under a platform, against a wall) -> give up and wander elsewhere
 	if not busy and b.swing < 0.0 and _hyp(wish[0], wish[1]) > 0.3:
 		if not wd_on: wd_on = true; wd_x = p.px; wd_z = p.pz; wd_t = 0.0
@@ -328,7 +265,7 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 			p.want_jump = true; stuck_t = 0.0; jump_t = rng.range_f(0.6, 1.4)
 		elif brawl and wl > 0.3 and jump_t <= 0.0 and rng.next() < dt * 0.25 * maxf(0.4, float(d.get("jump", 0)) * 3.0):
 			p.want_jump = true; jump_t = rng.range_f(1.5, 3.5)
-	if p.grounded and not busy and not (hop_t > 1.0):     # edge awareness: never walk or hop off into the void (except a planned pillar hop)
+	if p.grounded and not busy and not (hop_t > 1.0):     # edge awareness: never walk or hop off into the void
 		var wl2 := _hyp(wish[0], wish[1])
 		if wl2 > 0.05:
 			var ux: float = wish[0] / wl2
@@ -349,7 +286,7 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 		_shrink_guard(combat.rules.shrink["box"], p, wish)
 	p.wish_x = wish[0]; p.wish_z = wish[1]
 
-	if combat.mode_id != "pillars" and combat.rules.dash_gear(b) and tg and not tg.dead and b.dash_n > 0 and b.dash_cd <= 0.0 \
+	if combat.rules.dash_gear(b) and tg and not tg.dead and b.dash_n > 0 and b.dash_cd <= 0.0 \
 			and dist > 6.0 and dist < 26.0 and rng.next() < dt * 0.35:
 		combat.rules.do_dash(b, tg.phys.px - p.px, tg.phys.pz - p.pz)      # ninja dash toward the target
 	var aiming := false

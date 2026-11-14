@@ -1,0 +1,93 @@
+{
+ "Start on pillars. A new weapon every 10 seconds. One life": {
+  "zh_TW": "從柱子上開始。每 10 秒出現新武器。只有一條命。",
+  "zh_CN": "从柱子上开始。每 10 秒出现新武器。只有一条命。",
+  "ja": "柱の上からスタート。10秒ごとに新しい武器。ライフは1つ。",
+  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 secondes. Une seule vie",
+  "es": "Empiezas en pilares. Un arma nueva cada 10 segundos. Una sola vida"
+ },
+ "Lava Pillars": {
+  "zh_TW": "熔岩柱子",
+  "zh_CN": "熔岩柱子",
+  "ja": "溶岩の柱",
+  "fr": "Piliers de lave",
+  "es": "Pilares de lava"
+ },
+ "The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you are out for the match. Most K.O.s when the clock ends wins.": {
+  "zh_TW": "同樣的八根高柱，這次立在燃燒天空下的熔岩湖上。間隙太寬跳不過，需要衝刺（任何武器都能在這裡衝刺）。每 10 秒，一把新武器會落入背包。掉下去，這場比賽你就出局。時間到時擊倒最多者獲勝。",
+  "zh_CN": "同样的八根高柱，这次立在燃烧天空下的熔岩湖上。间隙太宽跳不过，需要冲刺（任何武器都能在这里冲刺）。每 10 秒，一把新武器会落入背包。掉下去，这场比赛你就出局。时间到时击倒最多者获胜。",
+  "ja": "同じ8本の高い柱が、燃える空の下の溶岩湖の上に立っています。隙間が広くてジャンプでは届かないので、ダッシュが必要です（どの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに入ります。落ちたらその試合は脱落です。時間切れ時にKOが最も多い人の勝ちです。",
+  "fr": "Les mêmes huit grands piliers, cette fois au-dessus d'un lac de lave sous un ciel en feu. Les écarts sont trop larges pour sauter : il faut un dash (toutes les armes permettent de dasher ici). Toutes les 10 secondes, une nouvelle arme arrive dans l'inventaire. Qui tombe est éliminé pour la partie. Le plus de K.O. à la fin du temps gagne.",
+  "es": "Los mismos ocho pilares altos, ahora sobre un lago de lava bajo un cielo ardiente. Los huecos son demasiado anchos para saltar, así que necesitas impulso (cualquier arma puede usar impulso aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes, quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
+ },
+ "Pillars": {
+  "zh_TW": "柱子",
+  "zh_CN": "柱子",
+  "ja": "ピラー",
+  "fr": "Piliers",
+  "es": "Pilares"
+ },
+ "Start on tall pillars too far apart to jump (dash with any weapon!). Every 10 seconds a new weapon drops into your inventory. Fall or die and you are out. Most K.O.s when the 3 minutes end wins. No launchers, explosives or knockback guns": {
+  "zh_TW": "從跳不過去的高柱子開始（任何武器都能衝刺）。每 10 秒，一把新武器掉進背包。掉下去或死亡就出局。3 分鐘結束時擊倒最多者獲勝。沒有發射器、爆裂武器或擊退槍",
+  "zh_CN": "从跳不过去的高柱子开始（任何武器都能冲刺）。每 10 秒，一把新武器掉进背包。掉下去或死亡就出局。3 分钟结束时击倒最多者获胜。没有发射器、爆炸武器或击退枪",
+  "ja": "跳んで渡れないほど離れた高い柱からスタート（どの武器でもダッシュ可）。10秒ごとに新しい武器がインベントリに入ります。落ちるか倒れると脱落。3分終了時にKOが最も多い人の勝ち。ランチャー、爆発物、ノックバック銃はなし",
+  "fr": "Départ sur de hauts piliers trop espacés pour sauter (dash avec n'importe quelle arme). Toutes les 10 secondes, une nouvelle arme arrive dans l'inventaire. Qui tombe ou meurt est éliminé. Le plus de K.O. à la fin des 3 minutes gagne. Ni lanceurs, ni explosifs, ni armes à recul",
+  "es": "Empiezas en altos pilares demasiado separados para saltar (usa impulso con cualquier arma). Cada 10 segundos cae un arma nueva al inventario. Si caes o mueres, quedas fuera. Gana quien tenga más K.O. al acabar los 3 minutos. Sin lanzadores, explosivos ni armas de empuje"
+ },
+ "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or die and you are out for the match. Most K.O.s when the clock ends wins.": {
+  "zh_TW": "八根高柱環列在海面上，中央空無一物。間隙太寬跳不過，需要衝刺（任何武器都能在這裡衝刺）。每 10 秒，一把新武器會落入背包。掉下去或死亡，本場就出局。時間到時擊倒最多者獲勝。",
+  "zh_CN": "八根高柱环列在海面上，中央空无一物。间隙太宽跳不过，需要冲刺（任何武器都能在这里冲刺）。每 10 秒，一把新武器会落入背包。掉下去或死亡，本场就出局。时间到时击倒最多者获胜。",
+  "ja": "海の上に八本の高い柱が環状に並び、中央には何もない。隙間が広くてジャンプでは届かないので、ダッシュが必要（どの武器でもダッシュできる）。10秒ごとに新しい武器がインベントリに入る。落ちるか倒れると、その試合は脱落。時間切れ時にKOが最も多い人の勝ち。",
+  "fr": "Huit grands piliers en anneau au-dessus de la mer, rien au centre. Les écarts sont trop larges pour sauter : il faut un dash (n'importe quelle arme permet de dasher ici). Toutes les 10 secondes, une nouvelle arme arrive dans l'inventaire. Qui tombe ou meurt est éliminé pour la partie. Le plus de K.O. à la fin du temps gagne.",
+  "es": "Ocho altos pilares en círculo sobre el mar, sin nada en el centro. Los huecos son demasiado anchos para saltar, así que necesitas impulso (cualquier arma puede usar impulso aquí). Cada 10 segundos cae un arma nueva al inventario. Si caes o mueres, quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
+ },
+ "Start on pillars. A new weapon every 10 s": {
+  "zh_TW": "從柱子上開始。每 10 秒出現一把新武器",
+  "zh_CN": "从柱子上开始。每 10 秒出现一把新武器",
+  "ja": "柱の上からスタート。10秒ごとに新しい武器",
+  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 s",
+  "es": "Empiezas sobre pilares. Un arma nueva cada 10 s"
+ },
+ "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon every 10 seconds. Fall or die and you are out. Most K.O.s after 3 minutes wins.": {
+  "zh_TW": "從高高的柱子上開始，柱子之間太遠，跳不過去（用任何武器都能衝刺！）。每 10 秒出現一把新武器。掉落或死亡就出局。3 分鐘後擊倒最多者獲勝。",
+  "zh_CN": "从高高的柱子上开始，柱子之间太远，跳不过去（用任何武器都能冲刺！）。每 10 秒出现一把新武器。掉落或死亡就出局。3 分钟后击倒最多者获胜。",
+  "ja": "高い柱の上からスタート。柱の間は遠くてジャンプでは届きません（どの武器でもダッシュできます！）。10秒ごとに新しい武器が登場。落ちるか倒されたら脱落。3分後にKO数が最も多い人の勝ち。",
+  "fr": "Départ sur de hauts piliers trop éloignés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme toutes les 10 secondes. Tombe ou meurs et tu es éliminé. Le plus de K.O. après 3 minutes gagne.",
+  "es": "Empiezas sobre pilares altos demasiado separados para saltar (¡impúlsate con cualquier arma!). Un arma nueva cada 10 segundos. Si caes o mueres, quedas fuera. Gana quien tenga más K.O. a los 3 minutos."
+ },
+ "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or get K.O.'d and you're out for the match. Most K.O.s when the clock ends wins.": {
+  "zh_TW": "海上八根高大的柱子排成一圈，中間空無一物。缺口太寬，跳不過去，所以需要衝刺（這裡任何武器都能衝刺）。每10秒，一把新武器會落進你的物品欄。摔落或被擊倒就會在這場比賽中出局。時間到時擊倒最多者獲勝。",
+  "zh_CN": "海上八根高大的柱子围成一圈，中间空无一物。缺口太宽，跳不过去，所以需要冲刺（这里任何武器都能冲刺）。每10秒，一把新武器会落进你的物品栏。摔落或被击倒就会在本场比赛中出局。时间到时击倒最多者获胜。",
+  "ja": "海の上に並ぶ背の高い柱が8本、中央は空っぽです。隙間が広すぎてジャンプでは越えられないので、ダッシュが必要です（ここではどの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに届きます。落ちるかKOされたら、その試合は脱落です。時間切れのときにKOが最も多い人の勝ちです。",
+  "fr": "Huit hauts piliers en cercle au-dessus de la mer, rien au milieu. Les trous sont trop larges pour sauter, il faut un dash (toutes les armes peuvent dasher ici). Toutes les 10 secondes, une nouvelle arme tombe dans l'inventaire. Tomber ou être mis K.O., c'est l'élimination pour le match. Le plus de K.O. à la fin du temps gagne.",
+  "es": "Ocho pilares altos en círculo sobre el mar, sin nada en medio. Los huecos son demasiado anchos para saltar, así que necesitas un impulso (cualquier arma puede impulsarte aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes o te dejan K.O., quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
+ },
+ "Pillars, one life, a new weapon every 10s": {
+  "zh_TW": "柱子、一條命，每 10 秒換一把新武器",
+  "zh_CN": "柱子、一条命，每 10 秒换一把新武器",
+  "ja": "ピラー、残機1つ、10秒ごとに新しい武器",
+  "fr": "Piliers, une vie, une nouvelle arme toutes les 10 s",
+  "es": "Pilares, una vida, un arma nueva cada 10 s"
+ },
+ "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon drops into your hands every 10 seconds. Fall or get K.O.'d and you're out. Most K.O.s after 3 minutes wins. No launchers, explosives or knockback guns": {
+  "zh_TW": "從高柱開局，柱子間距遠到跳不過去（任何武器都能衝刺！）。每 10 秒會有新武器掉進你手裡。掉下去或被擊倒就出局。3 分鐘後擊倒數最多者獲勝。沒有發射器、爆炸物或擊退槍",
+  "zh_CN": "从高柱开局，柱子间距远到跳不过去（任何武器都能冲刺！）。每 10 秒会有新武器掉进你手里。掉下去或被击倒就出局。3 分钟后击倒数最多者获胜。没有发射器、爆炸物或击退枪",
+  "ja": "高い柱の上からスタート。間隔が広すぎてジャンプでは届かない（どの武器でもダッシュできる！）。10秒ごとに新しい武器が手に落ちてくる。落ちるかKOされたら退場。3分後にKOが一番多い人の勝ち。ランチャー、爆弾、ノックバック銃はなし",
+  "fr": "Départ sur de hauts piliers trop espacés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme tombe dans tes mains toutes les 10 secondes. Tu tombes ou tu es mis K.O. et tu es éliminé. Le plus de K.O. après 3 minutes gagne. Pas de lance-roquettes, d'explosifs ni de pistolets de recul",
+  "es": "Empiezas sobre pilares altos separados demasiado para saltar (¡impúlsate con cualquier arma!). Cada 10 segundos cae un arma nueva en tus manos. Si caes o te hacen K.O., estás fuera. Gana quien más K.O. consiga tras 3 minutos. Nada de lanzadores, explosivos ni pistolas de empuje"
+ },
+ "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon every 10 seconds. Fall or get K.O.'d and you're out. Most K.O.s after 3 minutes wins": {
+  "zh_TW": "從高柱開局，柱子間距遠到跳不過去（任何武器都能衝刺！）。每 10 秒會有新武器。掉下去或被擊倒就出局。3 分鐘後擊倒數最多者獲勝",
+  "zh_CN": "从高柱开局，柱子间距远到跳不过去（任何武器都能冲刺！）。每 10 秒会有新武器。掉下去或被击倒就出局。3 分钟后击倒数最多者获胜",
+  "ja": "高い柱の上からスタート。間隔が広すぎてジャンプでは届かない（どの武器でもダッシュできる！）。10秒ごとに新しい武器。落ちるかKOされたら退場。3分後にKOが一番多い人の勝ち",
+  "fr": "Départ sur de hauts piliers trop espacés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme toutes les 10 secondes. Tu tombes ou tu es mis K.O. et tu es éliminé. Le plus de K.O. après 3 minutes gagne",
+  "es": "Empiezas sobre pilares altos separados demasiado para saltar (¡impúlsate con cualquier arma!). Cada 10 segundos, un arma nueva. Si caes o te hacen K.O., estás fuera. Gana quien más K.O. consiga tras 3 minutos"
+ },
+ "The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you're out for the match. Most K.O.s when the clock ends wins. The floor is lava. Literally.": {
+  "zh_TW": "同樣的八根高柱，這次立在燃燒天空下的熔岩湖上。柱距太寬，跳不過去，所以需要衝刺（這裡任何武器都能衝刺）。每 10 秒會有新武器落進你的背包。掉下去，這一局就出局。時間到時擊倒數最多者獲勝。地板是熔岩。真的是熔岩。",
+  "zh_CN": "同样的八根高柱，这次立在燃烧天空下的熔岩湖上。柱距太宽，跳不过去，所以需要冲刺（这里任何武器都能冲刺）。每 10 秒会有新武器落进你的背包。掉下去，这一局就出局。时间到时击倒数最多者获胜。地板是熔岩。真的是熔岩。",
+  "ja": "同じ8本の高い柱が、今度は燃える空の下の溶岩の湖に立っています。間隔が広すぎてジャンプでは届かないので、ダッシュが必要です（ここではどの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに届きます。落ちたらその試合は退場。時間切れのときにKOが一番多い人の勝ち。床は溶岩です。文字どおり、溶岩です。",
+  "fr": "Les mêmes huit hauts piliers, désormais au-dessus d'un lac de lave sous un ciel en feu. Les écarts sont trop grands pour sauter, il faut donc un dash (n'importe quelle arme peut dasher ici). Toutes les 10 secondes, une nouvelle arme atterrit dans ton inventaire. Si tu tombes, tu es éliminé pour la partie. Le plus de K.O. quand le temps s'écoule gagne. Le sol, c'est de la lave. Littéralement.",
+  "es": "Los mismos ocho pilares altos, ahora sobre un lago de lava bajo un cielo ardiente. Los huecos son demasiado anchos para saltar, así que necesitas un impulso (cualquier arma puede impulsarse aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes, quedas fuera de la partida. Gana quien más K.O. tenga cuando se acabe el tiempo. El suelo es lava. Literalmente."
+ }
+}

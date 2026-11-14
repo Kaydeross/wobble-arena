@@ -53,7 +53,7 @@ static func ramp(t: float) -> float:
 
 static func map_allowed(id: String, m: Dictionary) -> bool:
 	return not m.is_empty() and not m.get("noDynamics", false) and not m.get("shrinks", false) and not m.get("range", false) \
-		and not m.get("randSpawn", false) and not ["custom", "test", "practice", "pillars"].has(id)
+		and not m.get("randSpawn", false) and not ["custom", "test", "practice"].has(id)
 
 ## The kind that actually runs on this map ('random' picks one from the seed).
 static func resolve(kind: String, seed: int, can_tile: bool, can_drift: bool) -> String:

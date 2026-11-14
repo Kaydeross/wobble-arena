@@ -828,7 +828,7 @@ func _refresh() -> void:
 	var total := bot_total()
 	for n2 in _bot_bs:
 		var b: Button = _bot_bs[n2]
-		var fixed := ModeRules.fixed_bots(mode_id, Content.modes) >= 0     # Pillars / Practice Range set the count
+		var fixed := ModeRules.fixed_bots(mode_id, Content.modes) >= 0     # Practice Range sets the count
 		b.disabled = (team and not flex and n2 != total) or (flex and n2 % 2 == 0) or (fixed and n2 != total)
 		b.set_pressed_no_signal(n2 == (total if team or fixed else bots))
 	if players_l:
@@ -837,7 +837,6 @@ func _refresh() -> void:
 		if flex: players_hint.text = tr("Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).") % [t, t]
 		elif team: players_hint.text = tr("Bots are computer players. %s fixes the teams: %d vs %d.") % [tr(mode_name(mode_id)), t, t]
 		elif mode_id == "practice": players_hint.text = tr("The range has %d dummies: they stand, slide and pop back up. They never fight back.") % total
-		elif ModeRules.fixed_bots(mode_id, Content.modes) >= 0: players_hint.text = tr("%s fills every pillar: you + %d bots, one life each.") % [tr(mode_name(mode_id)), total]
 		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = mode_name(mode_id)
@@ -1081,6 +1080,10 @@ class ModeIcon extends Control:
 			"tdm":
 				for x in [0.17, 0.36]: _person(x, 0.56, 0.8, Color("#8fd1ff"))
 				for x in [0.64, 0.83]: _person(x, 0.56, 0.8, Color("#ff8f6f"))
+			"flag":
+				draw_line(_p(0.32, 0.84), _p(0.32, 0.16), g, u * 0.07)
+				_poly([Vector2(0.34, 0.18), Vector2(0.8, 0.34), Vector2(0.34, 0.5)], UiTheme.ORANGE)
+				draw_line(_p(0.2, 0.84), _p(0.5, 0.84), g, u * 0.06)
 			"burst":
 				_star(8, 0.36, 0.18, g)
 			"giant":
@@ -1090,10 +1093,6 @@ class ModeIcon extends Control:
 				draw_circle(_p(0.5, 0.5), u * 0.3, g)
 				draw_circle(_p(0.62, 0.4), u * 0.26, col.darkened(0.6))
 				draw_circle(_p(0.76, 0.72), u * 0.04, g)
-			"pillars":
-				_rect(0.2, 0.5, 0.17, 0.3, g)
-				_rect(0.42, 0.28, 0.17, 0.52, g)
-				_rect(0.64, 0.4, 0.17, 0.4, g)
 			"hat":
 				var pts: Array = []
 				for i in 13:

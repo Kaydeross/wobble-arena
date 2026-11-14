@@ -42,6 +42,7 @@ const STAGES_PATH := "res://data/extra/construction/stages.json"
 const LIVES := 3
 const REVIVE_TIME := 6.0               ## a downed seat comes back after this long while a teammate is still up
 const RETRY_SEED_STEP := 1009
+const FALL_RESCUE_Y := 14.0            ## an enemy this far above the ring-out line (y -11) and falling is put back on the floor
 const FAIL_DELAY := 1.8                ## seconds the world runs on after you fall, before the card
 const CLEAR_DELAY := 1.4               ## ... and after the last enemy goes down
 const VICTORY_COINS := 2000
@@ -883,7 +884,12 @@ func _fight(dt: float) -> void:
 	# so no respawn path or cleared flag can turn a ring-out boss into a stage clear (owner report: "boss drop off from
 	# edge = stage clear"; the boss revives on the floor and the fight goes on until its HP reaches 0).
 	for e: FighterState in enemies:
-		if downed.has(e) or not e.dead: continue
+		if downed.has(e): continue
+		if not e.dead:
+			# still alive but already well below the site (a launch off the edge, a gap in the generated floor): put it
+			# back now instead of watching it fall the last metres to the ring-out line.
+			if e.phys.py < sim.ring_out_y + FALL_RESCUE_Y and e.hp > 0.0: _revive(e)
+			continue
 		if e.hp > 0.0: _revive(e)
 		else: _down(e)
 	_enforce_enemy_speed()
@@ -1357,7 +1363,9 @@ func alive_enemies() -> int:
 func boss_frac() -> float:
 	if online and not host_mode: return clampf(_guest_hf, 0.0, 1.0)
 	if boss == null: return 0.0
-	return clampf(boss.hp / sim.combat.max_hp(boss), 0.0, 1.0) if not boss.dead else 0.0
+	# a boss that FELL is `dead` for a moment with its health intact (see _revive): the bar keeps its real fraction, so a
+	# ring-out never looks like (or tells the guests) that the boss is down. Only hp <= 0 is down.
+	return clampf(boss.hp / sim.combat.max_hp(boss), 0.0, 1.0)
 
 ## The boss' fight is on: the bar shows.
 func boss_active() -> bool:

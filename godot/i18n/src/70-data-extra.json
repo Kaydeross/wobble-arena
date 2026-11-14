@@ -153,20 +153,6 @@
   "fr": "Gravité très faible. Flotte et plane",
   "es": "Gravedad muy baja. Flota y vuela"
  },
- "Start on pillars. A new weapon every 10 s": {
-  "zh_TW": "從柱子上開始。每 10 秒出現一把新武器",
-  "zh_CN": "从柱子上开始。每 10 秒出现一把新武器",
-  "ja": "柱の上からスタート。10秒ごとに新しい武器",
-  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 s",
-  "es": "Empiezas sobre pilares. Un arma nueva cada 10 s"
- },
- "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon every 10 seconds. Fall or die and you are out. Most K.O.s after 3 minutes wins.": {
-  "zh_TW": "從高高的柱子上開始，柱子之間太遠，跳不過去（用任何武器都能衝刺！）。每 10 秒出現一把新武器。掉落或死亡就出局。3 分鐘後擊倒最多者獲勝。",
-  "zh_CN": "从高高的柱子上开始，柱子之间太远，跳不过去（用任何武器都能冲刺！）。每 10 秒出现一把新武器。掉落或死亡就出局。3 分钟后击倒最多者获胜。",
-  "ja": "高い柱の上からスタート。柱の間は遠くてジャンプでは届きません（どの武器でもダッシュできます！）。10秒ごとに新しい武器が登場。落ちるか倒されたら脱落。3分後にKO数が最も多い人の勝ち。",
-  "fr": "Départ sur de hauts piliers trop éloignés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme toutes les 10 secondes. Tombe ou meurs et tu es éliminé. Le plus de K.O. après 3 minutes gagne.",
-  "es": "Empiezas sobre pilares altos demasiado separados para saltar (¡impúlsate con cualquier arma!). Un arma nueva cada 10 segundos. Si caes o mueres, quedas fuera. Gana quien tenga más K.O. a los 3 minutos."
- },
  "Tradies, hammers, live wire, air blowers": {
   "zh_TW": "工人、鎚子、帶電電線、鼓風機",
   "zh_CN": "工人、锤子、带电电线、鼓风机",

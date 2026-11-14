@@ -364,7 +364,7 @@ A Godot client can host a room that web and Godot guests join. It speaks exactly
   for the rest (the web host fills every seat with a bot or none; an `empty` seat is just a seat a late joiner can
   take). The `start` goes out after the host's match is set up, so bot seats carry the bots' real name / look / class.
   `rules` = `{mode, hp, crate, wstate, grav, kb, inf, dyn, dseed, dt0?}`; `mode` through `HostSession.net_mode`
-  (= `netMode`, plus Pillars -> Classic until `pp`/`pt` are hosted); a fresh `dseed` every match and rematch;
+  (= `netMode`); a fresh `dseed` every match and rematch;
   `limit` 0 in lives / ladder modes.
 - **In match:** the host's own fighter and every bot in one `S` at 30 Hz (`sw`/`f`/`k` when they start an action);
   crates spawned only by the host, announced with `crate {cid, key, spot}`; every take (host, bot or guest) as
@@ -380,8 +380,7 @@ A Godot client can host a room that web and Godot guests join. It speaks exactly
   match is over): non-voters get `kick` and their seat becomes a bot, and a new `start` goes out.
 - **Rules:** the Host sheet's mode, K.O. limit (`limit`; -1 = the mode's own), `hp`, `grav`, `kb`, `crate`, `inf` and
   `dyn` go out in `rules` like the web host's ruleSnap; Explosive always sends `hp` 300.
-- **App-only modes, host migration, emotes:** see 6.3. **Not yet:** chat display, the web host's Pillars (`pp`/`pt`
-  for browsers), weapon toggles (`wstate` is always `{}`).
+- **App-only modes, host migration, emotes:** see 6.3. **Not yet:** chat display, weapon toggles (`wstate` is always `{}`).
 - **Tests:** `npm run test:godot-host` (web-protocol guest + Godot guest against a Godot host on the real server).
 
 ### 6.3 Godot-only additive fields (web clients ignore them)
@@ -398,18 +397,18 @@ unknown guest messages). `PROTO` stays 1.
 | `welcome` | `rsm: 1` | Host migration: this host carries the running match on; keep the arena and wait for `start`. |
 | `roster` entries, `slots` entries | `gd: 1` | That player is a Godot client (a Godot host marks web players in its lobby). |
 | `roster` | `rl` | The Godot host's rules for the lobby line: `{want, mode, lim, hp, grav, kb, crate, inf, dyn, map}` (`want` = the host's pick, `mode` = what plays). |
-| `start.rules` | `gmode` | An app-only mode the Godot clients play (`mode` stays the web fallback, Classic): `tdm`, `deathmatch`, `sudden`, `chaos`, `pillars`, `lowg`, `duel`, `t2`, `t3`, `t4`, and (`6.4`) `construction` for an Arcade co-op room (`NetMatch.GODOT_MODES`). Sent only when every guest said `gd`. |
+| `start.rules` | `gmode` | An app-only mode the Godot clients play (`mode` stays the web fallback, Classic): `tdm`, `deathmatch`, `sudden`, `chaos`, `lowg`, `duel`, `t2`, `t3`, `t4`, and (`6.4`) `construction` for an Arcade co-op room (`NetMatch.GODOT_MODES`). Sent only when every guest said `gd`. |
 | `start.rules` | `gteam` | Team modes: the side (0 blue / 1 red) of every slot, `slot % 2`. |
-| `start.rules` | `pp` | Pillars: the pillar (spawn index) of every slot, a permutation, shuffled every match by the host. |
+| `start.rules` | `pp` | Removed with the Godot Pillars mode: `pp` / `pt` are no longer sent or read by Godot hosts or guests (the web game still has them, 2.2). |
 | `start.rules` | `grav: 0.15` | Moon Drift (`gmode: lowg`). |
-| `start` | `rs`, `rsx` | Host migration: the old match's state per (new) slot `[{id, x, y, z, yaw, hp, ko, dt, lv, el, d, gg}]` (`d` = was down: starts on its spawn; `el` = eliminated) and `{pt}` (Pillars clock). `rules.dseed` / `dt0` keep the arena seed and clock. |
+| `start` | `rs`, `rsx` | Host migration: the old match's state per (new) slot `[{id, x, y, z, yaw, hp, ko, dt, lv, el, d, gg}]` (`d` = was down: starts on its spawn; `el` = eliminated) and `{}` (`rsx`, reserved). `rules.dseed` / `dt0` keep the arena seed and clock. |
 | `start` | `arc` | Arcade co-op run (`6.4`): `{run, st, of, diff, seed, seats:[0,1], crew:[2,…], boss, big, state, lv}` — the whole run as the host sees it, re-sent with **every stage's** `start` (that is the stage-transition mechanism). |
 
 New room messages (host → all unless noted):
 
 | `t` | Fields | Meaning |
 |---|---|---|
-| `gm` | `k: "st"`, `ko[]`, `dt[]`, `gg[]`, `pt?` | 1 Hz mode state: every slot's K.O.s, deaths and Weapon Ladder rung, the Pillars clock. Godot guests take it over (team scores are the sums of `ko` by `gteam`). |
+| `gm` | `k: "st"`, `ko[]`, `dt[]`, `gg[]` | 1 Hz mode state: every slot's K.O.s, deaths and Weapon Ladder rung. Godot guests take it over (team scores are the sums of `ko` by `gteam`). |
 | `gm` | `k: "cw"` / `"cs"` / `"ce"`, `id`, `fl?`, `g?` | Chaos: an event was announced (3 s countdown) / started / ended. `id` = `crates`, `gravity`, `knockback`, `giant`, `speed`, `floor`; `fl` = the floor it forces; `g` = the giant's slot. Guests apply it (gravity, knockback, speed, giant, floor) instead of rolling their own. |
 | `am` | `st`, `of`, `s`, `lv`, `hf`, `sh`, `dn[]`, `dnt[]`, `rv?`, `bt[]`, `cn`, `last?`, `won`, `ph?`, `vic?` | Arcade co-op run state (`6.4`): stage index / count, state (`intro`/`fight`/`clearing`/`cleared`/`failing`/`failed`/`over`/`won`), shared lives, boss health fraction 0–1, shrinking-floor size in metres (0 = none), the downed player seats' slots and seconds to their revive, the latest revive instruction, the bot-played seats, the clear/victory counter, the stage summary (`_pay()`: `seats[]` with each seat's K.O.s, `reward`/`bonus`, and the coins that save gets), `won`, the boss phase and the victory summary. Display state only: it never advances a stage or damages anyone; it does drive the guest's own cards/HUD/floor and its own save (per player, once per `cn`). |
 | `emote` | `id`, `e` | guest → host → others (and the host's own): player `id` plays emote `e` (an id of `godot/data/extra/locker.json` `emotes`). The host stamps `id`, drops unknown ids and more than one per 0.4 s. |
@@ -420,11 +419,11 @@ Rules a Godot host follows:
   otherwise the match plays Classic, the lobby line says why ("app-only: a web player is here") and the host's status
   names the web player. A web guest who joins a running app-only match gets `kick {msg}` with the reason.
 - **Match end:** in an app-only mode the Godot guests never end the match themselves (`ModeRules.remote`): the host's
-  K.O. limit / last one standing / Pillars clock decides and sends `pend`. Team results name the side.
-- **Determinism:** the host's random source is seeded from the arena seed (`dseed`); Chaos events, Pillars shuffles and
-  bots run on the host only and reach the guests as `gm` / `pp` / snapshots.
+  K.O. limit / last one standing decides and sends `pend`. Team results name the side.
+- **Determinism:** the host's random source is seeded from the arena seed (`dseed`); Chaos events and
+  bots run on the host only and reach the guests as `gm` / snapshots.
 - **Host migration (a Godot guest promoted):** the guest's own view of the match (positions, health, K.O.s, deaths,
-  lives, ladder rungs, Pillars clock, arena clock) becomes `rs`. It becomes slot 0, the old host's seat becomes its old
+  lives, ladder rungs, arena clock) becomes `rs`. It becomes slot 0, the old host's seat becomes its old
   slot (a bot, or empty without bots), every other seat keeps its number: Godot guests reclaim it with `pslot`, web
   guests by name. After 3 s (or as soon as everybody is back) a `start` with `rs`, the same `dseed` and `dt0` resumes
   the match; bots keep their names. Godot guests stay in the arena ("HOST CHANGED" banner) and continue in place; web

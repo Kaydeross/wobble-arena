@@ -125,13 +125,6 @@
   "fr": "Le terrain d'entraînement compte %d mannequins : ils restent debout, glissent et se relèvent. Ils ne ripostent jamais.",
   "es": "El campo de práctica tiene %d maniquíes: se quedan quietos, se deslizan y vuelven a levantarse. Nunca devuelven el golpe."
  },
- "%s fills every pillar: you + %d bots, one life each.": {
-  "zh_TW": "%s 每根柱子都有人：你 + %d 名電腦玩家，每人一條命。",
-  "zh_CN": "%s 每根柱子都有人：你 + %d 名电脑玩家，每人一条命。",
-  "ja": "%s はすべての柱を使います：あなた + ボット %d 体、残機は1つずつです。",
-  "fr": "%s occupe chaque pilier : toi + %d bots, une vie chacun.",
-  "es": "%s ocupa cada pilar: tú + %d bots, una vida cada uno."
- },
  "Step %d of %d": {
   "zh_TW": "第 %d 步，共 %d 步",
   "zh_CN": "第 %d 步，共 %d 步",

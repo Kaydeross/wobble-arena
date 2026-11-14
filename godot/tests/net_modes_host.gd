@@ -8,7 +8,7 @@ extends SceneTree
 ## migrate: hosts a Classic room on a Wobble floor; once the web guest (slot 2) has a K.O. it leaves the room (the
 ##   relay then promotes the Godot guest, which carries the match on). Prints ME / LEAVING.
 
-const MODES := [["tdm", "arena"], ["deathmatch", "arena"], ["sudden", "arena"], ["chaos", "arenaxl"], ["pillars", "pillars"],
+const MODES := [["tdm", "arena"], ["deathmatch", "arena"], ["sudden", "arena"], ["chaos", "arenaxl"],
 	["explosive", "arena"], ["lowg", "craterdome"], ["gungame", "arena"]]
 
 var session := HostSession.new()

@@ -60,7 +60,7 @@ function runGodot(script, args, tag) {
 }
 
 let host = null, peer = null, peer2 = null;
-const MODES = ['tdm', 'deathmatch', 'sudden', 'chaos', 'pillars', 'explosive', 'lowg', 'gungame'];
+const MODES = ['tdm', 'deathmatch', 'sudden', 'chaos', 'explosive', 'lowg', 'gungame'];
 const r2 = v => +v.toFixed(2);
 
 // a guest in Node that streams its own S (standing still) and records the room messages
@@ -100,7 +100,6 @@ async function modesRoom(url) {
     if (webMode) assert.ok(R.mode === want && !R.gmode, want + ' is a web mode: rules.mode');
     else assert.ok(R.mode === 'classic' && R.gmode === want, want + ': mode classic for the web, gmode for Godot');
     if (want === 'tdm' || want === 'chaos') assert.deepEqual(R.gteam, [0, 1, 0, 1], want + ' sides by slot');
-    if (want === 'pillars') assert.ok(Array.isArray(R.pp) && R.pp.length >= 4 && new Set(R.pp).size === R.pp.length, 'pillars pp');
     if (want === 'lowg') assert.equal(R.grav, 0.15, 'Moon Drift gravity');
     if (want === 'explosive') assert.equal(R.hp, 300, 'Explosive health'); else assert.equal(R.hp, 150, 'host health');
     assert.ok(R.kb === 1.5 && R.crate === 'fast', 'host rules kept');

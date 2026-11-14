@@ -129,7 +129,7 @@ func _save_round_trip(out: String) -> void:
 	var s := SaveProfile.new()
 	s.path = P
 	s.persist = true
-	s.apply_blob({"v": 64, "cfg": {"mode": "pillars", "count": 5, "hp": 300, "blocks": [[0, 0, 0]]}, "map": "farm", "wallet": {"coins": 777}})
+	s.apply_blob({"v": 64, "cfg": {"mode": "chaos", "count": 5, "hp": 300, "blocks": [[0, 0, 0]]}, "map": "farm", "wallet": {"coins": 777}})
 	var L := SandboxLayout.new(s.sandbox_cfg())
 	check(L.blocks == [[0, 0, 0]], "a web save's blocks load")
 	L.color = SandboxLayout.COLORS[3]; L.height = 2
@@ -141,7 +141,7 @@ func _save_round_trip(out: String) -> void:
 	t.persist = true
 	check(t.load_file() == "file", "profile written and read back")
 	var c := t.sandbox_cfg()
-	check(c.get("mode") == "pillars" and int(c.get("count", 0)) == 5 and int(c.get("hp", 0)) == 300, "the rest of the web cfg is kept (%s)" % [c])
+	check(c.get("mode") == "chaos" and int(c.get("count", 0)) == 5 and int(c.get("hp", 0)) == 300, "the rest of the web cfg is kept (%s)" % [c])
 	var L2 := SandboxLayout.new(c)
 	check(L2.blocks == [[0, 0, 0], [-4, 0, 8], [-4, 2, 8]] and L2.cols == [SandboxLayout.WEB_YELLOW, SandboxLayout.COLORS[3], SandboxLayout.COLORS[3]], "blocks and colours back from the file (%s %s)" % [L2.blocks, L2.cols])
 	check(L2.custom["theme"] == "candy" and t.coins == 777 and t.get_blob().get("map") == "farm", "arena settings, coins and other keys survive")

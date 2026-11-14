@@ -86,12 +86,10 @@ func apply(op: Dictionary) -> void:
 		"ko": c.add_ko(F[int(op["a"])], f)
 		"respawn": c.respawn(f)
 		"dash": c.rules.do_dash(f, float(op["ix"]), float(op["iz"]))
-		"pilInit": c.rules.init_pillars()
 		"step":
 			var dt := float(op["dt"])
 			for n in int(op["n"]):
 				c.time += dt
-				c.rules.update_pillars(dt)
 				c.rules.update_shrink(dt)
 				for g: FighterState in F: c.timers(g, dt)
 		_: push_error("unknown op " + str(op["op"]))
@@ -119,7 +117,7 @@ func compare(s: Dictionary) -> Array:
 			sl.append([x["key"], x["ammo"], x["mag"]] if x != null else null)
 		var mine: Array = [p.px, p.py, p.pz, p.vx, p.vy, p.vz, 1 if p.grounded else 0, f.hp, 1 if f.dead else 0, f.death_t, f.ko, f.lives,
 			1 if f.elim else 0, f.team, f.weapon, JSON.stringify(sl).replace(".0", ""), f.slot, f.invuln, f.dash_n, f.dash_regen, f.dash_cd, f.gg_rung,
-			int(f.st["deaths"]), int(f.st["streak"]), f.fall_side, f.dash_air_t]
+			int(f.st["deaths"]), int(f.st["streak"]), f.fall_side]
 		var ref: Array = fs[i]
 		for k in mine.size():
 			var e := _num_err(mine[k], ref[k])
@@ -127,13 +125,6 @@ func compare(s: Dictionary) -> Array:
 	var m: Array = s["m"]
 	var ge := _num_err(1 if c.rules.match_over else 0, m[0]) + _num_err(_ends, m[1]) + _num_err(c.time, m[2])
 	if ge > worst: worst = ge; what = "match: godot %s %s %s js %s" % [c.rules.match_over, _ends, c.time, m]
-	var pv: Variant = s.get("p")
-	if (pv == null) != c.rules.pil.is_empty():
-		return [1.0, "pillars presence"]
-	if pv != null:
-		for k in 2:
-			var e := _num_err([c.rules.pil["t"], c.rules.pil["next"]][k], pv[k])
-			if e > worst: worst = e; what = "pillars field %d: godot %s js %s" % [k, [c.rules.pil["t"], c.rules.pil["next"]][k], pv[k]]
 	var sh: Variant = s["s"]
 	var rs := c.rules.shrink
 	if (sh == null) != rs.is_empty():

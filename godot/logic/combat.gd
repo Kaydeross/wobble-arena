@@ -350,6 +350,7 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 			ev({"type": "ko_burst", "f": v})
 		clear_inventory(v)
 		set_weapon(v, "")
+		rules.on_down(v, false)                  # Capture the Flag: the flag drops where they fell
 		if attacker != null and attacker != v:
 			add_ko(attacker, v)
 		else:

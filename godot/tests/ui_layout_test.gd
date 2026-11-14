@@ -632,7 +632,7 @@ func _logic() -> void:
 		check(w.mode_short(m) != "" and w.mode_short(m).length() <= 46, "%s short card line is short (%s)" % [m, w.mode_short(m)])
 		check(w.mode_long(m) != "", "%s has a detail text" % m)
 	check(w._dyn_bs.size() == Dynamics.KINDS.size() and w.pages[1].has_node("Floor") and not w.pages[0].has_node("Floor"), "Moving floor is a labelled row on the Arena page")
-	for m: String in ["classic", "pillars"]:
+	for m: String in ["classic", "lowg"]:
 		w.set_mode(m)
 		check(w.detail_l.text.contains(w.mode_long(m)), "the detail line shows the full text of %s" % m)
 	w.set_mode("classic")
@@ -663,7 +663,6 @@ func _logic() -> void:
 	var cm: Array = w.maps_for("chaos")
 	check(cm.size() >= 4 and cm.all(func(id: String) -> bool: return ModeRules.CHAOS_MAPS.has(id)) and cm.has(w.map_id), "Chaos on the big arenas only (%s)" % [cm])
 	check(w.maps_for("sudden").has("shrink") and w.maps_for("sudden").has("arena"), "Sudden Death on every arena incl. the shrinking ones")
-	check(w.maps_for("pillars") == ["pillars", "pillars2"] and w.map_name("pillars2") == "Lava Pillars", "Pillars offers Pillars and Lava Pillars (%s)" % [w.maps_for("pillars")])
 	w.set_mode("sandbox")                # Sandbox: your own arena only, opened in build mode by Start (scripts/main.gd)
 	check(w.maps_for("sandbox") == ["custom"] and w.map_id == "custom" and w._map_bs.size() == 1, "Sandbox builds on its own arena (%s)" % [w.maps_for("sandbox")])
 	check(w._mode_bs["sandbox"].get_global_rect().size.y >= 60.0 or not w._mode_bs["sandbox"].is_visible_in_tree(), "Sandbox card is tappable")

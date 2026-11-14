@@ -16,8 +16,7 @@ extends SceneTree
 ## account-guest (Pick a name) / account-signed (signed in, saved to the cloud 2 min ago) / account-signed-np (a name with no password yet); --lang ja|fr,
 ## perf (match with the performance readout on, top-left), soak (a real 20 s soak run and its summary card),
 ## killcam (a fast K.O. by the player, mid replay in slow-mo). Used by tools/shoot-godot-ui.sh.
-## modes2-mode (the game type page scrolled to the end, Pillars picked), modes2-pillars (a Pillars match across the ring
-## after the first weapon handout), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
+## modes2-mode (the game type page scrolled to the end, Moon Drift picked), modes2-lowg (Moon Drift on Crater Dome, the player high in the air),
 ## modes2-practice (the Practice Range: the player with a rack AK shooting down the range at the dummies).
 ## recover (touch layer on, a rocket launcher with its burst pips, knocked into the air and mid "boing burst": the
 ## RECOVER context button refilling, logic/skills.gd).
@@ -139,8 +138,8 @@ func _start() -> void:
 	if shot == "modes2-mode": shot = "newmodes-mode2"
 	if shot.begins_with("title") or shot.begins_with("wizard") or shot.begins_with("newmodes"):
 		if shot.begins_with("wizard") or shot.begins_with("newmodes"):   # a fixed setup so the shots are comparable
-			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm", "newmodes-mode2": "pillars", "wizard-team": "tdm"}.get(shot, "classic")
-			for kv in [["offline_map", "pillars" if md == "pillars" else "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
+			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm", "newmodes-mode2": "lowg", "wizard-team": "tdm"}.get(shot, "classic")
+			for kv in [["offline_map", "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
 				_settings().set_value(kv[0], kv[1])
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
@@ -177,12 +176,11 @@ func _start() -> void:
 	if shot == "teams":                                  # Team Deathmatch: the TeamBoard (colour chips, YOU tag)
 		world.mode_id = "tdm"
 		world.dyn_choice = "off"
-	if shot.begins_with("hud-"):                         # touch HUD per mode: hud-classic / hud-tdm / hud-chaos / hud-pillars
+	if shot.begins_with("hud-"):                         # touch HUD per mode: hud-classic / hud-tdm / hud-chaos / hud-lowg
 		world.mode_id = shot.substr(4)
-		if world.mode_id == "pillars": world.map_id = "pillars"
 		world.dyn_choice = "off"
-	if shot.begins_with("modes2-"):                      # Pillars / Moon Drift / Practice Range
-		var mm: Array = {"modes2-pillars": ["pillars", "pillars"], "modes2-lowg": ["lowg", "craterdome"], "modes2-practice": ["practice", "practice"]}[shot]
+	if shot.begins_with("modes2-"):                      # Moon Drift / Practice Range
+		var mm: Array = {"modes2-lowg": ["lowg", "craterdome"], "modes2-practice": ["practice", "practice"]}[shot]
 		world.mode_id = mm[0]; world.map_id = mm[1]
 		world.dyn_choice = "off"
 	world.auto_run = false
@@ -487,7 +485,7 @@ func _spectate_frame(sim: MatchSim, p: FighterState) -> void:
 		process_frame.disconnect(_frame)
 		_save()
 
-## The new modes: Pillars looks across the ring at the next pillars, Moon Drift jumps and saves high in the air, the
+## The new modes: Moon Drift jumps and saves high in the air, the
 ## Practice Range takes an AK and shoots down the range.
 func _modes2_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
 	if i == 2: world.hud.last_touch = false
@@ -495,10 +493,6 @@ func _modes2_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
 	var fire := false
 	var done := false
 	match shot:
-		"modes2-pillars":
-			world.cam.yaw = lerp_angle(world.cam.yaw, atan2(-p.phys.px, -p.phys.pz) + 0.55, 0.1)
-			world.cam.pitch = -0.08
-			done = i == 330
 		"modes2-lowg":
 			if i == 2: sim.combat.pickup(p, "shotgun")
 			var tg := _nearest(p)
