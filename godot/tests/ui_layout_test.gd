@@ -49,7 +49,7 @@ const CASES := [
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
 const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
 	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
-	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "lobby", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1", "s2", "goals",
+	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "host-coop", "lobby", "lobby-coop", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1", "s2", "goals",
 	"a-guest", "a-login", "a-reset", "a-code", "a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict",
 	"dlc-locked", "dlc-owned", "dlc-pre", "dlc-code", "dlc-arc-class", "dlc-arc-diff"]
 const SIGNED := ["a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict"]
@@ -78,7 +78,7 @@ const OB := "Safe/Col/Body/Online/Box/"
 const ONLINE := [OB + "Head/Back", OB + "Head/Title", OB + "Head/Name", OB + "Main/Rooms/Head/Refresh", OB + "Main/Rooms/Scroll",
 	OB + "Main/Side/CodeL", OB + "Main/Side/CodeRow/Room", OB + "Main/Side/CodeRow/Join", OB + "Main/Side/Host", OB + "Main/Side/Account",
 	OB + "Foot/Status", OB + "Foot/Roster"]
-## mock public rooms: a normal one, one playing, a full one, another game version, and enough to scroll
+## mock public rooms: a normal one, one playing, a full one, another game version, an Arcade co-op one, and enough to scroll
 const MOCK_ROOMS := [
 	{"id": "r1", "name": "Wobble Party", "host": "Alice", "mode": "classic", "modeName": "Classic", "map": "Arena", "n": 3, "max": 8, "started": false, "build": "b77.0"},
 	{"id": "r2", "name": "Knockout Kings with a very long room name", "host": "Bob", "mode": "t2", "modeName": "2 vs 2", "map": "Bouncy Rooftop", "n": 2, "max": 4, "started": true, "build": "b77.0"},
@@ -86,22 +86,29 @@ const MOCK_ROOMS := [
 	{"id": "r4", "name": "Old Version Room", "host": "Dan", "mode": "classic", "modeName": "Classic", "map": "Volcano", "n": 1, "max": 6, "started": false, "build": "b70.2"},
 	{"id": "r5", "name": "Late Night", "host": "Eve", "mode": "sudden", "modeName": "Sudden Death", "map": "Candy", "n": 1, "max": 8, "started": false, "build": ""},
 	{"id": "r6", "name": "Casual", "host": "Finn", "mode": "classic", "modeName": "Classic", "map": "Dojo", "n": 1, "max": 8, "started": false, "build": "b77.0"},
+	## an Arcade co-op room: the row says its kind (a PvP room list and the room-kind fields, docs/PROTOCOL.md 1.1)
+	{"id": "r7", "name": "Co-op Run", "host": "Gus", "mode": "construction", "modeName": "Arcade co-op", "kind": "arcade-coop",
+		"kindName": "Arcade co-op", "arcade": true, "map": "Building Site", "n": 1, "max": 2, "started": false, "build": "b77.0"},
 ]
 const HB := "HostSheet/Center/Card/Box/"
 ## host a room: tabs (Room / Mode / Rules), the arena hint, Cancel / Create room
 const HOST_FRAME := [HB + "Head/Title", HB + "Head/Tabs/Room", HB + "Head/Tabs/Mode", HB + "Head/Tabs/Rules", HB + "Buttons/Cancel", HB + "Buttons/Create"]
-## the three tabs: Room (name, who can join, seats, bots), Mode (game type, K.O. limit, floor), Rules (health, gravity,
-## ammo, knockback, crates)
+## the three tabs: Room (name, room type, who can join, seats, bots), Mode (game type, K.O. limit, floor), Rules (health,
+## gravity, ammo, knockback, crates)
 const HOST_TABS := {
-	"host": [HB + "Room/RoomName", HB + "Room/Vis/P0", HB + "Room/Vis/P1", HB + "Room/Max/P2", HB + "Room/Max/P8", HB + "Room/Bots/P0", HB + "Room/Bots/P7"],
+	"host": [HB + "Room/NameRow/RoomName", HB + "Room/NameRow/Pversus", HB + "Room/NameRow/Pcoop", HB + "Room/Vis/P0", HB + "Room/Vis/P1",
+		HB + "Room/Max/P2", HB + "Room/Max/P8", HB + "Room/Bots/P0", HB + "Room/Bots/P7"],
 	"host-mode": [HB + "Mode/Game/Prev", HB + "Mode/Game/Name", HB + "Mode/Game/Next", HB + "Mode/ModeHint", HB + "Mode/Lim/P0", HB + "Mode/Lim/P5",
 		HB + "Mode/Floor/Poff", HB + "Mode/Floor/Pdrift"],
 	"host-rules": [HB + "Rules/Hp/P100", HB + "Rules/Hp/P500", HB + "Rules/Pair/Grav/P0", HB + "Rules/Pair/Grav/P2", HB + "Rules/Pair/Inf/P0",
 		HB + "Rules/Pair/Inf/P1", HB + "Rules/Kb/P0", HB + "Rules/Kb/P4", HB + "Rules/Crate/Pslow", HB + "Rules/Crate/Pchaos"],
+	## an Arcade co-op room: the name + room type row, who can join (a co-op room can be public or private), no seats/bots
+	"host-coop": [HB + "Room/NameRow/RoomName", HB + "Room/NameRow/Pversus", HB + "Room/NameRow/Pcoop", HB + "Room/Vis/P0", HB + "Room/Vis/P1"],
 }
 const LB := "Lobby/Center/Card/Box/"
-## the lobby: room, code, players, info, Leave / Start
+## the lobby: room, code, players, info, Leave / Start (an Arcade co-op lobby adds Start with bot while it has one player)
 const LOBBY := [LB + "Title", LB + "Code", LB + "Players", LB + "Info", LB + "Rules", LB + "Buttons/Leave", LB + "Buttons/Start"]
+const LOBBY_COOP := [LB + "Title", LB + "Code", LB + "Players", LB + "Info", LB + "Rules", LB + "Buttons/Leave", LB + "Buttons/Start", LB + "Buttons/StartBot"]
 const W := "Safe/Wizard/"
 ## wizard frame: header, page, footer buttons (must not overlap each other)
 const WFRAME := [W + "Head/Title", W + "Head/Step", W + "Pages", W + "Foot/Back", W + "Foot/Steps", W + "Foot/Next"]
@@ -249,20 +256,44 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 			main.set_host_mode("chaos")            # the longest blurb, app-only
 			main.show_host_tab("Mode")
 		elif scr == "host-rules": main.show_host_tab("Rules")
-	elif scr == "lobby":
+		elif scr == "host-coop":
+			# Play online > Host a room > Room type: Arcade co-op (DLC owners only). The room type hides seats/bots and
+			# the Mode/Rules tabs; the lobby then starts with two players or with one and the teammate bot.
+			var sv: Node = root.get_node("Save")
+			var was: bool = bool(sv.dlc.get("owned", false))
+			sv.dlc["owned"] = true
+			main.show_host(false)
+			main.show_host(true)
+			main.set_host_type("coop")
+			sv.dlc["owned"] = was
+	elif scr == "lobby" or scr == "lobby-coop":
 		main.show_tab(true)
 		main.show_lobby(true)
-		main.get_node(LB + "Code").text = "Room code ABCDE"
-		main.get_node(LB + "Info").text = "8 / 8 players · empty seats get bots"
-		var rl: Label = main.get_node(LB + "Rules")
-		rl.text = HostSession.rules_text({"want": "tdm", "mode": "classic", "lim": 30, "hp": 500, "grav": 1.5, "kb": 0.5, "crate": "chaos",
-			"inf": true, "dyn": "random", "map": "Bouncy Rooftop"})
-		rl.visible = true
-		for i in 8:
-			var pl := Label.new()
-			pl.text = "Wobbly name %d%s" % [i, "  (host)" if i == 0 else ""]
-			pl.add_theme_font_size_override("font_size", 20)
-			main.get_node(LB + "Players").add_child(pl)
+		if scr == "lobby-coop":
+			# an Arcade co-op lobby with one player: Start is disabled, Start with bot is there; the guest side has no
+			# Start at all (checked in _logic).
+			main.session = HostSession.new()
+			var hs: HostSession = main.session as HostSession
+			hs.arcade = true
+			hs.room_name = "Co-op run"
+			hs.room_code = "ABCDE"
+			hs.opt_max = ArcadeCoop.SEATS
+			hs.arcade_diff = "normal"
+			hs.roster = [{"id": 0, "name": "WobbleHost", "skin": "none", "hat": "none", "color": 0x39b5a8}]
+			main._fill_lobby()
+			main.session = null
+		else:
+			main.get_node(LB + "Code").text = "Room code ABCDE"
+			main.get_node(LB + "Info").text = "8 / 8 players · empty seats get bots"
+			var rl: Label = main.get_node(LB + "Rules")
+			rl.text = HostSession.rules_text({"want": "tdm", "mode": "classic", "lim": 30, "hp": 500, "grav": 1.5, "kb": 0.5, "crate": "chaos",
+				"inf": true, "dyn": "random", "map": "Bouncy Rooftop"})
+			rl.visible = true
+			for i in 8:
+				var pl := Label.new()
+				pl.text = "Wobbly name %d%s" % [i, "  (host)" if i == 0 else ""]
+				pl.add_theme_font_size_override("font_size", 20)
+				main.get_node(LB + "Players").add_child(pl)
 	elif wiz:
 		main.open_wizard(int(scr.substr(1)))
 	for i in 4:
@@ -303,7 +334,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 		inside = WFRAME.duplicate()
 		groups.append(WFRAME)
 	else:
-		var on_panel := scr in ["online", "lobby"] or scr.begins_with("rooms") or scr.begins_with("host")
+		var on_panel := scr in ["online"] or scr.begins_with("lobby") or scr.begins_with("rooms") or scr.begins_with("host")
 		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not ((on_panel and (b.ends_with("/Tip") or b.ends_with("/Build"))) or (b.ends_with("/Tip") and not main.get_node(b).visible)))
 		inside = blocks + (ONLINE if on_panel else HOME)
 		groups.append(blocks)
@@ -319,7 +350,13 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 			if win.x > win.y: _touch_sizes(main, hs, tag)
 			var card: Control = main.get_node("HostSheet/Center/Card")
 			check(card.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s host sheet min height %.0f fits %.0f" % [tag, card.get_combined_minimum_size().y, safe.size.y])
-		if scr == "lobby": inside = inside + LOBBY; groups.append(LOBBY)
+			if scr == "host-coop":   # the co-op room type hides the seats/bots rows and blocks the Mode / Rules tabs
+				check(not main.get_node(HB + "Room/Max").visible and not main.get_node(HB + "Room/Bots").visible, "%s a co-op room hides Seats and Bots" % tag)
+				check(main.get_node(HB + "Head/Tabs/Mode").disabled and main.get_node(HB + "Head/Tabs/Rules").disabled, "%s a co-op room disables the Mode / Rules tabs" % tag)
+				check(main._host["type"] == "coop", "%s the Create room sheet is set to Arcade co-op" % tag)
+		if scr == "lobby" or scr == "lobby-coop":
+			var lb: Array = LOBBY_COOP if scr == "lobby-coop" else LOBBY
+			inside = inside + lb; groups.append(lb)
 	var rects := {}
 	for p: String in inside:
 		var n: Control = main.get_node(p)
@@ -337,7 +374,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 	_labels_fit(main, tag)
 	var layer: Control = over if over != null else main.account.card if acct else main.locker if lock else main.wizard if wiz \
-		else main.get_node("HostSheet/Center/Card") if scr.begins_with("host") else main.get_node("Lobby/Center/Card") if scr == "lobby" else main.get_node("Safe/Col")
+		else main.get_node("HostSheet/Center/Card") if scr.begins_with("host") else main.get_node("Lobby/Center/Card") if scr.begins_with("lobby") else main.get_node("Safe/Col")
 	_congestion(main, layer, tag, k, win.x > win.y)
 	_bars(main, tag, scr)
 	if lock:
@@ -707,6 +744,7 @@ func _logic() -> void:
 	var sum := HostSession.rules_text({"want": "tdm", "mode": "classic", "lim": 5, "hp": 300, "grav": 0.5, "kb": 2.0, "crate": "chaos", "inf": true, "dyn": "quake", "map": "Arena"})
 	check(sum.begins_with("Classic · Arena · first to 5 · 300 HP · gravity 0.5x · knockback 2x · chaos crates · infinite ammo · floor Quake") \
 		and sum.contains("Team Deathmatch is app-only"), "lobby rules line: %s" % sum)
+	await _coop_flow(main)
 	# the title chip opens the Account sheet; Delete waits for the typed word
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT; ev.pressed = true
@@ -729,6 +767,102 @@ func _logic() -> void:
 	print("UI wizard logic checked")
 	vp.queue_free()
 	await process_frame
+
+## The online co-op flow (owner: co-op went from the Construction hub to the Online room browser): the Host sheet's
+## room type (Versus / Arcade co-op), the opts it builds from Settings arcade_diff / arcade_ff, and the lobby gating
+## (Start refused with one player, "Start with bot" starts that one plus the teammate bot, a guest cannot start).
+func _coop_flow(main: Control) -> void:
+	var sv: Node = root.get_node("Save")
+	var st: Node = root.get_node("Settings")
+	var was: bool = bool(sv.dlc.get("owned", false))
+	sv.dlc["owned"] = true
+	main.show_tab(true)
+	main.show_host(true)
+	var hb := "HostSheet/Center/Card/Box/"
+	check(main._host_bs.has("type_versus") and main._host_bs.has("type_coop"), "the Host sheet offers a room type (Versus / Arcade co-op)")
+	check(not main._host_bs["type_coop"].disabled, "an owner can pick Arcade co-op")
+	check(main._host["type"] == "versus" and main.get_node(hb + "Room/Max").visible, "Versus is the default: seats and bots show")
+	main.set_host_type("coop")
+	check(main._host["type"] == "coop", "the room type is Arcade co-op")
+	check(not main.get_node(hb + "Room/Max").visible and not main.get_node(hb + "Room/Bots").visible, "a co-op room hides Seats and Bots (two seats, teammate bot)")
+	check(main.get_node(hb + "Head/Tabs/Mode").disabled and main.get_node(hb + "Head/Tabs/Rules").disabled, "a co-op room disables the Mode / Rules tabs")
+	check((main.get_node(hb + "Hint") as Label).text.contains("Arcade co-op"), "the sheet says it is an Arcade co-op room")
+	# the room opts: the same `arcade` opts as before, from Settings arcade_diff / arcade_ff
+	st.set_value("arcade_diff", "nightmare"); st.set_value("arcade_ff", true)
+	main._ui["rname"].text = "Test co-op"
+	var o: Dictionary = main.coop_host_opts()
+	check(o["arcade"] == true and int(o["max"]) == ArcadeCoop.SEATS and o["mode"] == "construction" and str(o["map"]) == ArcadeCoop.site_map(), "co-op room opts: arcade, 2 seats, Construction, generated site (%s)" % [o])
+	check(str(o["arcade_diff"]) == "nightmare" and o["arcade_ff"] == true, "the room reads Settings arcade_diff / arcade_ff")
+	check(str(o["name"]) == "Test co-op", "the room name comes from the sheet")
+	check(str(main.coop_host_info()["name"]) != "" and str(main.coop_host_info()["cls"]) != "", "the host player info is built")
+	main.set_host_type("versus")
+	check(main._host["type"] == "versus" and main.get_node(hb + "Room/Max").visible, "Versus restores Seats and Bots")
+	# only DLC owners can open one
+	sv.dlc["owned"] = false
+	main.set_host_type("coop")
+	check(main._host["type"] == "versus" and main._host_bs["type_coop"].disabled, "a non-owner cannot pick Arcade co-op")
+	sv.dlc["owned"] = was
+	main.show_host(false)
+	# the lobby: one player -> Start disabled, Start with bot offered, a plain Start is refused
+	var hs := HostSession.new()
+	hs.arcade = true
+	hs.room_name = "Co-op run"
+	hs.room_code = "ABCDE"
+	hs.opt_max = ArcadeCoop.SEATS
+	hs.arcade_diff = "normal"
+	hs.roster = [{"id": 0, "name": "WobbleHost", "skin": "none", "hat": "none", "color": 0x39b5a8}]
+	main.session = hs
+	main.show_lobby(true)
+	main._fill_lobby()
+	var start_b: Button = main.get_node(LB + "Buttons/Start")
+	var bot_b: Button = main.get_node(LB + "Buttons/StartBot")
+	check(start_b.visible and start_b.disabled, "co-op lobby: Start is disabled with one player")
+	check(bot_b.visible, "co-op lobby: Start with bot is offered with one player")
+	check((main.get_node(LB + "Info") as Label).text.contains("waiting for a friend"), "co-op lobby: the info says a friend is needed (%s)" % (main.get_node(LB + "Info") as Label).text)
+	check((main.get_node(LB + "Code") as Label).text.contains("Arcade co-op"), "co-op lobby: the code line says Arcade co-op")
+	main._lobby_start(false)
+	check(not hs.started and main.status.text.contains("two players"), "a one-player Start is refused (%s)" % main.status.text)
+	hs.phase = GuestSession.Phase.LOBBY
+	main._lobby_start(true)
+	check(hs.started and hs.start_msg.get("arc") is Dictionary and not (hs.start_msg["arc"] as Dictionary).is_empty(), "Start with bot starts the run")
+	var kinds: Array = []
+	for x: Dictionary in hs.start_msg.get("slots", []): kinds.append(str(x.get("kind", "")))
+	check(kinds.size() >= 2 and kinds[0] == "human" and kinds[1] == "bot", "Start with bot: seat 0 is the player, seat 1 the teammate bot (%s)" % [kinds])
+	main.session = null
+	main.show_lobby(false)
+	# two players -> Start is possible, Start with bot goes away
+	var hs2 := HostSession.new()
+	hs2.arcade = true
+	hs2.room_name = "Co-op run"
+	hs2.room_code = "ABCDE"
+	hs2.opt_max = ArcadeCoop.SEATS
+	hs2.roster = [{"id": 0, "name": "WobbleHost", "skin": "none", "hat": "none", "color": 0x39b5a8},
+		{"id": 1, "name": "Friend", "skin": "none", "hat": "none", "color": 0x39b5a8, "gd": 1}]
+	main.session = hs2
+	main._fill_lobby()
+	check(not (main.get_node(LB + "Buttons/Start") as Button).disabled, "co-op lobby: Start is enabled with two players")
+	check(not (main.get_node(LB + "Buttons/StartBot") as Button).visible, "co-op lobby: Start with bot is gone with two players")
+	check((main.get_node(LB + "Info") as Label).text.contains("ready to start"), "co-op lobby: ready to start")
+	main.session = null
+	# a guest waits: no Start at all
+	var gs := GuestSession.new()
+	gs.room_name = "Co-op run"
+	gs.room_code = "ABCDE"
+	gs.slot = 1
+	gs.roster = [{"id": 0, "name": "WobbleHost", "skin": "none", "hat": "none", "color": 0x39b5a8},
+		{"id": 1, "name": "Guest", "skin": "none", "hat": "none", "color": 0x39b5a8}]
+	gs.lobby = {"max": ArcadeCoop.SEATS, "modeName": HostSession.ARCADE_LABEL, "bots": true}
+	main.session = gs
+	main._fill_lobby()
+	check(not (main.get_node(LB + "Buttons/Start") as Button).visible and not (main.get_node(LB + "Buttons/StartBot") as Button).visible, "a co-op guest cannot start")
+	check((main.get_node(LB + "Info") as Label).text.contains("waiting for the host"), "a co-op guest waits for the host")
+	main.session = null
+	main.show_lobby(false)
+	# the hub's "Play co-op" card is gone (Arcade selection is solo only now)
+	check(not main.hub.has_signal("arcade_coop_requested"), "the hub has no Play co-op signal")
+	check(not main.hub.has_method("arcade_coop"), "the hub has no Play co-op entry point")
+	check(main.hub.get("arc_coop") == null, "the hub has no Play co-op button")
+	st.set_value("arcade_diff", "normal"); st.set_value("arcade_ff", false)
 
 func _mouse(vp: SubViewport, pos: Vector2, pressed: Variant, device := 0) -> void:
 	var e: InputEvent
@@ -907,6 +1041,10 @@ func _rooms_state(b: Control, scr: String, tag: String) -> void:
 			check(b.rows_by_id["r4"].disabled and b.rows_by_id["r4"].get_node("Row/Info/Sub").text.contains("Different game version"), "%s another version is greyed out and says why" % tag)
 			check(b.rows_by_id["r2"].get_node("Row/Players").text == "2/4", "%s players n/max" % tag)
 			check(b.rows_by_id["r2"].get_node("Row/Info/Sub").text.contains("Playing now") and b.rows_by_id["r1"].get_node("Row/Info/Sub").text.contains("In the lobby"), "%s started / lobby shown" % tag)
+			# an Arcade co-op room says its kind clearly, from the room's kind fields (docs/PROTOCOL.md 1.1)
+			check(b.rows_by_id["r7"].get_meta("kind") == "arcade-coop", "%s the Arcade co-op room keeps its kind on the row" % tag)
+			check(b.rows_by_id["r7"].get_node("Row/Info/Sub").text.contains("Arcade co-op"), "%s the room list says Arcade co-op (%s)" % [tag, b.rows_by_id["r7"].get_node("Row/Info/Sub").text])
+			check(not b.rows_by_id["r7"].disabled, "%s a 1/2 Arcade co-op room can be joined" % tag)
 		"rooms-empty":
 			check(b.state == "empty" and b.msg_l.text.begins_with("No rooms yet") and b.action_b.text == "Host a room", "%s empty state (%s)" % [tag, b.msg_l.text if b.msg_l else ""])
 		"rooms-error":

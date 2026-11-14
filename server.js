@@ -98,6 +98,15 @@ const server = http.createServer((req, res) => {
     return;
   }
   if (accounts.handle(req, res, ipOf(req))) return;
+  /* Unknown /api/* routes never fall through to the static-file handler: an API client must get JSON, so the Godot app
+     can tell "this server build has no such endpoint" apart from "the game file is missing" (docs/PROTOCOL.md 4.1).
+     accounts.handle already answers its own routes (including 404 for unknown API paths); this guard covers an older or
+     partial accounts.js and keeps every /api/* reply JSON. The rank endpoints themselves are untouched. */
+  if (url.startsWith('/api/')) {
+    res.writeHead(404, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'access-control-allow-origin': '*' });
+    res.end(JSON.stringify({ ok: false, err: 'none', msg: 'Not found.' }));
+    return;
+  }
   if (url === '/health') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
     res.end(JSON.stringify({ ok: true, rooms: rooms.size, players: totalConns, accounts: accounts.kind, saved: accounts.kind === 'upstash' }));

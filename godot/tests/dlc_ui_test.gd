@@ -171,6 +171,11 @@ func _flow() -> void:
 	check(hub != null and not hub.visible, "the hub waits behind the banner")
 	main.open_hub()
 	check(hub.visible, "the hub opens")
+	# co-op moved to the online room browser (Play online > Host a room > Room type: Arcade co-op): the hub has no co-op
+	# entry point and the Arcade selection stays solo-only
+	check(not hub.has_signal("arcade_coop_requested") and not hub.has_method("arcade_coop"), "the hub has no Play co-op entry")
+	check(hub.get("arc_coop") == null and hub.arc_foot.get_node_or_null("ArcadeCoop") == null, "no Play co-op button on the Arcade steps")
+	check(not main.has_method("play_arcade_coop"), "the hub's old co-op flow is gone from main")
 	check(main.go_back() and not hub.visible, "go_back() closes the hub")
 	# the DON'T ENTER wipe: the title turns into the Construction title, whose Play opens the hub
 	main.set_dlc(true, false)

@@ -107,7 +107,9 @@ func api_base() -> String:
 
 # ============================== HTTP ==============================
 
-## One REST call; `cb` gets {ok, status, err?, msg?, ...}. No network -> {ok: false, err: "net"}.
+## One REST call; `cb` gets {ok, status, err?, msg?, json, text?, ...}. No network -> {ok: false, err: "net"}.
+## `json` says whether the body was a JSON object; `text` keeps a short plain-text body (an old server's static-file
+## "not found" page is the leaderboard path's whole problem: `rank_failure()` below turns it into a clear message).
 func call_api(method: int, path: String, body: Variant, token: String, cb: Callable) -> void:
 	var h := HTTPRequest.new()
 	h.timeout = TIMEOUT
@@ -118,19 +120,22 @@ func call_api(method: int, path: String, body: Variant, token: String, cb: Calla
 		h.queue_free()
 		var r := {}
 		if result != HTTPRequest.RESULT_SUCCESS:
-			r = {"ok": false, "status": 0, "err": "net", "msg": "Couldn't reach the server. Check your internet and try again."}
+			r = {"ok": false, "status": 0, "err": "net", "json": false, "msg": "Couldn't reach the server. Check your internet and try again."}
 		else:
+			var txt := raw.get_string_from_utf8()
 			var js := JSON.new()
-			if js.parse(raw.get_string_from_utf8()) == OK and js.data is Dictionary: r = js.data
-			r = r.duplicate()
+			var parsed := js.parse(txt) == OK and js.data is Dictionary
+			if parsed: r = (js.data as Dictionary).duplicate(true)
 			r["status"] = code
+			r["json"] = parsed
+			if not parsed: r["text"] = txt.strip_edges().substr(0, 200)
 			if not r.has("ok"): r["ok"] = false
 			if not r["ok"] and not r.has("msg"): r["msg"] = tr("The server had a problem (%d). Try again in a moment.") % code
 		cb.call(r))
 	var err := h.request(api_base() + path, headers, method, "" if body == null else JSON.stringify(body))
 	if err != OK:
 		h.queue_free()
-		cb.call_deferred({"ok": false, "status": 0, "err": "net", "msg": "Couldn't reach the server. Check your internet and try again."})
+		cb.call_deferred({"ok": false, "status": 0, "err": "net", "json": false, "msg": "Couldn't reach the server. Check your internet and try again."})
 
 ## (`done` is emitted deferred: a call that ends at once still reaches a caller that awaits it right after calling.)
 func _finish(op: String, ok: bool, msg: String) -> void:
@@ -245,6 +250,12 @@ func delete_account(password: String) -> void:
 # ============================== ranking (docs/PROTOCOL.md 4.1) ==============================
 
 const RANK_BOARDS := ["kos", "wins", "arcade"]
+## A server build that predates the leaderboard answers /api/rank with a 404: the new server answers JSON
+## {ok:false, err:"none", msg:"Not found."}; an older one falls through to its static-file handler and answers the
+## plain text "not found". Either way the player must read what is really wrong, never the raw text.
+const RANK_UNSUPPORTED_MSG := "This server is running an older build without leaderboards. Update the server to enable rankings."
+const RANK_OFFLINE_MSG := "Couldn't reach the leaderboard server. Check your internet and try again."
+const RANK_ERROR_MSG := "Couldn't load the leaderboard. Try again in a moment."
 
 ## Kids mode is not ranked (Settings "kids_mode": assist mode, half coins, no leaderboard). Static so a sheet or a test
 ## can ask without an AccountApi instance; read on every call, so flipping the setting applies at once.
@@ -267,6 +278,58 @@ func rank_block_reason() -> String:
 	if kids_mode(): return "Kids mode is on: scores are not sent to the leaderboard."
 	return ""
 
+## Classify a failed ranking reply for the UI. Returns {kind, msg, retry}:
+##   unsupported  the server build has no /api/rank (404, JSON or a plain "not found") -> update the server
+##   offline      no network / no answer -> retry
+##   auth         the login is no longer valid -> sign in again
+##   error        anything else (a 500, a 400, an unreadable reply) -> retry
+## `{}` for a reply that is ok or is not a ranking reply at all. Never surfaces a raw server string like "Not found.".
+static func rank_failure(r: Dictionary) -> Dictionary:
+	if bool(r.get("ok", false)): return {}
+	var status := int(r.get("status", 0))
+	var err := str(r.get("err", ""))
+	var parsed := bool(r.get("json", true))
+	var text := str(r.get("text", "")).strip_edges().to_lower()
+	if status == 404 or (not parsed and (text == "not found" or text == "not found.")):
+		return {"kind": "unsupported", "msg": RANK_UNSUPPORTED_MSG, "retry": true}
+	if status == 401 or err == "auth":
+		return {"kind": "auth", "msg": "Sign in on the Account screen to submit and see your rank.", "retry": true}
+	if err == "net" or status == 0:
+		return {"kind": "offline", "msg": RANK_OFFLINE_MSG, "retry": true}
+	return {"kind": "error", "msg": str(r.get("msg", RANK_ERROR_MSG)), "retry": true}
+
+## The lifetime totals a leaderboard submit sends. ONE helper for both callers: the automatic submit after a match
+## result (world/world.gd) and the RankingSheet's "Sync my score" button, so a score missed on an older build is
+## sent exactly like a fresh one. `profile` is the Save autoload (or a test profile with `stats` / `dlc`).
+static func rank_stats(profile: Node) -> Dictionary:
+	var out := {}
+	if profile == null: return out
+	var st: Variant = profile.get("stats")
+	if st is Dictionary:
+		out["kos"] = maxi(0, int((st as Dictionary).get("kos", 0)))
+		out["wins"] = maxi(0, int((st as Dictionary).get("wins", 0)))
+		out["matches"] = maxi(0, int((st as Dictionary).get("matches", 0)))
+	out.merge(rank_arcade_best(profile), true)
+	return out
+
+## {arcade_best, arcade_diff} for the furthest Arcade stage across the difficulties, weighted like the server's board
+## (easy x1, normal x2, nightmare x3); {} when the player never cleared one. Reads Save.dlc (docs/PROTOCOL.md 4.1).
+static func rank_arcade_best(profile: Node) -> Dictionary:
+	if profile == null: return {}
+	var dlc: Variant = profile.get("dlc")
+	if not (dlc is Dictionary): return {}
+	var best: Variant = (dlc as Dictionary).get("arcade_best")
+	if not (best is Dictionary): return {}
+	var weight := {"easy": 1, "normal": 2, "nightmare": 3}
+	var stage := 0
+	var diff := ""
+	var top := 0
+	for d: String in weight:
+		var n := int((best as Dictionary).get(d, 0))
+		if n > 0 and n * int(weight[d]) > top:
+			top = n * int(weight[d]); stage = n; diff = d
+	return {"arcade_best": stage, "arcade_diff": diff} if stage > 0 else {}
+
 ## GET /api/rank?board=kos|wins|arcade&limit=N: cb({ok, board, entries: [{rank, name, score, updated, me?}], you?}).
 ## Guests may read a board; a signed-in read also gets `you`.
 func fetch_rank(board: String, cb: Callable, limit: int = 20) -> void:
@@ -276,16 +339,20 @@ func fetch_rank(board: String, cb: Callable, limit: int = 20) -> void:
 			if cb.is_valid(): cb.call(r))
 
 ## POST /api/rank: this account's lifetime bests (K.O.s, wins, matches, Arcade best stage + difficulty). The server keeps
-## the higher value, so calling it again with an older profile never lowers anybody. Returns through `cb`
-## ({ok, err?, board, entries, you}); a game loop never waits for it and a failure is never an error dialog.
-func submit_rank(stats: Dictionary, cb := Callable()) -> void:
+## the higher value, so calling it again with an older profile never lowers anybody. `p_board` (optional) picks the board
+## the reply's `entries` / `you` describe (default the server's kos), so a Sync from the Wins tab refreshes the right board.
+## Returns through `cb` ({ok, err?, board, entries, you}); a game loop never waits for it and a failure is never an error
+## dialog.
+func submit_rank(stats: Dictionary, cb := Callable(), p_board := "") -> void:
 	if kids_mode():
-		if cb.is_valid(): cb.call({"ok": false, "status": 0, "err": "kids", "msg": "Kids mode is on: scores are not sent to the leaderboard."})
+		if cb.is_valid(): cb.call({"ok": false, "status": 0, "err": "kids", "json": false, "msg": "Kids mode is on: scores are not sent to the leaderboard."})
 		return
 	if not signed_in():
-		if cb.is_valid(): cb.call({"ok": false, "status": 0, "err": "auth", "msg": "Sign in to appear on the leaderboard."})
+		if cb.is_valid(): cb.call({"ok": false, "status": 0, "err": "auth", "json": false, "msg": "Sign in to appear on the leaderboard."})
 		return
-	call_api(HTTPClient.METHOD_POST, "/api/rank", stats, str(getv("token")),
+	var body := stats.duplicate(true)
+	if p_board in RANK_BOARDS: body["board"] = p_board
+	call_api(HTTPClient.METHOD_POST, "/api/rank", body, str(getv("token")),
 		func(r: Dictionary) -> void:
 			if cb.is_valid(): cb.call(r))
 

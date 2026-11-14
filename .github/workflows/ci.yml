@@ -87,6 +87,8 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-settings
         if: matrix.shard == 'rest'
+      - run: npm run test:godot-reset
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-save
         if: matrix.shard == 'rest'
       - run: npm run test:godot-locker

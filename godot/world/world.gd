@@ -229,17 +229,22 @@ func load_map(id: String) -> void:
 	else:
 		var mode := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
 		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
-		# Destructible environment mode (docs/DESTRUCTIBLE.md): OFFLINE only, opt-in, never on the Practice Range, the
-		# Sandbox, Construction or the Arcade. Off means no solids, no meshes and no code path at all.
-		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode):
-			var want: bool = bool(Settings.get_value("destructible", false)) if destruct_choice == "" else destruct_choice == "on"
-			if want and Destruct.has_arena(id):      # only arenas with authored props: everywhere else the mode is a no-op
-				sim.destructible = true
-				sim.view_parent = map_node   # prop meshes are new children of the built map, never a rebuild of it
 		sim.dyn_choice = "off" if build_mode else (dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random")))
 		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
 			sim.dyn_choice = "random"            # Chaos: a random floor unless the player picked a moving one
 		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
+		# Destructible environment mode (docs/DESTRUCTIBLE.md): OFFLINE only, opt-in, never on the Practice Range, the
+		# Sandbox, Construction or the Arcade. Off means no analysis, no solids, no meshes, no RNG draws. On every real
+		# arena the breakables are picked from the map's own cover boxes, seeded per match (same seed = same set).
+		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode):
+			var want: bool = bool(Settings.get_value("destructible", false)) if destruct_choice == "" else destruct_choice == "on"
+			if want and Destruct.supported(id, map_node.map):
+				sim.destruct_seed = Dynamics.hash32(rng_seed, 17, 0, 0) if rng_seed > 0 else randi()
+				var break_plan := Destruct.plan_for(id, map_node.map, sim.destruct_seed, map_node.box_styles)
+				if not (break_plan.get("props", []) as Array).is_empty():
+					sim.destructible = true
+					sim.destruct_plan = break_plan
+					sim.view_parent = map_node   # the component meshes replace the merged map boxes at setup
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
@@ -448,7 +453,9 @@ func _drain_events() -> void:
 			"toast":
 				_toast(str(e["text"]))
 			"break":
-				_on_break(e)             # destructible props (docs/DESTRUCTIBLE.md): pooled debris + dust + a short shake
+				_on_break(e)             # destructible props: pooled debris + dust + a short shake
+			"prop_respawn":
+				_on_prop_respawn(e)      # a broken component materialised again: a small dust puff at its base
 			"match_end":
 				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
@@ -497,6 +504,13 @@ func _on_break(e: Dictionary) -> void:
 		if fx.lv >= 1:
 			fx.ring(base + Vector3(0, -0.01, 0), trim, maxf(w, float(e.get("d", 1.4))) * 0.9, 0.3, 0.5)
 		add_shake(clampf(0.11 - at.distance_to(player_pos()) * 0.006, 0.03, 0.1))
+
+## A breakable component respawned (docs/DESTRUCTIBLE.md): the mesh fades in itself (Destruct), this only adds the
+## cheap dust at its base so it does not pop silently. Presentation only, from the existing pooled particles.
+func _on_prop_respawn(e: Dictionary) -> void:
+	if fx:
+		var base := Vector3(float(e["x"]), float(e["y"]) + 0.08, float(e["z"]))
+		fx.dust(base, 1, 2.2)
 
 func _on_ko(e: Dictionary) -> void:
 	var k: FighterState = e.get("killer")
@@ -1043,33 +1057,18 @@ func _on_arcade_rank_won() -> void:
 ## After a match result or an Arcade clear, send this account's lifetime bests to the leaderboard: once per RANK_MIN_MS,
 ## only when signed in, never in Kids mode (which is not ranked), and never on the gameplay path (AccountApi.submit_rank
 ## is an HTTP request that reports back later; a failure is ignored and the next result tries again).
+## The payload comes from AccountApi.rank_stats(), the same helper the RankingSheet's "Sync my score" button uses, so a
+## score the player missed (e.g. an older build) can always be sent later with exactly the same totals.
 func _maybe_submit_rank() -> void:
 	if _rank_pending: return
 	var now := Time.get_ticks_msec()
 	if now - _rank_t < RANK_MIN_MS: return
 	_rank_t = now
 	if Save.cloud == null or not AccountApi.rank_allowed() or not Save.cloud.signed_in(): return
-	var st := {"kos": int(Save.stats.get("kos", 0)), "wins": int(Save.stats.get("wins", 0)), "matches": int(Save.stats.get("matches", 0))}
-	var arc := _arcade_best_stat()
-	if not arc.is_empty(): st.merge(arc, true)
+	var st := AccountApi.rank_stats(Save)
+	if st.is_empty(): return
 	_rank_pending = true
 	Save.cloud.submit_rank(st, func(_r: Dictionary) -> void: _rank_pending = false)
-
-## {arcade_best, arcade_diff} for the furthest Arcade stage across the difficulties, weighted like the server's board
-## (easy x1, normal x2, nightmare x3); {} when the player never cleared one.
-func _arcade_best_stat() -> Dictionary:
-	if not (Save.dlc is Dictionary): return {}
-	var best: Variant = (Save.dlc as Dictionary).get("arcade_best")
-	if not (best is Dictionary): return {}
-	var weight := {"easy": 1, "normal": 2, "nightmare": 3}
-	var stage := 0
-	var diff := ""
-	var top := 0
-	for d: String in weight:
-		var n := int((best as Dictionary).get(d, 0))
-		if n > 0 and n * int(weight[d]) > top:
-			top = n * int(weight[d]); stage = n; diff = d
-	return {"arcade_best": stage, "arcade_diff": diff} if stage > 0 else {}
 
 ## Watch the Arcade manager for a stage clear or the final victory (idempotent: called on every load_map).
 func _connect_rank_hooks() -> void:

@@ -2,8 +2,10 @@ class_name RoomBrowser
 extends VBoxContainer
 ## The public room list in the Play online panel (net/room_list.gd asks the relay, like the web game's Browse page):
 ## a header ("Public rooms", how many are open, Refresh) and a phone-style list (DragScroll) with a row per room:
-## name, host, game type, arena, players n / max, playing or in the lobby. Tap a row to join it. Rooms that cannot be
-## joined (another game version, full) are greyed out and say why. States: loading ("Looking for rooms…"), empty
+## name, host, kind or game type, arena, players n / max, playing or in the lobby. A room's kind (`kind`/`kindName`,
+## docs/PROTOCOL.md 1.1) is shown as it is: an Arcade co-op room reads "Arcade co-op" (in the accent colour) rather
+## than a vague Construction, and its row carries `kind` in its metadata for the join. Tap a row to join it. Rooms that
+## cannot be joined (another game version, full) are greyed out and say why. States: loading ("Looking for rooms…"), empty
 ## ("No rooms yet: host one" with a Host a room button), error (the server is unreachable, with Try again).
 ## Refreshes when it is shown and when Refresh is pressed. Private rooms never show here: "Join with code" is next to it.
 
@@ -154,13 +156,16 @@ func _show_message(text: String, action: String) -> void:
 			action_b.pressed.connect(refresh)
 		box.add_child(action_b)
 
-## One room: name and players on the first line, host · game type · arena · playing / in the lobby (or why it cannot
-## be joined) under it.
+## One room: name and players on the first line, host · kind / game type · arena · playing / in the lobby (or why it
+## cannot be joined) under it. The kind comes from the wire (`kind`, `kindName`): an Arcade co-op room says so clearly.
 func _row(r: Dictionary) -> Button:
 	var why := RoomList.blocked_reason(r)
+	var kind := str(r.get("kind", "pvp"))
+	var arcade_coop := kind == "arcade-coop"
 	var b := Button.new()
 	b.name = "Room_" + str(r["id"]).validate_node_name()
 	b.set_meta("room", str(r["id"]))
+	b.set_meta("kind", kind)
 	b.custom_minimum_size = Vector2(0, ROW_H)
 	b.disabled = why != ""
 	b.focus_mode = Control.FOCUS_ALL
@@ -194,7 +199,8 @@ func _row(r: Dictionary) -> Button:
 	v.add_child(n)
 	var parts: Array = []
 	if str(r["host"]) != "": parts.append(tr("Host: %s") % str(r["host"]))
-	if str(r["modeName"]) != "": parts.append(tr(str(r["modeName"])))
+	if arcade_coop: parts.append(tr(str(r.get("kindName", "Arcade co-op"))))   # the kind, clearly: "Arcade co-op"
+	elif str(r["modeName"]) != "": parts.append(tr(str(r["modeName"])))
 	if str(r["map"]) != "": parts.append(tr(str(r["map"])))
 	if why != "": parts = parts.slice(0, 1)              # a room you cannot join: who hosts it and why, nothing else to read
 	parts.append(tr(why) if why != "" else (tr("Playing now") if r["started"] else tr("In the lobby")))
@@ -205,7 +211,8 @@ func _row(r: Dictionary) -> Button:
 	s.add_theme_font_size_override("font_size", 15)
 	s.clip_text = true
 	s.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	if why != "": s.add_theme_color_override("font_color", UiTheme.ACCENT)
+	s.set_meta("user_text", true)   # the host name is player text: "…" when a long translation + name does not fit
+	if why != "" or arcade_coop: s.add_theme_color_override("font_color", UiTheme.ACCENT)   # Arcade co-op stands out from the PvP rows
 	v.add_child(s)
 	var c := Label.new()
 	c.name = "Players"

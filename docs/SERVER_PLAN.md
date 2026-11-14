@@ -72,6 +72,14 @@ What you need to supply: **a domain** (about US$10/yr, on Cloudflare DNS) and **
 ## 7. Operations
 
 - **Leaderboard storage:** `GET/POST /api/rank` (K.O.s / wins / Arcade boards) lives in the same store as accounts: each account record keeps its lifetime bests (`rk`, only ever raised) and each board has one `rank:<board>` key holding its top 100 entries. There is no separate service or extra env var; with the file store it is part of `db.json` (so the nightly copy backs it up), with Upstash it is in the same database. Reads are one store call; a submit is a few small get/set calls. See `docs/PROTOCOL.md` 4.1.
+- **Updating a host that predates leaderboards.** `GET/POST /api/rank`, the account ranking code in `accounts.js` and the
+  JSON 404 for unknown `/api/*` routes ship only with the current `server.js` + `accounts.js`. If the host still runs an
+  older build, the app's Leaderboard sheet correctly says *"This server is running an older build without leaderboards."*
+  and offers Retry — there is nothing to fix on the phone. Update the host (`git pull`, then the `up -d --build` command
+  from section 4 step 5; the volume and `db.json` are kept). Check it from outside:
+  `curl -s 'https://play.<your-domain>/api/rank?board=kos'` → `{"ok":true,...}` (content-type `application/json`) and
+  `curl -s 'https://play.<your-domain>/api/nope'` → `{"ok":false,"err":"none","msg":"Not found."}`; if the second one is
+  the plain text `not found`, the host is still on the old `server.js`. Nothing else in the game is affected by an old host.
 - **Health check:** `GET /health` returns `{"ok":true,"rooms":N,"players":N,"accounts":"file","saved":false}` (`accounts` is `upstash` when that is used). The compose healthcheck uses it, and `restart: unless-stopped` brings the container back after crashes and reboots.
 - **Uptime monitor:** UptimeRobot (free) or Better Stack: HTTPS check on `https://play.<your-domain>/health` every 5 min, alert to email/phone. Add a keyword check for `"ok":true`. Optionally Uptime Kuma on the NAS for LAN-side checks (it cannot see tunnel or ISP outages from inside).
 - **Backups of `db.json`:** it holds password hashes and cloud saves. Nightly copy off the volume, e.g. a Synology Task Scheduler / cron job:
