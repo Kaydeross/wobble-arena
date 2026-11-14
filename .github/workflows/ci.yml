@@ -35,6 +35,7 @@ jobs:
       - run: npm run test:godot-weapons
       - run: npm run test:godot
       - run: npm run test:godot-netguest
+      - run: npm run test:godot-host
       - run: npm run test:godot-music
       - run: npm run test:godot-quests
       - run: npm run test:godot-modes

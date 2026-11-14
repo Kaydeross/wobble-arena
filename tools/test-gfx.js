@@ -7,6 +7,7 @@
    Windowed runs also check tier parity (godot/tests/gfx_parity.gd): the same views of three maps rendered on MID and
    LOW must have a mean luminance within PARITY_TOL of each other (LOW used to differ by up to 40 %). */
 const { spawnSync } = require('child_process');
+require('./ensure-fresh')();
 const path = require('path');
 const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
