@@ -16,10 +16,17 @@ extends Node3D
 
 const SIM := 1.0 / 120.0
 const FEED_TIME := 5.0
+## Pre-match countdown: each 3 / 2 / 1 stays up (and locks the sim) this long, then "GO!" holds this long while the
+## fight already runs.
+const COUNT_NUM_TIME := 0.75
+const COUNT_GO_TIME := 0.85
 
 @export var map_id := "arena"
 ## false = the sim only advances when tick()/sim_step() is called (headless tests)
 @export var auto_run := true
+## Tests only: run the pre-match countdown in headless runs too (normal builds never show it there, so the headless
+## suites that step the world expect the fight to start at once).
+@export var countdown_force := false
 @export var bot_count := 3
 @export var player_class := ""     ## "" = Settings "class"
 @export var rng_seed := 0          ## 0 = random
@@ -94,10 +101,15 @@ var _spect_jump := false
 var _sfx_g := true
 var _sfx_vy := 0.0
 var _sfx_step := 0.0
-## Pre-match countdown ticks left (-1 = finished) and seconds to the next one. Presentation only: the sim is not
-## frozen by it, so it can never change the match.
+## Pre-match countdown state: `_count_n` is 3/2/1 while locked, 0 for the "GO!" flash (the lock is already over), and
+## -1 once it is gone. `_count_t` / `_count_dur` are the time into the current phase and its length. While `_count_n`
+## is > 0 the sim does not step at all (see tick), so neither the player nor the bots can move.
 var _count_n := -1
 var _count_t := 0.0
+var _count_dur := 0.0
+var _count_root: Control           ## full-screen overlay under the HUD: the big number + "Get ready"
+var _count_big: Label
+var _count_small: Label
 ## Kill cam (world/kill_cam.gd): a short side-on slow-mo replay after a fast K.O. you score. Offline only, Settings
 ## `kill_cam` (default on), not in team modes, not while spectating or once the match is over; a tap skips it.
 var kill_cam := KillCam.new()
@@ -255,7 +267,8 @@ func load_map(id: String) -> void:
 	feed.clear()
 	acc = 0.0
 	_sfx_g = true; _sfx_vy = 0.0; _sfx_step = 0.0
-	_count_n = 3; _count_t = 0.35
+	_count_n = -1; _count_t = 0.0; _count_dur = 0.0
+	_start_countdown()
 	hud.bind(self)
 	_setup_build()
 	if arcade != null: arcade.stage_ready(self)           # Arcade: the run strip and the stage's intro card
@@ -314,23 +327,26 @@ func tick(delta: float) -> void:
 		return
 	var finished := _results != null and session == null     # offline results panel up: finishMatch left the match
 	if (not paused or net_match != null) and not finished:      # online the match keeps running behind the menu
+		var locked := false
 		if not paused:
+			_step_countdown(dt)              # advances the 3-2-1 (and ends the lock on the GO frame)
+			locked = countdown_locked()
 			var st := input.state
 			var look := st.take_look()
-			cam.add_look(look)
+			cam.add_look(look)               # look is presentation: it stays live during the countdown
 			if spectating == null:          # the auto-recentre follows the player's own walk, not a spectated fighter's
 				var p := sim.player.phys
 				cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
 		cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
-		acc += minf(dt, 0.1)
-		if not paused: Save.add_play_time(dt)
-		while acc >= SIM:
-			sim_step(SIM)
-			acc -= SIM
+		if not locked:                       # the countdown freezes the sim: no acc, no sim_step, no catch-up on GO
+			acc += minf(dt, 0.1)
+			if not paused: Save.add_play_time(dt)
+			while acc >= SIM:
+				sim_step(SIM)
+				acc -= SIM
 	present(dt if (not paused or net_match != null) else 0.0)
 	_update_spectate()
 	_update_hud(delta)
-	_update_countdown(delta)
 	if kill_cam_enabled() and not paused and not finished:
 		kill_cam.record(dt)
 		if kill_cam.due():
@@ -492,21 +508,117 @@ func _audio_motion(dt: float) -> void:
 	_sfx_g = g
 	_sfx_vy = p.vy
 
-## Pre-match 3-2-1: a countdown tick and a banner for each number, then "GO!". Presentation only — the sim already
-## runs, so this cannot gate the match (and tests that step the world by hand see the same sim with or without it).
-func _update_countdown(dt: float) -> void:
+# ============================== pre-match countdown ==============================
+
+## Offline local matches get the 3-2-1. Online has the room's own start, the Arcade already has its stage intro card,
+## a soak run is a benchmark, the arena builder is not a match, and headless suites step the world by hand and expect
+## the fight at once. Tool and screenshot runs (`--script`) are driven by hand too, so only a real game launch shows the
+## countdown; countdown_force = true overrides that for the one headless test that checks it.
+func _countdown_wanted() -> bool:
+	if session != null or arcade != null or soak_duration > 0.0 or build_mode: return false
+	if countdown_force: return true
+	if DisplayServer.get_name() == "headless": return false
+	for a: String in OS.get_cmdline_args():
+		if a == "--script" or a.begins_with("--script="): return false
+	return true
+
+## Start (or skip) the countdown for a freshly loaded map. Called from load_map after the accumulator is cleared.
+func _start_countdown() -> void:
+	_count_n = -1
+	_count_t = 0.0
+	_count_dur = 0.0
+	if _count_root != null:
+		_count_root.visible = false
+	if not _countdown_wanted(): return
+	_count_n = 3
+	_count_dur = COUNT_NUM_TIME
+	Sfx.play("countdown", 0.8)
+	_update_count_visual()
+
+## True while the countdown holds the match (the three numbers; the GO flash does not lock anything).
+func countdown_locked() -> bool:
+	return _count_n > 0
+
+## 3 / 2 / 1 while counting, 0 during the "GO!" flash, -1 when there is no countdown (tests read this).
+func countdown_number() -> int:
+	return _count_n
+
+## Advance the countdown before the sim block. On the frame the last number expires `_count_n` becomes 0 and the lock
+## is released, so the fight's first sim_step runs on the very frame "GO!" appears.
+func _step_countdown(dt: float) -> void:
 	if _count_n < 0 or paused or _results != null: return
-	_count_t -= dt
-	if _count_t > 0.0: return
-	_count_t = 0.7
+	_count_t += dt
 	if _count_n > 0:
-		Sfx.play("countdown", 0.9)
-		_show_banner(str(_count_n), "", true, 0.55)
-		_count_n -= 1
-	else:
-		Sfx.play("countdown", 1.0)
-		_show_banner("GO!", "", true, 0.5)
+		if _count_t >= _count_dur:
+			if _count_n > 1:
+				_count_n -= 1
+				_count_t = 0.0
+				Sfx.play("countdown", 0.9)
+			else:
+				_count_n = 0                     # GO! — the sim is already unlocked this frame
+				_count_t = 0.0
+				_count_dur = COUNT_GO_TIME
+				Sfx.play("countdown", 1.0)
+	elif _count_t >= _count_dur:
 		_count_n = -1
+		_count_root.visible = false
+		return
+	_update_count_visual()
+
+## Draw the number (and the small line above it): scales in, holds, fades out; "GO!" flashes gold and holds brighter.
+## Written every frame by hand (no Tween) so a test that steps tick() by hand sees it, and resize / safe area safe.
+func _update_count_visual() -> void:
+	if _count_root == null: return
+	_count_root.visible = _count_n >= 0
+	if _count_n < 0: return
+	var vs := get_viewport().get_visible_rect().size
+	var ins := SafeArea.insets(get_viewport())
+	var cx := (float(ins[0]) + vs.x - float(ins[2])) * 0.5
+	var cy := float(ins[1]) + (vs.y - float(ins[1]) - float(ins[3])) * 0.35
+	# Size off the canvas height: portrait gives a much taller canvas than the 1170x540 design, so fixed canvas px would
+	# shrink the number to HUD-label size on a phone held upright; landscape (the 44 pt scale included) stays at ~120.
+	var big_px := clampi(int(round(vs.y * 0.22)), 110, 280)
+	var small_px := maxi(26, int(round(big_px * 0.2)))
+	var go := _count_n == 0
+	var sc := 1.0
+	var a := 1.0
+	var col := UiTheme.TEXT
+	if go:
+		var f := clampf(_count_t / 0.12, 0.0, 1.0)          # a white-hot flash that settles into the gold accent
+		sc = lerpf(1.55, 1.0, f)
+		col = Color(1.0, 0.95, 0.78).lerp(UiTheme.ACCENT, f)
+		a = 1.0 if _count_t < _count_dur - 0.3 else clampf((_count_dur - _count_t) / 0.3, 0.0, 1.0)
+		_count_big.text = tr("GO!")
+		_count_big.add_theme_font_size_override("font_size", big_px + 8)
+		_count_big.add_theme_color_override("font_outline_color", UiTheme.ACCENT_DARK)
+		_count_small.visible = false
+	else:
+		var k := clampf(_count_t / 0.14, 0.0, 1.0)           # pop in from oversized...
+		sc = 1.0 + 0.8 * (1.0 - k) * (1.0 - k)
+		a = 1.0 if _count_t < _count_dur - 0.22 else clampf((_count_dur - _count_t) / 0.22, 0.0, 1.0)  # ...then fade out
+		_count_big.text = str(_count_n)
+		_count_big.add_theme_font_size_override("font_size", big_px)
+		_count_big.add_theme_color_override("font_outline_color", Color(UiTheme.INK.r, UiTheme.INK.g, UiTheme.INK.b, 0.9))
+		_count_small.text = tr("Get ready")
+		_count_small.add_theme_font_size_override("font_size", small_px)
+		_count_small.visible = true
+	_count_big.add_theme_color_override("font_color", col)
+	_count_big.reset_size()
+	_count_small.reset_size()
+	var gap := maxf(2.0, float(big_px) * 0.02)
+	var small_h := _count_small.size.y if _count_small.visible else 0.0
+	var total := small_h + (gap if _count_small.visible else 0.0) + _count_big.size.y
+	var top := cy - total * 0.5
+	if _count_small.visible:
+		_count_small.position = Vector2(cx - _count_small.size.x * 0.5, top)
+		_count_small.pivot_offset = _count_small.size * 0.5
+		_count_small.scale = Vector2.ONE
+		_count_small.modulate.a = a
+		top += small_h + gap
+	_count_big.position = Vector2(cx - _count_big.size.x * 0.5, top)
+	_count_big.pivot_offset = _count_big.size * 0.5
+	_count_big.scale = Vector2(sc, sc)
+	_count_big.modulate.a = a
 
 # ============================== materials (crates) ==============================
 
@@ -685,6 +797,33 @@ func _update_hud(delta: float) -> void:
 # ============================== game modes (logic/mode_rules.gd) ==============================
 
 func _build_mode_ui() -> void:
+	# Pre-match countdown overlay: a full-rect Control *under* the HUD (added before it), so the number sits in the
+	# clear middle of the screen and can never draw over the score / radar / hotbar. Created even when the countdown is
+	# skipped (headless, online, Arcade) so _update_count_visual always has its nodes.
+	_count_root = Control.new()
+	_count_root.name = "Countdown"
+	_count_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_count_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count_root.visible = false
+	$UI.add_child(_count_root)
+	$UI.move_child(_count_root, hud.get_index())
+	_count_big = Label.new()
+	_count_big.name = "Number"
+	_count_big.theme_type_variation = &"HudLabel"
+	_count_big.add_theme_font_size_override("font_size", 120)
+	_count_big.add_theme_color_override("font_color", UiTheme.TEXT)
+	_count_big.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_count_big.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count_root.add_child(_count_big)
+	_count_small = Label.new()
+	_count_small.name = "Ready"
+	_count_small.theme_type_variation = &"HudLabel"
+	_count_small.add_theme_font_size_override("font_size", 26)
+	_count_small.add_theme_color_override("font_color", UiTheme.MUTED)
+	_count_small.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_count_small.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_count_small.visible = false
+	_count_root.add_child(_count_small)
 	_mode_l = Label.new()
 	_mode_l.name = "ModeLine"
 	_mode_l.theme_type_variation = &"HudLabel"
