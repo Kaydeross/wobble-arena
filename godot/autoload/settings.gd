@@ -51,6 +51,7 @@ const DEFAULTS := {
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
 	"blocked_names": "[]",  # lower-case player display names blocked on this device (autoload Safety)
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
+	"destructible": false,  # OPTIONAL destructible environment mode: breakable crates/barricades on three arenas, offline only (docs/DESTRUCTIBLE.md)
 	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE; the Construction hub sets construction)
 	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
 	"wobble_rig": "ragdoll",   # character animation: ragdoll (leg-driven floppy overlay, docs/RAGDOLL.md) | classic (web pose)

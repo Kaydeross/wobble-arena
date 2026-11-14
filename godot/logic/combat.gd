@@ -31,6 +31,9 @@ var auto_switch := false         ## settings.autoSwitch
 var spawns: Array = []           ## MAPS[map].spawns ([x, z] pairs)
 var spawn_y := 4.0               ## MAPS[map].spawnY || 4
 var solids: Array = []           ## FighterPhysics.solids_from_map()
+## Optional destructible environment mode (docs/DESTRUCTIBLE.md): set by MatchSim only when the mode is on. The weapon
+## hooks in weapons.gd are behind `if destruct != null`, so normal matches never take the extra path.
+var destruct: Destruct = null
 var grav_setting := 1.0          ## cfg.grav (Moon Drift < 0.3: lobbed things float too, projG)
 
 # --- body-part damage (shared/damage.json, docs/DAMAGE.md) ---

@@ -47,6 +47,12 @@ var dyn_seed := 0
 var dyn_t0 := 0.0
 ## Microseconds spent in the controllers (player input + BotBrain.think) so far: the bot AI's cost (tests/bots_smoke_test.gd).
 var think_us := 0
+## Optional destructible environment mode (docs/DESTRUCTIBLE.md), OFFLINE ONLY and off by default. The caller (World) sets
+## these before setup(): `destructible` turns the mode on, `view_parent` is the built map node the prop meshes go under
+## (null = logic only, as in the headless destruct test). When false nothing is created and every match path is unchanged.
+var destructible := false
+var view_parent: Node3D = null
+var destruct: Destruct = null
 
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
@@ -61,6 +67,10 @@ func configure(mode_id: String, limit: int = -1) -> void:
 
 ## Break the reference cycles (fighters <-> combat, controllers) when the match ends.
 func dispose() -> void:
+	if destruct != null:
+		destruct.clear()
+	destruct = null
+	if combat != null: combat.destruct = null
 	for b in controllers.values():
 		if b is BotBrain: b.target = null
 	controllers.clear()
@@ -84,8 +94,13 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	pads = map_pads
 	diff = p_diff
 	difficulty = (Combat.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
+	if destructible: dyn_choice = "off"   # M0: breakable props stand on a steady floor (docs/DESTRUCTIBLE.md)
 	dyn.setup(map_id, map, solids, ladders, pads, dyn_choice, dyn_seed)   # dynSetup: may split the floor into tiles in `solids`
 	combat.solids = solids
+	if destructible:                      # append the arena's breakable boxes (tagged) before anyone can hit them
+		destruct = Destruct.new()
+		destruct.setup(self, map_id, view_parent)
+		combat.destruct = destruct
 	combat.spawns = map.get("spawns", [])
 	combat.spawn_y = float(map["spawnY"]) if map.has("spawnY") else 4.0
 	combat.fighters = []
