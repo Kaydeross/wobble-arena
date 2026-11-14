@@ -9,7 +9,8 @@ extends UiPage
 ##   Camera    Manual / Auto-centre, distance, field of view
 ##   Graphics  effects Auto / Low / Medium / High (world/fx.gd), screen shake, show FPS, performance readout, leg wobble (docs/RAGDOLL.md), 15-minute soak test (world/soak_run.gd)
 ##   Audio     sound on / off, main volume, sound effects volume (the SFX bus, autoload Sfx)
-##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), knock-out replays (kill cam), damage numbers
+##   Gameplay  the game's language (autoload Lang: the device's, or English, 繁體中文, 简体中文, 日本語, Français, Español), aim mode
+##             Normal / Advanced (docs/AIM.md), knock-out replays (kill cam), damage numbers
 ##   Account   who you are, Open account (the title's Account sheet; in a match it says where to find it)
 ##   About     version and build, privacy policy, credits, the game server address (advanced) and, last and clearly
 ##             apart from the rest, the bright-red "Reset game…" row (ui/reset_dialog.gd, logic/reset_game.gd,
@@ -166,7 +167,7 @@ func show_section(s: String) -> void:
 			_slider("sens", "Look speed (touch)", "", 0.3, 2.5, 0.05, _times)
 			_slider("mouse_sens", "Look speed (mouse and controller)", "", 0.3, 2.5, 0.05, _times)
 			_toggle("invert_y", "Invert up and down look", "")
-			_choice("aim_mode", "Aim button", "Mouse and controller. On touch, double-tap to aim.", ["hold", "toggle"], ["Hold", "Toggle"])
+			_choice("aim_button", "Aim button", "Mouse and controller. On touch, double-tap to aim.", ["hold", "toggle"], ["Hold", "Toggle"])
 			_buttons("Help", [["help", "See the controls", open_help], ["intro", "Show the how-to again", open_intro]])
 		"camera":
 			_choice("cam_auto_center", "Camera", "Auto-centre swings the camera back behind you as you run", [false, true], ["Manual", "Auto-centre"])
@@ -195,8 +196,11 @@ func show_section(s: String) -> void:
 			_toggle("haptics", "Haptics (vibration)", "A short vibration on hits, K.O.s and explosions. Phones only.")
 		"gameplay":
 			_language()
+			_choice("aim_mode", "Aim mode", "Normal: aim assist, standard damage. Advanced: no aim assist, +25% damage (offline).",
+				["normal", "advanced"], ["Normal", "Advanced"])
 			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
+			_toggle("enemy_arrows", "Enemy arrows", "Small arrows point to enemies off screen")
 		"account":
 			var u := _account_line()
 			_info("Who", u[0], u[1])

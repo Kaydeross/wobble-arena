@@ -66,6 +66,9 @@ moonbase-wide -40.0 / -2.4 %, moonbase-play -11.1 / -9.1 %. Pictures: `docs/styl
   recolours work as before).
 - `tools/export-map-decor.js`: measures the web game's moving pieces and writes their motion per vertex (format
   `WAD2`, see its header); `npm run map-decor` re-exports.
+- HUD extras: `godot/ui/enemy_indicators.gd` draws the small edge arrows for enemies outside the camera view (Settings >
+  Gameplay > Enemy arrows, default on). Six pooled 2D Controls inside the safe area, no 3D pass, so it does not appear
+  in the budgets above; `godot/tests/enemy_indicators_test.gd` (`npm run test:godot-ui`) checks the geometry.
 
 ## Performance budget (`npm run test:godot-gfx`)
 

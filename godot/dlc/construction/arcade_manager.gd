@@ -47,10 +47,27 @@ const CLEAR_DELAY := 1.4               ## ... and after the last enemy goes down
 const VICTORY_COINS := 2000
 const FOREMAN_HAT := "foreman"
 const PHASES := [0.66, 0.33]           ## boss phases (hp fraction)
-const PHASE_SPEED := 1.1               ## per phase: speed and damage bumps
-const PHASE_DMG := 1.2
+const PHASE_SPEED_STEP := 0.05         ## each phase: +5 % of the boss' base walk speed, ADDITIVE (not x1.1 each time)
+const PHASE_SPEED_CAP := 0.10          ## ... and never more than +10 % in total, ever
+const PHASE_DMG := 1.2                 ## each phase: damage x1.2 (unchanged)
 const KIT_EVERY := 0.5                 ## how often enemies get their trade tool (and its ammo) topped up
 const NO_SWAP := ["heal", "speed", "rage", "shield"]
+
+## ---------------- movement speed (docs/CONSTRUCTION_DLC.md "Boss movement speeds") ----------------
+## The player's base walk speed (`FighterPhysics.speed` of a Wobbler). Every Arcade enemy is measured against it.
+const PLAYER_SPEED := 7.5
+## Boss walking-speed bands in m/s, applied to the table's speed (bot skill speed x the entry's `speed`) BEFORE the
+## difficulty's `speed_mul`: a slow melee tank, a normal boss and a fast boss. `_dress` clamps every boss into one of
+## them, so the table's multipliers can never produce an unoutrunable boss (and the bot class' own speed multiplier,
+## which depended on the boss' FIGHTER SLOT and made a two-seat co-op boss 39 % faster, no longer applies).
+const BOSS_SPEED_SLOW := [5.0, 6.0]
+const BOSS_SPEED_NORMAL := [6.0, 7.2]
+const BOSS_SPEED_FAST := [6.8, 7.4]
+const BOSS_SPEED_CAP := 7.4            ## permanent boss speed (base + phase steps): under the player's 7.5, always outrunnable
+const BOSS_BUFF_CAP := 8.5             ## a temporary Speed Boost burst may reach this and never further
+const CREW_SPEED_CAP := 7.0            ## the stage's crew never outruns the player either
+const SPEED_BUFF_MUL := 1.4            ## FighterPhysics: a Speed Boost (`spd_t`) multiplies the walk speed by this
+const ENEMY_BUFF_TIME := 2.0           ## an Arcade enemy's Speed Boost pickups are a short burst (the player keeps 12 s)
 
 ## The run in progress (null = no Arcade run: every other mode). Cleared by end_run().
 static var running: ArcadeManager = null
@@ -115,8 +132,10 @@ var events: StageEvents = null
 var hud: ArcadeBossHud = null
 var enemies: Array = []                ## stage enemies (FighterState): the table's bots, then summoned / creeping ones
 var boss: FighterState = null
-var downed := {}                       ## FighterState -> true once it went down for good
+var downed := {}                       ## FighterState -> true once it went down for good (a real K.O., hp <= 0)
 var kit := {}                          ## FighterState -> its trade tool key
+var speed0 := {}                       ## FighterState -> its base walk speed (m/s): phase steps and caps start from here
+var revived := {}                      ## FighterState -> how many ring-outs it came back from (tests / HUD, never a defeat)
 var phase_n := 0
 var phase_log: Array = []              ## [stage time, phase number] (tests)
 var t_stage := 0.0
@@ -255,7 +274,7 @@ func end_run() -> void:
 	if hud != null and is_instance_valid(hud): hud.queue_free()
 	hud = null
 	events = null
-	enemies.clear(); downed.clear(); kit.clear()
+	enemies.clear(); downed.clear(); kit.clear(); speed0.clear(); revived.clear()
 	if sim != null:
 		sim.set_meta("pve_seats", [])          # no stale seat list for a later match in this process
 		if sim.has_meta("arcade_run"): sim.remove_meta("arcade_run")
@@ -375,7 +394,7 @@ func setup_sim(s: MatchSim) -> void:
 		s.combat.ffa = false
 		s.combat.friendly_fire = friendly_fire
 		s.combat.pve_seats = []                       # _bind_guest_seats fills them once the seats are mapped to ghosts
-		seats = []; enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []
+		seats = []; enemies = []; downed = {}; kit = {}; speed0 = {}; revived = {}; boss = null; phase_n = 0; phase_log = []
 		seat_down = {}; t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0; state = "intro"
 		return
 	var d := stage_def()
@@ -383,7 +402,7 @@ func setup_sim(s: MatchSim) -> void:
 	c.ffa = false                              # the crew fights you, not each other
 	_bind_seats(s)                             # the player seats (slot k <-> seat k), the rest is crew
 	_apply_friendly_fire(s)                    # ... and the co-op rule between those seats (owner: off by default)
-	enemies = []; downed = {}; kit = {}; boss = null; phase_n = 0; phase_log = []; seat_down = {}
+	enemies = []; downed = {}; kit = {}; speed0 = {}; revived = {}; boss = null; phase_n = 0; phase_log = []; seat_down = {}
 	t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0
 	if online and host_mode: _dress_teammate_seats(s)   # a seat nobody took is a teammate bot, not a tradie
 	var specs: Array = d["bots"]
@@ -859,11 +878,15 @@ func _fight(dt: float) -> void:
 		_kit_t = KIT_EVERY
 		for e: FighterState in enemies:
 			if not downed.has(e) and not e.dead: keep_kit(e)
-	# enemies that went down stay down (no respawn) - but a ring-out is not a K.O. (see _revive)
+	# Enemies that are really K.O.'d (hp <= 0) stay down (no respawn). Anything else that is `dead` fell off the site,
+	# and a fall is not a K.O.: it comes back (see _revive). HP is the decider here, never the transient `fell_t` flag,
+	# so no respawn path or cleared flag can turn a ring-out boss into a stage clear (owner report: "boss drop off from
+	# edge = stage clear"; the boss revives on the floor and the fight goes on until its HP reaches 0).
 	for e: FighterState in enemies:
 		if downed.has(e) or not e.dead: continue
-		if e.fell_t: _revive(e)
+		if e.hp > 0.0: _revive(e)
 		else: _down(e)
+	_enforce_enemy_speed()
 	if events != null: events.update(dt)
 	_phases()
 	# the stage is cleared: the boss is down, or everyone is
@@ -956,19 +979,42 @@ func _down(e: FighterState) -> void:
 	e.death_t = 1e9
 
 ## A fall off the site is not a K.O.: the fighter goes back on the floor with the health it had. The player's hammer can
-## shove a melee boss through a fence gate and off the edge (the probe won stages 5/6 at full health in 2-3 s that way), so
-## counting a ring-out as "down" cleared the stage for free. MatchSim._ring_out flags it with fell_t and empties the hands.
+## shove a melee boss through a fence gate and off the edge, so a ring-out must never clear the stage (only hp <= 0 does:
+## see _fight). MatchSim._ring_out leaves the fallen bot `dead` with `fell_t` set and empties its hands; this puts it back
+## on its feet once per fall, away from the players, with the previous health FRACTION, its trade tool and 1.5 s of
+## invulnerability. Boss and crew both use it.
 func _revive(e: FighterState) -> void:
 	var c := sim.combat
-	var frac := clampf(e.hp / c.max_hp(e), 0.05, 1.0)
-	var best := _safe_spot()
-	c.place_at(e, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else c.spawn_y)
-	e.hp = c.max_hp(e) * frac
+	var mx := maxf(1.0, c.max_hp(e))
+	var frac := clampf(e.hp / mx, 0.05, 1.0)    # the fall cost no health: keep the fraction it had
+	var best := _safe_spot()                    # the bot spot farthest from the nearest living seat
+	var y := float(best[2]) if best.size() > 2 else float(sim.map.get("spawnY", 0.01))
+	c.place_at(e, float(best[0]), float(best[1]), y)     # back ON THE FLOOR (no 4 m respawn drop)
+	e.hp = mx * frac
+	e.elim = false
+	e.dead = false
 	e.death_t = 0.0
 	e.fell_t = false
-	e.invuln = 1.5
+	e.invuln = maxf(e.invuln, 1.5)
+	downed.erase(e)                             # defensive: a revive is never a downed state
 	var key: String = str(kit.get(e, ""))
-	if key != "": give_weapon(e, key)          # the fall cleared its hands: it comes back with its trade tool
+	if key != "": give_weapon(e, key)           # the fall cleared its hands: it comes back with its trade tool
+	revived[e] = int(revived.get(e, 0)) + 1
+
+## Every Arcade enemy's walk speed stays inside its band (docs/CONSTRUCTION_DLC.md "Boss movement speeds"). The table's
+## speed x the entry's `speed` (clamped into the boss bands) x the difficulty's `speed_mul` is the ONLY walk speed: the
+## fighter class' own speed multiplier no longer applies (it was slot-dependent: a two-seat co-op boss was 39 % faster
+## than the same boss solo), the phase steps are additive and capped, and a Speed Boost pickup can never carry a boss
+## past BOSS_BUFF_CAP. A burst that would break the cap is cancelled rather than making a near-cap boss walk slower.
+func _enforce_enemy_speed() -> void:
+	for e: FighterState in enemies:
+		if downed.has(e): continue
+		var mul := maxf(0.01, e.phys.speed_mul)      # the Arcade line is 1.0; kept in the maths so a class line can never leak
+		var cap := BOSS_SPEED_CAP if e == boss else CREW_SPEED_CAP
+		var burst_cap := BOSS_BUFF_CAP if e == boss else CREW_SPEED_CAP
+		if e.spd_t > ENEMY_BUFF_TIME: e.spd_t = ENEMY_BUFF_TIME
+		if e.spd_t > 0.0 and e.phys.speed * mul * SPEED_BUFF_MUL > burst_cap: e.spd_t = 0.0
+		e.phys.speed = minf(e.phys.speed, cap / mul)
 
 ## The crew gives up when the boss falls: the rest go down with it (the K.O. goes to the nearest living seat).
 func _cleared() -> void:
@@ -1177,9 +1223,29 @@ func _giant_scale(d: Dictionary) -> float:
 		if s > 1.0: return s
 	return 1.0
 
+## The Arcade stat line: every multiplier the placeholder fighter class carries is neutralised for the stage's enemies,
+## so the stage table is the ONLY authority over a boss/crew member and the same stage is identical in solo and co-op.
+## Before this the class was whatever `BOT_CLASS_ORDER` gave the bot's FIGHTER SLOT: solo bosses were Bruisers (x0.65
+## knockback taken, x1.12 damage, x0.88 speed) while a two-seat co-op boss was a Scamp (x1.22 speed, x1.3 knockback
+## taken = 2x the Bruiser, x0.92 damage, x1.3 air control, x1.2 acceleration). That is the owner report "the Designer
+## with its speed buff is too fast": 39 % faster before any buff, and a speed buff on top. `class_id` stays for the look.
+func _arcade_line(f: FighterState) -> void:
+	f.cls_dmg = 1.0
+	f.cls_kb = 1.0
+	f.cls_rate = 1.0
+	f.cls_reload = 1.0
+	f.cls_ammo = 1.0
+	f.phys.speed_mul = 1.0
+	f.phys.accel_mul = 1.0
+	f.phys.air_mul = 1.0
+	f.phys.jump_mul = 1.0
+
 ## One stage bot from its table entry: name, look, tool, health, damage, speed and skill. Boss scale like Giant (big_t).
+## The Arcade stat line above is applied first (class multipliers are not a table stat), then the walk speed is the bot
+## skill's speed x the entry's `speed`, clamped into a boss band (slower / normal / faster) and scaled by the difficulty.
 func _dress(b: FighterState, spec: Dictionary, giant: bool, is_boss := false) -> void:
 	var c := sim.combat
+	_arcade_line(b)
 	b.name = str(spec.get("name", b.name))
 	sim.looks[b] = {"skin": str(spec.get("skin", "builder")), "hat": str(spec.get("hat", "none")), "color": int(spec.get("color", 0xf08a3c))}
 	var dn := difficulty_override if difficulty_override != "" else str(spec.get("difficulty", "normal"))
@@ -1191,7 +1257,14 @@ func _dress(b: FighterState, spec: Dictionary, giant: bool, is_boss := false) ->
 	brain.strafe = 1.0 if rng.randf() < 0.5 else -1.0
 	sim.controllers[b] = brain
 	var df := diff_def()
-	b.phys.speed = float(dd.get("speed", 4.4)) * float(spec.get("speed", 1.0)) * float(df.get("speed_mul", 1.0))
+	var walk := float(dd.get("speed", 4.4)) * float(spec.get("speed", 1.0))
+	if is_boss:
+		var band: Array = _boss_band(spec)
+		walk = clampf(walk, float(band[0]), float(band[1]))
+	else:
+		walk = minf(walk, CREW_SPEED_CAP)
+	b.phys.speed = minf(walk * float(df.get("speed_mul", 1.0)), PLAYER_SPEED)   # never above the player's base
+	speed0[b] = b.phys.speed * b.phys.speed_mul    # the effective walk speed (speed_mul is 1.0 on the Arcade line)
 	b.dmg_scale = float(dd.get("dmg", 0.45)) * float(spec.get("dmg_scale", 1.0)) * float(df.get("dmg_mul", 1.0))
 	var hp := enemy_hp(float(spec.get("hp", 1.0)), is_boss)
 	if giant:
@@ -1202,6 +1275,14 @@ func _dress(b: FighterState, spec: Dictionary, giant: bool, is_boss := false) ->
 	b.heal_frac = float(df.get("boss_heal", b.heal_frac))   # a Health Pack heals an enemy only a little (5 / 8 / 10 %)
 	b.hp = c.max_hp(b)
 	give_weapon(b, str(spec.get("weapon", "hammer")))
+
+## The band a boss entry belongs to, from its table `speed` multiplier: a fast boss (>= 1.25), a slow tank (<= 0.95) or
+## a normal boss in between. The bands are absolute m/s (docs/CONSTRUCTION_DLC.md "Boss movement speeds").
+static func _boss_band(spec: Dictionary) -> Array:
+	var mul := float(spec.get("speed", 1.0))
+	if mul >= 1.25: return BOSS_SPEED_FAST
+	if mul <= 0.95: return BOSS_SPEED_SLOW
+	return BOSS_SPEED_NORMAL
 
 ## A table hp multiplier at this difficulty: x hp_mul, never below the floor (boss / non-boss), never above the table's own value.
 func enemy_hp(table_hp: float, is_boss: bool) -> float:
@@ -1221,8 +1302,10 @@ func give_weapon(f: FighterState, key: String) -> void:
 		if f.slots[i] != null and f.slots[i]["key"] == key and f.slot != i: c.equip_slot(f, i)
 
 ## Keeps the melee kit and its ammo up. A gun taken from a crate is deliberately not part of the kit: it runs dry and
-## the boss goes back to melee, rather than becoming an endless turret.
+## the boss goes back to melee, rather than becoming an endless turret. The same upkeep bounds a Speed Boost pickup to
+## ENEMY_BUFF_TIME s: the player's boost lasts 12 s, an Arcade enemy's is a short burst (never a 12 s unoutrunable boss).
 func keep_kit(f: FighterState) -> void:
+	if f.spd_t > ENEMY_BUFF_TIME: f.spd_t = ENEMY_BUFF_TIME
 	var key: String = kit.get(f, "")
 	if key == "": return
 	var wd := sim.combat.wdata(key)
@@ -1282,14 +1365,17 @@ func boss_active() -> bool:
 		return _guest_boss_slot >= 0 and state in ["fight", "clearing", "failing"] and _guest_hf > 0.0
 	return boss != null and state == "fight" and not downed.has(boss)
 
-## Boss phases: at 66 % and 33 % health the boss gets faster and hits harder, with a toast; the stage's change request
-## (The Client) also swaps tools.
+## Boss phases: at 66 % and 33 % health the boss hits harder and gets a SMALL, additive speed step (+5 %, then +10 % of
+## its base walk speed in total), with a toast; the stage's change request (The Client) also swaps tools. Speed is set
+## from the stored base every time, so the steps never compound (the old x1.1 each phase reached x1.21), and the result
+## stays under BOSS_SPEED_CAP (a player can always outrun it).
 func _phases() -> void:
 	if boss == null or phase_n >= PHASES.size(): return
 	if boss_frac() > float(PHASES[phase_n]) or boss.dead: return
 	phase_n += 1
 	phase_log.append([t_stage, phase_n])
-	boss.phys.speed *= PHASE_SPEED
+	var base := float(speed0.get(boss, boss.phys.speed))
+	boss.phys.speed = minf(base * (1.0 + minf(PHASE_SPEED_STEP * phase_n, PHASE_SPEED_CAP)), BOSS_SPEED_CAP)
 	boss.dmg_scale *= PHASE_DMG
 	var key := "%s is fired up!" if phase_n == 1 else "%s is furious!"
 	sim.combat.ev({"type": "toast", "text": tr(key) % boss.name})

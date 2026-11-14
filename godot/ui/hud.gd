@@ -7,6 +7,7 @@ extends Control
 ## layer's pause button. World calls bind() once and update(delta) every rendered frame.
 
 const PAD := 14.0
+const IND_PAD := 16.0             ## off-screen enemy markers sit this far inside the safe area (ui/enemy_indicators.gd)
 const FEED_TIME := 5.0
 const FEED_MAX := 4
 const TOAST_TIME := 2.2
@@ -23,6 +24,7 @@ var _clock: Label
 var _leader: Label
 var _crown: Control
 var _kids: Label          ## "Kids mode · half coins · no leaderboard" badge (Settings kids_mode)
+var _aim: Label           ## "Advanced aim · +25% damage" badge (Settings aim_mode, docs/AIM.md)
 var _radar: Control
 var _feed: VBoxContainer
 var _feed_items: Array = []      ## [node, time left]
@@ -32,6 +34,8 @@ var _toast_t := 0.0
 var _health: Control
 var _hotbar: Control
 var _plates: Control
+var _indicators: Control          ## off-screen enemy arrows (ui/enemy_indicators.gd)
+var _ind_blocked: Array = []      ## screen rects those arrows slide past (reused every frame, no allocation)
 var _cross: Control
 var _hint: Label
 var _center: Label
@@ -44,12 +48,22 @@ static func _sfx() -> Node:
 	var tree := Engine.get_main_loop() as SceneTree
 	return tree.root.get_node_or_null("Sfx") if tree and tree.root else null
 
+## The `Settings` autoload by tree lookup, for the same reason as _sfx: the class can be compiled by a test's main
+## loop before the autoloads are registered.
+static func _settings() -> Node:
+	var tree := Engine.get_main_loop() as SceneTree
+	return tree.root.get_node_or_null("Settings") if tree and tree.root else null
+
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_plates = preload("res://ui/hud_nameplates.gd").new()
 	_plates.name = "Nameplates"
 	add_child(_plates)
+	# off-screen enemy arrows: added before every panel, so they are drawn under the HUD, the touch layer and the results
+	_indicators = preload("res://ui/enemy_indicators.gd").new()
+	_indicators.name = "EnemyIndicators"
+	add_child(_indicators)
 	_cross = Control.new()
 	_cross.name = "Crosshair"
 	_cross.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -99,6 +113,8 @@ func bind(w: Node) -> void:
 	sim = w.sim
 	_plates.sim = sim
 	_plates.cam = w.cam
+	_indicators.sim = sim
+	_indicators.cam = w.cam
 	_radar.sim = sim
 	last_touch = w.touch.visible
 	if w.touch.has_method("attach"):
@@ -169,6 +185,11 @@ func _build_ko() -> void:
 	_kids.name = "KidsBadge"
 	_kids.text = "Kids mode · half coins · no leaderboard"
 	_kids.visible = false
+	# Aim modes (Settings aim_mode, docs/AIM.md): Advanced is a deliberate trade off (no aim assist, +25% damage
+	# offline). Shown live in a match, hidden in the default Normal mode so the HUD layout tests are unchanged.
+	_aim = _lbl(col, UiTheme.MIN_FONT, UiTheme.MUTED)
+	_aim.name = "AimBadge"
+	_aim.visible = false
 
 func _build_toast() -> void:
 	_toast = PanelContainer.new()
@@ -265,6 +286,11 @@ func update(delta: float) -> void:
 	var p := sim.player
 	# --- score pill + leader
 	_kids.visible = KidsAssist.is_enabled()
+	var advanced := str(Settings.get_value("aim_mode", "normal")) == "advanced"
+	_aim.visible = advanced
+	if advanced:
+		_aim.text = "Advanced aim · no bonus online" if sim.combat.net_started else "Advanced aim · +25% damage"
+		_aim.add_theme_color_override("font_color", UiTheme.MUTED if sim.combat.net_started else UiTheme.ACCENT)
 	if p.ko != _last_ko:
 		if _last_ko >= 0 and p.ko > _last_ko:
 			var tw := _ko_n.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -365,6 +391,30 @@ func update(delta: float) -> void:
 		_toast.position = Vector2(vs.x / 2.0 - _toast.size.x / 2.0, safe.position.y + 6.0)      # top edge: never over the action
 		if _toast_t < 0.3: _toast.modulate.a = maxf(_toast_t / 0.3, 0.0)
 		if _toast_t <= 0.0: _toast.visible = false
+	# --- off-screen enemy arrows (ui/enemy_indicators.gd, Settings > Gameplay > Enemy arrows): last, so every panel
+	# has its spot this frame and the arrows can slide past it. Hidden behind the pause menu, the results panel and
+	# the pre-match countdown.
+	var st := _settings()
+	_indicators.enabled = (st == null or bool(st.get_value("enemy_arrows", true))) \
+		and not world.paused and not world.results_open() and not world.countdown_locked()
+	_ind_blocked.clear()
+	if _ko_panel.visible: _add_ind_blocker(Rect2(_ko_panel.position, _ko_panel.size))
+	if _radar.visible: _add_ind_blocker(Rect2(_radar.position, _radar.size))
+	if _health.visible: _add_ind_blocker(Rect2(_health.position, _health.size))
+	if _hotbar.visible: _add_ind_blocker(Rect2(_hotbar.position, _hotbar.custom_minimum_size * _hotbar.scale))
+	if _feed.get_child_count() > 0: _add_ind_blocker(Rect2(_feed.position, _feed.size))
+	if _toast.visible: _add_ind_blocker(Rect2(_toast.position, _toast.size))
+	if touch_on and touch.has_method("button_rect"):
+		for b: Array in touch.BUTTONS:
+			var br: Array = touch.button_rect(b)
+			_add_ind_blocker(Rect2(br[0] - Vector2(br[1], br[1]), Vector2(br[1], br[1]) * 2.0))
+		_add_ind_blocker(touch.pause_rect())
+		if world.emote_wheel != null and world.emote_wheel.shown(): _add_ind_blocker(world.emote_wheel.button_rect())
+	_indicators.tick(delta, safe.grow(-IND_PAD), _ind_blocked)
+
+## Keep an off-screen enemy arrow off this rect (only while it is on screen: sizes are 0 before the first layout).
+func _add_ind_blocker(r: Rect2) -> void:
+	if r.size.x > 1.0 and r.size.y > 1.0: _ind_blocked.append(r)
 
 ## Leftmost (or, left-handed, rightmost) edge of the touch buttons.
 func _touch_buttons_x(touch: Control, lefty: bool) -> float:

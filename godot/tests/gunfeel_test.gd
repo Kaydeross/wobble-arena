@@ -60,5 +60,49 @@ func _initialize() -> void:
 	c.clear_inventory(p)
 	c.pickup(p, "ak")
 	ok(p.slot == 0, "empty-handed pickup still equips")
+	# --- the spatula is a real slot: swap cycles through it, the slot keys toggle back to it (web parity) and a
+	# --- used-up / dropped weapon falls back to it (docs/AIM.md; owner bug: with a gun in hand only the quick-melee
+	# --- tap reached the spatula)
+	var pc: PlayerControl = sim.controllers[p]
+	c.clear_inventory(p)
+	c.pickup(p, "ak")
+	pc._cycle(p, c)
+	ok(p.slot == -1 and p.weapon == "spatula" and p.spatula_lock, "swap reaches the spatula")
+	pc._cycle(p, c)
+	ok(p.slot == 0 and p.weapon == "ak" and not p.spatula_lock, "swap again leaves the spatula")
+	pc.input.press("slot1"); pc.think(p, sim, 1.0 / 120.0)
+	ok(p.slot == -1 and p.weapon == "spatula", "pressing the slot key of the weapon in hand returns to the spatula")
+	pc.input.press("slot1"); pc.think(p, sim, 1.0 / 120.0)
+	ok(p.slot == 0 and p.weapon == "ak", "the slot key enters the gun again")
+	pc.input.press("spatula_equip"); pc.think(p, sim, 1.0 / 120.0)
+	ok(p.slot == -1 and p.weapon == "spatula", "the touch Spatula tile equips the spatula (touch_controls)")
+	# it swings as a real melee weapon after switching, not only as a quick melee
+	p.cool = 0.0; p.swing = -1.0
+	ok(c.try_melee(p, 0.0) and p.swing >= 0.0 and p.weapon == "spatula", "the spatula swings as a real melee weapon")
+	# cycling covers every filled slot and the spatula
+	c.clear_inventory(p)
+	c.pickup(p, "ak"); c.pickup(p, "revolver"); c.pickup(p, "smg")
+	var seen: Array = []
+	for i in 8:
+		pc._cycle(p, c)
+		seen.append(p.slot)
+	ok(seen.has(-1) and seen.has(0) and seen.has(1) and seen.has(2), "cycling covers every filled slot and the spatula (%s)" % [seen])
+	# a picked-up weapon still goes to its slot while the spatula is chosen: it just does not steal the hand
+	c.clear_inventory(p)
+	c.pickup(p, "ak")
+	pc.input.press("spatula_equip"); pc.think(p, sim, 1.0 / 120.0)
+	c.pickup(p, "revolver")
+	var ri := -1
+	for i in 3:
+		if p.slots[i] != null and p.slots[i]["key"] == "revolver": ri = i
+	ok(ri >= 0, "a pickup fills a slot while the spatula is in hand")
+	ok(p.slot == -1 and p.weapon == "spatula", "the pickup does not pull the spatula out of the hand")
+	c.equip_slot(p, ri)
+	ok(p.weapon == "revolver" and not p.spatula_lock, "the picked-up slot can be entered and unlocks the spatula")
+	c.clear_inventory(p)
+	c.pickup(p, "ak")
+	p.slots[p.slot]["ammo"] = 0
+	c.drop_slot(p)                       # the held weapon ran out / broke
+	ok(p.slot == -1 and p.weapon == "spatula" and not p.spatula_lock, "a dropped/broken weapon falls back to the spatula")
 	print("GUNFEEL %d checks, %d failed" % [checks, fails])
 	quit(0 if fails == 0 else 1)

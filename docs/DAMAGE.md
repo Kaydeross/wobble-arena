@@ -28,6 +28,14 @@ The multiplier is applied to the weapon damage before `Combat.hit()`; class, rag
 
 `dmg_number` events carry `part` and `pct` (rounded bonus %). The world colours and sizes the number by part (head red and big, torso yellow, arms blue, legs grey) and adds a second line such as `+50%` / `-25%`. The `hit` event carries the part and the struck point, where the world pops a small puff in the part's colour.
 
+## Aim modes (docs/AIM.md)
+
+Settings › Gameplay › Aim mode (`aim_mode`) has two modes: **Normal** (default, aim assist, shared damage) and
+**Advanced** (no aim assist, the local player's own hits deal **+25%**). The bonus is a final multiplier in
+`Combat.hit` (`Combat.ADVANCED_DAMAGE` 1.25) and is **offline only**: not online, not for bots, not on ghost-relayed
+hits, never on the web game, so cross-play damage stays identical. See [AIM.md](AIM.md) for the assist rules and the
+full gate.
+
 ## Rules and net compatibility
 
 - `Combat.damage_rule`: `"classic"` (default of a bare `Combat`, used by the JS parity tests) or `"zones"` (set by `MatchSim` for offline matches).

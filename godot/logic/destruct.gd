@@ -22,9 +22,20 @@ extends RefCounted
 ## Runtime API (weapons / tests):
 ##   plan_for(map_id, map, seed)   deterministic component selection: {props, exclude, eligible, target, ...}
 ##   setup(sim, map_id, parent, plan)  remove the chosen boxes from map collision, add tagged solids + meshes
-##   ray_hit(...) / break_hit(...) / break_blast(...)  the weapon hooks (same as M0)
+##   ray_hit(...) / break_hit(...) / break_blast(...) / melee_sweep(f) / flame_hit(...)  the damage hooks
 ##   step(dt)                      respawn timers (MatchSim.step calls it once per fixed step)
 ##   is_breakable / props / broken_count / remaining / total / mesh_count / rubble_count / respawn_delay  queries
+##
+## The selection is not uniform over the eligible set: each component gets a usability score (how close it is to the
+## map's play centre, how many of its sides are free-standing, how much of it is visible from the surrounding floor and
+## how well its height matches a fighter). The seeded pick is a weighted sample, so the breakables are the cover players
+## actually fight around, while another seed still yields another set. A component that cannot be seen from any
+## standable floor spot is almost never picked (it would be unshootable cover).
+##
+## Readability: a breakable wears a bright accent frame (top and bottom bands + corner posts, one merged mesh) that is
+## deliberately unlike any map palette, darkens as it takes damage, and pulses on a hit. A hit that does not break it
+## still emits a `prop_hit` event (chips + tap sound + HP colour in the presentation layer), so shooting one never feels
+## like shooting a wall. The HUD shows how many are left.
 
 const DATA_PATH := "res://data/extra/destructible.json"
 const VERSION := 2
@@ -47,6 +58,21 @@ const WALL_TALL := 3.0
 const STACK_SLOP := 0.06
 const STACK_OVERLAP := 0.6
 const DROP_CLEARANCE := 0.0
+## Usability/readability facts used by the weighted selection (see docs/DESTRUCTIBLE.md "Which components are chosen").
+const SIGHT_DIRS := 8             ## sightlines sampled around a component
+const SIGHT_EYE := 1.35           ## eye height above the floor the sightline starts from
+const SIGHT_NEAR := 1.3           ## first ring distance beyond the component's half-span
+const SIGHT_FAR := 3.2            ## second ring distance beyond the component's half-span
+const SIGHT_FLOOR_TOL := 0.35     ## floor height tolerance for a sample point
+const OPEN_BAND := 0.4            ## how far out of a face another box counts as "this side is closed"
+const OPEN_EPS := 0.02            ## flush contact still counts as closed
+const OPEN_MIN_VERT := 0.3        ## a box has to cover this much of the side's height to close it
+## Damage tiers used by the look (0 = healthy, 2 = about to break).
+const DAMAGE_TIERS := 3
+const DAMAGE_DARK := 0.14         ## body darkening per damage tier
+## Melee/flame hooks: how much of the weapon's fighter damage goes into a component.
+const MELEE_SCALE := 1.0
+const FLAME_SCALE := 0.4
 
 ## One entry per breakable component:
 ##   {id, kind, index, root, members, boxes, x, y, z, w, h, d, hp, max_hp, color, solid, mesh, mesh_nodes,
@@ -61,8 +87,8 @@ var merge_exclude: Dictionary = {}  ## box index -> true, the map boxes owned by
 var merged_pruned := false      ## true when the built MapNode's merged meshes were rebuilt without those boxes
 var _broken := 0
 var _pending: Array = []        ## prop indices with a running respawn timer (no per-step allocation; break is rare)
-var _mats := {}                 ## body colour -> tinted material
-var _accent_mat: StandardMaterial3D = null
+var _mats := {}                 ## "body colour:damage tier" -> tinted / darkened body material
+var _accent_mats: Array = []    ## damage tier -> accent frame material (healthy -> cracked -> about to break)
 var _rubble_mats := {}          ## body colour -> rubble material
 var _respawn_rng := RandomNumberGenerator.new()
 var _cfg: Dictionary = {}
@@ -140,7 +166,7 @@ static func config(data: Dictionary = {}) -> Dictionary:
 		"respawn_max": float(rs.get("maxSeconds", 140.0)),
 		"fade": float(rs.get("fadeSeconds", 0.35)),
 		"retry": float(rs.get("retrySeconds", 2.5)),
-		"accent": int(col.get("accent", 0xFFD166)),
+		"accent": int(col.get("accent", 0xFF5AC8)),
 		"tint": float(col.get("tint", 0.12)),
 		"rubble": float(col.get("rubble", 0.45)),
 		"spawn_clearance": float(sel.get("spawnClearance", 1.5)),
@@ -153,6 +179,11 @@ static func config(data: Dictionary = {}) -> Dictionary:
 		"min_thin": float(sel.get("minThin", 0.35)),
 		"min_area": float(sel.get("minArea", 0.5)),
 		"stack_ratio": float(sel.get("stackRatio", 2.0)),
+		"weight_centre": float(sel.get("weightCentre", 1.2)),
+		"weight_visible": float(sel.get("weightVisible", 1.5)),
+		"weight_open": float(sel.get("weightOpen", 1.0)),
+		"weight_height": float(sel.get("weightHeight", 0.5)),
+		"min_visible": float(sel.get("minVisible", 0.25)),
 	}
 
 ## Shape/range checks only (cheap; called on every setup). Empty = valid.
@@ -195,9 +226,10 @@ static func validate_config(data: Dictionary) -> Array:
 				errs.append("respawn.minSeconds must be <= respawn.maxSeconds")
 	errs.append_array(_range_errors(data.get("colors"), "colors", ["accent", "tint", "rubble"], [0.0, 0.0, 0.0], [0xFFFFFF, 0.5, 0.9]))
 	errs.append_array(_range_errors(data.get("selection"), "selection",
-		["spawnClearance", "ladderClearance", "padClearance", "edgeMargin", "minHeight", "maxHeight", "maxSpan", "minThin", "minArea", "stackRatio"],
-		[0.0, 0.0, 0.0, 0.0, 0.3, 2.0, 2.0, 0.1, 0.05, 1.0],
-		[8.0, 8.0, 4.0, 3.0, 3.0, 12.0, 16.0, 2.0, 8.0, 4.0]))
+		["spawnClearance", "ladderClearance", "padClearance", "edgeMargin", "minHeight", "maxHeight", "maxSpan", "minThin", "minArea", "stackRatio",
+			"weightCentre", "weightVisible", "weightOpen", "weightHeight", "minVisible"],
+		[0.0, 0.0, 0.0, 0.0, 0.3, 2.0, 2.0, 0.1, 0.05, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+		[8.0, 8.0, 4.0, 3.0, 3.0, 12.0, 16.0, 2.0, 8.0, 4.0, 8.0, 8.0, 8.0, 8.0, 1.0]))
 	if data.has("arenas"):
 		errs.append("arenas is the M0 authored-props schema; version 2 selects from map boxes instead")
 	return errs
@@ -231,12 +263,15 @@ static func target_count(eligible: int, cfg: Dictionary = {}) -> int:
 
 ## Build the deterministic plan for one map + seed: which map boxes become breakable, and the runtime prop rows.
 ## `box_styles` is map_look.json's `boxes` section (hidden / op / ...); empty loads it for `map_id`.
+## Selection is a seeded weighted sample over the eligible components (see _score_component): the cover players can
+## actually see and fight around is picked far more often than an unshootable / far-corner piece, while a different seed
+## still gives a different set. The analyse pass is cached per (map, config, styles) since it is the expensive part.
 static func plan_for(map_id: String, map: Dictionary, seed: int, box_styles: Dictionary = {}) -> Dictionary:
 	var cfg := config()
 	var plan := {"arena": map_id, "seed": seed, "props": [], "exclude": {}, "eligible": 0, "target": 0,
 		"components": 0, "essential": 0}
 	if not bool(cfg["enabled"]) or not supported(map_id, map): return plan
-	var analysis := analyze(map_id, map, box_styles)
+	var analysis := _cached_analysis(map_id, map, box_styles)
 	var eligible: Array = analysis["eligible"]
 	plan["eligible"] = eligible.size()
 	plan["components"] = (analysis["components"] as Array).size()
@@ -244,17 +279,7 @@ static func plan_for(map_id: String, map: Dictionary, seed: int, box_styles: Dic
 	if eligible.is_empty(): return plan
 	var target := target_count(eligible.size(), cfg)
 	plan["target"] = target
-	# seeded Fisher-Yates over the component list, then take the first `target` and sort by root index for a stable order
-	var order: Array = []
-	for i in eligible.size(): order.append(i)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = _mix_seed(map_id, seed)
-	for i in range(order.size() - 1, 0, -1):
-		var j := rng.randi_range(0, i)
-		var tmp: Variant = order[i]
-		order[i] = order[j]
-		order[j] = tmp
-	var chosen: Array = order.slice(0, target)
+	var chosen: Array = _pick_components(map, analysis["solids"], eligible, target, map_id, seed, cfg)
 	chosen.sort()
 	var boxes: Array = (map.get("geometry", {}) as Dictionary).get("boxes", [])
 	for idx: int in chosen:
@@ -263,18 +288,72 @@ static func plan_for(map_id: String, map: Dictionary, seed: int, box_styles: Dic
 		for k: int in comp["members"]: plan["exclude"][k] = true
 	return plan
 
+## Cached analyse() result. The cache key covers everything analyse/selection read (map id, the config, the styles), so a
+## config edit or a test that swaps the config never reads a stale row.
+static var _analysis_cache: Dictionary = {}
+
+static func _cached_analysis(map_id: String, map: Dictionary, box_styles: Dictionary) -> Dictionary:
+	var key := map_id + "|" + str(config()) + "|" + str(box_styles)
+	if _analysis_cache.has(key): return _analysis_cache[key]
+	var analysis := analyze(map_id, map, box_styles)
+	_analysis_cache[key] = analysis
+	return analysis
+
+## True when the active config (or styles) differs from any cached analysis key: the per-map plan changes.
+static func clear_cache() -> void:
+	_analysis_cache.clear()
+
+## Weighted seeded pick of `target` component indices out of `eligible` (indices into that array), sorted by index.
+## Efraimidis-Spirakis weighted sampling without replacement: key = randf() ** (1 / weight); the largest keys win. The
+## RNG is the mode's own (mixed from map id + seed), so this never touches CombatRng and is reproducible per seed.
+static func _pick_components(map: Dictionary, solids: Array, eligible: Array, target: int, map_id: String, seed: int, cfg: Dictionary) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _mix_seed(map_id, seed)
+	var centre: Array = _play_centre(map)
+	var radius := _play_radius(map, centre)
+	var weights: Array = []
+	var good: Array = []       # visible from a floor spot: picked first
+	var poor: Array = []       # not visible from any sampled floor spot: only a fallback
+	for i in eligible.size():
+		var comp: Dictionary = eligible[i]
+		var score := _score_component(centre, radius, solids, comp, cfg)
+		comp["score"] = float(score["weight"])
+		comp["visible"] = float(score["visible"])
+		comp["open"] = int(score["open"])
+		comp["centre_dist"] = float(score["centre_dist"])
+		weights.append(float(score["weight"]))
+		if float(score["visible"]) > 0.0: good.append(i)
+		else: poor.append(i)
+	var chosen: Array = _weighted_sample(good, weights, target, rng)
+	if chosen.size() < target:
+		chosen.append_array(_weighted_sample(poor, weights, target - chosen.size(), rng))
+	return chosen
+
+## Efraimidis-Spirakis weighted sample without replacement from `indices` (weights by index): key = randf()^(1/weight);
+## the largest keys win. Deterministic for the RNG state and stable for equal keys (index order).
+static func _weighted_sample(indices: Array, weights: Array, count: int, rng: RandomNumberGenerator) -> Array:
+	if count <= 0 or indices.is_empty(): return []
+	var keys: Array = []
+	for i: int in indices:
+		var u := clampf(rng.randf(), 1e-9, 1.0)
+		keys.append([pow(u, 1.0 / maxf(float(weights[i]), 0.0001)), i])
+	keys.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0] if a[0] != b[0] else int(a[1]) < int(b[1]))
+	var out: Array = []
+	for k in mini(count, keys.size()): out.append(int(keys[k][1]))
+	return out
+
 ## Analyse a map's boxes into components and split them into eligible cover vs essential geometry.
 ## Returns {components: [...], eligible: [...], essential: [...], counts: {...}}. Each component is
 ##   {root, members[], bottom, top, min_x, max_x, min_z, max_z, area, thin, span, height, volume, reason}
 ## where `reason` is "" for eligible or one of ground / roof / hidden / thin / tall / span / tiny / supports-above /
-## stair / spawn / ladder / pad / edge-wall.
+## stair / spawn / ladder / pad / edge-wall / enclosed.
 static func analyze(map_id: String, map: Dictionary, box_styles: Dictionary = {}) -> Dictionary:
 	var boxes: Array = []
 	var geo: Variant = map.get("geometry")
 	if geo is Dictionary:
 		var raw_boxes: Variant = (geo as Dictionary).get("boxes", [])
 		if raw_boxes is Array: boxes = raw_boxes
-	var empty := {"components": [], "eligible": [], "essential": [], "counts": {}}
+	var empty := {"components": [], "eligible": [], "essential": [], "counts": {}, "solids": []}
 	if boxes.is_empty(): return empty
 	var styles := box_styles if not box_styles.is_empty() else _styles_for(map_id)
 	var cfg := config()
@@ -318,13 +397,22 @@ static func analyze(map_id: String, map: Dictionary, box_styles: Dictionary = {}
 		var members: Array = groups[r]
 		var comp := _component_geometry(boxes, solids, r, members)
 		comp["reason"] = _component_reason(map, boxes, solids, comp, styles, cfg)
+		if str(comp["reason"]) == "":
+			# visibility is a usability fact, but a component with floor around it and NO sightline to it is fully
+			# enclosed: unshootable cover, so it is essential geometry (reason "enclosed") instead of a breakable.
+			var vis := _visibility(comp, solids)
+			comp["visible"] = float(vis["visible"])
+			comp["samples"] = int(vis["samples"])
+			comp["hits"] = int(vis["hits"])
+			if int(vis["samples"]) > 0 and int(vis["hits"]) == 0:
+				comp["reason"] = "enclosed"
 		components.append(comp)
 		if str(comp["reason"]) == "":
 			eligible.append(comp)
 		else:
 			essential.append(comp)
 			counts[str(comp["reason"])] = int(counts.get(str(comp["reason"]), 0)) + 1
-	return {"components": components, "eligible": eligible, "essential": essential, "counts": counts}
+	return {"components": components, "eligible": eligible, "essential": essential, "counts": counts, "solids": solids}
 
 static func _find(links: Array, x: int) -> int:
 	var i := x
@@ -430,6 +518,204 @@ static func _near_points(map: Dictionary, key: String, rect: Dictionary, clearan
 		if _rect_dist(float(p[0]), float(p[1]), rect) < clearance: return true
 	return false
 
+# ============================== usability scoring ==============================
+
+## Where the match is actually played: the average of the spawns, bot spots and the player start (the player start counts
+## double because every offline match begins there). Falls back to the biggest low box (the ground slab) and then to 0,0.
+static func _play_centre(map: Dictionary) -> Array:
+	var sx := 0.0
+	var sz := 0.0
+	var n := 0
+	for key: String in ["spawns", "bots"]:
+		for raw: Variant in (map.get(key, []) as Array):
+			if not (raw is Array): continue
+			var p: Array = raw
+			if p.size() < 2: continue
+			if not (p[0] is int or p[0] is float) or not (p[1] is int or p[1] is float): continue
+			sx += float(p[0]); sz += float(p[1]); n += 1
+	var player: Variant = map.get("player")
+	if player is Array and (player as Array).size() >= 2:
+		var pl: Array = player
+		if (pl[0] is int or pl[0] is float) and (pl[1] is int or pl[1] is float):
+			sx += float(pl[0]) * 2.0; sz += float(pl[1]) * 2.0; n += 2
+	if n == 0:
+		var best := -INF
+		var geo: Variant = map.get("geometry")
+		if geo is Dictionary:
+			for raw: Variant in ((geo as Dictionary).get("boxes", []) as Array):
+				if not (raw is Dictionary): continue
+				var b: Dictionary = raw
+				var area := float(b.get("w", 0.0)) * float(b.get("d", 0.0))
+				if float(b.get("y", 0.0)) <= 0.5 and area > best:
+					best = area; sx = float(b.get("x", 0.0)); sz = float(b.get("z", 0.0)); n = 1
+	return [sx / float(maxi(n, 1)), sz / float(maxi(n, 1))]
+
+## How far from the play centre the map's spots reach: a component outside this radius is outside the area players fight
+## in (far-corner scenery), so it scores near-zero on the "centre" axis. At least 6 m so a map without spawn data still
+## has a usable falloff.
+static func _play_radius(map: Dictionary, centre: Array) -> float:
+	var best := 0.0
+	for key: String in ["spawns", "bots"]:
+		for raw: Variant in (map.get(key, []) as Array):
+			if not (raw is Array): continue
+			var p: Array = raw
+			if p.size() < 2: continue
+			if not (p[0] is int or p[0] is float) or not (p[1] is int or p[1] is float): continue
+			var dx := float(p[0]) - float(centre[0])
+			var dz := float(p[1]) - float(centre[1])
+			best = maxf(best, sqrt(dx * dx + dz * dz))
+	var player: Variant = map.get("player")
+	if player is Array and (player as Array).size() >= 2:
+		var pl: Array = player
+		if (pl[0] is int or pl[0] is float) and (pl[1] is int or pl[1] is float):
+			var dx2 := float(pl[0]) - float(centre[0])
+			var dz2 := float(pl[1]) - float(centre[1])
+			best = maxf(best, sqrt(dx2 * dx2 + dz2 * dz2))
+	return maxf(best, 6.0)
+
+## Usability score for one eligible component: how close it is to the play centre, whether its sides are free-standing,
+## how much of it is visible from the surrounding floor and whether its height suits a fighter. Each fact becomes a
+## 0..1 factor and the config's weights are exponents on those factors (1 = linear, > 1 = stronger preference), so a
+## component has to be good on every axis to score high. The plan's weighted seeded pick uses `weight`; `visible` /
+## `open` / `centre_dist` are kept on the component (and the prop) so the docs and tests can audit a selection.
+static func _score_component(centre: Array, radius: float, solids: Array, comp: Dictionary, cfg: Dictionary) -> Dictionary:
+	var min_x := float(comp["min_x"])
+	var max_x := float(comp["max_x"])
+	var min_z := float(comp["min_z"])
+	var max_z := float(comp["max_z"])
+	var bottom := float(comp["bottom"])
+	var top := float(comp["top"])
+	var cx := (min_x + max_x) * 0.5
+	var cz := (min_z + max_z) * 0.5
+	var dist := sqrt((cx - float(centre[0])) * (cx - float(centre[0])) + (cz - float(centre[1])) * (cz - float(centre[1])))
+	var near := 1.0 - clampf(dist / radius, 0.0, 1.0)
+	if dist > radius: near = 0.0
+	var vis: Dictionary
+	if comp.has("hits"):
+		vis = {"visible": float(comp["visible"]), "samples": int(comp["samples"]), "hits": int(comp["hits"])}
+	else:
+		vis = _visibility(comp, solids)
+	var visible := float(vis["visible"])
+	var open := _open_sides(comp, solids)
+	var cy := (bottom + top) * 0.5
+	var height_score := 1.0 - clampf(absf(cy - 1.15) / 2.6, 0.0, 1.0)
+	if bottom > 2.4: height_score *= 0.35                       # needs a jump / climb to reach: worse cover
+	var centre_f := lerpf(0.15, 1.0, near)
+	var vis_f := lerpf(0.1, 1.0, clampf(visible, 0.0, 1.0))
+	var open_f := lerpf(0.35, 1.0, float(open) / 4.0)
+	var height_f := lerpf(0.5, 1.0, height_score)
+	var usable := pow(centre_f, float(cfg["weight_centre"])) * pow(vis_f, float(cfg["weight_visible"])) \
+		* pow(open_f, float(cfg["weight_open"])) * pow(height_f, float(cfg["weight_height"]))
+	if visible <= 0.0: usable *= 0.1                            # cannot be seen from any floor: nearly never picked
+	elif visible < float(cfg["min_visible"]): usable *= 0.5
+	if open == 0: usable *= 0.2                                 # boxed in on every side: not usable cover
+	var weight := 0.05 + 5.0 * usable
+	return {"weight": weight, "visible": visible, "open": open, "centre_dist": dist, "near": near, "height": height_score,
+		"usable": usable, "samples": vis["samples"], "hits": vis["hits"]}
+
+## Fraction of sightlines from standable floor spots around the component that reach it without another solid in the
+## way (0 = fully enclosed / not visible from the playable area). Samples at 8 compass directions on two rings, at eye
+## height above the floor at the component's base.
+static func _visibility(comp: Dictionary, solids: Array) -> Dictionary:
+	var min_x := float(comp["min_x"])
+	var max_x := float(comp["max_x"])
+	var min_z := float(comp["min_z"])
+	var max_z := float(comp["max_z"])
+	var bottom := float(comp["bottom"])
+	var top := float(comp["top"])
+	var h := top - bottom
+	var cx := (min_x + max_x) * 0.5
+	var cz := (min_z + max_z) * 0.5
+	var span := maxf(max_x - min_x, max_z - min_z)
+	var ty := clampf(bottom + 1.1, bottom + 0.15 * maxf(h, 0.2), top - 0.06)
+	var members: Array = comp["members"]
+	var radii: Array = [span * 0.5 + SIGHT_NEAR, span * 0.5 + SIGHT_FAR]
+	var vis := 0
+	var valid := 0
+	for k in SIGHT_DIRS:
+		var ang := TAU * float(k) / float(SIGHT_DIRS)
+		var dx := cos(ang)
+		var dz := sin(ang)
+		for raw_r: Variant in radii:
+			var r := float(raw_r)
+			var px := cx + dx * r
+			var pz := cz + dz * r
+			if not _has_floor(solids, px, pz, bottom, SIGHT_FLOOR_TOL): continue
+			var oy := bottom + SIGHT_EYE
+			if _inside_solid(solids, px, oy, pz, members): continue
+			valid += 1
+			if _ray_reaches(solids, members, px, oy, pz, cx, ty, cz): vis += 1
+	return {"visible": float(vis) / float(maxi(valid, 1)), "samples": valid, "hits": vis}
+
+## Count of the component's 4 vertical sides with nothing pressed against them (a box flush with another box closes that
+## side): free-standing crates/barriers score higher than a slab glued to a wall.
+static func _open_sides(comp: Dictionary, solids: Array) -> int:
+	var min_x := float(comp["min_x"])
+	var max_x := float(comp["max_x"])
+	var min_z := float(comp["min_z"])
+	var max_z := float(comp["max_z"])
+	var bottom := float(comp["bottom"])
+	var top := float(comp["top"])
+	var members: Array = comp["members"]
+	var bands: Array = [
+		[max_x - OPEN_EPS, max_x + OPEN_BAND, min_z, max_z],
+		[min_x - OPEN_BAND, min_x + OPEN_EPS, min_z, max_z],
+		[min_x, max_x, max_z - OPEN_EPS, max_z + OPEN_BAND],
+		[min_x, max_x, min_z - OPEN_BAND, min_z + OPEN_EPS],
+	]
+	var open := 0
+	for band: Array in bands:
+		var closed := false
+		for i in solids.size():
+			if members.has(i): continue
+			var s: Dictionary = solids[i]
+			if float(s["maxX"]) <= float(band[0]) + 1e-4 or float(s["minX"]) >= float(band[1]) - 1e-4: continue
+			if float(s["maxZ"]) <= float(band[2]) + 0.1 or float(s["minZ"]) >= float(band[3]) - 0.1: continue
+			var vov := minf(float(s["top"]), top) - maxf(float(s["bottom"]), bottom)
+			if vov < OPEN_MIN_VERT: continue
+			closed = true
+			break
+		if not closed: open += 1
+	return open
+
+## True when the first solid hit along the segment is one of the component's own boxes.
+static func _ray_reaches(solids: Array, members: Array, ox: float, oy: float, oz: float, tx: float, ty: float, tz: float) -> bool:
+	var dx := tx - ox
+	var dy := ty - oy
+	var dz := tz - oz
+	var length := sqrt(dx * dx + dy * dy + dz * dz)
+	if length < 1e-4: return false
+	dx /= length; dy /= length; dz /= length
+	var best := INF
+	var best_i := -1
+	for i in solids.size():
+		var s: Dictionary = solids[i]
+		var t: float = Weapons.ray_box(ox, oy, oz, dx, dy, dz, float(s["minX"]), float(s["bottom"]), float(s["minZ"]),
+			float(s["maxX"]), float(s["top"]), float(s["maxZ"]))
+		if t >= 0.0 and t < best:
+			best = t
+			best_i = i
+	if best_i < 0 or best > length + 0.5: return false
+	return members.has(best_i)
+
+## True when (x, y, z) is inside any solid except the component's own boxes.
+static func _inside_solid(solids: Array, x: float, y: float, z: float, skip: Array) -> bool:
+	for i in solids.size():
+		if skip.has(i): continue
+		var s: Dictionary = solids[i]
+		if x > float(s["minX"]) + 0.01 and x < float(s["maxX"]) - 0.01 \
+				and z > float(s["minZ"]) + 0.01 and z < float(s["maxZ"]) - 0.01 \
+				and y > float(s["bottom"]) + 0.01 and y < float(s["top"]) - 0.01:
+			return true
+	return false
+
+## Distance from a point to a solid box (0 inside it).
+static func _point_box_dist(px: float, py: float, pz: float, s: Dictionary) -> float:
+	var dx := maxf(maxf(float(s["minX"]) - px, 0.0), px - float(s["maxX"]))
+	var dy := maxf(maxf(float(s["bottom"]) - py, 0.0), py - float(s["top"]))
+	var dz := maxf(maxf(float(s["minZ"]) - pz, 0.0), pz - float(s["maxZ"]))
+	return sqrt(dx * dx + dy * dy + dz * dz)
+
 static func _styles_for(map_id: String) -> Dictionary:
 	if _style_rows.has(map_id): return _style_rows[map_id]
 	var rows: Dictionary = {}
@@ -469,6 +755,8 @@ static func _prop_from_component(map_id: String, boxes: Array, comp: Dictionary,
 		"top": float(comp["top"]), "bottom": float(comp["bottom"]),
 		"hp": hp, "max_hp": hp, "volume": volume,
 		"color": int(rb["color"]),
+		"score": float(comp.get("score", 0.0)), "visible": float(comp.get("visible", 0.0)),
+		"open": int(comp.get("open", 0)), "centre_dist": float(comp.get("centre_dist", 0.0)),
 	}
 
 ## Validate the whole config against the shipped maps. Returns every problem as a string (empty = valid). Iterates every
@@ -580,6 +868,10 @@ func _make_prop(raw: Dictionary) -> Dictionary:
 	p["broken"] = false
 	p["mesh"] = null
 	p["mesh_nodes"] = []
+	p["body_nodes"] = []
+	p["body_cols"] = []
+	p["damage"] = 0
+	p["hit_tween"] = null
 	p["rubble"] = null
 	p["tween"] = null
 	p["respawn_t"] = 0.0
@@ -592,8 +884,9 @@ func _make_prop(raw: Dictionary) -> Dictionary:
 	}
 	return p
 
-## One prop root per component, one MeshInstance3D per member box plus a thin accent band on top (the "this is
-## breakable" marker). Two-ish draw calls per component, shared materials, no shadow casting.
+## Rebuild the map's merged box meshes without the selected boxes (so the breakable visuals replace them, not overlap
+## them), then build one view root per component. The map's merged meshes are grouped by colour, so this is a handful of
+## meshes (see MapBuilder.rebuild_boxes).
 func _build_views() -> void:
 	if parent == null: return
 	if not merge_exclude.is_empty() and parent is MapBuilder.MapNode:
@@ -602,55 +895,97 @@ func _build_views() -> void:
 		merged_pruned = true
 	for p: Dictionary in props: _build_prop_view(p)
 
+## One prop root per component: one MeshInstance3D per member box (the map's own colour, tinted toward the accent so it
+## reads as "special") plus ONE merged accent frame — a bright band round the top and bottom and a post on each corner.
+## The frame is the same on every map palette, so a breakable is obvious even where the map's own crates are yellow /
+## orange (the arena), and it is one extra draw call per component (no shadow casting, materials shared by colour+tier).
 func _build_prop_view(p: Dictionary) -> void:
 	var root := Node3D.new()
 	root.name = "Prop_" + str(p["id"])
 	var base_x := float(p["x"])
 	var base_y := float(p["y"])
 	var base_z := float(p["z"])
+	var body_cols: Array = []
+	var body_nodes: Array = []
 	for raw: Variant in (p["boxes"] as Array):
 		var b: Dictionary = raw
 		var mi := MeshInstance3D.new()
 		var bm := BoxMesh.new()
 		bm.size = Vector3(float(b["w"]), float(b["h"]), float(b["d"]))
 		mi.mesh = bm
-		mi.material_override = _body_mat(int(b["color"]))
+		mi.material_override = _body_mat(int(b["color"]), 0)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		mi.position = Vector3(float(b["x"]) - base_x, float(b["y"]) - base_y + float(b["h"]) * 0.5, float(b["z"]) - base_z)
 		root.add_child(mi)
 		(p["mesh_nodes"] as Array).append(mi)
-	var trim := MeshInstance3D.new()
-	var tm := BoxMesh.new()
-	var band := minf(0.14, float(p["h"]) * 0.2)
-	tm.size = Vector3(float(p["w"]) * 1.03, band, float(p["d"]) * 1.03)
-	trim.mesh = tm
-	trim.material_override = _accent()
-	trim.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	trim.name = "Trim"
-	trim.position = Vector3(0.0, float(p["h"]) - band * 0.5 - 0.01, 0.0)
-	root.add_child(trim)
-	(p["mesh_nodes"] as Array).append(trim)
+		body_cols.append(int(b["color"]))
+		body_nodes.append(mi)
+	var frame := MeshInstance3D.new()
+	frame.name = "Frame"
+	frame.mesh = _frame_mesh(p)
+	frame.material_override = _accent_mat(0)
+	frame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	frame.position = Vector3((float(p["min_x"]) + float(p["max_x"])) * 0.5 - base_x, 0.0,
+		(float(p["min_z"]) + float(p["max_z"])) * 0.5 - base_z)
+	root.add_child(frame)
+	(p["mesh_nodes"] as Array).append(frame)
+	p["body_nodes"] = body_nodes
+	p["body_cols"] = body_cols
+	p["damage"] = 0
 	root.position = Vector3(base_x, base_y, base_z)
 	parent.add_child(root)
 	p["mesh"] = root
 
-func _body_mat(color: int) -> StandardMaterial3D:
-	if _mats.has(color): return _mats[color]
+## The accent frame: two bands and four corner posts of the component's bounding box, merged into one surface.
+func _frame_mesh(p: Dictionary) -> ArrayMesh:
+	var w := maxf(0.02, float(p["max_x"]) - float(p["min_x"]))
+	var d := maxf(0.02, float(p["max_z"]) - float(p["min_z"]))
+	var h := maxf(0.05, float(p["h"]))
+	var band := clampf(minf(0.16, h * 0.16), 0.06, 0.16)
+	var post := clampf(minf(0.1, minf(w, d) * 0.09), 0.05, 0.1)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var parts: Array = [
+		[Vector3(w * 1.025, band, d * 1.025), Vector3(0.0, h - band * 0.5 + 0.005, 0.0)],
+		[Vector3(w * 1.025, band * 0.6, d * 1.025), Vector3(0.0, band * 0.3 + 0.005, 0.0)],
+	]
+	for sx in [-1.0, 1.0]:
+		for sz in [-1.0, 1.0]:
+			parts.append([Vector3(post, h - band * 1.2, post),
+				Vector3(sx * (w * 0.5 + post * 0.3), (h - band * 1.2) * 0.5, sz * (d * 0.5 + post * 0.3))])
+	for part: Array in parts:
+		var bm := BoxMesh.new()
+		bm.size = part[0]
+		st.append_from(bm, 0, Transform3D(Basis(), part[1]))
+	return st.commit()
+
+## Body material for a colour at a damage tier (0 healthy, 1 chipped, 2 cracked): the accent tint makes it read as special
+## and each tier darkens it, so a component shows that it is taking damage before it breaks.
+func _body_mat(color: int, tier: int) -> StandardMaterial3D:
+	var key := "%d:%d" % [color, tier]
+	if _mats.has(key): return _mats[key]
 	var m := MapBuilder.material(color).duplicate() as StandardMaterial3D
 	var accent := MapBuilder.hex(int(_cfg["accent"]))
-	m.albedo_color = (m.albedo_color as Color).lerp(accent, float(_cfg["tint"]))
-	_mats[color] = m
+	var c: Color = (m.albedo_color as Color).lerp(accent, float(_cfg["tint"]))
+	if tier > 0: c = c.darkened(DAMAGE_DARK * float(tier))
+	m.albedo_color = c
+	_mats[key] = m
 	return m
 
-func _accent() -> StandardMaterial3D:
-	if _accent_mat != null: return _accent_mat
-	var m := StandardMaterial3D.new()
+## Accent frame material per damage tier: bright accent, then a warmed / darkened version, then red-hot.
+func _accent_mat(tier: int) -> StandardMaterial3D:
+	if tier < _accent_mats.size() and _accent_mats[tier] != null: return _accent_mats[tier]
 	var accent := MapBuilder.hex(int(_cfg["accent"]))
-	m.albedo_color = accent
+	var m := StandardMaterial3D.new()
+	var col := accent
+	if tier == 1: col = accent.lerp(Color(1.0, 0.55, 0.15), 0.5).darkened(0.12)
+	elif tier >= 2: col = Color(1.0, 0.24, 0.12)
+	m.albedo_color = col
 	m.emission_enabled = true
-	m.emission = accent
-	m.emission_energy_multiplier = 0.4
-	_accent_mat = m
+	m.emission = col
+	m.emission_energy_multiplier = [0.55, 0.4, 0.7][mini(tier, 2)]
+	while _accent_mats.size() <= mini(tier, 2): _accent_mats.append(null)
+	_accent_mats[mini(tier, 2)] = m
 	return m
 
 func _rubble_mat(color: int) -> StandardMaterial3D:
@@ -681,18 +1016,75 @@ func ray_hit(ox: float, oy: float, oz: float, dx: float, dy: float, dz: float, f
 			best_i = i
 	return [best_t, best_i] if best_i >= 0 else []
 
-## Reduce a prop's hit points. Returns true when this hit broke it.
+## Reduce a prop's hit points. Returns true when this hit broke it. A hit that does not break it still emits a `prop_hit`
+## event (the presentation layer turns it into a chip puff + dust + tap sound) and advances the visible damage tier, so a
+## breakable never feels like a wall while it is only chipping.
 func break_hit(index: int, dmg: float, dir: Array = []) -> bool:
 	if index < 0 or index >= props.size(): return false
 	var p: Dictionary = props[index]
 	if bool(p["broken"]): return false
-	p["hp"] = float(p["hp"]) - maxf(0.0, dmg)
+	var amount := maxf(0.0, dmg)
+	p["hp"] = float(p["hp"]) - amount
 	if float(p["hp"]) > 0.0:
-		events.append({"type": "prop_hit", "id": p["id"], "index": index, "hp": float(p["hp"]), "max_hp": float(p["max_hp"]),
-			"x": float(p["x"]), "y": float(p["y"]) + float(p["h"]) * 0.5, "z": float(p["z"]), "color": int(p["color"])})
+		_set_damage_tier(p)
+		_pulse(p)
+		var hit_at := _hit_point(p, dir)
+		events.append({"type": "prop_hit", "id": p["id"], "kind": p["kind"], "index": index,
+			"hp": float(p["hp"]), "max_hp": float(p["max_hp"]), "dmg": amount,
+			"frac": float(p["hp"]) / maxf(1.0, float(p["max_hp"])), "tier": int(p["damage"]),
+			"x": hit_at[0], "y": hit_at[1], "z": hit_at[2],
+			"cx": float(p["x"]), "cy": float(p["y"]) + float(p["h"]) * 0.5, "cz": float(p["z"]),
+			"w": float(p["w"]), "h": float(p["h"]), "d": float(p["d"]), "color": int(p["color"]),
+			"accent": int(_cfg["accent"])})
+		events.append({"type": "sfx", "name": "whack" if str(p["kind"]) == "barricade" else "clink",
+			"x": hit_at[0], "y": hit_at[1], "z": hit_at[2]})
 		return false
 	_break(index, dir)
 	return true
+
+## Where the hit is shown: the side of the component facing the shot (so chips spray off the face that was hit), falling
+## back to the centre when no direction is known.
+func _hit_point(p: Dictionary, dir: Array) -> Array:
+	var cx := float(p["x"])
+	var cy := float(p["y"]) + float(p["h"]) * 0.5
+	var cz := float(p["z"])
+	if dir.size() >= 3:
+		var dx := float(dir[0])
+		var dy := float(dir[1])
+		var dz := float(dir[2])
+		var reach := minf(float(p["w"]), minf(float(p["d"]), float(p["h"]))) * 0.35 + 0.15
+		return [cx + dx * reach, cy + dy * reach, cz + dz * reach]
+	return [cx, cy, cz]
+
+## Damage tier 0..2 from the remaining HP (2/3 and 1/3 thresholds): the body darkens and the accent frame warms up.
+func _set_damage_tier(p: Dictionary) -> void:
+	var frac := float(p["hp"]) / maxf(1.0, float(p["max_hp"]))
+	var tier := mini(DAMAGE_TIERS - 1, 2 if frac <= 0.34 else (1 if frac <= 0.67 else 0))
+	if tier == int(p.get("damage", 0)): return
+	p["damage"] = tier
+	var nodes: Array = p.get("body_nodes", [])
+	var cols: Array = p.get("body_cols", [])
+	for i in nodes.size():
+		var mi: Variant = nodes[i]
+		if mi is MeshInstance3D and i < cols.size():
+			(mi as MeshInstance3D).material_override = _body_mat(int(cols[i]), tier)
+	if p.get("mesh") != null:
+		for c in (p["mesh"] as Node3D).get_children():
+			if str(c.name) == "Frame" and c is MeshInstance3D:
+				(c as MeshInstance3D).material_override = _accent_mat(tier)
+
+## A short squash on the hit so the component reacts; presentation only (the solid never moves), and harmless in the
+## headless tests (no tween when the mesh node is not in the tree).
+func _pulse(p: Dictionary) -> void:
+	var mesh: Variant = p.get("mesh")
+	if mesh == null or not is_instance_valid(mesh) or not (mesh as Node3D).is_inside_tree(): return
+	var hit_tw: Variant = p.get("hit_tween")
+	if hit_tw != null and hit_tw is Tween and (hit_tw as Tween).is_valid():
+		(hit_tw as Tween).kill()
+	var tw := (mesh as Node3D).create_tween()
+	tw.tween_property(mesh, "scale", Vector3(1.06, 0.94, 1.06), 0.05)
+	tw.tween_property(mesh, "scale", Vector3.ONE, 0.1)
+	p["hit_tween"] = tw
 
 ## Explosion damage: every unbroken prop whose centre falls inside the blast radius takes `dmg * falloff`.
 func break_blast(x: float, y: float, z: float, rad: float, dmg: float) -> int:
@@ -710,6 +1102,47 @@ func break_blast(x: float, y: float, z: float, rad: float, dmg: float) -> int:
 		var dir: Array = Combat.norm3(dx, dy, dz) if d > 0.001 else [0.0, 1.0, 0.0]
 		if break_hit(i, dmg * k, dir): broke += 1
 	return broke
+
+## Melee hook, called by MatchSim.sweep for every fighter after the fighter sweep: the weapon's bat line (hand -> tip, the
+## same points combat.melee_sweep uses) chips any breakable it passes through, once per swing (`f.swing_hit`, which
+## Combat.melee_begin clears). Without this, the starting spatula - the weapon every offline match begins with - could
+## not break anything, which read exactly like "the mode is not working".
+func melee_sweep(f: FighterState) -> void:
+	if props.is_empty() or sim == null or f.dead or f.down_t > 0.0: return
+	if f.swing < 0.04 or f.swing > 1.2: return
+	var w: Dictionary = sim.combat.wdata(f.weapon)
+	if str(w.get("type", "")) != "melee": return
+	var tip := float(w.get("tip", 2.0))
+	var tip_eff := (tip * 1.2 if f.stab else (tip * 1.1 if f.cyclone else tip)) * (2.2 if sim.combat.giant else 1.0)
+	var thick := float(w.get("thick", 0.3)) + 0.05
+	var dmg := float(w.get("dmg", 8.0)) * f.dmg_scale * (2.2 if sim.combat.giant else 1.0) * MELEE_SCALE
+	var n := FighterState.BAT_N
+	for k in n:
+		var s := lerpf(FighterState.BAT_BASE, tip_eff, float(k) / float(n - 1))
+		var px := f.hand_x + f.arm_x * s
+		var py := f.hand_y + f.arm_y * s
+		var pz := f.hand_z + f.arm_z * s
+		for i in props.size():
+			var p: Dictionary = props[i]
+			if bool(p["broken"]) or f.swing_hit.has(p["id"]): continue
+			if _point_box_dist(px, py, pz, p["solid"]) > thick: continue
+			f.swing_hit[p["id"]] = true
+			var dir: Array = Combat.norm3(float(p["x"]) - f.phys.px, float(p["y"]) + 0.6 - f.phys.py, float(p["z"]) - f.phys.pz)
+			break_hit(i, dmg, dir)
+			break
+
+## Flame / short-range fire hook (weapons.gd _flame): the fire cone damages the nearest breakable in front of it, behind a
+## wall check so it cannot burn through geometry. Called once per flame burst, with the weapon's fighter damage scaled by
+## FLAME_SCALE so a flamethrower does not delete a component in one frame.
+func flame_hit(ox: float, oy: float, oz: float, dx: float, dy: float, dz: float, reach: float, dmg: float) -> void:
+	if props.is_empty(): return
+	var ph := ray_hit(ox, oy, oz, dx, dy, dz, reach)
+	if ph.size() != 2: return
+	var t := float(ph[0])
+	var wall := -1.0
+	if sim != null: wall = sim.combat.weapons.ray_walls(ox, oy, oz, dx, dy, dz, reach)
+	if wall >= 0.0 and wall < t - 0.05: return
+	break_hit(int(ph[1]), dmg * FLAME_SCALE, [dx, dy, dz])
 
 ## Take a component out of the world: remove its solid, hide (never free) its mesh, show its rubble patch, start the
 ## randomised respawn timer and record the presentation events. The mesh is recycled when it respawns.
@@ -737,7 +1170,7 @@ func _break(index: int, dir: Array) -> void:
 	var cz := float(p["z"])
 	events.append({"type": "break", "id": p["id"], "kind": p["kind"], "index": index,
 		"x": cx, "y": cy, "z": cz, "w": float(p["w"]), "h": float(p["h"]), "d": float(p["d"]),
-		"color": int(p["color"]), "dir": dir, "total": props.size(), "broken": _broken,
+		"color": int(p["color"]), "accent": int(_cfg["accent"]), "dir": dir, "total": props.size(), "broken": _broken,
 		"respawn_in": float(p["respawn_t"])})
 	events.append({"type": "sfx", "name": "whack" if str(p["kind"]) == "barricade" else "clink", "x": cx, "y": cy + 0.4, "z": cz})
 
@@ -765,6 +1198,12 @@ func _kill_tween(p: Dictionary) -> void:
 	if tw != null and tw is Tween and (tw as Tween).is_valid():
 		(tw as Tween).kill()
 	p["tween"] = null
+	var hit_tw: Variant = p.get("hit_tween")
+	if hit_tw != null and hit_tw is Tween and (hit_tw as Tween).is_valid():
+		(hit_tw as Tween).kill()
+	p["hit_tween"] = null
+	if p.get("mesh") != null and is_instance_valid(p["mesh"]):
+		(p["mesh"] as Node3D).scale = Vector3.ONE
 
 # ============================== respawn ==============================
 
@@ -811,6 +1250,7 @@ func _respawn(index: int) -> void:
 	var p: Dictionary = props[index]
 	p["broken"] = false
 	p["hp"] = float(p["max_hp"])
+	p["damage"] = 0
 	_broken = maxi(0, _broken - 1)
 	var solid: Dictionary = p["solid"]
 	solid["breakable"] = true
@@ -818,8 +1258,18 @@ func _respawn(index: int) -> void:
 	if solids.find(solid) < 0: solids.append(solid)
 	var rub: Variant = p["rubble"]
 	if rub != null and is_instance_valid(rub): (rub as Node3D).visible = false
+	var body_nodes: Array = p.get("body_nodes", [])
+	var body_cols: Array = p.get("body_cols", [])
+	for i in body_nodes.size():
+		var mi: Variant = body_nodes[i]
+		if mi is MeshInstance3D and i < body_cols.size():
+			(mi as MeshInstance3D).material_override = _body_mat(int(body_cols[i]), 0)
 	var mesh: Variant = p["mesh"]
 	if mesh != null and is_instance_valid(mesh):
+		for c in (mesh as Node3D).get_children():
+			if str(c.name) == "Frame" and c is MeshInstance3D:
+				(c as MeshInstance3D).material_override = _accent_mat(0)
+		(mesh as Node3D).scale = Vector3.ONE
 		(mesh as Node3D).visible = true
 		for raw: Variant in (p["mesh_nodes"] as Array):
 			if raw is MeshInstance3D: (raw as MeshInstance3D).transparency = 1.0
@@ -918,7 +1368,7 @@ func clear() -> void:
 	_broken = 0
 	_pending.clear()
 	_mats.clear()
-	_accent_mat = null
+	_accent_mats.clear()
 	_rubble_mats.clear()
 
 # ============================== helpers ==============================
