@@ -1,6 +1,6 @@
 # Wobblers Arena: improvement and store-readiness plan
 
-_Written 2026-11-14 against `main` at `4ca46bf` (0.3.0). Nothing in this plan is built yet. Pick a work package, check the cited files still match, and keep each change in its own pull request._
+_Written 2026-11-14 against `main` at `4ca46bf` (0.3.0). Section 0 and the first part of stages A and B are now built (melee bosses, the stuck FIRE fix, haptics and audio, frame cap and render scale, the launch-service policy, account safety and CI); the execution order, exit criteria and a live status table are in [STORE_READINESS_PLAN.md](STORE_READINESS_PLAN.md). Pick a work package, check the cited files still match, and keep each change in its own pull request._
 
 ## Context
 
@@ -10,7 +10,7 @@ You asked for a plan covering four things: what to improve (VFX, sound, combat, 
 
 - **Money model:** free with ads at launch, a paid option with no ads, and later a subscription or paid content (DLC, coin packs).
 - **Audience:** general audience, in the normal Games category.
-- **Next:** the two fixes in section 0 (melee bosses, stuck FIRE button) come first. Other agents will pick the work up from here.
+- **Next:** the two fixes in section 0 (melee bosses, stuck FIRE button) came first and are built; `docs/STORE_READINESS_PLAN.md` tracks the rest.
 
 **What was audited.** The latest `main`, commit `4ca46bf` (2026-11-14), version 0.3.0 in `godot/project.godot:8`, which is 24 commits past the 0.3.0 release commit. Audits covered VFX and audio, monetisation and store readiness, and performance and code health; I read the combat and weapon code and data myself. `npm run test:godot-perf` passes on this code with Godot 4.7.2. The graphics benchmark was not re-run.
 
