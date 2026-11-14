@@ -24,7 +24,7 @@ const KEYS := {
 	"jump": [KEY_SPACE], "sprint": [KEY_SHIFT], "crouch": [KEY_C], "aim": [KEY_Z], "spatula": [KEY_Q], "shove": [KEY_E],
 	"kick": [KEY_F], "dash": [KEY_V], "recover": [KEY_X], "reload": [KEY_R], "slot1": [KEY_1], "slot2": [KEY_2], "slot3": [KEY_3], "pause": [KEY_ESCAPE],
 }
-const MOUSE := { "fire": MOUSE_BUTTON_LEFT, "aim": MOUSE_BUTTON_RIGHT, "swap": MOUSE_BUTTON_WHEEL_DOWN }
+const MOUSE := { "fire": MOUSE_BUTTON_LEFT, "aim": MOUSE_BUTTON_RIGHT, "swap": MOUSE_BUTTON_WHEEL_DOWN, "swap_back": MOUSE_BUTTON_WHEEL_UP }
 const PAD := {
 	"jump": JOY_BUTTON_A, "reload": JOY_BUTTON_X, "swap": JOY_BUTTON_Y, "kick": JOY_BUTTON_B,
 	"shove": JOY_BUTTON_RIGHT_SHOULDER, "dash": JOY_BUTTON_LEFT_SHOULDER, "sprint": JOY_BUTTON_LEFT_STICK,
@@ -33,7 +33,7 @@ const PAD := {
 const PAD_AXES := { "fire": JOY_AXIS_TRIGGER_RIGHT, "aim": JOY_AXIS_TRIGGER_LEFT }
 const MOVE_AXES := { "move_left": [JOY_AXIS_LEFT_X, -1.0], "move_right": [JOY_AXIS_LEFT_X, 1.0], "move_forward": [JOY_AXIS_LEFT_Y, -1.0], "move_back": [JOY_AXIS_LEFT_Y, 1.0] }
 const HELD := ["jump", "sprint", "crouch", "fire", "aim"]
-const TAPS := ["spatula", "shove", "kick", "dash", "recover", "reload", "slot1", "slot2", "slot3", "swap"]
+const TAPS := ["spatula", "shove", "kick", "dash", "recover", "reload", "slot1", "slot2", "slot3", "swap", "swap_back"]
 
 static func ensure_actions() -> void:
 	var all := {}

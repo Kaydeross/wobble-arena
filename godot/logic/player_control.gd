@@ -82,7 +82,8 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	for i in 3:
 		if not input.consume("slot%d" % (i + 1)) or p.slots[i] == null: continue
 		combat.equip_slot(p, -1 if p.slot == i else i)   # press the slot key again = back to the spatula (web parity)
-	if input.consume("swap"): _cycle(p, combat)
+	if input.consume("swap"): _cycle(p, combat, 1)
+	if input.consume("swap_back"): _cycle(p, combat, -1)   # mouse wheel up / swipe left: the web game's cycleBack
 
 	key = p.weapon if p.weapon != "" else "spatula"
 	w = combat.wdata(key)
@@ -127,17 +128,17 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 		combat.weapons.try_fire(p, ap)
 
 func _drain_taps() -> void:
-	for a in ["kick", "shove", "spatula", "spatula_equip", "reload", "slot1", "slot2", "slot3", "swap", "dash", "recover"]:
+	for a in ["kick", "shove", "spatula", "spatula_equip", "reload", "slot1", "slot2", "slot3", "swap", "swap_back", "dash", "recover"]:
 		while input.consume(a): pass
 
 ## cycleWeapon: the next filled slot after the current one, the spatula (-1) included (the web game's cycleWeapon).
 ## The spatula is always in the order, so repeated swaps always come back to it, and empty slots are skipped.
-func _cycle(p: FighterState, combat: Combat) -> void:
+func _cycle(p: FighterState, combat: Combat, dir: int = 1) -> void:
 	var order: Array = [-1]
 	for i in 3:
 		if p.slots[i] != null: order.append(i)
 	var idx := order.find(p.slot)
-	combat.equip_slot(p, int(order[(idx + 1) % order.size()] if idx >= 0 else order[0]))
+	combat.equip_slot(p, int(order[posmod(idx + dir, order.size())] if idx >= 0 else order[0]))
 
 # ============================== aim assist (Normal aim mode) ==============================
 # docs/AIM.md: Normal aim mode gives the LOCAL player a small target magnetism while aiming / firing. The crosshair
@@ -147,7 +148,8 @@ func _cycle(p: FighterState, combat: Combat) -> void:
 const ASSIST_CONE_COS := 0.9925    ## ~7 deg around the crosshair: a target further off is not pulled at all
 const ASSIST_RANGE := 32.0         ## m from the shoulder
 const ASSIST_MIN_DIST := 1.0       ## closer than this is the player's own body
-const ASSIST_PULL := 0.85          ## how far the aim direction moves toward that enemy's chest
+const ASSIST_PULL := 0.85          ## how far the aim direction moves toward that enemy's chest (at full strength)
+const ASSIST_INNER_COS := 0.99813  ## ~3.5 deg: inside it the pull is full, between it and the cone edge it fades to 0
 
 ## The aim point the shots use: `ap`, or a point in the same distance pulled toward a near enemy.
 func _assisted_aim(p: FighterState, sim: MatchSim, ap: Array) -> Array:
@@ -170,8 +172,12 @@ func _assisted_aim(p: FighterState, sim: MatchSim, ap: Array) -> Array:
 		best = e; best_dot = dot
 	if best == null: return ap
 	var td := Combat.norm3(best.chest_x - p.shoulder_x, best.chest_y - p.shoulder_y, best.chest_z - p.shoulder_z)
-	var dir := Combat.norm3(sd[0] + (td[0] - sd[0]) * ASSIST_PULL, sd[1] + (td[1] - sd[1]) * ASSIST_PULL,
-		sd[2] + (td[2] - sd[2]) * ASSIST_PULL)
+	# The pull fades smoothly to nothing at the cone edge. A flat 85 % pull that switched on at 7 deg would snap the
+	# aim by ~6 deg whenever the crosshair wobbled across the edge (and flip it every step while hovering there).
+	var k := clampf((best_dot - ASSIST_CONE_COS) / (ASSIST_INNER_COS - ASSIST_CONE_COS), 0.0, 1.0)
+	var pull := ASSIST_PULL * k * k * (3.0 - 2.0 * k)
+	var dir := Combat.norm3(sd[0] + (td[0] - sd[0]) * pull, sd[1] + (td[1] - sd[1]) * pull,
+		sd[2] + (td[2] - sd[2]) * pull)
 	var ox: float = ap[0] - p.shoulder_x
 	var oy: float = ap[1] - p.shoulder_y
 	var oz: float = ap[2] - p.shoulder_z
