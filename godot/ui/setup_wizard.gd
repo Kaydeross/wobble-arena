@@ -248,7 +248,7 @@ func set_destruct(k: String) -> void:
 func destruct_available() -> bool:
 	return not ["practice", "sandbox", "construction"].has(mode_id)
 
-## True when the current arena has authored breakable props (docs/DESTRUCTIBLE.md).
+## True when the current arena has breakable cover for the mode (docs/DESTRUCTIBLE.md): a real arena map with box geometry.
 func destruct_arena_ok() -> bool:
 	return destruct_available() and Destruct.has_arena(map_id)
 
@@ -698,7 +698,7 @@ func _build_arena(p: Control) -> void:
 	var row := _pills(p, "Floor", "Moving floor", Dynamics.KINDS, names, _dyn_bs, set_dyn)
 	row.tooltip_text = "Does the arena floor move? Random = a different moving floor every match"
 	var drow := _pills(p, "Props", "Breakable props", ["off", "on"], ["Off", "On"], _dest_bs, set_destruct)
-	drow.tooltip_text = "Optional offline mode: crates and barricades that break under bullets and explosions. Only some arenas have them (Sunny Arena, Space Capsule, Neon Crossroads)."
+	drow.tooltip_text = "Optional offline mode: cover that breaks under bullets, melee and explosions and comes back after ~2 minutes. It works on every arena except the practice range, the sandbox and the generated / shrinking levels; the arena's best cover is usually chosen, the HUD shows how many are left (docs/DESTRUCTIBLE.md)."
 	_grid_page(p, P_ARENA, MAP_CARD.x)
 	_rebuild_maps()
 

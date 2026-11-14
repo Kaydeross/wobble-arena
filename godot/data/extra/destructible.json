@@ -1,12 +1,12 @@
 {
   "version": 2,
-  "comment": "Optional destructible-arena mode (docs/DESTRUCTIBLE.md), M1 'all maps'. A Godot-side CONFIG overlay: it does not author props. On every supported arena map the mode picks ~half of the map's own cover boxes (from maps.json geometry.boxes), seeded per match, excludes floor/ground, boundary walls, ladders, pads, spawns and anything touching them, then swap-breaks them: bullets/explosions remove the box from the collision + merged map mesh, it respawns 100-140 s later with collision and mesh restored. Off by default and a real null path. fraction = share of eligible cover components made breakable; budget.perMap = hard cap per arena (40 default, 60 max). hp scales with component volume: min for a small crate, max for a big block. respawn min/max are seconds (randomised per break, so breaks do not come back metronomically); fadeSeconds is the materialise fade-in; retrySeconds postpones a respawn while a fighter stands in the box. colors.accent is the destructible trim band, tint mixes that accent into the map box colour, rubble is how much the rubble patch darkens the body colour. selection holds the safety rules: spawn/ladder/pad clearances, the ring-out edge margin, and the box-size band that separates cover from floors, roofs, stairs and decorative slivers.",
+  "comment": "Optional destructible-arena mode (docs/DESTRUCTIBLE.md), M1 'all maps'. A Godot-side CONFIG overlay: it does not author props. On every supported arena map the mode analyses the map's own cover boxes (from maps.json geometry.boxes), throws away floor/ground, boundary walls, stairs, ladder/pad/spawn-adjacent and structural geometry, then picks about half of the remaining cover with a per-match seed. The pick is WEIGHTED by how usable/visible the cover is: close to the map's play centre, free-standing (open sides), visible from the surrounding floor, at fighter height. fraction = share of eligible cover components made breakable; budget.perMap = hard cap per arena (40 default, 60 max). hp scales with component volume: min for a small crate, max for a big block. respawn min/max are seconds (randomised per break, so breaks do not come back metronomically); fadeSeconds is the materialise fade-in; retrySeconds postpones a respawn while a fighter stands in the box. colors.accent is the bright accent frame + body tint, a colour deliberately unlike the map palettes so a breakable is obvious (the arena's own crates are already yellow/orange); tint mixes it into the body colour, rubble is how much the rubble patch darkens the body colour. selection holds the safety rules (spawn/ladder/pad clearances, the ring-out edge margin, the box-size band that separates cover from floors, roofs, stairs and decorative slivers) plus the usability weights of the weighted pick.",
   "enabled": true,
   "fraction": 0.5,
   "budget": {"perMap": 40},
   "hp": {"min": 20, "max": 56, "volumeMin": 0.6, "volumeMax": 30.0},
   "respawn": {"minSeconds": 100, "maxSeconds": 140, "fadeSeconds": 0.35, "retrySeconds": 2.5},
-  "colors": {"accent": 16765286, "tint": 0.12, "rubble": 0.45},
+  "colors": {"accent": 16734920, "tint": 0.18, "rubble": 0.45},
   "selection": {
     "spawnClearance": 1.5,
     "ladderClearance": 1.5,
@@ -17,6 +17,11 @@
     "maxSpan": 8.0,
     "minThin": 0.35,
     "minArea": 0.5,
-    "stackRatio": 2.0
+    "stackRatio": 2.0,
+    "weightCentre": 1.2,
+    "weightVisible": 1.5,
+    "weightOpen": 1.0,
+    "weightHeight": 0.5,
+    "minVisible": 0.25
   }
 }

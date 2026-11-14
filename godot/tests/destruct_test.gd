@@ -3,19 +3,26 @@ extends SceneTree
 ##   godot --headless --path godot --script res://tests/destruct_test.gd -- --no-save
 ##
 ## 1. Config: godot/data/extra/destructible.json validates against shared/maps.json (version 2 config: fraction, budget,
-##    hp band, respawn timing, colours, exclusion rules). Negative cases prove the validator rejects every bad knob.
+##    hp band, respawn timing, colours, exclusion rules, usability weights). Negative cases prove the validator rejects
+##    every bad knob.
 ## 2. Off (default): no Destruct object, no extra solids, no prop meshes, no CombatRng draws, and a normal match is
 ##    IDENTICAL - same state hash and RNG after 2 s as an explicit-off run. On a mode-excluded map the mode is a no-op too.
 ## 3. Selection, EVERY supported arena: the map's own boxes are split into components (a wall + its cap, a stacked pile
 ##    count once); ~half of the eligible cover components become breakable (fraction 0.5, at least 1, capped by the
-##    budget); ground / roofs / boundary walls / stairs / spawn / ladder / pad boxes are never selected (checked
-##    independently in the test), the plan is deterministic for one seed and changes with another seed, and the live
-##    match swaps exactly those boxes out of collision.
+##    budget); ground / roofs / boundary walls / stairs / spawn / ladder / pad / enclosed boxes are never selected
+##    (checked independently in the test), the selected cover is visible from the surrounding floor (independent
+##    sightline check), the pick prefers usable cover (on the arena the two mid-field crates are picked in most seeds
+##    instead of the far-corner blocks), the plan is deterministic for one seed and changes with another seed, and the
+##    live match swaps exactly those boxes out of collision.
 ## 4. Behaviour: hitscan and explosions break components, broken ones stay broken, then respawn after the config's
 ##    randomised delay with collision + mesh restored (and a fade-in) and can be broken again through several cycles; a
-##    respawn is postponed while a fighter stands in the box; node counts stay flat (no leaks).
-## 5. World wiring: Settings off = no props, on = props + "Breakables" mode line, the merged map mesh is pruned, load_map
-##    clears and rebuilds, --destruct override, and the Practice Range / Sandbox gates still hold.
+##    respawn is postponed while a fighter stands in the box; node counts stay flat (no leaks). A non-breaking hit emits
+##    `prop_hit` + a tap sound and advances the visible damage tier; melee (the starting spatula) and flame damage cover.
+## 5. World wiring AND the real offline match path: the Setup Wizard's Breakable props toggle writes Settings, the world
+##    the wizard starts reads it, the merged map mesh is pruned and every selected component is a tagged solid with its
+##    own mesh; the world's own player then fires the real gun at every selected component until it breaks, the break
+##    reaches the presentation layer (chips/sound) and the HUD count drops; respawn restores it; load_map/rematch rebuilds
+##    fresh; --destruct override; Settings off = no props; the Practice Range / Sandbox gates still hold.
 
 const AK := "ak"
 const SEED := 424242
@@ -45,6 +52,7 @@ func _run() -> void:
 	_off_checks()
 	await _selection_checks()
 	await _behaviour_checks()
+	await _feedback_checks()
 	await _world_checks()
 	print("DESTRUCT %s checks=%d fails=%d" % ["ok" if fails == 0 else "FAILED", checks, fails])
 	quit(0 if fails == 0 else 1)
@@ -166,6 +174,49 @@ func _fire_prop(sim: MatchSim, d: Destruct, pi: int) -> Dictionary:
 		if bool(d.props[pi]["broken"]): return {"ok": true, "shots": k + 1}
 	return {"ok": false, "why": "did not break in 24 shots"}
 
+## Fire the player's gun `n` times at prop `pi` through the real weapon function (the one PlayerControl's gun_tick
+## calls). Returns {ok, shots, broke}. The pose is restored after every shot because firing kicks the arm.
+func _fire_shots(sim: MatchSim, d: Destruct, pi: int, n: int) -> Dictionary:
+	var spot := _stand_point(sim, d, pi)
+	if not bool(spot.get("ok", false)): return {"ok": false, "why": "no standing spot"}
+	var f: FighterState = sim.player
+	for k in n:
+		_pose(f, float(spot["x"]), float(spot["z"]), spot["aim"], float(spot["y"]))
+		sim.combat.weapons.fire_gun(f, AK, spot["aim"])
+		if bool(d.props[pi]["broken"]): return {"ok": true, "shots": k + 1, "broke": true}
+	return {"ok": true, "shots": n, "broke": false}
+
+## Put the player within spatula reach of prop `pi`, mid-swing (the state combat.melee_sweep / Destruct.melee_sweep see).
+## Returns false when no clear floor spot in front of the component exists.
+func _pose_melee(sim: MatchSim, d: Destruct, pi: int) -> bool:
+	var p: Dictionary = d.props[pi]
+	var f: FighterState = sim.player
+	var w := float(p["w"])
+	var dd := float(p["d"])
+	for dir: Array in [[0.0, -1.0], [1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]]:
+		var sx := float(p["x"]) + float(dir[0]) * (w * 0.5 + 1.05)
+		var sz := float(p["z"]) + float(dir[1]) * (dd * 0.5 + 1.05)
+		if not _on_floor(sim, sx, sz, float(p["y"])): continue
+		var yaw := atan2(float(p["x"]) - sx, float(p["z"]) - sz)
+		f.phys.place(sx, float(p["y"]), sz)
+		f.phys.grounded = true
+		f.dead = false; f.down_t = 0.0; f.slot = -1; f.weapon = "spatula"; f.cool = 0.0
+		f.hand_x = sx; f.hand_y = float(p["y"]) + 1.3; f.hand_z = sz
+		f.shoulder_x = sx; f.shoulder_y = float(p["y"]) + 1.55; f.shoulder_z = sz
+		f.chest_x = sx; f.chest_y = float(p["y"]) + 1.22; f.chest_z = sz
+		sim.combat.melee_begin(f, "spatula", yaw)
+		f.swing = 0.55
+		sim.combat.melee_tick(f, "spatula", 0.0, yaw)
+		f.arm_x = f.aim_x; f.arm_y = f.aim_y; f.arm_z = f.aim_z
+		return true
+	return false
+
+func _last_event(sim: MatchSim, kind: String) -> Dictionary:
+	var out: Dictionary = {}
+	for e: Dictionary in sim.combat.events:
+		if str(e.get("type", "")) == kind: out = e
+	return out
+
 # ============================== 1. config ==============================
 
 func _config_checks() -> void:
@@ -180,6 +231,14 @@ func _config_checks() -> void:
 	check(rmin >= 90.0 and rmax <= 180.0 and rmin < rmax, "respawn is about two minutes and randomised (%.0f..%.0f s)" % [rmin, rmax])
 	check(float(cfg["fade"]) > 0.0, "respawn has a fade-in")
 	check(int(cfg["accent"]) >= 0 and int(cfg["accent"]) <= 0xFFFFFF, "accent colour is a 24-bit colour")
+	# usability weights: all four are exponents on 0..1 factors (0 = no preference, > 1 = stronger) and minVisible is a
+	# 0..1 sightline fraction, so the validator's bounds are the contract the docs describe.
+	check(float(cfg["weight_centre"]) >= 0.0 and float(cfg["weight_centre"]) <= 8.0, "weightCentre is an exponent (%.2f)" % float(cfg["weight_centre"]))
+	check(float(cfg["weight_visible"]) >= 0.0 and float(cfg["weight_visible"]) <= 8.0, "weightVisible is an exponent (%.2f)" % float(cfg["weight_visible"]))
+	check(float(cfg["weight_open"]) >= 0.0 and float(cfg["weight_open"]) <= 8.0, "weightOpen is an exponent (%.2f)" % float(cfg["weight_open"]))
+	check(float(cfg["weight_height"]) >= 0.0 and float(cfg["weight_height"]) <= 8.0, "weightHeight is an exponent (%.2f)" % float(cfg["weight_height"]))
+	check(float(cfg["min_visible"]) >= 0.0 and float(cfg["min_visible"]) <= 1.0, "minVisible is a sightline fraction (%.2f)" % float(cfg["min_visible"]))
+	check(float(cfg["weight_visible"]) > 0.0 and float(cfg["weight_centre"]) > 0.0, "the pick actually prefers visible / central cover")
 	# target maths: half, at least one, never above the budget
 	check(Destruct.target_count(0) == 0, "target_count(0) == 0")
 	check(Destruct.target_count(10) == 5, "target_count(10) == 5")
@@ -358,6 +417,25 @@ func _selection_checks() -> void:
 	check(supported >= 25, "the mode runs on every arena map (%d supported)" % supported)
 	check(supported == Destruct.supported_ids().size(), "supported_ids() matches the analysed maps")
 	check(seen.size() == supported, "every supported map was checked")
+	# Arena usability regression: the old uniform pick often made the far-corner blocks (boxes 6+7) breakable while the
+	# two obvious mid-field crates stayed static - exactly the "nothing is breakable" feeling. The weighted pick has to
+	# choose at least one of the mid-field crates in almost every seed, and both in most.
+	var arena_map: Dictionary = maps["arena"]
+	var mid_plans := 0
+	var both_plans := 0
+	for s in 50:
+		var plan := Destruct.plan_for("arena", arena_map, s, {})
+		var roots: Array = []
+		for raw: Variant in plan["props"]: roots.append(int((raw as Dictionary)["root"]))
+		var hits := (1 if roots.has(3) else 0) + (1 if roots.has(5) else 0)
+		if hits >= 1: mid_plans += 1
+		if hits == 2: both_plans += 1
+	check(mid_plans >= 45, "arena: a mid-field crate breaks in %d/50 seeds" % mid_plans)
+	check(both_plans >= 30, "arena: both mid-field crates break in %d/50 seeds" % both_plans)
+	var fixed_plan := Destruct.plan_for("arena", arena_map, SEED, {})
+	var fixed_roots: Array = []
+	for raw: Variant in fixed_plan["props"]: fixed_roots.append(int((raw as Dictionary)["root"]))
+	check(fixed_roots == [3, 5], "arena: seed %d picks the mid-field crates [3, 5] (got %s)" % [SEED, str(fixed_roots)])
 
 ## The selected component respects the config's exclusion rules (independent of the analyser's own bookkeeping).
 func _safe_checks(id: String, map: Dictionary, p: Dictionary, styles: Dictionary) -> void:
@@ -418,6 +496,12 @@ func _safe_checks(id: String, map: Dictionary, p: Dictionary, styles: Dictionary
 	# boundary / ring-out wall: a thin or tall box hanging over the void would fail the floor ring; cover must pass it
 	if thin <= 1.6 or h >= 3.0:
 		check(_margin_supported(solids, ext, float(p["bottom"]), float(cfg["edge_margin"])), "%s %s: not a boundary wall" % [id, p["id"]])
+	# usability: the plan records why the component was picked, and an independent sightline from standable floor reaches
+	# it (a fully enclosed box is unshootable cover and must never be selected).
+	check(p.has("visible") and float(p["visible"]) > 0.0, "%s %s: visible from the playable floor (%.2f)" % [id, p["id"], float(p.get("visible", 0.0))])
+	check(_can_see_from_floor(map, p), "%s %s: an independent sightline from the floor reaches it" % [id, p["id"]])
+	check(int(p.get("open", -1)) >= 0 and int(p.get("open", -1)) <= 4, "%s %s: free-standing sides recorded (%s)" % [id, p["id"], str(p.get("open", -1))])
+	check(float(p.get("score", 0.0)) > 0.0, "%s %s: usability score recorded" % [id, p["id"]])
 
 func _rect_dist(px: float, pz: float, ext: Dictionary) -> float:
 	var dx := maxf(maxf(float(ext["minX"]) - px, 0.0), px - float(ext["maxX"]))
@@ -440,6 +524,128 @@ func _margin_supported(solids: Array, ext: Dictionary, y: float, margin: float) 
 			[min_x - 0.6, min_z - 0.6], [max_x + 0.6, min_z - 0.6], [min_x - 0.6, max_z + 0.6], [max_x + 0.6, max_z + 0.6]]:
 		if not _has_floor(solids, float(q[0]), float(q[1]), y): return false
 	return true
+
+## Independent usability check: from one of 8 compass directions on two rings around the component, at eye height above
+## the floor at its base, the first solid hit along a ray to the component is the component itself. This is re-implemented
+## here (never calling Destruct's own visibility sampler) so the analyser cannot mark an enclosed box as visible.
+func _can_see_from_floor(map: Dictionary, p: Dictionary) -> bool:
+	var solids := _box_solids(map)
+	var members: Array = p["members"]
+	var min_x := float(p["min_x"]); var max_x := float(p["max_x"])
+	var min_z := float(p["min_z"]); var max_z := float(p["max_z"])
+	var bottom := float(p["bottom"]); var top := float(p["top"])
+	var cx := (min_x + max_x) * 0.5
+	var cz := (min_z + max_z) * 0.5
+	var span := maxf(max_x - min_x, max_z - min_z)
+	var ty := clampf(bottom + 1.1, bottom + 0.15 * maxf(top - bottom, 0.2), top - 0.06)
+	for k in 8:
+		var ang := TAU * float(k) / 8.0
+		for r: float in [span * 0.5 + 1.3, span * 0.5 + 3.2]:
+			var px := cx + cos(ang) * r
+			var pz := cz + sin(ang) * r
+			if not _has_floor(solids, px, pz, bottom): continue
+			var py := bottom + 1.35
+			var inside := false
+			for i in solids.size():
+				if members.has(i): continue
+				var b: Dictionary = solids[i]
+				if px > float(b["minX"]) + 0.01 and px < float(b["maxX"]) - 0.01 and pz > float(b["minZ"]) + 0.01 \
+						and pz < float(b["maxZ"]) - 0.01 and py > float(b["bottom"]) + 0.01 and py < float(b["top"]) - 0.01:
+					inside = true
+					break
+			if inside: continue
+			if members.has(_first_solid(solids, px, py, pz, cx, ty, cz)): return true
+	return false
+
+## Index of the first solid hit along the segment, -1 for a miss.
+func _first_solid(solids: Array, ox: float, oy: float, oz: float, tx: float, ty: float, tz: float) -> int:
+	var dx := tx - ox; var dy := ty - oy; var dz := tz - oz
+	var length := sqrt(dx * dx + dy * dy + dz * dz)
+	if length < 1e-4: return -1
+	dx /= length; dy /= length; dz /= length
+	var best := INF
+	var best_i := -1
+	for i in solids.size():
+		var s: Dictionary = solids[i]
+		var t: float = Weapons.ray_box(ox, oy, oz, dx, dy, dz, float(s["minX"]), float(s["bottom"]), float(s["minZ"]),
+			float(s["maxX"]), float(s["top"]), float(s["maxZ"]))
+		if t >= 0.0 and t < best: best = t; best_i = i
+	if best_i < 0 or best > length + 0.5: return -1
+	return best_i
+
+# ============================== 4b. hit feedback / melee / flame ==============================
+
+## Every damage path has to tell the player something: a non-breaking hit shows chips + a tap sound (prop_hit) and a
+## visible damage tier, melee (the starting spatula) chips cover, and flame damages it. This is what the owner was missing
+## ("still not breakable" was partly "no reaction at all until the component finally broke").
+func _feedback_checks() -> void:
+	var sim := _match("arena", true, 9010, null, 0)
+	var d: Destruct = sim.destruct
+	var pi := -1
+	for i in d.total():
+		if float(d.props[i]["max_hp"]) >= 30.0: pi = i; break
+	check(pi >= 0, "feedback: a big component exists on arena")
+	if pi >= 0:
+		var p: Dictionary = d.props[pi]
+		var hp0 := float(p["hp"])
+		sim.combat.events.clear()
+		var shot := _fire_shots(sim, d, pi, 1)
+		check(bool(shot.get("ok", false)) and not bool(shot.get("broke", true)) and float(p["hp"]) < hp0,
+			"feedback: one shot chips but does not break (%.0f -> %.0f)" % [hp0, float(p["hp"])])
+		check(_count_event(sim, "prop_hit") >= 1, "feedback: a non-breaking hit emits prop_hit")
+		check(_has_event(sim, "sfx"), "feedback: a non-breaking hit emits a tap sound")
+		var ev := _last_event(sim, "prop_hit")
+		check(float(ev.get("frac", -1.0)) > 0.0 and float(ev.get("dmg", 0.0)) > 0.0 and ev.has("tier"),
+			"feedback: prop_hit carries damage / remaining fraction / tier")
+		check(int(p["damage"]) == 0, "feedback: one chip is still the healthy tier")
+		d.break_hit(pi, float(p["max_hp"]) * 0.35)                 # ~2/3 hp left: chipped
+		check(int(p["damage"]) == 1, "feedback: damage tier 1 at ~2/3 hp")
+		d.break_hit(pi, float(p["max_hp"]) * 0.35)                 # ~1/3 hp left: cracked
+		check(int(p["damage"]) == 2, "feedback: damage tier 2 at ~1/3 hp")
+		check(not bool(p["broken"]), "feedback: the cracked component still stands")
+		check(d.break_hit(pi, 9999.0), "feedback: the cracked component breaks")
+		d.step(float(cfg["respawn_max"]) + 1.0)
+		check(not bool(p["broken"]) and int(p["damage"]) == 0, "feedback: a respawned component is healthy again")
+	sim.dispose()
+	await process_frame
+	# Melee: the classic match starts with the spatula, so melee has to chip cover (MatchSim.sweep -> Destruct.melee_sweep).
+	var msim := _match("arena", true, 9011, null, 0)
+	var md: Destruct = msim.destruct
+	var mi := -1
+	for i in md.total():
+		if _pose_melee(msim, md, i): mi = i; break
+	check(mi >= 0, "melee: a component is reachable on foot")
+	if mi >= 0:
+		var mp: Dictionary = md.props[mi]
+		var mhp := float(mp["hp"])
+		msim.combat.events.clear()
+		msim.sweep()
+		var after := float(mp["hp"])
+		check(after < mhp, "melee: a spatula swing chips the component (%.0f -> %.0f)" % [mhp, after])
+		msim.sweep()                                               # same swing: no second hit
+		check(absf(float(mp["hp"]) - after) < 0.001, "melee: one swing hits the same component once")
+		check(_count_event(msim, "prop_hit") + _count_event(msim, "break") >= 1, "melee: the melee hit emits feedback (prop_hit/break)")
+	msim.dispose()
+	await process_frame
+	# Flame: the fire cone damages cover (weapons._flame -> Destruct.flame_hit).
+	var lsim := _match("arena", true, 9012, null, 0)
+	var ld: Destruct = lsim.destruct
+	var li := -1
+	for i in ld.total():
+		if bool(_stand_point(lsim, ld, i).get("ok", false)): li = i; break
+	check(li >= 0, "flame: a component is reachable by a flame ray")
+	if li >= 0:
+		var lp: Dictionary = ld.props[li]
+		var lhp := float(lp["hp"])
+		var spot := _stand_point(lsim, ld, li)
+		var lf: FighterState = lsim.player
+		_pose(lf, float(spot["x"]), float(spot["z"]), spot["aim"], float(spot["y"]))
+		lf.weapon = "flame"; lf.slot = -1
+		lsim.combat.events.clear()
+		lsim.combat.weapons.fire_gun(lf, "flame", spot["aim"])
+		check(float(lp["hp"]) < lhp, "flame: the fire burst chips a breakable (%.1f -> %.1f)" % [lhp, float(lp["hp"])])
+	lsim.dispose()
+	await process_frame
 
 # ============================== 4. behaviour ==============================
 
@@ -646,29 +852,79 @@ func _world_checks() -> void:
 	check(off._mode_l != null and not off._mode_l.text.contains("Breakables"), "world off: the mode line does not mention breakables")
 	off.queue_free()
 	await process_frame
-	st.set_value("destructible", true)
+	# Enablement through the REAL wizard path: the Arena page's Breakable props row writes Settings "destructible"; the
+	# world launched from the wizard's Start (main.gd play_offline -> wizard.save()) reads that setting. The wizard is
+	# loaded at runtime so this test script compiles before the UI autoloads are up.
+	st.set_value("destructible", false)
+	var wizard: Node = (load("res://ui/setup_wizard.gd") as Script).new()
+	root.add_child(wizard)
+	await process_frame
+	wizard.load_settings()
+	wizard.set_mode("classic")
+	wizard.set_map("arena")
+	wizard.set_destruct("on")
+	wizard.save()
+	check(bool(st.get_value("destructible")), "enablement: the wizard Breakable props toggle writes Settings destructible")
+	check(str(st.get_value("offline_map")) == "arena", "enablement: the wizard saved arena")
+	check(bool(wizard.destruct_arena_ok()), "enablement: the arena is offered the Breakable props row")
+	wizard.queue_free()
+	await process_frame
 	var on: Node = load("res://world/world.tscn").instantiate()
-	on.map_id = "arena"; on.auto_run = false; on.bot_count = 0; on.dyn_choice = "off"; on.rng_seed = 4242
+	on.map_id = str(st.get_value("offline_map")); on.mode_id = str(st.get_value("mode"))
+	on.auto_run = false; on.bot_count = 0; on.dyn_choice = "off"; on.rng_seed = 4242
 	root.add_child(on)
 	await process_frame
+	check(on.sim.destruct != null, "enablement: the world reads the wizard's Settings and turns the mode on")
 	var analysis := Destruct.analyze("arena", maps["arena"], _styles("arena"))
 	var want := Destruct.target_count((analysis["eligible"] as Array).size())
-	check(on.sim.destruct != null, "world on: Destruct is wired")
 	check(on.sim.destruct != null and on.sim.destruct.total() == want, "world on: %d breakables loaded" % want)
 	check(_world_props(on) == want, "world on: one prop mesh root per component under the map")
-	check(on._mode_l != null and on._mode_l.text.contains("Breakables"), "world on: the HUD mode line says Breakables (%s)" % (on._mode_l.text if on._mode_l else ""))
+	check(on._mode_l != null and on._mode_l.text.contains("Breakables") and on._mode_l.text.contains("%d/%d" % [want, want]),
+		"world on: the HUD mode line shows the breakable count (%s)" % (on._mode_l.text if on._mode_l else ""))
 	check(on.sim.destruct.merged_pruned, "world on: the merged map meshes were rebuilt without the breakable boxes")
 	var base_solids := FighterPhysics.solids_from_map(maps["arena"]).size()
 	check(on.sim.solids.size() == base_solids - on.sim.destruct.merge_exclude.size() + want, "world on: collision matches the swapped boxes")
-	on.sim.destruct.break_hit(0, 9999.0)
-	check(on.sim.solids.size() == base_solids - on.sim.destruct.merge_exclude.size() + want - 1, "world on: a break leaves sim.solids")
-	on.present(0.0)   # the presentation layer drains the combat events without running the match
-	check(int(on.counts.get("break", 0)) >= 1, "world on: the break event reaches the presentation layer")
-	check(int(on.counts.get("sfx", 0)) >= 1, "world on: the break sound event reaches the audio hook")
+	# THE REAL MATCH PATH: the world's own player fires the real gun at EVERY selected component until it breaks. This is
+	# the end-to-end proof for "still not breakable": plan -> merged mesh prune -> tagged solids -> the gun's hit hook ->
+	# solid removed + mesh hidden + presentation event + HUD count down.
+	var sim: MatchSim = on.sim
+	var d: Destruct = on.sim.destruct
+	var fired := 0
+	for i in d.total():
+		var spot := _stand_point(sim, d, i)
+		check(bool(spot.get("ok", false)), "world on: component %d has a clear firing spot" % i)
+		if not bool(spot.get("ok", false)): continue
+		var f: FighterState = sim.player
+		var p: Dictionary = d.props[i]
+		var shots := 0
+		while not bool(p["broken"]) and shots < 40:
+			_pose(f, float(spot["x"]), float(spot["z"]), spot["aim"], float(spot["y"]))
+			sim.combat.weapons.fire_gun(f, AK, spot["aim"])
+			shots += 1
+		check(bool(p["broken"]), "world on: the player's gun breaks component %d (%d shots)" % [i, shots])
+		check(not bool(p["broken"]) or sim.solids.find(p["solid"]) < 0, "world on: component %d leaves the live collision" % i)
+		var mesh: Variant = p["mesh"]
+		check(mesh != null and is_instance_valid(mesh) and not (mesh as Node3D).visible, "world on: component %d mesh hidden" % i)
+		fired += 1
+		on.present(0.0)
+		check(int(on.counts.get("break", 0)) >= fired, "world on: break %d reaches the presentation layer" % fired)
+		check(int(on.counts.get("sfx", 0)) >= fired, "world on: break sounds reach the audio hook")
+	check(fired == want, "world on: the player broke all %d selected components" % want)
+	await process_frame
+	check(on._mode_l != null and on._mode_l.text.contains("Breakables 0/%d" % want),
+		"world on: the HUD counts the breakables left (%s)" % (on._mode_l.text if on._mode_l else ""))
+	# Respawn through the fixed-step path MatchSim.step calls.
 	on.sim.destruct.step(float(cfg["respawn_max"]) + 1.0)
 	on.present(0.0)
-	check(on.sim.destruct.pending_count() == 0 and on.sim.destruct.broken_count() == 0, "world on: the component respawned")
-	check(int(on.counts.get("prop_respawn", 0)) >= 1, "world on: the respawn event reaches the presentation layer")
+	await process_frame
+	check(on.sim.destruct.pending_count() == 0 and on.sim.destruct.broken_count() == 0, "world on: every component respawned")
+	check(int(on.counts.get("prop_respawn", 0)) >= want, "world on: every respawn reaches the presentation layer")
+	check(on._mode_l.text.contains("Breakables %d/%d" % [want, want]), "world on: the HUD count is back to full (%s)" % on._mode_l.text)
+	# A non-breaking gun hit on the real path must also reach the presentation layer (chips + tap sound).
+	var chip := _fire_shots(sim, d, 0, 1)
+	check(bool(chip.get("ok", false)) and not bool(chip.get("broke", true)), "world on: one gun shot chips a component")
+	on.present(0.0)
+	check(int(on.counts.get("prop_hit", 0)) >= 1, "world on: prop_hit reaches the presentation layer (chips + tap)")
 	await process_frame
 	on.load_map("arena")
 	await process_frame
@@ -703,5 +959,17 @@ func _world_checks() -> void:
 	await process_frame
 	check(sandbox.sim.destruct == null, "world gate: the Sandbox ignores the mode")
 	sandbox.queue_free()
+	await process_frame
+	# Honest zero state: the setting is on but the level type has no breakables, so the HUD says "Breakables: 0" instead of
+	# silently pretending the mode is active.
+	st.set_value("destructible", true)
+	var none: Node = load("res://world/world.tscn").instantiate()
+	none.map_id = "squeeze"; none.mode_id = "classic"; none.auto_run = false; none.bot_count = 0; none.dyn_choice = "off"
+	root.add_child(none)
+	await process_frame
+	check(none.sim.destruct == null, "world zero: a shrinking-floor level has no breakables")
+	check(none._mode_l != null and none._mode_l.text.contains("Breakables") and none._mode_l.text.contains("0"),
+		"world zero: the HUD says Breakables: 0 (%s)" % (none._mode_l.text if none._mode_l else ""))
+	none.queue_free()
 	st.reset("destructible")
 	await process_frame
