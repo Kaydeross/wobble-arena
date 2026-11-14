@@ -243,9 +243,9 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
 ## 11. Milestone status
 
 - **M1 (net layer): done, offline + net verified.**
-  `construction` is in `NetMatch.GODOT_MODES` and an Arcade room (`arcade` host opt, hub "Play co-op" →
-  `main.play_arcade_coop`) plays it app-only on the generated site, two seats + the stage's crew, with a web guest
-  refused. `start.arc` (`godot/dlc/construction/arcade_coop.gd`: `{run, st, of, diff, seed, seats, crew, boss, big,
+  `construction` is in `NetMatch.GODOT_MODES` and an Arcade room (`arcade` host opt, created from Play online > Host a
+  room > Room type: Arcade co-op, scripts/main.gd: host_room; §12) plays it app-only on the generated site, two seats +
+  the stage's crew, with a web guest refused. `start.arc` (`godot/dlc/construction/arcade_coop.gd`: `{run, st, of, diff, seed, seats, crew, boss, big,
   state, lv}`) travels with every stage's `start` (the transition mechanism) and with a mid-run join/rejoin; the host
   rebuilds slots as seats + the new stage's crew, adopts the crew fighters `MatchSim.setup` made, and sends `am`
   (~5 Hz + on change: stage, state, lives, boss fraction, shrink, downed seats, stage summary, victory). The guest
@@ -257,7 +257,7 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
   respawn) and `am.rv` places it at the host's safe spot/health fraction with 1.5 s invulnerability, and each clear
   (`am.cn`) pays ITS OWN save once (its own `DlcSave.has_cleared`/first-clear bonus/`mark_cleared`/`set_best`/`Save.coins`/
   `Save.commit`) — a retry pays nothing twice; the victory (`am.won`/`am.vic`) pays the bonus and hat conditions on its
-  own save too. Test: `npm run test:godot-host` scenario D ("arcade") — host room with the teammate bot, a Godot guest
+  own save too. Test: `npm run test:godot-host` scenario D ("arcade") — an online-created room starts with the teammate bot, a Godot guest
   joins mid-fight, the down/revive round trip, a stage-1 clear and retry (350 then 0 guest coins), stage 1 → 2
   (`start.arc.st` 0 → 1, matching fresh seeds), the guest's HUD ("Normal · Stage 2 / 6 · Lives 3"), boss fraction
   (0.42) and shrinking floor (50 m), the guest leaving (seat 1 becomes a fighting teammate bot with its class), the
@@ -290,3 +290,34 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
   Arcade run is over."). Test: the same scenario D covers drop (seat bot keeps `kid`/the player's name and targets
   "Engineer"), rejoin (`REJOIN` with `arc.st` 1 and matching seed, `slots[1].kind == "human"`) and host-left (the
   rejoining guest prints `HOSTLEFT` with the run-over reason). M5 (migration inside a run) stays cut.
+
+## 12. Entry and lobby: co-op moved to the Online flow (owner, 2026-11-14)
+
+Co-op used to be hosted from the Construction hub's Arcade steps ("Play co-op" -> `main.play_arcade_coop`, a private
+room with no Host sheet). That made it a side door out of a solo selection flow, and the room list could not show it.
+It is an **online room** now:
+
+- **Create:** Play online -> **Host a room** -> **Room type: Versus / Arcade co-op** (the type pills sit beside the room
+  name; DLC owners only). Arcade co-op still creates the same `HostSession` with `arcade: true` opts (two seats, teammate
+  bot, `start.arc`, `am`, seat model, per-save coins unchanged), reading `Settings arcade_diff` / `arcade_ff` from the
+  Arcade screen's difficulty step. The room can be **public or private** like any room, so the room browser lists it
+  with `kind: "arcade-coop"` / `kindName: "Arcade co-op"` (row text in the accent colour; joining the row sends the
+  expected `kind` to the server). The host sheet hides Seats/Bots and disables the Mode/Rules tabs for a co-op room (the
+  stage table owns them) and says which kind of room it is.
+- **Lobby (start gate):** the shared lobby card shows the kind in its code line and lists the players. The host's
+  **Start** is disabled and refused (`HostSession.can_start` / `start_match`) until the room has **two players**; while
+  it has one, a separate **Start with bot** button starts immediately with the teammate bot in seat 1 (the existing
+  `ArcadeCoop.teammate_slot` path, useful for solo testing). With two players, Start is enabled and Start with bot
+  disappears. A **guest cannot start** (no button, no session method; the host's guard drops a forged `start`) and its
+  lobby only says "waiting for the host to start". Guest join/leave updates the roster live through the normal
+  `roster` message, so the host's Start flips on and off as friends come and go.
+- **Removed:** the hub's "Play co-op" card, its `arcade_coop_requested` signal and `main.play_arcade_coop`. The Arcade
+  card is the solo run only. The co-op friendly-fire toggle stays on the Arcade difficulty step (it writes
+  `Settings arcade_ff`, which the online co-op room reads); moving it fully into the online sheet is a possible
+  follow-up (it would touch `arcade_test.gd`, which still asserts it there).
+- **Tests:** `npm run test:godot-ui` (room type pills, host-sheet hiding, lobby gating with a fake `HostSession`, the
+  removed hub card, the Arcade co-op room-list row), `npm run test:godot-dlc-ui` (no hub co-op entry), and
+  `npm run test:godot-host` scenario D: the room is created from the online sheet and public; the room list row and the
+  relay metadata carry `kind: "arcade-coop"`; a plain Start with one player is refused, a second client joining makes
+  Start possible, a guest's forged `start` is dropped, "Start with bot" starts with the teammate bot, and the run's
+  `start` has two seats (+ the stage crew).

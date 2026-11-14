@@ -18,8 +18,11 @@
       app-only mode to its end in turn (rules.gmode, gteam, pp, grav 0.15, hp 300; gm Chaos events; pend);
    C. host migration: the Godot host leaves mid-match, the relay promotes the Godot guest, which carries the match on
       (`start` with `rs`: same seats, K.O.s, bot, arena seed and clock); the web guest re-joins it with a plain hello.
-   D. Arcade co-op (godot/tests/net_arcade_host.gd + net_arcade_peer.gd): a private app-only Construction room from the
-      hub's "Play co-op" (2 seats, teammate bot, no Host sheet) starts alone; a Godot guest takes seat 1 mid-fight; the
+   D. Arcade co-op (godot/tests/net_arcade_host.gd + net_arcade_peer.gd): the room is created through the ONLINE flow
+      (Play online > Host a room > Room type: Arcade co-op, public; 2 seats, teammate bot, no Host sheet rules), its
+      relay metadata and room-list row carry kind "arcade-coop" / kindName "Arcade co-op"; a plain Start is refused with
+      one player, a second client joining makes Start possible and a guest's forged `start` is dropped (a guest cannot
+      start), then "Start with bot" starts the run with the teammate bot; a Godot guest takes seat 1 mid-fight; the
       host puts that seat down (guest pins itself from `am.dn`) and revives it (`am.rv`); a stage clear and a retry pay
       the guest's OWN save once then nothing; the run advances to stage 2 (a new `start` with `arc.st` 1 and a fresh
       site seed, the same seed on both sides) where the guest's HUD/boss bar/shrink mirror `am`; the guest leaves (its
@@ -232,26 +235,45 @@ async function migration(url) {
   assert.equal(cp, 0, 'new host exit code');
   console.log('C. host migration passes');
 }
-// D. Arcade co-op: the hub's "Play co-op" room (app-only Construction), 1 human + teammate bot, a Godot guest takes
-//    seat 1 mid-run, the host puts that seat down and revives it, clears/retries stage 1 (the guest pays its OWN save
-//    once, then not again), advances to stage 2 (a new `start` with arc.st=1 and a fresh site seed), the guest mirrors
-//    the HUD/boss fraction/shrink; the guest leaves (seat -> fighting teammate bot keeping its class) and REJOINS
-//    (current stage's `start`, seat 1 human again); the host wins and leaves (run over for the guest).
+// D. Arcade co-op: created from the ONLINE create-room flow (Play online > Host a room > Room type: Arcade co-op, public),
+//    its relay metadata / room-list row says kind "arcade-coop", a plain Start is refused with one player, a second
+//    client joining makes Start possible (and a guest cannot start: a forged `start` is dropped), then "Start with bot"
+//    starts the run (1 human + teammate bot, 2 seats). A Godot guest takes seat 1 mid-run, the host puts that seat down
+//    and revives it, clears/retries stage 1 (the guest pays its OWN save once, then not again), advances to stage 2 (a
+//    new `start` with arc.st=1 and a fresh site seed), the guest mirrors the HUD/boss fraction/shrink; the guest leaves
+//    (seat -> fighting teammate bot keeping its class) and REJOINS (current stage's `start`, seat 1 human again); the host
+//    wins and leaves (run over for the guest).
 async function arcadeCoop(url) {
   host = runGodot('res://tests/net_arcade_host.gd', [url], 'ahost');
   const jl = s => JSON.parse(s.slice(s.indexOf(' ') + 1));
-  const hosted = jl(await host.waitLine(/^HOSTED /, 30000));
+  const online = jl(await host.waitLine(/^ONLINE_CREATE /, 60000));
+  assert.equal(online.type, 'coop', 'the online Host sheet was set to Room type: Arcade co-op');
+  assert.equal(online.pub, true, 'the co-op room was created public from the online sheet');
+  const hosted = jl(await host.waitLine(/^HOSTED /, 60000));
   const code = hosted.code;
-  // Read-only room-kind checks (docs/PROTOCOL.md 1.1/1.2): the hub's Arcade co-op room says what it is on the relay, and a
-  // join-by-code validates the expected kind. The host/peer flow below is untouched: a probe with no `hello` never
-  // becomes a roster member, so it cannot change the run.
+  console.log('arcade online room: ' + JSON.stringify(hosted));
+  assert.equal(hosted.kind, 'arcade-coop', 'the room created by the online flow is an Arcade co-op room');
+  assert.equal(hosted.arcade, true); assert.equal(hosted.max, 2, 'two seats');
+  assert.equal(hosted.name, 'Arcade co-op');
+  // Read-only room-kind checks (docs/PROTOCOL.md 1.1/1.2): the online-created Arcade co-op room says what it is on the
+  // relay and in the room list, and a join-by-code validates the expected kind.
   {
     const room = srv.rooms.get(code);
     assert.ok(room, 'the Arcade co-op room is on the relay');
     assert.equal(room.info.kind, 'arcade-coop', 'the room metadata carries the explicit kind');
     assert.equal(room.info.arcade, true, 'the room metadata carries arcade:true');
     assert.equal(room.info.mode, 'construction');
+    assert.equal(room.info.modeName, 'Arcade co-op');
     console.log('arcade room kind: ' + JSON.stringify({ code, kind: room.info.kind, kindName: room.info.kindName, arcade: room.info.arcade, modeName: room.info.modeName, max: room.info.max }));
+    const lister = await new Client(url, 'Lister').open();
+    lister.tx({ op: 'list' });
+    const list = await lister.wait(m => m.op === 'rooms', 5000);
+    const row = list.rooms.find(r => r.id === code);
+    assert.ok(row, 'the public Arcade co-op room is in the room browser list');
+    assert.equal(row.kind, 'arcade-coop', 'the room-list row carries kind: arcade-coop');
+    assert.equal(row.kindName, 'Arcade co-op', 'the room-list row names the kind');
+    assert.equal(row.arcade, true);
+    lister.close();
     const probe = await new Client(url, 'KindProbe').open();
     probe.tx({ op: 'join', id: code, kind: 'pvp' });
     const wrong = await probe.wait(m => m.op === 'nojoin' || m.op === 'joined');
@@ -266,6 +288,36 @@ async function arcadeCoop(url) {
     probe.tx({ op: 'leave' }); await probe.wait(m => m.op === 'left'); probe.close();
     await sleep(120);
   }
+  // -- the start gate: a plain Start with one player is refused; a second client joining makes Start possible; a guest
+  //    cannot start (the host drops a forged `start`); the second client leaving, "Start with bot" starts the run --
+  const REF = jl(await host.waitLine(/^START_REFUSED /, 30000));
+  console.log('arcade start refused (1 human): ' + JSON.stringify(REF));
+  assert.equal(REF.ok, false, 'a plain Start is refused with one player');
+  assert.equal(REF.can_start, false); assert.equal(REF.humans, 1);
+  assert.ok(/two players/.test(REF.status), 'the host is told why: ' + REF.status);
+  const lobbyGuest = await new Client(url, 'LobbyGuest').open();
+  await lobbyGuest.join(code);
+  lobbyGuest.toHost({ t: 'hello', build: BUILD, proto: PROTO, name: 'LobbyGuest', skin: 'none', hat: 'none', color: 0x39b5a8, gd: 1 });
+  const lw = await lobbyGuest.wait(m => m.op === 'msg' && m.m.t === 'welcome', 5000);
+  assert.equal(lw.m.gd, 1, 'the second client is a Godot client (the room is app-only)');
+  const lr = await lobbyGuest.wait(m => m.op === 'msg' && m.m.t === 'roster', 5000);
+  assert.equal(lr.m.modeName, 'Arcade co-op', 'the guest lobby is told it is an Arcade co-op room');
+  const TWO = jl(await host.waitLine(/^CAN_START /, 20000));
+  console.log('arcade start possible (2 humans): ' + JSON.stringify(TWO));
+  assert.equal(TWO.can_start, true, 'a second player makes Start possible');
+  assert.equal(TWO.humans, 2);
+  lobbyGuest.toHost({ t: 'start', slots: [{ kind: 'human' }, { kind: 'bot' }], map: 'sitegen' });
+  const GD = jl(await host.waitLine(/^GUARDED_DROPPED /, 10000));
+  console.log('arcade guest forged start dropped: ' + JSON.stringify(GD));
+  assert.ok(GD.guarded >= 1, 'a guest cannot start the room (the forged start is dropped)');
+  lobbyGuest.tx({ op: 'leave' }); await lobbyGuest.wait(m => m.op === 'left'); lobbyGuest.close();
+  const BACK = jl(await host.waitLine(/^CAN_START_BACK /, 20000));
+  console.log('arcade start gated again (1 human): ' + JSON.stringify(BACK));
+  assert.equal(BACK.can_start, false, 'with one player again Start is not possible');
+  const BOT = jl(await host.waitLine(/^START_BOT /, 20000));
+  console.log('arcade start with bot: ' + JSON.stringify(BOT));
+  assert.equal(BOT.ok, true, 'Start with bot starts the run');
+  assert.equal(BOT.arcade, true);
   const S1 = jl(await host.waitLine(/^START1 /, 60000));
   console.log('arcade host start: ' + JSON.stringify({ slots: S1.slots, kinds: S1.kinds, map: S1.map, arc: S1.arc, rules: S1.rules }));
   assert.equal(S1.map, 'sitegen', 'the arcade room plays the generated site');
@@ -475,7 +527,7 @@ async function arcadeCoop(url) {
     Promise.race([peer2.exited, sleep(60000).then(() => 'hang')])]);
   if (ch === 'hang') host.p.kill(); if (cp === 'hang') peer.p.kill(); if (cp2 === 'hang') peer2.p.kill();
   const ht = host.lines.map(x => x.l), pt = peer.lines.map(x => x.l), p2t = peer2.lines.map(x => x.l);
-  console.log(ht.filter(l => /^(START|HOST_STAGE|PEER_IN|HOST_FIGHT|DOWN_SENT|REVIVED_HOST|CLEAR1_H|RETRY|CLEAR2_H|ADVANCING|HOST_HF|PEER_OUT|SEAT_BOT|REJOIN|HOST_WON|LEAVE|AM_SENT|DONE|FAIL)/.test(l)).map(l => 'ahost: ' + l).join('\n'));
+  console.log(ht.filter(l => /^(HOSTED|ONLINE_CREATE|START_REFUSED|CAN_START|GUARDED_DROPPED|START_BOT|START|HOST_STAGE|PEER_IN|HOST_FIGHT|DOWN_SENT|REVIVED_HOST|CLEAR1_H|RETRY|CLEAR2_H|ADVANCING|HOST_HF|PEER_OUT|SEAT_BOT|REJOIN|HOST_WON|LEAVE|AM_SENT|DONE|FAIL)/.test(l)).map(l => 'ahost: ' + l).join('\n'));
   console.log(pt.filter(l => /^(JOINED|START|PEER_STAGE|AM|DOWNED|REVIVED|GUEST_SAVE|GUEST_CARD|PEER_HUD|SHRINK|DONE|FAIL)/.test(l)).map(l => 'apeer: ' + l).join('\n'));
   console.log(p2t.filter(l => /^(JOINED|START|PEER_STAGE|GUEST_VICTORY|HOSTLEFT|DONE|FAIL)/.test(l)).map(l => 'apeer2: ' + l).join('\n'));
   const errs = [...ht, ...pt, ...p2t].filter(l => ERR.test(l));

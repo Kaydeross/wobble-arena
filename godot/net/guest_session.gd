@@ -40,6 +40,7 @@ var net := NetClient.new()
 var phase := Phase.IDLE
 var url := ""
 var room_code := ""
+var expect_kind := ""             ## "pvp"/"arcade-coop" when joining from a room-list row ("" = any kind)
 var slot := -1
 var room_name := ""
 var roster: Array = []
@@ -77,8 +78,10 @@ func _on_joined(_id: String, _cid: int) -> void:
 	_set_status("Connected! Waiting for the host…")
 
 ## Start: `info` = {name, skin, hat, color, cls}; `token` from /api/login ("" = not logged in).
-func begin(p_url: String, p_room: String, info: Dictionary, token: String = "") -> bool:
-	url = p_url.strip_edges(); room_code = p_room.strip_edges()
+## `p_expect_kind`: joining a room-list row asks the server to refuse another kind of room (PvP vs Arcade co-op,
+## docs/PROTOCOL.md 1.1/1.2); "" accepts any room (join by typed code).
+func begin(p_url: String, p_room: String, info: Dictionary, token: String = "", p_expect_kind: String = "") -> bool:
+	url = p_url.strip_edges(); room_code = p_room.strip_edges(); expect_kind = p_expect_kind
 	if url == "" or room_code == "":
 		_finish("Enter a server address and a room code."); return false
 	net.player_name = str(info.get("name", "Player")).substr(0, 12)
@@ -167,7 +170,7 @@ func _on_connected() -> void:
 	if phase != Phase.CONNECTING: return
 	phase = Phase.JOINING
 	_set_status(tr("Joining %s…") % room_code)
-	net.join_room(room_code)
+	net.join_room(room_code, NetClient.BUILD, expect_kind)
 
 func _on_disconnected() -> void:
 	if phase == Phase.CONNECTING:
@@ -180,7 +183,7 @@ func _on_join_failed(reason: String) -> void:
 	# `proto: 1` (PROTOCOL.md 6.1: build is informational). Retry once without a build: the host's hello check decides.
 	if reason == "build" and not _build_retry:
 		_build_retry = true
-		net.join_room(room_code, "")
+		net.join_room(room_code, "", expect_kind)
 		return
 	_finish(tr(NOJOIN_TEXT[reason]) if NOJOIN_TEXT.has(reason) else tr("Couldn't join the room (%s). Try again.") % reason)
 
