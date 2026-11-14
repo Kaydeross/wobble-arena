@@ -116,6 +116,13 @@
    "bloomMax": 0.04,
    "bloomDecay": 0.03,
    "wobble": 0.8
+  },
+  "flame": {
+   "force": 0.6,
+   "maxForce": 1.2
+  },
+  "blower": {
+   "dmg": 2.5
   }
  },
  "drops": {

@@ -20,6 +20,9 @@ const FEED_TIME := 5.0
 ## fight already runs.
 const COUNT_NUM_TIME := 0.75
 const COUNT_GO_TIME := 0.85
+## Leaderboard submit spacing (docs/PROTOCOL.md 4.1): results and Arcade clears can fire close together; the server is
+## monotonic anyway, and this keeps a match from sending more than one request.
+const RANK_MIN_MS := 2500
 
 @export var map_id := "arena"
 ## false = the sim only advances when tick()/sim_step() is called (headless tests)
@@ -64,6 +67,8 @@ var start_msg := {}                ## the cleaned `start` this match was built f
 var net_match: NetMatch = null
 var _results: Control = null
 var _reward := {}                  ## Save.finish_match() summary for the results panel (ui/results_rewards.gd)
+var _rank_t := -1000000            ## Time.get_ticks_msec() of the last leaderboard submit attempt
+var _rank_pending := false         ## a submit is on the wire (never blocks the match)
 var emote_wheel: EmoteWheel        ## the in-match emote button + wheel (ui/emote_wheel.gd)
 var control: PlayerControl
 var map_node: MapBuilder.MapNode
@@ -178,6 +183,7 @@ func _exit_tree() -> void:
 
 ## loadMap: a fresh match on `id`.
 func load_map(id: String) -> void:
+	_connect_rank_hooks()                                 # Arcade clear/victory -> the leaderboard (once, never blocking)
 	if arcade != null: id = arcade.begin_stage(self)      # Arcade: this stage's site, bots and skill
 	if map_node:
 		map_node.queue_free()
@@ -995,9 +1001,59 @@ func _end_kill_cam() -> void:
 	acc = 0.0
 	cam.follow(0.0, cam_target(), false, solids)   # straight back to the follow camera
 
+# ============================== leaderboard (docs/PROTOCOL.md 4.1) ==============================
+
+## One Arcade boss-rush stage was cleared (host or co-op guest): the furthest stage is now higher, so submit once.
+func _on_arcade_rank_change(_index: int, _summary: Dictionary) -> void:
+	_maybe_submit_rank()
+
+## The Arcade run was won: same submit (the stage best is already in the save).
+func _on_arcade_rank_won() -> void:
+	_maybe_submit_rank()
+
+## After a match result or an Arcade clear, send this account's lifetime bests to the leaderboard: once per RANK_MIN_MS,
+## only when signed in, never in Kids mode (which is not ranked), and never on the gameplay path (AccountApi.submit_rank
+## is an HTTP request that reports back later; a failure is ignored and the next result tries again).
+func _maybe_submit_rank() -> void:
+	if _rank_pending: return
+	var now := Time.get_ticks_msec()
+	if now - _rank_t < RANK_MIN_MS: return
+	_rank_t = now
+	if Save.cloud == null or not AccountApi.rank_allowed() or not Save.cloud.signed_in(): return
+	var st := {"kos": int(Save.stats.get("kos", 0)), "wins": int(Save.stats.get("wins", 0)), "matches": int(Save.stats.get("matches", 0))}
+	var arc := _arcade_best_stat()
+	if not arc.is_empty(): st.merge(arc, true)
+	_rank_pending = true
+	Save.cloud.submit_rank(st, func(_r: Dictionary) -> void: _rank_pending = false)
+
+## {arcade_best, arcade_diff} for the furthest Arcade stage across the difficulties, weighted like the server's board
+## (easy x1, normal x2, nightmare x3); {} when the player never cleared one.
+func _arcade_best_stat() -> Dictionary:
+	if not (Save.dlc is Dictionary): return {}
+	var best: Variant = (Save.dlc as Dictionary).get("arcade_best")
+	if not (best is Dictionary): return {}
+	var weight := {"easy": 1, "normal": 2, "nightmare": 3}
+	var stage := 0
+	var diff := ""
+	var top := 0
+	for d: String in weight:
+		var n := int((best as Dictionary).get(d, 0))
+		if n > 0 and n * int(weight[d]) > top:
+			top = n * int(weight[d]); stage = n; diff = d
+	return {"arcade_best": stage, "arcade_diff": diff} if stage > 0 else {}
+
+## Watch the Arcade manager for a stage clear or the final victory (idempotent: called on every load_map).
+func _connect_rank_hooks() -> void:
+	if arcade == null: return
+	if not arcade.stage_cleared.is_connected(_on_arcade_rank_change):
+		arcade.stage_cleared.connect(_on_arcade_rank_change)
+	if not arcade.run_won.is_connected(_on_arcade_rank_won):
+		arcade.run_won.connect(_on_arcade_rank_won)
+
 ## finishMatch offline: the result with Play again / Title (themed, centred, over the HUD).
 func _show_offline_results(won: bool, winner_name: String) -> void:
 	Ads.on_match_finished(false)
+	_maybe_submit_rank()
 	if _results: _results.queue_free()
 	_banner.visible = false
 	Sfx.play("win" if won else "lose", 0.8)     # the results fanfare / sigh (Music keeps a calm loop under it)
@@ -1230,6 +1286,7 @@ func _relook(f: FighterState) -> void:
 ## pend: the host ended the match. Results + rematch vote (themed panel, centred, over the HUD).
 func _show_results(winner: String) -> void:
 	Ads.on_match_finished(true)
+	_maybe_submit_rank()
 	if _results: _results.queue_free()
 	Sfx.play("win" if winner == "You" else "lose", 0.8)   # the results fanfare / sigh
 	var p := PanelContainer.new()

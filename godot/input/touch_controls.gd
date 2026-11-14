@@ -19,6 +19,19 @@ extends Control
 ##           spectate_tap (World follows the next fighter).
 ## Drawn with vector icons (_draw, no fonts). Layout respects left-handed mode, button scale, opacity and safe areas.
 ## World wires `state`; the HUD calls attach(sim, hotbar) so the context button and hotbar taps can read the match.
+##
+## Layout: phones use BUTTONS exactly as before. A tablet-class canvas (is_tablet: landscape, short canvas side at least
+## TABLET_MIN_SIDE) uses TABLET_BUTTONS instead: same button sizes but more separation from the edges and from each
+## other, because the tablet canvas is much larger. Settings `touch_layout` adds a per-button offset on top:
+##   "{}" or ""                              the default layout (tablet or phone, per the canvas)
+##   {"fire": [dx, dy], "jump": [30, -12]}   canvas px: +x right, +y down, screen space
+## Offsets apply to the button's default *centre after the left-handed mirror*, so swapping hands mirrors the layout
+## and keeps each nudge where the player put it on screen (the game is landscape-only, so the screen is the same
+## surface either way). JSON is parsed defensively: invalid text, a non-object, or a bad entry for one button falls back
+## to the default for that button only. Every centre is clamped so the whole circle stays inside the safe area:
+## a layout saved on a big tablet is clamped, never broken, on a small phone.
+## The move-buttons editor (ui/touch_layout_editor.gd) writes this key live; `editor_mode` fills the screen with the
+## four buttons for it and ignores gameplay touches, and `suspend` silences every touch layer while it is open.
 
 signal pause_pressed
 signal spectate_tap
@@ -42,6 +55,21 @@ const BUTTONS := [
 	["melee", "MELEE", "shove", 58, 34, 134, false],
 	["context", "", "", 52, 124, 104, false],
 ]
+## Tablet default: the same four buttons, sizes unchanged, but farther from the edges and farther apart, for the bigger
+## canvas UiScale gives a tablet (about 1170x770-880 canvas px against 1108x512 on a phone in landscape). The threshold
+## that picks this table is TABLET_MIN_SIDE below.
+const TABLET_BUTTONS := [
+	["fire", "FIRE", "fire", 96, 34, 34, true],
+	["jump", "JUMP", "jump", 68, 152, 26, true],
+	["melee", "MELEE", "shove", 58, 46, 152, false],
+	["context", "", "", 52, 148, 118, false],
+]
+## Short canvas side (canvas px, landscape) at or above which the layout is treated as tablet-class. UiScale keeps every
+## phone at 510-570 canvas px on that side (667x375 through 926x428 points) and every tablet at 730-880 (1024x768,
+## 1194x834, 1366x1024, 834x1194), so 700 sits in the gap. Portrait never counts as a tablet: the game is landscape-only
+## (project.godot handheld/orientation) and portrait is a scaled fallback.
+const TABLET_MIN_SIDE := 700.0
+const LAYOUT_IDS := ["fire", "jump", "melee", "context"]
 const PAUSE_SIZE := 46.0     ## x UNIT = 62 canvas px: 45 pt at the UI scale (ui/ui_scale.gd)
 
 var state: InputState
@@ -50,6 +78,13 @@ var hotbar: Control            ## ui/hud_hotbar.gd (slot taps)
 var lefty := false
 var scale_k := 1.0
 var opacity := 0.85
+## The move-buttons editor (ui/touch_layout_editor.gd) sets this on its preview instance: draw all four buttons and take
+## no gameplay input. `suspend` is the static form: while an editor is open, every touch layer (the preview included,
+## and the real one behind a paused match) ignores touches so dragging never fires a weapon.
+var editor_mode := false
+static var suspend := false
+## Button id -> Vector2 offset (canvas px, screen space) from Settings `touch_layout`; empty = stock layout.
+var _layout := {}
 ## Spectator mode: no controls, a tap anywhere but pause = spectate_tap. Set by World.spectate().
 var spectate_mode := false:
 	set(v):
@@ -82,7 +117,7 @@ func _ready() -> void:
 	Settings.changed.connect(func(_k, _v): _load_settings())
 	get_viewport().size_changed.connect(_update_insets)
 	_update_insets()
-	visible = wanted()
+	visible = editor_mode or wanted()
 
 static func wanted() -> bool:
 	var mode := str(Settings.get_value("touch_mode", "auto"))
@@ -99,6 +134,7 @@ func _load_settings() -> void:
 	lefty = bool(Settings.get_value("touch_lefty", false))
 	scale_k = float(Settings.get_value("touch_scale", 1.0))
 	opacity = float(Settings.get_value("touch_opacity", 0.85))
+	_layout = parse_layout(Settings.get_value("touch_layout", "{}"))
 	queue_redraw()
 
 ## Safe-area insets (notch, home indicator) from DisplayServer, converted to canvas units. Phones only:
@@ -110,16 +146,138 @@ func _update_insets() -> void:
 func safe_insets() -> Array:
 	return _insets
 
-## Button centre and radius in canvas units.
+## Button centre and radius in canvas units, with the active default (phone or tablet) plus the player's offset, both
+## clamped inside the safe area.
 func button_rect(b: Array) -> Array:
 	var vs := get_viewport_rect().size
-	var u := UNIT * scale_k
-	var sz: float = float(b[3]) * u
-	var x: float = float(b[4]) * u
-	var y: float = float(b[5]) * u
-	var cy: float = vs.y - _insets[3] - y - sz / 2.0
-	var cx: float = (_insets[0] + x + sz / 2.0) if lefty else (vs.x - _insets[2] - x - sz / 2.0)
-	return [Vector2(cx, cy), sz / 2.0]
+	return rect_in(b, vs, _insets, lefty, scale_k, _layout, is_tablet(vs))
+
+## The layout currently applied (the stock phone/tablet table, before offsets).
+static func layout_table(tablet: bool) -> Array:
+	return TABLET_BUTTONS if tablet else BUTTONS
+
+## The table row for `id` in the given default layout, with a fall back to the phone row.
+static func default_button(id: String, tablet: bool) -> Array:
+	for d: Array in layout_table(tablet):
+		if d[0] == id:
+			return d
+	for d: Array in BUTTONS:
+		if d[0] == id:
+			return d
+	# an unknown id still needs a size for callers that pass one in; use the smallest stock button
+	return ["", "", "", 52, 124, 104, false]
+
+## Safe-area rectangle in canvas units (visible rect minus the notch / home-indicator insets).
+static func safe_rect(vs: Vector2, insets: Array) -> Rect2:
+	var l := _inset(insets, 0)
+	var t := _inset(insets, 1)
+	var r := _inset(insets, 2)
+	var b := _inset(insets, 3)
+	return Rect2(Vector2(l, t), Vector2(maxf(0.0, vs.x - l - r), maxf(0.0, vs.y - t - b)))
+
+static func _inset(insets: Array, i: int) -> float:
+	return float(insets[i]) if insets.size() > i else 0.0
+
+## Keep a whole button circle inside the safe area. A viewport too small for the circle centres it instead of flipping
+## the clamp bounds.
+static func clamp_center(c: Vector2, rad: float, vs: Vector2, insets: Array) -> Vector2:
+	var sr := safe_rect(vs, insets)
+	var out := c
+	if sr.size.x >= rad * 2.0:
+		out.x = clampf(c.x, sr.position.x + rad, sr.end.x - rad)
+	else:
+		out.x = sr.get_center().x
+	if sr.size.y >= rad * 2.0:
+		out.y = clampf(c.y, sr.position.y + rad, sr.end.y - rad)
+	else:
+		out.y = sr.get_center().y
+	return out
+
+## Centre/radius of a button with no player offset (the stock phone or tablet layout, mirrored for left-handed).
+static func default_rect(b: Array, vs: Vector2, insets: Array, lefty_mode: bool, scale: float, tablet: bool) -> Array:
+	var d := default_button(str(b[0]), tablet)
+	var u := UNIT * scale
+	var sz: float = float(d[3]) * u
+	var x: float = float(d[4]) * u
+	var y: float = float(d[5]) * u
+	var cy: float = vs.y - _inset(insets, 3) - y - sz / 2.0
+	var cx: float = (_inset(insets, 0) + x + sz / 2.0) if lefty_mode else (vs.x - _inset(insets, 2) - x - sz / 2.0)
+	return [clamp_center(Vector2(cx, cy), sz / 2.0, vs, insets), sz / 2.0]
+
+## Centre/radius for explicit geometry (used by button_rect above and by the tests): the default position plus the
+## player's offset, clamped inside the safe area.
+static func rect_in(b: Array, vs: Vector2, insets: Array, lefty_mode: bool, scale: float, layout: Dictionary,
+		tablet: bool) -> Array:
+	var base := default_rect(b, vs, insets, lefty_mode, scale, tablet)
+	var off: Vector2 = layout.get(str(b[0]), Vector2.ZERO)
+	return [clamp_center((base[0] as Vector2) + off, base[1], vs, insets), base[1]]
+
+## The largest offset (in screen space) that still keeps this button's circle inside the safe area.
+static func clamp_offset(b: Array, vs: Vector2, insets: Array, lefty_mode: bool, scale: float, tablet: bool,
+		off: Vector2) -> Vector2:
+	var base := default_rect(b, vs, insets, lefty_mode, scale, tablet)
+	var rad: float = base[1]
+	var sr := safe_rect(vs, insets)
+	var out := off
+	if sr.size.x >= rad * 2.0:
+		out.x = clampf(off.x, sr.position.x + rad - (base[0] as Vector2).x, sr.end.x - rad - (base[0] as Vector2).x)
+	else:
+		out.x = 0.0
+	if sr.size.y >= rad * 2.0:
+		out.y = clampf(off.y, sr.position.y + rad - (base[0] as Vector2).y, sr.end.y - rad - (base[0] as Vector2).y)
+	else:
+		out.y = 0.0
+	return out
+
+## True for a tablet-class canvas (see TABLET_MIN_SIDE): landscape and a short canvas side of at least 700 px.
+static func is_tablet(vs: Vector2) -> bool:
+	return vs.x > vs.y and minf(vs.x, vs.y) >= TABLET_MIN_SIDE
+
+## Settings `touch_layout` -> {button id: Vector2 offset}. Never fails: bad JSON, a non-object, or one malformed entry
+## leaves those buttons on the default layout.
+static func parse_layout(raw: Variant) -> Dictionary:
+	var out := {}
+	var data: Variant = raw
+	if raw is String:
+		var txt := str(raw).strip_edges()
+		if txt == "" or txt == "{}":
+			return out
+		var j := JSON.new()          # JSON.new().parse() reports an error code; JSON.parse_string() would log one
+		if j.parse(txt) != OK:
+			return out
+		data = j.data
+	if not (data is Dictionary):
+		return out
+	var d := data as Dictionary
+	for id: String in LAYOUT_IDS:
+		if not d.has(id):
+			continue
+		var v: Variant = d[id]
+		var off := Vector2.ZERO
+		if v is Array and (v as Array).size() >= 2 and _finite(v[0]) and _finite(v[1]):
+			off = Vector2(float(v[0]), float(v[1]))
+		elif v is Vector2:
+			off = v
+		else:
+			continue
+		if off != Vector2.ZERO:
+			out[id] = off
+	return out
+
+static func _finite(v: Variant) -> bool:
+	return typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT
+
+## Settings `touch_layout` text for {id: Vector2}: `"{}"` == the stock layout for this device.
+static func layout_text(layout: Dictionary) -> String:
+	var out := {}
+	for id: String in LAYOUT_IDS:
+		if not layout.has(id):
+			continue
+		var off: Vector2 = layout[id]
+		if off.length_squared() < 0.25:
+			continue   # sub-pixel nudge: keep the default
+		out[id] = [roundi(off.x), roundi(off.y)]
+	return JSON.stringify(out)
 
 func button(id: String) -> Array:
 	for b in BUTTONS:
@@ -153,6 +311,10 @@ func _in_move_zone(p: Vector2) -> bool:
 	return p.x > vs.x * (1.0 - MOVE_W) if lefty else p.x < vs.x * MOVE_W
 
 func _input(e: InputEvent) -> void:
+	# The move-buttons editor: its preview must not fire gameplay actions, and no other touch layer may either while
+	# the editor is open (a pause menu over a live match still has a touch layer in the tree).
+	if editor_mode or suspend:
+		return
 	if e is InputEventScreenTouch:
 		if not visible and str(Settings.get_value("touch_mode", "auto")) == "auto":
 			visible = true   # a touch screen on a laptop or in a browser: show the controls once it is used
@@ -511,7 +673,7 @@ func _draw() -> void:
 	for b in ([] if spectate_mode else BUTTONS):
 		var id: String = b[0]
 		var vis := 1.0
-		if id == "context":
+		if id == "context" and not editor_mode:
 			vis = _anim.get("ctx_vis", 0.0)
 			if _ctx == "" and vis <= 0.01:
 				continue
@@ -576,6 +738,9 @@ func _draw() -> void:
 						draw_circle(pc, rad * 0.1, Color(yel.r, yel.g, yel.b, op) if k < p.dash_n else Color(1, 1, 1, 0.25 * op))
 			_:
 				_icon(id, c, rad * 0.5, icon_c)
+	# the move-buttons editor shows just the four buttons it lets you drag: no pause, hotbar flash or move stick
+	if editor_mode:
+		return
 	# a light flash on the tapped hotbar slot
 	var sa: float = _anim.get("slot", 0.0)
 	if sa > 0.0 and _flash_slot >= 0:

@@ -4,12 +4,16 @@ extends RefCounted
 ## InputState + camera yaw -> wish/jump/speed/facing/aim, then fire, melee swing (and its tick), kick, shove, quick
 ## melee, slot keys, reload. The world sets `cam_yaw` and `aim_point` (the crosshair point, from the camera ray)
 ## before every step; tests drive the same InputState from the "script" source.
+## Kids mode (Settings `kids_mode`, docs/KIDS_MODE.md): logic/kids_assist.gd adds auto-aim/auto-fire and the edge guard,
+## consulted once per think after the taps so it uses the weapon actually in hand. With the setting off the normal path
+## below runs unchanged (the bot-parity / flow tests never see it).
 
 var input: InputState
 var cam_yaw := PI
 var aim_point: Array = []        ## [x, y, z] the crosshair is on ([] = straight ahead of the arm)
 var squat := false
 var _dash_held := false
+var _kids_target: FighterState = null   ## kids mode: the enemy being assisted (null = none)
 
 func _init(state: InputState) -> void:
 	input = state
@@ -74,22 +78,46 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 
 	key = p.weapon if p.weapon != "" else "spatula"
 	w = combat.wdata(key)
+
+	# --- kids mode: auto-aim / auto-fire and the edge guard (logic/kids_assist.gd) ---
+	# cy = the yaw the attacks use (the target's when the assist picked one), ap = the point the shots go to.
+	var cy := cam_yaw
+	var ap := aim_point
+	var kids := KidsAssist.assist(p, sim, w, cam_yaw, _kids_target, ph.wish_x, ph.wish_z, ph.want_jump)
+	if not kids.is_empty():
+		ph.wish_x = float(kids["wish_x"])
+		ph.wish_z = float(kids["wish_z"])
+		ph.want_jump = bool(kids["jump"])                     # the guard may cancel a hop into the void
+		var tg: FighterState = kids["target"]
+		_kids_target = tg
+		if tg != null:
+			cy = float(kids["yaw"])
+			ap = kids["aim"]
+			fire = bool(kids["fire"])
+			p.aim_pt = ap
+			var sh := KidsAssist.shoulder(p)
+			var av := Combat.norm3(ap[0] - sh[0], ap[1] - sh[1], ap[2] - sh[2])
+			p.aim_x = av[0]; p.aim_y = av[1]; p.aim_z = av[2]
+			p.face_yaw = cy
+	else:
+		_kids_target = null
+
 	var t: String = w.get("type", "")
 	if t == "melee":
 		if w.get("throwable", false):   # trident: a tap jabs someone close, holding charges a throw
-			combat.weapons.trident_tick(p, fire, dt, cam_yaw)
+			combat.weapons.trident_tick(p, fire, dt, cy)
 		elif fire and p.cool <= 0.0 and p.swing < 0.0:
-			combat.try_melee(p, cam_yaw)
-		if p.swing >= 0.0 and combat.melee_tick(p, key, dt, cam_yaw): combat.after_swing(p)
+			combat.try_melee(p, cy)
+		if p.swing >= 0.0 and combat.melee_tick(p, key, dt, cy): combat.after_swing(p)
 	elif t == "gun":
-		combat.weapons.gun_tick(p, fire, dt, aim_point)
+		combat.weapons.gun_tick(p, fire, dt, ap)
 	elif t == "bow":                   # hold to draw, let go to shoot
-		combat.weapons.bow_tick(p, fire, dt, aim_point)
+		combat.weapons.bow_tick(p, fire, dt, ap)
 		if fire and p.cool <= 0.0 and p.swing < 0.0 and p.get_ammo() > 0: ph.speed *= 0.75
 	elif t == "blower":
 		combat.weapons.blower_tick(p, fire, dt)
 	elif fire:
-		combat.weapons.try_fire(p, aim_point)
+		combat.weapons.try_fire(p, ap)
 
 func _drain_taps() -> void:
 	for a in ["kick", "shove", "spatula", "reload", "slot1", "slot2", "slot3", "swap", "dash", "recover"]:

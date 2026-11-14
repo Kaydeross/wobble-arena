@@ -2,7 +2,8 @@ class_name RoomList
 extends RefCounted
 ## The public room list (docs/PROTOCOL.md layer 1: `list` -> `rooms`), like the web game's netBrowse: open a socket,
 ## send `list`, take the first `rooms` reply, close. Call fetch(url), then poll(dt) every frame until `done`.
-## `done(rooms, err)`: rooms = [{id, name, host, mode, modeName, map, n, max, started, build, pub}] (fullest first),
+## `done(rooms, err)`: rooms = [{id, name, host, mode, modeName, map, n, max, started, build, kind, kindName, arcade, pub}]
+## (fullest first; kind = "pvp" | "arcade-coop", docs/PROTOCOL.md 1.2),
 ## err = "" or a sentence for the player (server unreachable, no answer).
 
 signal done(rooms: Array, err: String)
@@ -65,7 +66,8 @@ static func clean(raw: Variant) -> Array:
 		if not (r is Dictionary) or str(r.get("id", "")) == "": continue
 		out.append({"id": str(r["id"]), "name": str(r.get("name", "Room")), "host": str(r.get("host", "")),
 			"mode": str(r.get("mode", "")), "modeName": str(r.get("modeName", r.get("mode", ""))), "map": str(r.get("map", "")),
-			"n": int(r.get("n", 0)), "max": int(r.get("max", 0)), "started": bool(r.get("started", false)), "build": str(r.get("build", ""))})
+			"n": int(r.get("n", 0)), "max": int(r.get("max", 0)), "started": bool(r.get("started", false)), "build": str(r.get("build", "")),
+			"kind": str(r.get("kind", "pvp")), "kindName": str(r.get("kindName", r.get("modeName", ""))), "arcade": bool(r.get("arcade", false))})
 	out.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return a["n"] > b["n"])
 	return out
 

@@ -4,13 +4,14 @@ extends RefCounted
 ## room's player-seat + crew slot table and the `start.arc` run snapshot the host sends with every stage.
 ##
 ## slots = [seat0, seat1, crew0, crew1, …] (the positional table MatchSim/HostMatch already use: slot k <-> sim.fighters[k])
-## and `arc` = {run, st, of, diff, seed, seats:[0,1], crew:[2,…], boss, big, state, lv}:
+## and `arc` = {run, st, of, diff, seed, seats:[0,1], crew:[2,…], boss, big, state, lv, ff}:
 ##   run   the run seed (seed_base; stage_seed = run + the stage's map_seed_offset + 1009 * attempt)
 ##   st/of this stage index (0-based) and the stage count
 ##   seed  this stage's generated-site seed (SiteMap.set_seed; the guest rebuilds the same site from it)
 ##   seats/crew which slots are player seats and which are the stage's crew bots (the boss is crew[0])
 ##   boss  the boss' slot (-1 on a stage without one), big = the 1.5x Client visual
 ##   state/lv the host's run state ("intro" per stage) and the shared lives
+##   ff    co-op friendly fire between the two seats (owner decision: false by default; hub toggle Settings arcade_ff)
 ## The stage table (res://data/extra/construction/stages.json) is read here once and nowhere else in the net layer.
 ## ArcadeManager stays the run authority; `stage_arc(manager)` snapshots its live state for the next `start`.
 
@@ -108,24 +109,25 @@ static func seat_slots(seat_count: int = SEATS) -> Array:
 
 ## `start.arc` for one stage, from explicit values (the host's first start and the tests).
 static func arc_for_stage(run: int, diff: String, stage: int, lives: int, state: String = "intro",
-		seat_count: int = SEATS, attempt: int = 0) -> Dictionary:
+		seat_count: int = SEATS, attempt: int = 0, ff: bool = false) -> Dictionary:
 	var d := norm_diff(diff)
 	var st := clampi(stage, 0, maxi(0, count() - 1))
 	return {"run": maxi(1, run), "st": st, "of": count(), "diff": d, "seed": stage_seed(maxi(1, run), st, attempt),
 		"seats": seat_slots(seat_count), "crew": crew_ids(st, seat_count), "boss": boss_slot(st, seat_count),
-		"big": is_big(st), "state": state if state in STATES else "intro", "lv": maxi(0, lives)}
+		"big": is_big(st), "state": state if state in STATES else "intro", "lv": maxi(0, lives), "ff": ff}
 
 ## The arc of a brand-new run (stage 0).
-static func run_start_arc(run: int, diff: String, seat_count: int = SEATS) -> Dictionary:
-	return arc_for_stage(run, diff, 0, lives_for(diff), "intro", seat_count, 0)
+static func run_start_arc(run: int, diff: String, seat_count: int = SEATS, ff: bool = false) -> Dictionary:
+	return arc_for_stage(run, diff, 0, lives_for(diff), "intro", seat_count, 0, ff)
 
 ## The live arc of an ArcadeManager (dynamic: it does not reference the class, so there is no class_name cycle):
-## the next stage's `start` and a mid-match rejoin both use exactly this snapshot.
+## the next stage's `start` and a mid-match rejoin both use exactly this snapshot. `m` is an ArcadeManager object, so
+## these are Object.get(property) reads (one argument), not Dictionary.get.
 static func stage_arc(m) -> Dictionary:
 	var stage := int(m.get("stage"))
 	var seats := int(m.get("seat_count"))
 	return arc_for_stage(int(m.get("seed_base")), str(m.get("diff")), stage, int(m.get("lives")),
-		str(m.get("state")), seats, int(m.get("attempt")))
+		str(m.get("state")), seats, int(m.get("attempt")), bool(m.get("friendly_fire")))
 
 ## The crew slots of a stage: bot entries as `start.slots` / MatchSim expect them (id = its room slot, after the seats).
 ## The look/name come from the stage table; `cls` is the placeholder class MatchSim gives that bot in slot order (the

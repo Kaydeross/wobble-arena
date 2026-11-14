@@ -4,6 +4,7 @@ const assert = require('assert');
 process.env.REQUIRE_LOGIN = '0';
 process.env.DATA_DIR = require('os').tmpdir() + '/wa-test-' + process.pid;
 const srv = require('../server');
+const accounts = require('../accounts');
 const { Client } = require('./wa-client');
 (async () => {
   await srv.start(0);
@@ -33,6 +34,31 @@ const { Client } = require('./wa-client');
   assert.ok(!g2.inbox.some(m => m.op === 'msg'), 'guest broadcast ignored');
 
   const pubId = await (async () => { const p = await new Client(url, 'Pub').open(); const i = await p.create(true); h.tx({ op: 'list' }); const l = await h.wait(m => m.op === 'rooms'); assert.ok(l.rooms.some(r => r.id === i && r.pub), 'public room listed'); assert.ok(!l.rooms.some(r => r.id === id), 'private room hidden'); p.close(); return i; })();
+
+  /* ---- room kind: the room list and a join-by-code carry "arcade-coop" vs "pvp" (docs/PROTOCOL.md 1.1, 1.2) ---- */
+  { const k = await new Client(url, 'KindHost').open(); await k.op('hi');
+    k.tx({ op: 'create', pub: true, info: { name: 'Arcade Test', mode: 'construction', modeName: 'Construction', map: 'Building Site', arcade: true, max: 2 } });
+    const cr = await k.wait(m => m.op === 'created');
+    h.tx({ op: 'list' }); const l = await h.wait(m => m.op === 'rooms');
+    const row = l.rooms.find(r => r.id === cr.id);
+    assert.ok(row && row.arcade === true && row.kind === 'arcade-coop' && row.kindName === 'Arcade co-op', 'the room list carries the room kind: ' + JSON.stringify(row));
+    const j = await new Client(url, 'WrongKind').open(); await j.op('hi');
+    j.tx({ op: 'join', id: cr.id, kind: 'pvp' }); const nj = await j.wait(m => m.op === 'nojoin');
+    assert.equal(nj.reason, 'kind', 'a kind mismatch is refused'); assert.equal(nj.kind, 'arcade-coop');
+    j.tx({ op: 'join', id: 'ZZZZZ' }); const nn = await j.wait(m => m.op === 'nojoin');
+    assert.equal(nn.reason, 'none', 'an unknown code is a different failure from a kind mismatch');
+    j.tx({ op: 'join', id: cr.id, kind: 'arcade-coop' }); const jj = await j.wait(m => m.op === 'joined');
+    assert.equal(jj.kind, 'arcade-coop', 'the joined reply carries the kind'); assert.equal(jj.arcade, true);
+    j.tx({ op: 'leave' }); await j.op('left'); j.close(); k.close();
+    // a normal room stays pvp, even if a client tries to claim arcade with a classic mode
+    const n = await new Client(url, 'PvpHost').open(); await n.op('hi');
+    n.tx({ op: 'create', pub: true, info: { name: 'PvP Test', mode: 'classic', arcade: true } });
+    const nc = await n.wait(m => m.op === 'created');
+    h.tx({ op: 'list' }); const l2 = await h.wait(m => m.op === 'rooms');
+    const nrow = l2.rooms.find(r => r.id === nc.id);
+    assert.ok(nrow && nrow.kind === 'pvp' && nrow.arcade === false, 'a classic room can not be labelled Arcade: ' + JSON.stringify(nrow));
+    n.close();
+  }
 
   h.close();                                                         // host leaves: longest-standing guest is promoted, the other re-joins
   assert.equal((await g1.op('promoted')).id, id);
@@ -128,7 +154,86 @@ const { Client } = require('./wa-client');
     // accounts made before lastSeen: not erased by the upgrade, they get lastSeen = now
     await A.store.set('user:legacy_lou', JSON.stringify({ u: 'Legacy_Lou', e: 'lou@example.com', p: 'x', r: 'x', c: Date.now() - 400 * DAY, l: Date.now() - 200 * DAY }));
     const mg = await A.sweep(); assert.equal(mg.migrated, 1); const lou = await rec('Legacy_Lou'); assert.ok(lou && Math.abs(lou.s - Date.now()) < 5000, 'legacy account got lastSeen = now');
-    assert.equal((await A.sweep()).erased, 0, 'and survives the next sweep'); delete process.env.ACCOUNT_TTL_DAYS; }
+    assert.equal((await A.sweep()).erased, 0, 'and survives the next sweep'); delete process.env.ACCOUNT_TTL_DAYS;
+
+    /* ---- ranking: GET /api/rank and the authenticated, validated, rate-limited POST /api/rank ---- */
+    const rk = ['Rank_Rae', 'Rank_Rob', 'Rank_Rin'];
+    const rt = [];
+    for (const n of rk) rt.push(await api('POST', '/api/claim', { name: n }));
+    assert.ok(rt.every(r => r.ok), 'ranking test accounts');
+    const rank = (tok, body) => api('POST', '/api/rank', body, tok);
+    const ranks = (q, tok) => api('GET', '/api/rank' + (q || ''), null, tok);
+    const sub1 = await rank(rt[0].token, { kos: 40, wins: 7, matches: 12, arcade_best: 3, arcade_diff: 'normal' });
+    assert.ok(sub1.ok && sub1.board === 'kos' && sub1.entries[0].name === 'Rank_Rae' && sub1.entries[0].rank === 1 && sub1.you.rank === 1, 'rank submit: ' + JSON.stringify(sub1));
+    assert.ok(sub1.stats && sub1.stats.kos === 40 && sub1.stats.arcade.normal === 3, 'the reply carries the stored bests');
+    await rank(rt[1].token, { kos: 90, wins: 12, matches: 20, board: 'wins' });
+    await rank(rt[2].token, { kos: 10, board: 'kos' });
+    const top = await ranks('?board=kos&limit=2');
+    assert.ok(top.ok && top.board === 'kos' && top.entries.length === 2, 'GET /api/rank: ' + JSON.stringify(top));
+    assert.equal(top.entries[0].name, 'Rank_Rob'); assert.equal(top.entries[0].score, 90); assert.equal(top.entries[0].rank, 1);
+    assert.equal(top.entries[1].name, 'Rank_Rae'); assert.equal(top.entries[1].rank, 2);
+    assert.ok(top.entries[0].updated > 0, 'each entry carries its updated time');
+    const allKos = await ranks('?board=kos&limit=99');
+    assert.deepEqual(allKos.entries.map(e => e.name), ['Rank_Rob', 'Rank_Rae', 'Rank_Rin'], 'ordering is score, descending');
+    assert.equal(allKos.entries.length, 3);
+    const lower = await rank(rt[1].token, { kos: 5, wins: 1, matches: 1 });
+    assert.ok(lower.ok && lower.stats.kos === 90 && lower.stats.wins === 12 && lower.stats.matches === 20, 'monotonic: a lower submit leaves the bests alone');
+    assert.equal((await ranks('?board=kos')).entries.find(e => e.name === 'Rank_Rob').score, 90, 'the board kept the higher score');
+    const arc = await rank(rt[0].token, { arcade_best: 2, arcade_diff: 'nightmare', board: 'arcade' });
+    assert.ok(arc.ok && arc.entries[0].name === 'Rank_Rae' && arc.entries[0].score === 6, 'the Arcade score weights the difficulty (2 x nightmare = 6): ' + JSON.stringify(arc.entries));
+    await rank(rt[1].token, { arcade_best: 5, arcade_diff: 'easy', board: 'arcade' });
+    await rank(rt[2].token, { arcade_best: 3, arcade_diff: 'normal', board: 'arcade' });
+    const arcTop = await ranks('?board=arcade');
+    assert.deepEqual(arcTop.entries.map(e => e.name), ['Rank_Rae', 'Rank_Rin', 'Rank_Rob'], 'Arcade ordering: ' + JSON.stringify(arcTop.entries));
+    assert.deepEqual(arcTop.entries.map(e => e.score), [6, 6, 5]);
+    const myRow = await ranks('?board=kos&limit=1', rt[2].token);
+    assert.ok(myRow.you && myRow.you.score === 10 && myRow.you.rank === 3, 'a signed-in GET also gets `you`: ' + JSON.stringify(myRow.you));
+    const meIn = await ranks('?board=wins', rt[1].token);
+    assert.ok(meIn.entries[0].me === true, 'the signed-in player’s row is marked');
+    // validation: every number finite, whole and inside its cap; unknown board/difficulty are refused
+    for (const body of [{ kos: -1 }, { kos: 1.5 }, { kos: '12' }, { kos: 1e12 }, { wins: null }, { arcade_best: 7 }, { arcade_best: 2, arcade_diff: 'insane' }, {}])
+      assert.equal((await rank(rt[0].token, body)).status, 400, 'refused: ' + JSON.stringify(body));
+    assert.equal((await rank(rt[0].token, { kos: 1 })).ok, true, 'a rejected body does not use the rate budget');
+    assert.equal((await rank('', { kos: 1 })).status, 401, 'ranking needs a login');
+    assert.equal((await rank('ab'.repeat(32), { kos: 1 })).status, 401, 'a bogus token is refused');
+    assert.equal((await ranks('?board=nope')).status, 400, 'an unknown board is refused');
+    assert.equal((await ranks('')).entries.length, 3, 'the board defaults to kos');
+    // rate limit: 6 updates per 10 s per account
+    const rick = await api('POST', '/api/claim', { name: 'Rate_Rick' });
+    for (let i = 0; i < 6; i++) assert.ok((await rank(rick.token, { kos: i + 1 })).ok, 'rank update ' + i + ' inside the window');
+    assert.equal((await rank(rick.token, { kos: 7 })).status, 429, 'ranking updates are rate limited');
+    assert.equal((await ranks('?board=kos')).entries.find(e => e.name === 'Rate_Rick').score, 6, 'the rate-limited 7th update never reached the board');
+  }
+
+  /* ---- the same ranking code paths on the Upstash store: a fake REST endpoint over a Map ---- */
+  {
+    const mem = new Map(), realFetch = global.fetch;
+    global.fetch = async (_url, opt) => {
+      let out = null, err = '';
+      try {
+        const a = JSON.parse(opt.body), c = String(a[0]).toUpperCase();
+        if (c === 'GET') out = mem.has(a[1]) ? mem.get(a[1]) : null;
+        else if (c === 'SET') { if (a.includes('NX') && mem.has(a[1])) out = null; else { mem.set(a[1], a[2]); out = 'OK'; } }
+        else if (c === 'DEL') { mem.delete(a[1]); out = 1; }
+        else if (c === 'SCAN') { const m = a[a.indexOf('MATCH') + 1] || '*', pre = m.endsWith('*') ? m.slice(0, -1) : m; out = ['0', [...mem.keys()].filter(k => k.startsWith(pre))]; }
+        else err = 'unknown command ' + c;
+      } catch (e) { err = e.message; }
+      return { ok: !err, json: async () => (err ? { error: err } : { result: out }) };
+    };
+    try {
+      const up = accounts.upstashStore('https://fake.invalid', 'token');
+      const AU = accounts.create(up);
+      const kim = await AU.routes.claim({ name: 'Cloud_Kim' }, { ip: '9.9.9.9' });
+      assert.ok(kim.ok && /^[0-9a-f]{64}$/.test(kim.token), 'claim on the Upstash path');
+      const s1 = await AU.routes.rankSubmit({ kos: 21, wins: 3, board: 'kos' }, { token: kim.token });
+      assert.ok(s1.ok && s1.entries[0].name === 'Cloud_Kim' && s1.entries[0].score === 21, 'rank submit on the Upstash path: ' + JSON.stringify(s1));
+      const l1 = await AU.routes.rankList({ board: 'kos' }, {});
+      assert.ok(l1.ok && l1.entries.length === 1 && l1.entries[0].score === 21 && l1.entries[0].rank === 1, 'rank list on the Upstash path');
+      let badBoard = null; try { await AU.routes.rankList({ board: 'bogus' }, {}); } catch (e) { badBoard = e; }
+      assert.equal(badBoard && badBoard.status, 400, 'the same validation on the Upstash path');
+      console.log('ranking Upstash path: ok');
+    } finally { global.fetch = realFetch; }
+  }
   [g1, g2, ...full].forEach(c => c.close());
   console.log('server integration tests pass'); await srv.stop(); process.exit(0);
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

@@ -52,6 +52,18 @@ var net_zones := false
 var tuned_weapons := {}
 ## Crate weight overrides (drops.json `base` keys), same gate.
 var tuned_drops := {}
+## Per victim: [knockback velocity a flame contact has already added, combat.time of that hit]. Overlay only.
+var flame_push := {}
+## s without a flame hit that starts a new contact (and therefore a fresh knockback budget) on a target.
+const FLAME_RESET := 0.4
+
+# --- Arcade co-op friendly fire (docs/CONSTRUCTION_DLC.md "Unit D", owner decision: off by default) ---
+## false = a player seat's weapon, projectile or explosion cannot hurt the other seat. The crew and enemy fire are not
+## seats, so they still hurt everyone. Only ArcadeManager sets this and `pve_seats`; every other mode keeps the default
+## (true = no extra rule, the web game's behaviour).
+var friendly_fire := true
+## The player seats of the current Arcade co-op run (FighterState). Crew/enemies are never in it. Empty = no seat rule.
+var pve_seats: Array = []
 
 # --- net (filled by the net layer) ---
 var net_started := false
@@ -79,6 +91,8 @@ func dispose() -> void:
 	rules.winner = null
 	fighters.clear()
 	events.clear()
+	flame_push.clear()
+	pve_seats.clear()
 
 ## Parsed content is immutable between releases. Every caller receives a deep copy so one match can merge or alter its
 ## own tuning without changing later matches; repeated matches avoid decoding the same JSON again.
@@ -123,12 +137,23 @@ func apply_tuning(t: Variant) -> void:
 		tuned_weapons[k] = m
 	tuned_drops = (t.get("drops", {}) as Dictionary).duplicate()
 
+## True when the attacker holds a flame-style weapon (`flame`, the Construction's Angle Grinder): the only hits that use the
+## overlay's per-stream knockback budget.
+func _flame_style(a: FighterState) -> bool:
+	return a.weapon != "" and str(wdata(a.weapon).get("style", "")) == "flame"
+
 ## True when the balance overlay is in use: one was loaded and the zones gate is open (offline / every client knows it).
 func tuning_active() -> bool:
 	return not tuned_weapons.is_empty() and zones_active()
 
 func is_friend(a: FighterState, b: FighterState) -> bool:
 	return teams != 0 and a != null and b != null and a != b and a.team == b.team
+
+## Arcade co-op: true when `a` and `b` are two player seats and the run has friendly fire off. A seat's weapon, projectile
+## or explosion reaches Combat.hit() with the seat as `attacker`, so this single rule covers every damage path. Crew and
+## enemy fire have an attacker that is not a seat, so it still hurts both seats.
+func seat_mates(a: FighterState, b: FighterState) -> bool:
+	return not friendly_fire and a != null and b != null and a != b and pve_seats.has(a) and pve_seats.has(b)
 
 func max_hp(f: FighterState) -> float:
 	return hp_setting * (2.0 if giant or f.big_t > 0.0 else 1.0) * f.cls_hp
@@ -197,6 +222,10 @@ static func zone_info(part: String, mul: float, x: float, y: float, z: float) ->
 func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: float, head: bool, attacker: FighterState,
 		zone: Dictionary = {}) -> Dictionary:
 	var r := {"applied": false, "ko": false}
+	# Arcade co-op friendly fire: check before the ghost branch so a seat's hit on the other (remote) seat is never
+	# relayed to its owner in the first place (offline and online use the same rule).
+	if seat_mates(attacker, v):
+		return r
 	var part: String = zone.get("part", "head" if head else "")
 	var pct := js_round((float(zone.get("mul", 1.0)) - 1.0) * 100.0) if zone.has("mul") else 0
 	if v.is_ghost:                     # another player's wobbler: the shooter's game decides the hit and tells theirs
@@ -247,6 +276,21 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 	var light := force < 8.0           # bullets, knives: a small shove, no stun
 	var kf := 0.4 if light else 1.0
 	var fk := (kb_setting if kb_setting != 0.0 else 1.0) * 0.8 * float(mode.get("kbMul", 1.0) if mode.get("kbMul", 0) else 1.0) * v.cls_kb * (0.5 if v.big_t > 0.0 else 1.0)
+	# Balance overlay, flame only (docs/DAMAGE.md "Flamethrower knockback"): a flame hits on every damage tick, so its
+	# per-tick push used to add up to a constant shove that could carry a target who cannot walk against it. Keep the
+	# tuned per-tick push, but cap the TOTAL knockback velocity one contact may add to a target at `maxForce` (m/s): the
+	# first ticks shove, then the stream stops pushing until it has been off that target for FLAME_RESET s (a new contact).
+	# The web game / parity tests never reach this (tuning_active() is false there).
+	if tuning_active() and attacker != null and attacker != v and force > 0.0 and _flame_style(attacker):
+		var fw := wdata(attacker.weapon)
+		var rec: Array = flame_push.get(v, [0.0, -1e9])
+		var spent := float(rec[0]) if time - float(rec[1]) <= FLAME_RESET else 0.0
+		var cap := float(fw.get("maxForce", force))
+		var want := force * kf * fk
+		var got := minf(want, maxf(0.0, cap - spent))
+		if want > 0.0:
+			force *= got / want
+		flame_push[v] = [spent + got, time]
 	var p := v.phys
 	p.vx += dx * force * kf * fk
 	p.vz += dz * force * kf * fk
@@ -407,6 +451,7 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
 	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null; f.parry_t = 0.0
+	flame_push.erase(f)               # a fresh life does not inherit the last one's spent flame budget
 	Skills.reset(f)
 	clear_inventory(f); set_weapon(f, "spatula")
 	var start: Variant = mode.get("start")

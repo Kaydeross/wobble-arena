@@ -31,6 +31,7 @@ var code := ""                      ## the recovery code on the code page
 var _after_code := ""               ## page to show after "I saved it"
 var _sync_t := 0.0
 var _logout_armed := false          ## a name-only account was asked "log out anyway?"
+var ranking: RankingSheet           ## the leaderboard sheet opened by the Leaderboard button (created on first use)
 
 func _init() -> void:
 	name = "Account"
@@ -152,7 +153,7 @@ func _build() -> void:
 	var del := _btn("signed", "Delete", "Delete account", false, open.bind("delete"))
 	del.add_theme_color_override("font_color", UiTheme.BAD)
 	del.add_theme_color_override("font_hover_color", UiTheme.BAD)
-	_row(p, "Row2", [del, _btn("signed", "Close", "Close", true, close)])
+	_row(p, "Row2", [_btn("signed", "Rank", "Leaderboard", false, _open_rankings), del, _btn("signed", "Close", "Close", true, close)])
 
 	p = _page(holder, "protect")
 	_field(p, "protect", "Pass", "New password (6 or more characters)", true)
@@ -263,6 +264,7 @@ func open(pg := "") -> void:
 		if first: first.grab_focus.call_deferred()
 
 func close() -> void:
+	if ranking != null and ranking.visible: ranking.close()
 	visible = false
 	page = ""
 	closed.emit()
@@ -270,6 +272,9 @@ func close() -> void:
 ## One step back (Escape, controller B, Android back): a form returns to the page it came from, the two home pages
 ## close the sheet. The recovery code and the conflict question wait for an answer (true = handled anyway).
 func back() -> bool:
+	if ranking != null and ranking.visible:
+		ranking.close()
+		return true
 	match page:
 		"guest", "signed": close()
 		"login": open("guest")
@@ -358,6 +363,14 @@ func _keep() -> void:
 
 func _use() -> void:
 	api.use_cloud(); open("signed")
+
+## The Leaderboard button: the RankingSheet (ui/ranking_sheet.gd) on top of the Account sheet, separate from it.
+func _open_rankings() -> void:
+	if ranking == null:
+		ranking = RankingSheet.new()
+		ranking.name = "Ranking"
+		add_child(ranking)
+	ranking.open()
 
 func _copy_code() -> void:
 	DisplayServer.clipboard_set(code)
