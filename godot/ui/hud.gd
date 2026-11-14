@@ -6,10 +6,13 @@ extends Control
 ## over the 3 nearest fighters, a crosshair, toasts. Everything stays inside the safe area and clear of the touch
 ## layer's pause button. World calls bind() once and update(delta) every rendered frame.
 
+const RadarScript := preload("res://ui/hud_radar.gd")
 const PAD := 14.0
 const IND_PAD := 16.0             ## off-screen enemy markers sit this far inside the safe area (ui/enemy_indicators.gd)
 const FEED_TIME := 5.0
 const FEED_MAX := 4
+const FEED_MAX_COMPACT := 2       ## phones: the two latest kill lines (a 4-deep stack sat on the right thumb's play area)
+const FEED_TIME_COMPACT := 3.5
 const TOAST_TIME := 2.2
 const TOP_STACK := 70.0           ## what hangs under the toast (team board, mode line, spectator line) starts this far below the top inset
 
@@ -40,6 +43,8 @@ var _cross: Control
 var _hint: Label
 var _center: Label
 var _last_ko := -1
+var compact := false              ## phone layout: touch layer on and not tablet-class (see _update_compact)
+var _lrow: Control                ## the leader row of the score pill
 var _lowhp_t := 0.0             ## seconds to the next low-health heartbeat (0 = not playing)
 
 ## The `Sfx` autoload by tree lookup, never as a bare global identifier: a test's main loop can compile this class
@@ -70,7 +75,7 @@ func _ready() -> void:
 	_cross.draw.connect(_draw_cross)
 	add_child(_cross)
 	_build_ko()
-	_radar = preload("res://ui/hud_radar.gd").new()
+	_radar = RadarScript.new()
 	_radar.name = "Radar"
 	add_child(_radar)
 	_feed = VBoxContainer.new()
@@ -123,6 +128,19 @@ func bind(w: Node) -> void:
 	_feed_items.clear()
 	_last_ko = -1
 
+## Phone layout: the touch layer is on and the canvas is not tablet-class (TouchControls.is_tablet). Smaller radar and
+## health bar, a two-line kill feed, two nearer nameplates and fewer off-screen arrows (docs/UI_REVIEW.md, "Combat HUD
+## on phones"). Desktop and tablets keep the full HUD.
+func _update_compact(vs: Vector2, touch_on: bool) -> void:
+	var on := touch_on and not TouchControls.is_tablet(vs)
+	if on == compact: return
+	compact = on
+	_plates.compact = on
+	_indicators.compact = on
+	while _feed_items.size() > (FEED_MAX_COMPACT if on else FEED_MAX):
+		var old: Array = _feed_items.pop_back()
+		old[0].queue_free()
+
 func _update_insets() -> void:
 	_ins = SafeArea.insets(get_viewport())
 
@@ -164,6 +182,7 @@ func _build_ko() -> void:
 	_clock = _lbl(row, 24, Color.WHITE)
 	_clock.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var lrow := HBoxContainer.new()
+	_lrow = lrow
 	lrow.add_theme_constant_override("separation", 6)
 	lrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(lrow)
@@ -261,8 +280,8 @@ func add_feed(killer: FighterState, victim: FighterState, weapon: String, fell: 
 		_lbl(row, 15, UiTheme.MUTED).text = "fell off" if fell else "was K.O.'d"
 	_feed.add_child(item)
 	_feed.move_child(item, 0)
-	_feed_items.push_front([item, FEED_TIME])
-	while _feed_items.size() > FEED_MAX:
+	_feed_items.push_front([item, FEED_TIME_COMPACT if compact else FEED_TIME])
+	while _feed_items.size() > (FEED_MAX_COMPACT if compact else FEED_MAX):
 		var old: Array = _feed_items.pop_back()
 		old[0].queue_free()
 	item.modulate.a = 0.0
@@ -284,6 +303,7 @@ func update(delta: float) -> void:
 	var touch: Control = world.touch
 	var touch_on: bool = touch.visible
 	var p := sim.player
+	_update_compact(vs, touch_on)
 	# --- score pill + leader
 	_kids.visible = KidsAssist.is_enabled()
 	var advanced := str(Settings.get_value("aim_mode", "normal")) == "advanced"
@@ -306,6 +326,7 @@ func update(delta: float) -> void:
 	_crown.visible = lead != null
 	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [Safety.display_name(lead.name), lead.ko]) if lead else "No leader yet. Be first!"
 	_leader.add_theme_color_override("font_color", UiTheme.ACCENT if lead == p else UiTheme.MUTED)
+	_lrow.visible = not compact or lead != null      # phones: no "No leader yet" line eating the corner
 	# keep clear of the touch layer's pause button
 	var pause_r := Rect2()
 	if touch_on and touch.has_method("pause_rect"):
@@ -316,6 +337,7 @@ func update(delta: float) -> void:
 		ko_x = maxf(ko_x, pause_r.end.x + 10.0)
 	_ko_panel.position = Vector2(ko_x, safe.position.y)
 	# --- radar + feed (top right)
+	_radar.set_diameter(RadarScript.D_COMPACT if compact else RadarScript.D_FULL)
 	var rx := safe.end.x - _radar.size.x
 	if pause_r.size.x > 0.0 and pause_r.get_center().x > vs.x * 0.5:
 		rx = minf(rx, pause_r.position.x - 10.0 - _radar.size.x)
@@ -335,6 +357,7 @@ func update(delta: float) -> void:
 	var lefty: bool = touch_on and bool(touch.get("lefty"))
 	var mx := sim.combat.max_hp(p)
 	var k := clampf(p.hp / mx, 0.0, 1.0) if not p.dead else 0.0
+	_health.set_compact(compact)
 	_health.set_value(k, "%d / %d" % [ceili(maxf(p.hp, 0.0)) if not p.dead else 0, roundi(mx)],
 		tr(str(sim.combat.classes.get(p.class_id, {}).get("name", p.class_id))))
 	_health.tick(delta)
@@ -409,6 +432,10 @@ func update(delta: float) -> void:
 			var br: Array = touch.button_rect(b)
 			_add_ind_blocker(Rect2(br[0] - Vector2(br[1], br[1]), Vector2(br[1], br[1]) * 2.0))
 		_add_ind_blocker(touch.pause_rect())
+		if touch.has_method("stick_home"):      # the move stick's home: a thumb rests there
+			var sh: Vector2 = touch.stick_home()
+			var sr: float = touch.STICK_R * touch.UNIT * float(touch.get("scale_k")) + 16.0
+			_add_ind_blocker(Rect2(sh - Vector2(sr, sr), Vector2(sr, sr) * 2.0))
 		if world.emote_wheel != null and world.emote_wheel.shown(): _add_ind_blocker(world.emote_wheel.button_rect())
 	_indicators.tick(delta, safe.grow(-IND_PAD), _ind_blocked)
 
