@@ -370,13 +370,6 @@
     "fr": "Doucement ! Ça fait beaucoup de blocs (%d max)",
     "es": "¡Tranqui! Son muchos bloques (%d como máximo)"
   },
-  "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or get K.O.'d and you're out for the match. Most K.O.s when the clock ends wins.": {
-    "zh_TW": "海上八根高大的柱子排成一圈，中間空無一物。缺口太寬，跳不過去，所以需要衝刺（這裡任何武器都能衝刺）。每10秒，一把新武器會落進你的物品欄。摔落或被擊倒就會在這場比賽中出局。時間到時擊倒最多者獲勝。",
-    "zh_CN": "海上八根高大的柱子围成一圈，中间空无一物。缺口太宽，跳不过去，所以需要冲刺（这里任何武器都能冲刺）。每10秒，一把新武器会落进你的物品栏。摔落或被击倒就会在本场比赛中出局。时间到时击倒最多者获胜。",
-    "ja": "海の上に並ぶ背の高い柱が8本、中央は空っぽです。隙間が広すぎてジャンプでは越えられないので、ダッシュが必要です（ここではどの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに届きます。落ちるかKOされたら、その試合は脱落です。時間切れのときにKOが最も多い人の勝ちです。",
-    "fr": "Huit hauts piliers en cercle au-dessus de la mer, rien au milieu. Les trous sont trop larges pour sauter, il faut un dash (toutes les armes peuvent dasher ici). Toutes les 10 secondes, une nouvelle arme tombe dans l'inventaire. Tomber ou être mis K.O., c'est l'élimination pour le match. Le plus de K.O. à la fin du temps gagne.",
-    "es": "Ocho pilares altos en círculo sobre el mar, sin nada en medio. Los huecos son demasiado anchos para saltar, así que necesitas un impulso (cualquier arma puede impulsarte aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes o te dejan K.O., quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
-  },
   "Every K.O. swaps your weapon": {
     "zh_TW": "每次擊倒都會換掉你的武器",
     "zh_CN": "每次击倒都会换掉你的武器",

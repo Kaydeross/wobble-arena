@@ -17,6 +17,9 @@ var maps: Dictionary = {}
 func _init() -> void:
 	reload()
 
+## Levels of the removed Pillars mode: still in the generated web export (maps.json), never used by the Godot game.
+const REMOVED_MAPS := ["pillars", "pillars2"]
+
 func reload() -> void:
 	weapons = ExtraWeapons.merge(load_json("weapons"))   # + Godot-only weapons (res://data/extra/construction/weapons.json)
 	modes = ModeRules.merge_extra(load_json("modes"))   # + Godot-only modes (res://data/extra/modes.json)
@@ -26,13 +29,14 @@ func reload() -> void:
 	crate_rates = load_json("crate-rates")
 	drops = load_json("drops")
 	maps = load_json("maps")
+	for gone: String in REMOVED_MAPS: maps.erase(gone)
+	modes.erase("pillars")
 	add_extra_maps(maps)
 
-## Levels the web export leaves out, added for the wizard: Lava Pillars (PillarsMap.lava_entry, from Pillars) and the
+## Levels the web export leaves out, added for the wizard: the
 ## Sandbox arena 'custom' (MapBuilder.custom_map with the defaults; MapBuilder.build("custom") uses the saved layout) and the
 ## Construction DLC's generated 'sitegen' (SiteMap.header(): the look and name; the boxes and spots come with MapBuilder.build).
 static func add_extra_maps(m: Dictionary) -> Dictionary:
-	if m.has("pillars") and not m.has("pillars2"): m["pillars2"] = PillarsMap.lava_entry(m["pillars"])
 	if not m.has("custom"): m["custom"] = MapBuilder.custom_map({})
 	if not m.has(SiteMap.ID): m[SiteMap.ID] = SiteMap.header()   # Building Site (Construction DLC): MapBuilder.build generates the layout from SiteMap.current_seed
 	return m

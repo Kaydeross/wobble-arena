@@ -42,9 +42,9 @@ extends RefCounted
 const DATA_PATH := "res://data/extra/destructible.json"
 const VERSION := 2
 const KINDS := ["crate", "barricade"]
-## Arenas the mode never runs on (the sandbox, the ranges, the shrinking floors, Lava Pillars' generated lake and the
+## Arenas the mode never runs on (the sandbox, the ranges, the shrinking floors and the
 ## Construction DLC's generated site). Everything else in maps.json is a normal arena and gets breakables.
-const NOT_SUPPORTED := ["custom", "test", "practice", "pillars", "pillars2", "shrink", "squeeze", "sitegen"]
+const NOT_SUPPORTED := ["custom", "test", "practice", "shrink", "squeeze", "sitegen"]
 ## Hard caps the config may lower but never raise (docs/GRAPHICS.md: no shadow casting, 40-60 draws of headroom).
 const HARD_MAX_PER_MAP := 60
 const DEFAULT_PER_MAP := 40

@@ -307,13 +307,6 @@
   "fr": "  (web)",
   "es": "  (web)"
  },
- "Start on pillars. A new weapon every 10 seconds. One life": {
-  "zh_TW": "從柱子上開始。每 10 秒出現新武器。只有一條命。",
-  "zh_CN": "从柱子上开始。每 10 秒出现新武器。只有一条命。",
-  "ja": "柱の上からスタート。10秒ごとに新しい武器。ライフは1つ。",
-  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 secondes. Une seule vie",
-  "es": "Empiezas en pilares. Un arma nueva cada 10 segundos. Una sola vida"
- },
  "Explosives only. Always 300 health": {
   "zh_TW": "只有爆炸物。生命值永遠是 300。",
   "zh_CN": "只有爆炸物。生命值永远是 300。",

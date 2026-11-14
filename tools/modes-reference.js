@@ -136,7 +136,7 @@ function scenario() {
       ops.push({ op: 'cfg', key: 'matchOver', val: 0 }, { op: 'cfg', key: 'mode', val: 'classic' });
       all('ggRung', 0); all('ko', 0); all('dead', false); all('elim', false); all('deathT', 0);
     },
-    dash() {                                      // ninja dash: gear, 3 charges, cooldown, regen, facing fallback, Pillars air time
+    dash() {                                      // ninja dash: gear, 3 charges, cooldown, regen, facing fallback
       ops.push({ op: 'cfg', key: 'mode', val: 'ninja' });
       for (let i = 0; i < 5; i++) ops.push({ op: 'placeAt', f: i, x: i * 3 - 6, z: 5, y: 0.01 });
       ops.push({ op: 'dash', f: 1, ix: 1, iz: 0 });                                            // the ninja start weapon counts as dash gear
@@ -146,28 +146,7 @@ function scenario() {
       ops.push({ op: 'set', f: 0, key: 'grounded', val: false }, { op: 'dash', f: 0, ix: 0.01, iz: 0.02 }, { op: 'dash', f: 0, ix: 1, iz: 1 });
       step(100); step(500); ops.push({ op: 'dash', f: 0, ix: 0, iz: -1 }); step(300);
       ops.push({ op: 'set', f: 0, key: 'downT', val: 0.5 }, { op: 'dash', f: 0, ix: 1, iz: 0 }); step(80);
-      ops.push({ op: 'cfg', key: 'mode', val: 'pillars' }, { op: 'dash', f: 3, ix: 0.2, iz: -1 }, { op: 'dash', f: 4, ix: 0, iz: 0 }); step(40);
       ops.push({ op: 'cfg', key: 'mode', val: 'classic' });
-    },
-    pillars() {                                   // Pillars: the weapon handout (first at 1.2 s, then every 10 s, held weapon kept, full
-      ops.push({ op: 'cfg', key: 'mode', val: 'pillars' }, { op: 'cfg', key: 'lives', val: 1 });   // inventory), the clock, most K.O.s / fewest deaths wins
-      all('lives', 1); all('dead', false); all('elim', false); all('ko', 0); all('deathT', 0); all('deaths', 0);
-      for (let i = 0; i < 5; i++) ops.push({ op: 'placeAt', f: i, x: i * 3 - 6, z: -6, y: 0.01 });
-      all('invuln', 0);
-      ops.push({ op: 'pilInit' });
-      step(60, 1 / 60); step(15, 1 / 60);         // nothing yet, then the first weapon at 1.2 s
-      ops.push({ op: 'pickup', f: 0, key: 'ak' });                                              // the player holds an AK: handouts go behind it
-      ops.push({ op: 'set', f: 1, key: 'dead', val: true }, { op: 'set', f: 1, key: 'deathT', val: 99 });   // dead: skipped
-      ops.push({ op: 'set', f: 3, key: 'elim', val: true });                                    // out: skipped
-      step(10 * 60, 1 / 60);
-      ops.push({ op: 'set', f: 1, key: 'dead', val: false }, { op: 'set', f: 1, key: 'deathT', val: 0 });
-      for (let k = 0; k < 4; k++) step(10 * 60, 1 / 60);                                       // full inventories swap the held slot
-      ops.push({ op: 'set', f: 2, key: 'ko', val: 3 }, { op: 'set', f: 4, key: 'ko', val: 3 }, { op: 'set', f: 2, key: 'deaths', val: 1 });
-      ops.push({ op: 'set', f: 0, key: 'ko', val: 2 });
-      for (let k = 0; k < 13; k++) step(10 * 60, 1 / 60);                                      // the clock runs out: f4 (3 K.O.s, 0 deaths)
-      step(5 * 60, 1 / 60);                                                                    // after the end: no handouts, no second end
-      ops.push({ op: 'cfg', key: 'matchOver', val: 0 }, { op: 'cfg', key: 'lives', val: 0 }, { op: 'cfg', key: 'mode', val: 'classic' }, { op: 'pilInit' });
-      all('elim', false); all('lives', 0); all('ko', 0); all('dead', false); all('deathT', 0); all('deaths', 0);
     },
     shrink() {                                    // updateShrink both maps: hold, shrink, rest, grow, hold, everyone-fell reset; respawn spots
       for (const id of ['shrink', 'squeeze']) {

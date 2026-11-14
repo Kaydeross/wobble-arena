@@ -2,8 +2,8 @@
  "_note": "Godot-only display text for the setup wizard (ui/setup_wizard.gd): the game type sections, each mode's short card line (2 lines at most, never truncated), a colour accent and a drawn icon kind (SetupWizard.ModeIcon). `long` replaces the web `desc` in the detail line under the grid where that is too long for 2 lines. shared/*.json stays as exported from the web game. A mode missing here falls back to its desc and the Special section.",
  "sections": [
   {"name": "Classic", "modes": ["classic", "melee", "guns", "ninja", "explosive", "gungame", "deathmatch", "sudden"]},
-  {"name": "Team", "modes": ["duel", "t2", "t3", "t4", "tdm", "chaos"]},
-  {"name": "Special", "modes": ["mega", "giant", "lowg", "pillars", "construction", "practice", "sandbox"]}
+  {"name": "Team", "modes": ["duel", "t2", "t3", "t4", "tdm", "chaos", "ctf"]},
+  {"name": "Special", "modes": ["mega", "giant", "lowg", "construction", "practice", "sandbox"]}
  ],
  "modes": {
   "classic": {"short": "Everything drops from the sky", "col": "#ffcf5a", "icon": "crate"},
@@ -20,11 +20,10 @@
   "t4": {"short": "Big team fight. First team to 20", "col": "#6fb7ff", "icon": "p4"},
   "tdm": {"short": "Two teams. First to 30 K.O.s", "col": "#ff8f6f", "icon": "tdm"},
   "chaos": {"short": "5 vs 5 with random events", "col": "#ff6fd0", "icon": "burst"},
+  "ctf": {"short": "Hold the flag for 30 seconds to win", "col": "#ffcf5a", "icon": "flag"},
   "mega": {"short": "Double damage, 3 lives, shrinking arena", "col": "#ff9a4d", "icon": "burst"},
   "giant": {"short": "Weapons are double size. Huge hits", "col": "#7be0a6", "icon": "giant"},
   "lowg": {"short": "Super low gravity. Float and soar", "col": "#b49bff", "icon": "moon"},
-  "pillars": {"short": "Pillars, one life, a new weapon every 10s", "col": "#ffcf5a", "icon": "pillars",
-   "long": "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon every 10 seconds. Fall or get K.O.'d and you're out. Most K.O.s after 3 minutes wins"},
   "construction": {"short": "Tradies with hammers, wire and blowers", "col": "#ffb43d", "icon": "hat"},
   "practice": {"short": "Dummies and a rack of weapons. No score", "col": "#8fd1ff", "icon": "target"},
   "sandbox": {"short": "Build an arena with blocks, then play it", "col": "#7be0a6", "icon": "blocks"}

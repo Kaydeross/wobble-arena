@@ -32,7 +32,7 @@ func _initialize() -> void:
 func _all_ids() -> Array:
 	var out: Array = []
 	for id: String in root.get_node("Content").map_ids():
-		if id != "test" and id != "pillars": out.append(id)   # Pillars: its pillars come from the (unported) mode
+		if id != "test": out.append(id)
 	return out
 
 func _next() -> void:

@@ -8,7 +8,7 @@ extends GuestSession
 ## the world as a HostMatch (net/host_match.gd), which this session creates (make_match) and relays for.
 ## Rules (the Host sheet): mode, K.O. limit, health, gravity, knockback, crate rate, infinite ammo and the arena floor,
 ## sent in `start.rules` exactly as the web host's ruleSnap. Online modes: what the web host allows (netMode) plays for
-## everybody; an app-only mode (NetMatch.GODOT_MODES: Team Deathmatch, Death Match, Sudden Death, Chaos, Pillars, Moon
+## everybody; an app-only mode (NetMatch.GODOT_MODES: Team Deathmatch, Death Match, Sudden Death, Chaos, Moon
 ## Drift, the team modes) plays when every guest is a Godot client (`gd` in hello) and goes out as `rules.gmode`
 ## (`mode` stays Classic for the web); with a web guest in the room the match plays Classic and the host is told, and
 ## a web guest cannot join an app-only match that is running (`kick` with the reason).
@@ -65,7 +65,6 @@ var cid_slot := {}               ## server cid -> slot
 var slots: Array = []            ## the running match's slots (HostMatch fills the bots in)
 var limit := 0
 var dseed := 0
-var pp: Array = []               ## Pillars: the shuffled pillar of every slot (HostMatch makes it)
 var rv := {}                     ## slot -> true: rematch votes
 var rv_timer := -1.0
 var guarded := 0                 ## guest messages dropped by the guard rules (tests read it)
@@ -154,20 +153,20 @@ func is_host() -> bool:
 	return true
 
 ## netMode for the Godot host: modes the web game knows (shared modes.json), not team modes, not Sandbox /
-## Construction, and not Pillars (its `pp` / `pt` are not hosted for the web); anything else plays Classic.
+## Construction; anything else plays Classic.
 ## An Arcade co-op room plays Construction: it is app-only (a web guest is refused, never downgraded) and the map, lives
 ## and crew come from the run.
 func net_mode(m: String) -> String:
 	if arcade and m == "construction": return "construction"
 	var md: Dictionary = data("modes").get(m, {})
-	if md.is_empty() or md.get("teams") or m in ["sandbox", "construction", "pillars"]: return "classic"
+	if md.is_empty() or md.get("teams") or m in ModeRules.OFFLINE_ONLY: return "classic"
 	return m
 
-## Modes the Host sheet offers (ModeRules.PLAYABLE without the Practice Range).
+## Modes the Host sheet offers (ModeRules.PLAYABLE without the Practice Range and Capture the Flag, which is offline only).
 static func online_modes() -> Array:
 	var out: Array = []
 	for m: String in ModeRules.PLAYABLE:
-		if m != "practice" and all_modes().has(m): out.append(m)
+		if m != "practice" and m != "ctf" and all_modes().has(m): out.append(m)
 	return out
 
 static func online_mode(m: String) -> String:
@@ -680,7 +679,7 @@ static func _num(v: float) -> String:
 	return str(int(v)) if is_equal_approx(v, roundf(v)) else str(v)
 
 ## ruleSnap: the rules every client plays by. `joiner` = for somebody joining mid-match (dt0 = the arena clock now).
-## App-only modes add `gmode` (+ `gteam` sides, `pp` pillars); web clients read `mode` (Classic) and ignore the rest.
+## App-only modes add `gmode` (+ `gteam` sides); web clients read `mode` (Classic) and ignore the rest.
 func rule_snap(joiner: bool = false) -> Dictionary:
 	var r := {"mode": net_mode(mode_id), "hp": 300 if mode_id == "explosive" else hp, "crate": crate, "wstate": {},
 		"grav": 0.15 if mode_id == "lowg" else grav, "kb": kb, "inf": inf, "dyn": dyn_kind}
@@ -690,7 +689,6 @@ func rule_snap(joiner: bool = false) -> Dictionary:
 			var tm: Array = []
 			for k in maxi(slots.size(), opt_max): tm.append(k % 2)
 			r["gteam"] = tm
-		if mode_id == "pillars" and not pp.is_empty(): r["pp"] = pp.duplicate()
 	if started: r["dseed"] = dseed
 	if started and dyn_kind != "off":
 		var hm := host_match()
@@ -767,7 +765,6 @@ func _begin_match(s: Array, keep_seed: int = -1) -> void:
 	started = true
 	phase = Phase.MATCH
 	slots = s
-	pp = []
 	limit = eff_limit(mode_id)
 	dseed = keep_seed if keep_seed >= 0 else randi()
 	start_msg = {"slots": s, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap()}

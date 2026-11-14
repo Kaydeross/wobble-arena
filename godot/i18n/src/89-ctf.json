@@ -1,0 +1,13 @@
+{
+ "Capture the Flag": {"zh_TW":"奪旗戰","zh_CN":"夺旗战","ja":"旗取り","fr":"Capture du drapeau","es":"Captura la bandera"},
+ "Grab the flag and hold it for 30 seconds to win for your team": {"zh_TW":"搶到旗幟並握住 30 秒，讓你的隊伍獲勝","zh_CN":"抢到旗帜并握住 30 秒，让你的队伍获胜","ja":"旗を取って30秒持ち続ければ、チームの勝ち","fr":"Prends le drapeau et garde-le 30 secondes pour faire gagner ton équipe","es":"Agarra la bandera y sujétala 30 segundos para que gane tu equipo"},
+ "Hold the flag for 30 seconds to win": {"zh_TW":"握住旗幟 30 秒即可獲勝","zh_CN":"握住旗帜 30 秒即可获胜","ja":"旗を30秒持てば勝ち","fr":"Garde le drapeau 30 secondes pour gagner","es":"Sujeta la bandera 30 segundos para ganar"},
+ "%s took the flag!": {"zh_TW":"%s 拿到旗幟了！","zh_CN":"%s 拿到旗帜了！","ja":"%s が旗を取った！","fr":"%s a pris le drapeau !","es":"¡%s agarró la bandera!"},
+ "Flag dropped!": {"zh_TW":"旗幟掉了！","zh_CN":"旗帜掉了！","ja":"旗が落ちた！","fr":"Drapeau lâché !","es":"¡Bandera caída!"},
+ "Flag back on its stand!": {"zh_TW":"旗幟回到旗座了！","zh_CN":"旗帜回到旗座了！","ja":"旗が台座に戻った！","fr":"Le drapeau est revenu sur son socle !","es":"¡La bandera volvió a su base!"},
+ "FLAG  %s %d/%d": {"zh_TW":"旗幟  %s %d/%d","zh_CN":"旗帜  %s %d/%d","ja":"旗  %s %d/%d","fr":"DRAPEAU  %s %d/%d","es":"BANDERA  %s %d/%d"},
+ "Flag free": {"zh_TW":"旗幟無人持有","zh_CN":"旗帜无人持有","ja":"旗は空き","fr":"Drapeau libre","es":"Bandera libre"},
+ "Held the flag for 30 seconds": {"zh_TW":"握住旗幟 30 秒","zh_CN":"握住旗帜 30 秒","ja":"旗を30秒持ち続けた","fr":"Drapeau gardé 30 secondes","es":"Sostuvo la bandera 30 segundos"},
+ "Held the flag the longest": {"zh_TW":"握旗時間最長","zh_CN":"握旗时间最长","ja":"旗を持った時間が最長","fr":"A gardé le drapeau le plus longtemps","es":"Sostuvo la bandera más tiempo"},
+ "Dead even when the clock ran out": {"zh_TW":"時間到時打成平手","zh_CN":"时间到时打成平手","ja":"時間切れで完全に同点","fr":"Égalité parfaite quand le temps est écoulé","es":"Empate total cuando se acaba el tiempo"}
+}

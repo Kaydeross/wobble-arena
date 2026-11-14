@@ -35,7 +35,7 @@ var looks := {}                   ## FighterState -> {skin, hat, color}
 var diff := "normal"
 var difficulty: Dictionary = {}
 var match_start := 0.0
-var ring_out_y := RING_OUT_Y       ## below this you are out: the map's `lavaY` (Lava Pillars' lake) or RING_OUT_Y
+var ring_out_y := RING_OUT_Y       ## below this you are out: RING_OUT_Y
 ## Online: the NetMatch (net/net_match.gd) of this match, or null offline. step() calls its pre_step() before the
 ## controllers (netSnap) and post_controls() after them (netStep), like simStep.
 var net: RefCounted = null
@@ -93,7 +93,6 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	map_id = p_map_id
 	map = p_map
 	solids = FighterPhysics.solids_from_map(map)
-	ring_out_y = float(map.get("lavaY", RING_OUT_Y))
 	ladders = map_ladders
 	pads = map_pads
 	diff = p_diff
@@ -133,11 +132,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	var start_spot: Array = random_start_point(map, solids, ring_out_y, new_start_rng()) if want_random else []
 	if start_spot.size() == 3:
 		pp = start_spot
-	var rand_spawn: bool = map.get("randSpawn", false) and combat.spawns.size() > 0 and start_spot.size() < 3
-	if rand_spawn:                                    # Pillars: the player starts on a random pillar, facing the middle
-		var sp0: Array = combat.spawns[int(floor(combat.rng.next() * combat.spawns.size()))]
-		pp = [sp0[0], sp0[1], pp[2] if pp.size() > 2 else map.get("spawnY", 0.01)]
-	var face_middle: bool = start_spot.size() == 3 or rand_spawn
+	var face_middle: bool = start_spot.size() == 3
 	combat.place_at(player, float(pp[0]), float(pp[1]), float(pp[2]) if pp.size() > 2 else 0.01)
 	player.yaw = atan2(-float(pp[0]), -float(pp[1])) if face_middle else PI; player.face_yaw = player.yaw
 
@@ -194,6 +189,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		if combat.mode_id == "ninja": looks[b]["skin"] = "shadow"     # dressBots
 	if combat.mode_id == "construction": _dress_tradies(bots)
 	combat.rules.setup_shrink(map_id, map, solids)
+	combat.rules.ctf_setup(map, solids, ring_out_y)   # Capture the Flag: the stand
 
 # ============================== random starting spot ==============================
 
@@ -312,7 +308,7 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 ## One fixed simulation step (simStep).
 func step(dt: float) -> void:
 	combat.time += dt
-	combat.rules.update(dt, pickups, dyn)   # updatePotato / updatePillars / updateShrink (+ the end-of-match countdown)
+	combat.rules.update(dt, pickups, dyn)   # updatePotato / updateShrink (+ the end-of-match countdown)
 	dyn.update(dyn_clock(), fighters)       # updateDyn
 	if destruct != null: destruct.step(dt)  # breakable components materialise again (docs/DESTRUCTIBLE.md)
 	var net_pre: Variant = net.call("pre_step") if net != null else null
@@ -363,6 +359,7 @@ func _ring_out() -> void:
 		else: combat.ev({"type": "ko", "killer": null, "victim": d, "weapon": "", "fall": true})
 		if combat.net_started and d.net_slot >= 0 and (d.is_player or combat.net_host):     # tell the others about the fall too
 			combat.ev({"type": "net", "msg": NetSnapshot.encode_ko(a.net_slot if knocked and a.net_slot >= 0 else -1, d.net_slot)})
+		combat.rules.on_down(d, true)                 # Capture the Flag: the flag goes back to its stand
 		d.last_attacker = null
 		var last_life := combat.lives_mode != 0 and d.lives <= 1
 		if not last_life and not d.is_player and d.home == null:      # bots don't pop straight back

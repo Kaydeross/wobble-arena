@@ -5,8 +5,8 @@ extends RefCounted
 ## Uses plain 64-bit floats (not Vector3) so it stays numerically identical to the JS version.
 ## Solids are boxes {minX,maxX,minZ,maxZ,top,bottom}; build them with FighterPhysics.solids_from_map().
 ##
-## Status effects live on the fighter (FighterState: dead, down_t, trap_t, stun, spd_t, dash_air_t, pad_cool), set by
-## Combat; step() reads them and counts `stun` and `dash_air_t` down, exactly like Fighter.physics.
+## Status effects live on the fighter (FighterState: dead, down_t, trap_t, stun, spd_t, pad_cool), set by
+## Combat; step() reads them and counts `stun` down, exactly like Fighter.physics.
 
 const R := 0.45
 const STEP := 0.55
@@ -77,9 +77,6 @@ func step(dt: float, solids: Array, st: FighterState) -> void:
 	var acc := 40.0 * accel_mul if grounded else 14.0 * air_mul
 	if ice_grip and grounded and not incap:
 		acc = 32.0 if hypot(wish_x, wish_z) > 0.05 else 20.0 * pow(0.05, ice_setting)
-	if st.dash_air_t > 0.0:            # Pillars: a dash in the air carries you across the gap
-		st.dash_air_t -= dt
-		if not grounded: acc = 3.0
 	if st.recover_air_t > 0.0:         # air recovery (Skills.do_recover): steer hard without losing the burst
 		st.recover_air_t -= dt
 		if not grounded and not incap:

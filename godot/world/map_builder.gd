@@ -44,7 +44,6 @@ static func build(map_id: String) -> MapNode:
 	var map: Dictionary = content.get_map(map_id) if content else _load_maps_file().get(map_id, {})
 	if map.is_empty():
 		push_error("MapBuilder: unknown map " + map_id)
-	if PillarsMap.IDS.has(map_id): map = PillarsMap.complete(map)   # its pillars and spots are not in the web export
 	if map_id == SiteMap.ID: map = SiteMap.generate(SiteMap.current_seed)   # Construction DLC: a Building Site generated from the seed
 	return build_from(map_id, map)
 
@@ -72,7 +71,6 @@ static func build_from(map_id: String, map: Dictionary) -> MapNode:
 		_add_backdrop(root, map)
 	if gfx_q() >= 1:
 		_add_cloud_layer(root, look(map_id) if map_id != "custom" else {})
-	if map.has("lavaY"): add_lava_lake(root, float(map["lavaY"]))     # Lava Pillars: the lake that kills (PillarsMap)
 	return root
 
 ## True on the Compatibility renderer (web; also a PC forced to it), whatever the effects level says.
@@ -994,46 +992,6 @@ static func _add_cloud_layer(root: Node3D, lk: Dictionary) -> void:
 	mi.mesh = pm
 	mi.material_override = m
 	mi.position.y = 78.0
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	root.add_child(mi)
-
-# ---------------------------------------------------------------- Lava Pillars' lake
-
-const LAVA_SHADER := """
-shader_type spatial;
-render_mode unshaded, cull_disabled;
-uniform vec3 hot : source_color = vec3(1.0, 0.78, 0.3);
-uniform vec3 mid : source_color = vec3(0.98, 0.36, 0.08);
-uniform vec3 cool : source_color = vec3(0.42, 0.06, 0.03);
-varying vec3 wp;
-float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float n2(vec2 p) {
-	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y);
-}
-void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
-void fragment() {
-	vec2 p = wp.xz * 0.09;
-	float t = TIME * 0.12;
-	float a = n2(p + vec2(t, -t * 0.7)) * 0.6 + n2(p * 2.3 - vec2(t * 1.3, t)) * 0.3 + n2(p * 5.1 + t) * 0.1;
-	float crust = smoothstep(0.38, 0.62, a);
-	vec3 c = mix(mix(hot, mid, smoothstep(0.15, 0.45, a)), cool, crust);
-	ALBEDO = c;
-	EMISSION = c * (1.0 - crust) * 0.6;
-}
-"""
-
-## A wide lava lake at `y` (Lava Pillars): one animated plane, unlit and glowing, under the pillars.
-static func add_lava_lake(root: Node3D, y: float) -> void:
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(260, 260)
-	var m := ShaderMaterial.new()
-	m.shader = _shader("lava", LAVA_SHADER)
-	var mi := MeshInstance3D.new()
-	mi.name = "LavaLake"
-	mi.mesh = pm
-	mi.material_override = m
-	mi.position.y = y
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(mi)
 

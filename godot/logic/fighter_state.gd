@@ -63,7 +63,6 @@ var shield_t := 0.0
 var rage_t := 0.0
 var big_t := 0.0                 ## Chaos "Giant" event: bigger hit spheres, double health, harder hits (ModeRules)
 var spd_t := 0.0                 ## speed boost: x1.4 run speed (FighterPhysics)
-var dash_air_t := 0.0            ## Pillars dash: air steering stays at 3 while > 0 (FighterPhysics counts it down)
 var trap_t := 0.0
 var trap_net: RefCounted = null  ## the Weapons.TrapNet holding this fighter down (trapNet), null = none
 var trap_x := 0.0                ## pinned here while trapped (trapX / trapZ)

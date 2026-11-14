@@ -8,8 +8,8 @@ extends NetMatch
 ## - crates are spawned here only and announced with a `cid` (`crate`), every take is told (`take`);
 ## - the K.O. limit / last one standing is decided here and sent as `pend`.
 ## HostSession (net/host_session.gd) guards and relays the guests' messages and feeds the allowed ones to handle().
-## Godot-only (docs/PROTOCOL.md 6.3): app-only modes (`rules.gmode`: sides by slot, Pillars spots), the mode state for
-## Godot guests in `gm` messages (K.O.s / deaths / ladder rungs / Pillars clock at 1 Hz, Chaos events as they happen),
+## Godot-only (docs/PROTOCOL.md 6.3): app-only modes (`rules.gmode`: sides by slot), the mode state for
+## Godot guests in `gm` messages (K.O.s / deaths / ladder rungs at 1 Hz, Chaos events as they happen),
 ## and a match resumed after a host migration (`start.rs`: positions, health, K.O.s, lives of every slot).
 
 const EMPTY_INFO := {"name": "", "skin": "none", "hat": "none", "color": 0xcccccc, "cls": "wobbler"}
@@ -82,8 +82,6 @@ func setup(start: Dictionary) -> Dictionary:
 	gmode = str(rules["gmode"]) if is_gmode(combat.modes, rules) else ""
 	if gmode != "":
 		_assign_teams()
-		if combat.mode_id == "pillars": _shuffle_pillars()
-		_place_pillars()
 	if resuming: apply_resume(start["rs"], start.get("rsx", {}))
 	n_comp = 0
 	for f: FighterState in sim.fighters:
@@ -201,18 +199,7 @@ func _before_report(dt: float) -> void:
 	if alive.size() <= 1:
 		r.end_match(alive[0] if alive.size() > 0 else sim.player)
 
-## Pillars: who starts on which pillar, shuffled every match (`rules.pp`, the web host's net.pp).
-func _shuffle_pillars() -> void:
-	var n: int = (sim.map.get("spawns", []) as Array).size()
-	var order: Array = range(n)
-	for k in range(n - 1, 0, -1):
-		var j := int(floor(combat.rng.next() * (k + 1)))
-		var t: Variant = order[k]; order[k] = order[j]; order[j] = t
-	rules["pp"] = order
-	var h: RefCounted = host.get_ref()
-	if h != null: h.set("pp", order)
-
-## `gm` "st": every slot's K.O.s, deaths and ladder rung, and the Pillars clock (Godot guests apply it; web guests
+## `gm` "st": every slot's K.O.s, deaths and ladder rung (Godot guests apply it; web guests
 ## ignore the message).
 func mode_state() -> Dictionary:
 	var ko: Array = []
@@ -222,7 +209,6 @@ func mode_state() -> Dictionary:
 		var f := slot_fighter(k)
 		ko.append(f.ko if f != null else 0); dt.append(int(f.st["deaths"]) if f != null else 0); gg.append(f.gg_rung if f != null else 0)
 	var m := {"t": "gm", "k": "st", "ko": ko, "dt": dt, "gg": gg}
-	if not combat.rules.pil.is_empty(): m["pt"] = NetSnapshot.fixed(float(combat.rules.pil["t"]), 1)
 	return m
 
 ## A guest's message, already guarded and stamped by HostSession (netHandle on the host).
@@ -279,6 +265,6 @@ func crate_list() -> Array:
 func has_crate(cid: int) -> bool:
 	return sim != null and sim.pickups.find_cid(cid) >= 0
 
-## Pillars clock etc. are not hosted yet; the dynamic-arena clock for a joiner (`dt0`).
+## The dynamic-arena clock for a joiner (`dt0`).
 func dyn_clock() -> float:
 	return sim.dyn_clock() if sim != null else 0.0
