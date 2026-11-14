@@ -92,7 +92,8 @@ var _mats := {}
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
-var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event)
+var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event, breakables left)
+var _break_note := ""              ## destructible mode: "" = not wanted, else "Breakables: 0" when the setting is on but the map has none
 var _team_board: TeamBoard         ## team modes: coloured chips with each team's score and a YOU tag on yours
 var _banner: Label                 ## "YOU WIN!" at the end of a match
 var _banner_t := 0.0
@@ -208,6 +209,7 @@ func load_map(id: String) -> void:
 	Save.begin_match()
 	Ads.on_match_started(session != null)
 	map_id = id
+	_break_note = ""
 	if build_mode:                       # the blocks are BuildHud's (meshes + solids it can change); no crates
 		id = "custom"; map_id = id
 		var bm := MapBuilder.custom_map(MapBuilder.saved_custom().merged({"blocks": [], "blockCols": []}, true))
@@ -245,6 +247,11 @@ func load_map(id: String) -> void:
 					sim.destructible = true
 					sim.destruct_plan = break_plan
 					sim.view_parent = map_node   # the component meshes replace the merged map boxes at setup
+				else:
+					_break_note = tr("Breakables") + ": 0"   # the setting is on but this map has no usable cover
+			elif want:
+				# the setting is on but this level type has no breakables (a range, a generated site, a shrinking floor)
+				_break_note = tr("Breakables") + ": 0"
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
@@ -454,6 +461,8 @@ func _drain_events() -> void:
 				_toast(str(e["text"]))
 			"break":
 				_on_break(e)             # destructible props: pooled debris + dust + a short shake
+			"prop_hit":
+				_on_prop_hit(e)          # a breakable was hit but did not break: chips + dust + a tap sound
 			"prop_respawn":
 				_on_prop_respawn(e)      # a broken component materialised again: a small dust puff at its base
 			"match_end":
@@ -495,7 +504,7 @@ func _on_break(e: Dictionary) -> void:
 	var at := Vector3(float(e["x"]), float(e["y"]) + float(e["h"]) * 0.4, float(e["z"]))
 	var base := Vector3(float(e["x"]), float(e["y"]) + 0.08, float(e["z"]))
 	var col := MapBuilder.hex(int(e.get("color", 0xffffff)))
-	var trim := Color(minf(1.0, col.r + 0.22), minf(1.0, col.g + 0.22), minf(1.0, col.b + 0.22))
+	var trim := MapBuilder.hex(int(e.get("accent", 0xFF5AC8)))          # the destructible frame colour, not the body
 	if fx:
 		var w := float(e.get("w", 1.4))
 		fx.chips(at, [col, trim, col.darkened(0.35)], mini(24, fx.cnt(12)), 5.5 + w * 0.6,
@@ -504,6 +513,20 @@ func _on_break(e: Dictionary) -> void:
 		if fx.lv >= 1:
 			fx.ring(base + Vector3(0, -0.01, 0), trim, maxf(w, float(e.get("d", 1.4))) * 0.9, 0.3, 0.5)
 		add_shake(clampf(0.11 - at.distance_to(player_pos()) * 0.006, 0.03, 0.1))
+
+## A breakable was hit but did not break (docs/DESTRUCTIBLE.md): a small burst of its own colour off the face that was
+## hit, one dust, and the "clink"/"whack" tap from the event. Without this a player shooting cover had no feedback at all
+## until the component finally broke (the prop_hit event existed but nothing consumed it).
+func _on_prop_hit(e: Dictionary) -> void:
+	var at := Vector3(float(e.get("x", 0.0)), float(e.get("y", 0.0)), float(e.get("z", 0.0)))
+	var col := MapBuilder.hex(int(e.get("color", 0xffffff)))
+	var trim := MapBuilder.hex(int(e.get("accent", 0xFF5AC8)))
+	if fx:
+		var n := 2 if int(e.get("tier", 0)) <= 0 else 4
+		fx.chips(at, [col, trim, col.darkened(0.3)], mini(n, fx.cnt(4)), 3.2, 0.1, 0.45, 16.0, 1.4)
+		fx.dust(at, 1, 1.4)
+		if int(e.get("tier", 0)) >= 2 and fx.lv >= 1:
+			fx.ring(at, trim, 0.4, 0.16, 0.6)
 
 ## A breakable component respawned (docs/DESTRUCTIBLE.md): the mesh fades in itself (Destruct), this only adds the
 ## cheap dust at its base so it does not pop silently. Presentation only, from the existing pooled particles.
@@ -900,7 +923,12 @@ func _update_mode_ui(delta: float) -> void:
 	var ins := SafeArea.insets(get_viewport())
 	var board := session == null and sim.combat.teams > 0 and spectating == null
 	var t := sim.combat.rules.hud_text(sim.player, not board) if session == null else ""
-	if sim.destruct != null and sim.destruct.total() > 0: t += ("   " if t != "" else "") + tr("Breakables")
+	var break_line := ""
+	if sim.destruct != null and sim.destruct.total() > 0:
+		break_line = "%s %d/%d" % [tr("Breakables"), sim.destruct.remaining(), sim.destruct.total()]   # how many are left
+	elif _break_note != "":
+		break_line = _break_note                                  # setting on, but this map has nothing breakable
+	if break_line != "": t += ("   " if t != "" else "") + break_line
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()

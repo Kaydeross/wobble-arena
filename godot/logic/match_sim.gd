@@ -346,6 +346,7 @@ func step(dt: float) -> void:
 func sweep() -> void:
 	for f: FighterState in fighters:
 		combat.melee_sweep(f)
+		if destruct != null: destruct.melee_sweep(f)   # melee chips breakable cover too (docs/DESTRUCTIBLE.md)
 
 ## Ring-out: knocked off the edge (simStep ~9640). The kill cam is not ported: the player respawns at once.
 func _ring_out() -> void:

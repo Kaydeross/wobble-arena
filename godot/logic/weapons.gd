@@ -649,6 +649,8 @@ func _flame(f: FighterState, w: Dictionary, o: Array, bd: Array, base: Array) ->
 		e.burn = float(w["burn"]); e.burner = f
 	combat.push_arm(f, bd[0] * 0.6, bd[1] * 0.6, bd[2] * 0.6)
 	f.flame_n += 1
+	if combat.destruct != null:   # breakable cover burns too (docs/DESTRUCTIBLE.md): one short ray, wall-checked
+		combat.destruct.flame_hit(o[0], o[1], o[2], base[0], base[1], base[2], rng_range, float(w["dmg"]))
 	if f.flame_n % 3 == 0: combat.ev({"type": "sfx", "name": "flame", "f": f})
 
 ## hasLOS: nothing solid between the shooter's shoulder and the target's chest.
