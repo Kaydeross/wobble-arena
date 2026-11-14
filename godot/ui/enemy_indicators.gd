@@ -11,16 +11,21 @@ extends Control
 ## from MatchHud.update, after the HUD panels have been placed (so their rects are this frame's).
 
 const MAX_MARKERS := 6        ## nearest enemies shown; the rest stay unmarked (unobtrusive)
-const MARKER := 26.0          ## square canvas px of one pooled marker Control (the arrow is drawn inside it)
+const MARKER := 30.0          ## square canvas px of one pooled marker Control (the arrow is drawn inside it)
+const COMPACT_MARKERS := 3    ## phones: only the three nearest, so the rim stays quiet
+const COMPACT_RANGE := 45.0   ## phones: enemies farther than this (metres) are not marked
 const MIN_SEP := 32.0         ## canvas px along the rim between two markers (clustered enemies spread out)
-const MAX_SLIDE := 12         ## slot searches each way along the rim before an enemy is skipped
+const MAX_SLIDE := 40         ## slot searches each way along the rim before an enemy is skipped (an enemy dead behind the camera wants the bottom edge, which the hotbar blocks on a phone: it must be able to reach the side edges)
 const ON_SCREEN_PAD := 4.0    ## canvas px: a projected fighter this close to the view edge counts as on screen
 const BODY_LIFT := 1.2        ## metres above the feet the marker is aimed at (mid-body)
 const FAR_FADE := 55.0        ## metres to the dimmest marker
+const MIN_ALPHA := 0.65        ## dimmest marker (was 0.5: far arrows vanished against bright maps)
+const BEHIND_RISE := 0.35      ## behind the camera: arrow rise per metre of height difference (the side matters more)
 const NUDGED_FADE := 0.8      ## alpha multiplier for a marker that had to slide away from another one
 
 var sim: MatchSim
 var cam: Camera3D
+var compact := false            ## phone layout (hud.gd): at most COMPACT_MARKERS nearer markers
 var enabled := true            ## Settings `enemy_arrows` (and not paused / results) — set by hud.gd each frame
 var stage := Rect2()           ## the rim, in canvas px; set by hud.gd (the safe area inset by hud.IND_PAD)
 var markers: Array = []        ## the fixed pool: MAX_MARKERS Controls, pooled once in _ready
@@ -63,9 +68,10 @@ func tick(_delta: float, rim: Rect2, blocked: Array) -> void:
 		if _friendly(f): continue                                      # teammates in team modes / Arcade co-op seats
 		var wp := _aim_point(f)
 		if _on_screen(wp): continue
+		if compact and cam.global_position.distance_to(Vector3(f.phys.px, f.phys.py, f.phys.pz)) > COMPACT_RANGE: continue
 		_cand.append(f)
 	if _cand.size() > 1: _cand.sort_custom(_by_dist)
-	var n := mini(_cand.size(), MAX_MARKERS)
+	var n := mini(_cand.size(), COMPACT_MARKERS if compact else MAX_MARKERS)
 	_used.clear()
 	for i in n:
 		var f: FighterState = _cand[i]
@@ -83,7 +89,7 @@ func tick(_delta: float, rim: Rect2, blocked: Array) -> void:
 		m.set_meta("dir", (p - centre).normalized() if p != centre else dir)
 		m.set_meta("tint", _tint(f))
 		m.set_meta("size_k", lerpf(1.0, 0.78, clampf(d / FAR_FADE, 0.0, 1.0)))   # distance band: nearer arrows read bigger
-		var a := clampf(1.12 - d / FAR_FADE, 0.5, 1.0)
+		var a := clampf(1.12 - d / FAR_FADE, MIN_ALPHA, 1.0)
 		if slid > 0.5: a *= NUDGED_FADE
 		m.modulate = Color(1, 1, 1, a)
 		m.visible = true
@@ -117,13 +123,17 @@ func _on_screen(wp: Vector3) -> bool:
 
 ## Screen direction from the rim centre towards the fighter. In front: the projected direction (correct for above /
 ## below / side). Behind: the camera-space direction (screen x = camera right, screen y = world down), which is the
-## side the player has to turn towards; an enemy dead behind (0, 0) points at the bottom edge.
+## side the player has to turn towards (screen y = the height difference, damped); an enemy dead behind and level
+## points at the bottom edge.
 func _screen_dir(wp: Vector3) -> Vector2:
 	var lp := cam.global_transform.affine_inverse() * wp
 	if lp.z < -0.02:
-		var d := cam.unproject_position(wp) - stage.get_center()
+		var d := cam.unproject_position(wp) - get_viewport_rect().size * 0.5      # from the view centre, not the (inset) rim centre
 		if d.length_squared() > 1.0: return d.normalized()
-	var d2 := Vector2(lp.x, -lp.y)
+	# Behind: x is the side to turn to. The vertical part is the world height difference (damped), not camera-up: with the
+	# camera pitched down, camera-up leans forward, which used to make a level enemy behind you point up.
+	var dh := (cam.global_position.y - wp.y) * BEHIND_RISE
+	var d2 := Vector2(lp.x, dh)
 	if d2.length_squared() < 0.0001: d2 = Vector2(0.0, 1.0)
 	return d2.normalized()
 
