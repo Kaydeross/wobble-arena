@@ -1,5 +1,5 @@
 {
- "_note": "Godot-only Construction mode extension: extends allowWeapons with the 9 DLC tools.",
+ "_note": "Godot-only Construction mode extension: extends allowWeapons with the 9 DLC tools and adds their crate weights. shared/drops.json is exported from the web game, which has no DLC tools, so the weights live here (merged by ModeRules.merge_extra and read by Pickups.pick_crate_key).",
  "construction": {
   "allowWeapons": [
    "pipewrench",
@@ -11,6 +11,17 @@
    "conelauncher",
    "anglegrinder",
    "drill"
-  ]
+  ],
+  "dropWeights": {
+   "pipewrench": 0.7,
+   "nailgun": 0.8,
+   "jackhammer": 0.7,
+   "spiritlevel": 0.8,
+   "tapemeasure": 0.8,
+   "cementbucket": 0.6,
+   "conelauncher": 0.7,
+   "anglegrinder": 0.5,
+   "drill": 0.8
+  }
  }
 }

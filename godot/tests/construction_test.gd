@@ -90,6 +90,8 @@ func _crates() -> void:
 		if not ALLOW.has(k): break
 	for k in ["hammer", "wirewhip", "blower", "heal"]:
 		check(seen.has(k), "Construction crates include %s" % k)
+	for k in ["pipewrench", "nailgun", "jackhammer", "spiritlevel", "tapemeasure", "cementbucket", "conelauncher", "anglegrinder", "drill"]:
+		check(seen.has(k), "Construction crates include the DLC tool %s" % k)
 	print("CRATES %s" % [seen])
 	sim.dispose()
 

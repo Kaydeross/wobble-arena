@@ -125,7 +125,7 @@
   "cooldown": 0.9,
   "stiff": 55,
   "dmg": 15,
-  "headMul": 15.333333,
+  "headMul": 8,
   "range": 110,
   "force": 11,
   "maxForce": 12,
@@ -221,7 +221,7 @@
   "topple": 0.85,
   "hitSfx": "whack",
   "speedMul": 0.8,
-  "ammo": 4,
+  "ammo": 6,
   "color": 14898795
  },
  "snow": {

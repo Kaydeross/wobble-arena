@@ -16,7 +16,7 @@ Unit A introduces 9 new construction-themed tools, a 6-stage Arcade boss rush co
 | `tapemeasure` | Tape Measure | `melee` | 20 | 10 | 0.6s | 10 | Long whip-like melee (tip 3.3m), high lift 0.75 |
 | `cementbucket` | Cement Bucket | `ball` | 26 | 28 | 1.3s | 3 | Thrown ball projectile with slow lob, throwSpeed 9.5m/s |
 | `conelauncher` | Cone Launcher | `knife` | 34 | 14 | 0.75s | 6 | Thrown traffic cone projectile, speed 30m/s |
-| `anglegrinder` | Angle Grinder | `gun` (flame) | 1.5 | 1.2 | 0.08s | 30 | Short-range (5m) spark shower, burn 1.5s, limited fuel |
+| `anglegrinder` | Angle Grinder | `gun` (flame) | 1.5 | 1.2 | 0.08s | 50 | Short-range (5m) spark shower, burn 1.5s, limited fuel |
 | `drill` | Cordless Drill | `melee` | 12 | 6 | 0.28s | 18 | Very fast stab-like melee, swingTime 0.18s, tip 1.35m |
 
 ## Boss Rush Stages Table
@@ -26,7 +26,7 @@ Unit A introduces 9 new construction-themed tools, a 6-stage Arcade boss rush co
 | 1 | `tradies` | Tradies | No | `#ffa500` (16753920) | Dazza (Claw Hammer), Bluey (Pipe Wrench), Sparky (Live Wire), Chippy (Tape Measure) | None | 100 / 250 coins |
 | 2 | `engineer` | Engineer | Mini-boss | `#4aa3d8` (4891608) | Engineer (Cordless Drill, 2.8x HP, damage 1.6x, speed 1.2x, hard) | Falling load test crates every 12s; tool crates | 150 / 350 coins |
 | 3 | `designer` | Designer | Boss | `#e53935` (15022389) | Lead Designer (Spirit Level, 3.4x HP, damage 1.8x, speed 1.3x) | Revision boost pads every 15s; tool crates | 200 / 450 coins |
-| 4 | `supervisor` | Supervisor | Boss | `#ff8000` (16744448) | Supervisor (Pipe Wrench, 3.6x HP, damage 0.6x, speed 0.9x) | Backup call at 50% HP (1 tradie); tool crates | 250 / 600 coins |
+| 4 | `supervisor` | Supervisor | Boss | `#ff8000` (16744448) | Supervisor (Pipe Wrench, 3.6x HP, damage 0.6x, speed 0.9x) | Backup call at 50% HP (1 tradie, 1.5s warning ring); tool crates | 250 / 600 coins |
 | 5 | `project_manager` | Project Manager | Boss | `#8ec27a` (9356410) | Project Manager (Tape Measure, 4x HP, damage 1.4x, speed 1.08x) | Deadline floor shrink; Scope creep; tool crates | 350 / 800 coins |
 | 6 | `the_client` | The Client | Final Boss | `#ffd700` (16766720) | The Client (Giant Mallet, 4.8x HP, damage 1.35x, speed 1.05x, insane) | Giant 1.5x scale; melee change requests at 66% & 33% HP; tool crates | 500 / 1500 coins |
 
@@ -42,8 +42,8 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
    - Does not mutate or overwrite any shared weapons from `shared/weapons.json`.
 
 2. **Modes (`godot/data/extra/construction/modes.json`)**:
-   - Extends the `allowWeapons` list of the `construction` mode only.
-   - `ModeRules.merge_extra()` includes an additive hook that extends existing modes' `allowWeapons` without modifying other modes.
+   - Extends the `allowWeapons` list of the `construction` mode only, and adds the `dropWeights` entry for every DLC tool.
+   - `shared/drops.json` is the web export and cannot carry Godot-only keys, so `ModeRules.merge_extra()` merges `dropWeights` into the existing `construction` mode and `Pickups.pick_crate_key()` reads it as a crate-pool extension. The 9 tools are ~38 % of the Construction crate pool; the shared hammer / Live Wire / Air Blower identity stays intact.
 
 3. **Stages (`godot/data/extra/construction/stages.json`)**:
    - Self-contained arcade boss rush table.
@@ -55,7 +55,7 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
 
 ## Parity Guarantees
 
-- **Untouched Shared Data**: `shared/*.json`, `godot/data/weapons.json`, and `godot/data/modes.json` are completely unmodified, preserving bit-exact parity with the web reference.
+- **Shared Data Still Follows the Web**: the DLC data is Godot-only and does not touch the shared weapon or mode tables. The only shared changes in the same balance pass are the Mammoth Pistol `headMul` 15.33 -> 8 and Giant Mallet `ammo` 4 -> 6, both edited in `public/index.html` and re-exported with `npm run content`, so web and Godot still read identical numbers (see [BALANCE_FIXES.md](BALANCE_FIXES.md)).
 - **Combat Math & Sim Integrity**: No new weapon simulation code is introduced; all tools leverage proven existing combat types (`melee`, `gun` with punch/flame styles, `ball`, `knife`).
 - **No RNG Drift**: Crate draws and bot decisions in existing modes remain unchanged in sequence and frequency.
 - **Mode Isolation**: DLC weapons are flagged `constructionOnly: true` and are restricted to Construction mode.
@@ -63,7 +63,7 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
 ## How to Add a Tool
 
 1. Add the tool entry to `godot/data/extra/construction/weapons.json` following the `shared/weapons.json` schema, marking `"constructionOnly": true`.
-2. Add its id to the `allowWeapons` list in `godot/data/extra/construction/modes.json`.
+2. Add its id to the `allowWeapons` list and a positive `dropWeights` value in `godot/data/extra/construction/modes.json`.
 3. Add localized display names to `godot/i18n/src/92-construction-data.json`.
 4. Run `node tools/i18n.js` to build strings.
 5. Add test coverage in `godot/tests/construction_data_test.gd` and run `npm run test:godot-construction-data`.
@@ -133,7 +133,7 @@ down (stages with `boss: true`; the crew that is left gives up) or every enemy i
 | Normal | 0.7 | 0.9 / 1.4 | 0.65 | 1.0 | 1.15 | 4 | 1.0 |
 | Nightmare | 1.0 | none | 1.0 | 1.0 | 1.0 | 3 | 1.5 |
 
-The result is x the table's hp, never below the floor and never above the table's own value; boss phases (66 / 33 %) are unchanged. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
+The result is x the table's hp, never below the floor and never above the table's own value; boss phases (66 / 33 %) are unchanged. Melee force and topple are separate: Easy/Normal scale the outgoing shove without touching a weapon's damage or the table's `dmg_scale`. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
 
 **Difficulty tuning.** `godot/tests/arcade_balance.gd` (not in `npm test`, about 25 minutes for the full 3 difficulties x 6 stages x 8 seeds; run the difficulties in parallel processes): `godot --headless --path godot --script res://tests/arcade_balance.gd -- --no-save --seeds=8`. The scripted melee player of `arcade_test.gd` (the starting Wobbler, normal damage, no healing, one life, 100 s limit) fights each stage once per seed against the table's own bot skills. Wins out of the seeds, and the player's average health left on a win. These are the numbers for the table as it stands after the melee retune (below):
 
@@ -151,7 +151,7 @@ The scripted player is a crude yardstick (it only walks at the nearest enemy and
 
 **Health Packs and the early bosses (balance pass 2).** Enemies that grab a Health Pack used to heal 60 % of their max health, which made the bosses almost unkillable on Easy. Arcade enemies now heal `boss_heal` of their max health per pack: 5 % Easy, 8 % Normal, 10 % Nightmare (`FighterState.heal_frac`, set in `ArcadeManager._dress`; the player's pack is still 60 %). The boss health floors are 1.2 (Easy) and 1.4 (Normal); Nightmare keeps the table's health as written.
 
-**Melee retune (balance pass 3).** With the bosses on melee tools the scripted player's hammer could stunlock the low-force early bosses (Engineer 8/8 with 90 % health left on Normal, 8/8 with 75 % on Nightmare) while the Supervisor's Pipe Wrench (force 24, not scaled by `dmg_scale`) stunlocked the player (1/8 Normal, 0/8 Nightmare). The early bosses take the biggest buffs: Engineer hp 2.0 / damage 1.0 / speed 1.05 -> 2.8 / 1.6 / 1.2, Designer 3.0 / 1.45 / 1.2 -> 3.4 / 1.8 / 1.3. The Supervisor becomes a tanky, low-damage summoner: hp 3.0 -> 3.6, damage 0.9 -> 0.6 (the data floor), speed 0.95 -> 0.9; it keeps its one-tradie backup call at 50 % health. The Project Manager moves to 4.0 / 1.4 / 1.08 and The Client stays at 4.8 / 1.35 / 1.05 (the giant mallet already hurts). Boss health now climbs Engineer 2.8 < Designer 3.4 < Supervisor 3.6 < Project Manager 4.0 < The Client 4.8 at every difficulty (the floors keep the same order on Easy), checked in `arcade_test.gd`. The Supervisor is still the hardest stage for the non-dodging probe (2/8 Normal, 0/8 Nightmare): its damage is already at the `dmg_scale` floor of 0.6, so the rest of its sting is the pipe wrench's knockback; a human who keeps away, as the melee change intends, has a much better time than the probe.
+**Melee retune (balance pass 3).** With the bosses on melee tools the scripted player's hammer could stunlock the low-force early bosses (Engineer 8/8 with 90 % health left on Normal, 8/8 with 75 % on Nightmare) while the Supervisor's Pipe Wrench (force 24, not scaled by `dmg_scale`) stunlocked the player (1/8 Normal, 0/8 Nightmare). The early bosses take the biggest buffs: Engineer hp 2.0 / damage 1.0 / speed 1.05 -> 2.8 / 1.6 / 1.2, Designer 3.0 / 1.45 / 1.2 -> 3.4 / 1.8 / 1.3. The Supervisor becomes a tanky, low-damage summoner: hp 3.0 -> 3.6, damage 0.9 -> 0.6 (the data floor), speed 0.95 -> 0.9; it keeps its one-tradie backup call at 50 % health. The Project Manager moves to 4.0 / 1.4 / 1.08 and The Client stays at 4.8 / 1.35 / 1.05 (the giant mallet already hurts). Boss health now climbs Engineer 2.8 < Designer 3.4 < Supervisor 3.6 < Project Manager 4.0 < The Client 4.8 at every difficulty (the floors keep the same order on Easy), checked in `arcade_test.gd`. The Supervisor is still the hardest stage for the non-dodging probe (2/8 Normal, 0/8 Nightmare): its damage is already at the `dmg_scale` floor of 0.6, so the rest of its sting is the pipe wrench's knockback; a human who keeps away, as the melee change intends, has a much better time than the probe. **Pass 4** adds the two fairness changes the review asked for: Easy/Normal scale the outgoing melee force / topple (0.75 / 0.65 and 0.9 / 0.8; Nightmare unchanged) and the backup call now shows a 1.5 s amber warning ring on the summon spot before the tradie lands.
 
 **Ring-out rule (owner report: "boss drop off from edge = stage clear").** `MatchSim._ring_out` leaves a bot that falls off
 the site `dead` with its health intact and `fell_t` set. A fall is **never a K.O.**: `ArcadeManager._fight` now decides by
@@ -211,7 +211,7 @@ Normal sanity run after the change stayed in the same range (no free ring-out wi
 | --- | --- | --- |
 | `load_test` | Engineer | every `every` s, `crate_count` crates drop (one near you); a red ring warns `warning_time` s ahead; the landing hurts everyone within 2.8 m (30 dmg) |
 | `revision_pads` | Designer | every `every` s, 3 boost pads (bounce power x `boost_mul`) for `duration` s |
-| `backup_call` | Supervisor | once, at `hp_threshold` of the boss' health: `summon_count` tradies (`summon_bots` names) join in |
+| `backup_call` | Supervisor | once, at `hp_threshold` of the boss' health: `summon_count` tradies (`summon_bots` names) join in after a `warning_time` (1.5 s) amber ground ring, so the summon is telegraphed |
 | `deadline_shrink` | Project Manager | `ModeRules.shrink` on the site floor (the Mega / Shrink machinery): holds `every` s, closes in at `rate` m/s to `min_floor`, breathes back out and repeats; crate spots stay the map's own (`shrink["spots"]`) |
 | `scope_creep` | Project Manager | every `every` s, `spawn_extra` more tradies, at most `max_extra` alive |
 | `change_request` | The Client | at the boss phases: the boss (and you) get a random different tool; `giant_scale` |

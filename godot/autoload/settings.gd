@@ -56,7 +56,7 @@ const DEFAULTS := {
 	"blocked_names": "[]",  # lower-case player display names blocked on this device (autoload Safety)
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
 	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE; the Construction hub sets construction)
-	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
+	"limit": -1,            # offline K.O. limit: -1 = the mode's preset (endless brawl modes default to 20), 0 = none, else 5 / 10 / 20
 	"wobble_rig": "ragdoll",   # character animation: ragdoll (leg-driven floppy overlay, docs/RAGDOLL.md) | classic (web pose)
 	"leg_wobble": 0.55,        # seeded per-fighter leg wobble 0..1 in the ragdoll overlay (docs/RAGDOLL.md); 0 = exactly the old overlay pose
 	"offline_map": "arena", # offline arena (setup wizard page 1)

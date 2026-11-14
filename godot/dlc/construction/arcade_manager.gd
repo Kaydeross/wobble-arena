@@ -1236,6 +1236,7 @@ func _giant_scale(d: Dictionary) -> float:
 ## taken = 2x the Bruiser, x0.92 damage, x1.3 air control, x1.2 acceleration). That is the owner report "the Designer
 ## with its speed buff is too fast": 39 % faster before any buff, and a speed buff on top. `class_id` stays for the look.
 func _arcade_line(f: FighterState) -> void:
+	f.arcade_enemy = true                  # no Rage / Shield crates (Pickups.bot_wants); speed stays a short burst
 	f.cls_dmg = 1.0
 	f.cls_kb = 1.0
 	f.cls_rate = 1.0
@@ -1263,6 +1264,8 @@ func _dress(b: FighterState, spec: Dictionary, giant: bool, is_boss := false) ->
 	brain.strafe = 1.0 if rng.randf() < 0.5 else -1.0
 	sim.controllers[b] = brain
 	var df := diff_def()
+	b.melee_force_mul = float(df.get("melee_force_mul", 1.0)) * float(spec.get("melee_force_mul", 1.0))
+	b.melee_topple_mul = float(df.get("melee_topple_mul", 1.0)) * float(spec.get("melee_topple_mul", 1.0))
 	var walk := float(dd.get("speed", 4.4)) * float(spec.get("speed", 1.0))
 	if is_boss:
 		var band: Array = _boss_band(spec)
@@ -1308,10 +1311,13 @@ func give_weapon(f: FighterState, key: String) -> void:
 		if f.slots[i] != null and f.slots[i]["key"] == key and f.slot != i: c.equip_slot(f, i)
 
 ## Keeps the melee kit and its ammo up. A gun taken from a crate is deliberately not part of the kit: it runs dry and
-## the boss goes back to melee, rather than becoming an endless turret. The same upkeep bounds a Speed Boost pickup to
-## ENEMY_BUFF_TIME s: the player's boost lasts 12 s, an Arcade enemy's is a short burst (never a 12 s unoutrunable boss).
+## the boss goes back to melee, rather than becoming an endless turret. Every pickup buff is a short burst on an Arcade
+## enemy: Speed, Rage and Shield all last at most ENEMY_BUFF_TIME s (the player's last 12 s), so no 12 s x2.16-damage
+## boss and no 12 s shielded boss. Rage and Shield are also never chased at all (Pickups.bot_wants).
 func keep_kit(f: FighterState) -> void:
 	if f.spd_t > ENEMY_BUFF_TIME: f.spd_t = ENEMY_BUFF_TIME
+	if f.rage_t > ENEMY_BUFF_TIME: f.rage_t = ENEMY_BUFF_TIME
+	if f.shield_t > ENEMY_BUFF_TIME: f.shield_t = ENEMY_BUFF_TIME
 	var key: String = kit.get(f, "")
 	if key == "": return
 	var wd := sim.combat.wdata(key)
@@ -1325,13 +1331,28 @@ func keep_kit(f: FighterState) -> void:
 	if not have and not f.dead: give_weapon(f, key)
 
 ## One more enemy (backup call, scope creep): a tradie from the first stage's crew (or the named one) at a bot spot.
-func spawn_minion(name_hint: String = "") -> FighterState:
+## `at_spot` (optional [x, z, floor y?]) is the ground spot already shown to the player by a warning ring; if the floor
+## has shrunk over it since, a fresh floor spot is picked instead.
+func spawn_minion(name_hint: String = "", at_spot: Array = []) -> FighterState:
 	if sim == null or world == null: return null
 	var crew: Array = stages()[0]["bots"]
 	var spec: Dictionary = crew[rng.randi() % crew.size()]
 	for s: Dictionary in crew:
 		if name_hint != "" and str(s["name"]) == name_hint: spec = s
 	var f := sim.add_fighter("wobbler")
+	var best: Array = at_spot if at_spot.size() >= 2 else pick_minion_spot()
+	if at_spot.size() >= 2 and not _minion_spot_on_floor(best): best = pick_minion_spot()
+	sim.combat.place_at(f, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else sim.combat.spawn_y)
+	f.yaw = rng.randf_range(0.0, TAU); f.face_yaw = f.yaw
+	f.invuln = 1.5
+	_dress(f, spec, false)
+	enemies.append(f)
+	world.add_view(f)
+	return f
+
+## A floor spot for a summoned tradie: the farthest of a few random bot / spawn spots from the nearest seat, filtered
+## to the live floor when the Project Manager's deadline has shrunk it. Returned as [x, z, floor y?].
+func pick_minion_spot() -> Array:
 	var spots: Array = sim.map.get("bots", []) + sim.map.get("spawns", [])
 	var sh: Dictionary = sim.combat.rules.shrink       # the Project Manager's closing floor: only spots still on it
 	if not sh.is_empty():
@@ -1344,13 +1365,14 @@ func spawn_minion(name_hint: String = "") -> FighterState:
 		var sp: Array = spots[rng.randi() % spots.size()] if spots.size() > 0 else [0.0, 0.0]
 		var dd := _nearest_seat_dist(float(sp[0]), float(sp[1]))
 		if dd > far: far = dd; best = sp
-	sim.combat.place_at(f, float(best[0]), float(best[1]), float(best[2]) if best.size() > 2 else sim.combat.spawn_y)
-	f.yaw = rng.randf_range(0.0, TAU); f.face_yaw = f.yaw
-	f.invuln = 1.5
-	_dress(f, spec, false)
-	enemies.append(f)
-	world.add_view(f)
-	return f
+	return best
+
+## Is `sp` still on the live (possibly shrunk) floor?
+func _minion_spot_on_floor(sp: Array) -> bool:
+	var sh: Dictionary = sim.combat.rules.shrink
+	if sh.is_empty(): return true
+	var half := float(sh["size"]) / 2.0 - 2.5
+	return absf(float(sp[0])) <= half and absf(float(sp[1])) <= half
 
 func alive_enemies() -> int:
 	var n := 0

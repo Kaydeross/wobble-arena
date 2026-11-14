@@ -60,23 +60,25 @@ Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` ar
 
 | Weapon | Field | Shared | Tuned | Why |
 | --- | --- | --- | --- | --- |
-| Mammoth Pistol | `headMul` | 15.33 (230 head) | 8 (120 head; 144 for a Bruiser) | headshot was a one-shot at 200 HP |
+| Mammoth Pistol | `headMul` | 8 (120 head; 144 for a Bruiser) | 8 (same) | the shared value used to be a 230-damage one-shot; both regimes now use the fair value |
 | | `cooldown` | 0.9 s | 1.4 s | |
 | | `swapCd` | - | 0.45 s | |
 | Meteor Launcher | `cooldown` / `ammo` | 2 s / 3 | 3.2 s / 2 | strongest splash in the game |
-| | `burst` / `swapCd` | - | {n 1, regen 6 s} / 0.6 s | |
+| | `burst` / `swapCd` | - | {n 1, regen 4.5 s} / 0.6 s | |
 | Rocket Launcher | `cooldown` / `ammo` | 1.25 s / 4 | 1.8 s / 3 | |
-| | `burst` / `swapCd` | - | {n 2, regen 5 s} / 0.45 s | |
+| | `burst` / `swapCd` | - | {n 2, regen 3.5 s} / 0.45 s | |
 | Grenade Launcher | `cooldown` / `ammo` | 0.85 s / 6 | 1.15 s / 4 | |
-| | `burst` / `swapCd` | - | {n 3, regen 4 s} / 0.35 s | |
+| | `burst` / `swapCd` | - | {n 3, regen 3 s} / 0.35 s | |
 | Cluster Launcher | `cooldown` / `ammo` | 1.1 s / 4 | 1.5 s / 3 | |
 | | `burst` / `swapCd` | - | {n 2, regen 4.5 s} / 0.35 s | |
 | Minigun | `force` / `maxForce` | 2 / 2.6 | 1.4 / 1.8 | a held stream pushed people off ledges |
 | Snowball Cannon | `force` | 30 | 24 | |
 | Giant Mallet | `force` / `topple` | 30 / 0.85 | 26 / 0.75 | |
 | Flamethrower | `force` / `maxForce` | 1.2 / 1.6 | 0.6 / 1.2 | per-tick push; a stream pinned whoever could not walk against it |
-| Air Blower | `dmg` | - (no damage) | 2.5 per puff | it was not a weapon: only a push |
+| Air Blower | `dmg` | - (no damage) | 2.8 per puff | it was not a weapon: only a push; a full tank can now finish a 150 HP class |
 | crates | Meteor weight (`drops.json` base) | 1.4 | 0.6 | `drops` in the overlay, read by `Pickups.pick_crate_key` |
+
+Shared (web, online and offline) balance also changed in this pass: the Mammoth Pistol's `headMul` is 8 and the Giant Mallet's `ammo` is 6, both edited in the web source and re-exported to `shared/weapons.json`. See [BALANCE_FIXES.md](BALANCE_FIXES.md).
 
 ### Flamethrower knockback (overlay only)
 
@@ -95,10 +97,10 @@ the shared numbers and never run the contact budget.
 
 ### Air Blower damage (overlay only)
 
-The `blower` type had no `dmg` at all: its `blower_tick` only pushes, stuns and drains. The overlay adds `dmg` 2.5 and
+The `blower` type had no `dmg` at all: its `blower_tick` only pushes, stuns and drains. The overlay adds `dmg` 2.8 and
 `Weapons.blower_tick` applies it through `Combat.hit` **once per puff** (the weapon's 0.06 s `cooldown`, not once per
-120 Hz physics step), so it is a real but low-DPS weapon: 2.5 / 0.06 s ≈ 42 damage per second, below every automatic gun
-(AK-47 tuned ≈ 60, SMG ≈ 62, Minigun ≈ 71, Uzi ≈ 57), and a full 100-ammo tank (3.6 s of jet) is ≈ 150 damage. Its job
+120 Hz physics step), so it is a real but low-DPS weapon: 2.8 / 0.06 s ≈ 47 damage per second, below every automatic gun
+(AK-47 tuned ≈ 60, SMG ≈ 62, Minigun ≈ 71, Uzi ≈ 57), and a full 100-ammo tank (3.6 s of jet) is ≈ 167 damage, enough to K.O. a 150 HP class. Its job
 stays control (the strong push and stun); the damage just means the jet is no longer free to stand in. The web game /
 parity tests keep the no-damage blower (`tuning_active()` gate).
 

@@ -38,6 +38,10 @@ const PLAYABLE := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4"
 ## Offline only (the web netMode sends Sandbox and Construction matches online as Classic).
 const OFFLINE_ONLY := ["sandbox", "construction", "ctf"]
 const SANDBOX_LIMIT := 10            ## a test run on your arena ends at this many K.O.s (the web Sandbox has no limit)
+## Offline brawl modes whose data preset is "no K.O. limit" (the web menu's 0 button). Auto now gives them a win
+## condition instead of an endless match; an explicit 0 in Settings (or --limit=0) still means no limit.
+const LIMITLESS_BRAWL := ["classic", "melee", "guns", "ninja", "explosive", "giant", "lowg", "construction"]
+const LIMITLESS_DEFAULT := 20        ## K.O.s Auto plays these modes to (the web menu's 20 button)
 ## Short card line per mode: data/extra/wizard.json `short` (word for word the web menu's BLURB, see docs/WRITING.md).
 const WIZARD_PATH := "res://data/extra/wizard.json"
 static var _shorts: Dictionary = {}
@@ -108,10 +112,13 @@ var remote := false
 func _init(c: Combat) -> void:
 	_combat = weakref(c)
 
-## The K.O. limit a mode starts with (MODE_DEFAULTS + preset).
+## The K.O. limit a mode starts with (MODE_DEFAULTS + preset). A brawl mode whose preset limit is 0 and that has no
+## other end condition (lives, ladder, clock) gets LIMITLESS_DEFAULT, so Auto is a real match rather than an endless one.
 static func preset_limit(mode_id: String, modes: Dictionary) -> int:
 	if mode_id == "sandbox": return SANDBOX_LIMIT
-	return int(modes.get(mode_id, {}).get("preset", {}).get("limit", MODE_DEFAULTS["limit"]))
+	var n := int(modes.get(mode_id, {}).get("preset", {}).get("limit", MODE_DEFAULTS["limit"]))
+	if n <= 0 and LIMITLESS_BRAWL.has(mode_id): return LIMITLESS_DEFAULT
+	return n
 
 ## How many bots a mode plays with (setBotCfg): teams force teams * 2 - 1, otherwise `requested` (0..12). flexTeams
 ## (Team Deathmatch) keeps the teams even: an odd bot count (requested, rounded up, 1..7).
@@ -179,13 +186,18 @@ static func _merge_modes_file(modes: Dictionary, path: String) -> void:
 	for k: String in x:
 		if k.begins_with("_") or not (x[k] is Dictionary): continue
 		if modes.has(k):
-			# Additive hook: if an existing mode has allowWeapons, extend it with any new allowed weapons
+			# Additive hooks: extend an existing mode's weapon list and crate weights with Godot-only extras.
 			var src: Dictionary = x[k]
 			var dst: Dictionary = modes[k]
 			if src.has("allowWeapons") and dst.get("allowWeapons") is Array:
 				for w in src["allowWeapons"]:
 					if not dst["allowWeapons"].has(w):
 						dst["allowWeapons"].append(w)
+			if src.get("dropWeights") is Dictionary:
+				var weights: Dictionary = dst.get("dropWeights", {})
+				for w: String in src["dropWeights"]:
+					weights[w] = float(src["dropWeights"][w])
+				dst["dropWeights"] = weights
 			continue
 		var m: Dictionary = (x[k] as Dictionary).duplicate(true)
 		if not m.has("allowWeapons"):

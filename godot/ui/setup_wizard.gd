@@ -3,9 +3,9 @@ extends VBoxContainer
 ## Offline match setup, one choice per page (title screen Play opens it):
 ##   1 Game type (cards for ModeRules.PLAYABLE, read from code),
 ##   2 Arena (cards for the maps that game type allows and the Moving floor row: Settings "dyn"), 3 Players (you + 1..7 bots, team modes fix the count; bot
-##   skill), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
-##   of the four picks, each row jumps back to its page, and the big Start button).
-## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, class), so the next Play
+##   skill and the K.O. limit: Auto / None / 5 / 10 / 20), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
+##   of the picks, each row jumps back to its page, and the big Start button).
+## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, limit, class), so the next Play
 ## starts where the last one ended. Game types restrict arenas: when the remembered arena is not allowed in the new
 ## game type, the wizard moves to the nearest allowed one and says so in one line (`note`).
 ## Game types are grouped in labelled sections (Classic / Team / Special, data/extra/wizard.json: also each card's short
@@ -26,6 +26,8 @@ enum {P_MODE, P_ARENA, P_PLAYERS, P_CHAR, P_START}
 const BOT_MIN := 1
 const BOT_MAX := 7
 const DIFFS := ["easy", "normal", "hard", "insane"]
+const LIMITS := [-1, 0, 5, 10, 20]       ## -1 = mode preset / Auto, 0 = no limit
+const LIMIT_LABELS := ["Auto", "None", "5", "10", "20"]
 const GAP := 12
 const MAP_CARD := Vector2(220, 148)
 const MODE_CARD := Vector2(220, 136)
@@ -40,6 +42,7 @@ var mode_id := "classic"
 var dyn := "random"
 var bots := 3
 var diff := "normal"
+var limit := -1             ## K.O. limit: -1 = the mode's preset (Auto), 0 = none, 5 / 10 / 20
 var cls := "wobbler"
 var note := ""              ## one line shown in the header (arena moved because of the game type, ...)
 var _want_map := ""         ## the arena the player last tapped: a game type change returns to it when it is allowed again
@@ -65,6 +68,7 @@ var _class_art := {}        ## class id -> TextureRect
 var _dyn_bs := {}
 var _bot_bs := {}
 var _diff_bs := {}
+var _limit_bs := {}
 var _sum_bs: Array = []
 var _sum_vals: Array = []
 var _styles := {}
@@ -196,6 +200,8 @@ func load_settings() -> void:
 	bots = clampi(int(Settings.get_value("bots", 3)), BOT_MIN, BOT_MAX)
 	diff = str(Settings.get_value("difficulty", "normal"))
 	if not DIFFS.has(diff): diff = "normal"
+	limit = int(Settings.get_value("limit", -1))
+	if not LIMITS.has(limit): limit = -1
 	cls = str(Settings.get_value("class", "wobbler"))
 	if not Content.classes.has(cls) or not owns_class(cls): cls = "wobbler"
 	_want_map = "arena" if stale else str(Settings.get_value("offline_map", "arena"))
@@ -244,6 +250,22 @@ func set_diff(d: String) -> void:
 	Settings.set_value("difficulty", d)
 	_refresh()
 
+func set_limit(n: int) -> void:
+	limit = n if LIMITS.has(n) else -1
+	Settings.set_value("limit", limit)
+	_refresh()
+
+## The K.O. limit the chosen mode plays to right now (Auto follows the mode preset, with the endless brawl modes
+## defaulting to ModeRules.LIMITLESS_DEFAULT). 0 = no limit, a mode with lives / a clock / a ladder also ends without one.
+func limit_value() -> int:
+	return limit if limit >= 0 else ModeRules.preset_limit(mode_id, Content.modes)
+
+## The Start page's summary value for the K.O. limit row (compact: the row label says "Players", the pills say
+## "K.O. limit").
+func limit_text() -> String:
+	var n := limit_value()
+	return tr("None") if n <= 0 else tr("First to %d") % n
+
 func set_class(id: String) -> void:
 	cls = id
 	Settings.set_value("class", id)
@@ -252,7 +274,7 @@ func set_class(id: String) -> void:
 
 ## Writes every choice (Start does this once more, so a match always starts from what is on screen).
 func save() -> void:
-	for kv in [["offline_map", map_id], ["mode", mode_id], ["dyn", dyn], ["bots", bots], ["difficulty", diff], ["class", cls]]:
+	for kv in [["offline_map", map_id], ["mode", mode_id], ["dyn", dyn], ["bots", bots], ["difficulty", diff], ["limit", limit], ["class", cls]]:
 		Settings.set_value(kv[0], kv[1])
 
 # ---------------- navigation ----------------
@@ -715,6 +737,9 @@ func _build_players(p: Control) -> void:
 	var dn: Array = []
 	for d: String in DIFFS: dn.append(tr(d.capitalize()))
 	_pills(p, "Skill", "Bot skill", DIFFS, dn, _diff_bs, set_diff, 100)
+	var ln: Array = []
+	for l: String in LIMIT_LABELS: ln.append(tr(l))
+	_pills(p, "Limit", "K.O. limit", LIMITS, ln, _limit_bs, set_limit, 64)
 	players_hint = _label("", 17, "MutedLabel", true)
 	players_hint.name = "Hint"
 	players_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -823,6 +848,7 @@ func _refresh() -> void:
 	_select(_dyn_bs, dyn)
 	_select(_class_bs, cls)
 	_select(_diff_bs, diff)
+	_select(_limit_bs, limit)
 	var team := is_team_mode()
 	var flex := is_flex_teams()
 	var total := bot_total()
@@ -841,7 +867,7 @@ func _refresh() -> void:
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = mode_name(mode_id)
 		_sum_vals[1].text = tr("%s · Floor: %s") % [tr(map_name(map_id)), tr(Dynamics.NAMES.get(dyn, dyn))]
-		_sum_vals[2].text = tr("%s · %s") % [_players_text(), tr(diff.capitalize())]
+		_sum_vals[2].text = tr("%s · %s · %s") % [_players_text(), tr(diff.capitalize()), limit_text()]
 		_sum_vals[3].text = class_name_of(cls)
 
 func _select(store: Dictionary, key: Variant) -> void:

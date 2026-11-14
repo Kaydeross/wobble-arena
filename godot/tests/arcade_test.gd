@@ -901,7 +901,11 @@ func _events() -> void:
 	check(arc.enemies.size() == 1, "no backup above 50 %")
 	boss.hp = sim.combat.max_hp(boss) * 0.49
 	_idle(w, 1.0)
-	check(arc.enemies.size() == 2 and sim.fighters.size() == n0 + 1, "backup call: 1 tradie joins (%d enemies)" % arc.enemies.size())
+	check(arc.enemies.size() == 1, "backup call: the warning ring comes first, no spawn yet")
+	check(arc.events._summons.size() == 1 and w.get_node_or_null("StageEvents") != null, "backup call: one warning ring on the floor")
+	_idle(w, 0.8)
+	check(arc.enemies.size() == 2 and sim.fighters.size() == n0 + 1, "backup call: 1 tradie joins after the warning (%d enemies)" % arc.enemies.size())
+	check(arc.events._summons.is_empty(), "backup call: the warning ring is gone once the tradie lands")
 	check(w.views.size() == sim.fighters.size(), "the new tradies have views")
 	check(int(arc.events.counts.get("backup_call", 0)) == 1, "backup called once")
 	boss.hp = sim.combat.max_hp(boss) * 0.2
@@ -1250,6 +1254,15 @@ func _boss_speeds() -> void:
 		check(b.spd_t <= 2.0, "%s' Speed Boost is a short burst (%.1f s left)" % [ids[si], b.spd_t])
 		check(b.spd_t <= 0.0 or b.phys.speed * b.phys.speed_mul <= player,
 			"%s' burst starts from a speed the player can run (%.2f)" % [ids[si], b.phys.speed * b.phys.speed_mul])
+		# Rage and Shield are never chased, and any buff that does land is only a short burst (a phase boss with 12 s
+		# Rage would hit for x2.16, a Shield would double its effective HP for 12 s).
+		check(not w.sim.pickups.bot_wants(b, {"key": "rage"}) and not w.sim.pickups.bot_wants(b, {"key": "shield"}),
+			"%s ignores Rage / Shield crates" % ids[si])
+		check(w.sim.pickups.bot_wants(b, {"key": "speed"}), "%s still takes a Speed crate" % ids[si])
+		b.rage_t = 12.0; b.shield_t = 12.0
+		arc.keep_kit(b)
+		check(b.rage_t <= 2.0 and b.shield_t <= 2.0,
+			"%s' Rage / Shield pickups are short bursts (%.1f / %.1f s)" % [ids[si], b.rage_t, b.shield_t])
 		await _free_world(w)
 	print("BOSS SPEEDS %s" % [speeds])
 	# the same boss in a two-seat co-op run: the same fixed stat line (speed, knockback taken, damage, rate, reload,
@@ -1353,6 +1366,10 @@ func _difficulties() -> void:
 		check(int(d["lives"]) == w[0] and is_equal_approx(float(d["dmg_mul"]), w[1]) and is_equal_approx(float(d["speed_mul"]), w[2]) and is_equal_approx(float(d["event_mul"]), w[3]), "%s: lives / damage / speed / event timing %s" % [k, d])
 	var n: Dictionary = tab["nightmare"]
 	check(is_equal_approx(float(n["hp_mul"]), 1.0) and float(n["hp_floor"]) == 0.0 and float(n["boss_hp_floor"]) == 0.0, "Nightmare keeps the table's health as written")
+	check(is_equal_approx(float(tab["easy"]["melee_force_mul"]), 0.75) and is_equal_approx(float(tab["normal"]["melee_force_mul"]), 0.9) \
+		and is_equal_approx(float(n["melee_force_mul"]), 1.0), "melee force scales down on Easy / Normal only")
+	check(is_equal_approx(float(tab["easy"]["melee_topple_mul"]), 0.65) and is_equal_approx(float(tab["normal"]["melee_topple_mul"]), 0.8) \
+		and is_equal_approx(float(n["melee_topple_mul"]), 1.0), "melee topple scales down on Easy / Normal only")
 	check(float(tab["easy"]["coin_mul"]) < float(tab["normal"]["coin_mul"]) and float(tab["normal"]["coin_mul"]) < float(n["coin_mul"]), "coin rewards grow with the difficulty")
 	var arcs := {}
 	for k: String in want:

@@ -253,7 +253,9 @@ func load_map(id: String) -> void:
 	if session == null:                    # offline game mode (pickMode / setBotCfg)
 		var mid := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
 		if not sim.combat.modes.has(mid): mid = "classic"
-		sim.configure(mid, 0 if build_mode else (ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1))))
+		# The Arcade run is cleared stage by stage (never by a K.O. count), so it stays out of the offline limit default.
+		var lim := 0 if arcade != null else (ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1)))
+		sim.configure(mid, 0 if build_mode else lim)
 		bots = 0 if build_mode else ModeRules.bot_count(mid, sim.combat.modes, bot_count)
 	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
 	if not Content.difficulties.has(skill): skill = "normal"

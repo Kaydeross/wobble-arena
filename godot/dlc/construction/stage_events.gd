@@ -36,6 +36,7 @@ var fired: Array = []                  ## [stage time, type]
 var t := 0.0
 var _crates: Array = []                ## {x, z, gy, left, dur, node, ring}
 var _pads: Array = []                  ## {pad, left, node}
+var _summons: Array = []               ## {name, spot, left, node}: a backup call's warning rings, then the spawn
 var _root: Node3D = null
 var _swap_pool: Array = []
 var _weapon_drop_cid := 900000
@@ -91,6 +92,7 @@ func update(dt: float) -> void:
 			_watch_deadline()
 	_update_crates(dt)
 	_update_pads(dt)
+	_update_summons(dt)
 
 ## The manager's boss phase n (1 = 66 %, 2 = 33 %): the change request swaps tools.
 func on_phase(n: int) -> void:
@@ -98,12 +100,14 @@ func on_phase(n: int) -> void:
 		if e["type"] == "change_request" and bool((e["params"] as Dictionary).get("random_weapon_swap", true)):
 			_change_request(n)
 
-## The stage is over: pads and crates go away.
+## The stage is over: pads and crates go away, and a pending backup call is cancelled (no ring, no late spawn).
 func finish() -> void:
 	for h: Dictionary in _crates: _free(h.get("node")); _free(h.get("ring"))
 	_crates.clear()
 	for q: Dictionary in _pads: _remove_pad(q)
 	_pads.clear()
+	for s: Dictionary in _summons: _free(s.get("node"))
+	_summons.clear()
 
 func _free(n: Variant) -> void:
 	if n != null and is_instance_valid(n): (n as Node).queue_free()
@@ -150,13 +154,7 @@ func _load_test(p: Dictionary) -> void:
 func _new_crate(x: float, z: float, warn: float) -> Dictionary:
 	var h := {"x": x, "z": z, "gy": 0.0, "left": warn, "dur": maxf(warn, 0.1), "node": null, "ring": null}
 	if world != null:
-		var ring := MeshInstance3D.new()
-		var cm := CylinderMesh.new()
-		cm.top_radius = CRATE_R; cm.bottom_radius = CRATE_R; cm.height = 0.06; cm.radial_segments = 20
-		ring.mesh = cm
-		ring.material_override = _unshaded(Color(1.0, 0.18, 0.12, 0.45))
-		ring.position = Vector3(x, 0.08, z)
-		_fx_root().add_child(ring)
+		var ring := _warning_ring(x, z, 0.0, CRATE_R, Color(1.0, 0.18, 0.12, 0.45))
 		var box := MeshInstance3D.new()
 		var bm := BoxMesh.new()
 		bm.size = Vector3(1.5, 1.5, 1.5)
@@ -166,6 +164,17 @@ func _new_crate(x: float, z: float, warn: float) -> Dictionary:
 		_fx_root().add_child(box)
 		h["ring"] = ring; h["node"] = box
 	return h
+
+## A flat warning ring on the floor: red for a load-test crate, amber for a backup tradie.
+func _warning_ring(x: float, z: float, gy: float, radius: float, col: Color) -> MeshInstance3D:
+	var ring := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = radius; cm.bottom_radius = radius; cm.height = 0.06; cm.radial_segments = 20
+	ring.mesh = cm
+	ring.material_override = _unshaded(col)
+	ring.position = Vector3(x, gy + 0.08, z)
+	_fx_root().add_child(ring)
+	return ring
 
 func _unshaded(c: Color) -> StandardMaterial3D:
 	var mt := StandardMaterial3D.new()
@@ -242,12 +251,29 @@ func _remove_pad(q: Dictionary) -> void:
 
 # ---------------- backup_call / scope_creep ----------------
 
+## One backup call: every summoned tradie gets a visible ground ring first, then joins after `warning_time` s (1.5 s in
+## the table). The old version spawned on the first frame the boss crossed 50 % HP with no cue, which was a silent
+## difficulty spike; the ring gives the player time to move and makes the "pressed" moment readable.
 func _backup(p: Dictionary) -> void:
 	_fire("backup_call")
-	_toast(TranslationServer.translate("Supervisor called in backup tradies!"))
+	var warn := maxf(0.1, float(p.get("warning_time", 1.5)))
 	var names: Array = p.get("summon_bots", [])
+	_toast(TranslationServer.translate("Backup incoming! Watch the warning ring."))
 	for i in int(p.get("summon_count", 2)):
-		m.spawn_minion(str(names[i % names.size()]) if names.size() > 0 else "")
+		var spot: Array = m.pick_minion_spot()
+		var gy := float(spot[2]) if spot.size() > 2 else 0.0
+		var ring := _warning_ring(float(spot[0]), float(spot[1]), gy, 1.6, Color(1.0, 0.55, 0.1, 0.5))
+		_summons.append({"name": str(names[i % names.size()]) if names.size() > 0 else "", "spot": spot, "left": warn, "node": ring})
+
+func _update_summons(dt: float) -> void:
+	for i in range(_summons.size() - 1, -1, -1):
+		var s: Dictionary = _summons[i]
+		s["left"] -= dt
+		if s["left"] > 0.0: continue
+		_free(s.get("node"))
+		_summons.remove_at(i)
+		m.spawn_minion(str(s["name"]), s["spot"])
+		_toast(TranslationServer.translate("Supervisor called in backup tradies!"))
 
 func _creep(p: Dictionary) -> void:
 	var extra := 0
