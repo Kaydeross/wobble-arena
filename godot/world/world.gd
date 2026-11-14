@@ -1057,33 +1057,18 @@ func _on_arcade_rank_won() -> void:
 ## After a match result or an Arcade clear, send this account's lifetime bests to the leaderboard: once per RANK_MIN_MS,
 ## only when signed in, never in Kids mode (which is not ranked), and never on the gameplay path (AccountApi.submit_rank
 ## is an HTTP request that reports back later; a failure is ignored and the next result tries again).
+## The payload comes from AccountApi.rank_stats(), the same helper the RankingSheet's "Sync my score" button uses, so a
+## score the player missed (e.g. an older build) can always be sent later with exactly the same totals.
 func _maybe_submit_rank() -> void:
 	if _rank_pending: return
 	var now := Time.get_ticks_msec()
 	if now - _rank_t < RANK_MIN_MS: return
 	_rank_t = now
 	if Save.cloud == null or not AccountApi.rank_allowed() or not Save.cloud.signed_in(): return
-	var st := {"kos": int(Save.stats.get("kos", 0)), "wins": int(Save.stats.get("wins", 0)), "matches": int(Save.stats.get("matches", 0))}
-	var arc := _arcade_best_stat()
-	if not arc.is_empty(): st.merge(arc, true)
+	var st := AccountApi.rank_stats(Save)
+	if st.is_empty(): return
 	_rank_pending = true
 	Save.cloud.submit_rank(st, func(_r: Dictionary) -> void: _rank_pending = false)
-
-## {arcade_best, arcade_diff} for the furthest Arcade stage across the difficulties, weighted like the server's board
-## (easy x1, normal x2, nightmare x3); {} when the player never cleared one.
-func _arcade_best_stat() -> Dictionary:
-	if not (Save.dlc is Dictionary): return {}
-	var best: Variant = (Save.dlc as Dictionary).get("arcade_best")
-	if not (best is Dictionary): return {}
-	var weight := {"easy": 1, "normal": 2, "nightmare": 3}
-	var stage := 0
-	var diff := ""
-	var top := 0
-	for d: String in weight:
-		var n := int((best as Dictionary).get(d, 0))
-		if n > 0 and n * int(weight[d]) > top:
-			top = n * int(weight[d]); stage = n; diff = d
-	return {"arcade_best": stage, "arcade_diff": diff} if stage > 0 else {}
 
 ## Watch the Arcade manager for a stage clear or the final victory (idempotent: called on every load_map).
 func _connect_rank_hooks() -> void:

@@ -100,7 +100,7 @@ func _build() -> void:
 	var p := _page(holder, "guest")
 	_text(p, "Info", "Pick a name to play online and keep your coins, outfits and stats in the cloud. No password needed.")
 	_field(p, "guest", "Name", "Your name (3 to 16 letters or numbers)", false)
-	_row(p, "Row", [_btn("guest", "Close", "Close", false, close), _btn("guest", "Go", "Play", true, _do_claim)])
+	_row(p, "Row", [_btn("guest", "Close", "Close", false, close), _btn("guest", "Rank", "Leaderboard", false, _open_rankings), _btn("guest", "Go", "Play", true, _do_claim)])
 	var have := _btn("guest", "Login", "I have a password", false, open.bind("login"))
 	have.flat = true
 	have.add_theme_color_override("font_color", UiTheme.MUTED)
@@ -365,11 +365,13 @@ func _use() -> void:
 	api.use_cloud(); open("signed")
 
 ## The Leaderboard button: the RankingSheet (ui/ranking_sheet.gd) on top of the Account sheet, separate from it.
+## The sheet's "Sign in" action closes it, which lands the player back on this sheet (guest page: name, or login).
 func _open_rankings() -> void:
 	if ranking == null:
 		ranking = RankingSheet.new()
 		ranking.name = "Ranking"
 		add_child(ranking)
+		ranking.account_requested.connect(func() -> void: ranking.close())
 	ranking.open()
 
 func _copy_code() -> void:
