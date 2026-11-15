@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="DLCPackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://dlc/dlc_pack_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+pack_id = "construction"
+display_name = "Construction"
+subtitle = "9 Weapons + Site Yard"
+accent_color = Color(1, 0.76, 0.1, 1)
+weapon_ids = Array[String](["pipewrench", "nailgun", "jackhammer", "spiritlevel", "tapemeasure", "cementbucket", "conelauncher", "anglegrinder", "drill"])
+arena_id = "siteyard"
+container_style = "hazard"
+badge_icon = "hardhat"
+test_mode = "construction"
+unlock_kind = "construction"
