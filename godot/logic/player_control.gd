@@ -99,8 +99,10 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	# --- kids mode: auto-aim / auto-fire and the edge guard (logic/kids_assist.gd) ---
 	# cy = the yaw the attacks use (the target's when the assist picked one), ap = the point the shots go to.
 	var cy := cam_yaw
+	var kids_fire := false        # the kids-mode assist is driving FIRE (auto-attack): it keeps the classic immediate swing
 	var kids := KidsAssist.assist(p, sim, w, cam_yaw, _kids_target, ph.wish_x, ph.wish_z, ph.want_jump)
 	if not kids.is_empty():
+		kids_fire = true
 		ph.wish_x = float(kids["wish_x"])
 		ph.wish_z = float(kids["wish_z"])
 		ph.want_jump = bool(kids["jump"])                     # the guard may cancel a hop into the void
@@ -129,12 +131,12 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	# Charged heavy melee (docs/DAMAGE.md "Charged heavy melee"): a non-throwable melee weapon while the overlay is on.
 	# Anything else (gun/bow/blower/trident), the web numbers, or online drops the charge; online the peer "sw" replay
 	# carries no heavy bit, so it keeps the classic immediate light swing.
-	if t != "melee" or w.get("throwable", false) or not combat.tuning_active() or combat.net_started:
+	if t != "melee" or w.get("throwable", false) or not combat.tuning_active() or combat.net_started or kids_fire:
 		_charge_cancel(p)
 	if t == "melee":
 		if w.get("throwable", false):   # trident: a tap jabs someone close, holding charges a throw
 			combat.weapons.trident_tick(p, fire, dt, cy)
-		elif combat.tuning_active() and not combat.net_started:
+		elif combat.tuning_active() and not combat.net_started and not kids_fire:
 			_heavy_melee_tick(p, combat, dt, cy)
 		elif fire and p.cool <= 0.0 and p.swing < 0.0:
 			combat.try_melee(p, cy)
