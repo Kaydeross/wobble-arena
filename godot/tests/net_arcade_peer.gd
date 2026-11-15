@@ -220,7 +220,8 @@ func _guest_checks(m, nm: NetMatch) -> void:
 			print("GUEST_CARD ", JSON.stringify({"name": card, "wait": wait != null, "buttons": btns,
 				"wait_text": str(wait.text) if wait != null else ""}))
 		# M4: the guest's buttons are LIVE now: each one asks the host (start / next / retry); nothing moves locally.
-		if mode == "main" and card == "ArcadeIntro" and starts >= 2 and pressed_intro_for != starts:
+		# keyed on the Start button, not the node name: a card built while the previous one is still queue_free'd gets an auto name
+		if mode == "main" and world._results.find_child("Start", true, false) != null and starts >= 2 and pressed_intro_for != starts:
 			pressed_intro_for = starts                     # one Start per received `start` (the card stays up until am moves)
 			_press_guest("Start", "intro", "start")
 		if mode == "main" and card == "ArcadeFailed" and not retry_pressed:
