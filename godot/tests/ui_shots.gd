@@ -160,11 +160,12 @@ func _start() -> void:
 		_arcade_start()
 		return
 	var phone: bool = "--phone" in OS.get_cmdline_user_args()
-	var touch_shot := phone or shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel" or shot == "recover" or shot.begins_with("hud-")
+	var touch_shot := phone or shot == "busy" or shot == "touch" or shot == "touch-lefty" or shot == "spectate" or shot == "emote-wheel" or shot == "recover" or shot.begins_with("hud-")
 	_settings().set_value("touch_mode", "on" if touch_shot else "off")
 	_settings().set_value("touch_lefty", shot == "touch-lefty")
 	_settings().set_value("show_fps", shot == "fps")
 	_settings().set_value("perf_overlay", shot == "perf")     # the device readout (ui/perf_overlay.gd)
+	_apply_safe_arg()
 	world = load("res://world/world.tscn").instantiate()
 	world.map_id = "siteyard" if shot == "construction" else "arena"
 	if shot == "construction":
@@ -185,7 +186,7 @@ func _start() -> void:
 		world.dyn_choice = "off"
 	world.auto_run = false
 	world.kill_cam_in_tests = shot == "killcam"
-	world.bot_count = 3
+	world.bot_count = 5 if shot == "busy" else 3
 	world.player_class = "wobbler"
 	world.rng_seed = 777
 	world.hp_setting = 200.0
@@ -388,7 +389,10 @@ func _frame() -> void:
 		sim.combat.pickup(p, "katana")
 		sim.combat.pickup(p, "smg")      # the last pickup is the active slot
 		if shot == "recover" or shot.begins_with("hud-"): sim.combat.pickup(p, "rocket")
-		if not shot.begins_with("touch") and not shot.begins_with("hud-") and shot != "recover": world.hud.last_touch = false
+		if not shot.begins_with("touch") and not shot.begins_with("hud-") and shot != "recover" and shot != "busy": world.hud.last_touch = false
+	if shot == "busy":
+		_busy_frame(sim, p, st)
+		return
 	var go := Vector2.ZERO
 	var fire := false
 	var tg := _nearest(p)
@@ -514,6 +518,62 @@ func _modes2_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
 	world.tick(FRAME)
 	i += 1
 	if done:
+		process_frame.disconnect(_frame)
+		_save()
+
+## `--safe L,T,R,B` (points, e.g. 59,0,59,21 for an iPhone in landscape): fakes the device safe area (SafeArea.override is in canvas units).
+func _apply_safe_arg() -> void:
+	var a := OS.get_cmdline_user_args()
+	for k in a.size():
+		if a[k] == "--safe" and k + 1 < a.size():
+			var v := a[k + 1].split(",")
+			if v.size() != 4: return
+			var win := Vector2(DisplayServer.window_get_size())
+			var kk := UiScale.canvas_size(win, str(_settings().get_value("ui_scale", "auto")), true).x / win.x
+			SafeArea.override = [float(v[0]) * kk, float(v[1]) * kk, float(v[2]) * kk, float(v[3]) * kk]
+
+## A busy combat moment for the mobile HUD review: five bots around the player (some behind / beside the camera, so the
+## off-screen arrows show), the kill feed, a pickup toast and a damage number; the touch layer has fingers down.
+func _busy_frame(sim: MatchSim, p: FighterState, st: InputState) -> void:
+	if i == 2: world.cam.yaw = 0.0
+	world.cam.pitch = -0.12
+	st.set_move("script", Vector2.ZERO)
+	st.hold("script", "fire", false)
+	if (i >= 100 and i % 10 == 0) or i == 340:
+		var offs := [[0.3, 9.0], [-0.55, 20.0], [2.2, 14.0], [-2.5, 26.0], [3.14, 36.0]]
+		var n := 0
+		for f: FighterState in sim.fighters:
+			if f == p: continue
+			var o: Array = offs[n % offs.size()]
+			n += 1
+			var a: float = world.cam.yaw + float(o[0])
+			f.phys.place(p.phys.px + sin(a) * float(o[1]), p.phys.py, p.phys.pz + cos(a) * float(o[1]))
+	world.tick(FRAME)
+	i += 1
+	if i == 300:
+		var others: Array = []
+		for f: FighterState in sim.fighters:
+			if f != p: others.append(f)
+		world.hud.add_feed(p, others[0], "Ninja Katana", false)
+		world.hud.add_feed(others[1], others[2], "SMG", false)
+		world.hud.add_feed(null, others[3], "", true)
+		world.hud.add_feed(others[4], p, "Rocket Launcher", false)
+	if i == 320:
+		world._toast("Got Rocket Launcher")
+		for f: FighterState in sim.fighters:
+			if f != p and world.fx:
+				world.fx.dmg_number(Vector3(f.head_x, f.head_y + 0.5, f.head_z), 24.0, "head", 0)
+				break
+	if i == 330 and not p.dead:
+		p.hp = sim.combat.max_hp(p) * 0.45
+	if i == 340:
+		var vs: Vector2 = world.touch.get_viewport_rect().size
+		_touch(7, Vector2(vs.x * 0.16, vs.y * 0.62), true)
+		var e := InputEventScreenDrag.new()
+		e.index = 7; e.position = Vector2(vs.x * 0.16 + 40, vs.y * 0.62 - 50)
+		world.touch._input(e)
+		_touch(8, world.touch.button_rect(world.touch.button("fire"))[0], true)
+	if i == 352:
 		process_frame.disconnect(_frame)
 		_save()
 

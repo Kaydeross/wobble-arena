@@ -92,6 +92,19 @@ func _run() -> void:
 	if vis.size() == 1:
 		var safe3 := SafeArea.rect(hud.get_viewport())
 		check(_rect(vis[0]).get_center().y < safe3.get_center().y, "the above arrow points up")
+	# --- behind and level while the camera looks down: the arrow stays on its side and never points up (it used to follow camera-up)
+	var pitch0: float = world.cam.pitch
+	for pitch in [-0.7, -0.3, 0.0]:       # (looking up the camera orbits below the enemy: then up is right)
+		world.cam.pitch = pitch
+		_place_rel(e, 12.0, -3.0, 0.0)
+		_settle()
+		vis = _visible()
+		check(vis.size() == 1, "pitch %.1f: a level enemy behind-right gets an arrow (%d)" % [pitch, vis.size()])
+		if vis.size() == 1:
+			var sf := SafeArea.rect(hud.get_viewport())
+			check(_rect(vis[0]).get_center().x > sf.get_center().x, "pitch %.1f: the behind-right arrow is on the right" % pitch)
+			check(_rect(vis[0]).get_center().y >= sf.get_center().y - 1.0, "pitch %.1f: a level enemy behind never points up" % pitch)
+	world.cam.pitch = pitch0
 	# --- dead / left / eliminated enemies get none
 	for state: String in ["dead", "left", "elim"]:
 		_hide_all()
@@ -244,6 +257,29 @@ func _run() -> void:
 	check(world.touch.visible, "touch layer on")
 	check(_visible().size() >= 1, "arrows still show with the touch layer on (%d)" % _visible().size())
 	check(_clear_of_ui(), "with the touch layer on the arrows stay clear of the buttons")
+	check(hud.compact, "the phone HUD is compact with the touch layer on")
+	check(_visible().size() <= ind.COMPACT_MARKERS, "phones show at most %d arrows (%d)" % [ind.COMPACT_MARKERS, _visible().size()])
+	# an enemy dead behind wants the bottom edge, which the hotbar and the health bar block: it must still get an arrow
+	_hide_all()
+	_show(world.sim.fighters[1])
+	_place_rel(world.sim.fighters[1], 0.0, -8.0)
+	_settle()
+	check(_visible().size() == 1, "an enemy dead behind still gets an arrow with the touch layer on (%d)" % _visible().size())
+	check(_clear_of_ui(), "the dead-behind arrow stays clear of the HUD and the touch buttons")
+	# the move stick home is clear too
+	var sh: Vector2 = world.touch.stick_home()
+	for m: Control in _visible():
+		check(_rect(m).get_center().distance_to(sh) > world.touch.STICK_R * world.touch.UNIT, "arrows keep off the move stick")
+	# beyond COMPACT_RANGE an enemy is not marked on phones
+	_place_rel(world.sim.fighters[1], 0.0, -(ind.COMPACT_RANGE + 20.0))
+	_settle()
+	check(_visible().size() == 0, "phones do not mark an enemy beyond %.0f m" % ind.COMPACT_RANGE)
+	_hide_all()
+	for i in 4:
+		var f2: FighterState = world.sim.fighters[i + 1]
+		_show(f2)
+		_place_rel(f2, -12.0 + float(i) * 8.0, -8.0)
+	_settle()
 	var n_touch := _visible().size()
 	print("UI enemy arrows with the touch layer checked (%d shown)" % n_touch)
 	world.touch.visible = false
