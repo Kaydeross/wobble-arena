@@ -81,6 +81,27 @@ func _run() -> void:
 	var soak: SoakRun = world.soak
 	check(soak != null and world.sim.fighters.size() == 10, "soak world: Chaos 5v5 (%d fighters)" % world.sim.fighters.size())
 	check(world.map_id == "farm" and world.mode_id == "chaos", "starts on the first map in Chaos")
+	# --- fighter mesh batching gate (post-v0.4.0 Sprint 4.2, docs/GRAPHICS.md "Fighter mesh batching"): a 10-fighter
+	# world must stay under the merged-rig budget. Measured 2026-11-15: 12-14 MeshInstance3D / 14-16 surfaces per
+	# fighter, ~135 / ~150 for the 10-fighter Chaos world (pre-batching: 269 / 269). The budget keeps headroom for a
+	# 7-8-part PPE hat (per-part meshes stay by contract) and for weapon pickups without failing.
+	var f_meshes := 0
+	var f_surfaces := 0
+	var f_nodes := 0
+	var f_mats := 0
+	var per_fighter: Array[String] = []
+	for v: Variant in world.views.values():
+		var wst: Dictionary = v.wobbler.mesh_stats()
+		f_meshes += int(wst["meshes"])
+		f_surfaces += int(wst["surfaces"])
+		f_nodes += int(wst["nodes"])
+		f_mats = maxi(f_mats, int(wst["materials"]))
+		per_fighter.append("%d/%d" % [wst["meshes"], wst["surfaces"]])
+	check(f_meshes <= 150, "10 fighters: %d MeshInstance3D (want <= 150; pre-batching 269)" % f_meshes)
+	check(f_surfaces <= 170, "10 fighters: %d surfaces (want <= 170; pre-batching 269)" % f_surfaces)
+	check(f_mats <= 8, "a fighter uses %d material instances (want <= 8)" % f_mats)
+	print("PERF fighters meshes=%d surfaces=%d nodes=%d per-fighter=%s mats<=%d" % [f_meshes, f_surfaces, f_nodes,
+		",".join(per_fighter), f_mats])
 	var maps_seen := {}
 	var t0 := Time.get_ticks_msec()
 	while not soak.done and Time.get_ticks_msec() - t0 < 60000:

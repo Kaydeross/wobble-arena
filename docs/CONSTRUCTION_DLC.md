@@ -36,22 +36,87 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
 
 ## Data Files & Merge Pipeline
 
-1. **Weapons (`godot/data/extra/construction/weapons.json`)**:
+Since Sprint 4.1 the Construction DLC is a generic **data-only pack**: `godot/data/extra/construction/pack.json`
+declares the tables below; `Content.load_dlc_packs()` registers the pack and `Content.reload()` merges its tables through
+the existing hooks (see "DLC pack manifest" next). The files and their contents are unchanged; only the paths are
+manifest-driven now.
+
+1. **Weapons (`godot/data/extra/construction/weapons.json`, manifest section `weapons`)**:
    - Modelled on `ExtraClasses`, loaded through `ExtraWeapons`.
    - `ExtraWeapons.merge(weapons)` merges missing keys into `Content.weapons` and `Combat.weapons_data`.
    - Does not mutate or overwrite any shared weapons from `shared/weapons.json`.
 
-2. **Modes (`godot/data/extra/construction/modes.json`)**:
+2. **Modes (`godot/data/extra/construction/modes.json`, manifest section `modes`)**:
    - Extends the `allowWeapons` list of the `construction` mode only, and adds the `dropWeights` entry for every DLC tool.
    - `shared/drops.json` is the web export and cannot carry Godot-only keys, so `ModeRules.merge_extra()` merges `dropWeights` into the existing `construction` mode and `Pickups.pick_crate_key()` reads it as a crate-pool extension. The 9 tools are ~38 % of the Construction crate pool; the shared hammer / Live Wire / Air Blower identity stays intact.
 
-3. **Stages (`godot/data/extra/construction/stages.json`)**:
+3. **Stages (`godot/data/extra/construction/stages.json`, manifest section `stages`)**:
    - Self-contained arcade boss rush table.
+   - The manifest publishes its path; `ArcadeCoop.table()` reads it through `Content.pack_section_file("construction", "stages")` (no literal).
    - Validates all referenced cosmetics (skins and hats) against `godot/data/cosmetics.json`.
 
 4. **Translations (`godot/i18n/src/92-construction-data.json`)**:
    - Contains 5 language translations (`zh_TW`, `zh_CN`, `ja`, `fr`, `es`) for all weapon names, stage names, taglines, and event announcements.
    - Integrated via `tools/i18n.js` into `godot/i18n/strings.json` and `public/i18n-data.js`.
+
+## DLC pack manifest (`pack.json`, Sprint 4.1)
+
+Every folder under `godot/data/extra/` that holds a `pack.json` is a DLC pack. On startup `Content.reload()` calls
+`Content.load_dlc_packs()`, which scans the manifests, validates them and sorts the registry by pack id; the reload then
+merges the declared tables through the existing hooks. A future DLC is therefore data-only: add a folder + manifest +
+tables, no GDScript change.
+
+```
+godot/data/extra/
+  classes.json  modes.json  wizard.json  ...     built-in Godot extras (NOT a pack: shipped with the app, existing loaders)
+  construction/
+    pack.json                                    the manifest (the only file this refactor added)
+    weapons.json  modes.json  stages.json        the content (unchanged)
+```
+
+Manifest fields (see the file's `_readme` for the same list):
+
+| key | required | meaning |
+| --- | --- | --- |
+| `id` | yes | unique pack id, `^[a-z][a-z0-9_-]*$`, must equal the folder name |
+| `name` | yes | display name, e.g. `"Construction"` |
+| `version` | no | integer >= 1, default 1 |
+| `requires` | no | array of other pack ids this pack needs; the pack is skipped if one is missing |
+| `weapons` | no | file holding `{id: weapon}` (the `shared/weapons.json` shape) |
+| `classes` | no | file holding `{id: class}` (the `shared/classes.json` shape); built-in extras win |
+| `modes` | no | file holding `{id: mode}`: new modes are added, existing modes get the additive `allowWeapons` / `dropWeights` hooks |
+| `stages` | no | arcade stage table `{difficulties, stages[]}`; published by path, read by `ArcadeCoop` |
+| `maps`, `cosmetics`, `strings` | no | reserved for a future build: warned about and ignored (a newer pack does not break an older game) |
+| any `_*` key | no | author comment, ignored |
+
+Section values are file paths relative to the pack folder (no absolute paths, no `..`); a declared file must exist and parse
+as a JSON object. Every merge is additive: a pack adds or extends, it never overrides shared data or the built-in Godot
+extras. Pack order is sorted by id (never filesystem order); two packs defining the same table key report an error and the
+first (sorted) pack wins.
+
+**Errors.** A malformed manifest (bad JSON, missing/invalid `id`, `id` != folder, duplicate id, bad `requires`, or a
+declared section that is missing/invalid) is reported with `push_error`, `Content.scan_errors()` records why, and the whole
+pack is skipped: a broken DLC never stops `Content.reload()` or a match. Packs declaring a reserved section are kept (the
+section is ignored).
+
+**Registry API.** `Content.load_dlc_packs()` scans; `Content.pack_ids()`, `pack(id)`, `pack_section_file(id, section)`,
+`pack_paths(section)`, `pack_tables(section)`, `scan_errors()` expose the result. The accessors are static, so
+`load("res://autoload/content.gd").pack_section_file("construction", "stages")` works even in a script compiled before the
+autoload exists (the registry scans itself lazily). `ExtraWeapons` / `ExtraClasses` / `ModeRules` are unchanged call sites:
+they read the pack tables through the registry and cache them per registry generation, so `Content.reload()` refreshes them.
+
+### How to add a DLC pack with zero code
+
+1. Create `godot/data/extra/<pack_id>/` (lowercase id, e.g. `mechanical`).
+2. Add `pack.json`, e.g. `{"id": "mechanical", "name": "Mechanical", "weapons": "weapons.json", "modes": "modes.json"}`.
+3. Add the declared files next to it, in the `shared/*.json` schemas (`weapons`, `classes`, `modes`, `stages`).
+4. Start the game (or run `npm run test:godot-construction-data`): `Content` scans and merges the pack; no GDScript changes.
+5. Player-facing text still goes through `godot/i18n/src/*.json` + `node tools/i18n.js` (i18n is untouched by this refactor).
+
+Residual: `godot/dlc/construction/arcade_manager.gd` (the run manager) still reads `stages.json` through its own
+`STAGES_PATH` constant instead of the registry; both readers point at the same file today, so behaviour is identical. If a
+future pack moves its stage table, make the manager read `ArcadeCoop.table()`/the same `Content.pack_section_file` (small
+follow-up, not part of this refactor).
 
 ## Parity Guarantees
 
@@ -62,7 +127,7 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
 
 ## How to Add a Tool
 
-1. Add the tool entry to `godot/data/extra/construction/weapons.json` following the `shared/weapons.json` schema, marking `"constructionOnly": true`.
+1. Add the tool entry to `godot/data/extra/construction/weapons.json` following the `shared/weapons.json` schema, marking `"constructionOnly": true` (the pack manifest already declares that file; no code change).
 2. Add its id to the `allowWeapons` list and a positive `dropWeights` value in `godot/data/extra/construction/modes.json`.
 3. Add localized display names to `godot/i18n/src/92-construction-data.json`.
 4. Run `node tools/i18n.js` to build strings.
@@ -225,7 +290,7 @@ checks it at every phone / tablet size, both handedness settings (`npm run test:
 **World hooks** (all `if arcade != null`): `begin_stage` (top of `load_map`), `setup_sim` (after `MatchSim.setup`), `stage_ready` (end of `load_map`), `step` (after each sim step),
 `show_panel` / `close_panel` / `add_view`; the kill cam is off in a run. Every other mode is byte-identical.
 
-**How to add a stage.** Append an entry to `godot/data/extra/construction/stages.json` (`id`, `name`, `tagline`, `boss`, `hp_bar_color`, `map_seed_offset`, `coin_reward`,
+**How to add a stage.** Append an entry to `godot/data/extra/construction/stages.json` (the file the pack manifest publishes as its `stages` section; `ArcadeCoop.table()` resolves it through the registry) (`id`, `name`, `tagline`, `boss`, `hp_bar_color`, `map_seed_offset`, `coin_reward`,
 `first_clear_bonus`, `bots[]`, `events[]`; see its `_readme`). Skins and hats must exist in `cosmetics.json`, tools in `weapons.json`. Add the name and tagline to a
 `godot/i18n/src/*.json` file (5 languages) and run `node tools/i18n.js`. A new event type: a `case` in `StageEvents.update` plus its `_xxx` method. Extend
 `godot/tests/arcade_test.gd` (the full run walks the whole table) and run `npm run test:godot-arcade`.

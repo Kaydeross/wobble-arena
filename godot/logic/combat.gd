@@ -10,6 +10,7 @@ extends RefCounted
 
 const BOT_RESPAWN := 5.0
 const PLAYER_RESPAWN := 3.0
+const ContentData := preload("res://autoload/content.gd")   # the ONE parsed-JSON cache (docs/GODOT_ARCH.md "JSON cache")
 
 # --- content (shared/*.json) ---
 var weapons_data := {}
@@ -144,14 +145,10 @@ func dispose() -> void:
 	sig_fx.clear()
 
 ## Parsed content is immutable between releases. Every caller receives a deep copy so one match can merge or alter its
-## own tuning without changing later matches; repeated matches avoid decoding the same JSON again.
-static var _json_cache := {}
-
+## own tuning without changing later matches; the parse cache lives in the Content script (Sprint 4.2: one decode per
+## file per process, shared by the autoload, MatchSim and the plain logic classes; reload() invalidates it).
 static func read_json(path: String) -> Variant:
-	if not _json_cache.has(path):
-		_json_cache[path] = JSON.parse_string(FileAccess.get_file_as_string(path))
-	var value: Variant = _json_cache[path]
-	return value.duplicate(true) if value is Dictionary or value is Array else value
+	return ContentData.read_json(path)
 
 ## Load weapons/classes/modes from a folder holding copies of shared/*.json (the Content autoload will call this later).
 func load_content(dir: String = "res://data") -> void:

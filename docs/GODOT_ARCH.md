@@ -22,6 +22,24 @@ tests/      one script per parity/unit test + tools/test-*.js runner in the repo
 ```
 `shared/*.json` is the source of truth; Godot reads copies synced by `tools/sync-shared.js` into `godot/data/` (committed, checked by `npm test` the same way as shared/).
 
+## DLC packs (`res://data/extra/<pack_id>/pack.json`)
+
+Godot-only DLC content is data-only: a pack is a folder under `godot/data/extra/` with a `pack.json` manifest (schema,
+validation rules and the step-by-step "add a DLC pack with zero code" guide: [CONSTRUCTION_DLC.md](CONSTRUCTION_DLC.md)).
+`Content.reload()` first calls `Content.load_dlc_packs()`, which scans every `res://data/extra/*/pack.json`, validates each
+manifest and keeps the registry sorted by pack id; the reload then merges the declared sections through the existing hooks:
+`weapons` -> `ExtraWeapons.merge`, `classes` -> `ExtraClasses.merge`, `modes` -> `ModeRules.merge_extra`; a `stages` table is
+published by path and read by `ArcadeCoop.table()` through `Content.pack_section_file("construction", "stages")` (no
+literal). The registry API (`Content.pack_ids/pack/pack_section_file/pack_paths/pack_tables/scan_errors`) is static, so
+`load("res://autoload/content.gd").pack_section_file(...)` works in scripts compiled before the autoload exists; the merge
+hooks cache their tables per registry generation, so a `reload()` refreshes them.
+A malformed manifest is `push_error`'d (see `scan_errors()`) and its pack skipped: a broken DLC never stops
+`Content.reload()` or a match. Built-in Godot tables (`data/extra/{classes,modes}.json`, wizard/locker/etc.) are not packs
+and keep their existing loaders. The Construction Arcade's `arcade_manager.gd` still reads `stages.json` through its own
+`STAGES_PATH` constant (same file as the manifest today); routing it through `ArcadeCoop.table()` is a small follow-up if a
+pack ever moves its table. Test: `npm run test:godot-construction-data` (registry, byte-equal legacy merge, synthetic
+malformed `user://` packs, `reload()` idempotence).
+
 Foundation pieces (Phase 1): autoloads `Tier`, `Content` (res://data/*.json), `Settings` (ConfigFile key/value); `world/map_builder.gd` (`MapBuilder.build(id)` -> `MapNode` with `solids`, `pads`, `ladders`; `MapBuilder.material()` is the one material factory); `world/world.tscn` (offline test world, fixed 1/120 step); `input/input_state.gd` (`InputState`, the one input object), `input/player_input.gd` (keyboard/mouse/gamepad), `input/touch_controls.tscn` (touch). `FighterPhysics` now lives in `logic/fighter_physics.gd`.
 
 ## Contracts between tracks
@@ -55,6 +73,28 @@ How the pieces fit since the integration track (`npm run test:godot-integration`
 - **Tests / shots**: `tests/integration_test.gd` (`npm run test:godot-integration`): 30 s on arena, scripted player + 3 bots; K.O.s, respawn, HP range, finite positions, crate + SMG, no node leaks. `sh tools/shoot-godot-slice.sh` renders `docs/style/godot-slice-{melee,smg,wide}.png`.
 
 Each track merges to `main` behind its own tests. The lead integrates `Fighter` (physics + combat + wobbler) in a second round once all three exist. Do not edit another track's files; if you need a change, describe it in your report.
+
+## JSON cache and merged fighter meshes (post-v0.4.0)
+
+**JSON cache** (`autoload/content.gd`). Parsed content is immutable between releases, so every `res://data` JSON file is
+decoded once per process by a static cache (`Content.read_json(path)`; `load_json(name)` keeps its `push_error` + `{}`
+contract), and every caller receives a `duplicate(true)` deep copy: a match may merge or alter its own tuning without
+touching the cache or another match. `MatchSim` reads its tables (drops, crate-rates, difficulties, cosmetics, weapon
+tuning) through it, so after the first match a setup decodes nothing. The cache is bounded (FIFO, `JSON_CACHE_MAX` = 256
+files) and is invalidated by `reload()` / a DLC-pack re-scan, which bump `cache_generation()` and re-decode on the next
+read; `json_parses()` / `json_parse_count(path)` / `json_cache_hits()` expose the counters the data test asserts
+(`npm run test:godot-construction-data`, "JSON-CACHE"). `Combat.read_json` keeps its own small cache until the
+integration delegation to `Content.read_json` lands (same deep-copy contract, so behaviour is identical).
+
+**Merged fighter meshes** (`actors/wobbler.gd`; docs/GRAPHICS.md "Fighter mesh batching"). Every mesh that moves rigidly
+with one animated node is merged into ONE `MeshInstance3D` for that node (body, head/neck, each leg, off arm,
+aiming-arm parts, hat, held weapon); part colours are baked into vertex COLOR, the surfaces share one static material
+per role and only the hit-flash material is per fighter. A fighter costs ~12-14 `MeshInstance3D` / ~14-16 surfaces
+instead of ~35 (10 fighters: 135/155 vs 269/269; fighter-attributable draws -35..-48 % including shadow passes). The
+contract nodes are unchanged: `hand`/`arm_dir`/`arm_l`/`shoulder`/`legs` keep their exact transforms, `torso` and
+`head_mesh` are now plain `Node3D` gameplay points (their geometry is in the merged body/head meshes), the two eye
+`MeshInstance3D` and the ragdoll overlay's `body`/`neck`/`legs`/`foot_meshes`/`arm_l`/`arm_sleeve`/`arm_hand_mesh`/`hand`
+are intact. Look meshes are cached and shared per class | outfit | hat | colour | team tint (LRU 24 looks / 4 MiB).
 
 ## Online guest (Phase 1)
 

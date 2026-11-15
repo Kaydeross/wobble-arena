@@ -12,10 +12,11 @@ extends RefCounted
 ##   {"type": "toast", "text"}                                 player messages (ladder rung, arena growing...)
 ##   {"type": "chaos_warn", "id", "name", "in"}              Chaos: an event is about to fire (banner + countdown)
 ##   {"type": "chaos", "id", "name", "dur"} / {"type": "chaos_end", "id"}   Chaos: an event started / ended
-## Godot-only modes (res://data/extra/modes.json, merged by merge_extra): Team Deathmatch (tdm: two teams sized by the
+## Godot-only modes (res://data/extra/modes.json, merged by merge_extra: Team Deathmatch (tdm: two teams sized by the
 ## Players page, team limit 30), Deathmatch (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
 ## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events),
 ## Capture the Flag (ctf, logic/ctf.gd: two teams, one flag, hold it 30 s or most hold time on the 5:00 clock; offline only).
+## DLC packs may add or extend modes too: every pack.json `modes` section is merged after the built-in file.
 ## Explosive: launchers only, always 300 health. Moon Drift
 ## (lowg): its preset gravity 0.15 goes to Combat.grav_setting and every fighter's FighterPhysics.grav_scale (projG and
 ## the gentler jump follow from it). Practice Range (practice, the web PRACTICE button): the range maps' dummies
@@ -47,7 +48,6 @@ const WIZARD_PATH := "res://data/extra/wizard.json"
 static var _shorts: Dictionary = {}
 ## Godot-only modes (not in shared/modes.json, which `npm run content` regenerates from the web game).
 const EXTRA_PATH := "res://data/extra/modes.json"
-const CONSTRUCTION_MODES_PATH := "res://data/extra/construction/modes.json"
 ## Chaos needs room for 10: maps with at least 9 bot spots away from the player (bots + spawns) and wander >= 20.
 ## Capture the Flag: big maps with an open, walkable middle (tests/ctf_test.gd checks the stand on every one).
 const CTF_MAPS := ["crossroads", "donut", "fortress", "colosseum", "farm", "arenaxl"]
@@ -171,13 +171,22 @@ static func sort_maps(ids: Array) -> Array:
 		return ia < ib)
 	return out
 
-## Adds the Godot-only modes (EXTRA_PATH) to `modes` (shared/modes.json) in place: keys already there win, allowFrom
-## copies another mode's allowWeapons. Returns `modes`.
+## Adds the Godot-only modes to `modes` (shared/modes.json) in place: keys already there win, allowFrom copies another
+## mode's allowWeapons. `path` overrides the built-in file (default EXTRA_PATH); the DLC packs' `modes` sections join an
+## EXTRA_PATH merge only, in deterministic (sorted pack id) order: e.g. construction/modes.json extends the shared
+## construction mode with the 9 DLC tools and their crate weights. Returns `modes`.
 static func merge_extra(modes: Dictionary, path: String = EXTRA_PATH) -> Dictionary:
 	_merge_modes_file(modes, path)
-	if path == EXTRA_PATH and FileAccess.file_exists(CONSTRUCTION_MODES_PATH):
-		_merge_modes_file(modes, CONSTRUCTION_MODES_PATH)
+	if path == EXTRA_PATH:
+		for f: String in _pack_mode_paths():
+			_merge_modes_file(modes, f)
 	return modes
+
+## Every DLC pack's `modes` section file, in the Content pack registry's deterministic order ([] without a registry).
+static func _pack_mode_paths() -> Array:
+	var content: Variant = load("res://autoload/content.gd")
+	var paths: Variant = content.pack_paths("modes") if content != null else []
+	return paths if paths is Array else []
 
 static func _merge_modes_file(modes: Dictionary, path: String) -> void:
 	if not FileAccess.file_exists(path): return

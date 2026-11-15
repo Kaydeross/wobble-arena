@@ -12,10 +12,13 @@ extends RefCounted
 ##   boss  the boss' slot (-1 on a stage without one), big = the 1.5x Client visual
 ##   state/lv the host's run state ("intro" per stage) and the shared lives
 ##   ff    co-op friendly fire between the two seats (owner decision: false by default; hub toggle Settings arcade_ff)
-## The stage table (res://data/extra/construction/stages.json) is read here once and nowhere else in the net layer.
+## The stage table (the Construction pack's `stages` section: res://data/extra/construction/pack.json -> stages.json) is
+## read here once and nowhere else in the net layer. Its path comes from the Content pack registry, not a literal
+## (ArcadeCoop.stages_path), so a pack that moves its tables keeps working; this also runs without the Content autoload
+## instance (the registry's static scanner loads itself).
 ## ArcadeManager stays the run authority; `stage_arc(manager)` snapshots its live state for the next `start`.
 
-const STAGES_PATH := "res://data/extra/construction/stages.json"
+const PACK_ID := "construction"               ## the Construction DLC's pack (res://data/extra/construction/pack.json)
 const SEATS := 2                              ## owner decision: two players per room
 const TEAMMATE_NAME := "Teammate Bot"
 const DEFAULT_DIFF := "normal"
@@ -25,10 +28,16 @@ const STATES := ["idle", "intro", "fight", "clearing", "cleared", "failing", "fa
 
 static var _table: Dictionary = {}
 
+## The pack's stages file through the Content pack registry ("" when the pack or its `stages` section is missing).
+static func stages_path() -> String:
+	var content: Variant = load("res://autoload/content.gd")
+	return str(content.pack_section_file(PACK_ID, "stages")) if content != null else ""
+
 ## The parsed stages table ({difficulties, stages}).
 static func table() -> Dictionary:
 	if _table.is_empty():
-		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(STAGES_PATH)) if FileAccess.file_exists(STAGES_PATH) else null
+		var path := stages_path()
+		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) if path != "" and FileAccess.file_exists(path) else null
 		if v is Dictionary: _table = v
 	return _table
 

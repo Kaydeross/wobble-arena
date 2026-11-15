@@ -270,6 +270,146 @@ func _face_expression_checks(scene: PackedScene) -> Dictionary:
 	return out
 
 
+## Does a merged mesh contain a vertex of this colour? Part colours are baked into the surface COLOR array (Sprint 4.2
+## batching), so the old "head/ hand material albedo" checks read the baked colour instead.
+func _mesh_has_color(m: Mesh, want: Color) -> bool:
+	if m == null:
+		return false
+	for s in m.get_surface_count():
+		var arr := m.surface_get_arrays(s)
+		if arr[Mesh.ARRAY_COLOR] == null:
+			continue
+		var cols: PackedColorArray = arr[Mesh.ARRAY_COLOR]
+		for i in cols.size():
+			if cols[i].is_equal_approx(want):
+				return true
+	return false
+
+
+## Vertices of every surface under the hand (the held weapon): the fused weapon mesh or the fallback per-part tree.
+func _weapon_verts(w: Wobbler) -> int:
+	var total := 0
+	if w.hand == null:
+		return 0
+	for mi: MeshInstance3D in w.hand.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null:
+			continue
+		for si in mi.mesh.get_surface_count():
+			var arrays := mi.mesh.surface_get_arrays(si)
+			if arrays.size() <= Mesh.ARRAY_NORMAL:
+				continue
+			var vv: Variant = arrays[Mesh.ARRAY_VERTEX]
+			if vv is PackedVector3Array:
+				total += (vv as PackedVector3Array).size()
+	return total
+
+
+## Post-v0.4.0 Sprint 4.2 weapon fusion regression: EVERY weapon key in Content.weapons (shared + DLC tools) equips,
+## animates and shows geometry, and no script error is raised while a weapon change rebuilds the held-weapon mesh. The
+## Net Gun's folded-net wireframe icosahedron is a PRIMITIVE_LINES surface with no normals: it cannot join the triangle
+## soup and is skipped, so the held Net Gun keeps its other 20+ boxes and loses only that small wireframe ball (the one
+## documented visual delta). A model with nothing fusable must still show via the per-part fallback.
+func _weapon_fusion_checks(scene: PackedScene) -> Dictionary:
+	var w: Wobbler = scene.instantiate()
+	root.add_child(w)
+	w.setup("wobbler", "none", "none", 0x39b5a8)
+	var content: Node = root.get_node_or_null("Content")
+	var keys: Array = []
+	if content != null:
+		var weapons: Variant = content.get("weapons")
+		if weapons is Dictionary:
+			keys = (weapons as Dictionary).keys()
+	if keys.is_empty():
+		keys = WobblerLooks.data("weapons").keys()
+	var st := _idle_face_state()
+	st.erase("weapon")                 # keep the key under test: apply_state would otherwise re-equip the idle Spatula
+	var bad := 0
+	var fused := 0
+	var fallback := 0
+	var net_surfaces := -1
+	for k: String in keys:
+		w.set_weapon(k)
+		w.apply_state(st)
+		w.animate(FACE_DT)
+		if w.weapon != k or _weapon_verts(w) < 3:
+			bad += 1
+		if w._weapon_mi != null and w._weapon_mi.mesh != null and w._weapon_mi.mesh.get_surface_count() > 0:
+			fused += 1
+			if k == "net":
+				net_surfaces = w._weapon_mi.mesh.get_surface_count()
+		elif w._weapon_holder != null and w._weapon_holder.get_child_count() > 0:
+			fallback += 1
+	w.set_weapon(null)
+	_check(bad == 0, "weapons: %d of %d keys equipped without visible geometry" % [bad, keys.size()])
+	_check(fused == keys.size(), "weapons: %d of %d keys fused into one mesh (want all; fallback %d)" % [fused, keys.size(), fallback])
+	_check(net_surfaces == 1, "weapons: the Net Gun's fused mesh has %d surfaces, want 1 (wireframe ball skipped)" % net_surfaces)
+	w.free()
+	return {"keys": keys.size(), "fused": fused, "fallback": fallback, "net_surfaces": net_surfaces}
+
+
+## Post-v0.4.0 Sprint 4.2 mesh-batching contract (docs/GRAPHICS.md "Fighter mesh batching"): one merged mesh per rigid
+## node (12 MeshInstance3D for the bare rig incl. the held weapon, vs 20 before), same look shared through the bounded
+## LRU, per-fighter flash material (no cross-fighter flash), team recolour rebuilt, weapon fused into one surface.
+func _batching_checks(scene: PackedScene) -> Dictionary:
+	var a: Wobbler = scene.instantiate()
+	var b: Wobbler = scene.instantiate()
+	root.add_child(a)
+	root.add_child(b)
+	for w: Wobbler in [a, b]:
+		w.setup("wobbler", "hoodie", "top", 0x39b5a8)
+		w.set_weapon("spatula")
+	_check(a.body_mesh != null and a.body_mesh.mesh == b.body_mesh.mesh, "same look did not share the merged body mesh")
+	_check(a.neck_mesh.mesh == b.neck_mesh.mesh and a.leg_meshes[0].mesh == b.leg_meshes[0].mesh,
+		"same look did not share the merged head/leg meshes")
+	_check(a._flash_mat != b._flash_mat, "the flash material is shared between fighters")
+	var st_a: Dictionary = a.mesh_stats()
+	# flash + eye + weapon + belt + buckle = 5 shared/per-fighter material instances (was ~20 per-part ones)
+	_check(st_a["materials"] <= 6, "a fighter keeps %d material instances (want <= 6)" % st_a["materials"])
+	# a hit flash on one fighter must not light the other (the flash material is per fighter; the statics are shared)
+	a.apply_state({"pos": Vector3.ZERO, "vel": Vector3.ZERO, "grounded": true, "flash": 0.12})
+	a.animate(1.0 / 60.0)
+	b.apply_state({"pos": Vector3.ZERO, "vel": Vector3.ZERO, "grounded": true})
+	b.animate(1.0 / 60.0)
+	_check(a._flash_mat.emission_energy_multiplier > 0.0 and b._flash_mat.emission_energy_multiplier == 0.0,
+		"a hit flash leaked to another fighter")
+	# team recolour rebuilds that fighter only (its meshes stop being the shared ones)
+	b.recolor(0xd9534f, true)
+	_check(b.body_mesh.mesh != a.body_mesh.mesh, "team recolour did not rebuild the merged meshes")
+	_check(a.color == 0x39b5a8 and b.color == 0xd9534f, "recolour state leaked between fighters")
+	a.free()
+	b.free()
+	# the bare rig budget + one fused weapon surface + the bounded look cache
+	var c: Wobbler = scene.instantiate()
+	root.add_child(c)
+	c.setup("wobbler", "none", "none", 0x39b5a8)
+	c.set_weapon("spatula")
+	var st: Dictionary = c.mesh_stats()
+	_check(st["meshes"] <= 12, "bare rig has %d MeshInstance3D (want <= 12 incl. the held weapon)" % st["meshes"])
+	_check(st["surfaces"] <= 14, "bare rig has %d surfaces (want <= 14)" % st["surfaces"])
+	_check(st["nodes"] <= 26, "bare rig has %d nodes (want <= 26)" % st["nodes"])
+	_check(c._weapon_mi != null and c._weapon_mi.mesh != null and c._weapon_mi.mesh.get_surface_count() == 1,
+		"the held weapon is not one fused surface")
+	# every shipped hat builds (>= 6 parts: per-part meshes kept for the site-map PPE contract; < 6: merged)
+	var hats_ok := 0
+	for h: String in WobblerLooks.HATS:
+		c.set_hat(h)
+		if h == "none":
+			_check(c.hat == null, "hat none did not clear the hat node")
+			continue
+		_check(c.hat != null and c.hat.find_children("*", "MeshInstance3D", true, false).size() > 0,
+			"hat %s did not build meshes" % h)
+		hats_ok += 1
+	c.set_hat("none")
+	var stats := Wobbler.look_cache_stats()
+	_check(int(stats["entries"]) <= int(stats["max_entries"]), "look cache has %d entries (max %d)" % [stats["entries"], stats["max_entries"]])
+	_check(int(stats["entries"]) <= 1 or int(stats["bytes"]) <= int(stats["max_bytes"]),
+		"look cache holds %d bytes (max %d)" % [stats["bytes"], stats["max_bytes"]])
+	c.free()
+	return {"meshes": st["meshes"], "surfaces": st["surfaces"], "nodes": st["nodes"], "materials": st["materials"],
+		"hats": hats_ok, "cache": stats}
+
+
+
 ## The rig contract: still exactly 2 eye meshes, no mesh/node ever appears, LOW carries no extra geometry, and a live
 ## face never moves a game node (hand / arm / shoulder / head / chest / legs stay bit-identical).
 func _face_rig_checks(scene: PackedScene) -> Dictionary:
@@ -455,17 +595,20 @@ func _run() -> void:
 		_check(absf(w.neck.basis.get_scale().x - float(c.get("head", 1.0))) < 1e-6, "%s neck pose scale" % cid)
 		if c.has("skin"):
 			var want := Color.hex(int(c["skin"]) << 8 | 0xff)
-			_check((w.head_mesh.material_override as StandardMaterial3D).albedo_color.is_equal_approx(want), "%s skin tint" % cid)
+			# the class skin tint is baked into the merged head/hand colour (was: the head material's albedo)
+			_check(w.neck_mesh != null and _mesh_has_color(w.neck_mesh.mesh, want), "%s skin tint" % cid)
+			_check(w.arm_hand_mesh.mesh != null and _mesh_has_color(w.arm_hand_mesh.mesh, want),
+				"%s skin tint on the hands" % cid)
 		# swapping looks must not leak nodes or materials
 		var nodes0 := _count_nodes(w)
-		var mats0 := w._mats.size()
+		var mats0 := w.material_count()
 		for k in 6:
 			w.set_skin(skins[(ci + k + 1) % skins.size()])
 			w.set_hat(hats[(ci + k + 2) % hats.size()])
 			w.set_class(classes.keys()[(ci + k) % classes.size()])
 		w.setup(cid, skins[ci % skins.size()], hats[ci % hats.size()], 0x39b5a8)
 		_check(_count_nodes(w) == nodes0, "%s nodes after look swaps %d != %d" % [cid, _count_nodes(w), nodes0])
-		_check(w._mats.size() == mats0, "%s materials after look swaps %d != %d" % [cid, w._mats.size(), mats0])
+		_check(w.material_count() == mats0, "%s materials after look swaps %d != %d" % [cid, w.material_count(), mats0])
 		# scripted states
 		var nodes1 := _count_nodes(w)
 		var max_lean := 0.0
@@ -488,15 +631,22 @@ func _run() -> void:
 			if not ok:
 				_check(false, "%s non-finite pose at frame %d" % [cid, k])
 				break
-		# the AK (holder + its WeaponModels tree) is built once on first equip, then nothing else may appear
-		var ak := WeaponModels.build("ak")
-		var ak_nodes := 1 + _count_nodes(ak)
-		ak.free()
-		_check(nodes_mid == nodes1 + ak_nodes and _count_nodes(w) == nodes_mid, "%s nodes during animation %d -> %d -> %d" % [cid, nodes1, nodes_mid, _count_nodes(w)])
+		# the AK appears on first equip and every weapon swap replaces the one held-weapon node pair in place, so the
+		# node count never grows while weapons change (batching: the model is one fused MeshInstance3D under a holder)
+		_check(nodes_mid == nodes1 and _count_nodes(w) == nodes_mid, "%s nodes during animation %d -> %d -> %d" % [cid, nodes1, nodes_mid, _count_nodes(w)])
+		var ak_cached := WeaponModels.build("ak")
+		var ak_tree_nodes := 1 + _count_nodes(ak_cached)
+		ak_cached.free()
+		_check(nodes1 == nodes0, "%s weapon swap grew the node tree (%d -> %d); the merged AK tree is %d nodes" % [cid, nodes0, nodes1, ak_tree_nodes])
 		_check(absf(w.arm_dir.length() - 1.0) < 1e-6, "%s arm_dir not unit" % cid)
 		_check(max_lean > 0.05 and max_lean < 5.0, "%s lean range %f" % [cid, max_lean])
 		_check(saw_flash, "%s hit flash never lit" % cid)
-		print("WOBBLER %-8s nodes=%d meshes=%d mats=%d max_lean=%.3f ok" % [cid, _count_nodes(w), w.mesh_count(), w._mats.size(), max_lean])
+		var st: Dictionary = w.mesh_stats()
+		# per-class gate: bare rig (12 MIs incl. weapon) + one hat (merged, or up to 8 per-part for the PPE hats)
+		_check(int(st["meshes"]) <= 20, "%s has %d MeshInstance3D (want <= 20 incl. a per-part hat)" % [cid, st["meshes"]])
+		_check(int(st["surfaces"]) <= 24, "%s has %d surfaces (want <= 24)" % [cid, st["surfaces"]])
+		print("WOBBLER %-8s nodes=%d meshes=%d surfaces=%d mats=%d max_lean=%.3f ok" % [cid, _count_nodes(w),
+			st["meshes"], st["surfaces"], st["materials"], max_lean])
 		w.free()
 		ci += 1
 	# faces (Sprint 2.4): deterministic expression checks on the shipped classes above, one rig per check
@@ -505,6 +655,14 @@ func _run() -> void:
 	var expr := _face_expression_checks(scene)
 	var rig := _face_rig_checks(scene)
 	var fighter := _face_fighter_checks()
+	# batching (Sprint 4.2): shared merged meshes, per-fighter flash, bare-rig budget, bounded look cache
+	var batch := _batching_checks(scene)
+	var weapons := _weapon_fusion_checks(scene)
+	print("WOBBLER_BATCH bare meshes=%d surfaces=%d nodes=%d mats=%d | hats=%d | cache entries=%d bytes=%d (max %d / %d)" % [
+		batch["meshes"], batch["surfaces"], batch["nodes"], batch["materials"], batch["hats"],
+		batch["cache"]["entries"], batch["cache"]["bytes"], batch["cache"]["max_entries"], batch["cache"]["max_bytes"]])
+	print("WOBBLER_WEAPONS fused=%d fallback=%d keys=%d net_surfaces=%d" % [
+		weapons["fused"], weapons["fallback"], weapons["keys"], weapons["net_surfaces"]])
 	print("WOBBLER_FACE blink count=%d interval=%.2f..%.2f closed_frames=%d..%d min_open=%.2f" % [
 		blink["count"], blink["lo"], blink["hi"], blink["closed_min"], blink["closed_max"], blink["min_open"]])
 	print("WOBBLER_FACE replay blinks=%d seed_a=%d seed_b=%d" % [det["blinks"], det["seed_a"], det["seed_b"]])

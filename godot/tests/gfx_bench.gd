@@ -43,6 +43,20 @@ var headless := false
 var rng := RandomNumberGenerator.new()
 var fx_peak := {}
 
+## Fighter mesh budget (post-v0.4.0 Sprint 4.2): every offline scene below runs with 10 fighters. The `solo1` scene is
+## the same map with ONE fighter, so its draw-call difference from `farm` is the fighters' own cost INCLUDING the
+## shadow passes the renderer actually runs (HIGH 4 cascades, MID 2, LOW none: LOW fighters don't cast shadows, the
+## blob shadows are custom `_draw` nodes and never appear in the draw-call counter). Printed per scene and for `solo1`.
+const FARM := "farm"
+const MESH_BUDGET := 16        # per-fighter MeshInstance3D ceiling (world looks, weapon included; see Wobbler.mesh_stats)
+const SURF_BUDGET := 18        # per-fighter surface (draw-call) ceiling, main pass + shadow casters use the same surfaces
+
+var scene_id := ""
+var scene_map := ""
+var scene_bots := 9
+var farm_draws_10 := 0
+var farm_draws_1 := 0
+
 func _initialize() -> void:
 	headless = DisplayServer.get_name() == "headless"
 	var q := int(root.get_node("Tier").quality())
@@ -53,19 +67,37 @@ func _initialize() -> void:
 	print("GFX tier %s renderer %s%s" % [tier_name, RenderingServer.get_current_rendering_method(), " (headless: CPU only)" if headless else ""])
 	process_frame.connect(_next, CONNECT_ONE_SHOT)
 
+## The scene list: the four benchmark maps with 10 fighters, then one fighter on Farm for the fighters' own draw cost.
+static func scenes() -> Array:
+	var out: Array = []
+	for m: String in MAPS:
+		out.append([m, FX_MAP if m == "fx" else m, 9])
+	out.append(["solo1", FARM, 0])
+	return out
+
 func _next() -> void:
 	if world: world.free(); world = null
-	if k >= MAPS.size():
+	var all := scenes()
+	if k >= all.size():
+		if not headless and farm_draws_10 > 0:
+			print("GFX draws farm 10 fighters=%d 1 fighter=%d -> fighters %d (%.0f%% of the 10-fighter frame)" % [
+				farm_draws_10, farm_draws_1, farm_draws_10 - farm_draws_1,
+				100.0 * float(farm_draws_10 - farm_draws_1) / maxf(1.0, float(farm_draws_10))])
 		print("GFX ok" if not failed else "GFX FAILED")
 		quit(0 if not failed else 1)
 		return
+	scene_id = all[k][0]
+	scene_map = all[k][1]
+	scene_bots = int(all[k][2])
 	world = load("res://world/world.tscn").instantiate()
-	world.map_id = FX_MAP if MAPS[k] == "fx" else MAPS[k]
+	world.map_id = scene_map
 	world.auto_run = false
-	world.bot_count = 9
+	world.bot_count = scene_bots
 	world.rng_seed = 4242
 	world.dyn_choice = "off"
 	world.ko_limit = 0
+	if scene_id == "solo1":
+		world.mode_id = "classic"
 	root.add_child(world)
 	world.touch.visible = false
 	n = 0
@@ -77,7 +109,7 @@ func _next() -> void:
 
 func _frame() -> void:
 	var now := Time.get_ticks_usec()
-	if MAPS[k] == "fx": _stress()
+	if scene_id == "fx": _stress()
 	var t0 := Time.get_ticks_usec()
 	world.tick(FRAME)
 	var t1 := Time.get_ticks_usec()
@@ -89,14 +121,47 @@ func _frame() -> void:
 			prims.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME))
 			objs.append(RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_OBJECTS_IN_FRAME))
 	t_last = now
-	if MAPS[k] == "fx": _fx_check()
+	if scene_id == "fx": _fx_check()
 	n += 1
 	if n < WARM + FRAMES:
 		return
 	process_frame.disconnect(_frame)
-	_report(MAPS[k])
+	_report(scene_id)
 	k += 1
 	_next.call_deferred()
+
+## The fighters' visible mesh cost: MeshInstance3D nodes and their surfaces under every Fighter (hidden weapon holders
+## are excluded from the visible numbers; the "all" numbers show what is retained in the tree).
+func _fighter_stats() -> Dictionary:
+	var meshes := 0
+	var meshes_vis := 0
+	var surfaces := 0
+	var surfaces_vis := 0
+	for v: Variant in world.views.values():
+		var node: Node = v
+		meshes += _count_meshes(node, false)
+		meshes_vis += _count_meshes(node, true)
+		surfaces += _count_surfaces(node, false)
+		surfaces_vis += _count_surfaces(node, true)
+	return {"fighters": world.views.size(), "meshes": meshes_vis, "meshes_all": meshes,
+		"surfaces": surfaces_vis, "surfaces_all": surfaces}
+
+func _count_meshes(n: Node, visible_only: bool) -> int:
+	var k := 1 if n is MeshInstance3D and (not visible_only or (n as MeshInstance3D).is_visible_in_tree()) else 0
+	for ch in n.get_children():
+		k += _count_meshes(ch, visible_only)
+	return k
+
+func _count_surfaces(n: Node, visible_only: bool) -> int:
+	var k := 0
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		if not visible_only or mi.is_visible_in_tree():
+			var mesh: Mesh = mi.mesh
+			if mesh != null: k += mesh.get_surface_count()
+	for ch in n.get_children():
+		k += _count_surfaces(ch, visible_only)
+	return k
 
 ## Effects stress: synthetic visual events on top of the fight (they only feed the effects; the bench never compares
 ## sim state). Bots get melee weapons now and then so swing trails run too.
@@ -133,10 +198,21 @@ func _fx_check() -> void:
 func _report(id: String) -> void:
 	var b: Dictionary = BUDGET[tier_name]
 	var c := _mean(cpu)
-	var line := "GFX %s %-10s fighters %d | cpu %.2f ms (p95 %.2f)" % [tier_name, id, world.sim.fighters.size(), c, _p95(cpu)]
+	var fs := _fighter_stats()
+	var per_ms := float(fs["meshes"]) / maxf(1.0, float(fs["fighters"]))
+	var per_sf := float(fs["surfaces"]) / maxf(1.0, float(fs["fighters"]))
+	var line := "GFX %s %-10s fighters %d | cpu %.2f ms (p95 %.2f) | fighter meshes %d (%.1f/fighter) surfaces %d (%.1f/fighter) nodes-kept %d" % [
+		tier_name, id, world.sim.fighters.size(), c, _p95(cpu), fs["meshes"], per_ms, fs["surfaces"], per_sf, fs["meshes_all"]]
 	if id == "fx":
 		line += " | fx lv %d peaks %s" % [world.fx.lv, str(fx_peak).replace(" ", "")]
 	_check(c <= b["cpu"], "%s %s cpu %.2f ms > %.1f" % [tier_name, id, c, b["cpu"]])
+	if fs["fighters"] > 0 and per_ms > MESH_BUDGET:
+		_check(false, "%s %s fighter meshes %.1f per fighter > %d" % [tier_name, id, per_ms, MESH_BUDGET])
+	if fs["fighters"] > 0 and per_sf > SURF_BUDGET:
+		_check(false, "%s %s fighter surfaces %.1f per fighter > %d" % [tier_name, id, per_sf, SURF_BUDGET])
+	if int(fs["fighters"]) >= 10:          # the 10-fighter world gate (docs/GRAPHICS.md: 135/155 measured)
+		_check(int(fs["meshes"]) <= 150, "%s %s 10-fighter meshes %d > 150" % [tier_name, id, fs["meshes"]])
+		_check(int(fs["surfaces"]) <= 175, "%s %s 10-fighter surfaces %d > 175" % [tier_name, id, fs["surfaces"]])
 	if headless:
 		print(line)
 		return
@@ -145,6 +221,10 @@ func _report(id: String) -> void:
 	var p := _max(prims)
 	line += " | frame %.2f ms (p95 %.2f) | draws %d | prims %d | objects %d" % [f, _p95(wall), d, p, _max(objs)]
 	print(line)
+	if id == "farm":
+		farm_draws_10 = d
+	elif id == "solo1":
+		farm_draws_1 = d
 	_check(d <= b["draws"], "%s %s draw calls %d > %d" % [tier_name, id, d, b["draws"]])
 	_check(p <= b["prims"], "%s %s primitives %d > %d" % [tier_name, id, p, b["prims"]])
 	_check(f <= b["frame"], "%s %s frame %.2f ms > %.1f" % [tier_name, id, f, b["frame"]])

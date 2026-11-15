@@ -17,6 +17,9 @@ const BOT_POOL := ["Bot Wibble", "Bot Bonk", "Bot Gus", "Bot Pip", "Bot Moxie", 
 	"Bot Crumb", "Bot Zigzag"]
 const RING_OUT_Y := -25.0
 const TUNING_PATH := "res://data/extra/weapon_tuning.json"   ## Godot-only balance overlay (docs/DAMAGE.md)
+## The parsed-JSON cache lives in Content (static funcs, usable without the autoload): every match reads its tables from
+## there as deep copies, so one file is decoded once per process and a match may merge/alter its own tuning safely.
+const ContentData := preload("res://autoload/content.gd")
 ## Random start: a real match starts the player on a random safe spot of the map, at least this many metres from the
 ## void. Spots closer than this to a ring-out edge are skipped (a couple of bot spots are that close on volcano /
 ## crossroads); the map's own player / spawns / bots points are the candidates, so these are all designed-safe points.
@@ -62,8 +65,8 @@ var destruct: Destruct = null
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
 	combat.damage_rule = "zones"      # per-body-part damage offline; Combat.zones_active() falls back to classic online
-	combat.apply_tuning(Combat.read_json(TUNING_PATH) if FileAccess.file_exists(TUNING_PATH) else null)   # same gate (Combat.tuning_active)
-	pickups = Pickups.new(combat, Combat.read_json(content_dir.path_join("drops.json")), Combat.read_json(content_dir.path_join("crate-rates.json")))
+	combat.apply_tuning(ContentData.read_json(TUNING_PATH) if FileAccess.file_exists(TUNING_PATH) else null)   # same gate (Combat.tuning_active)
+	pickups = Pickups.new(combat, ContentData.read_json(content_dir.path_join("drops.json")), ContentData.read_json(content_dir.path_join("crate-rates.json")))
 
 ## The game mode (pickMode + setBotCfg): rules, teams, lives, K.O. limit (`limit` < 0 = the mode's preset). Call before
 ## setup(); pass ModeRules.bot_count(mode_id, ...) as setup's bot_count. See logic/mode_rules.gd.
@@ -97,7 +100,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	ladders = map_ladders
 	pads = map_pads
 	diff = p_diff
-	difficulty = (Combat.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
+	difficulty = (ContentData.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
 	# The breakables are picked by map box index; the moving floor may split the floor into tiles first, so keep one
 	# solid reference per map box from before (docs/DESTRUCTIBLE.md: breakable cover works on a moving floor too).
 	var box_solids: Array = solids.duplicate() if destructible else []
@@ -153,7 +156,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		var j := int(floor(combat.rng.next() * (k + 1)))
 		var t: Variant = names[k]; names[k] = names[j]; names[j] = t
 	var hats: Array = []
-	for h: String in (Combat.read_json("res://data/cosmetics.json") as Dictionary).get("hats", []):
+	for h: String in (ContentData.read_json("res://data/cosmetics.json") as Dictionary).get("hats", []):
 		if h != "none" and h != "crown": hats.append(h)
 	var map_bots: Array = map.get("bots", [])
 	for i in bot_count:

@@ -89,6 +89,8 @@ func _run() -> void:
 	_test_weapons()
 	_test_stages()
 	_test_modes_and_crates()
+	_test_packs()
+	_test_json_cache()
 	await _smoke_tools()
 	print("CONSTRUCTION-DATA %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
 	quit(0 if fails == 0 else 1)
@@ -288,3 +290,289 @@ func _test_modes_and_crates() -> void:
 	sim_melee.dispose()
 
 	print("MODES-AND-CRATES ok (construction extended, all other modes isolated)")
+
+# ============================== DLC packs (Sprint 4.1) ==============================
+## The Construction DLC's data is now a generic pack (res://data/extra/<pack_id>/pack.json, Content.load_dlc_packs):
+## 1. every shipped manifest parses/validates and declares the files the registry publishes;
+## 2. the packed tables are byte-equal to the legacy (pre-pack) hardcoded merge: weapons, classes, modes and stages;
+## 3. a synthetic user:// pack tree (valid + malformed manifests, a missing dependency, a reserved section) scans in
+##    deterministic sorted order and reports every bad manifest instead of crashing;
+## 4. Content.reload() re-scans and produces identical tables, and Content.load_dlc_packs() is the documented entry point.
+## The synthetic tree lives under user:// so the test never writes into res://.
+
+const PACK_DIR := "user://dlc_pack_test"
+const CONSTRUCTION_DIR := "res://data/extra/construction/"
+
+func _json(path: String) -> Variant:
+	return JSON.parse_string(FileAccess.get_file_as_string(path)) if FileAccess.file_exists(path) else null
+
+func _write_json(path: String, data: Variant) -> void:
+	_write_text(path, JSON.stringify(data, " "))
+
+func _write_text(path: String, text: String) -> void:
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null: return
+	f.store_string(text)
+	f.close()
+
+func _rm_rf(path: String) -> void:
+	var d := DirAccess.open(path)
+	if d == null: return
+	for f: String in d.get_files(): DirAccess.remove_absolute(ProjectSettings.globalize_path(path.path_join(f)))
+	for sub: String in d.get_directories(): _rm_rf(path.path_join(sub))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+
+## The pre-pack algorithm as an oracle (formerly ModeRules.merge_extra's two hardcoded files), so the refactor is held to
+## "same modes, same additive edits, byte-equal".
+func _legacy_merge_modes(shared: Variant) -> Dictionary:
+	var modes: Dictionary = (shared as Dictionary).duplicate(true) if shared is Dictionary else {}
+	_apply_legacy_modes_file(modes, "res://data/extra/modes.json")
+	_apply_legacy_modes_file(modes, CONSTRUCTION_DIR + "modes.json")
+	return modes
+
+func _apply_legacy_modes_file(modes: Dictionary, path: String) -> void:
+	if not FileAccess.file_exists(path): return
+	var x: Variant = _json(path)
+	if not (x is Dictionary): return
+	for k: String in x:
+		if k.begins_with("_") or not (x[k] is Dictionary): continue
+		if modes.has(k):
+			var src: Dictionary = x[k]
+			var dst: Dictionary = modes[k]
+			if src.has("allowWeapons") and dst.get("allowWeapons") is Array:
+				for w in src["allowWeapons"]:
+					if not (dst["allowWeapons"] as Array).has(w): dst["allowWeapons"].append(w)
+			if src.get("dropWeights") is Dictionary:
+				var weights: Dictionary = dst.get("dropWeights", {})
+				for w: String in src["dropWeights"]: weights[w] = float(src["dropWeights"][w])
+				dst["dropWeights"] = weights
+			continue
+		var m: Dictionary = (x[k] as Dictionary).duplicate(true)
+		if not m.has("allowWeapons"):
+			m["allowWeapons"] = (modes.get(str(m.get("allowFrom", "classic")), {}) as Dictionary).get("allowWeapons", []).duplicate()
+		modes[k] = m
+
+## A JSON table without author-comment (`_`-prefixed) and non-object keys, like the merged hook data().
+func _strip_author_keys(v: Variant) -> Dictionary:
+	var out := {}
+	if v is Dictionary:
+		for k: String in v:
+			if k.begins_with("_") or not (v[k] is Dictionary): continue
+			out[k] = v[k]
+	return out
+
+func _test_packs() -> void:
+	var content: Variant = root.get_node_or_null("Content")
+	check(content != null, "packs: Content autoload present")
+	if content == null: return
+	var cs: Variant = load("res://autoload/content.gd")
+	check(cs != null, "packs: content.gd script loadable")
+	if cs == null: return
+
+	# 1. Every shipped pack.json parses, validates and is in the registry.
+	var ids: Array = cs.pack_ids()
+	check(ids == ["construction"], "packs: registry is [construction] (got %s)" % str(ids))
+	var reg: Dictionary = cs.pack("construction")
+	check(str(reg.get("name", "")) == "Construction", "packs: construction name")
+	check(int(reg.get("version", 0)) == 1, "packs: construction version 1")
+	check(reg.get("requires") is Array and (reg["requires"] as Array).is_empty(), "packs: construction requires []")
+	var shipped := 0
+	var dirs := DirAccess.get_directories_at("res://data/extra")
+	dirs.sort()
+	for d: String in dirs:
+		var mf := "res://data/extra/%s/pack.json" % d
+		if not FileAccess.file_exists(mf): continue
+		shipped += 1
+		var raw: Variant = _json(mf)
+		check(raw is Dictionary, "packs: shipped manifest parses (%s)" % mf)
+		if not (raw is Dictionary): continue
+		check(str((raw as Dictionary).get("id", "")) == d, "packs: shipped manifest id matches its folder (%s)" % d)
+		check(str((raw as Dictionary).get("name", "")) != "", "packs: shipped manifest has a name (%s)" % d)
+		check(cs.pack_ids().has(d), "packs: shipped manifest is in the registry (%s)" % d)
+	check(shipped >= 1, "packs: at least one shipped pack.json")
+
+	# 2. Section files resolve through the registry (no hardcoded construction path in the merge hooks/ArcadeCoop).
+	check(cs.pack_section_file("construction", "weapons") == CONSTRUCTION_DIR + "weapons.json", "packs: weapons file via registry")
+	check(cs.pack_section_file("construction", "modes") == CONSTRUCTION_DIR + "modes.json", "packs: modes file via registry")
+	check(cs.pack_section_file("construction", "stages") == CONSTRUCTION_DIR + "stages.json", "packs: stages file via registry")
+	check(cs.pack_section_file("construction", "classes") == "", "packs: undeclared section resolves to ''")
+	check(cs.pack_section_file("nope", "weapons") == "", "packs: unknown pack resolves to ''")
+	check(cs.pack_section_file("construction", "nope") == "", "packs: unknown section resolves to ''")
+	check(cs.pack_paths("modes") == [CONSTRUCTION_DIR + "modes.json"], "packs: pack_paths(modes) order")
+
+	# 3. Byte/machine-equal legacy compare: the pack tables are exactly the pre-refactor files/merge result.
+	var legacy_weapons: Dictionary = _json(CONSTRUCTION_DIR + "weapons.json") if _json(CONSTRUCTION_DIR + "weapons.json") is Dictionary else {}
+	check(ExtraWeapons.data() == legacy_weapons, "packs: ExtraWeapons.data() == construction/weapons.json (byte-equal)")
+	var legacy_classes: Dictionary = _strip_author_keys(_json("res://data/extra/classes.json"))
+	check(ExtraClasses.data() == legacy_classes, "packs: ExtraClasses.data() == data/extra/classes.json (byte-equal)")
+	var merged_modes: Dictionary = ModeRules.merge_extra((_json("res://data/modes.json") as Dictionary).duplicate(true))
+	var legacy_modes: Dictionary = _legacy_merge_modes(_json("res://data/modes.json"))
+	check(merged_modes == legacy_modes, "packs: ModeRules.merge_extra == legacy merge (byte-equal)")
+	var content_modes := merged_modes.duplicate(true)
+	content_modes.erase("pillars")                          # Content.reload drops the removed Pillars mode after the merge
+	check(content.get("modes") == content_modes, "packs: Content.modes == legacy merge result")
+	var legacy_stages: Dictionary = _json(CONSTRUCTION_DIR + "stages.json") if _json(CONSTRUCTION_DIR + "stages.json") is Dictionary else {}
+	check(ArcadeCoop.stages_path() == CONSTRUCTION_DIR + "stages.json", "packs: ArcadeCoop.stages_path resolves via the registry")
+	check(ArcadeCoop.table() == legacy_stages, "packs: ArcadeCoop.table() == stages.json (byte-equal)")
+	check(ArcadeCoop.count() == 6, "packs: ArcadeCoop.count() == 6")
+
+	# 4. Synthetic packs under user://: deterministic sorted order, malformed manifests reported but never fatal.
+	_rm_rf(PACK_DIR)
+	_write_json(PACK_DIR + "/alpha/pack.json", {"id": "alpha", "name": "Alpha", "weapons": "weapons.json"})
+	_write_json(PACK_DIR + "/alpha/weapons.json", {"testblaster": {"name": "Test Blaster", "type": "melee", "dmg": 7}})
+	_write_json(PACK_DIR + "/zeta/pack.json", {"id": "zeta", "name": "Zeta", "weapons": "weapons.json"})
+	_write_json(PACK_DIR + "/zeta/weapons.json", {"testblaster": {"name": "Zeta Blaster", "type": "melee", "dmg": 1},
+		"zetatool": {"name": "Zeta Tool", "type": "melee"}})
+	_write_json(PACK_DIR + "/reserved/pack.json", {"id": "reserved", "name": "Reserved", "maps": "maps.json"})   # documented future section: warned, ignored, pack kept
+	_write_json(PACK_DIR + "/noid/pack.json", {"name": "No id"})
+	_write_json(PACK_DIR + "/wrongid/pack.json", {"id": "mismatch", "name": "Wrong id"})
+	_write_json(PACK_DIR + "/escape/pack.json", {"id": "escape", "name": "Escape", "weapons": "../shared.json"})
+	_write_json(PACK_DIR + "/missing/pack.json", {"id": "missing", "name": "Missing", "weapons": "nope.json"})
+	_write_json(PACK_DIR + "/badreq/pack.json", {"id": "badreq", "name": "Bad requires", "requires": ["not_shipped"]})
+	_write_text(PACK_DIR + "/badjson/pack.json", "{ this is not json")
+	check(cs.scan_dlc_packs("user://definitely_not_a_pack_dir").is_empty(), "packs: a missing pack dir scans to []")
+	check(cs.scan_errors().size() == 1, "packs: a missing pack dir is reported once")
+	var synth: Array = cs.scan_dlc_packs(PACK_DIR)
+	var synth_ids: Array = []
+	for p: Dictionary in synth: synth_ids.append(str(p["id"]))
+	check(synth_ids == ["alpha", "reserved", "zeta"], "packs: synthetic registry sorted by id, broken sections rejected the pack (got %s)" % str(synth_ids))
+	var err_text := ""
+	for e: Variant in cs.scan_errors(): err_text += str(e) + "\n"
+	check(cs.scan_errors().size() >= 6, "packs: malformed manifests reported (%d errors)" % cs.scan_errors().size())
+	check(err_text.contains("malformed manifest"), "packs: invalid JSON reported")
+	check(err_text.contains("without an id"), "packs: missing id reported")
+	check(err_text.contains("does not match its directory"), "packs: id/folder mismatch reported")
+	check(err_text.contains("inside the pack"), "packs: path escape reported")
+	check(err_text.contains("file is missing"), "packs: missing section file reported")
+	check(err_text.contains("requires missing pack"), "packs: missing dependency reported")
+	var bad_count := int(cs.scan_errors().size())
+	var alpha_weapons := ""
+	for p: Dictionary in synth:
+		if str(p["id"]) == "alpha": alpha_weapons = str((p["sections"] as Dictionary).get("weapons", ""))
+	check(alpha_weapons == PACK_DIR + "/alpha/weapons.json", "packs: synthetic section path")
+	_rm_rf(PACK_DIR)
+	check(not DirAccess.dir_exists_absolute(PACK_DIR), "packs: synthetic tree cleaned up")
+
+	# 5. Content.reload() re-scans and is byte-idempotent; malformed synthetic packs never entered the real registry.
+	var before := {
+		"weapons": (content.get("weapons") as Dictionary).duplicate(true),
+		"modes": (content.get("modes") as Dictionary).duplicate(true),
+		"classes": (content.get("classes") as Dictionary).duplicate(true),
+		"maps": (content.get("maps") as Dictionary).duplicate(true),
+	}
+	content.reload()
+	check(content.get("weapons") == before["weapons"], "packs: reload() keeps weapons")
+	check(content.get("modes") == before["modes"], "packs: reload() keeps modes")
+	check(content.get("classes") == before["classes"], "packs: reload() keeps classes")
+	check(content.get("maps") == before["maps"], "packs: reload() keeps maps")
+	check(ExtraWeapons.data() == legacy_weapons, "packs: hooks still byte-equal after reload()")
+
+	# 6. The documented autoload entry point: Content.load_dlc_packs() scans res://data/extra/*/pack.json itself.
+	check(content.load_dlc_packs().size() == 1, "packs: Content.load_dlc_packs() finds the shipped pack")
+	check(cs.pack_ids() == ["construction"], "packs: Content.load_dlc_packs() refreshes the registry")
+	check(ExtraWeapons.data() == legacy_weapons, "packs: hooks follow the registry generation")
+
+	print("PACKS ok (1 shipped pack; weapons/classes/modes/stages byte-equal; %d synthetic manifests, %d reported as malformed; reload idempotent)" % [synth.size(), bad_count])
+
+
+
+# ============================== parsed-JSON cache (post-v0.4.0 Sprint 4.2) ==============================
+## The seven shared content files are decoded once per process by Content's static parsed-JSON cache, every caller gets a
+## deep copy, two match setups decode nothing extra, and reload() invalidates + re-decodes. API in
+## godot/autoload/content.gd: cache_generation() / json_parses() / json_parse_count(path) / json_cache_entries(); see
+## docs/GODOT_ARCH.md "JSON cache".
+const CACHE_FILES := ["weapons", "modes", "classes", "cosmetics", "difficulties", "crate-rates", "drops"]
+
+func _cache_path(file_name: String) -> String:
+	return "res://data/%s.json" % file_name
+
+func _cache_setup(sim: MatchSim, map_node: Variant) -> void:
+	sim.setup("farm", map_node.map, map_node.ladders, map_node.pads, "wobbler", PlayerControl.new(InputState.new()), 0, "normal", false)
+
+func _test_json_cache() -> void:
+	var content: Variant = root.get_node_or_null("Content")
+	check(content != null, "cache: Content autoload present")
+	if content == null: return
+	var cs: Variant = load("res://autoload/content.gd")
+	var cap := int(cs.get_script_constant_map().get("JSON_CACHE_MAX", 0))
+	check(cap >= 64, "cache: JSON_CACHE_MAX is a real bound (%d)" % cap)
+
+	# --- 1. from a known counter start, reload() decodes each shipped file exactly once
+	cs.reset_json_cache_counters()
+	var gen0: int = cs.cache_generation()
+	content.reload()
+	check(cs.cache_generation() > gen0, "cache: reload() bumps the generation (%d -> %d)" % [gen0, cs.cache_generation()])
+	for f: String in CACHE_FILES:
+		check(cs.json_parse_count(_cache_path(f)) == 1, "cache: %s decoded once by reload() (%d)" % [f, cs.json_parse_count(_cache_path(f))])
+	var gen1: int = cs.cache_generation()
+	# repeated reads are cache hits and always distinct deep copies
+	var w1: Variant = cs.read_json("res://data/weapons.json")
+	var w2: Variant = cs.read_json("res://data/weapons.json")
+	check(w1 == w2 and not is_same(w1, w2), "cache: read_json returns equal but distinct deep copies")
+	check(cs.json_parse_count("res://data/weapons.json") == 1 and cs.json_cache_hits() > 0, "cache: repeated reads are hits, not decodes")
+
+	# --- 2. two match setups: 0 extra decodes, equal tables as distinct copies
+	var map_node: Variant = MapBuilder.build("farm")
+	check(map_node != null, "cache: farm map builds for the match setups")
+	if map_node == null: return
+	var warm := MatchSim.new()
+	_cache_setup(warm, map_node)
+	warm.dispose()
+	check(cs.json_parse_count("res://data/extra/weapon_tuning.json") == 1, "cache: balance overlay decoded once (%d)" % cs.json_parse_count("res://data/extra/weapon_tuning.json"))
+	var t0: int = cs.json_parses()
+	var s1 := MatchSim.new()
+	_cache_setup(s1, map_node)
+	var s2 := MatchSim.new()
+	_cache_setup(s2, map_node)
+	check(cs.json_parses() == t0, "cache: two MatchSim setups decoded %d files (want 0)" % (cs.json_parses() - t0))
+	check(cs.cache_generation() == gen1, "cache: a match setup did not invalidate the cache")
+	for f: String in ["difficulties", "cosmetics", "drops", "crate-rates"]:
+		check(cs.json_parse_count(_cache_path(f)) == 1, "cache: match table %s is still one decode" % f)
+	check(s1.difficulty == s2.difficulty, "cache: the two matches' difficulties are equal")
+	check(not is_same(s1.difficulty, s2.difficulty), "cache: the two matches share one difficulty dictionary")
+	check(s1.combat.weapons_data == content.weapons, "cache: a match's weapons table equals Content.weapons")
+	check(not is_same(s1.combat.weapons_data, content.weapons), "cache: a match's weapons table is the cached dictionary")
+	check(not is_same(s1.combat.weapons_data, s2.combat.weapons_data), "cache: two matches share one weapons dictionary")
+	check(s1.combat.damage != null and not is_same(s1.combat.damage, s2.combat.damage), "cache: two matches share one damage table")
+
+	# --- 3. mutating one match's copy leaks nowhere (the other match nor the cache)
+	var cache_diff: Dictionary = (content.difficulties as Dictionary).duplicate(true)
+	var cache_weapons: Dictionary = (content.weapons as Dictionary).duplicate(true)
+	var b_diff: Dictionary = s2.difficulty.duplicate(true)
+	var b_weapons: Dictionary = s2.combat.weapons_data.duplicate(true)
+	s1.difficulty["dmg"] = 999.0
+	s1.combat.weapons_data["spatula"]["cooldown"] = 0.001
+	check(s2.difficulty == b_diff, "cache: mutating one match's difficulty leaked into the other match")
+	check(s2.combat.weapons_data == b_weapons, "cache: mutating one match's weapons leaked into the other match")
+	check(content.difficulties == cache_diff and content.weapons == cache_weapons, "cache: mutating a match's copy leaked into Content")
+
+	# --- 4. reload() refreshes: generation up, each file re-decoded once, matches after it decode nothing
+	var gen2: int = cs.cache_generation()
+	content.reload()
+	check(cs.cache_generation() > gen2, "cache: second reload() bumps the generation again")
+	for f: String in CACHE_FILES:
+		check(cs.json_parse_count(_cache_path(f)) == 2, "cache: reload() re-decoded %s once (%d)" % [f, cs.json_parse_count(_cache_path(f))])
+	check(content.weapons == cache_weapons and content.difficulties == cache_diff, "cache: reload() keeps the shipped tables")
+	var parse_summary := []
+	for f: String in CACHE_FILES:
+		parse_summary.append("%s=%d" % [f, cs.json_parse_count(_cache_path(f))])
+	print("PARSES decodes per file after two reload() cycles (each reload re-decodes once; two MatchSim setups add 0): %s + weapon_tuning=1" % " ".join(parse_summary))
+	check(cs.json_parse_count("res://data/extra/weapon_tuning.json") == 1, "cache: reload() left the balance overlay pending")
+	var s3 := MatchSim.new()
+	_cache_setup(s3, map_node)                        # the overlay is not one of reload()'s tables: it decodes once more
+	check(cs.json_parse_count("res://data/extra/weapon_tuning.json") == 2, "cache: the first match after reload() re-decoded the overlay")
+	var t1: int = cs.json_parses()
+	var s4 := MatchSim.new()
+	_cache_setup(s4, map_node)
+	check(cs.json_parses() == t1, "cache: a second match after reload() decoded %d files (want 0)" % (cs.json_parses() - t1))
+	check(s3.combat.weapons_data == content.weapons, "cache: the match after reload() sees the refreshed table")
+
+	# --- 5. bounded + the missing-file contract survives the cache
+	check(cs.json_cache_entries() > 0 and cs.json_cache_entries() <= cap, "cache: bounded (%d <= %d entries)" % [cs.json_cache_entries(), cap])
+	check(cs.load_json("__content_cache_missing__").is_empty(), "cache: a missing data file still returns {}")
+	check(cs.read_json("res://data/__content_cache_missing__.json") == null, "cache: a missing file decodes to null")
+	s1.dispose(); s2.dispose(); s3.dispose(); s4.dispose()
+	map_node.free()
+	print("JSON-CACHE ok (%d shared files decoded once per process; 0 decodes for repeated match setups; deep copies isolated; reload() bumps generation %d -> %d and re-decodes; cache %d/%d entries)" % [
+		CACHE_FILES.size(), gen0, cs.cache_generation(), cs.json_cache_entries(), cap])
