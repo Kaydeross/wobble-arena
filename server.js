@@ -28,7 +28,6 @@ const LIMITS = {
   rate: 400,               // messages per second a player may send (short bursts are fine)
   perIp: 40,               // connections from one address
 };
-const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 const rooms = new Map();   // id -> room
 let roomCounter = 0, totalConns = 0;
@@ -161,7 +160,7 @@ function cleanInfo(i, old) {
 }
 const humans = r => 1 + r.clients.size;
 const publicView = r => ({ id: r.id, name: r.info.name, host: r.info.host, mode: r.info.mode, modeName: r.info.modeName, kind: r.info.kind, kindName: r.info.kindName || (r.info.arcade ? 'Arcade co-op' : r.info.modeName), arcade: !!r.info.arcade, map: r.info.map, n: humans(r), max: r.info.max, started: r.info.started, build: r.info.build, pub: true });
-function newCode() { for (let t = 0; t < 50; t++) { const c = Array.from({ length: 5 }, () => ALPHABET[Math.floor(Math.random() * ALPHABET.length)]).join(''); if (!rooms.has(c)) return c; } return null; }
+function newCode() { for (let t = 0; t < 200; t++) { const c = String(Math.floor(Math.random() * 10000)).padStart(4, '0'); if (!rooms.has(c)) return c; } return null; }
 function findRoom(id) { id = str(id, 16); return rooms.get(id) || rooms.get(id.toUpperCase()) || rooms.get(id.toLowerCase()) || null; }
 
 function send(ws, obj) {

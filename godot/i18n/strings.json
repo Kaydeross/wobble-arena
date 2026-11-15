@@ -174,6 +174,13 @@
   "fr": "il y a %d jours",
   "es": "hace %d días"
  },
+ "%d dummies. They never fight back": {
+  "zh_TW": "%d 個假人。它們不會還手",
+  "zh_CN": "%d 个假人。它们不会还手",
+  "ja": "ダミーが%d体。反撃はしない",
+  "fr": "%d mannequins. Ils ne ripostent jamais",
+  "es": "%d muñecos. Nunca devuelven el golpe"
+ },
  "%d fps   %.1f ms   avg %.0f   1%% low %.0f": {
   "zh_TW": "%d fps   %.1f ms   平均 %.0f   1%% 低 %.0f",
   "zh_CN": "%d fps   %.1f ms   平均 %.0f   1%% 低 %.0f",
@@ -265,6 +272,13 @@
   "fr": "%s (bot) est de retour",
   "es": "%s (bot) ha vuelto"
  },
+ "%s Crate": {
+  "zh_TW": "%s 補給箱",
+  "zh_CN": "%s 补给箱",
+  "ja": "%sクレート",
+  "fr": "Caisse %s",
+  "es": "Caja de %s"
+ },
  "%s WINS!": {
   "zh_TW": "%s 獲勝！",
   "zh_CN": "%s 获胜！",
@@ -299,13 +313,6 @@
   "ja": "%s が巨大化！",
   "fr": "%s est un géant !",
   "es": "¡%s es un gigante!"
- },
- "%s is a giant! Run!": {
-  "zh_TW": "%s 變巨人了！快跑！",
-  "zh_CN": "%s 变巨人了！快跑！",
-  "ja": "%s が巨大化！逃げろ！",
-  "fr": "%s est un géant ! Cours !",
-  "es": "¡%s es un gigante! ¡Corre!"
  },
  "%s is app-only: a web player is here, so it plays Classic.": {
   "zh_TW": "%s 僅限 App：房間內有網頁玩家，因此改玩經典模式。",
@@ -391,13 +398,6 @@
   "fr": "%s a quitté. Connexion au nouvel hôte…",
   "es": "%s se fue. Uniéndose al nuevo anfitrión…"
  },
- "%s left. Waiting for the new host…": {
-  "zh_TW": "%s 離開了。等待新房主…",
-  "zh_CN": "%s 离开了。等待新房主…",
-  "ja": "%s が退出しました。新しいホストを待っています…",
-  "fr": "%s est parti. En attente du nouvel hôte…",
-  "es": "%s se fue. Esperando al nuevo anfitrión…"
- },
  "%s left. You are now the host. ": {
   "zh_TW": "%s 已離開。你現在是房主。",
   "zh_CN": "%s 已离开。你现在是房主。",
@@ -432,13 +432,6 @@
   "ja": "%s が退出しました。あなたが新しいホストとして試合を引き継ぎます…",
   "fr": "%s a quitté. Désormais hôte, la partie se poursuit…",
   "es": "%s se fue. Ahora eres el anfitrión y la partida continúa…"
- },
- "%s left. You're the host now!": {
-  "zh_TW": "%s 已離開。你現在是房主！",
-  "zh_CN": "%s 已离开。你现在是房主！",
-  "ja": "%s が退出しました。あなたがホストです！",
-  "fr": "%s a quitté. Désormais hôte !",
-  "es": "¡%s se fue. Ahora eres el anfitrión!"
  },
  "%s took the flag!": {
   "zh_TW": "%s 拿到旗幟了！",
@@ -663,6 +656,13 @@
   "ja": "3対3",
   "fr": "3 contre 3",
   "es": "3 contra 3"
+ },
+ "4-digit code": {
+  "zh_TW": "4位數代碼",
+  "zh_CN": "4位数代码",
+  "ja": "4桁のコード",
+  "fr": "Code à 4 chiffres",
+  "es": "Código de 4 dígitos"
  },
  "4v4": {
   "zh_TW": "4 對 4",
@@ -1168,6 +1168,20 @@
   "fr": "Arène %dm · au plus petit",
   "es": "Arena %dm · en su tamaño mínimo"
  },
+ "Arena Growing!": {
+  "zh_TW": "競技場變大！",
+  "zh_CN": "竞技场变大！",
+  "ja": "アリーナ拡大！",
+  "fr": "L'arène grandit !",
+  "es": "¡La arena crece!"
+ },
+ "Arena Reset!": {
+  "zh_TW": "競技場重置！",
+  "zh_CN": "竞技场重置！",
+  "ja": "アリーナリセット！",
+  "fr": "Arène réinitialisée !",
+  "es": "¡Arena reiniciada!"
+ },
  "Arena back to %s.": {
   "zh_TW": "競技場已切回 %s。",
   "zh_CN": "竞技场已切回 %s。",
@@ -1314,6 +1328,20 @@
   "ja": "バックフリップ",
   "fr": "Salto arrière",
   "es": "Salto hacia atrás"
+ },
+ "Backup Incoming!": {
+  "zh_TW": "援軍來了！",
+  "zh_CN": "援军来了！",
+  "ja": "援軍が来る！",
+  "fr": "Renforts en route !",
+  "es": "¡Llegan refuerzos!"
+ },
+ "Backup Tradies!": {
+  "zh_TW": "工人增援！",
+  "zh_CN": "工人增援！",
+  "ja": "職人の応援！",
+  "fr": "Ouvriers en renfort !",
+  "es": "¡Obreros de refuerzo!"
  },
  "Balanced. No surprises": {
   "zh_TW": "均衡，沒有意外",
@@ -1574,26 +1602,12 @@
   "fr": "Bots",
   "es": "Bots"
  },
- "Bots are computer players. %s fixes the teams: %d vs %d.": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。%s 固定了隊伍：%d 對 %d。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。%s 固定了队伍：%d 对 %d。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。%s ではチームが固定されます：%d 対 %d。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. %s fixe les équipes : %d contre %d.",
-  "es": "Los bots son jugadores controlados por el ordenador. %s fija los equipos: %d contra %d."
- },
- "Bots are computer players. Free for all: they fight you and each other.": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。自由混戰：他們會與你和彼此對戰。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。自由混战：他们会与你和彼此对战。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。全員が敵同士の乱戦です。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Chacun pour soi : ils t'affrontent et s'affrontent entre eux.",
-  "es": "Los bots son jugadores controlados por el ordenador. Todos contra todos: te atacan a ti y se atacan entre ellos."
- },
- "Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。兩隊：%d 對 %d（奇數電腦玩家時仍保持雙方人數相等）。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。两队：%d 对 %d（奇数电脑玩家时仍保持双方人数相等）。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。2チーム：%d 対 %d（奇数のボットでも人数が揃うよう調整されます）。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Deux équipes : %d contre %d (un nombre impair de bots garde les équipes égales).",
-  "es": "Los bots son jugadores controlados por el ordenador. Dos equipos: %d contra %d (con un número impar de bots, los equipos siguen iguales)."
+ "Bots fight everyone. Free for all": {
+  "zh_TW": "機器人誰都打。大亂鬥",
+  "zh_CN": "机器人谁都打。大乱斗",
+  "ja": "ボットは全員と戦う。バトルロイヤル",
+  "fr": "Les bots se battent contre tous. Chacun pour soi",
+  "es": "Los bots luchan contra todos. Todos contra todos"
  },
  "Bought %s!%s": {
   "zh_TW": "已購買 %s！%s",
@@ -1938,13 +1952,6 @@
   "fr": "Changer le mot de passe",
   "es": "Cambiar contraseña"
  },
- "Change request approved! Weapons swapped!": {
-  "zh_TW": "修改需求已批准！武器已更換！",
-  "zh_CN": "修改需求已批准！武器已更换！",
-  "ja": "仕様変更承認！武器が変更された！",
-  "fr": "Demande de modification approuvée ! Changement d'armes !",
-  "es": "¡Solicitud de cambio aprobada! ¡Armas intercambiadas!"
- },
  "Chaos": {
   "zh_TW": "混亂",
   "zh_CN": "混乱",
@@ -1965,13 +1972,6 @@
   "ja": "断崖の橋",
   "fr": "Pont du gouffre",
   "es": "Puente del abismo"
- },
- "Check your match. Tap a row to change it.": {
-  "zh_TW": "確認你的比賽。點選一列即可更改。",
-  "zh_CN": "确认你的比赛。点选一行即可更改。",
-  "ja": "試合の内容を確認しましょう。項目をタップして変更できます。",
-  "fr": "Vérifie ta partie. Touche une ligne pour la modifier.",
-  "es": "Revisa tu partida. Toca una fila para cambiarla."
  },
  "Chef": {
   "zh_TW": "主廚",
@@ -2071,19 +2071,19 @@
   "fr": "Déjà réussie : pas de pièces cette fois",
   "es": "Ya superada: sin monedas esta vez"
  },
+ "Click to look": {
+  "zh_TW": "點擊轉動視角",
+  "zh_CN": "点击转动视角",
+  "ja": "クリックで視点操作",
+  "fr": "Clique pour viser",
+  "es": "Clic para mirar"
+ },
  "Click to look around   ·   Esc: menu": {
   "zh_TW": "點擊環顧四周   ·   Esc：選單",
   "zh_CN": "点击环顾四周   ·   Esc：菜单",
   "ja": "クリックで見回す   ·   Esc：メニュー",
   "fr": "Cliquer pour regarder autour   ·   Esc : menu",
   "es": "Haz clic para mirar alrededor   ·   Esc: menú"
- },
- "Click to look around · Esc: menu": {
-  "zh_TW": "點擊環顧四周 · Esc：選單",
-  "zh_CN": "点击环顾四周 · Esc：菜单",
-  "ja": "クリックで見回す · Esc：メニュー",
-  "fr": "Cliquer pour regarder autour · Échap : menu",
-  "es": "Haz clic para mirar alrededor · Esc: menú"
  },
  "Click to shoot, right-click to aim. E shoves, F kicks, Space jumps.": {
   "zh_TW": "點擊射擊，右鍵瞄準。E 推擠，F 踢擊，空白鍵跳躍。",
@@ -2498,13 +2498,6 @@
   "fr": "Caisse en approche : %s !",
   "es": "¡Caja en camino: %s!"
  },
- "Crate incoming: %s! Look up": {
-  "zh_TW": "補給箱來襲：%s！抬頭看！",
-  "zh_CN": "补给箱来袭：%s！抬头看！",
-  "ja": "クレート接近：%s！上を見て",
-  "fr": "Caisse en approche : %s ! Attention en haut",
-  "es": "¡Caja en camino: %s! ¡Mira arriba!"
- },
  "Crate rain": {
   "zh_TW": "補給箱雨",
   "zh_CN": "补给箱雨",
@@ -2588,6 +2581,13 @@
   "ja": "クリムゾンサムライ",
   "fr": "Samouraï cramoisi",
   "es": "Samurái carmesí"
+ },
+ "Crosshair": {
+  "zh_TW": "準星",
+  "zh_CN": "准星",
+  "ja": "照準",
+  "fr": "Viseur",
+  "es": "Mira"
  },
  "Crouch and crackle, blast lightning into the sky, then slam it into the ground": {
   "zh_TW": "蹲下蓄力，電光閃爍，把閃電射向天空，再砸向地面",
@@ -2701,12 +2701,12 @@
   "fr": "Égalité parfaite quand le temps est écoulé",
   "es": "Empate total cuando se acaba el tiempo"
  },
- "Deadline approaching! Floor is shrinking!": {
-  "zh_TW": "截止日期臨近！地面正在縮小！",
-  "zh_CN": "截止日期临近！地面正在缩小！",
-  "ja": "納期が迫る！床が縮小しているぞ！",
-  "fr": "Date limite imminente ! Le sol rétrécit !",
-  "es": "¡Se acerca la fecha límite! ¡El suelo se encoge!"
+ "Deadline!": {
+  "zh_TW": "截止日期！",
+  "zh_CN": "截止日期！",
+  "ja": "締め切り！",
+  "fr": "Date limite !",
+  "es": "¡Fecha límite!"
  },
  "Death Match": {
   "zh_TW": "死鬥",
@@ -3051,6 +3051,13 @@
   "fr": "Chaque K.O. change ton arme",
   "es": "Cada K.O. cambia tu arma"
  },
+ "Everyone keeps the coins": {
+  "zh_TW": "人人都保留金幣",
+  "zh_CN": "人人都保留金币",
+  "ja": "コインは全員がもらえる",
+  "fr": "Chacun garde les pièces",
+  "es": "Todos conservan las monedas"
+ },
  "Everything drops from the sky": {
   "zh_TW": "所有東西都從天上掉下來",
   "zh_CN": "所有东西都从天上掉下来",
@@ -3205,6 +3212,13 @@
   "fr": "Boss final",
   "es": "Jefe final"
  },
+ "Finding a new host…": {
+  "zh_TW": "正在找新房主…",
+  "zh_CN": "正在找新房主…",
+  "ja": "新しいホストを探しています…",
+  "fr": "Recherche d'un nouvel hôte…",
+  "es": "Buscando nuevo anfitrión…"
+ },
  "Finish 10 matches this week": {
   "zh_TW": "本週完成 10 場比賽",
   "zh_CN": "本周完成 10 场比赛",
@@ -3337,6 +3351,13 @@
   "ja": "ガッツポーズ",
   "fr": "Poing levé",
   "es": "Puño en alto"
+ },
+ "Fixed teams: %d vs %d": {
+  "zh_TW": "固定隊伍：%d 對 %d",
+  "zh_CN": "固定队伍：%d 对 %d",
+  "ja": "固定チーム：%d 対 %d",
+  "fr": "Équipes fixes : %d contre %d",
+  "es": "Equipos fijos: %d contra %d"
  },
  "Flag back on its stand!": {
   "zh_TW": "旗幟回到旗座了！",
@@ -4003,6 +4024,13 @@
   "fr": "Saute, donne un coup de pied, salue",
   "es": "Salta, patea y saluda"
  },
+ "Host": {
+  "zh_TW": "房主",
+  "zh_CN": "房主",
+  "ja": "ホスト",
+  "fr": "Hôte",
+  "es": "Anfitrión"
+ },
  "Host a room": {
   "zh_TW": "建立房間",
   "zh_CN": "创建房间",
@@ -4255,6 +4283,13 @@
   "fr": "Clavier : WASD déplacer · souris regarder · clic tirer · clic droit viser · Espace sauter · E bousculer · F coup de pied · Q corps à corps rapide · 1-3 armes · T G H emotes · Échap pause. Manette : sticks déplacer et regarder · RT tirer · LT viser · A sauter · RB bousculer · B coup de pied · Start pause.",
   "es": "Teclado: WASD mover · ratón mirar · clic disparar · clic derecho apuntar · Espacio saltar · E empujar · F patear · Q cuerpo a cuerpo rápido · 1-3 armas · T G H emotes · Esc pausa. Mando: sticks mover y mirar · RT disparar · LT apuntar · A saltar · RB empujar · B patear · Start pausa."
  },
+ "Kids mode": {
+  "zh_TW": "兒童模式",
+  "zh_CN": "儿童模式",
+  "ja": "キッズモード",
+  "fr": "Mode enfants",
+  "es": "Modo infantil"
+ },
  "Knock-out replays": {
   "zh_TW": "擊倒重播",
   "zh_CN": "击倒重播",
@@ -4367,12 +4402,12 @@
   "fr": "Quitter le salon",
   "es": "Salir de la sala"
  },
- "Leave the room? You'll leave this match and go back to the title.": {
-  "zh_TW": "要離開房間嗎？你會結束這場比賽，回到標題畫面。",
-  "zh_CN": "要离开房间吗？你将结束这场比赛，返回标题画面。",
-  "ja": "ルームを出ますか？この試合を抜けてタイトルに戻ります。",
-  "fr": "Quitter le salon ? Cette partie s'arrête et l'on revient au titre.",
-  "es": "¿Salir de la sala? Abandonarás esta partida y volverás al título."
+ "Leave the room?": {
+  "zh_TW": "要離開房間嗎？",
+  "zh_CN": "要离开房间吗？",
+  "ja": "ルームを出ますか？",
+  "fr": "Quitter le salon ?",
+  "es": "¿Salir de la sala?"
  },
  "Left-handed": {
   "zh_TW": "左手模式",
@@ -4423,12 +4458,12 @@
   "fr": "Vies restantes : %d",
   "es": "Vidas restantes: %d"
  },
- "Load test incoming! Crates falling!": {
-  "zh_TW": "負載測試開始！板箱正在墜落！",
-  "zh_CN": "负载测试开始！板箱正在坠落！",
-  "ja": "荷重テスト開始！木箱が降ってくるぞ！",
-  "fr": "Test de charge imminent ! Caisses en chute !",
-  "es": "¡Prueba de carga entrante! ¡Cajas cayendo!"
+ "Load Test!": {
+  "zh_TW": "負載測試！",
+  "zh_CN": "负载测试！",
+  "ja": "負荷テスト！",
+  "fr": "Test de charge !",
+  "es": "¡Prueba de carga!"
  },
  "Lobby": {
   "zh_TW": "大廳",
@@ -4850,12 +4885,12 @@
   "fr": "Pistolet filet",
   "es": "Pistola red"
  },
- "New hat: %s. Pick it in the Walldrobe": {
-  "zh_TW": "新帽子：%s。可在衣櫥中選擇",
-  "zh_CN": "新帽子：%s。可在衣橱中选择",
-  "ja": "新しい帽子：%s。ワードローブで選べます",
-  "fr": "Nouveau chapeau : %s. À choisir dans la garde-robe",
-  "es": "Sombrero nuevo: %s. Elígelo en el armario"
+ "New hat: %s": {
+  "zh_TW": "新帽子：%s",
+  "zh_CN": "新帽子：%s",
+  "ja": "新しい帽子：%s",
+  "fr": "Nouveau chapeau : %s",
+  "es": "Sombrero nuevo: %s"
  },
  "New modes: Team Deathmatch, Deathmatch, Sudden Death and Chaos. Chaos is exactly what it sounds like": {
   "zh_TW": "新模式：團隊死鬥、死鬥、猝死賽和混亂。混亂就是字面上的意思",
@@ -4989,13 +5024,6 @@
   "ja": "まだ首位なし",
   "fr": "Pas encore de leader",
   "es": "Aún no hay líder"
- },
- "No leader yet. Be first!": {
-  "zh_TW": "還沒有領先者，搶個第一吧！",
-  "zh_CN": "还没有领先者，抢个第一吧！",
-  "ja": "まだ首位はいません。一番乗りしよう！",
-  "fr": "Personne en tête pour l'instant. Sois le premier !",
-  "es": "Aún no hay líder. ¡Sé el primero!"
  },
  "No outfit": {
   "zh_TW": "不穿服裝",
@@ -5235,6 +5263,13 @@
   "fr": "Le jeu en ligne utilise maintenant le nouveau serveur",
   "es": "El juego en línea ahora usa el servidor nuevo"
  },
+ "Online play uses your account name.": {
+  "zh_TW": "線上遊玩會使用你的帳號名稱。",
+  "zh_CN": "在线游玩会使用你的账号名称。",
+  "ja": "オンラインではアカウント名が使われます。",
+  "fr": "Le jeu en ligne utilise le nom de ton compte.",
+  "es": "El juego en línea usa el nombre de tu cuenta."
+ },
  "Only change this if a friend runs their own server": {
   "zh_TW": "只有朋友自己架設伺服器時才需要更改",
   "zh_CN": "只有朋友自己架设服务器时才需要更改",
@@ -5298,12 +5333,12 @@
   "fr": "ÉLIMINÉ",
   "es": "Fuera"
  },
- "Out of lives. The site wins this time.": {
-  "zh_TW": "生命用完了。這次工地贏了。",
-  "zh_CN": "生命用完了。这次工地赢了。",
-  "ja": "ライフがなくなりました。今回は現場の勝ちです。",
-  "fr": "Plus de vies. Le chantier gagne cette fois.",
-  "es": "Sin vidas. La obra gana esta vez."
+ "Out of lives": {
+  "zh_TW": "生命用完了",
+  "zh_CN": "生命用完了",
+  "ja": "ライフ切れ",
+  "fr": "Plus de vies",
+  "es": "Sin vidas"
  },
  "Out · %d left": {
   "zh_TW": "出局 · 剩 %d 人",
@@ -5788,12 +5823,12 @@
   "fr": "Quitter la partie",
   "es": "Salir de la partida"
  },
- "Quit this match? It won't count, and you'll go back to the title.": {
-  "zh_TW": "要結束這場比賽嗎？不會計入成績，並回到標題畫面。",
-  "zh_CN": "要结束这场比赛吗？不会计入成绩，并返回标题画面。",
-  "ja": "この試合を終了しますか？記録には残らず、タイトルに戻ります。",
-  "fr": "Quitter la partie ? Elle ne comptera pas et l'on revient au titre.",
-  "es": "¿Terminar esta partida? No contará y volverás al título."
+ "Quit this match? It won't count.": {
+  "zh_TW": "要退出這場比賽嗎？不會計入成績。",
+  "zh_CN": "要退出这场比赛吗？不会计入成绩。",
+  "ja": "この試合をやめますか？記録されません。",
+  "fr": "Quitter ce match ? Il ne comptera pas.",
+  "es": "¿Salir de la partida? No contará."
  },
  "Quit to title": {
   "zh_TW": "回到標題畫面",
@@ -5928,13 +5963,6 @@
   "fr": "Replay · touche pour passer",
   "es": "Repetición · toca para saltar"
  },
- "Replay · you K.O.'d %s · tap to skip": {
-  "zh_TW": "重播 · 你擊倒了 %s · 點一下跳過",
-  "zh_CN": "重播 · 你击倒了 %s · 点一下跳过",
-  "ja": "リプレイ · %s をKOしたシーン · タップでスキップ",
-  "fr": "Replay · tu as mis K.O. %s · touche pour passer",
-  "es": "Repetición · tú dejaste K.O. a %s · toca para saltar"
- },
  "Reset to default": {
   "zh_TW": "重設為預設值",
   "zh_CN": "重置为默认值",
@@ -5948,13 +5976,6 @@
   "ja": "復活中…",
   "fr": "Réapparition…",
   "es": "Reapareciendo…"
- },
- "Respawning… shake it off": {
-  "zh_TW": "重生中…甩甩頭就好",
-  "zh_CN": "重生中…甩甩头就好",
-  "ja": "リスポーン中…気を取り直して",
-  "fr": "Réapparition… secoue-toi",
-  "es": "Reapareciendo… sacúdete"
  },
  "Resume": {
   "zh_TW": "繼續",
@@ -5970,12 +5991,12 @@
   "fr": "Réessayer l'étape",
   "es": "Reintentar etapa"
  },
- "Revision pads active! Step carefully!": {
-  "zh_TW": "修改彈跳墊已啟用！小心腳下！",
-  "zh_CN": "修改弹跳垫已启用！小心脚下！",
-  "ja": "修正パッド稼働中！足元に注意！",
-  "fr": "Plateformes de révision actives ! Attention où tu marches !",
-  "es": "¡Plataformas de revisión activas! ¡Pisa con cuidado!"
+ "Revision Pads!": {
+  "zh_TW": "修訂踏板！",
+  "zh_CN": "修订踏板！",
+  "ja": "改訂パッド！",
+  "fr": "Plaques de révision !",
+  "es": "¡Placas de revisión!"
  },
  "Revolver": {
   "zh_TW": "左輪手槍",
@@ -6060,6 +6081,13 @@
   "ja": "ルーム",
   "fr": "Salon",
   "es": "Sala"
+ },
+ "Room %s": {
+  "zh_TW": "房間 %s",
+  "zh_CN": "房间 %s",
+  "ja": "ルーム %s",
+  "fr": "Salon %s",
+  "es": "Sala %s"
  },
  "Room code %s": {
   "zh_TW": "房間代碼 %s",
@@ -6257,12 +6285,12 @@
   "fr": "Gamin",
   "es": "Pillín"
  },
- "Scope creep! Extra workers arriving!": {
-  "zh_TW": "需求蔓延！額外工人趕到了！",
-  "zh_CN": "需求蔓延！额外工人赶到了！",
-  "ja": "スコープの肥大化！追加の作業員が到着！",
-  "fr": "Dérive des objectifs ! Des ouvriers supplémentaires arrivent !",
-  "es": "¡Ampliación de alcance! ¡Llegan trabajadores adicionales!"
+ "Scope Creep!": {
+  "zh_TW": "範圍蔓延！",
+  "zh_CN": "范围蔓延！",
+  "ja": "仕様膨張！",
+  "fr": "Dérive du projet !",
+  "es": "¡Se amplía el alcance!"
  },
  "Scope is fluid. Mind the revision pads!": {
   "zh_TW": "需求變動中。注意修改彈跳墊！",
@@ -6754,12 +6782,12 @@
   "fr": "Spectateur : %s  ·  %d restants  ·  toucher pour changer",
   "es": "Observando a %s  ·  quedan %d  ·  toca para cambiar"
  },
- "Spectating %s · %d left · tap to switch": {
-  "zh_TW": "觀戰 %s · 剩 %d 人 · 點一下切換",
-  "zh_CN": "观战 %s · 剩 %d 人 · 点一下切换",
-  "ja": "観戦中 %s · 残り %d 人 · タップで切り替え",
-  "fr": "Spectateur : %s · %d restants · touche pour changer",
-  "es": "Viendo a %s · quedan %d · toca para cambiar"
+ "Spectating %s · %d left": {
+  "zh_TW": "觀戰 %s · 剩 %d 人",
+  "zh_CN": "观战 %s · 剩 %d 人",
+  "ja": "観戦中 %s · 残り%d人",
+  "fr": "Spectateur de %s · %d restants",
+  "es": "Viendo a %s · quedan %d"
  },
  "Speed": {
   "zh_TW": "速度",
@@ -7090,13 +7118,6 @@
   "fr": "Superviseur",
   "es": "Supervisor"
  },
- "Supervisor called in backup tradies!": {
-  "zh_TW": "監工呼叫了工友增援！",
-  "zh_CN": "监工呼叫了工友增援！",
-  "ja": "現場監督が応援の職人を呼んだ！",
-  "fr": "Le superviseur a appelé des ouvriers en renfort !",
-  "es": "¡El supervisor pidió refuerzos de obreros!"
- },
  "Sur-Ron Wheelie": {
   "zh_TW": "電動越野車前輪翹起",
   "zh_CN": "电动越野车翘头",
@@ -7138,6 +7159,13 @@
   "ja": "タクティカルリロード",
   "fr": "Rechargement tactique",
   "es": "Recarga táctica"
+ },
+ "Tap a row to change it": {
+  "zh_TW": "點一列即可更改",
+  "zh_CN": "点一行即可更改",
+  "ja": "行をタップして変更",
+  "fr": "Touche une ligne pour changer",
+  "es": "Toca una fila para cambiarla"
  },
  "Tap a slot to switch": {
   "zh_TW": "點按欄位即可切換",
@@ -7286,12 +7314,12 @@
   "fr": "Le Client",
   "es": "El Cliente"
  },
- "The Client signed off. Every tradie is back on smoko.": {
-  "zh_TW": "客戶簽字驗收了。工友們都回去休息了。",
-  "zh_CN": "客户签字验收了。工友们都回去休息了。",
-  "ja": "依頼主が承認しました。職人たちは休憩に戻りました。",
-  "fr": "Le client a validé. Tous les ouvriers retournent en pause.",
-  "es": "El cliente dio el visto bueno. Todos los obreros vuelven al descanso."
+ "The Client signed off": {
+  "zh_TW": "客戶已簽收",
+  "zh_CN": "客户已签收",
+  "ja": "クライアントが承認",
+  "fr": "Le client a validé",
+  "es": "El cliente dio el visto bueno"
  },
  "The Construction update": {
   "zh_TW": "建築大更新",
@@ -7320,6 +7348,13 @@
   "ja": "ワードローブには持っているものだけが表示されます。それ以外はショップにあり、新しい「キャラクター」タブもあります",
   "fr": "La Garde-robe n'affiche que ce que tu possèdes. Le reste est dans la Boutique, avec un nouvel onglet Classe",
   "es": "El Armario solo muestra lo que tienes. Lo demás está en la Tienda, con una nueva pestaña de Clase"
+ },
+ "The aiming dot in the middle of the screen": {
+  "zh_TW": "螢幕中央的瞄準點",
+  "zh_CN": "屏幕中央的瞄准点",
+  "ja": "画面中央の照準ドット",
+  "fr": "Le point de visée au centre de l'écran",
+  "es": "El punto de mira en el centro de la pantalla"
  },
  "The arena is growing!": {
   "zh_TW": "競技場正在變大！",
@@ -7425,13 +7460,6 @@
   "ja": "新しいホストが試合を引き継いでいます…",
   "fr": "Le nouvel hôte poursuit la partie…",
   "es": "El nuevo anfitrión continúa la partida…"
- },
- "The range has %d dummies: they stand, slide and pop back up. They never fight back.": {
-  "zh_TW": "練習場有 %d 個假人：它們會站立、滑動並彈起，從不反擊。",
-  "zh_CN": "练习场有 %d 个假人：它们会站立、滑动并弹起，从不反击。",
-  "ja": "練習場には %d 体のダミーがいます。立つ、滑る、起き上がるだけで、反撃はしません。",
-  "fr": "Le terrain d'entraînement compte %d mannequins : ils restent debout, glissent et se relèvent. Ils ne ripostent jamais.",
-  "es": "El campo de práctica tiene %d maniquíes: se quedan quietos, se deslizan y vuelven a levantarse. Nunca devuelven el golpe."
  },
  "The room code is still %s.": {
   "zh_TW": "房間代碼仍是 %s。",
@@ -7664,6 +7692,13 @@
   "fr": "Basculer",
   "es": "Alternar"
  },
+ "Tool Crate!": {
+  "zh_TW": "工具箱！",
+  "zh_CN": "工具箱！",
+  "ja": "工具箱！",
+  "fr": "Caisse à outils !",
+  "es": "¡Caja de herramientas!"
+ },
  "Top hat": {
   "zh_TW": "高帽",
   "zh_CN": "高帽",
@@ -7838,6 +7873,13 @@
   "ja": "2チーム戦。先に30KO",
   "fr": "Deux équipes. Premier à 30 K.O.",
   "es": "Dos equipos. El primero a 30 K.O."
+ },
+ "Two teams: %d vs %d": {
+  "zh_TW": "兩隊：%d 對 %d",
+  "zh_CN": "两队：%d 对 %d",
+  "ja": "2チーム：%d 対 %d",
+  "fr": "Deux équipes : %d contre %d",
+  "es": "Dos equipos: %d contra %d"
  },
  "Type %s to confirm": {
   "zh_TW": "輸入 %s 以確認",
@@ -8063,6 +8105,13 @@
   "fr": "Armes",
   "es": "Armas"
  },
+ "Weapons Swapped!": {
+  "zh_TW": "武器對調！",
+  "zh_CN": "武器对调！",
+  "ja": "武器チェンジ！",
+  "fr": "Armes échangées !",
+  "es": "¡Armas cambiadas!"
+ },
  "Weapons are double size": {
   "zh_TW": "武器是兩倍大小",
   "zh_CN": "武器是两倍大小",
@@ -8217,12 +8266,12 @@
   "fr": "Gagne une partie chaque jour pour enchaîner les jours. Oscille chaque jour !",
   "es": "Gana una partida cada día para mantener la racha. ¡Tambaléate a diario!"
  },
- "Win on Normal or Nightmare for the Site Foreman hat": {
-  "zh_TW": "在普通或噩夢難度通關，即可獲得工地領班帽",
-  "zh_CN": "在普通或噩梦难度通关，即可获得工地领班帽",
-  "ja": "ノーマルかナイトメアでクリアすると現場監督のヘルメットが手に入る",
-  "fr": "Gagne en Normal ou Cauchemar pour le casque de contremaître",
-  "es": "Gana en Normal o Pesadilla para el casco de capataz"
+ "Win on Normal or Nightmare for a hat": {
+  "zh_TW": "在普通或惡夢難度獲勝可得帽子",
+  "zh_CN": "在普通或噩梦难度获胜可得帽子",
+  "ja": "ノーマルかナイトメアで勝つと帽子がもらえる",
+  "fr": "Gagne en Normal ou Cauchemar pour un chapeau",
+  "es": "Gana en Normal o Pesadilla para un sombrero"
  },
  "Windows": {
   "zh_TW": "窗戶",
@@ -8483,6 +8532,13 @@
   "fr": "Tout est déjà possédé !",
   "es": "¡Ya tienes todo lo de aquí!"
  },
+ "You own the %s": {
+  "zh_TW": "你已有 %s",
+  "zh_CN": "你已有 %s",
+  "ja": "%sは持っています",
+  "fr": "Tu as déjà : %s",
+  "es": "Ya tienes: %s"
+ },
  "You play as %s.": {
   "zh_TW": "你將以 %s 上場。",
   "zh_CN": "你将以 %s 上场。",
@@ -8525,12 +8581,12 @@
   "fr": "Victoire !",
   "es": "¡Ganas!"
  },
- "You're a giant! Mind the furniture": {
-  "zh_TW": "你變成巨人了！小心家具",
-  "zh_CN": "你变成巨人了！小心家具",
-  "ja": "巨大化！家具にご注意",
-  "fr": "Tu es un géant ! Attention aux meubles",
-  "es": "¡Eres un gigante! Cuidado con los muebles"
+ "You're a giant!": {
+  "zh_TW": "你變巨人了！",
+  "zh_CN": "你变巨人了！",
+  "ja": "巨大化した！",
+  "fr": "Tu es géant !",
+  "es": "¡Eres gigante!"
  },
  "You're already in a room.": {
   "zh_TW": "你已經在房間裡了。",
@@ -8553,13 +8609,6 @@
   "fr": "Tu es éliminé ! Gros vacillement",
   "es": "¡Estás fuera! Gran tambaleo"
  },
- "You're out! Spectating from the sofa.": {
-  "zh_TW": "你出局了！在沙發上觀戰。",
-  "zh_CN": "你出局了！在沙发上观战。",
-  "ja": "脱落！ソファから観戦中です。",
-  "fr": "Éliminé ! Spectateur depuis le canapé.",
-  "es": "¡Estás fuera! Viendo desde el sofá."
- },
  "You're out! Spectating.": {
   "zh_TW": "你出局了！觀戰中。",
   "zh_CN": "你出局了！观战中。",
@@ -8581,12 +8630,12 @@
   "fr": "Tu es l'hôte maintenant : la partie continue.",
   "es": "Ahora eres el anfitrión: la partida sigue."
  },
- "Your %s is already in the Walldrobe": {
-  "zh_TW": "你的%s已在衣櫥中",
-  "zh_CN": "你的%s已在衣橱中",
-  "ja": "%s はすでにワードローブにあります",
-  "fr": "Votre %s est déjà dans la garde-robe",
-  "es": "Tu %s ya está en el armario"
+ "You're the host!": {
+  "zh_TW": "你是房主了！",
+  "zh_CN": "你是房主了！",
+  "ja": "あなたがホストです！",
+  "fr": "Tu es l'hôte !",
+  "es": "¡Eres el anfitrión!"
  },
  "Your account": {
   "zh_TW": "你的帳號",

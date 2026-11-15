@@ -145,47 +145,5 @@
   "ja": "承認前にもう1件だけ仕様変更の依頼だ！",
   "fr": "Une toute dernière demande de modification avant signature !",
   "es": "¡Una última solicitud de cambio antes de la entrega!"
- },
- "Load test incoming! Crates falling!": {
-  "zh_TW": "負載測試開始！板箱正在墜落！",
-  "zh_CN": "负载测试开始！板箱正在坠落！",
-  "ja": "荷重テスト開始！木箱が降ってくるぞ！",
-  "fr": "Test de charge imminent ! Caisses en chute !",
-  "es": "¡Prueba de carga entrante! ¡Cajas cayendo!"
- },
- "Revision pads active! Step carefully!": {
-  "zh_TW": "修改彈跳墊已啟用！小心腳下！",
-  "zh_CN": "修改弹跳垫已启用！小心脚下！",
-  "ja": "修正パッド稼働中！足元に注意！",
-  "fr": "Plateformes de révision actives ! Attention où tu marches !",
-  "es": "¡Plataformas de revisión activas! ¡Pisa con cuidado!"
- },
- "Supervisor called in backup tradies!": {
-  "zh_TW": "監工呼叫了工友增援！",
-  "zh_CN": "监工呼叫了工友增援！",
-  "ja": "現場監督が応援の職人を呼んだ！",
-  "fr": "Le superviseur a appelé des ouvriers en renfort !",
-  "es": "¡El supervisor pidió refuerzos de obreros!"
- },
- "Deadline approaching! Floor is shrinking!": {
-  "zh_TW": "截止日期臨近！地面正在縮小！",
-  "zh_CN": "截止日期临近！地面正在缩小！",
-  "ja": "納期が迫る！床が縮小しているぞ！",
-  "fr": "Date limite imminente ! Le sol rétrécit !",
-  "es": "¡Se acerca la fecha límite! ¡El suelo se encoge!"
- },
- "Scope creep! Extra workers arriving!": {
-  "zh_TW": "需求蔓延！額外工人趕到了！",
-  "zh_CN": "需求蔓延！额外工人赶到了！",
-  "ja": "スコープの肥大化！追加の作業員が到着！",
-  "fr": "Dérive des objectifs ! Des ouvriers supplémentaires arrivent !",
-  "es": "¡Ampliación de alcance! ¡Llegan trabajadores adicionales!"
- },
- "Change request approved! Weapons swapped!": {
-  "zh_TW": "修改需求已批准！武器已更換！",
-  "zh_CN": "修改需求已批准！武器已更换！",
-  "ja": "仕様変更承認！武器が変更された！",
-  "fr": "Demande de modification approuvée ! Changement d'armes !",
-  "es": "¡Solicitud de cambio aprobada! ¡Armas intercambiadas!"
  }
 }

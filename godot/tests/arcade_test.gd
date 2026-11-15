@@ -444,7 +444,7 @@ func _full_run() -> void:
 func _hud_layout(w: Node, tag: String) -> void:
 	var hud: Control = w.hud
 	var ah: Control = w.arcade.hud
-	w.hud.toast("Crate incoming: Mammoth Sniper Rifle!")
+	w.hud.toast("Mammoth Sniper Rifle Crate")
 	for i in 3: w.tick(FRAME)
 	var vs: Vector2 = hud.get_viewport_rect().size
 	var r := Rect2(ah.position, ah.size)

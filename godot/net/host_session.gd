@@ -223,6 +223,11 @@ func poll(dt: float) -> void:
 	_clock += dt
 	net.poll()
 	if phase == Phase.CLOSED: return
+	if phase == Phase.LOBBY or phase == Phase.MATCH:      # the host's own latency: a relay {op:ping} -> {op:pong} every PING_EVERY
+		_ping_t -= dt
+		if _ping_t <= 0.0:
+			_ping_t = PING_EVERY
+			net.send_op({"op": "ping", "ts": snappedf(_clock * 1000.0, 0.01)})
 	if phase == Phase.CONNECTING or phase == Phase.JOINING:
 		_connect_t -= dt
 		if _connect_t <= 0.0:
@@ -284,6 +289,9 @@ func _on_server(m: Dictionary) -> void:
 			var inner: Variant = m.get("m")
 			if inner is Dictionary: _host_recv(NetSnapshot.to_int32(m["from"]), inner)
 			else: guarded += 1
+		"pong":
+			var pts := NetSnapshot.num(m.get("ts"), 0.0, 1e12, -1.0)
+			if pts >= 0.0: ping_ms = maxi(0, roundi(_clock * 1000.0 - pts))
 		"noauth":
 			if net.token != "": _set_status("Your login expired. Log in again.")
 

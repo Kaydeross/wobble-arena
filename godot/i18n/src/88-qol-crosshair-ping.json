@@ -1,0 +1,30 @@
+{
+ "Crosshair": {
+  "zh_TW": "準星",
+  "zh_CN": "准星",
+  "ja": "照準",
+  "fr": "Viseur",
+  "es": "Mira"
+ },
+ "The aiming dot in the middle of the screen": {
+  "zh_TW": "螢幕中央的瞄準點",
+  "zh_CN": "屏幕中央的瞄准点",
+  "ja": "画面中央の照準ドット",
+  "fr": "Le point de visée au centre de l'écran",
+  "es": "El punto de mira en el centro de la pantalla"
+ },
+ "Room %s": {
+  "zh_TW": "房間 %s",
+  "zh_CN": "房间 %s",
+  "ja": "ルーム %s",
+  "fr": "Salon %s",
+  "es": "Sala %s"
+ },
+ "Host": {
+  "zh_TW": "房主",
+  "zh_CN": "房主",
+  "ja": "ホスト",
+  "fr": "Hôte",
+  "es": "Anfitrión"
+ }
+}

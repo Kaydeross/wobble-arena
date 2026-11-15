@@ -200,6 +200,7 @@ func show_section(s: String) -> void:
 				["normal", "advanced"], ["Normal", "Advanced"])
 			_toggle("kill_cam", "K.O. replays", "A short slow-motion replay after a quick K.O. (offline)")
 			_toggle("damage_numbers", "Damage numbers", "Numbers pop up over the player you hit")
+			_toggle("crosshair", "Crosshair", "The aiming dot in the middle of the screen")
 			_toggle("enemy_arrows", "Enemy arrows", "Small arrows point to enemies off screen")
 		"account":
 			var u := _account_line()
