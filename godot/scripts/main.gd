@@ -525,6 +525,31 @@ func apply_safe_area() -> void:
 
 # ---------------- online ----------------
 
+## The logged-in account's username (what online play uses as the player name), or "" when signed out.
+func _account_name() -> String:
+	if Save == null or Save.cloud == null or not Save.cloud.signed_in(): return ""
+	return Safety.clean_name(Save.cloud.user()).substr(0, 12)
+
+## Online name field: locked to the account name while signed in (no fake names online); free only when signed out
+## (offline / REQUIRE_LOGIN=0 servers and headless tests).
+func _sync_online_name() -> void:
+	var an := _account_name()
+	var ed := _ui["name"] as LineEdit
+	if an != "":
+		ed.text = an
+		ed.editable = false
+		ed.tooltip_text = tr("Online play uses your account name.")
+	else:
+		ed.editable = true
+		ed.tooltip_text = ""
+
+## The name used for any online role.
+func _online_name() -> String:
+	var an := _account_name()
+	if an != "": return an
+	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
+	return nm if nm != "" else "Player"
+
 func _build_online() -> void:
 	var n := O + "Main/Side/"
 	_ui["room"] = get_node(n + "CodeRow/Room")
@@ -535,9 +560,22 @@ func _build_online() -> void:
 	_ui["room"].text = str(Settings.get_value("room_code", ""))
 	_ui["name"].text = str(Settings.get_value("name", "Player"))
 	_ui["name"].text_changed.connect(func(t: String) -> void:
+		if _account_name() != "": return
 		var clean := Safety.clean_name(t).substr(0, 12)
 		if clean != "" and not Safety.bad_name(clean): Settings.set_value("name", clean))
+	_sync_online_name()
 	_ui["join"].pressed.connect(join_room)
+	var rl := _ui["room"] as LineEdit
+	rl.placeholder_text = "4-digit code"
+	rl.virtual_keyboard_type = LineEdit.KEYBOARD_TYPE_NUMBER
+	rl.text_changed.connect(func(t: String) -> void:      # typed codes are 4 digits; list picks set the text in code (no signal)
+		var digits := ""
+		for ch in t:
+			if ch >= "0" and ch <= "9": digits += ch
+		if digits != t:
+			var c := rl.caret_column
+			rl.text = digits
+			rl.caret_column = mini(c, digits.length()))
 	_ui["room"].text_submitted.connect(func(_t: String) -> void: join_room())
 	var side: VBoxContainer = get_node(O + "Main/Side")
 	var hb := Button.new()
@@ -589,6 +627,7 @@ func open_account(pg := "") -> void:
 	account.open(pg)
 
 func _refresh_login() -> void:
+	if _ui.has("name"): _sync_online_name()
 	var u := Save.cloud.user()
 	var logged := Save.cloud.signed_in()
 	_ui["acct"].text = (tr("Signed in as %s") % u) if logged else tr("Pick a name to host")
@@ -627,8 +666,7 @@ func join_room() -> void:
 	_join_kind = ""
 	var url := str(Settings.get_value("server_url")).strip_edges()
 	var room := str(_ui["room"].text).strip_edges()      # the server matches codes case-insensitively
-	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
-	if nm == "": nm = "Player"
+	var nm := _online_name()
 	if room == "":
 		_status("Type the room code your friend gave you, or pick a room from the list.")
 		return
@@ -723,8 +761,7 @@ func play_arcade() -> void:
 ## `arcade` room opts and `start.arc` / `am` messages are unchanged (docs/PROTOCOL.md 6.4).
 func coop_host_opts() -> Dictionary:
 	var diff := ArcadeCoop.norm_diff(str(Settings.get_value("arcade_diff", "normal")))
-	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
-	if nm == "": nm = "Player"
+	var nm := _online_name()
 	var rn := str(_ui["rname"].text).strip_edges().substr(0, 24) if _ui.has("rname") else ""
 	if rn == "": rn = tr("%s's co-op run") % nm
 	return {"name": rn, "pub": bool(_host["pub"]), "max": ArcadeCoop.SEATS, "bots": 1, "mode": "construction",
@@ -733,8 +770,7 @@ func coop_host_opts() -> Dictionary:
 
 ## The host's own player info for a co-op room (a class the player owns, else the default).
 func coop_host_info() -> Dictionary:
-	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
-	if nm == "": nm = "Player"
+	var nm := _online_name()
 	var cls := str(Settings.get_value("class", "wobbler"))
 	if not Content.classes.has(cls) or not SetupWizard.owns_class(cls): cls = "wobbler"
 	return {"name": nm, "skin": Settings.get_value("skin", "none"), "hat": Settings.get_value("hat", "none"),
@@ -749,8 +785,7 @@ func host_room() -> void:
 		_status(tr("Unlock Construction first: the Arcade co-op room is part of the Construction DLC."))
 		return
 	var url := str(Settings.get_value("server_url")).strip_edges()
-	var nm := str(_ui["name"].text).strip_edges().substr(0, 12)
-	if nm == "": nm = "Player"
+	var nm := _online_name()
 	Settings.set_value("name", nm)
 	Settings.set_value("host_opts", _host.duplicate())
 	var mode := HostSession.online_mode(str(_host["mode"]))
@@ -1096,7 +1131,7 @@ func show_host(on: bool) -> void:
 		coop_b.tooltip_text = (tr("Two seats on the Construction boss rush: a friend takes the second one, or a bot does.")
 			if DlcUnlock.owned() else tr("Unlock Construction first"))
 		set_host_type(str(_host["type"]))
-		if str(_ui["rname"].text) == "": _ui["rname"].text = tr("%s's room") % (str(_ui["name"].text).strip_edges().substr(0, 12) if str(_ui["name"].text).strip_edges() != "" else "Player")
+		if str(_ui["rname"].text) == "": _ui["rname"].text = tr("%s's room") % _online_name()
 		show_host_tab("Room")
 		if Tier.is_pc(): (_ui["rname"] as LineEdit).grab_focus.call_deferred()
 

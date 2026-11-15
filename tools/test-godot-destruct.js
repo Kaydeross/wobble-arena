@@ -35,4 +35,10 @@ console.log(lines.join('\n') || out.slice(0, 2000));
 const unexpected = out.split('\n').some(l => /SCRIPT ERROR/.test(l) || (/^ERROR/.test(l) && !/^ERROR: Destruct: /.test(l)));
 const ok = r.status === 0 && /^DESTRUCT ok/m.test(out) && !unexpected;
 if (!ok) { console.log('godot destruct test FAILED'); process.exit(1); }
+// PropDebris is visible and sane (tests/prop_debris_test.gd): pieces exist, are visible, in bounds, above ground, then sink away
+const r2 = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/prop_debris_test.gd', '--', '--no-save'],
+  { encoding: 'utf8', timeout: 600000 });
+const out2 = (r2.stdout || '') + (r2.stderr || '');
+console.log(out2.split('\n').filter(l => /^(PROPDEBRIS|FAIL)|SCRIPT ERROR/.test(l)).join('\n'));
+if (r2.status !== 0 || !/^PROPDEBRIS ok/m.test(out2) || /SCRIPT ERROR/.test(out2)) { console.log('prop debris test FAILED'); process.exit(1); }
 console.log('godot destruct test passes');

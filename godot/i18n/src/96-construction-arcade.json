@@ -139,13 +139,6 @@
   "fr": "Vous avez atteint l'étape %d sur %d : %s",
   "es": "Llegaste a la etapa %d de %d: %s"
  },
- "Out of lives. The site wins this time.": {
-  "zh_TW": "生命用完了。這次工地贏了。",
-  "zh_CN": "生命用完了。这次工地赢了。",
-  "ja": "ライフがなくなりました。今回は現場の勝ちです。",
-  "fr": "Plus de vies. Le chantier gagne cette fois.",
-  "es": "Sin vidas. La obra gana esta vez."
- },
  "Site cleared!": {
   "zh_TW": "工地清場！",
   "zh_CN": "工地清场！",
@@ -153,33 +146,12 @@
   "fr": "Chantier nettoyé !",
   "es": "¡Obra despejada!"
  },
- "The Client signed off. Every tradie is back on smoko.": {
-  "zh_TW": "客戶簽字驗收了。工友們都回去休息了。",
-  "zh_CN": "客户签字验收了。工友们都回去休息了。",
-  "ja": "依頼主が承認しました。職人たちは休憩に戻りました。",
-  "fr": "Le client a validé. Tous les ouvriers retournent en pause.",
-  "es": "El cliente dio el visto bueno. Todos los obreros vuelven al descanso."
- },
- "New hat: %s. Pick it in the Walldrobe": {
-  "zh_TW": "新帽子：%s。可在衣櫥中選擇",
-  "zh_CN": "新帽子：%s。可在衣橱中选择",
-  "ja": "新しい帽子：%s。ワードローブで選べます",
-  "fr": "Nouveau chapeau : %s. À choisir dans la garde-robe",
-  "es": "Sombrero nuevo: %s. Elígelo en el armario"
- },
  "Includes %d victory bonus coins": {
   "zh_TW": "包含 %d 金幣勝利獎勵",
   "zh_CN": "包含 %d 金币胜利奖励",
   "ja": "勝利ボーナス %d コインを含む",
   "fr": "Dont %d pièces de bonus de victoire",
   "es": "Incluye %d monedas de bono de victoria"
- },
- "Your %s is already in the Walldrobe": {
-  "zh_TW": "你的%s已在衣櫥中",
-  "zh_CN": "你的%s已在衣橱中",
-  "ja": "%s はすでにワードローブにあります",
-  "fr": "Votre %s est déjà dans la garde-robe",
-  "es": "Tu %s ya está en el armario"
  },
  "Site Foreman Hard Hat": {
   "zh_TW": "工地主管安全帽",

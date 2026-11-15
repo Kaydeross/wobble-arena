@@ -13,7 +13,7 @@ const { Client } = require('./wa-client');
   await Promise.all([h, g1, g2].map(c => c.op('hi')));
 
   const id = await h.create(false);
-  assert.match(id, /^[A-Z2-9]{5}$/, 'private room code');
+  assert.match(id, /^\d{4}$/, 'private room code');
   await g1.join(id.toLowerCase());                                  // codes are case-insensitive
   assert.equal((await h.op('peer')).ev, 'open');
   g1.hello();

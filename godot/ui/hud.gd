@@ -26,7 +26,7 @@ var _ko_n: Label
 var _clock: Label
 var _leader: Label
 var _crown: Control
-var _kids: Label          ## "Kids mode · half coins · no leaderboard" badge (Settings kids_mode)
+var _kids: Label          ## "Kids mode" badge (Settings kids_mode)
 var _aim: Label           ## "Advanced aim · +25% damage" badge (Settings aim_mode, docs/AIM.md)
 var _radar: Control
 var _feed: VBoxContainer
@@ -40,6 +40,10 @@ var _plates: Control
 var _indicators: Control          ## off-screen enemy arrows (ui/enemy_indicators.gd)
 var _ind_blocked: Array = []      ## screen rects those arrows slide past (reused every frame, no allocation)
 var _cross: Control
+var _cross_on := true            ## Settings `crosshair`: the aiming dot (the charged-melee ring and heavy-swing rim draw regardless)
+var _net: HBoxContainer          ## online only: "Room 4821 · Host · 34 ms" status pill under the K.O. panel
+var _net_dot: ColorRect
+var _net_l: Label
 var _hint: Label
 var _center: Label
 var _impact: Control              ## final-K.O. comic badge (Sprint 2.1): the speedometer over the kill cam
@@ -79,6 +83,7 @@ func _ready() -> void:
 	_cross.draw.connect(_draw_cross)
 	add_child(_cross)
 	_build_ko()
+	_build_net()
 	_radar = preload("res://ui/hud_radar.gd").new()
 	_radar.name = "Radar"
 	add_child(_radar)
@@ -147,6 +152,43 @@ func _on_window_input(e: InputEvent) -> void:
 
 # ---------------- building ----------------
 
+const PING_GOOD := 60       ## ms: under this the status dot is green, up to PING_OK amber, above red
+const PING_OK := 140
+
+func _build_net() -> void:
+	_net = HBoxContainer.new()
+	_net.name = "NetStatus"
+	_net.add_theme_constant_override("separation", 5)
+	_net.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_net.modulate.a = 0.75
+	_net.visible = false
+	add_child(_net)
+	_net_dot = ColorRect.new()
+	_net_dot.custom_minimum_size = Vector2(8, 8)
+	_net_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_net_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_net.add_child(_net_dot)
+	_net_l = _lbl(_net, UiTheme.MIN_FONT, UiTheme.MUTED)
+
+## Colour of the latency dot: green < PING_GOOD, amber up to PING_OK, red above; grey while unknown (ping < 0).
+static func ping_color(ms: int) -> Color:
+	if ms < 0: return UiTheme.MUTED
+	if ms < PING_GOOD: return Color("5fd97a")
+	if ms <= PING_OK: return Color("f2b53c")
+	return Color("ef5b5b")
+
+func _update_net(ko_bottom: float, x: float) -> void:
+	var s: Variant = world.session
+	_net.visible = s != null
+	if s == null: return
+	var txt := tr("Room %s") % str(s.room_code)
+	if s.is_host(): txt += " · " + tr("Host")
+	if s.ping_ms >= 0: txt += " · %d ms" % s.ping_ms
+	if _net_l.text != txt: _net_l.text = txt
+	_net_dot.color = ping_color(s.ping_ms)
+	_net.reset_size()
+	_net.position = Vector2(x + 4.0, ko_bottom + 4.0)
+
 func _build_ko() -> void:
 	_ko_panel = PanelContainer.new()
 	_ko_panel.name = "Score"
@@ -195,7 +237,7 @@ func _build_ko() -> void:
 	# (and every HUD layout test) is unchanged outside kids mode.
 	_kids = _lbl(col, UiTheme.MIN_FONT, UiTheme.ACCENT)
 	_kids.name = "KidsBadge"
-	_kids.text = "Kids mode · half coins · no leaderboard"
+	_kids.text = "Kids mode"
 	_kids.visible = false
 	# Aim modes (Settings aim_mode, docs/AIM.md): Advanced is a deliberate trade off (no aim assist, +25% damage
 	# offline). Shown live in a match, hidden in the default Normal mode so the HUD layout tests are unchanged.
@@ -296,6 +338,9 @@ func clear_toast() -> void:
 
 func toast(t: String) -> void:
 	if world != null and world.has_method("results_open") and world.results_open(): return   # the results panel has the stage
+	if _toast.visible and _toast_l.text == t and _toast_t > 0.3:      # the same line again: keep it, just extend it (no re-pop)
+		_toast_t = TOAST_TIME
+		return
 	_toast_l.text = t
 	_toast_t = TOAST_TIME
 	_toast.visible = true
@@ -378,7 +423,7 @@ func update(delta: float) -> void:
 	for f: FighterState in sim.fighters:
 		if f.ko > 0 and (lead == null or f.ko > lead.ko): lead = f
 	_crown.visible = lead != null
-	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [Safety.display_name(lead.name), lead.ko]) if lead else "No leader yet. Be first!"
+	_leader.text = (tr("You lead with %d") % lead.ko if lead == p else "%s  %d" % [Safety.display_name(lead.name), lead.ko]) if lead else "No leader yet"
 	_leader.add_theme_color_override("font_color", UiTheme.ACCENT if lead == p else UiTheme.MUTED)
 	# keep clear of the touch layer's pause button
 	var pause_r := Rect2()
@@ -389,6 +434,8 @@ func update(delta: float) -> void:
 	if pause_r.size.x > 0.0 and pause_r.get_center().x < vs.x * 0.5:
 		ko_x = maxf(ko_x, pause_r.end.x + 10.0)
 	_ko_panel.position = Vector2(ko_x, safe.position.y)
+	_update_net(safe.position.y + _ko_panel.size.y, ko_x)
+	_cross_on = bool(Settings.get_value("crosshair", true))
 	# --- radar + feed (top right)
 	var rx := safe.end.x - _radar.size.x
 	if pause_r.size.x > 0.0 and pause_r.get_center().x > vs.x * 0.5:
@@ -447,12 +494,12 @@ func update(delta: float) -> void:
 	# --- hint, centre message, crosshair, nameplates, toast
 	var hint := ""
 	if Tier.is_pc() and not touch_on and not world.input.mouse_captured() and not world.paused:
-		hint = "Click to look around · Esc: menu"
+		hint = "Click to look"
 	_hint.text = hint
 	_hint.visible = hint != ""
 	_hint.reset_size()
 	_hint.position = Vector2(vs.x / 2.0 - _hint.size.x / 2.0, _hotbar.position.y - _hint.size.y - 6.0)
-	_center.text = "Respawning… shake it off" if p.dead and not p.elim else ""     # out for good (Sudden Death): the spectator line says it
+	_center.text = "Respawning…" if p.dead and not p.elim else ""     # out for good (Sudden Death): the spectator line says it
 	_center.visible = p.dead and not p.elim
 	_center.reset_size()
 	_center.position = Vector2(vs.x / 2.0 - _center.size.x / 2.0, vs.y * 0.38)
@@ -556,11 +603,12 @@ func _fill_hotbar(p: FighterState) -> void:
 
 func _draw_cross() -> void:
 	var ink := Color(UiTheme.INK.r, UiTheme.INK.g, UiTheme.INK.b, 0.7)
-	for d: Vector2 in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
-		_cross.draw_line(d * 5.0, d * 12.0, ink, 4.0, true)
-		_cross.draw_line(d * 5.5, d * 11.5, Color(1, 1, 1, 0.95), 2.0, true)
-	_cross.draw_circle(Vector2.ZERO, 2.4, ink)
-	_cross.draw_circle(Vector2.ZERO, 1.4, Color.WHITE)
+	if _cross_on:
+		for d: Vector2 in [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]:
+			_cross.draw_line(d * 5.0, d * 12.0, ink, 4.0, true)
+			_cross.draw_line(d * 5.5, d * 11.5, Color(1, 1, 1, 0.95), 2.0, true)
+		_cross.draw_circle(Vector2.ZERO, 2.4, ink)
+		_cross.draw_circle(Vector2.ZERO, 1.4, Color.WHITE)
 	# Charged heavy melee: the gold charge arc (the weapon stays visible while the button is held) and, for the first
 	# HEAVY_FLASH_TIME of a Heavy Swing, a gold rim around the screen edge. Both are pure draws of sim state.
 	var gold := UiTheme.ACCENT

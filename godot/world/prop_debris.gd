@@ -14,8 +14,8 @@ extends Node3D
 const GRAVITY := 20.0
 const MAX_PIECES := 240            ## live pieces across every break (older breaks keep theirs, a new one gets fewer)
 const PIECE := 0.45                ## target piece edge (m): a box is cut into cells about this size, a random subset flies
-const SETTLE_MIN := 1.1            ## seconds a piece tumbles / lies before it starts to sink
-const SETTLE_MAX := 1.8
+const SETTLE_MIN := 1.9            ## seconds a piece tumbles / lies before it starts to sink
+const SETTLE_MAX := 3.0
 const SINK := 0.7                  ## seconds to sink into the ground and shrink away
 const CROWN_FALL := 0.55           ## seconds the crown topples before it bursts
 
@@ -66,7 +66,7 @@ func burst(p: Dictionary, dir: Vector3, quality := 1) -> void:
 					if _pieces.size() >= MAX_PIECES: return
 					if keep < 1.0 and _rng.randf() > keep: continue
 					var at := o + Vector3((ix + 0.5) * cell.x, (iy + 0.5) * cell.y, (iz + 0.5) * cell.z)
-					var size := cell * _rng.randf_range(0.6, 1.0)
+					var size := cell * _rng.randf_range(0.85, 1.25)
 					var up := clampf((at.y - bottom) / maxf(0.5, top - bottom), 0.0, 1.0)   # 0 at the foot, 1 at the top
 					var out := Vector3(at.x - centre.x, 0.0, at.z - centre.z)
 					out = out.normalized() if out.length() > 0.01 else Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)).normalized()

@@ -173,7 +173,7 @@ func _load_test(p: Dictionary) -> void:
 	var live: Array = m.living_seats()               # one crate near each player seat first (solo: near you)
 	if live.is_empty(): live = [sim.player]
 	_fire("load_test")
-	_toast(TranslationServer.translate("Load test incoming! Crates falling!"))
+	_toast(TranslationServer.translate("Load Test!"))
 	for i in n:
 		var x := 0.0
 		var z := 0.0
@@ -294,7 +294,7 @@ func _revision(p: Dictionary) -> void:
 	var mul := float(p.get("boost_mul", 1.6))
 	var spots := _floor_spots()
 	_fire("revision_pads")
-	_toast(TranslationServer.translate("Revision pads active! Step carefully!"))
+	_toast(TranslationServer.translate("Revision Pads!"))
 	for i in PAD_COUNT:
 		var sp: Array = spots[rng.randi() % spots.size()]
 		var pad := {"x": float(sp[0]), "z": float(sp[1]), "r": PAD_R, "power": PAD_BASE_POWER * mul, "temp": true}
@@ -334,7 +334,7 @@ func _backup(p: Dictionary) -> void:
 	_fire("backup_call")
 	var warn := maxf(0.1, float(p.get("warning_time", 1.5)))
 	var names: Array = p.get("summon_bots", [])
-	_toast(TranslationServer.translate("Backup incoming! Watch the warning ring."))
+	_toast(TranslationServer.translate("Backup Incoming!"))
 	for i in int(p.get("summon_count", 2)):
 		var spot: Array = m.pick_minion_spot()
 		var gy := float(spot[2]) if spot.size() > 2 else 0.0
@@ -349,7 +349,7 @@ func _update_summons(dt: float) -> void:
 		_free(s.get("node"))
 		_summons.remove_at(i)
 		m.spawn_minion(str(s["name"]), s["spot"])
-		_toast(TranslationServer.translate("Supervisor called in backup tradies!"))
+		_toast(TranslationServer.translate("Backup Tradies!"))
 
 func _creep(p: Dictionary) -> void:
 	var extra := 0
@@ -358,7 +358,7 @@ func _creep(p: Dictionary) -> void:
 	var room := int(p.get("max_extra", 3)) - extra
 	if room <= 0: return
 	_fire("scope_creep")
-	_toast(TranslationServer.translate("Scope creep! Extra workers arriving!"))
+	_toast(TranslationServer.translate("Scope Creep!"))
 	for i in mini(int(p.get("spawn_extra", 1)), room): m.spawn_minion()
 
 # ---------------- weapon_drop ----------------
@@ -370,7 +370,7 @@ func _weapon_drop(p: Dictionary) -> void:
 	var keys: Array = BOSS_RANGED.filter(func(k: String) -> bool: return not sim.combat.wdata(k).is_empty())
 	if keys.is_empty() or sim.pickups.spots.is_empty(): return
 	_fire("weapon_drop")
-	_toast(TranslationServer.translate("Tool crate incoming! First to it keeps the advantage."))
+	_toast(TranslationServer.translate("Tool Crate!"))
 	var count := maxi(1, int(p.get("weapon_count", 1)))
 	for i in count:
 		var key: String = keys[rng.randi() % keys.size()]
@@ -401,7 +401,7 @@ func _watch_deadline() -> void:
 	var holding: bool = s["hold"] > 0.0
 	if _was_holding and not holding and int(s["dir"]) == -1:
 		_fire("deadline_shrink")
-		_toast(TranslationServer.translate("Deadline approaching! Floor is shrinking!"))
+		_toast(TranslationServer.translate("Deadline!"))
 	_was_holding = holding
 
 # ---------------- change_request ----------------
@@ -412,7 +412,7 @@ func _random_tool(not_this: String) -> String:
 
 func _change_request(n: int) -> void:
 	_fire("change_request")
-	_toast(TranslationServer.translate("Change request approved! Weapons swapped!"))
+	_toast(TranslationServer.translate("Weapons Swapped!"))
 	if m.boss != null and not m.boss.dead:
 		m.give_weapon(m.boss, _random_tool(str(m.kit.get(m.boss, ""))))
 	for p: FighterState in m.living_seats():       # every live player seat gets a new tool too

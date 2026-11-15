@@ -521,7 +521,7 @@ func _drain_events() -> void:
 			"eliminated":
 				if f:
 					hud.add_feed(null, f, "", false)
-					_toast("You're out! Big wobble" if f == sim.player else tr("%s is out!") % f.name)
+					_toast(tr("You're out!") if f == sim.player else tr("%s is out!") % f.name)
 			"respawn":                       # the player is back on their feet: forget the fall for the landing cue
 				if f == sim.player:
 					_sfx_g = true
@@ -534,7 +534,7 @@ func _drain_events() -> void:
 			"chaos_warn":
 				_show_banner(tr("%s!") % tr(str(e["name"])).to_upper(), tr("in %d…") % ceili(float(e["in"])), true, float(e["in"]))
 			"chaos":
-				if e["id"] == "giant" and f: _toast("You're a giant! Mind the furniture" if f == sim.player else tr("%s is a giant! Run!") % f.name)
+				if e["id"] == "giant" and f: _toast(tr("You're a giant!") if f == sim.player else tr("%s is a giant!") % f.name)
 				else: _toast(tr("%s!") % tr(str(e["name"])))
 			"chaos_end":
 				if e["id"] != "crates": _toast("Back to normal")
@@ -980,7 +980,7 @@ func _update_mode_ui(delta: float) -> void:
 		top += _team_board.size.y + 10.0
 	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
 	if spectating != null:                      # spectator line: who, how many left, how to switch
-		_mode_l.text = tr("Spectating %s · %d left · tap to switch") % [spectating.name, sim.combat.rules.survivors().size()]
+		_mode_l.text = tr("Spectating %s · %d left") % [spectating.name, sim.combat.rules.survivors().size()]
 		_mode_l.visible = true
 		_mode_l.reset_size()
 		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + MatchHud.TOP_STACK)
@@ -995,6 +995,7 @@ func _update_mode_ui(delta: float) -> void:
 
 ## endMatch's "YOU WIN!" pop (shown while the match runs on for ModeRules.END_TIME).
 func _show_banner(title: String, sub: String, won: bool, dur: float = ModeRules.END_TIME + 0.5) -> void:
+	hud.clear_toast()                      # one message at a time: the banner takes the stage, no toast stacked above it
 	_banner.text = title + "\n" + sub
 	_banner.add_theme_color_override("font_color", UiTheme.ACCENT if won else Color(1, 0.85, 0.8))
 	_banner.visible = true
@@ -1092,7 +1093,7 @@ func start_kill_cam() -> void:
 		$UI.add_child(_kc_l)
 		$UI.move_child(_kc_l, pause_menu.get_index())
 	var v: FighterState = kill_cam.views[kill_cam.vi].state
-	_kc_l.text = tr("Replay · you K.O.'d %s · tap to skip") % v.name
+	_kc_l.text = tr("Replay · tap to skip")
 	var top := SafeArea.insets(get_viewport())[1] as float
 	_kc_l.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - _kc_l.get_minimum_size().x / 2.0, top + 14.0)
 	_kc_l.size = _kc_l.get_minimum_size()
@@ -1304,8 +1305,8 @@ func _resume_state() -> Dictionary:
 	return net_match.capture_resume() if net_match != null and _results == null else {}
 
 ## The host left and another player hosts now: the arena stays until their `start` (or `rehosted` ends it).
-func _on_net_host_changing(old_host: String) -> void:
-	_show_banner(tr("HOST CHANGED"), tr("%s left. Waiting for the new host…") % old_host, true, 4.0)
+func _on_net_host_changing(_old_host: String) -> void:
+	_show_banner(tr("HOST CHANGED"), tr("Finding a new host…"), true, 4.0)
 
 ## The relay made me the host: the HostSession carries the match on (its `start` rebuilds the arena) or, with no
 ## match running, the lobby takes over.
@@ -1323,7 +1324,7 @@ func _on_net_promoted(hs: GuestSession) -> void:
 	session = hs
 	_bind_net()
 	if (hs as HostSession).resuming():
-		_show_banner(tr("HOST CHANGED"), tr("%s left. You're the host now!") % str(hs.get("migrated")), true, 4.0)
+		_show_banner(tr("HOST CHANGED"), tr("You're the host!"), true, 4.0)
 	elif not hs.started:
 		_to_title(hs.status)
 

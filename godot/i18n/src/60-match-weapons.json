@@ -216,13 +216,6 @@
   "fr": "HÔTE CHANGÉ",
   "es": "CAMBIO DE ANFITRIÓN"
  },
- "%s left. Waiting for the new host…": {
-  "zh_TW": "%s 離開了。等待新房主…",
-  "zh_CN": "%s 离开了。等待新房主…",
-  "ja": "%s が退出しました。新しいホストを待っています…",
-  "fr": "%s est parti. En attente du nouvel hôte…",
-  "es": "%s se fue. Esperando al nuevo anfitrión…"
- },
  "%s left. You are the host now!": {
   "zh_TW": "%s 離開了。你現在是房主！",
   "zh_CN": "%s 离开了。你现在是房主！",

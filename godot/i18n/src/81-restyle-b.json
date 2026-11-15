@@ -48,13 +48,6 @@
     "fr": "Actualités",
     "es": "Novedades"
   },
-  "No leader yet. Be first!": {
-    "zh_TW": "還沒有領先者，搶個第一吧！",
-    "zh_CN": "还没有领先者，抢个第一吧！",
-    "ja": "まだ首位はいません。一番乗りしよう！",
-    "fr": "Personne en tête pour l'instant. Sois le premier !",
-    "es": "Aún no hay líder. ¡Sé el primero!"
-  },
   "No patch notes yet": {
     "zh_TW": "還沒有更新說明",
     "zh_CN": "还没有更新说明",
@@ -124,20 +117,6 @@
     "ja": "リプレイ · タップでスキップ",
     "fr": "Replay · touche pour passer",
     "es": "Repetición · toca para saltar"
-  },
-  "Replay · you K.O.'d %s · tap to skip": {
-    "zh_TW": "重播 · 你擊倒了 %s · 點一下跳過",
-    "zh_CN": "重播 · 你击倒了 %s · 点一下跳过",
-    "ja": "リプレイ · %s をKOしたシーン · タップでスキップ",
-    "fr": "Replay · tu as mis K.O. %s · touche pour passer",
-    "es": "Repetición · tú dejaste K.O. a %s · toca para saltar"
-  },
-  "Respawning… shake it off": {
-    "zh_TW": "重生中…甩甩頭就好",
-    "zh_CN": "重生中…甩甩头就好",
-    "ja": "リスポーン中…気を取り直して",
-    "fr": "Réapparition… secoue-toi",
-    "es": "Reapareciendo… sacúdete"
   },
   "Rockets and grenade launchers, and everyone has 300 health. Boom": {
     "zh_TW": "火箭筒與榴彈發射器，人人 300 點生命值。轟！",
@@ -222,13 +201,6 @@
     "ja": "通せんぼされてる。ひどい",
     "fr": "Quelqu'un bloque le passage. Impoli !",
     "es": "Alguien está en medio. ¡Qué maleducado!"
-  },
-  "Spectating %s · %d left · tap to switch": {
-    "zh_TW": "觀戰 %s · 剩 %d 人 · 點一下切換",
-    "zh_CN": "观战 %s · 剩 %d 人 · 点一下切换",
-    "ja": "観戦中 %s · 残り %d 人 · タップで切り替え",
-    "fr": "Spectateur : %s · %d restants · touche pour changer",
-    "es": "Viendo a %s · quedan %d · toca para cambiar"
   },
   "Speed boost! Zoom zoom (12s)": {
     "zh_TW": "加速！嗖嗖嗖（12 秒）",
@@ -496,13 +468,6 @@
     "fr": "Toi contre un bot. Le premier à 5 K.O. gagne. Pas d'excuses",
     "es": "Tú contra un bot. El primero en 5 K.O. gana. Sin excusas"
   },
-  "You're a giant! Mind the furniture": {
-    "zh_TW": "你變成巨人了！小心家具",
-    "zh_CN": "你变成巨人了！小心家具",
-    "ja": "巨大化！家具にご注意",
-    "fr": "Tu es un géant ! Attention aux meubles",
-    "es": "¡Eres un gigante! Cuidado con los muebles"
-  },
   "You're already in a room.": {
     "zh_TW": "你已經在房間裡了。",
     "zh_CN": "你已经在房间里了。",
@@ -516,13 +481,6 @@
     "ja": "退場！大きくゆれた",
     "fr": "Tu es éliminé ! Gros vacillement",
     "es": "¡Estás fuera! Gran tambaleo"
-  },
-  "You're out! Spectating from the sofa.": {
-    "zh_TW": "你出局了！在沙發上觀戰吧。",
-    "zh_CN": "你出局了！在沙发上观战吧。",
-    "ja": "退場！ソファから観戦中。",
-    "fr": "Tu es éliminé ! Spectateur depuis le canapé.",
-    "es": "¡Estás fuera! Mirando desde el sofá."
   },
   "You're playing as a guest. Your coins, outfits and stats are saved on this device only. Create an account to keep them safe and use them on the web too.": {
     "zh_TW": "你目前以訪客身分遊玩。你的金幣、服裝與數據只儲存在這台裝置上。建立帳號即可安全保存，並在網頁版也能使用。",
@@ -615,25 +573,11 @@
     "fr": "Classe secrète débloquée : %s ! Choisis-la dans la Garde-robe. Chut, c'est un secret",
     "es": "¡Clase secreta desbloqueada: %s! Elígela en el Armario. Shh, es un secreto"
   },
-  "%s is a giant! Run!": {
-    "zh_TW": "%s 變成巨人了！快跑！",
-    "zh_CN": "%s 变成巨人了！快跑！",
-    "ja": "%s が巨大化！逃げろ！",
-    "fr": "%s est un géant ! Cours !",
-    "es": "¡%s es un gigante! ¡Corre!"
-  },
   "%s · %d K.O.s · %d deaths": {
     "zh_TW": "%s · 擊倒 %d · 死亡 %d",
     "zh_CN": "%s · 击倒 %d · 死亡 %d",
     "ja": "%s · KO %d · デス %d",
     "fr": "%s · %d K.O. · %d morts",
     "es": "%s · %d K.O. · %d muertes"
-  },
-  "%s left. You're the host now!": {
-    "zh_TW": "%s 離開了。你現在是房主！",
-    "zh_CN": "%s 离开了。你现在是房主！",
-    "ja": "%s が退室。あなたが今からホスト！",
-    "fr": "%s est parti. Tu es l'hôte maintenant !",
-    "es": "¡%s se ha ido. Ahora eres el anfitrión!"
   }
 }

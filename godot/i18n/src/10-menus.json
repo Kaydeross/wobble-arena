@@ -132,6 +132,20 @@
   "fr": "Saisis le code de salon d'un ami, ou choisis un salon dans la liste.",
   "es": "Escribe el código de sala que te dio tu amigo, o elige una sala de la lista."
  },
+ "4-digit code": {
+  "zh_TW": "4位數代碼",
+  "zh_CN": "4位数代码",
+  "ja": "4桁のコード",
+  "fr": "Code à 4 chiffres",
+  "es": "Código de 4 dígitos"
+ },
+ "Online play uses your account name.": {
+  "zh_TW": "線上遊玩會使用你的帳號名稱。",
+  "zh_CN": "在线游玩会使用你的账号名称。",
+  "ja": "オンラインではアカウント名が使われます。",
+  "fr": "Le jeu en ligne utilise le nom de ton compte.",
+  "es": "El juego en línea usa el nombre de tu cuenta."
+ },
  "In the room: %s": {
   "zh_TW": "房間內：%s",
   "zh_CN": "房间内：%s",
@@ -495,20 +509,6 @@
   "ja": "満員",
   "fr": "Complet",
   "es": "Llena"
- },
- "Leave the room? You'll leave this match and go back to the title.": {
-  "zh_TW": "要離開房間嗎？你會結束這場比賽，回到標題畫面。",
-  "zh_CN": "要离开房间吗？你将结束这场比赛，返回标题画面。",
-  "ja": "ルームを出ますか？この試合を抜けてタイトルに戻ります。",
-  "fr": "Quitter le salon ? Cette partie s'arrête et l'on revient au titre.",
-  "es": "¿Salir de la sala? Abandonarás esta partida y volverás al título."
- },
- "Quit this match? It won't count, and you'll go back to the title.": {
-  "zh_TW": "要結束這場比賽嗎？不會計入成績，並回到標題畫面。",
-  "zh_CN": "要结束这场比赛吗？不会计入成绩，并返回标题画面。",
-  "ja": "この試合を終了しますか？記録には残らず、タイトルに戻ります。",
-  "fr": "Quitter la partie ? Elle ne comptera pas et l'on revient au titre.",
-  "es": "¿Terminar esta partida? No contará y volverás al título."
  },
  "Keep playing": {
   "zh_TW": "繼續遊戲",

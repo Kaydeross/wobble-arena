@@ -793,7 +793,7 @@ func _stat_grid(id: String) -> GridContainer:
 
 func _build_start(p: Control) -> void:
 	p.alignment = BoxContainer.ALIGNMENT_CENTER
-	var hint := _label("Check your match. Tap a row to change it.", 18, "MutedLabel", true)
+	var hint := _label("Tap a row to change it", 18, "MutedLabel", true)
 	hint.name = "Hint"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	p.add_child(hint)
@@ -860,10 +860,10 @@ func _refresh() -> void:
 	if players_l:
 		players_l.text = _players_text()
 		var t := ModeRules.team_size(mode_id, Content.modes, total)
-		if flex: players_hint.text = tr("Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).") % [t, t]
-		elif team: players_hint.text = tr("Bots are computer players. %s fixes the teams: %d vs %d.") % [tr(mode_name(mode_id)), t, t]
-		elif mode_id == "practice": players_hint.text = tr("The range has %d dummies: they stand, slide and pop back up. They never fight back.") % total
-		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
+		if flex: players_hint.text = tr("Two teams: %d vs %d") % [t, t]
+		elif team: players_hint.text = tr("Fixed teams: %d vs %d") % [t, t]
+		elif mode_id == "practice": players_hint.text = tr("%d dummies. They never fight back") % total
+		else: players_hint.text = "Bots fight everyone. Free for all"
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = mode_name(mode_id)
 		_sum_vals[1].text = tr("%s · Floor: %s") % [tr(map_name(map_id)), tr(Dynamics.NAMES.get(dyn, dyn))]

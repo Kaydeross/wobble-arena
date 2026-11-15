@@ -191,7 +191,7 @@ static func clear(m: ArcadeManager, s: Dictionary, on_next: Callable, on_quit: C
 	if int(s["coins"]) > 0:
 		_coin_row(box, TranslationServer.translate("+%d coins") % int(s["coins"]))
 		_line(box, "Bonus", TranslationServer.translate("%d clear + %d first clear bonus") % [int(s["reward"]), int(s["bonus"])], 17)
-		if m.seats.size() > 1: _line(box, "CoopCoins", TranslationServer.translate("Each player's save gets the coins and records"), 16)
+		if m.seats.size() > 1: _line(box, "CoopCoins", TranslationServer.translate("Everyone keeps the coins"), 16)
 	else:
 		_line(box, "Bonus", TranslationServer.translate("Cleared before: no coins this time"), 17)
 	if waiting: _waiting(box)
@@ -225,7 +225,7 @@ static func over(m: ArcadeManager, on_quit: Callable, waiting := false) -> Contr
 		for k in m.seats.size(): names.append(m.seat_name(k))
 		_line(box, "Seats", " · ".join(names), 18)
 	if m.run_coins > 0: _coin_row(box, TranslationServer.translate("+%d coins") % m.run_coins)
-	_line(box, "Hint", TranslationServer.translate("Out of lives. The site wins this time."), 18)
+	_line(box, "Hint", TranslationServer.translate("Out of lives"), 18)
 	if waiting: _waiting(box)
 	else: _buttons(box, _button(TranslationServer.translate("Back to title"), "Quit", true, on_quit))
 	return p
@@ -235,16 +235,16 @@ static func won(m: ArcadeManager, on_quit: Callable, waiting := false) -> Contro
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
 	_title(box, TranslationServer.translate("Site cleared!"))
-	_line(box, "Sub", TranslationServer.translate("The Client signed off. Every tradie is back on smoko."), 20)
+	_line(box, "Sub", TranslationServer.translate("The Client signed off"), 20)
 	_coin_row(box, TranslationServer.translate("+%d coins") % m.run_coins)
-	if m.seats.size() > 1: _line(box, "CoopCoins", TranslationServer.translate("Each player's save gets the coins and records"), 16)
+	if m.seats.size() > 1: _line(box, "CoopCoins", TranslationServer.translate("Everyone keeps the coins"), 16)
 	var hat := TranslationServer.translate(LockerData.hat_name(ArcadeManager.FOREMAN_HAT))
 	if bool(m.victory.get("hat_first", false)):
-		_line(box, "Hat", TranslationServer.translate("New hat: %s. Pick it in the Walldrobe") % hat, 19, false, UiTheme.GOOD)
+		_line(box, "Hat", TranslationServer.translate("New hat: %s") % hat, 19, false, UiTheme.GOOD)
 	elif bool(m.victory.get("hat_owned", false)):
-		_line(box, "Hat", TranslationServer.translate("Your %s is already in the Walldrobe") % hat, 19)
+		_line(box, "Hat", TranslationServer.translate("You own the %s") % hat, 19)
 	else:
-		_line(box, "Hat", TranslationServer.translate("Win on Normal or Nightmare for the Site Foreman hat"), 19, false, UiTheme.ACCENT)
+		_line(box, "Hat", TranslationServer.translate("Win on Normal or Nightmare for a hat"), 19, false, UiTheme.ACCENT)
 	if bool(m.victory.get("first", false)):
 		_line(box, "Bonus", TranslationServer.translate("Includes %d victory bonus coins") % int(m.victory.get("coins", 0)), 17)
 	if waiting: _waiting(box)

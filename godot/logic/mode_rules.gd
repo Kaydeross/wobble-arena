@@ -324,7 +324,7 @@ func eliminate(f: FighterState, counted: bool) -> void:
 		if not x.elim and not x.left: alive.append(x)
 	var online := c.net_started
 	var spect := online or bool(c.mode.get("spectate", false))    # the player watches the rest play on
-	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": tr("You're out! Spectating from the sofa.")})
+	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": tr("You're out!")})
 	if not match_over and not remote and c.lives_mode and (alive.size() <= 1 or (f.is_player and not spect)):
 		var best: FighterState = null                          # alive.sort((a, b) => b.lives - a.lives || b.ko - a.ko)[0] (stable)
 		for x: FighterState in alive:
@@ -404,12 +404,12 @@ func update_shrink(dt: float, pickups: Pickups = null) -> void:
 		s["size"] = maxf(s["min"], s["size"] - (s["start"] - s["min"]) / s["rate"] * dt)
 	elif _all_down():                       # everyone fell: bring the arena back at half the original size
 		s["cycle"] += 1; s["start"] = maxf(14.0, float(Combat.js_round(s["S0"] * 0.5))); s["size"] = s["start"]; s["hold"] = 4.0
-		combat.ev({"type": "toast", "text": tr("Arena reset at half size! Cosy")})
+		combat.ev({"type": "toast", "text": tr("Arena Reset!")})
 	else:                                   # at its smallest: a short breather, then it starts growing again
 		s["rest"] = (5.0 if s["rest"] < 0.0 else s["rest"]) - dt
 		if s["rest"] <= 0.0:
 			s["rest"] = -1.0; s["dir"] = 1
-			combat.ev({"type": "toast", "text": tr("The arena is growing! Room to wobble")})
+			combat.ev({"type": "toast", "text": tr("Arena Growing!")})
 	var hd: float = s["size"] / 2.0 if s["both"] else s["D"] / 2.0
 	var b: Dictionary = s["box"]
 	b["minX"] = -s["size"] / 2.0; b["maxX"] = s["size"] / 2.0; b["minZ"] = -hd; b["maxZ"] = hd

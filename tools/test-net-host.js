@@ -606,7 +606,7 @@ async function arcadeCoop(url) {
 
   host = runGodot('res://tests/net_host_test.gd', [url], 'host');
   const code = (await host.waitLine(/^HOSTED code=/, 30000)).split('=')[1];
-  assert.match(code, /^[A-Z2-9]{5}$/, 'private room code');
+  assert.match(code, /^\d{4}$/, 'private room code');
 
   // web guest: join + hello
   const web = await new Client(url, 'WebGuest').open();

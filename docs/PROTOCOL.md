@@ -81,7 +81,7 @@ An Arcade co-op room is Construction-only: when a client sends `arcade: true` (o
 | `pong` | `ts` | |
 | `authed` / `noauth` | `user` | Result of `auth`. |
 | `rooms` | `rooms[]`, `online` | Each: `{id, name, host, mode, modeName, map, n, max, started, build, pub:true}`. Public rooms only, fullest first. |
-| `created` | `id`, `pub` | You are the host (cid 0). Public rooms are `r<base36 counter>`; private rooms are a 5-char code from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. |
+| `created` | `id`, `pub` | You are the host (cid 0). Public rooms are `r<base36 counter>`; private rooms are a 4-digit numeric code (`0000`-`9999`, zero-padded). |
 | `nocreate` | `reason` | `auth`, `inroom`, `busy` |
 | `joined` | `cid`, `id`, `pub`, `kind`, `arcade` | You are a guest. `cid` is the server's connection id inside the room (1, 2, …) and is **not** the game slot. `kind`/`arcade` say what kind of room you just joined (1.4). |
 | `nojoin` | `reason`, `kind?` | `auth`, `inroom`, `none`, `full`, `build`, `kind`. `kind` means the room exists but its kind differs from the `kind` you asked for (and carries the room's real `kind`/`arcade`); `none` means no room with that code **on this server**. |

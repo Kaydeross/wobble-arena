@@ -23,6 +23,39 @@ func _initialize() -> void:
 func _settings() -> Node:
 	return root.get_node("Settings")
 
+## QoL: the online status pill (room + live ping, tinted by latency, hidden offline) and the Crosshair setting.
+func _net_and_crosshair(world: Node, hud: Control) -> void:
+	var pill: Control = hud.get_node("NetStatus")
+	hud.update(0.0)
+	check(world.session == null and not pill.visible, "offline match: no room / ping pill")
+	var gs := GuestSession.new()
+	gs.room_code = "4821"; gs.ping_ms = 34
+	world.session = gs
+	hud.update(0.0)
+	var lab: Label = pill.get_child(1)
+	var dot: ColorRect = pill.get_child(0)
+	check(pill.visible and lab.text.contains("4821") and lab.text.contains("34 ms"), "online: pill shows room and ping (%s)" % lab.text)
+	check(dot.color == hud.ping_color(34) and hud.ping_color(34) != hud.ping_color(100) and hud.ping_color(100) != hud.ping_color(200), "ping tints green / amber / red")
+	gs.ping_ms = 200
+	hud.update(0.0)
+	check(dot.color == hud.ping_color(200) and lab.text.contains("200 ms"), "pill follows the ping (%s)" % lab.text)
+	var ko: Control = hud.get_node("Score")
+	check(pill.position.y >= ko.position.y + ko.size.y and pill.position.x >= ko.position.x, "pill sits under the K.O. panel, clear of it")
+	check(Rect2(Vector2.ZERO, hud.get_viewport_rect().size).encloses(Rect2(pill.position, pill.size)), "pill stays on screen")
+	gs.ping_ms = -1
+	hud.update(0.0)
+	check(not lab.text.contains("ms") and lab.text.contains("4821"), "unknown ping: room only (%s)" % lab.text)
+	world.session = null
+	hud.update(0.0)
+	check(not pill.visible, "pill hidden again offline")
+	_settings().set_value("crosshair", false)
+	hud.update(0.0)
+	check(not hud._cross_on, "crosshair off is read from Settings")
+	check(hud._cross.visible and hud.get_node("Crosshair") != null, "crosshair node stays (charge ring / heavy rim still draw)")
+	_settings().set_value("crosshair", true)
+	hud.update(0.0)
+	check(hud._cross_on and bool(_settings().get_value("crosshair")), "crosshair defaults / returns on")
+
 func _run() -> void:
 	SafeArea.override = [81.0, 0.0, 81.0, 29.0]   # iPhone landscape notch + home indicator, canvas units
 	_settings().set_value("touch_mode", "on")
@@ -44,6 +77,7 @@ func _run() -> void:
 		world.tick(FRAME)
 		_layout(world, hud, "lefty" if lefty else "right")
 	_settings().set_value("touch_lefty", false)
+	_net_and_crosshair(world, hud)
 	# air recovery: in the air without dash gear the context button becomes RECOVER (same slot, still <= 4 buttons)
 	var pl: FighterState = world.sim.player
 	# A topple legitimately suppresses RECOVER (Skills.recover_offer refuses down_t > 0) and the tuned class-scaled hit
@@ -353,7 +387,7 @@ func _team_layout() -> void:
 		root.add_child(world)
 		await process_frame
 		var hud: Control = world.hud
-		hud.toast("Crate incoming: Mammoth Sniper Rifle!")
+		hud.toast("Mammoth Sniper Rifle Crate")
 		world.sim.combat.pickup(world.sim.player, "rocket")   # a burst weapon: the mode line also shows its "Shots" pips
 		for i in 90:
 			world.tick(FRAME)
@@ -429,7 +463,7 @@ func _arcade_layout() -> void:
 			hud._update_insets()
 			for lefty in [false, true]:
 				_settings().set_value("touch_lefty", lefty)
-				hud.toast("Crate incoming: Mammoth Sniper Rifle!")
+				hud.toast("Mammoth Sniper Rifle Crate")
 				world.sim.player.hp = 150.0
 				for i in 3: world.tick(FRAME)
 				_arcade_checks(world, "arcade s%d %dx%d %s" % [stage + 1, win.x, win.y, "lefty" if lefty else "right"])
