@@ -67,6 +67,8 @@ func visual_state() -> Dictionary:
 	v["trap"] = f.trap_t > 0.0
 	v["fall_side"] = float(f.fall_side)
 	v["skin"] = look["skin"]; v["hat"] = look["hat"]; v["color"] = look["color"]
+	v["rage"] = f.rage_t                                        # faces: angry brows while rage is up
+	v["off_stage"] = not p.grounded and p.py < -3.0 and not f.dead   # faces: falling out (every arena floor top is >= 0)
 	return v
 
 ## Feed + animate the wobbler, then read the animation points back into the state.

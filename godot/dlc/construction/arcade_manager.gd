@@ -448,7 +448,9 @@ func setup_sim(s: MatchSim) -> void:
 	_deaths0 = []
 	for f: FighterState in seats: _deaths0.append(int(f.st["deaths"]))
 	s.set_meta("pve_seats", seats)             # BotBrain.pick_target: the crew hunts every seat, a seat bot hunts the crew
-	if online and host_mode: s.set_meta("arcade_run", self)   # HostSession's drop/rejoin seat re-flag (no static dep)
+	# Marks the sim as an Arcade match (offline too): HostSession's drop/rejoin seat re-flag and Combat's Fastball Special
+	# revive discount read it through the meta with has_method (no static DLC dependency either way).
+	s.set_meta("arcade_run", self)
 	events = StageEvents.new()
 	events.setup(self, s, d, rng)
 
@@ -514,10 +516,12 @@ func _bind_seats(s: MatchSim) -> void:
 		seat_controls.append(pc)
 
 ## The co-op friendly-fire rule for this stage's Combat (docs/CONSTRUCTION_DLC.md "Unit D"): only the two player seats are
-## paired by it. The crew and the enemies are never in `pve_seats`, so their fire still hurts every seat.
+## paired by it. The crew and the enemies are never in `pve_seats`, so their fire still hurts every seat. The same call
+## flags a two-seat run for the Fastball Special (Combat.arcade_coop): solo Arcade never carries.
 func _apply_friendly_fire(s: MatchSim) -> void:
 	s.combat.friendly_fire = friendly_fire
 	s.combat.pve_seats = seats.duplicate()
+	s.combat.arcade_coop = seats.size() > 1
 
 ## After the net layer dressed the stage (HostMatch.setup runs between setup_sim and stage_ready): a seat that became a
 ## ghost belongs to a remote client, so it must not carry local-player flags here. A host-run bot seat stays a player seat.
@@ -1182,6 +1186,17 @@ func seat_is_down(k: int) -> bool:
 ## Seconds until seat k's auto-revive (0 = up).
 func seat_revive_left(k: int) -> float:
 	return float(seat_down.get(k, 0.0))
+
+## Fastball Special (Sprint 2.2, docs/DAMAGE.md "Teammate carry/throw"): a DOWNED seat thrown by its teammate and landing
+## on the site floor loses `seconds` off its auto-revive countdown. Combat.carry_tick calls this through the sim meta
+## "arcade_run" with has_method (no static DLC dependency here either). Returns the seconds actually shaved (0 = not a
+## downed seat, not in the fight, or nothing left to shave). The HUD counts the new time from seat_revive_left().
+func fastball_revive(f: FighterState, seconds: float = 2.0) -> float:
+	var k := seat_index(f)
+	if k < 0 or not seat_down.has(k) or state != "fight": return 0.0
+	var before := float(seat_down[k])
+	seat_down[k] = maxf(0.0, before - seconds)
+	return before - float(seat_down[k])
 
 ## The seats still in the fight, in seat order.
 func living_seats() -> Array:

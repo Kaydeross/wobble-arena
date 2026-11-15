@@ -46,10 +46,20 @@ func _run() -> void:
 	_settings().set_value("touch_lefty", false)
 	# air recovery: in the air without dash gear the context button becomes RECOVER (same slot, still <= 4 buttons)
 	var pl: FighterState = world.sim.player
+	# A topple legitimately suppresses RECOVER (Skills.recover_offer refuses down_t > 0) and the tuned class-scaled hit
+	# spheres / fixed-step melee sweep (Sprint 1.2 / 1.3) can end this scripted 240-tick scene with the player downed:
+	# force the intended "knocked while airborne" state, the assertion below is about the button, not about topple timing.
+	pl.down_t = 0.0; pl.trap_t = 0.0
 	pl.phys.place(pl.phys.px, 3.0, pl.phys.pz); pl.phys.grounded = false
 	pl.last_hit_time = world.sim.combat.time - 0.5        # knocked: the button offers RECOVER (plain jumps keep RELOAD)
 	world.touch._refresh_context()
 	check(world.touch.context_action() == "recover", "context button is recover after a knock (%s)" % world.touch.context_action())
+	# ... and a spent charge is blocked: the skill refuses the action (the button's own offer lives in input/touch_controls.gd)
+	pl.skill_n["recover"] = 0
+	check(Skills.recover_block(pl, world.sim) == "charge" and not Skills.do_recover(pl, world.sim, 0.0, 0.0),
+		"recovery is blocked once the charge is spent (%s)" % Skills.recover_block(pl, world.sim))
+	pl.skill_n["recover"] = 1
+	pl.skill_cd.erase("recover")
 	check(world.touch.visible_buttons().size() <= 4, "at most 4 action buttons in the air")
 	world.touch.queue_redraw()
 	await process_frame
@@ -79,6 +89,7 @@ func _run() -> void:
 	check(not hud.get_node("Toast").visible, "toast hides when its time is up")
 	_fonts(hud)
 	await _sizes(world, hud)
+	_impact_badge(world, hud)
 	_fps()
 	# results: the toast goes away (and stays away) and the panel has a dimmed backdrop over the HUD
 	hud.toast("K.O.!")
@@ -95,6 +106,71 @@ func _run() -> void:
 	SafeArea.override = []
 	print("HUD ok" if fails == 0 else "HUD checks failed (%d)" % fails)
 	quit(0 if fails == 0 else 1)
+
+## Post-v0.4.0 Sprint 2.1: the final-K.O. comic badge (ui/hud.gd + world/follow_camera.gd) at this phone / tablet size: it
+## shows, stays inside the safe area and clear of every HUD panel, the toast, the centre message, the kill feed, the pause
+## and emote buttons and the touch buttons. Then the badge clears and the camera gives the global time scale back.
+func _impact_layout(world: Node, hud: Control, tag: String) -> void:
+	world.cam.trigger_impact(148, world.player_pos())
+	hud.toast("K.O.!")                                     # worst case: the badge shows while a toast is up
+	world.tick(FRAME)
+	var badge: Control = hud.get_node("Impact")
+	check(badge.visible, "%s final-K.O. impact badge shows" % tag)
+	var vs: Vector2 = hud.get_viewport_rect().size
+	var ins: Array = SafeArea.override
+	var safe := Rect2(Vector2(ins[0], ins[1]), vs - Vector2(ins[0] + ins[2], ins[1] + ins[3]))
+	var br := Rect2(badge.position, badge.size * badge.scale)
+	check(safe.grow(0.5).encloses(br), "%s impact badge %s inside safe %s" % [tag, br, safe])
+	for n: String in ["Score", "Radar", "Health", "Hotbar"]:
+		var c: Control = hud.get_node(n)
+		check(not br.intersects(Rect2(c.position, c.size * c.scale)), "%s impact badge %s overlaps %s" % [tag, br, n])
+	for n: String in ["Toast", "Center", "Hint"]:
+		var c: Control = hud.get_node_or_null(n)
+		if c != null and c.visible: check(not br.intersects(Rect2(c.position, c.size * c.scale)), "%s impact badge covers %s" % [tag, n])
+	var fd: Control = hud.get_node("Feed")
+	if fd.get_child_count() > 0: check(not br.intersects(Rect2(fd.position, fd.size)), "%s impact badge covers the kill feed" % tag)
+	var touch: Control = world.touch
+	check(not br.intersects(touch.pause_rect()), "%s impact badge clear of pause" % tag)
+	check(not br.intersects(world.emote_wheel.button_rect()), "%s impact badge clear of the emote button" % tag)
+	for b: Array in touch.BUTTONS:
+		var r: Array = touch.button_rect(b)
+		check(not br.intersects(Rect2(r[0] - Vector2(r[1], r[1]), Vector2(r[1], r[1]) * 2.0)), "%s impact badge clear of %s" % [tag, b[0]])
+	hud.clear_toast()
+	world.cam.end_impact()
+	check(is_equal_approx(Engine.time_scale, 1.0), "%s impact badge leaves no slow motion behind" % tag)
+
+## The badge's text and its REAL-time window (the freeze lives on the camera, the HUD only draws it): the exact km/h number,
+## the ring-out variant, the badge going through tr() in Japanese, the ~1.5 s window closing, and both strings translated
+## in every language (docs/I18N.md).
+func _impact_badge(world: Node, hud: Control) -> void:
+	var cam = world.cam
+	var loc0 := TranslationServer.get_locale()
+	var lab: Label = hud.get_node("Impact/Box/Text")
+	cam.trigger_impact(148, world.player_pos())
+	world.tick(FRAME)
+	check(hud.get_node("Impact").visible and lab.text == "LAUNCHED AT 148 KM/H!", "impact badge text (%s)" % lab.text)
+	TranslationServer.set_locale("ja")
+	cam.end_impact()
+	cam.trigger_impact(148, world.player_pos())
+	world.tick(FRAME)
+	check(lab.text != "LAUNCHED AT 148 KM/H!" and lab.text.contains("148"), "impact badge goes through tr() (ja: %s)" % lab.text)
+	TranslationServer.set_locale(loc0)
+	cam.end_impact()
+	cam.trigger_impact(-1, world.player_pos())
+	world.tick(FRAME)
+	check(lab.text == "TERMINAL RING-OUT!", "ring-out badge text (%s)" % lab.text)
+	cam.impact_badge_until_ms = Time.get_ticks_msec() - 1
+	world.tick(FRAME)
+	check(not hud.get_node("Impact").visible, "the impact badge goes away when its window is up")
+	cam.end_impact()
+	check(is_equal_approx(Engine.time_scale, 1.0), "the badge test leaves no slow motion behind")
+	# both strings are in the built catalog in all five languages (npm run i18n)
+	var f := FileAccess.open("res://i18n/strings.json", FileAccess.READ)
+	var cat: Dictionary = JSON.parse_string(f.get_as_text()) if f != null else {}
+	for l: String in ["zh_TW", "zh_CN", "ja", "fr", "es"]:
+		var a: Dictionary = cat.get("LAUNCHED AT %d KM/H!", {})
+		var b: Dictionary = cat.get("TERMINAL RING-OUT!", {})
+		check(a.has(l) and str(a[l]).strip_edges() != "" and b.has(l) and str(b[l]).strip_edges() != "", "impact badge strings translated in %s" % l)
 
 ## No HUD label is smaller than UiTheme.MIN_FONT.
 func _fonts(n: Node) -> void:
@@ -236,6 +312,7 @@ func _sizes(world: Node, hud: Control) -> void:
 			for i in 3: world.tick(FRAME)
 			var tag := "%dx%d %s" % [win.x, win.y, "lefty" if lefty else "right"]
 			_layout(world, hud, tag)
+			_impact_layout(world, hud, tag)
 			low = minf(low, _taps(world, 1.0 / k, tag))
 		print("HUD tap targets %dx%d (canvas %dx%d, scale %.2f): min %.1f pt" % [win.x, win.y, vs.x, vs.y, root.content_scale_factor, low])
 	_settings().set_value("touch_lefty", false)

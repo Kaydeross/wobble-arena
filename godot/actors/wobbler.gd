@@ -11,9 +11,32 @@ extends Node3D
 ## dead, down_t, weapon, swing (-1 idle, 0..1.3), kick_t (-1 idle, 0..1), invuln, flash (seconds left, web 0.12 = full),
 ## class_id, skin, hat, color. Extras the web game has that the contract doesn't (yet): wish (Vector2 move input, for
 ## the stride), trap (bool, lying under a net), stiff (arm spring stiffness), fall_side (+1/-1).
+## Faces (Sprint 2.4, docs/GRAPHICS.md): rage (float, FighterState.rage_t seconds left) and off_stage / panic (bool,
+## airborne off the arena floor, falling to a ring-out); both optional, safe defaults keep the face idle.
 
 const SIM_DOWN := Vector3(0, -1, 0)
 const FLASH_FULL := 0.12            # web Fighter.flash after a hit (seconds)
+
+# --- faces (Sprint 2.4): the 2-mesh eye rig, transformed, never added to. Docs: docs/GRAPHICS.md "Faces".
+const EYE_SIZE := Vector3(0.1, 0.14, 0.06)   # the eye box the web game draws
+const EYE_X := 0.13                          # eye offset on the head (neck space)
+const EYE_Y := 0.36
+const EYE_Z := 0.32
+const BROW_SIZE := Vector3(0.13, 0.032, 0.05)   # brow bar merged into the eye mesh above LOW
+const BROW_Y := 0.105                            # brow centre above the eye centre (same mesh, one draw call)
+const X_EYE_SIZE := Vector3(0.15, 0.026, 0.05)   # one bar of the down/dead X (two bars, one surface)
+const BLINK_WAIT_MIN := 2.5                  # idle blink: seconds between blink starts (own RNG)
+const BLINK_WAIT_MAX := 4.5
+const BLINK_DUR := 0.16                      # how long the eyes take to close and open (~10 frames at 60 Hz)
+const ANGRY_ANGLE := 0.34                    # brow slant (rad) at full anger: inner ends down
+const ANGRY_SQUINT := 0.78                   # eye height at full anger
+const ANGRY_DROP := 0.006                    # eye/brow drop while angry (m)
+const PANIC_WIDE := 1.34                     # eye height at full panic
+const PANIC_WIDE_X := 1.18                   # eye width at full panic
+const PANIC_LIFT := 0.014                    # eye/brow lift while panicking (m)
+const PANIC_ANGLE := 0.11                    # brow inner ends up while panicking (rad)
+const FACE_K_ANGRY := 12.0                   # blend rates (1/s)
+const FACE_K_PANIC := 14.0
 
 ## Hit flash 0..1 (drives emission like the web game's emissive); decays by itself unless the state drives it.
 var flash: float = 0.0
@@ -91,6 +114,29 @@ var fall_side: float = 1.0
 var _time: float = 0.0
 var _state_flash := false
 var _stiff_override := -1.0
+
+# --- faces (Sprint 2.4, docs/GRAPHICS.md "Faces"): the TWO eye meshes are transformed by the state, never added to.
+# Own deterministic blink clock/RNG (seeded once in setup(), never combat.rng, never the global RNG).
+var rage: float = 0.0                ## state "rage" (FighterState.rage_t seconds left): angry brows while > 0
+var off_stage := false               ## state "off_stage" / "panic": airborne off the arena floor (wide panic eyes)
+var blink_seed: int = -1             ## >= 0 pins the blink personality (tests / tools); -1 = derive from the identity
+var face_time: float = 0.0           ## the wobbler's own face clock, advanced only by animate()
+var blink_t: float = -1.0            ## seconds into the current blink, -1.0 = eyes open
+var blink_count := 0                 ## blinks started so far
+var blink_interval: float = 0.0      ## the wait drawn for the current blink cycle (2.5-4.5 s)
+var blink_started_at: float = -1.0   ## face_time of the last blink start
+var eye_open: float = 1.0            ## vertical eye openness the rig got this frame (1 = normal, 0 = shut)
+var brow_angle: float = 0.0          ## eye/brow slant the rig got this frame (rad; + = inner end down)
+var angry_k: float = 0.0             ## 0..1 blend to the angry face
+var panic_k: float = 0.0             ## 0..1 blend to the panic face
+var _blink_wait: float = 0.0         ## seconds until the next blink start
+var _x_eyes := false                 ## the down/dead X eye mesh is on
+var _face_rng := RandomNumberGenerator.new()
+var _eye_mesh: Mesh                  ## this tier's open-eye mesh (plain box on LOW, box + brow above)
+var _eye_base_scale: Array[Vector3] = [Vector3.ONE, Vector3.ONE]   ## class eye scale (alien 1.5)
+var _face_sig := Vector4(-1.0, 0.0, 0.0, 1.0)   ## (eye_open, brow_angle, lift, eye x scale) last applied; idle skips writes
+static var _eye_brow_cache: ArrayMesh = null
+static var _x_eye_cache: ArrayMesh = null
 
 # --- emotes (web Fighter.emote + emotePose; actors/emote_poses.gd). Visual only: play_emote(id) / stop_emote().
 var emote_id := ""                    ## the emote playing ("" = none)
@@ -245,8 +291,11 @@ func _build() -> void:
 	head_mesh = _mesh(neck, LowPoly.ico(0.36, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, 0.32, 0), "Head")
 	var eye_mat := _make_mat(WobblerLooks.EYE)
 	eye_mat.emission_enabled = false
-	for sx in [-0.13, 0.13]:
-		eyes.append(_mesh(neck, LowPoly.box(0.1, 0.14, 0.06), eye_mat, Vector3(sx, 0.36, 0.32), "Eye"))
+	# faces (Sprint 2.4): MID / HIGH merge a brow bar into the SAME eye surface (2 meshes, 2 draw calls as before);
+	# LOW keeps the plain eye box, so the web build carries no extra geometry (docs/GRAPHICS.md "Faces").
+	_eye_mesh = _face_eye_mesh() if _gfx_q() >= 1 else LowPoly.box(EYE_SIZE.x, EYE_SIZE.y, EYE_SIZE.z)
+	for sx in [-EYE_X, EYE_X]:
+		eyes.append(_mesh(neck, _eye_mesh, eye_mat, Vector3(sx, EYE_Y, EYE_Z), "Eye"))
 	var belt_mat := _make_mat(WobblerLooks.BELT)
 	belt_mat.emission_enabled = false
 	var buckle_mat := _make_mat(WobblerLooks.BUCKLE)
@@ -329,6 +378,7 @@ func setup(p_class_id: String, p_skin: String = "none", p_hat: String = "none", 
 	set_class(p_class_id)
 	set_skin(p_skin)
 	set_hat(p_hat)
+	_face_setup()
 
 
 ## Fighter.setClass + classLook: proportions plus a few cheap accessories. Looks only.
@@ -351,8 +401,10 @@ func set_class(id: String) -> void:
 	arm_l.position.x = arm_x
 	shoulder.position.x = -arm_x
 	var ek := 1.5 if id == "alien" else 1.0
-	for e in eyes:
-		e.scale = Vector3(ek, ek, 1)
+	_face_sig.x = -1.0
+	for i in eyes.size():
+		_eye_base_scale[i] = Vector3(ek, ek, 1)
+		eyes[i].basis = Basis().scaled_local(_eye_base_scale[i])
 	_cls_nodes = _add_parts(WobblerLooks.class_parts(id, arm_x, deep), true)
 	_skin_flags()
 	recolor(color)
@@ -551,6 +603,8 @@ func apply_state(s: Dictionary) -> void:
 	trap = s.get("trap", false)
 	invuln = s.get("invuln", false)
 	_stiff_override = s.get("stiff", -1.0)
+	rage = maxf(0.0, float(s.get("rage", 0.0)))               # faces (Sprint 2.4): optional, safe defaults
+	off_stage = bool(s.get("off_stage", s.get("panic", false)))
 	var nsw: float = s.get("swing", -1.0)
 	if nsw >= 0.0 and swing < 0.0:                            # meleeBegin: the lunge lean
 		swing_yaw = face_yaw
@@ -731,6 +785,7 @@ func animate(dt: float) -> void:
 	var sh := rig.transform * (body.transform * shoulder.position)
 	arm.position = sh
 	arm.basis = Basis(_arc(SIM_DOWN, arm_dir)).scaled(Vector3.ONE * size_k)
+	_face_step(dt)
 	_apply_flash()
 
 
@@ -798,3 +853,160 @@ func _count(n: Node) -> int:
 	for ch in n.get_children():
 		k += _count(ch)
 	return k
+
+
+# ================================================================ faces (Sprint 2.4, docs/GRAPHICS.md "Faces")
+## The eye rig stays exactly TWO MeshInstance3D: every expression is a transform of those nodes (plus a mesh swap to the
+## shared X surface while dead / down). No node, material or draw call is added, and nothing the combat code reads
+## (hand, arm, shoulder, head, chest, legs) is touched, in either rig mode.
+##   idle    eyes open, a blink every 2.5-4.5 s (own deterministic RNG, seeded once in setup())
+##   blink   eyes close and open over a few frames (sin envelope, BLINK_DUR)
+##   angry   inner brow ends angle down + eyes squint: melee swing (swing >= 0) or rage up (state "rage" > 0)
+##   panic   wide eyes, brows lifted: airborne off the arena floor (state "off_stage" / "panic")
+##   x       crossed bars: dead or down_t > 0
+func face_state() -> String:
+	if dead or down_t > 0.0:
+		return "x"
+	if panic_k > 0.5:
+		return "panic"
+	if angry_k > 0.5:
+		return "angry"
+	if blink_t >= 0.0:
+		return "blink"
+	return "idle"
+
+
+## The blink personality: the owning Fighter's identity + look (gait_identity, the M0 pattern) or the pinned
+## `blink_seed`. Never the global RNG and never Combat.rng: presentation only, deterministic over the same dt sequence.
+func blink_identity() -> int:
+	if blink_seed >= 0:
+		return blink_seed
+	return (gait_identity() ^ 0x5F356495) & 0x7fffffff
+
+
+## Seed the blink clock once per setup (a look / owner change restarts the schedule deterministically).
+func _face_setup() -> void:
+	_face_rng = RandomNumberGenerator.new()
+	_face_rng.seed = blink_identity()
+	_blink_wait = _face_rng.randf_range(BLINK_WAIT_MIN, BLINK_WAIT_MAX)
+	blink_interval = _blink_wait
+	blink_t = -1.0
+	angry_k = 0.0
+	panic_k = 0.0
+	_x_set(false)
+	_face_sig.x = -1.0
+	_pose_eyes()
+
+
+## One face frame: blend toward the state's expression, run the blink clock, apply the transform to the two eyes.
+func _face_step(dt: float) -> void:
+	face_time += dt
+	var x_on := dead or down_t > 0.0
+	_blink_tick(dt)
+	var panic_target := 1.0 if off_stage and not grounded and not x_on else 0.0
+	var angry_target := 1.0 if (rage > 0.0 or swing >= 0.0) and not x_on else 0.0
+	panic_k += (panic_target - panic_k) * minf(1.0, dt * FACE_K_PANIC)
+	angry_k += (angry_target - angry_k) * minf(1.0, dt * FACE_K_ANGRY)
+	_x_set(x_on)
+	_pose_eyes()
+
+
+## Countdown to the next blink start; the interval between starts is drawn from [BLINK_WAIT_MIN, BLINK_WAIT_MAX].
+func _blink_tick(dt: float) -> void:
+	_blink_wait -= dt
+	if _blink_wait <= 0.0:
+		blink_t = 0.0
+		blink_started_at = face_time
+		blink_count += 1
+		blink_interval = _face_rng.randf_range(BLINK_WAIT_MIN, BLINK_WAIT_MAX)
+		_blink_wait += blink_interval
+	elif blink_t >= 0.0:
+		blink_t += dt
+		if blink_t >= BLINK_DUR:
+			blink_t = -1.0
+
+
+## Swap the two eye meshes to / from the shared crossed-bar X surface (still the same two meshes / draw calls).
+func _x_set(on: bool) -> void:
+	if on == _x_eyes:
+		return
+	_x_eyes = on
+	var m: Mesh = x_eye_mesh() if on else _eye_mesh
+	for e in eyes:
+		if e != null:
+			e.mesh = m
+
+
+## Apply this frame's expression to the two eye nodes (children of `neck`: the head and every gameplay point are
+## separate nodes, so faces can never move them).
+func _pose_eyes() -> void:
+	var x_on := _x_eyes
+	var panic := 0.0 if x_on else panic_k
+	var angry := (0.0 if x_on else angry_k) * (1.0 - panic)
+	var open := 1.0
+	if blink_t >= 0.0 and not x_on and panic < 0.5:
+		open = 1.0 - sin(PI * clampf(blink_t / BLINK_DUR, 0.0, 1.0))
+	eye_open = 1.0 if x_on else open * (1.0 - (1.0 - ANGRY_SQUINT) * angry) * (1.0 + (PANIC_WIDE - 1.0) * panic)
+	var inner := ANGRY_ANGLE * angry - PANIC_ANGLE * panic      # + = inner brow ends down
+	var lift := PANIC_LIFT * panic - ANGRY_DROP * angry
+	var sx := 1.0 + (PANIC_WIDE_X - 1.0) * panic
+	brow_angle = signf(-EYE_X) * inner
+	var sig := Vector4(eye_open, brow_angle, lift, sx)
+	if sig == _face_sig:                                        # unchanged (idle): skip the two node writes
+		return
+	_face_sig = sig
+	for i in eyes.size():
+		var e := eyes[i]
+		if e == null:
+			continue
+		var ex := -EYE_X if i == 0 else EYE_X
+		var b := _eye_base_scale[i]
+		var ang := signf(ex) * inner
+		e.basis = _euler_xyz(Vector3(0, 0, ang)).scaled_local(Vector3(b.x * sx, b.y * eye_open, b.z))
+		e.position = Vector3(ex, EYE_Y, EYE_Z) + Vector3(0, lift, 0)
+
+
+## The MID / HIGH open eye: the eye box plus a brow bar in ONE surface (one draw call). Static and shared by every
+## wobbler: +24 triangles per wobbler, no extra MeshInstance3D, material or draw call. LOW keeps the plain eye box.
+static func _face_eye_mesh() -> ArrayMesh:
+	if _eye_brow_cache != null:
+		return _eye_brow_cache
+	_eye_brow_cache = _combine_meshes([
+		[EYE_SIZE, Vector3.ZERO, 0.0],
+		[BROW_SIZE, Vector3(0.0, BROW_Y, 0.0), 0.0],
+	])
+	return _eye_brow_cache
+
+
+## The dead / down X eye: two crossed bars in one surface, swapped into the same two eye meshes while down. Shared.
+static func x_eye_mesh() -> ArrayMesh:
+	if _x_eye_cache != null:
+		return _x_eye_cache
+	var a := X_EYE_SIZE
+	_x_eye_cache = _combine_meshes([[a, Vector3.ZERO, PI / 4.0], [a, Vector3.ZERO, -PI / 4.0]])
+	return _x_eye_cache
+
+
+## One ArrayMesh surface from several (size, centre, Z rotation) boxes: the cached LowPoly box arrays transformed and
+## appended, so each face part stays a single draw call.
+static func _combine_meshes(parts: Array) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	for part: Array in parts:
+		var sz: Vector3 = part[0]
+		var centre: Vector3 = part[1]
+		var rot := Basis(Vector3.BACK, float(part[2]))
+		var arrays := LowPoly.box(sz.x, sz.y, sz.z).surface_get_arrays(0)
+		var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var n: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		for i in v.size():
+			verts.append(rot * v[i] + centre)
+		for i in n.size():
+			norms.append(rot * n[i])
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = verts
+	out[Mesh.ARRAY_NORMAL] = norms
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, out)
+	return m

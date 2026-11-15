@@ -492,6 +492,14 @@ func fire_gun(f: FighterState, key: String, aim_point: Array = []) -> void:
 		var head := false
 		var wt := ray_walls(o[0], o[1], o[2], dx, dy, dz, rng_range)
 		if wt >= 0.0: best_t = wt
+		# Wobble Reactions (Sprint 2.3, bullet 2; tuned only): a high-force shot swats a falling load-test crate or an
+		# explosive projectile in flight aside instead of reaching what is behind it, and the tracer stops on it. The
+		# crate redirect goes through Combat.hazard_source (the Arcade stage layer); neither path multiplies any damage.
+		if tuned and float(w.get("maxForce", 0.0)) >= SHOT_DEFLECT_FORCE:
+			var hd := combat.deflect_hazard_ray(o[0], o[1], o[2], dx, dy, dz, best_t)
+			if hd >= 0.0: best_t = hd
+			var pd := deflect_ray(o[0], o[1], o[2], dx, dy, dz, best_t)
+			if pd >= 0.0: best_t = pd
 		# Destructible props (docs/DESTRUCTIBLE.md), only when the mode is on: the nearest breakable solid along this
 		# pellet's line takes the damage and stops the shot. `best_t` already includes every solid (walls and props),
 		# so a prop behind a wall or behind a fighter is never reached, by construction.
@@ -984,6 +992,66 @@ func step_grenades(dt: float) -> void:
 		if g.age >= g.fuse:
 			_end_shot(grenades, g)
 			explode(g.px, g.py, g.pz, g.owner, g.w)
+
+# ============================== wobble reactions: mid-air redirect (Sprint 2.3) ==============================
+
+## Post-v0.4.0 Sprint 2.3 "Mid-Air Crate Redirect" (docs/DAMAGE.md "Wobble Reactions"), tuned matches only: a melee swing or
+## a high-force shot redirects an explosive projectile in flight (rockets, grenades) along the attacker's aim. The vertical
+## speed is kept (never boosted), the HORIZONTAL SPEED MAGNITUDE is kept, no damage is multiplied, and nothing here draws a
+## random number. The falling hazard crates are the Arcade stage layer's (Combat.hazard_source / StageEvents.deflect_crate).
+const DEFLECT_PROJ_R := 0.45        ## m: a rocket/grenade's redirect hit sphere (before the weapon's own `thick` padding)
+const SHOT_DEFLECT_FORCE := 8.0     ## the weapon table's `maxForce` a shot needs to swat one of these aside: the tuned
+                                    ## Shotgun 9 / Sniper 8 / Mammoth 8 (the platform-force analogue of HEAVY_FORCE 16)
+
+## The horizontal aim a redirect uses, as a unit [x, z]; a zero vector falls back to `yaw`'s facing.
+static func flat_dir(dx: float, dz: float, yaw: float) -> Array:
+	var l := sqrt(dx * dx + dz * dz)
+	if l < 1e-6: return [sin(yaw), cos(yaw)]
+	return [dx / l, dz / l]
+
+## Turn a shot's horizontal velocity down (dx, dz), keeping its speed magnitude; the vertical velocity is untouched.
+func _redirect_shot(s: Shot, dx: float, dz: float, yaw: float) -> void:
+	var sp := sqrt(s.vx * s.vx + s.vz * s.vz)
+	if sp < 0.01: sp = float(s.w.get("speed", 0.0))
+	var d := flat_dir(dx, dz, yaw)
+	s.vx = d[0] * sp; s.vz = d[1] * sp
+	combat.ev({"type": "reaction", "kind": "deflect", "x": s.px, "y": s.py, "z": s.pz, "dx": d[0], "dz": d[1]})
+
+## A melee weapon-line point inside `pad` of an explosive projectile in flight: redirect it down (dx, dz). Returns true
+## when one was swatted (one projectile per fixed step; the swing's next line point can hit another).
+func deflect_near(x: float, y: float, z: float, pad: float, dx: float, dz: float) -> bool:
+	var rr := DEFLECT_PROJ_R + pad
+	for r: Shot in rockets:
+		var ax := r.px - x
+		var ay := r.py - y
+		var az := r.pz - z
+		if ax * ax + ay * ay + az * az < rr * rr:
+			_redirect_shot(r, dx, dz, 0.0); return true
+	for g: Shot in grenades:
+		if g.landed: continue              # a grenade on the floor is not in flight any more
+		var ax2 := g.px - x
+		var ay2 := g.py - y
+		var az2 := g.pz - z
+		if ax2 * ax2 + ay2 * ay2 + az2 * az2 < rr * rr:
+			_redirect_shot(g, dx, dz, 0.0); return true
+	return false
+
+## A shot ray hitting an explosive projectile in flight first: redirect the nearest one down the ray and return the
+## distance to it (or -1 = none before `far`). The tracer then stops on the deflected projectile.
+func deflect_ray(ox: float, oy: float, oz: float, dx: float, dy: float, dz: float, far: float) -> float:
+	if rockets.is_empty() and grenades.is_empty(): return -1.0
+	var best := -1.0
+	var best_shot: Shot = null
+	for r: Shot in rockets:
+		var t := ray_sphere(ox, oy, oz, dx, dy, dz, r.px, r.py, r.pz, DEFLECT_PROJ_R)
+		if t >= 0.0 and t < far and (best < 0.0 or t < best): best = t; best_shot = r
+	for g: Shot in grenades:
+		if g.landed: continue
+		var t := ray_sphere(ox, oy, oz, dx, dy, dz, g.px, g.py, g.pz, DEFLECT_PROJ_R)
+		if t >= 0.0 and t < far and (best < 0.0 or t < best): best = t; best_shot = g
+	if best_shot == null: return -1.0
+	_redirect_shot(best_shot, dx, dz, 0.0)
+	return best
 
 # ============================== bow ==============================
 

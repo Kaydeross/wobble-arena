@@ -143,6 +143,7 @@ static func ground_at(solids: Array, py: float, x: float, z: float, up: float = 
 
 ## botThink, one fixed step.
 func think(b: FighterState, sim: MatchSim, dt: float) -> void:
+	if b.carried_by != null: return         # Fastball Special: a carried teammate bot does not act from overhead
 	var combat := sim.combat
 	if not combat.brawl and PracticeRange.is_range(sim.map):    # practice-range dummies (rangeBot)
 		PracticeRange.range_bot(b, sim.fighters.find(b) - 1, sim.player, sim.map["range"], dt, self)

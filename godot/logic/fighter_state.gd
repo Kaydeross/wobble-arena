@@ -84,6 +84,13 @@ var burner: FighterState = null
 var last_attacker: FighterState = null
 var last_hit_time := -99.0
 
+# --- teammate carry / throw, the Fastball Special (docs/DAMAGE.md): TEAM modes and Arcade co-op, tuned matches only ---
+var carrying: FighterState = null    ## the teammate this fighter hoists overhead (the normal shove and weapons are off)
+var carried_by: FighterState = null  ## the carrier holding this fighter overhead (pinned above it, not simulated normally)
+var carry_limp := false              ## hoisted while DOWNED (an Arcade co-op seat): no body-slam, only the revive discount
+var ball_t := -1.0                   ## a thrown body's flight time left, -1 = not flying (normal simulation)
+var ball_owner: FighterState = null  ## who threw this body (the body-slam's attacker / K.O. credit), null = not thrown
+
 # --- weapons / inventory ---
 var weapon := "spatula"          ## "" = nothing (dead)
 var slots: Array = [null, null, null]   ## each null or {key, ammo, mag (-1 = no magazine), pend}

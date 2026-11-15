@@ -22,6 +22,10 @@ const CRATE_R := 2.8
 const CRATE_DMG := 30.0
 const CRATE_FORCE := 12.0
 const CRATE_DROP_Y := 16.0
+## Wobble Reactions (Sprint 2.3, docs/DAMAGE.md): a melee swing or a high-force shot swats a falling load-test crate aside.
+## Only the HORIZONTAL speed changes (DEFLECT_SPEED m/s down the attacker's aim); the vertical fall and _land are unchanged.
+const CRATE_DEFLECT_SPEED := 8.0
+const CRATE_DEFLECT_R := 1.1       ## m: the crate's collision sphere for the redirect (a 1.5 m box's half diagonal + margin)
 const BACKUP_R := 1.6
 const PAD_R := 1.5
 const PAD_BASE_POWER := 17.0
@@ -50,6 +54,9 @@ func setup(manager: ArcadeManager, s: MatchSim, stage: Dictionary, p_rng: Random
 	m = manager
 	sim = s
 	rng = p_rng
+	# Wobble Reactions (Sprint 2.3): a weak, duck-typed registration on the tuned combat so a melee swing / a high-force
+	# shot can deflect a crate this stage owns. Combat never imports this class; null outside the Arcade.
+	if s != null and s.combat != null: s.combat.hazard_source = weakref(self)
 	evs = []
 	for e: Dictionary in stage.get("events", []):
 		var every := float(e.get("every", 0.0)) * float(manager.diff_def().get("event_mul", 1.0))     # easier = events come less often
@@ -132,6 +139,8 @@ func on_phase(n: int) -> void:
 func finish() -> void:
 	for h: Dictionary in _crates: _free(h.get("node")); _free(h.get("ring"))
 	_crates.clear()
+	if sim != null and sim.combat != null and sim.combat.hazard_source != null and sim.combat.hazard_source.get_ref() == self:
+		sim.combat.hazard_source = null          # Wobble Reactions: no stage, no deflectable crates
 	for q: Dictionary in _pads: _remove_pad(q)
 	_pads.clear()
 	for s: Dictionary in _summons: _free(s.get("node"))
@@ -180,7 +189,8 @@ func _load_test(p: Dictionary) -> void:
 		_crates.append(_new_crate(x, z, warn))
 
 func _new_crate(x: float, z: float, warn: float) -> Dictionary:
-	var h := {"id": _next_ev_id(), "x": x, "z": z, "gy": 0.0, "left": warn, "dur": maxf(warn, 0.1), "node": null, "ring": null}
+	var h := {"id": _next_ev_id(), "x": x, "z": z, "y": CRATE_DROP_Y, "gy": 0.0, "vx": 0.0, "vz": 0.0,
+		"left": warn, "dur": maxf(warn, 0.1), "node": null, "ring": null}
 	if world != null:
 		var ring := _warning_ring(x, z, 0.0, CRATE_R, Color(1.0, 0.18, 0.12, 0.45))
 		var box := MeshInstance3D.new()
@@ -216,13 +226,51 @@ func _update_crates(dt: float) -> void:
 		var h: Dictionary = _crates[i]
 		h["left"] -= dt
 		var k := clampf(1.0 - float(h["left"]) / float(h["dur"]), 0.0, 1.0)
+		var y := lerpf(CRATE_DROP_Y, 0.75, k * k)
+		h["y"] = y
+		var vx := float(h.get("vx", 0.0))
+		var vz := float(h.get("vz", 0.0))
+		if vx != 0.0 or vz != 0.0:              # deflected (Wobble Reactions): the crate drifts horizontally while it falls
+			h["x"] = float(h["x"]) + vx * dt
+			h["z"] = float(h["z"]) + vz * dt
+			var ring: Variant = h.get("ring")
+			if ring != null and is_instance_valid(ring):
+				(ring as Node3D).position = Vector3(float(h["x"]), float(h["gy"]) + 0.08, float(h["z"]))
 		if h["node"] != null and is_instance_valid(h["node"]):
-			(h["node"] as Node3D).position.y = lerpf(CRATE_DROP_Y, 0.75, k * k)
-			(h["node"] as Node3D).rotation.y += dt * 2.0
+			var box := h["node"] as Node3D
+			box.position = Vector3(float(h["x"]), y, float(h["z"]))
+			box.rotation.y += dt * 2.0
 		if h["left"] <= 0.0:
-			_land(h)
+			_land(h)                            # the landing spot is the (possibly deflected) x/z, exactly once
 			_free(h.get("node")); _free(h.get("ring"))
 			_crates.remove_at(i)
+
+# ---------------- Wobble Reactions: the deflectable falling crates (Sprint 2.3) ----------------
+
+## True when at least one crate is falling (a cheap pre-check for callers).
+func has_deflectables() -> bool:
+	return not _crates.is_empty()
+
+## The falling crates as a collision query for Combat/Weapons: {id, x, y, z, r}. The warning seconds stay in
+## active_events(); a redirected crate reports its drifted x/z here too, so the host's am.ev ring follows it.
+func deflectables() -> Array:
+	var out: Array = []
+	for h: Dictionary in _crates:
+		out.append({"id": int(h["id"]), "x": float(h["x"]), "y": float(h.get("y", CRATE_DROP_Y)), "z": float(h["z"]),
+			"r": CRATE_DEFLECT_R})
+	return out
+
+## Redirect the falling crate `id`: its horizontal velocity becomes CRATE_DEFLECT_SPEED m/s down (dx, dz). The vertical
+## fall (and the landing damage, still host-side in _land) is unchanged; the landing spot is where it now falls.
+func deflect_crate(id: int, dx: float, dz: float) -> bool:
+	var l := sqrt(dx * dx + dz * dz)
+	if l < 1e-6: return false
+	for h: Dictionary in _crates:
+		if int(h["id"]) != id: continue
+		h["vx"] = dx / l * CRATE_DEFLECT_SPEED
+		h["vz"] = dz / l * CRATE_DEFLECT_SPEED
+		return true
+	return false
 
 ## The crate lands: everyone near the spot (on the floor, not up a scaffold) is hit and thrown.
 func _land(h: Dictionary) -> void:

@@ -158,3 +158,95 @@ Per-fighter timers `FighterState.skill_n` (charges, a missing id = full) and `sk
 **Air recovery ("boing burst")**: the `recover` tap (touch: the contextual button turns into RECOVER while airborne within 3 s of a hit (plain jumps keep RELOAD) when no dash weapon is held, with a ring while the charge comes back; keyboard X; the dash key / pad left shoulder also recovers in the air without dash gear). Allowed when airborne, alive, not knocked down, not trapped, not on a ladder, at least 0.2 s after the last hit, with the charge (1; back on landing or after 6 s), and not below `ring_out_y * 0.25` (a ledge knock can be saved, a free fall cannot). Effect: stun cleared, the knock's horizontal speed x0.3 plus a 13 m/s burst toward the stick (or the arena centre with no stick), `vy = max(vy, 8)`, 0.5 s of boosted air control (`FighterState.recover_air_t`, read by `FighterPhysics.step`: air acceleration 22 toward up to 12 m/s, momentum kept with no stick; default 0 keeps the physics parity), 0.2 s invulnerability, dash puff + swing sound. Bots do not use it. No protocol change: the state snapshot already carries the velocity.
 
 Tests: `npm run test:godot-skills` (`godot/tests/skills_test.gd`).
+
+## Teammate carry/throw (Fastball Special)
+
+Post-v0.4.0 Sprint 2.2, Godot only: in **TEAM modes** (`t2`, `t3`, `t4`, `tdm`, `ctf`) and in **two-seat Arcade co-op** a
+player can hoist a teammate overhead and throw them.
+
+- **Gate:** `Combat.carry_active()` = `tuning_active()` **and** (a `CARRY_MODES` team mode with `Combat.teams != 0`, or
+  `Combat.arcade_coop`, the flag `ArcadeManager._apply_friendly_fire` writes for a two-seat run). FFA, classic, solo
+  Arcade, duel/chaos and every match on the shared web numbers never carry, so `npm run test:godot-bots` /
+  `test:godot-physics` stay bit-identical. Online co-op therefore only lights up when `Combat.net_zones` is on (the same
+  `tuning_active()` gate as the rest of this file); a remote player's ghost is never a carry candidate (moving it would
+  need a protocol change, out of scope).
+- **Lift:** the `shove` key within `CARRY_RANGE` 1.4 m (feet distance) of a teammate while **empty-handed**. Empty-handed
+  is the default Spatula only (`FighterState.slot < 0`, the same condition quick melee reads), so any picked-up weapon
+  refuses the lift. A living teammate, or a **downed Arcade co-op seat** (the seat system's `dead`/`elim` marker), can be
+  hoisted. The normal shove is suppressed and the lift takes the 0.9 s shove cooldown.
+- **Carry:** `FighterState.carrying` / `carried_by`. The body is pinned at `CARRY_HOLD_HEIGHT` 2.3 m above the carrier's
+  feet, following its facing (the Net Gun-trap pinning pattern: `Combat.carry_tick` writes the position and zeroes the
+  velocity after physics, once per fixed step), and it cannot act (its `PlayerControl` / `BotBrain` step returns). The
+  carrier walks at `CARRY_SPEED_MUL` 0.85 of its walk speed and no weapon fires.
+- **Throw:** the `fire` key launches the body forward along the carrier's facing at `THROW_SPEED` 18 m/s plus `THROW_UP`
+  6 m/s of arc (`vx = sin(face_yaw) * 18`, `vz = cos(face_yaw) * 18`, `vy = 6`).
+  - **Living teammate — body-slam:** the FIRST enemy the flying body touches takes `SLAM_DMG` 35 damage / `SLAM_FORCE`
+    20 knockback; the carrier is the attacker (K.O. credit, the existing hit Fx shake/hitstop), the "FASTBALL SPECIAL!"
+    toast (5 languages) is emitted, and the thrown fighter takes no damage from its own slam.
+  - **Downed Arcade co-op seat — limp body:** a thrown downed body never slams. When it lands on the floor (`grounded`
+    on a solid) it calls `ArcadeManager.fastball_revive(f, 2.0)` through the sim meta `"arcade_run"` (has_method: no
+    static DLC dependency from `Combat`), shaving `CARRY_REVIVE_SHAVE` 2.0 s off that seat's auto-revive countdown
+    (`ArcadeManager.seat_down`; the HUD already counts `seat_revive_left()`, so the shorter time shows at once). The
+    landing must be on a solid — a body thrown into the void pays nothing and the seat revives on its normal timer.
+- **Reset:** `Combat.place_at` (respawn, Arcade revive, match start) cuts the carry link on both sides and forgets a throw
+  in flight, so a fresh life never inherits one; `Combat.dispose` drops the references at match end.
+- **Determinism:** no branch here draws a random number (`test:godot-skills` compares `CombatRng.state` around the lift,
+  the throw and the tick); the Arcade side keeps using its own scripted RNG.
+
+Tests: `npm run test:godot-skills` (`_carry`: gate off in FFA/classic/tuning-off and for enemies/non-empty hands, the
+1.4 m range, 0.85x carrier speed, the pin, the exact launch vector, the 35/20 slam to the first enemy only, no
+self-damage, the toast, the limp body, the `place_at` reset and no RNG draw) and `npm run test:godot-arcade` (`_fastball`:
+the offline `arcade_run` meta, solo Arcade off, a downed-seat throw = -2.0 s round trip on the revive countdown, and the
+living body-slam 35/20 + toast against the stage crew).
+
+## Wobble Reactions (overlay only)
+
+Post-v0.4.0 Sprint 2.3, Godot only, **every branch gated on `Combat.tuning_active()`** (the same overlay gate as the
+sections above): the web game, online matches without `net_zones` and the JS parity suites never reach any of it. The
+rules live in `Combat` (`bowl_slides`, `hazard_source`), `Weapons` (`deflect_near` / `deflect_ray`) and the Arcade
+`StageEvents` (the deflectable crate registration). Nothing in the feature draws a random number: the "reaction" event
+carries the presentation, which the `FxSystem` turns into pooled sparks/dust/rings with its own RNG.
+
+### Human Bowling Ball
+
+A fighter pinned by a Net Gun trap (`trap_t > 0`) that takes a **heavy melee swing** is released from the net and slides
+across the floor as a bowling ball.
+
+- **Heavy** = the weapon **table's** `force >= 16` (`Combat.HEAVY_FORCE`, read before the class / slam / cyclone
+  multipliers, exactly the value `melee_sweep` multiplies). Tuned tables: Bat 17, Giant Mallet 26, Hammer 16, Pipe
+  Wrench 24; the Spatula 13, Katana 11 and Trident 9 never launch.
+- The trap is released for real (`TrapNet.victims.erase`, `trap_net = null`, `trap_t = 0`; a net holding other fighters
+  keeps them) and the body's post-hit knockback is replaced by a flat slide: `vx = dx * BOWL_SPEED 26`, `vz = dz * 26`,
+  `vy = 0`, `grounded = true`, `stun = 0`. Horizontal launch direction = the swing's horizontal knockback direction
+  (the same `d` the melee hit used). The slide lasts `BOWL_TIME` 0.9 s and re-asserts 26 m/s on every fixed step
+  (`Combat.timers` -> `_bowl_tick`, so it is inside `MatchSim.step` and render-rate independent); physics friction after
+  the re-assert is the only slowdown.
+- **Bowling pins:** every other fighter inside `BOWL_PIN_R` 1.1 m horizontally (and 1.6 m vertically) when the body
+  reaches it takes `BOWL_PIN_DMG` 30 damage / `BOWL_PIN_FORCE` 18 force once per launch. `hit()` is always called with
+  the sliding fighter as the **attacker** and the pin as the victim, so the bowler is never hurt by its own pins (and
+  `Combat.is_friend` / the Arcade seat rule still decide friendly pins: a friend takes nothing).
+- **STRIKE!** (translated): one toast per launch, emitted the first time a pin's hit really applies.
+- The slide ends on expiry, death, a knockdown (`down_t > 0`) or a fresh net; `Combat.place_at` clears it on a new life
+  and `Combat.dispose` at match end.
+
+### Mid-Air Crate Redirect
+
+A **melee swing** or a **high-force shot** that touches a falling `load_test` hazard crate (an Arcade stage event owned
+by `StageEvents`) or an **explosive projectile in flight** (the rockets / grenades lists in `Weapons`) redirects it:
+
+- melee: the weapon line (`now`/`prev` + the halfway samples `melee_sweep` already tests fighters with) against the
+  crate's `r = 1.1` + the weapon's `thick` sphere, and against a rocket/grenade's `DEFLECT_PROJ_R` 0.45 + `thick`;
+- shot: the pellet ray against the same spheres. **High-force shot** = the weapon table's `maxForce >= 8`
+  (`Weapons.SHOT_DEFLECT_FORCE`): tuned Shotgun 9, Sniper 8 and Mammoth Pistol 8 qualify; AK/SMG/Uzi/Minigun/Revolver/
+  Flamethrower do not. The Spring Glove's punch path is deliberately not wired.
+- The redirect is horizontal only: a projectile keeps its horizontal speed magnitude and only changes heading
+  (`vx,vz = dir * |vx,vz|`, `vy` untouched); a crate gets `CRATE_DEFLECT_SPEED` 8 m/s horizontally while its scripted
+  fall (and therefore `_land`, still host-side and unchanged) continues, so it lands where it was deflected. Melee
+  redirects one object per call; a shot's tracer stops on the object it swatted (no damage, no damage multiplication).
+- `StageEvents.deflectables()` / `deflect_crate(id, dx, dz)` are registered on `Combat.hazard_source` (duck-typed weak
+  reference, no DLC import from logic; cleared by `StageEvents.finish`). The warning ring and the host's `am.ev`
+  descriptors follow the drifted x/z.
+
+Both reactions are covered by `npm run test:godot-skills` (`_reactions`: trap release + 26 m/s, 30/18 pins, no
+self-damage, one STRIKE toast, tuning-off / trap-0 / light-weapon gates, crate drift and single landing, rocket/grenade
+redirect, high-force shot vs AK) and `npm run test:godot-arcade` (crate registration, drift, am.ev spot, finish clears it).

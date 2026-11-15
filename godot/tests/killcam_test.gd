@@ -132,5 +132,92 @@ func _run() -> void:
 	check(not t.kill_cam_enabled(), "off in team modes")
 	t.queue_free()
 	await process_frame
+	await _impact_freeze(st)
 	print("KILLCAM %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
 	quit(0 if fails == 0 else 1)
+
+## Post-v0.4.0 Sprint 2.1: the final-K.O. impact freeze, zoom and knockback speedometer (world/fx.gd decides, the follow
+## camera owns the state, the HUD draws the badge). Headless suites that step the world by hand opt in on the camera.
+func _impact_freeze(st: Node) -> void:
+	var base_fov: float = float(st.get_value("fov", 72.0))
+	# --- a normal mid-match K.O. is not a final moment: no freeze, no badge, no global time scale
+	var w := _world("classic")
+	w.cam.impact_in_tests = true
+	var sim = w.sim
+	var bot: FighterState = null
+	for f: FighterState in sim.fighters:
+		if f != sim.player: bot = f
+	_ko(w, bot)
+	w.tick(0.0)
+	check(not w.cam.impact_active and is_equal_approx(Engine.time_scale, 1.0), "a normal K.O. does not freeze the match")
+	check(not w.hud.get_node("Impact").visible, "a normal K.O. shows no speedometer badge")
+	# --- the K.O. that wins the match: 0.15x, 0.9 s REAL, zoom, and the victim's launch velocity on the badge
+	bot.phys.vx = 10.0; bot.phys.vy = 0.0; bot.phys.vz = 0.0           # 10 m/s -> exactly 120 km/h
+	sim.combat.rules.match_over = true
+	sim.combat.rules.winner = sim.player
+	_ko(w, bot)
+	w.tick(0.0)
+	check(w.cam.impact_active, "the match-winning K.O. starts the impact freeze")
+	check(is_equal_approx(Engine.time_scale, w.cam.IMPACT_TIME_SCALE), "0.15x engine time scale (%.2f)" % Engine.time_scale)
+	check(w.cam.impact_kmh == 120, "launch speed sqrt(10^2)*12 = 120 km/h (%d)" % w.cam.impact_kmh)
+	check(w.hud.get_node("Impact").visible and w.hud.get_node("Impact/Box/Text").text == "LAUNCHED AT 120 KM/H!",
+		"the comic badge reads the exact km/h (%s)" % w.hud.get_node("Impact/Box/Text").text)
+	# zoom: 0.2 s into the moment the FOV has narrowed and the arm is short (two frames: follow() applies the eased amount)
+	w.cam.impact_started_ms -= 200
+	w.tick(FRAME)
+	w.tick(FRAME)
+	check(w.cam.impact_amount() > 0.9, "the impact zoom reaches full (%.2f)" % w.cam.impact_amount())
+	check(w.cam.fov < base_fov - 8.0, "the impact zoom narrows the FOV (%.1f < %.1f)" % [w.cam.fov, base_fov])
+	# the end of the 0.9 s REAL window restores the time scale and takes the zoom back
+	w.cam.impact_until_ms = Time.get_ticks_msec() - 1
+	w.tick(FRAME)
+	check(not w.cam.impact_active and is_equal_approx(Engine.time_scale, 1.0), "the freeze restores after its REAL window")
+	check(absf(w.cam.fov - base_fov) < 0.6, "the FOV comes back with it (%.1f)" % w.cam.fov)
+	# a new match (World.load_map calls FollowCamera.reset_view) and a scene teardown both restore too
+	w.cam.trigger_impact(148, w.player_pos())
+	check(w.cam.impact_active and not is_equal_approx(Engine.time_scale, 1.0), "a direct trigger freezes again")
+	w.cam.reset_view()
+	check(not w.cam.impact_active and is_equal_approx(Engine.time_scale, 1.0), "a new match restores the time scale")
+	w.cam.trigger_impact(148, w.player_pos())
+	w.queue_free()
+	await process_frame
+	check(is_equal_approx(Engine.time_scale, 1.0), "scene teardown restores the time scale")
+	# --- Sudden Death: every elimination is final; a ring-out with no launch speed left is TERMINAL RING-OUT!
+	var sw := _world("sudden")
+	sw.cam.impact_in_tests = true
+	var sbot: FighterState = null
+	for f: FighterState in sw.sim.fighters:
+		if f != sw.sim.player: sbot = f
+	sbot.dead = true; sbot.elim = true
+	sw.sim.combat.events.append({"type": "ko", "killer": null, "victim": sbot, "weapon": "", "fall": true})
+	sw.tick(0.0)
+	check(sw.cam.impact_active, "a Sudden Death elimination starts the impact freeze")
+	check(sw.cam.impact_kmh == -1, "a ring-out with no launch speed has no number (-1)")
+	check(sw.hud.get_node("Impact/Box/Text").text == "TERMINAL RING-OUT!",
+		"the comic badge reads TERMINAL RING-OUT! (%s)" % sw.hud.get_node("Impact/Box/Text").text)
+	sw.cam.end_impact()
+	sw.queue_free()
+	await process_frame
+	# --- Arcade: the stage boss going down is a final K.O. too (world.arcade.boss is the run's boss)
+	var aw := _world("classic")
+	aw.cam.impact_in_tests = true
+	var abot: FighterState = null
+	for f: FighterState in aw.sim.fighters:
+		if f != aw.sim.player: abot = f
+	var AM: Variant = load("res://dlc/construction/arcade_manager.gd")
+	if AM == null:
+		check(false, "the Arcade manager loads")
+	else:
+		var am = AM.new()
+		am.boss = abot
+		aw.arcade = am
+		abot.phys.vx = 6.0; abot.phys.vy = 0.0; abot.phys.vz = 0.0     # 6 m/s -> 72 km/h
+		aw.sim.combat.events.append({"type": "ko", "killer": aw.sim.player, "victim": abot, "weapon": "Spatula"})
+		aw.tick(0.0)
+		check(aw.cam.impact_active, "an Arcade boss K.O. starts the impact freeze")
+		check(aw.cam.impact_kmh == 72, "the boss' launch speed is 72 km/h (%d)" % aw.cam.impact_kmh)
+		aw.cam.end_impact()
+		aw.arcade = null
+		aw.queue_free()
+		await process_frame
+	check(is_equal_approx(Engine.time_scale, 1.0), "no test leaves the engine in slow motion")

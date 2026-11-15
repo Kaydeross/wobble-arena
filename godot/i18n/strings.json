@@ -3107,6 +3107,13 @@
   "fr": "ÉCHEC",
   "es": "SUSPENDIDO"
  },
+ "FASTBALL SPECIAL!": {
+  "zh_TW": "高速球特攻！",
+  "zh_CN": "高速球特攻！",
+  "ja": "ファストボール・スペシャル！",
+  "fr": "SPÉCIAL BOULE RAPIDE !",
+  "es": "¡ESPECIAL BOLA RÁPIDA!"
+ },
  "FLAG  %s %d/%d": {
   "zh_TW": "旗幟  %s %d/%d",
   "zh_CN": "旗帜  %s %d/%d",
@@ -4254,6 +4261,13 @@
   "ja": "突き飛ばしの嵐",
   "fr": "Tempête de bousculades",
   "es": "Tormenta de empujones"
+ },
+ "LAUNCHED AT %d KM/H!": {
+  "zh_TW": "以 %d 公里/小時 擊飛！",
+  "zh_CN": "以 %d 公里/小时 击飞！",
+  "ja": "%d km/h で吹き飛ばし！",
+  "fr": "PROPULSÉ À %d KM/H !",
+  "es": "¡LANZADO A %d KM/H!"
  },
  "Lab Genius": {
   "zh_TW": "實驗天才",
@@ -6103,6 +6117,13 @@
   "fr": "Mitraillettes, fusils à pompe, snipers, lance-roquettes",
   "es": "Subfusiles, escopetas, francotiradores, lanzadores"
  },
+ "STRIKE!": {
+  "zh_TW": "全倒！",
+  "zh_CN": "全倒！",
+  "ja": "ストライク！",
+  "fr": "STRIKE !",
+  "es": "¡PLENO!"
+ },
  "Salute": {
   "zh_TW": "敬禮",
   "zh_CN": "敬礼",
@@ -7075,6 +7096,13 @@
   "ja": "腕を大きく振って左右にステップ",
   "fr": "Bras grands ouverts, pas de côté",
   "es": "Brazos amplios y pasos laterales"
+ },
+ "TERMINAL RING-OUT!": {
+  "zh_TW": "極限出界！",
+  "zh_CN": "极限出界！",
+  "ja": "限界場外！",
+  "fr": "SORTIE EXTRÊME !",
+  "es": "¡FUERA DE LÍMITE!"
  },
  "Tap a slot to switch": {
   "zh_TW": "點按欄位即可切換",

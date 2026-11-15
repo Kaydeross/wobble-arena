@@ -335,6 +335,7 @@ func step(dt: float) -> void:
 	for f: FighterState in fighters:          # pinned under a net: nothing pushes them out
 		if f.trap_t > 0.0:
 			f.phys.px = f.trap_x; f.phys.pz = f.trap_z; f.phys.vx = 0.0; f.phys.vz = 0.0
+	combat.carry_tick(dt, get_meta("arcade_run") if has_meta("arcade_run") else null)   # Fastball Special (docs/DAMAGE.md)
 	for f: FighterState in fighters:          # the gameplay half of Fighter.animate
 		f.yaw += wrapf(f.face_yaw - f.yaw, -PI, PI) * minf(1.0, 12.0 * dt)
 		var c: Variant = controllers.get(f)

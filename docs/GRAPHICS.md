@@ -70,6 +70,53 @@ moonbase-wide -40.0 / -2.4 %, moonbase-play -11.1 / -9.1 %. Pictures: `docs/styl
   Gameplay > Enemy arrows, default on). Six pooled 2D Controls inside the safe area, no 3D pass, so it does not appear
   in the budgets above; `godot/tests/enemy_indicators_test.gd` (`npm run test:godot-ui`) checks the geometry.
 
+## Faces (expressive procedural eye rig)
+
+The wobbler's face is the two eye meshes, animated by `FighterState` and nothing else (presentation only: it never
+writes state and never draws from `Combat.rng`). The rig stays exactly **two `MeshInstance3D`s**: every expression
+transforms those two nodes, so there is no extra node, material or draw call, and the game nodes combat reads (hand,
+arm, shoulder, head, chest, legs) are never touched (the gameplay points stay bit-identical in classic and ragdoll
+mode).
+
+| State | Trigger (state keys) | Face |
+|---|---|---|
+| idle | — | eyes open, one blink every 2.5-4.5 s (`RandomNumberGenerator` seeded once in `setup()` from the fighter identity + look, own clock: deterministic over the same frames, never the global RNG) |
+| blink | the blink window | eyes close and open over 0.16 s (sin envelope: ~5-6 closed frames at 60 Hz) |
+| angry | `swing >= 0` or `rage > 0` (`FighterState.rage_t`) | mirrored angled brows (inner ends down, 0.34 rad) plus a 0.78 squint |
+| panic | `off_stage` / `panic` while airborne off the floor | eyes wide (x1.18 / x1.34) and lifted 14 mm, brows lifted |
+| x | `dead` or `down_t > 0` | crossed bars per eye, one shared X mesh swapped into the same two meshes |
+
+`Fighter.visual_state()` sends the two face-only keys: `rage` = `FighterState.rage_t` (seconds of Rage left) and
+`off_stage` = airborne below the arena floor line (`py < -3 m`; every walkable floor top is at y >= 0 and the ring-out
+line is -25 m), so a fighter falling off the stage shows panic on the way down. Both are optional in the wobbler with
+idle-safe defaults.
+
+Mesh cost (measured by `npm run test:godot-wobbler`, which builds both tiers in one process): the brow bar is
+**merged into the eye mesh surface** on MID / HIGH, so the rig stays two meshes and two draw calls; LOW keeps the
+plain 36-vertex eye box, so the web build carries the pre-feature geometry exactly (same cached `LowPoly` mesh) and
+still gets blink / angry / panic / X through the node transform and the X mesh swap, just without brows.
+
+| Per wobbler | LOW (web) | MID / HIGH |
+|---|---|---|
+| eye `MeshInstance3D`s | 2 | 2 |
+| `MeshInstance3D`s, bare class (before -> after) | 20 -> 20 | 20 -> 20 |
+| open-eye surface (verts / triangles) | 36 / 12 (unchanged, the pre-feature box) | 72 / 24 (eye + brow, one surface) |
+| X (dead / down) surface | 72 / 24, swapped into the same two meshes | 72 / 24, swapped into the same two meshes |
+| extra draw calls / nodes / materials | 0 | 0 |
+| brow geometry | none | merged into the eye surface |
+
+Only LOW pays anything while down (+12 triangles per eye in the same two draws; MID / HIGH swap 24 triangles for
+24). The X and eye+brow surfaces are static resources shared by every wobbler. A face frame is a handful of float
+ops and at most two node transforms (`Wobbler._face_step`, which skips the node writes while the pose is unchanged),
+measured inside the ragdoll budget run (`npm run test:godot-ragdoll`).
+
+`godot/tests/wobbler_test.gd` (`npm run test:godot-wobbler`) checks it deterministically: blink intervals over 40 s of
+simulated idle time land in 2.5-4.5 s with a few closed frames each and the eyes reopen; same seed + frames replays
+exactly; angry brows are mirrored and > 0.2 rad on a swing and on rage; panic eyes are wide only while airborne with
+`off_stage`; X eyes are the shared X mesh when dead / `down_t > 0` and clear on respawn; the rig still has exactly two
+eye meshes; no node or mesh count changes while expressing; a face never moves a game node; and LOW keeps the plain
+36-vertex eye mesh. The face-state table above is the test's `WOBBLER_FACE` output.
+
 ## Performance budget (`npm run test:godot-gfx`)
 
 `godot/tests/gfx_bench.gd` builds Farm (40.7k decor tris), Candy (38.3k) and Crater Dome (18k, 51 moving pieces) with
@@ -283,6 +330,32 @@ All under the 4 ms CPU / 1400-800-650 draw / 200k-130k-110k primitive budgets. T
 (five pools, trails, specks) plus the labels; the cost is CPU (~1 ms at HIGH caps, ~0.2 ms at LOW), i.e. under ~3 ms of
 an iPhone 12 frame at MID worst case. A normal match stays far below the caps (40 s, 8 fighters, HIGH: bits peak ~110,
 blobs 24, streaks 23).
+
+### Final K.O.: impact freeze, zoom and knockback speedometer (Post-v0.4.0 Sprint 2.1)
+
+The decisive K.O. of a match gets a short comic beat: a **0.15x** time-scale freeze for **0.9 s of REAL time** (measured
+with `Time.get_ticks_msec`, never with the scaled frame delta, so it ends after 0.9 s of wall clock whatever the frame
+rate or the tier), the camera zooms in on the hit (FOV narrowed up to 22 %, arm shortened up to 30 %, the orbit pivot
+leans 45 % toward the victim), and a fat rotated yellow sticker on the HUD reads the victim's launch speed:
+
+```
+LAUNCHED AT %d KM/H!        km/h = sqrt(vx*vx + vy*vy + vz*vz) * 12.0
+TERMINAL RING-OUT!          a ring-out with no launch speed left (below 24 km/h)
+```
+
+What triggers it (`world/fx.gd` reads the existing `ko` event, presentation only): the **K.O. that ends the match**
+(`rules.match_over` becoming true), **any Sudden Death elimination** (one life), or an **Arcade boss K.O.** (`world.arcade.boss`
+is the victim). The badge is real-time too: ~1.5 s, then gone. It never runs online (one authoritative clock), in a soak
+run (a benchmark) or in the hand-stepped headless suites (they opt in with `follow_camera.impact_in_tests`).
+
+Where it lives: `world/follow_camera.gd` owns the freeze/zoom state, `Engine.time_scale` and the REAL-time windows (its
+`reset_view` — called by `World.load_map` — `end_impact()` and `_exit_tree()` restore the time scale, so a restart, a
+teardown or a skipped replay can never leave the game in slow motion; `HUD.update` and `KillCam.step` tick it, the two
+callbacks that see every rendered frame, and the kill cam films through the zoomed FOV so a replay that starts while the
+moment is up keeps the effect); `world/fx.gd` decides when (`_impact_ko`); `ui/hud.gd` draws the badge. No extra pass or
+draw on any tier beyond the one PanelContainer sticker that exists only while it shows. Tests: `npm run test:godot-killcam`
+(freeze, restore, zoom, the exact km/h number, ring-out variant, arcade boss, teardown) and `npm run test:godot-ui`
+(badge text via `tr()`, layout clear of every HUD panel and the toast at every phone / tablet size).
 
 ## Still off
 

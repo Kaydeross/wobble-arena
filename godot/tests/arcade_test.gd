@@ -56,6 +56,7 @@ func _run() -> void:
 	await _coop()
 	await _boss_hardening()
 	await _friendly_fire()
+	await _fastball()
 	await _balance()
 	await _events()
 	await _boss_weapon_crates()
@@ -925,6 +926,83 @@ func _friendly_fire() -> void:
 	mg.end_run()
 	st.set_value("arcade_ff", false)
 
+# ---------------- 3c-2. Fastball Special: co-op carry & the downed revive discount ----------------
+
+## Sprint 2.2 (docs/DAMAGE.md "Teammate carry/throw"): only a two-seat Arcade co-op run carries (solo never). A DOWNED seat
+## is hoisted as a limp body (no slam) and a landing on the site floor shaves 2.0 s off its revive countdown through
+## ArcadeManager.fastball_revive (found through the sim meta "arcade_run"); a LIVING teammate's body slams the first
+## crewman for 35 dmg / 20 force and toasts FASTBALL SPECIAL!.
+func _fastball() -> void:
+	_unlock()
+	# offline Arcade marks the sim (Combat.carry_tick finds the run through it); solo runs keep the feature off
+	var w := _launch(0)
+	var arc = w.arcade
+	check(w.sim.has_meta("arcade_run") and w.sim.get_meta("arcade_run") == arc, "fastball: offline Arcade sets the arcade_run meta")
+	check(not w.sim.combat.carry_active() and not w.sim.combat.arcade_coop, "fastball: a solo Arcade run never carries")
+	await _free_world(w)
+	# two seats: the gate is on, and throwing a DOWNED seat onto the floor shaves 2 s off its revive
+	w = _launch_coop(0)
+	arc = w.arcade
+	var sim: MatchSim = w.sim
+	check(sim.combat.carry_active() and sim.combat.arcade_coop, "fastball: two-seat co-op enables the Fastball Special")
+	_start_fight(w)
+	_tick_safe(w, 20)
+	var p: FighterState = arc.seats[0]
+	var mate: FighterState = arc.seats[1]
+	_kill_seat(w, 1)                                  # seat 2 goes down: the manager starts its 6 s countdown
+	w.tick(FRAME)
+	check(arc.seat_is_down(1) and mate.dead and mate.elim, "fastball: seat 2 is down (dead/elim)")
+	var spot: Array = sim.map.get("player", [0.0, 0.0]) if sim.map.get("player") is Array else [0.0, 0.0]
+	if spot.size() < 2: spot = [0.0, 0.0]
+	var syaw := atan2(-float(spot[0]), -float(spot[1]))   # aim the throw at the middle of the site
+	p.phys.place(float(spot[0]), 0.05, float(spot[1]))
+	p.yaw = syaw; p.face_yaw = syaw
+	mate.phys.place(p.phys.px + sin(syaw) * 1.0, p.phys.py, p.phys.pz + cos(syaw) * 1.0)
+	sim.combat.clear_inventory(p); sim.combat.set_weapon(p, "spatula")
+	p.slot = -1; p.shove_cool = 0.0
+	check(sim.combat.try_carry(p), "fastball: the player hoists the downed co-op seat")
+	check(mate.carry_limp and p.carrying == mate, "fastball: the body is limp (revive discount only, no slam)")
+	var left0: float = float(arc.seat_revive_left(1))
+	check(left0 > 5.0, "fastball: the natural revive countdown is ~6 s (%.2f)" % left0)
+	check(sim.combat.throw_carry(p), "fastball: the body is thrown (18 m/s forward + 6 up)")
+	var flown := 0.0
+	while flown < 3.0 and mate.ball_t >= 0.0:
+		p.invuln = 5.0
+		w.tick(FRAME); flown += FRAME
+	check(mate.ball_t < 0.0 and mate.phys.grounded, "fastball: the body lands on the floor (%.2f s)" % flown)
+	var expected: float = left0 - flown - 2.0
+	check(absf(arc.seat_revive_left(1) - expected) < 0.1,
+		"fastball: the floor landing shaved 2.0 s off the revive (%.2f -> %.2f, expected %.2f)" % [left0, arc.seat_revive_left(1), expected])
+	await _free_world(w)
+	# a LIVING teammate thrown at the crew body-slams the FIRST enemy it hits: 35 dmg / 20 force + the toast
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	_tick_safe(w, 20)
+	p = arc.seats[0]
+	mate = arc.seats[1]
+	var crew: FighterState = arc.enemies[0]
+	crew.hp = 400.0; crew.invuln = 0.0; crew.shield_t = 0.0; crew.down_t = 0.0; crew.cls_kb = 1.0
+	p.cls_dmg = 1.0; p.rage_t = 0.0; p.big_t = 0.0; p.invuln = 5.0; sim.combat.aim_mode = "normal"
+	for e: FighterState in arc.enemies:               # keep the other crew far away: "first enemy" is unambiguous
+		if e != crew: e.phys.place(40.0, 0.05, 40.0); e.invuln = 5.0
+	p.phys.place(0.0, 0.05, 0.0); mate.phys.place(0.0, 0.05, 1.0); crew.phys.place(0.0, 0.05, 8.0)
+	p.yaw = 0.0; p.face_yaw = 0.0
+	sim.combat.clear_inventory(p); sim.combat.set_weapon(p, "spatula")
+	p.slot = -1; p.shove_cool = 0.0
+	var toasts0 := int(w.counts.get("toast", 0))
+	check(sim.combat.try_carry(p), "fastball: a living teammate is hoisted")
+	var crew_hp := crew.hp
+	check(sim.combat.throw_carry(p), "fastball: the living body is thrown")
+	var slam_t := 0.0
+	while is_equal_approx(crew.hp, crew_hp) and slam_t < 2.0:
+		p.invuln = 5.0; mate.invuln = 5.0
+		w.tick(FRAME); slam_t += FRAME
+	check(is_equal_approx(crew_hp - crew.hp, 35.0), "fastball: the living body-slam deals 35 (%.2f after %.2f s)" % [crew_hp - crew.hp, slam_t])
+	check(int(w.counts.get("toast", 0)) > toasts0, "fastball: the FASTBALL SPECIAL! toast fired")
+	await _free_world(w)
+
 # ---------------- 3d. balance overlay: flame knockback, Air Blower damage ----------------
 
 ## The flame's per-tick force used to add up to a constant shove (it could carry a target that cannot walk against it).
@@ -1005,6 +1083,43 @@ func _events() -> void:
 	_idle(w, 12.0)
 	var times: Array = arc.events.fired.filter(func(e: Array) -> bool: return e[1] == "load_test").map(func(e: Array) -> float: return e[0])
 	check(times.size() == 3 and absf(times[0] - 12.0) < 0.1 and absf(times[1] - 24.0) < 0.1 and absf(times[2] - 36.0) < 0.1, "load test every 12 s: %s" % [times])
+	# Wobble Reactions (Sprint 2.3): the falling load-test crates are the deflectable hazard of the tuned combat layer.
+	# Registration is weak + duck-typed on Combat.hazard_source (no DLC import from logic), a redirect drifts the crate
+	# (and its warning ring / am.ev descriptor) and the stage finish clears the registration again.
+	check(sim.combat.hazard_source != null and sim.combat.hazard_source.get_ref() == arc.events,
+		"reactions: StageEvents registers the falling crates on the combat")
+	var falling: int = arc.events._crates.size()
+	check(falling == 3, "reactions: three crates are falling for the redirect test (%d)" % falling)
+	var defs: Array = arc.events.deflectables()
+	check(defs.size() == falling and float((defs[0] as Dictionary).get("r", 0.0)) > 0.0,
+		"reactions: every falling crate exposes a collision sphere")
+	var cid := int(arc.events._crates[0]["id"])
+	var cx0 := float(arc.events._crates[0]["x"])
+	var cz0 := float(arc.events._crates[0]["z"])
+	var cy0 := float(arc.events._crates[0]["y"])
+	check(arc.events.deflect_crate(cid, 0.0, 1.0), "reactions: a falling crate can be deflected")
+	arc.events._update_crates(0.5)
+	var hc: Dictionary = arc.events._crates[0]
+	check(absf(float(hc["x"]) - cx0) < 0.001 and float(hc["z"]) > cz0 + 8.0 * 0.4
+		and float(hc["y"]) < cy0, "reactions: the deflected crate drifts down its heading and keeps falling")
+	var am_moved := false
+	for e: Dictionary in arc.events.active_events():
+		if int(e["id"]) == cid and absf(float(e["z"]) - float(hc["z"])) < 0.06: am_moved = true
+	check(am_moved, "reactions: am.ev reports the deflected warning spot")
+	var ring_node: Variant = hc.get("ring")
+	check(ring_node != null and is_instance_valid(ring_node)
+		and absf((ring_node as Node3D).position.x - float(hc["x"])) < 0.001
+		and absf((ring_node as Node3D).position.z - float(hc["z"])) < 0.001,
+		"reactions: the warning ring follows the deflected spot")
+	# the deflected crate resolves (lands) exactly once, at the drifted x/z
+	var n_before: int = arc.events._crates.size()
+	hc["left"] = 0.0
+	arc.events._update_crates(0.02)
+	check(arc.events._crates.size() == n_before - 1, "reactions: the deflected crate lands exactly once (%d -> %d)"
+		% [n_before, arc.events._crates.size()])
+	arc.events.finish()
+	check(sim.combat.hazard_source == null or sim.combat.hazard_source.get_ref() == null,
+		"reactions: the stage finish clears the deflect registration")
 	await _free_world(w)
 	# Designer: revision pads every 15 s for 8 s
 	w = _launch(2, true, 1.0)

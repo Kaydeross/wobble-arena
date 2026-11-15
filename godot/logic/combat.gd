@@ -88,6 +88,19 @@ const FLAME_RESET := 0.4
 var friendly_fire := true
 ## The player seats of the current Arcade co-op run (FighterState). Crew/enemies are never in it. Empty = no seat rule.
 var pve_seats: Array = []
+## True when this match is a TWO-seat Arcade co-op run (the Fastball Special is allowed there; solo Arcade never carries).
+## ArcadeManager writes it next to `friendly_fire`/`pve_seats`: a plain field, so Combat has no static DLC dependency.
+var arcade_coop := false
+
+# --- Wobble Reactions (Post-v0.4.0 Sprint 2.3, tuning only; docs/DAMAGE.md "Wobble Reactions") ---
+## FighterState -> {dx, dz, t, pins, struck}: the fighters currently sliding across the floor as a bowling ball (Combat-owned:
+## FighterState belongs to another lane). Cleared by place_at on a fresh life and dispose at the match end; empty in every
+## untuned match, so the parity paths never see it.
+var bowl_slides := {}
+## Optional owner of the deflectable falling hazards (the Arcade's load_test crates). Duck-typed and WEAK: the DLC stage
+## layer registers itself with `deflectables()` / `deflect_crate(id, dx, dz)`, so the pure logic never imports the DLC class
+## and no ownership cycle is created. Null in every non-Arcade match (the redirect paths then cost one null check).
+var hazard_source: WeakRef = null
 
 # --- net (filled by the net layer) ---
 var net_started := false
@@ -111,12 +124,16 @@ func _init() -> void:
 func dispose() -> void:
 	for f: FighterState in fighters:
 		f.last_attacker = null; f.burner = null; f.swing_hit = {}; f.trap_net = null
+		f.carrying = null; f.carried_by = null; f.ball_owner = null; f.ball_t = -1.0
 	weapons.clear()
 	rules.winner = null
 	fighters.clear()
 	events.clear()
 	flame_push.clear()
 	pve_seats.clear()
+	arcade_coop = false
+	bowl_slides.clear()
+	hazard_source = null
 
 ## Parsed content is immutable between releases. Every caller receives a deep copy so one match can merge or alter its
 ## own tuning without changing later matches; repeated matches avoid decoding the same JSON again.
@@ -423,6 +440,7 @@ func timers(f: FighterState, dt: float) -> void:
 			kick_lean(f, a, b)
 		if f.trap_t <= 0.0:
 			f.trap_t = 0.0; f.trap_net = null
+	if not bowl_slides.is_empty() and bowl_slides.has(f): _bowl_tick(f, dt)   # Wobble Reactions: the bowling slide
 	if f.burn > 0.0 and not f.dead:    # on fire
 		f.burn -= dt; f.burn_acc += dt
 		if f.burn_acc >= 0.4:
@@ -482,6 +500,12 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
 	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null; f.parry_t = 0.0
+	# Fastball Special: a fresh life lets go of (and is let go by) its carried teammate and forgets a throw in flight; the
+	# carrier's link is cut on BOTH sides so a revived body never stays pinned to a carrier that moved on.
+	if f.carrying != null: f.carrying.carried_by = null
+	if f.carried_by != null: f.carried_by.carrying = null
+	f.carrying = null; f.carried_by = null; f.carry_limp = false; f.ball_t = -1.0; f.ball_owner = null
+	bowl_slides.erase(f)              # a fresh life is not still sliding as a bowling ball
 	flame_push.erase(f)               # a fresh life does not inherit the last one's spent flame budget
 	Skills.reset(f)
 	clear_inventory(f); set_weapon(f, "spatula")
@@ -726,6 +750,283 @@ func try_parry(v: FighterState, attacker: FighterState) -> bool:
 	ev({"type": "parry", "f": v, "attacker": attacker, "x": v.phys.px, "y": v.phys.py + 1.4, "z": v.phys.pz})
 	return true
 
+# ============================== teammate carry / throw (Fastball Special) ==============================
+## Post-v0.4.0 Sprint 2.2 (docs/DAMAGE.md "Teammate carry/throw"): in TEAM modes and Arcade co-op a player hoists a teammate
+## overhead with a shove (empty-handed, within CARRY_RANGE), walks at 85 % and launches the body with the fire key. A
+## LIVING body slams the first enemy it touches (35 dmg / 20 force); a DOWNED Arcade co-op seat landing on the floor shaves
+## 2 s off its revive countdown through the Arcade run object (sim meta "arcade_run", has_method: no static DLC dependency).
+## Every branch is gated on `carry_active()` — the balance overlay PLUS a team mode or a two-seat Arcade run — so the web
+## numbers, the JS parity paths and online without `net_zones` are untouched, and nothing here draws a random number.
+
+const CARRY_MODES := ["t2", "t3", "t4", "tdm", "ctf"]   ## the TEAM modes that get the Fastball Special (Chaos/duel: no)
+const CARRY_RANGE := 1.4           ## m: how close a liftable teammate must be (feet distance)
+const CARRY_SPEED_MUL := 0.85      ## the carrier walks at this share of its walk speed while hoisting a teammate
+const CARRY_HOLD_HEIGHT := 2.3     ## m above the carrier's feet where the hoisted body is pinned (overhead)
+const THROW_SPEED := 18.0          ## m/s forward when the carried teammate is launched
+const THROW_UP := 6.0              ## m/s upward arc of the launch
+const SLAM_DMG := 35.0             ## a thrown LIVING teammate's body-slam damage, to the FIRST enemy it hits
+const SLAM_FORCE := 20.0           ## ... and the body-slam's knockback force
+const BALL_TIME := 3.0             ## s a thrown body is tracked for the slam / the downed landing
+const CARRY_REVIVE_SHAVE := 2.0    ## s shaved off a downed Arcade co-op seat's revive when the body lands on the floor
+
+## True when the Fastball Special exists in this match: the Godot balance overlay is active AND the match is a TEAM mode
+## or a two-seat Arcade co-op run. FFA, classic, solo Arcade and every match on the shared web numbers: false, and the
+## whole feature costs one boolean (no state, no RNG, the parity paths stay bit-identical).
+func carry_active() -> bool:
+	return tuning_active() and (arcade_coop or (teams != 0 and CARRY_MODES.has(mode_id)))
+
+## A TEAMmate: the same team in a CARRY_MODES match, or one of the two player seats of an Arcade co-op run. Never an
+## enemy, never in a free-for-all, and never in solo Arcade (no second seat to hoist). A remote player's ghost is not a
+## carry candidate (its owner's game moves it: carrying needs a protocol), so online co-op only lights up with `net_zones`.
+func carry_mate(f: FighterState, e: FighterState) -> bool:
+	if f == null or e == null or f == e: return false
+	if teams != 0 and CARRY_MODES.has(mode_id): return f.team == e.team and f.team >= 0
+	return arcade_coop and pve_seats.has(f) and pve_seats.has(e)
+
+## "Empty-handed" is the default Spatula: no picked-up weapon in a hand slot (the same condition quick melee reads to
+## decide whether it needs a return slot). A carried teammate is not a weapon: the hand stays free to hoist one.
+func empty_handed(f: FighterState) -> bool:
+	return f.slot < 0
+
+## A teammate the shove can hoist: alive, or a DOWNED Arcade co-op seat (the seat system marks it dead/elim); not already
+## carried and not in the air from a throw.
+func carryable(f: FighterState, e: FighterState) -> bool:
+	if not carry_active() or e == null or e == f or e.left or e.is_ghost: return false
+	if e.carried_by != null or e.ball_t >= 0.0: return false
+	if not carry_mate(f, e): return false
+	if e.dead: return arcade_coop and pve_seats.has(e)
+	return not e.elim
+
+## The nearest carryable teammate within CARRY_RANGE of f's feet (null = none). The lift itself only checks the distance.
+func carry_target(f: FighterState, _yaw: float = 0.0) -> FighterState:
+	if not carry_active(): return null
+	var best: FighterState = null
+	var bd := CARRY_RANGE * CARRY_RANGE
+	for e: FighterState in fighters:
+		if not carryable(f, e): continue
+		var dx := e.phys.px - f.phys.px
+		var dy := e.phys.py - f.phys.py
+		var dz := e.phys.pz - f.phys.pz
+		var d2 := dx * dx + dy * dy + dz * dz
+		if d2 <= bd: bd = d2; best = e
+	return best
+
+## The shove input's carry branch: hoist the nearest carryable teammate overhead. Returns true when the shove was spent
+## on the lift (the normal shove is then suppressed); false keeps the classic shove path byte-identical.
+func try_carry(f: FighterState) -> bool:
+	if not carry_active() or f == null or f.dead or f.down_t > 0.0 or f.trap_t > 0.0: return false
+	if f.carrying != null or f.carried_by != null or f.ball_t >= 0.0: return false
+	if f.shove_cool > 0.0 or not empty_handed(f): return false
+	var e := carry_target(f)
+	if e == null: return false
+	f.carrying = e; e.carried_by = f; e.carry_limp = e.dead
+	f.shove_cool = 0.9                 # the lift is a shove: the same cooldown as one
+	kick_lean(f, -2.5, 0.0)
+	ev({"type": "sfx", "name": "swing", "f": f})
+	return true
+
+## The fire input while carrying: launch the teammate FORWARD (the carrier's facing, THROW_SPEED) with a THROW_UP arc.
+## Returns true when a throw happened (the caller fires no weapon that step).
+func throw_carry(f: FighterState) -> bool:
+	if f == null or f.carrying == null: return false
+	var a := f.carrying
+	f.carrying = null; a.carried_by = null
+	var s := sin(f.face_yaw)
+	var c := cos(f.face_yaw)
+	var p := a.phys
+	p.place(p.px, p.py, p.pz)          # clears any ladder/velocity state, keeps the pinned spot
+	p.vx = s * THROW_SPEED; p.vz = c * THROW_SPEED; p.vy = THROW_UP; p.grounded = false
+	a.ball_t = BALL_TIME; a.ball_owner = f
+	ev({"type": "sfx", "name": "swing", "f": f})
+	return true
+
+## Let go of a hoisted teammate without throwing (carrier knocked down / killed, or the body revived by something else).
+func drop_carried(f: FighterState) -> void:
+	var a := f.carrying
+	f.carrying = null
+	if a != null: a.carried_by = null
+
+## Pin the hoisted body overhead and integrate thrown bodies: one call per FIXED step, from MatchSim.step after physics
+## and after the Net Gun pinning, so the pinned position is the one the views read (the trap-pinning pattern). `run` is the
+## Arcade run object from the sim meta "arcade_run" (null in a team match): the downed-seat revive discount is called
+## through it with has_method, so nothing here has a static DLC dependency. Nothing in this function draws a random number.
+func carry_tick(dt: float, run: Variant = null) -> void:
+	if not carry_active(): return
+	for f: FighterState in fighters:
+		if f.carrying != null:
+			var a := f.carrying
+			if a == null or a.carried_by != f or f.dead or f.down_t > 0.0 or f.elim:
+				drop_carried(f)
+			elif a.dead and not a.carry_limp:   # a living body died in the carrier's hands: it goes limp
+				drop_carried(f)
+			else:                              # pinned above the carrier exactly like the Net Gun pins its victim
+				var s := sin(f.yaw)
+				var c := cos(f.yaw)
+				a.phys.place(f.phys.px + s * 0.15, f.phys.py + CARRY_HOLD_HEIGHT, f.phys.pz + c * 0.15)
+				a.yaw = f.yaw
+				a.face_yaw = f.yaw
+		if f.ball_t >= 0.0:
+			_ball_step(f, dt, run)
+
+## One step of a thrown body (see carry_tick). A LIVING teammate's body slams the FIRST enemy it touches; a thrown DOWNED
+## Arcade co-op seat that lands on the floor shaves its revive countdown; after that the body is simulated normally again.
+func _ball_step(f: FighterState, dt: float, run: Variant) -> void:
+	f.ball_t -= dt
+	if f.ball_t <= 0.0 or f.phys.grounded:      # flight over (landed or out of time): the landing is the only payout
+		var landed := f.phys.grounded
+		var limp := f.carry_limp
+		f.ball_t = -1.0; f.carry_limp = false
+		f.ball_owner = null
+		if landed and limp and run != null and run.has_method("fastball_revive"):
+			run.call("fastball_revive", f, CARRY_REVIVE_SHAVE)   # a downed co-op seat: 2 s off its revive countdown
+		return
+	if f.dead or f.carry_limp: return           # a limp / killed body cannot body-slam: only its landing pays out
+	for e: FighterState in fighters:
+		if e == f or e.dead or e.elim or e.is_ghost: continue
+		if carry_mate(f, e): continue           # never a teammate
+		if not _body_touches(f, e): continue
+		var owner := f.ball_owner
+		var d := norm3(f.phys.vx, f.phys.vy, f.phys.vz)
+		f.ball_t = -1.0; f.ball_owner = null
+		if not hit(e, SLAM_DMG, d[0], d[1], d[2], SLAM_FORCE, false, owner)["applied"]: return
+		ev({"type": "toast", "text": tr("FASTBALL SPECIAL!")})
+		return
+
+## The flying body overlaps `e`'s hit spheres: the body is a 2.3 m vertical segment at its current x/z (at 18 m/s one step
+## is 0.15 m, so a sphere test cannot tunnel), and the sphere radius is padded by the body's own radius.
+func _body_touches(f: FighterState, e: FighterState) -> bool:
+	var p := f.phys
+	var lo := p.py
+	var hi := p.py + 2.3
+	for sp: Array in e.spheres(giant):
+		var dx: float = p.px - float(sp[0])
+		var dz: float = p.pz - float(sp[2])
+		var dy: float = float(sp[1]) - clampf(float(sp[1]), lo, hi)
+		var rr: float = float(sp[3]) + 0.8
+		if dx * dx + dy * dy + dz * dz < rr * rr: return true
+	return false
+
+# ============================== wobble reactions (Sprint 2.3, tuning only) ==============================
+
+## Post-v0.4.0 Sprint 2.3 (docs/DAMAGE.md "Wobble Reactions"): two emergent physics combo reactions.
+##   Human Bowling Ball: a fighter pinned by a Net Gun trap that takes a HEAVY melee swing (the weapon table's `force`
+##   >= HEAVY_FORCE) is released from the net and slides at BOWL_SPEED; every other fighter the body runs over takes
+##   BOWL_PIN_DMG / BOWL_PIN_FORCE once ("STRIKE!"). The bowling fighter is never hurt by its own pins.
+##   Mid-Air Redirect: a melee swing or a high-force shot swats a falling load_test crate or an explosive projectile in
+##   flight down the attacker's aim (Weapons.deflect_near / deflect_ray; the crates come from StageEvents through
+##   `hazard_source`). The vertical speed is kept, never boosted, and no damage is multiplied.
+## Every branch is gated on tuning_active() (the web numbers and the parity suites never see any of it) and NOTHING here
+## draws a random number: the presentation layer builds its juice from the "reaction" event with the FxSystem's own RNG.
+
+const BOWL_SPEED := 26.0          ## m/s the released net victim slides across the floor
+const BOWL_TIME := 0.9            ## s the slide lasts (the speed is re-asserted on every fixed step, friction included)
+const BOWL_PIN_DMG := 30.0        ## damage each fighter the sliding body runs over takes (once per launch)
+const BOWL_PIN_FORCE := 18.0      ## ... and the bowling-pin knockback force
+const BOWL_PIN_R := 1.1           ## m horizontal reach of the rolling body (2 x FighterPhysics.R plus a margin)
+const HEAVY_FORCE := 16.0         ## the weapon table's `force` a melee swing needs to launch a netted fighter
+
+## True when a melee weapon is heavy enough to launch a netted fighter: the weapon table's `force` (before any class,
+## slam or cyclone multiplier, exactly the value melee_sweep multiplies).
+static func heavy_melee(w: Dictionary) -> bool:
+	return float(w.get("force", 0.0)) >= HEAVY_FORCE
+
+## The falling hazard crates the stage layer currently exposes for a mid-air redirect ({id, x, y, z, r}); empty outside the
+## Arcade and while the balance overlay is off. `hazard_source` is duck-typed so Combat has no static DLC dependency.
+func hazard_deflectables() -> Array:
+	if not tuning_active() or hazard_source == null: return []
+	var src: Variant = hazard_source.get_ref()
+	if src == null or not src.has_method("deflectables"): return []
+	return src.deflectables()
+
+## Redirect hazard crate `id` down the horizontal unit direction (dx, dz); the stage layer owns the crate's motion.
+func deflect_hazard(id: int, dx: float, dz: float) -> bool:
+	if hazard_source == null: return false
+	var src: Variant = hazard_source.get_ref()
+	if src == null or not src.has_method("deflect_crate"): return false
+	return bool(src.deflect_crate(id, dx, dz))
+
+## A shot ray hitting a falling hazard crate first: redirect it down the ray and return the distance (or -1 = none within
+## `far`). The tracer stops on it (no damage, no damage multiplication). Called from Weapons.fire_gun, tuned only.
+func deflect_hazard_ray(ox: float, oy: float, oz: float, dx: float, dy: float, dz: float, far: float) -> float:
+	var haz := hazard_deflectables()
+	if haz.is_empty(): return -1.0
+	var best := -1.0
+	var best_id := -1
+	for h: Dictionary in haz:
+		var t := Weapons.ray_sphere(ox, oy, oz, dx, dy, dz, float(h["x"]), float(h["y"]), float(h["z"]), float(h.get("r", 1.1)))
+		if t >= 0.0 and t < far and (best < 0.0 or t < best): best = t; best_id = int(h["id"])
+	if best_id < 0 or not deflect_hazard(best_id, dx, dz): return -1.0
+	ev({"type": "reaction", "kind": "crate", "x": ox + dx * best, "y": oy + dy * best, "z": oz + dz * best, "dx": dx, "dz": dz})
+	return best
+
+## The Human Bowling Ball: the trap is released and the victim starts sliding down (dx, dz). The knockback from the melee
+## hit is replaced by the slide (flat, 26 m/s): vertical speed and stun are zeroed so the body really runs along the floor.
+func _bowl_launch(v: FighterState, a: FighterState, dx: float, dz: float) -> void:
+	var net: RefCounted = v.trap_net
+	if net is Weapons.TrapNet: (net as Weapons.TrapNet).victims.erase(v)   # the net lets go (a shared net keeps its others)
+	v.trap_t = 0.0; v.trap_net = null
+	v.stun = 0.0; v.down_t = 0.0
+	var l := sqrt(dx * dx + dz * dz)
+	if l < 1e-6: dx = sin(a.face_yaw); dz = cos(a.face_yaw); l = 1.0
+	dx /= l; dz /= l
+	var p := v.phys
+	p.vy = 0.0; p.grounded = true
+	p.vx = dx * BOWL_SPEED; p.vz = dz * BOWL_SPEED
+	bowl_slides[v] = {"dx": dx, "dz": dz, "t": BOWL_TIME, "pins": {}, "struck": false}
+	ev({"type": "reaction", "kind": "bowl", "x": p.px, "y": p.py + 0.3, "z": p.pz, "dx": dx, "dz": dz, "f": a})
+
+## One fixed step of a sliding bowling ball (Combat.timers, per fighter, so it runs inside MatchSim.step). Re-asserts the
+## slide speed, runs over every other fighter once each (30 dmg / 18 force, never the bowler itself) and emits STRIKE!
+## once per launch on the first pin that really applied. The slide ends on time, death, a knockdown or a fresh net.
+func _bowl_tick(f: FighterState, dt: float) -> void:
+	var s: Dictionary = bowl_slides[f]
+	var p := f.phys
+	var t := float(s["t"]) - dt
+	if t <= 0.0 or f.dead or f.down_t > 0.0 or f.trap_t > 0.0:
+		bowl_slides.erase(f); return
+	s["t"] = t
+	var dx := float(s["dx"])
+	var dz := float(s["dz"])
+	p.vx = dx * BOWL_SPEED; p.vz = dz * BOWL_SPEED
+	var pins: Dictionary = s["pins"]
+	for e: FighterState in fighters:
+		if e == f or e.dead or e.elim or e.is_ghost or pins.has(e): continue
+		var ex := e.phys.px - p.px
+		var ez := e.phys.pz - p.pz
+		if ex * ex + ez * ez > BOWL_PIN_R * BOWL_PIN_R or absf(e.phys.py - p.py) > 1.6: continue
+		pins[e] = true
+		if not hit(e, BOWL_PIN_DMG, dx, 0.35, dz, BOWL_PIN_FORCE, false, f)["applied"]: continue
+		if not bool(s["struck"]):
+			s["struck"] = true
+			ev({"type": "toast", "text": tr("STRIKE!")})
+
+## Melee half of the Mid-Air Redirect: the weapon line (now/prev, three halfway samples per segment) sweeps through a
+## falling hazard crate or an explosive projectile in flight; the first one found is redirected along the horizontal swing
+## direction (vertical speed kept) and a "reaction" VFX event goes out. Tuned only, no random number.
+func _deflect_melee(f: FighterState, w: Dictionary, now: PackedFloat64Array, prev: PackedFloat64Array, n: int, thick: float) -> void:
+	if hazard_source == null and weapons.rockets.is_empty() and weapons.grenades.is_empty(): return
+	var j := (n - 1) * 3
+	var dx := now[j] - prev[j]
+	var dz := now[j + 2] - prev[j + 2]
+	var haz := hazard_deflectables()
+	for i in n:
+		for k in 3:
+			var kk := k * 0.5
+			var ax := prev[i * 3] + (now[i * 3] - prev[i * 3]) * kk
+			var ay := prev[i * 3 + 1] + (now[i * 3 + 1] - prev[i * 3 + 1]) * kk
+			var az := prev[i * 3 + 2] + (now[i * 3 + 2] - prev[i * 3 + 2]) * kk
+			for h: Dictionary in haz:
+				var hx: float = ax - float(h["x"])
+				var hy: float = ay - float(h["y"])
+				var hz: float = az - float(h["z"])
+				var rr: float = float(h.get("r", 1.1)) + thick
+				if hx * hx + hy * hy + hz * hz >= rr * rr: continue
+				if deflect_hazard(int(h["id"]), dx, dz):
+					ev({"type": "reaction", "kind": "crate", "x": float(h["x"]), "y": float(h["y"]), "z": float(h["z"]),
+						"dx": dx, "dz": dz, "f": f})
+					return
+			if weapons.deflect_near(ax, ay, az, thick, dx, dz): return
+
 # ============================== melee ==============================
 
 ## The katana (and typhoon/trident) snaps toward whoever is roughly in front.
@@ -902,9 +1203,15 @@ func melee_sweep(f: FighterState) -> void:
 			var pm := part_mul(part)
 			dmg *= pm
 			if hit(e, dmg, d[0], d[1], d[2], force, part == "head", f, zone_info(part, pm, tp_at[0], tp_at[1], tp_at[2]))["applied"]:
+				# Wobble Reactions (tuning only): a HEAVY swing on a netted fighter releases the net and starts the slide.
+				# The topple roll is skipped for a launched body (a knockdown would end the slide on its first tick).
+				var bowled := tuning_active() and e.trap_t > 0.0 and not e.dead and heavy_melee(w)
+				if bowled: _bowl_launch(e, f, d[0], d[2])
 				var tp := float(w.get("topple", 0.0)) * f.melee_topple_mul
-				if tp and rng.next() < tp: topple(e, 1.1)
+				if not bowled and tp and rng.next() < tp: topple(e, 1.1)
 				ev({"type": "sfx", "name": w.get("hitSfx", "clink"), "f": e})
+		# Wobble Reactions (tuning only): the weapon line also swats a falling load-test crate / an explosive shot aside.
+		if tuning_active(): _deflect_melee(f, w, now, prev, n, thick)
 	for i in n * 3: prev[i] = now[i]
 	f.bat_valid = true
 

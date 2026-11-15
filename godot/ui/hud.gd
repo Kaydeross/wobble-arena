@@ -12,6 +12,8 @@ const FEED_TIME := 5.0
 const FEED_MAX := 4
 const TOAST_TIME := 2.2
 const TOP_STACK := 70.0           ## what hangs under the toast (team board, mode line, spectator line) starts this far below the top inset
+const IMPACT_BADGE_W := 0.82      ## most of the safe width the comic impact badge may take (it scales down beyond this)
+const IMPACT_TOP := 84.0          ## top of the comic impact badge (canvas px under the safe top: below the score / radar line)
 
 var world: Node
 var sim: MatchSim
@@ -39,6 +41,10 @@ var _ind_blocked: Array = []      ## screen rects those arrows slide past (reuse
 var _cross: Control
 var _hint: Label
 var _center: Label
+var _impact: Control              ## final-K.O. comic badge (Sprint 2.1): the speedometer over the kill cam
+var _impact_box: PanelContainer
+var _impact_l: Label
+var _impact_text := ""            ## the text currently on the badge (re-pop only when it changes)
 var _last_ko := -1
 var _lowhp_t := 0.0             ## seconds to the next low-health heartbeat (0 = not playing)
 
@@ -103,6 +109,7 @@ func _ready() -> void:
 	_center.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_center)
+	_build_impact()
 	_build_toast()
 	get_viewport().size_changed.connect(_update_insets)
 	get_tree().root.window_input.connect(_on_window_input)
@@ -122,6 +129,8 @@ func bind(w: Node) -> void:
 	for it: Array in _feed_items: it[0].queue_free()
 	_feed_items.clear()
 	_last_ko = -1
+	_impact.visible = false          # a fresh match starts with no comic badge
+	_impact_text = ""
 
 func _update_insets() -> void:
 	_ins = SafeArea.insets(get_viewport())
@@ -202,6 +211,68 @@ func _build_toast() -> void:
 	_toast_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.visible = false
 	add_child(_toast)
+
+## The final-K.O. comic badge (Post-v0.4.0 Sprint 2.1, docs/GRAPHICS.md): a fat rotated yellow sticker with the victim's
+## launch speed ("LAUNCHED AT 148 KM/H!") or "TERMINAL RING-OUT!". It only draws state: world/follow_camera.gd owns the
+## freeze / zoom and the REAL-time badge window, so it reads the same in normal play, during the kill-cam replay (where
+## KillCam.step ticks the camera) and on a phone whose frame rate the freeze itself lowers.
+func _build_impact() -> void:
+	_impact = Control.new()
+	_impact.name = "Impact"
+	_impact.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_impact.visible = false
+	add_child(_impact)
+	_impact_box = PanelContainer.new()
+	_impact_box.name = "Box"
+	_impact_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := UiTheme.box(UiTheme.ACCENT, 16, UiTheme.INK, 4, 8)
+	sb.content_margin_left = 24; sb.content_margin_right = 24; sb.content_margin_top = 2; sb.content_margin_bottom = 6
+	_impact_box.add_theme_stylebox_override("panel", sb)
+	_impact.add_child(_impact_box)
+	_impact_l = Label.new()
+	_impact_l.name = "Text"
+	_impact_l.theme_type_variation = &"HudLabel"
+	_impact_l.add_theme_font_size_override("font_size", 42)
+	_impact_l.add_theme_color_override("font_color", UiTheme.INK)
+	_impact_l.add_theme_constant_override("outline_size", 0)
+	_impact_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_impact_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_impact_box.add_child(_impact_l)
+	_impact_box.rotation = -0.045      # a sticker slapped on at an angle
+
+## Pop the sticker in. Tween speed is divided by the engine time scale so the pop is the same length in REAL time while
+## the final-K.O. freeze runs at 0.15x.
+func _pop_impact() -> void:
+	_impact_box.reset_size()
+	_impact_box.pivot_offset = _impact_box.size / 2.0
+	_impact_box.scale = Vector2(0.55, 0.55)
+	var tw := _impact_box.create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.set_speed_scale(1.0 / maxf(0.01, Engine.time_scale))
+	tw.tween_property(_impact_box, "scale", Vector2.ONE, 0.22)
+
+## Place the sticker in the free top strip: below the toast, inside the gap between the score panel and the radar / kill
+## feed (it may not cover either, however wide the translation is), and above the "YOU WIN!" banner (vs.y x 0.3). It scales
+## down to fit; the 0.9 s freeze itself is what draws the eye, the sticker only has to be readable.
+func _place_impact(vs: Vector2, safe: Rect2) -> void:
+	var left := _ko_panel.position.x + _ko_panel.size.x + 12.0
+	var right := _radar.position.x - 12.0
+	var room := minf(right - left, safe.size.x * IMPACT_BADGE_W)
+	var sc := clampf(room / maxf(1.0, _impact.size.x), 0.42, 1.0)
+	var h := _impact.size.y * sc
+	var y := safe.position.y + maxf(IMPACT_TOP, safe.size.y * 0.10)
+	var limit := vs.y * 0.3 - 8.0 - h
+	if y > limit: y = maxf(safe.position.y + 8.0, limit)
+	# Arcade: the run strip / boss bar (dlc/construction/arcade_boss_hud.gd) owns this top strip, and the stage-clear card
+	# comes later, so a boss K.O. puts the sticker over the action instead of over the run HUD.
+	if world.get("arcade") != null: y = maxf(y, vs.y * 0.45)
+	# the kill feed hangs under the radar: when its rows share the sticker's row, keep the sticker left of it
+	var fd := Rect2(_feed.position, _feed.size)
+	if _feed.get_child_count() > 0 and fd.size.x > 1.0 and y < fd.end.y and y + h > fd.position.y:
+		right = minf(right, fd.position.x - 12.0)
+		room = minf(right - left, safe.size.x * IMPACT_BADGE_W)
+		sc = clampf(room / maxf(1.0, _impact.size.x), 0.42, 1.0)
+	_impact.scale = Vector2(sc, sc)
+	_impact.position = Vector2(left + (right - left - _impact.size.x * sc) * 0.5, y)
 
 func _lbl(parent: Node, fs: int, c: Color) -> Label:
 	var l := Label.new()
@@ -391,6 +462,25 @@ func update(delta: float) -> void:
 		_toast.position = Vector2(vs.x / 2.0 - _toast.size.x / 2.0, safe.position.y + 6.0)      # top edge: never over the action
 		if _toast_t < 0.3: _toast.modulate.a = maxf(_toast_t / 0.3, 0.0)
 		if _toast_t <= 0.0: _toast.visible = false
+	# --- final-K.O. comic badge (Sprint 2.1): the camera owns the freeze / zoom and the REAL-time window, the HUD only
+	# draws it (so it survives the 0.15x freeze: 1.5 s of wall clock, not 1.5 s of scaled frames). See docs/GRAPHICS.md.
+	var fc := world.cam as FollowCamera
+	if fc != null:
+		fc.tick_impact()
+		if fc.impact_badge_visible():
+			var kmh: int = fc.impact_kmh
+			var txt := tr("TERMINAL RING-OUT!") if kmh < 0 else tr("LAUNCHED AT %d KM/H!") % kmh
+			if not _impact.visible or txt != _impact_text:
+				_impact_text = txt
+				_impact_l.text = txt
+				_impact_box.reset_size()
+				_impact.size = _impact_box.size
+				_pop_impact()
+			_impact.visible = true
+			_place_impact(vs, safe)
+		else:
+			_impact.visible = false
+			_impact_text = ""
 	# --- off-screen enemy arrows (ui/enemy_indicators.gd, Settings > Gameplay > Enemy arrows): last, so every panel
 	# has its spot this frame and the arrows can slide past it. Hidden behind the pause menu, the results panel and
 	# the pre-match countdown.
@@ -404,6 +494,7 @@ func update(delta: float) -> void:
 	if _hotbar.visible: _add_ind_blocker(Rect2(_hotbar.position, _hotbar.custom_minimum_size * _hotbar.scale))
 	if _feed.get_child_count() > 0: _add_ind_blocker(Rect2(_feed.position, _feed.size))
 	if _toast.visible: _add_ind_blocker(Rect2(_toast.position, _toast.size))
+	if _impact.visible: _add_ind_blocker(Rect2(_impact.position, _impact.size * _impact.scale))
 	if touch_on and touch.has_method("button_rect"):
 		for b: Array in touch.BUTTONS:
 			var br: Array = touch.button_rect(b)

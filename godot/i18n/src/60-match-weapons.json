@@ -34,6 +34,13 @@
   "fr": "Pas encore de leader",
   "es": "Aún no hay líder"
  },
+ "FASTBALL SPECIAL!": {
+  "zh_TW": "高速球特攻！",
+  "zh_CN": "高速球特攻！",
+  "ja": "ファストボール・スペシャル！",
+  "fr": "SPÉCIAL BOULE RAPIDE !",
+  "es": "¡ESPECIAL BOLA RÁPIDA!"
+ },
  "Click to look around   ·   Esc: menu": {
   "zh_TW": "點擊環顧四周   ·   Esc：選單",
   "zh_CN": "点击环顾四周   ·   Esc：菜单",
@@ -607,5 +614,26 @@
   "ja": "ライブワイヤー",
   "fr": "Fouet électrique",
   "es": "Látigo eléctrico"
+ },
+ "LAUNCHED AT %d KM/H!": {
+  "zh_TW": "以 %d 公里/小時 擊飛！",
+  "zh_CN": "以 %d 公里/小时 击飞！",
+  "ja": "%d km/h で吹き飛ばし！",
+  "fr": "PROPULSÉ À %d KM/H !",
+  "es": "¡LANZADO A %d KM/H!"
+ },
+ "TERMINAL RING-OUT!": {
+  "zh_TW": "極限出界！",
+  "zh_CN": "极限出界！",
+  "ja": "限界場外！",
+  "fr": "SORTIE EXTRÊME !",
+  "es": "¡FUERA DE LÍMITE!"
+ },
+ "STRIKE!": {
+  "zh_TW": "全倒！",
+  "zh_CN": "全倒！",
+  "ja": "ストライク！",
+  "fr": "STRIKE !",
+  "es": "¡PLENO!"
  }
 }

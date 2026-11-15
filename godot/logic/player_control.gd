@@ -20,6 +20,10 @@ func _init(state: InputState) -> void:
 
 func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	var combat := sim.combat
+	# Fastball Special (docs/DAMAGE.md "Teammate carry/throw"): a hoisted teammate cannot act until it is thrown or freed.
+	if p.carried_by != null:
+		_drain_taps()
+		return
 	if p.is_player:
 		combat.aim_mode = Combat.settings_aim_mode()   # docs/AIM.md: the Settings row applies live, one copy per step
 	var ph := p.phys
@@ -75,7 +79,9 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 
 	# taps (key handlers)
 	if input.consume("kick"): combat.do_kick(p, cam_yaw)
-	if input.consume("shove"): combat.shove(p, cam_yaw)
+	if input.consume("shove"):
+		# Fastball Special: a shove next to an empty-handed teammate hoists them instead of shoving (suppressed shove)
+		if not combat.try_carry(p) and p.carrying == null: combat.shove(p, cam_yaw)
 	if input.consume("spatula"): sim.quick_melee(p, cam_yaw)
 	if input.consume("spatula_equip"): combat.equip_slot(p, -1)   # touch: the Spatula tile is a real slot, not a swing
 	if input.consume("reload"): combat.start_reload(p)
@@ -108,6 +114,13 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 			p.face_yaw = cy
 	else:
 		_kids_target = null
+
+	# Fastball Special: while hoisting a teammate the fire key throws the body (no weapon fires) and the extra weight
+	# slows the carrier to CARRY_SPEED_MUL. Both write only while the tuned team / Arcade co-op gate is open.
+	if p.carrying != null:
+		if fire: combat.throw_carry(p)
+		ph.speed *= Combat.CARRY_SPEED_MUL
+		return
 
 	var t: String = w.get("type", "")
 	if t == "melee":

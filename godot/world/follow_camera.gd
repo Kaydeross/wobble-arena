@@ -15,6 +15,14 @@ extends Camera3D
 ## The stick maps against `move_basis()`, not `yaw`: the basis is latched while the stick is held in one direction, so the
 ## camera turning under a held stick cannot turn the walk (no feedback loop); it re-latches to the camera yaw when the stick
 ## is released or turned by more than LATCH_TURN, and on any manual look.
+##
+## Impact freeze / zoom (Post-v0.4.0 Sprint 2.1, docs/GRAPHICS.md): the FINAL K.O. moment (fx.gd decides when: a
+## match-winning K.O., a Sudden Death elimination or an Arcade boss K.O.) sets `Engine.time_scale` to 0.15 for 0.9 s of
+## REAL time while the camera zooms (narrower FOV, shorter arm, pivot leaning toward the decisive hit). The state lives
+## here because this camera is the one object every rendered frame goes through: HUD.update() and KillCam.step() call
+## tick_impact(), and reset_view() (World.load_map), end_impact() and _exit_tree() restore the global time scale, so a
+## match restart, a scene teardown or a skipped kill cam can never leave the game in slow motion. Presentation only: the
+## explicit deltas headless suites pass to World.tick() are never scaled.
 
 const PITCH_MIN := -1.1
 const PITCH_MAX := 0.8
@@ -28,6 +36,14 @@ const CENTER_RAMP := 1.2           ## s: the swing starts at a third of its spee
 const CENTER_MIN_SPEED := 0.8      ## m/s: slower than this is standing (knockback alone never recentres)
 const STICK_MIN := 0.2             ## stick length below this = released
 const LATCH_TURN := 0.35           ## rad the stick may turn before the basis re-latches to the camera
+const IMPACT_TIME_SCALE := 0.15    ## the final K.O.'s engine time scale (Sprint 2.1)
+const IMPACT_MS := 900.0           ## how long the freeze lasts, in REAL milliseconds
+const IMPACT_BADGE_MS := 1500.0    ## how long the comic HUD badge stays up, in REAL milliseconds
+const IMPACT_ATTACK := 0.14        ## s the zoom takes to reach full
+const IMPACT_RELEASE := 0.30       ## s the zoom eases back out at the end of the freeze
+const IMPACT_ZOOM := 0.22          ## FOV narrowing at full impact (fraction of the base FOV)
+const IMPACT_PULL := 0.30          ## arm shortened at full impact (fraction of the follow distance)
+const IMPACT_FOCUS := 0.45         ## how far the orbit pivot leans toward the decisive hit
 
 var yaw := PI
 var pitch := -0.2
@@ -47,6 +63,18 @@ var shake := 0.0                ## current shake amplitude (m), decays exp(-9 t)
 var shake_scale := 1.0
 var _shake_off := Vector3.ZERO  ## the offset applied this frame (removed before the next one)
 var _shake_rng := RandomNumberGenerator.new()
+## Final K.O. impact freeze / zoom (Sprint 2.1): `impact_kmh` is the victim's launch speed for the comic badge, or -1
+## for a ring-out without launch speed ("TERMINAL RING-OUT!"). Everything is real-time (Time.get_ticks_msec), never the
+## scaled frame delta, so the freeze ends after 0.9 s of wall clock even while the match itself runs at 0.15x.
+var impact_in_tests := false      ## hand-stepped suites opt in (world/fx.gd only freezes when auto_run or this is set)
+var impact_active := false
+var impact_kmh := -1
+var impact_started_ms := 0
+var impact_until_ms := 0
+var impact_badge_until_ms := 0
+var impact_focus := Vector3.ZERO
+var _impact_k := 0.0              ## eased 0..1 amount currently applied
+var _impact_fov_k := 0.0          ## amount the last follow() zoomed by (undone by end_impact)
 
 ## A shake pulse (the web game's `cam.shake = max(cam.shake, a)`).
 func add_shake(a: float) -> void:
@@ -64,6 +92,65 @@ func apply_shake(dt: float) -> void:
 	position += _shake_off
 	shake *= exp(-9.0 * dt)
 
+# ---------------- final K.O. impact freeze / zoom (Sprint 2.1) ----------------
+
+## A decisive K.O. just happened (world/fx.gd): freeze the match at 0.15x for 0.9 s REAL time and zoom in on `focus`
+## (the victim's position). `kmh` is the launch speed shown by the comic HUD badge; -1 = a ring-out with no launch speed.
+## One moment at a time: a second decisive K.O. inside the freeze is ignored.
+func trigger_impact(kmh: int, focus: Vector3) -> void:
+	if impact_active: return
+	var now := Time.get_ticks_msec()
+	impact_active = true
+	impact_kmh = kmh
+	impact_focus = focus
+	impact_started_ms = now
+	impact_until_ms = now + int(IMPACT_MS)
+	impact_badge_until_ms = now + int(IMPACT_BADGE_MS)
+	_impact_k = 0.0
+	_impact_fov_k = 0.0
+	Engine.time_scale = IMPACT_TIME_SCALE
+
+## REAL-time update of the moment: called every rendered frame from HUD.update() (normal play) and KillCam.step()
+## (the replay), the two places that see every frame. Ends the freeze itself when the 0.9 s are up.
+func tick_impact() -> void:
+	if not impact_active: return
+	var now := Time.get_ticks_msec()
+	var t := float(now - impact_started_ms) / 1000.0
+	if now >= impact_until_ms:
+		end_impact()
+		return
+	var rise := clampf(t / IMPACT_ATTACK, 0.0, 1.0)
+	rise = rise * rise * (3.0 - 2.0 * rise)
+	var left := clampf(float(impact_until_ms - now) / 1000.0 / IMPACT_RELEASE, 0.0, 1.0)
+	left = left * left * (3.0 - 2.0 * left)
+	_impact_k = rise * left
+
+## End the freeze now: back to normal time, undo the zoom, keep the badge up for the rest of its own 1.5 s. Safe to call
+## any number of times and on a teardown path (it is what guarantees Engine.time_scale can never be left at 0.15).
+func end_impact() -> void:
+	if impact_active:
+		impact_active = false
+		_impact_k = 0.0
+		if _impact_fov_k > 0.0:
+			fov /= (1.0 - IMPACT_ZOOM * _impact_fov_k)      # take back the zoom follow() applied last frame
+			_impact_fov_k = 0.0
+	Engine.time_scale = 1.0
+
+## 0..1 amount of the zoom currently applied (tests / the kill cam).
+func impact_amount() -> float:
+	return _impact_k
+
+## Is the comic badge still inside its ~1.5 s REAL window?
+func impact_badge_visible() -> bool:
+	return impact_badge_until_ms > 0 and Time.get_ticks_msec() < impact_badge_until_ms
+
+## A base FOV with the impact zoom applied (the kill cam also asks for it, so a replay keeps the effect if it is active).
+func impact_fov(base: float) -> float:
+	return base * (1.0 - IMPACT_ZOOM * _impact_k)
+
+func _exit_tree() -> void:
+	end_impact()                    # a freed World camera must never leave the engine in slow motion
+
 func add_look(d: Vector2) -> void:
 	yaw += d.x
 	pitch = clampf(pitch + d.y, PITCH_MIN, PITCH_MAX)
@@ -71,8 +158,10 @@ func add_look(d: Vector2) -> void:
 	if d != Vector2.ZERO:
 		_latched = false
 
-## Back to the default view (match start).
+## Back to the default view (match start). Also ends any final-K.O. freeze: World.load_map calls this for a fresh match,
+## so a restart can never inherit the previous match's 0.15x time scale or zoom.
 func reset_view() -> void:
+	end_impact()
 	yaw = DEFAULT_YAW; pitch = DEFAULT_PITCH
 	travel = 0.0; centering = false; _ramp_t = 0.0; _yaw_v = 0.0; _pitch_v = 0.0; _latched = false; _own_yaw = yaw
 
@@ -139,9 +228,16 @@ func follow(dt: float, target: Vector3, aiming: bool, solids: Array, zoom_fov :=
 	var shoulder := lerpf(0.8, 1.15, aim)
 	var height := lerpf(2.0, 1.85, aim)
 	var want_fov := lerpf(float(Settings.get_value("fov", 72.0)), zoom_fov, aim)
+	var k := _impact_k
+	if k > 0.0:                                  # final K.O.: pull the arm in and narrow the FOV
+		dist *= 1.0 - IMPACT_PULL * k
+		want_fov = impact_fov(want_fov)
+		_impact_fov_k = k
 	var sy := sin(yaw); var cy := cos(yaw); var sp := sin(pitch); var cp := cos(pitch)
 	var fwd := Vector3(sy * cp, sp, cy * cp)
 	var pivot := target + Vector3(0, height, 0)
+	if k > 0.0:                                  # ... and lean the orbit pivot toward the decisive hit
+		pivot = pivot.lerp(impact_focus, IMPACT_FOCUS * k)
 	var desired := pivot - fwd * dist
 	desired.x += -cy * shoulder
 	desired.z += sy * shoulder
