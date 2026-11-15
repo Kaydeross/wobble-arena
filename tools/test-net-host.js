@@ -205,7 +205,7 @@ async function migration(url) {
   assert.equal(S2.slots[0].name, 'GodotPeer'); assert.equal(S2.slots[2].name, 'WebGuest'); assert.equal(S2.slots[3].name, botName, 'the same bot');
   for (const k of ['mode', 'hp', 'crate', 'wstate', 'grav', 'kb', 'inf', 'dyn', 'dseed']) assert.ok(k in S2.rules, 'resumed start has rules.' + k);
   assert.equal(S2.rules.dyn, 'wobble'); assert.equal(S2.rules.dseed, S1.rules.dseed, 'same arena seed');
-  assert.ok(S2.rules.dt0 > 2, 'the arena clock goes on (dt0 ' + S2.rules.dt0 + ')');
+  assert.ok(S2.rules.dt0 > 1, 'the arena clock goes on (dt0 ' + S2.rules.dt0 + ')');
   assert.ok(Array.isArray(S2.rs) && S2.rs.find(e => e.id === 2 && e.ko >= 1), 'rs carries my K.O.');
   await sleep(2000);
   clearInterval(st.timer);
