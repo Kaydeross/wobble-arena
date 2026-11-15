@@ -104,7 +104,8 @@ Behind the DON'T ENTER sign on the title screen is the Construction set: a works
 ## Play it
 
 - **iPhone and iPad:** join the [TestFlight beta](https://testflight.apple.com/v1/app/6833812750).
-- **Mac, Windows, Android and Web:** build from source for now. See below, [docs/BUILD_ANDROID.md](docs/BUILD_ANDROID.md) and [docs/BUILD_IOS.md](docs/BUILD_IOS.md).
+- **Web:** play the Godot game in a browser at [kaydeross.github.io/wobble-arena](https://kaydeross.github.io/wobble-arena/). It is the same game and the same server as the apps, exported with the Godot Web preset. The first visit downloads about 54 MB; after that the browser caches the game (PWA), so later visits start fast.
+- **Mac, Windows and Android:** build from source for now. See below, [docs/BUILD_ANDROID.md](docs/BUILD_ANDROID.md) and [docs/BUILD_IOS.md](docs/BUILD_IOS.md).
 
 ## Run from source
 
@@ -114,6 +115,18 @@ Run the game:
 
 ```bash
 godot --path godot
+```
+
+By default the game connects to the production server in `godot/data/extra/server.json`, like the shipped builds. To use the local room server below instead, set `WOBBLE_DEV_SERVER=1` (headless test runs always use the local one):
+
+```bash
+WOBBLE_DEV_SERVER=1 godot --path godot
+```
+
+Export the web build and serve it from any static host, including a subfolder:
+
+```bash
+godot --headless --path godot --export-release "Web" ../build/web/index.html
 ```
 
 Run the room server for online play (a room list and message relay, on Node):
@@ -143,7 +156,7 @@ npm run test:godot-combat
 | [`godot/`](godot) | The game, in Godot 4.7 (GDScript) |
 | [`shared/`](shared) | Classes, weapons, arenas and game types as JSON, shared by every client |
 | [`server.js`](server.js), [`accounts.js`](accounts.js) | Room list, message relay and accounts |
-| [`index.html`](index.html), [`public/`](public) | The original web game |
+| [`index.html`](index.html), [`public/`](public) | The original JavaScript web game (served by `npm start`). The Godot web export above replaces it for players |
 | [`tools/`](tools) | Tests, content export and screenshot scripts |
 | [`docs/`](docs) | Design and build notes |
 
