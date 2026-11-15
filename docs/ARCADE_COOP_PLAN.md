@@ -135,9 +135,9 @@ host + guest in one process) would fight over it — set it per world in `begin_
 `HostMatch.on_event` 211-216 announces, `take` removes, a joining player gets `crates` 434); the `load_test` hazard
 crates do not (`stage_events.gd:147-200` host-only nodes), so `am.ev` carries `{x, z, spot, warn}` for the guest's
 visuals and the damage stays host-side — widen `_land` 191 (it skips `is_ghost`) and `Combat.hit` on a ghost emits the
-`h` for its owner (`combat.gd:200-209`). Solo, death = stage failed (`_failed` 316-321); proposed for two: a dead player
-is *down* (pinned) while the teammate plays, revived after 6 s while a teammate is up, and the attempt fails only when
-**every seat is down at once**, costing one shared life — `seats == 1` keeps today's rule verbatim. `lives` is shared and
+`h` for its owner (`combat.gd:200-209`). Solo, death = stage failed (`_failed` 316-321); as built for two (owner, 2026-11-15): a dead player
+is *down* (pinned) while the teammate plays, **each death costs one shared life**, the seat revives after 6 s while a teammate is up, and the attempt fails when
+**every seat is down at once** (no extra charge, each death already paid) or the last life is spent (run over) — `seats == 1` keeps today's rule verbatim. `lives` is shared and
 host-authoritative (`am.lv`; the HUD strip already says "Lives n", `arcade_boss_hud.gd:95`). **Coins are per player and
 local**: each client applies the same stage result to its own `Save.dlc`/`Save.coins`, so the first-clear bonus is per
 save; each guest tracks its own K.O.s/time for its card.
@@ -232,7 +232,7 @@ the run ending when the host leaves and decide M5 separately.
 ## 10. Decisions (owner, 2026-11-14)
 
 1. **Lives:** shared run lives, one HUD number.
-2. **Downed player:** auto-revive after 6 s while a teammate is still up; a revive does not cost an extra life.
+2. **Downed player:** every seat death costs one shared life (updated 2026-11-15); the seat auto-revives after 6 s while a teammate is still up (the revive itself is free). The run is over at 0 lives; all seats down with lives left fails the attempt and retries the stage with no extra charge. Solo is unchanged.
 3. **Records and coins:** co-op clears and first-clear coins are written on each player's save; the UI says so.
 4. **Seats:** two players per room.
 5. **Lobby:** a room may start with one human plus a teammate bot, so a friend can take the seat later.
@@ -268,8 +268,8 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
   set before the first `load_map`; the seats are `sim.fighters[0..seat_count-1]` in room-slot order (crew after) and are
   read with `seat(k)`, `seat_name/label(k)`, `seat_alive`, `seat_is_down`, `seat_revive_left`, `living_seats`,
   `downed_seats`, `all_seats_down`, `seat_control(k)`. Rules: per-seat damage scale, a downed seat auto-revives after
-  `REVIVE_TIME` (6 s) at full class health on a safe spot with no life lost while a teammate is up, all seats down loses
-  exactly one shared life and retries the same stage, K.O.s are summed, `_pay()`/`_win()` return a `seats` array with
+  `REVIVE_TIME` (6 s) at full class health on a safe spot while a teammate is up (each seat death costs one shared life, the revive is free), all seats down
+  retries the same stage with no extra charge and 0 lives ends the run, K.O.s are summed, `_pay()`/`_win()` return a `seats` array with
   each seat's share (one local save is written), the HUD shows one line per seat with the down countdown, and the cards
   name the seats. Crew/boss targeting is nearest living seat (`BotBrain.pick_target` via the `pve_seats` sim meta; a
   `bot:true` seat is a full target and fights the crew); the 1-seat path is unchanged (`npm run test:godot-bots` parity

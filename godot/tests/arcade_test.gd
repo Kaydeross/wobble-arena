@@ -597,7 +597,7 @@ func _coop() -> void:
 	w.tick(FRAME)                                    # the manager sees the death and downs the seat
 	check(arc.seat_is_down(1) and arc.seat_alive(0), "co-op: only seat 2 is down (%s)" % [arc.downed_seats()])
 	check(downed_hits[0] == 1, "co-op: seat_downed carries the 6 s revive")
-	check(arc.lives == lives0 and arc.state == "fight", "co-op: a downed seat does not cost a life or fail the stage")
+	check(arc.lives == lives0 - 1 and arc.state == "fight", "co-op: a seat death costs one shared life and does not fail the stage (%d -> %d)" % [lives0, arc.lives])
 	check(arc.hud.plates[1].text.contains("Down"), "co-op: the HUD counts the seat down (%s)" % arc.hud.plates[1].text)
 	var t := 0.0
 	while arc.seat_is_down(1) and t < 9.0:
@@ -605,7 +605,7 @@ func _coop() -> void:
 		w.tick(FRAME); t += FRAME
 	check(not arc.seat_is_down(1) and revived_hits[0] == 1, "co-op: seat 2 auto-revives (%.2f s)" % t)
 	check(absf(t - 6.0) < 0.25, "co-op: the auto-revive takes ~6 s (%.2f)" % t)
-	check(arc.lives == lives0 and arc.state == "fight", "co-op: the revive costs no life")
+	check(arc.lives == lives0 - 1 and arc.state == "fight", "co-op: the revive itself costs no life")
 	check(not p2.dead and not p2.elim and p2.invuln > 0.0, "co-op: the revived seat is a live fighter again")
 	check(p2.hp >= sim.combat.max_hp(p2) - 0.01, "co-op: revived at full health for its class (%.0f/%.0f)" % [p2.hp, sim.combat.max_hp(p2)])
 	check(Vector2(p2.phys.px, p2.phys.pz).distance_to(Vector2(sim.player.phys.px, sim.player.phys.pz)) > 3.0 or Vector2(p2.phys.px, p2.phys.pz).distance_to(pos0) > 2.0, "co-op: the revive places the seat on a safe spot")
@@ -633,14 +633,51 @@ func _coop() -> void:
 	while (arc.state == "fight" or arc.state == "failing") and n < 900:
 		w.tick(FRAME); n += 1
 	check(arc.state == "failed", "co-op: both seats down fails the attempt (%s)" % arc.state)
-	check(arc.lives == lives0 - 1, "co-op: exactly one shared life lost (%d -> %d)" % [lives0, arc.lives])
+	check(arc.lives == lives0 - 2, "co-op: one life per seat death, the all-down fail adds nothing (%d -> %d)" % [lives0, arc.lives])
 	check(_ui(w, "ArcadeFailed") != null and arc.stage == 1, "co-op: the failed card shows once, same stage")
 	check(arc.seats[0].elim and arc.seats[1].elim and arc.seats[0].dead and arc.seats[1].dead, "co-op: every downed seat is out (eliminated/pinned) behind the card")
 	_press(_ui(w, "ArcadeFailed"), "Retry")
 	await _wait_frames(4)
-	check(arc.stage == 1 and arc.attempt == 1 and arc.lives == lives0 - 1, "co-op: retry retries stage 2 with the shared lives")
+	check(arc.stage == 1 and arc.attempt == 1 and arc.lives == lives0 - 2, "co-op: retry retries stage 2 with the shared lives")
 	check(arc.seats.size() == 2 and arc.seats[1].is_player and arc.seat_control(1) != null, "co-op: both seats are back on the retry")
 	check(_ui(w, "ArcadeIntro") != null, "co-op: the retry opens the intro card again")
+	await _free_world(w)
+	# -- every seat death costs a life, the seat revives, and the run is over at 0 lives --
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	_tick_safe(w, 20)
+	arc.lives = 3
+	_kill_seat(w, 1)
+	w.tick(FRAME)
+	check(arc.lives == 2 and arc.seat_is_down(1) and arc.state == "fight", "co-op: death 1 -> 2 lives, the seat is down, the fight goes on (%d)" % arc.lives)
+	var tr := 0.0
+	while arc.seat_is_down(1) and tr < 9.0:
+		sim.player.invuln = 5.0
+		w.tick(FRAME); tr += FRAME
+	check(not arc.seat_is_down(1) and arc.lives == 2, "co-op: the seat revived and the revive cost nothing (%d)" % arc.lives)
+	for i in 90:                                     # past the re-down grace: still no extra charge
+		sim.player.invuln = 5.0; arc.seats[1].invuln = 5.0
+		w.tick(FRAME)
+	check(arc.lives == 2 and arc.state == "fight", "co-op: no further charge while both seats are up")
+	_kill_seat(w, 1)
+	w.tick(FRAME)
+	check(arc.lives == 1 and arc.state == "fight", "co-op: death 2 -> 1 life (%d, %s)" % [arc.lives, arc.state])
+	tr = 0.0
+	while arc.seat_is_down(1) and tr < 9.0:
+		sim.player.invuln = 5.0
+		w.tick(FRAME); tr += FRAME
+	for i in 90:
+		sim.player.invuln = 5.0; arc.seats[1].invuln = 5.0
+		w.tick(FRAME)
+	_kill_seat(w, 1)                                 # the death that spends the last life
+	var n3 := 0
+	while arc.state in ["fight", "failing"] and n3 < 900:
+		sim.player.invuln = 5.0
+		w.tick(FRAME); n3 += 1
+	check(arc.lives == 0 and arc.state == "over", "co-op: the death at 1 life ends the run at 0 (%d, %s)" % [arc.lives, arc.state])
+	check(_ui(w, "ArcadeOver") != null, "co-op: the run-over card shows")
 	await _free_world(w)
 	# -- summed K.O.s, per-seat rewards, the clear card advances both seats --
 	w = _launch_coop(0)
@@ -671,6 +708,27 @@ func _coop() -> void:
 	check(arc.seats.size() == 2 and arc.seats[0] == w.sim.player and arc.seats[1].is_player, "co-op: both seats advance to the next stage")
 	check(arc.seat_control(1) != null and w.sim.fighters.size() == 2 + 1, "co-op: the next stage rebuilds both seats and the stage's crew")
 	check(_ui(w, "ArcadeIntro") != null, "co-op: the next stage's intro card")
+	await _free_world(w)
+	# -- online retry race: a ghost seat whose snapshot still reads dead at fight start is not downed until seen alive --
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	var gseat: FighterState = arc.seats[1]
+	gseat.net_human = true; gseat.net_slot = 1; gseat.is_ghost = true
+	gseat.dead = true                                # the stale snapshot from the failed attempt
+	_start_fight(w)
+	for i in 5:
+		sim.player.invuln = 5.0
+		w.tick(FRAME)
+	check(not arc.seat_is_down(1), "co-op: a stale-dead ghost seat is not downed at fight start (%s)" % [arc.downed_seats()])
+	gseat.dead = false                               # the first fresh snapshot: alive
+	sim.player.invuln = 5.0
+	w.tick(FRAME)
+	check(arc._seat_seen.has(1), "co-op: the ghost seat is marked seen once it is alive")
+	gseat.dead = true                                # now a genuine death
+	sim.player.invuln = 5.0
+	w.tick(FRAME)
+	check(arc.seat_is_down(1), "co-op: after being seen alive, a dead ghost seat is downed")
 	await _free_world(w)
 	# -- the single-player path is unchanged: one seat, the crew still hunts sim.player --
 	_unlock()
@@ -1063,14 +1121,13 @@ func _ring_out(f: FighterState, sim: MatchSim) -> void:
 func _keep_seats_alive(w: Node) -> void:
 	for f: FighterState in w.arcade.seats: f.invuln = 5.0
 
-## The owner report ("boss drop off from edge = stage clear"): a ring-out leaves the enemy dead with its health intact and
-## must never be a defeat. The boss comes back on the floor with the health it had, its trade tool and a short
-## invulnerability, the fight goes on, and only a real K.O. (hp <= 0) clears the stage.
+## The owner report ("when the boss falls off the edge it respawns; it should count as defeated"): a ring-out leaves the
+## enemy dead with its health intact. In Arcade any ring-out K.O.s the enemy for good, and a boss ring-out clears the stage.
 func _boss_ring_out() -> void:
 	_unlock()
 	var sv := _sv()
 	var diff := "nightmare"
-	# every boss stage: one fall -> one revive, health and tool kept, no pay/record, then a real K.O. clears
+	# every boss stage: a boss ring-out downs it (hp 0, bar empty), clears and pays the stage once, and it never respawns
 	for si in [1, 2, 3, 4, 5]:
 		var w := _launch(si, true, 1.0)
 		var arc = w.arcade
@@ -1080,100 +1137,29 @@ func _boss_ring_out() -> void:
 		var mx := sim.combat.max_hp(b)
 		b.hp = mx * 0.8
 		b.invuln = 0.0
-		var frac0 := b.hp / mx
-		var kit0: String = arc.kit[b]
-		var falls0 := int(b.st["falls"])
 		var coins0: int = sv.coins
 		_keep_seats_alive(w)
 		_ring_out(b, sim)
 		for k in 3: w.tick(FRAME)
-		check(arc.state == "fight", "stage %d: a boss ring-out never clears the stage (%s)" % [si + 1, arc.state])
-		check(not b.dead and not arc.downed.has(b), "stage %d: the boss is back on its feet" % (si + 1))
-		check(absf(b.hp / mx - frac0) < 0.02, "stage %d: it keeps its pre-fall health fraction (%.2f -> %.2f)" % [si + 1, frac0, b.hp / mx])
-		check(str(arc.kit[b]) == kit0 and b.weapon == kit0, "stage %d: its trade tool is back in hand (%s)" % [si + 1, b.weapon])
-		check(b.invuln > 0.0, "stage %d: it revives with a short invulnerability" % (si + 1))
-		check(b.phys.py > sim.ring_out_y and b.phys.py < 2.0, "stage %d: it is back on the floor (y %.2f)" % [si + 1, b.phys.py])
-		check(arc.hud.boss_visible(), "stage %d: the boss bar still shows" % (si + 1))
-		check(int(b.st["falls"]) == falls0 + 1, "stage %d: exactly one fall (no fall/revive churn)" % (si + 1))
-		check(int(arc.revived.get(b, 0)) == 1, "stage %d: revived once (%s)" % [si + 1, arc.revived.get(b, 0)])
-		var away := Vector2(b.phys.px - sim.player.phys.px, b.phys.pz - sim.player.phys.pz).length()
-		check(away > 2.5, "stage %d: it comes back away from the player (%.1f m)" % [si + 1, away])
-		check(sv.coins == coins0 and arc.history.is_empty() and not DlcSave.has_cleared(sv.dlc, _stage_id(si), diff),
-			"stage %d: a ring-out pays nothing and records no clear" % (si + 1))
-		# the fight really continues: 1.5 s later the boss is still up and did not fall again
-		for k in 90:
-			_keep_seats_alive(w)
-			w.tick(FRAME)
-		check(arc.state == "fight" and not b.dead and int(b.st["falls"]) == falls0 + 1 and int(arc.revived.get(b, 0)) == 1,
-			"stage %d: no repeated fall/revive churn (state %s, falls %s)" % [si + 1, arc.state, b.st["falls"]])
-		# ... and a later real kill still clears
-		b.invuln = 0.0
-		sim.combat.hit(b, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim.player)
-		for k in 3: w.tick(FRAME)
-		check(arc.state == "clearing" and arc.downed.has(b) and b.hp <= 0.0,
-			"stage %d: only hp <= 0 clears it (%s, hp %.1f)" % [si + 1, arc.state, b.hp])
+		check(arc.state == "clearing", "stage %d: a boss ring-out clears the stage (%s)" % [si + 1, arc.state])
+		check(arc.downed.has(b) and b.dead, "stage %d: the boss is downed and dead" % (si + 1))
+		check(b.hp == 0.0 and arc.boss_frac() == 0.0, "stage %d: its hp and the boss bar read 0 (%.2f)" % [si + 1, b.hp])
+		for k in int((arc.CLEAR_DELAY + 0.3) / FRAME): w.tick(FRAME)
+		var t_stage: Dictionary = (AM.call("stages") as Array)[si]
+		var final_stage: bool = si == 5                   # the last stage ends the run: "won", with the victory bonus on top
+		check(arc.state == ("won" if final_stage else "cleared"), "stage %d: the clear card comes up after the delay (%s)" % [si + 1, arc.state])
+		var paid: int = sv.coins - coins0
+		var want: int = arc.stage_coins(t_stage)
+		check(paid >= want and (final_stage or paid < want + 400), "stage %d: the stage coins are paid once (%d, want %d)" % [si + 1, paid, want])
+		check(arc.history.size() == 1 and DlcSave.has_cleared(sv.dlc, _stage_id(si), diff),
+			"stage %d: the clear is recorded once (%s)" % [si + 1, arc.history])
+		# no respawn: 3 s later the boss is still dead and downed, and nothing was paid twice
+		var coins1: int = sv.coins
+		for k in 180: w.tick(FRAME)
+		check(b.dead and arc.downed.has(b) and b.hp == 0.0, "stage %d: the boss never respawns" % (si + 1))
+		check(sv.coins == coins1 and arc.history.size() == 1, "stage %d: no second payout or record" % (si + 1))
 		await _free_world(w)
-	# The old clear decider was `dead && !fell_t`: any path that lost that transient flag between the fall and the
-	# manager's step (a bot respawn timer, a net re-build, a later code change) read as a K.O. and cleared the stage.
-	# The invariant is hp now, so a dead fighter with health left is a fall whatever the flag says.
-	var wf := _launch(2, true, 1.0)            # Designer
-	var arcf = wf.arcade
-	_start_fight(wf)
-	var simf: MatchSim = wf.sim
-	var bf: FighterState = arcf.boss
-	_keep_seats_alive(wf)
-	bf.hp = simf.combat.max_hp(bf) * 0.7
-	bf.dead = true
-	bf.fell_t = false                          # the flag lost: the pre-fix code called this a K.O. and cleared the stage
-	bf.death_t = 5.0
-	bf.phys.place(0.0, simf.ring_out_y - 5.0, 0.0)
-	wf.tick(FRAME)
-	check(arcf.state == "fight" and not bf.dead and not arcf.downed.has(bf) and absf(bf.hp / simf.combat.max_hp(bf) - 0.7) < 0.02,
-		"a dead-with-health boss is a fall whatever fell_t says (state %s, hp %.0f)" % [arcf.state, bf.hp])
-	await _free_world(wf)
-	# a clear after a fall pays and records exactly like a normal clear (Engineer, first clear on a fresh profile)
-	_unlock()
-	var w2 := _launch(1, true, 1.0)
-	var arc2 = w2.arcade
-	_start_fight(w2)
-	var sim2: MatchSim = w2.sim
-	var b2: FighterState = arc2.boss
-	var t2: Dictionary = (AM.call("stages") as Array)[1]
-	b2.hp = sim2.combat.max_hp(b2) * 0.5
-	b2.invuln = 0.0
-	_keep_seats_alive(w2)
-	_ring_out(b2, sim2)
-	for k in 3: w2.tick(FRAME)
-	check(arc2.state == "fight" and arc2.history.is_empty(), "the fall itself pays no clear")
-	var c0: int = sv.coins
-	b2.invuln = 0.0
-	sim2.combat.hit(b2, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim2.player)
-	for k in 3: w2.tick(FRAME)
-	check(arc2.state == "clearing", "the real K.O. starts the existing clear flow (%s)" % arc2.state)
-	for k in int((arc2.CLEAR_DELAY + 0.3) / FRAME): w2.tick(FRAME)
-	check(arc2.state == "cleared", "the clear card comes up after the delay (%s)" % arc2.state)
-	var paid: int = sv.coins - c0
-	var want: int = arc2.stage_coins(t2)
-	check(paid >= want and paid < want + 60, "the post-fall clear pays the stage coins once (%d, K.O. coins included)" % paid)
-	check(arc2.history.size() == 1 and DlcSave.has_cleared(sv.dlc, "engineer", diff) and DlcSave.best(sv.dlc, diff) == 2,
-		"the post-fall clear records the stage once (%s)" % [arc2.history])
-	await _free_world(w2)
-	# a second fall revives a second time: each fall is exactly one revive, still no defeat in between
-	var w3 := _launch(2, true, 1.0)            # Designer
-	var arc3 = w3.arcade
-	_start_fight(w3)
-	var sim3: MatchSim = w3.sim
-	var b3: FighterState = arc3.boss
-	for n in 2:
-		_keep_seats_alive(w3)
-		b3.invuln = 0.0
-		_ring_out(b3, sim3)
-		for k in 3: w3.tick(FRAME)
-		check(arc3.state == "fight" and not b3.dead, "fall %d: the fight continues" % (n + 1))
-	check(int(b3.st["falls"]) == 2 and int(arc3.revived.get(b3, 0)) == 2 and arc3.downed.is_empty(),
-		"two falls -> two revives, never a downed boss (%s)" % [arc3.revived.get(b3, 0)])
-	await _free_world(w3)
-	# a crew ring-out on a BOSS stage: the crew member revives too and only the boss' hp decides the clear
+	# a minion ringing out on a boss stage stays down, and the fight goes on (only the boss decides the clear)
 	var w4 := _launch(1, true, 1.0)
 	var arc4 = w4.arcade
 	_start_fight(w4)
@@ -1184,12 +1170,14 @@ func _boss_ring_out() -> void:
 	crew.invuln = 0.0
 	_ring_out(crew, sim4)
 	for k in 3: w4.tick(FRAME)
-	check(arc4.state == "fight" and not crew.dead and not arc4.downed.has(crew),
-		"a crew ring-out on a boss stage revives too, no clear")
-	check(int(crew.st["falls"]) == 1 and int(arc4.revived.get(crew, 0)) == 1 and not arc4.downed.has(arc4.boss),
-		"the crew member is revived once and the boss is untouched")
+	check(arc4.state == "fight" and crew.dead and arc4.downed.has(crew), "a minion ring-out stays down, no clear (%s)" % arc4.state)
+	check(not arc4.downed.has(arc4.boss) and not arc4.boss.dead, "the boss is untouched by the minion's fall")
+	for k in 120:
+		_keep_seats_alive(w4)
+		w4.tick(FRAME)
+	check(crew.dead and arc4.state == "fight", "the fallen minion stays down (no respawn, state %s)" % arc4.state)
 	await _free_world(w4)
-	# a stage WITHOUT a boss: a tradie fall is not a clear either; the stage clears when every enemy is really down
+	# a stage WITHOUT a boss: one tradie ring-out leaves the fight on; ringing out all of them clears it
 	var w5 := _launch(0, true, 1.0)
 	var arc5 = w5.arcade
 	_start_fight(w5)
@@ -1199,13 +1187,27 @@ func _boss_ring_out() -> void:
 	e0.invuln = 0.0
 	_ring_out(e0, sim5)
 	for k in 3: w5.tick(FRAME)
-	check(arc5.state == "fight" and not e0.dead, "a tradie ring-out on stage 1 does not clear the stage")
+	check(arc5.state == "fight" and e0.dead and arc5.downed.has(e0), "a tradie ring-out on stage 1 stays down and does not clear")
 	for e: FighterState in arc5.enemies:
+		if arc5.downed.has(e): continue
 		e.invuln = 0.0
-		sim5.combat.hit(e, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim5.player)
+		_ring_out(e, sim5)
 	for k in 3: w5.tick(FRAME)
-	check(arc5.state == "clearing", "stage 1 clears once every tradie is really down (%s)" % arc5.state)
+	check(arc5.state == "clearing", "stage 1 clears once every tradie has rung out (%s)" % arc5.state)
 	await _free_world(w5)
+	# a boss that is merely low and still alive (y -15, above the ring-out line) is not teleported back
+	var w6 := _launch(2, true, 1.0)
+	var arc6 = w6.arcade
+	_start_fight(w6)
+	var sim6: MatchSim = w6.sim
+	var b6: FighterState = arc6.boss
+	_keep_seats_alive(w6)
+	b6.invuln = 0.0
+	b6.phys.place(b6.phys.px, -15.0, b6.phys.pz)
+	w6.tick(FRAME)
+	check(not b6.dead and b6.phys.py < -10.0 and b6.phys.py > sim6.ring_out_y, "a live boss at y -15 is not teleported (y %.2f)" % b6.phys.py)
+	check(arc6.state == "fight" and not arc6.downed.has(b6), "a live low boss is not downed")
+	await _free_world(w6)
 
 # ---------------- 5c. boss movement speeds ----------------
 

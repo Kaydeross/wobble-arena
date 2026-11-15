@@ -17,8 +17,9 @@ extends RefCounted
 ## one seat (`[sim.player]`, today's behaviour verbatim), a co-op room has two in room-slot order. The net layer (M1) maps
 ## its slots onto `seats`: `seat_count` and `seat_names` must be set before the first stage loads, and the world it builds
 ## puts the seats first in `sim.fighters` (slot k <-> seat k), the stage's crew after. Everything else here loops the seats:
-## K.O.s are summed, damage scale is per seat, a downed seat auto-revives after REVIVE_TIME (no life lost) while a teammate
-## is still up, and only every seat down fails the attempt (one shared life). `_pay()` returns the per-seat rewards so the
+## K.O.s are summed, damage scale is per seat, and in co-op EVERY seat death costs one shared life (paid when the seat goes
+## down); the downed seat auto-revives after REVIVE_TIME while a teammate is still up, every seat down (or the last life
+## spent) fails the attempt, and the run is over at 0 lives. Solo is unchanged: the one death fails the attempt and costs the life. `_pay()` returns the per-seat rewards so the
 ## net layer can hand each client its share; this process still writes one save (the local player's).
 ##
 ## ONLINE CO-OP (M1, docs/PROTOCOL.md 6.4): `new_online(start.arc, is_host)` turns the run into the online authority
@@ -42,7 +43,6 @@ const STAGES_PATH := "res://data/extra/construction/stages.json"
 const LIVES := 3
 const REVIVE_TIME := 6.0               ## a downed seat comes back after this long while a teammate is still up
 const RETRY_SEED_STEP := 1009
-const FALL_RESCUE_Y := 14.0            ## an enemy this far above the ring-out line (y -11) and falling is put back on the floor
 const FAIL_DELAY := 1.8                ## seconds the world runs on after you fall, before the card
 const CLEAR_DELAY := 1.4               ## ... and after the last enemy goes down
 const VICTORY_COINS := 2000
@@ -136,7 +136,6 @@ var boss: FighterState = null
 var downed := {}                       ## FighterState -> true once it went down for good (a real K.O., hp <= 0)
 var kit := {}                          ## FighterState -> its trade tool key
 var speed0 := {}                       ## FighterState -> its base walk speed (m/s): phase steps and caps start from here
-var revived := {}                      ## FighterState -> how many ring-outs it came back from (tests / HUD, never a defeat)
 var phase_n := 0
 var phase_log: Array = []              ## [stage time, phase number] (tests)
 var t_stage := 0.0
@@ -147,6 +146,9 @@ var _seed_saved := -1
 var _stage_first := false
 ## Seat -> seconds of grace after its auto-revive, so a guest still reporting dead for a frame does not re-down it.
 var _seat_grace := {}
+## Seat -> true once its fighter has been seen alive this stage. A ghost seat's `dead` can be a stale snapshot from the last
+## attempt (the host retried before the guest's first fresh one), so a ghost is only downed after it has been alive once.
+var _seat_seen := {}
 # ---------------- online co-op: the host's / the guest's extra state ----------------
 var _am_seq := 0                        ## bumped by _pay/_win: the guest applies a clear/victory exactly once per bump
 var _rv_n := 0                          ## bumped by _seat_up: the guest applies each revive exactly once (needs in `am.rv`)
@@ -275,7 +277,7 @@ func end_run() -> void:
 	if hud != null and is_instance_valid(hud): hud.queue_free()
 	hud = null
 	events = null
-	enemies.clear(); downed.clear(); kit.clear(); speed0.clear(); revived.clear()
+	enemies.clear(); downed.clear(); kit.clear(); speed0.clear()
 	if sim != null:
 		sim.set_meta("pve_seats", [])          # no stale seat list for a later match in this process
 		if sim.has_meta("arcade_run"): sim.remove_meta("arcade_run")
@@ -309,6 +311,8 @@ func first_clear() -> bool:
 ## HostMatch.setup, so the outgoing `start` carries them); a guest rebuilds the same site from `arc.seed`.
 func begin_stage(w: Node) -> String:
 	world = w
+	_seat_seen = {}
+	if _down_l != null and is_instance_valid(_down_l): _down_l.visible = false
 	var mp := site_map()
 	var a: Dictionary = {}
 	if online:
@@ -395,7 +399,7 @@ func setup_sim(s: MatchSim) -> void:
 		s.combat.ffa = false
 		s.combat.friendly_fire = friendly_fire
 		s.combat.pve_seats = []                       # _bind_guest_seats fills them once the seats are mapped to ghosts
-		seats = []; enemies = []; downed = {}; kit = {}; speed0 = {}; revived = {}; boss = null; phase_n = 0; phase_log = []
+		seats = []; enemies = []; downed = {}; kit = {}; speed0 = {}; boss = null; phase_n = 0; phase_log = []
 		seat_down = {}; t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0; state = "intro"
 		return
 	var d := stage_def()
@@ -403,7 +407,7 @@ func setup_sim(s: MatchSim) -> void:
 	c.ffa = false                              # the crew fights you, not each other
 	_bind_seats(s)                             # the player seats (slot k <-> seat k), the rest is crew
 	_apply_friendly_fire(s)                    # ... and the co-op rule between those seats (owner: off by default)
-	enemies = []; downed = {}; kit = {}; speed0 = {}; revived = {}; boss = null; phase_n = 0; phase_log = []; seat_down = {}
+	enemies = []; downed = {}; kit = {}; speed0 = {}; boss = null; phase_n = 0; phase_log = []; seat_down = {}; _seat_seen = {}
 	t_stage = 0.0; _t_end = 0.0; _kit_t = 0.0
 	if online and host_mode: _dress_teammate_seats(s)   # a seat nobody took is a teammate bot, not a tradie
 	var specs: Array = d["bots"]
@@ -671,7 +675,7 @@ func _guest_step(dt: float) -> void:
 
 func _guest_overlay() -> void:
 	if _down_l == null or not is_instance_valid(_down_l): return
-	var shown := _guest_pinned and _guest_own >= 0 and seat_is_down(_guest_own)
+	var shown := state == "fight" and _guest_pinned and _guest_own >= 0 and seat_is_down(_guest_own)
 	_down_l.visible = shown
 	if not shown: return
 	_down_l.text = tr("Down! Back in %d") % maxi(1, ceili(seat_revive_left(_guest_own)))
@@ -879,19 +883,11 @@ func _fight(dt: float) -> void:
 		_kit_t = KIT_EVERY
 		for e: FighterState in enemies:
 			if not downed.has(e) and not e.dead: keep_kit(e)
-	# Enemies that are really K.O.'d (hp <= 0) stay down (no respawn). Anything else that is `dead` fell off the site,
-	# and a fall is not a K.O.: it comes back (see _revive). HP is the decider here, never the transient `fell_t` flag,
-	# so no respawn path or cleared flag can turn a ring-out boss into a stage clear (owner report: "boss drop off from
-	# edge = stage clear"; the boss revives on the floor and the fight goes on until its HP reaches 0).
+	# Any enemy that is `dead` is K.O.'d for good: a ring-out (MatchSim._ring_out leaves the fallen bot `dead` with its hp
+	# intact) counts exactly like a hp <= 0 K.O. and never respawns. A boss that rings out clears the stage.
 	for e: FighterState in enemies:
-		if downed.has(e): continue
-		if not e.dead:
-			# still alive but already well below the site (a launch off the edge, a gap in the generated floor): put it
-			# back now instead of watching it fall the last metres to the ring-out line.
-			if e.phys.py < sim.ring_out_y + FALL_RESCUE_Y and e.hp > 0.0: _revive(e)
-			continue
-		if e.hp > 0.0: _revive(e)
-		else: _down(e)
+		if downed.has(e) or not e.dead: continue
+		_down(e)
 	_enforce_enemy_speed()
 	if events != null: events.update(dt)
 	_phases()
@@ -918,9 +914,11 @@ func _seats(dt: float) -> void:
 	for k in seats.size():
 		if seat_down.has(k) or float(_seat_grace.get(k, 0.0)) > 0.0: continue
 		var f: FighterState = seats[k]
+		if not f.dead: _seat_seen[k] = true
+		if f.is_ghost and not _seat_seen.has(k): continue     # a stale "dead" from the last attempt, not a fresh death
 		if f.dead or int(f.st["deaths"]) > int(_deaths0[k]): _seat_down(k)
 	var up := living_seats()
-	if up.is_empty():
+	if up.is_empty() or (seats.size() > 1 and lives <= 0):   # co-op: the death that spent the last life ends the run at once
 		_failed()
 		return
 	for k: int in seat_down.keys():
@@ -929,6 +927,8 @@ func _seats(dt: float) -> void:
 		if float(seat_down[k]) <= 0.0: _seat_up(k)
 
 ## A seat is down: pinned like a solo player's death (MatchSim must not respawn it) and revived by the manager after 6 s.
+## In co-op this death costs one shared life right now (so an all-down fail costs nothing extra: `_finish_attempt` only
+## charges the solo seat); solo keeps the old rule, the life is charged when the failed card comes up.
 func _seat_down(k: int) -> void:
 	var f: FighterState = seats[k]
 	if not f.dead:                             # a fall/ring-out: the seat is out too, but let the revive bring it back
@@ -938,10 +938,13 @@ func _seat_down(k: int) -> void:
 	f.elim = true; f.death_t = 1e9
 	_deaths0[k] = int(f.st["deaths"])           # consume this death: `_seats()` must not re-down the seat for it later
 	seat_down[k] = REVIVE_TIME
+	if seats.size() > 1:                       # co-op: every seat death costs one shared life, paid here
+		lives = maxi(0, lives - 1)
+		if online and host_mode: _am_send()    # the guest HUD shows the drop (am.lv)
 	seat_downed.emit(k, REVIVE_TIME)
 
 ## The seat comes back on the floor, at full health for its class (a fresh fighter: the K.O. cleared its hands), away from
-## the fight, with a short invulnerability. No life is lost (lives are the shared run lives). Online, the guest places its
+## the fight, with a short invulnerability. The revive itself costs nothing (the death already paid the shared life). Online, the guest places its
 ## OWN fighter from `am.rv` (same spot, health fraction and invulnerability), so this records that instruction.
 func _seat_up(k: int) -> void:
 	if not seat_down.has(k): return
@@ -981,31 +984,9 @@ func _safe_spot() -> Array:
 
 func _down(e: FighterState) -> void:
 	downed[e] = true
+	e.hp = 0.0                                  # a ring-out leaves hp intact: zero it so boss_frac()/am.hf read 0
 	e.elim = true
 	e.death_t = 1e9
-
-## A fall off the site is not a K.O.: the fighter goes back on the floor with the health it had. The player's hammer can
-## shove a melee boss through a fence gate and off the edge, so a ring-out must never clear the stage (only hp <= 0 does:
-## see _fight). MatchSim._ring_out leaves the fallen bot `dead` with `fell_t` set and empties its hands; this puts it back
-## on its feet once per fall, away from the players, with the previous health FRACTION, its trade tool and 1.5 s of
-## invulnerability. Boss and crew both use it.
-func _revive(e: FighterState) -> void:
-	var c := sim.combat
-	var mx := maxf(1.0, c.max_hp(e))
-	var frac := clampf(e.hp / mx, 0.05, 1.0)    # the fall cost no health: keep the fraction it had
-	var best := _safe_spot()                    # the bot spot farthest from the nearest living seat
-	var y := float(best[2]) if best.size() > 2 else float(sim.map.get("spawnY", 0.01))
-	c.place_at(e, float(best[0]), float(best[1]), y)     # back ON THE FLOOR (no 4 m respawn drop)
-	e.hp = mx * frac
-	e.elim = false
-	e.dead = false
-	e.death_t = 0.0
-	e.fell_t = false
-	e.invuln = maxf(e.invuln, 1.5)
-	downed.erase(e)                             # defensive: a revive is never a downed state
-	var key: String = str(kit.get(e, ""))
-	if key != "": give_weapon(e, key)           # the fall cleared its hands: it comes back with its trade tool
-	revived[e] = int(revived.get(e, 0)) + 1
 
 ## Every Arcade enemy's walk speed stays inside its band (docs/CONSTRUCTION_DLC.md "Boss movement speeds"). The table's
 ## speed x the entry's `speed` (clamped into the boss bands) x the difficulty's `speed_mul` is the ONLY walk speed: the
@@ -1103,7 +1084,7 @@ func all_seats_down() -> bool:
 func seat_control(k: int) -> PlayerControl:
 	return seat_controls[k] if k >= 0 and k < seat_controls.size() else null
 
-## The living seat nearest to `from` (the nearest-player rule for K.O. credit / enemy revives).
+## The living seat nearest to `from` (the nearest-player rule for K.O. credit).
 func _nearest_seat(from: FighterState) -> FighterState:
 	var best: FighterState = null
 	var bd := 1e9
@@ -1115,7 +1096,7 @@ func _nearest_seat(from: FighterState) -> FighterState:
 	if best != null: return best
 	return seats[0] if not seats.is_empty() else sim.player
 
-## Distance from (x, z) to the NEAREST living seat (enemy revives and minion spawns keep away from the whole team).
+## Distance from (x, z) to the NEAREST living seat (seat revives and minion spawns keep away from the whole team).
 func _nearest_seat_dist(x: float, z: float) -> float:
 	var bd := -1.0
 	for f: FighterState in living_seats():
@@ -1163,7 +1144,7 @@ func _finish_attempt() -> void:
 		if is_last_stage(): _win()
 		else: world.show_panel(ArcadePanels.clear(self, last, next_stage, quit_run))
 	elif state == "failing":
-		lives -= 1
+		if seats.size() <= 1: lives -= 1        # solo pays its life here; co-op already paid per seat death (see _seat_down)
 		if lives <= 0:
 			state = "over"
 			run_over.emit()
@@ -1385,8 +1366,7 @@ func alive_enemies() -> int:
 func boss_frac() -> float:
 	if online and not host_mode: return clampf(_guest_hf, 0.0, 1.0)
 	if boss == null: return 0.0
-	# a boss that FELL is `dead` for a moment with its health intact (see _revive): the bar keeps its real fraction, so a
-	# ring-out never looks like (or tells the guests) that the boss is down. Only hp <= 0 is down.
+	# a downed boss (K.O. or ring-out) has hp 0 (see _down), so the bar empties and the guests hide theirs.
 	return clampf(boss.hp / sim.combat.max_hp(boss), 0.0, 1.0)
 
 ## The boss' fight is on: the bar shows.
