@@ -10,7 +10,7 @@ extends SceneTree
 
 const MAIN := "res://scenes/main.tscn"
 const MIN_TOUCH := 44.0
-const QUICK := "Safe/Col/Body/Home/Cols/Left/Quick"
+const QUICK := "Safe/Rail/Quick"            ## the title's left menu rail (docs/TITLE.md)
 ## The smallest supported landscape sizes (with and without phone insets), the design canvas and portrait; `mode` is the
 ## Settings ui_scale (ui/ui_scale.gd) the layout test uses. 926x428 at the Large scale is the tightest title in the game.
 const CASES := [
@@ -142,6 +142,8 @@ func _title() -> void:
 		check(not r.grow(-0.5).intersects(play_rect.grow(-0.5)), "%s Quick play does not overlap Play" % tag)
 		for other: Button in [main.play, main.online_b]:
 			check(not r.grow(-0.5).intersects(other.get_global_rect().grow(-0.5)), "%s Quick play does not overlap %s" % [tag, other.name])
+		var rail: Control = main.get_node("Safe/Rail")
+		check(rail.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s the rail's min height %.0f fits %.0f" % [tag, rail.get_combined_minimum_size().y, safe.size.y])
 		var col: Control = main.get_node("Safe/Col")
 		check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s title column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 		check(main.quick_b.tooltip_text == "Random arena and mode", "%s tooltip says what it does (%s)" % [tag, main.quick_b.tooltip_text])

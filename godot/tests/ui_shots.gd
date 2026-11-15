@@ -145,9 +145,16 @@ func _start() -> void:
 		root.add_child(m)
 		if shot == "title-online":
 			m.show_tab(true)
-			m.get_node("Safe/Col/Body/Online/Box/Roster").text = "In the room: Alice, Bob"
+			m.get_node("Safe/Col/Body/Online/Box/Foot/Roster").text = "In the room: Alice, Bob"
 		elif shot == "title-settings":
 			m.show_settings(true)
+		elif shot == "title-site":                        # the Construction title (after the DON'T ENTER wipe)
+			m.set_dlc(true, false)
+		elif shot.begins_with("title-open") or shot.begins_with("title-weapon"):   # the DLC showcase: the open container (locked / owned), a weapon in hand
+			if shot.ends_with("-owned") or shot.begins_with("title-weapon"): root.get_node("Save").dlc["owned"] = true
+			m.showcase.refresh()
+			m.showcase.snap(true)
+			if shot.begins_with("title-weapon"): m.showcase.select(int(pick_arg) if pick_arg.is_valid_int() else 2)
 		elif shot.begins_with("wizard"):
 			m.open_wizard(maxi(0, ["wizard-mode", "wizard-arena", "wizard-players", "wizard-character", "wizard-start"].find(shot)))   # (wizard-team: Team Deathmatch picked, its section scrolled into view)
 		elif shot.begins_with("newmodes"):

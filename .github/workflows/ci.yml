@@ -120,6 +120,8 @@ jobs:
       - run: npm run test:godot-dlc-ui
         if: matrix.shard == 'rest'
         continue-on-error: true   # known Linux headless teardown crash: visible, not blocking
+      - run: npm run test:godot-title
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-site-map
         if: matrix.shard == 'net'
       - run: npm run test:godot-sandbox

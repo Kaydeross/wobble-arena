@@ -47,6 +47,7 @@
     "test:godot-site-map": "node tools/test-site-map.js",
     "test:godot-construction-data": "node tools/test-construction-data.js",
     "test:godot-dlc-ui": "node tools/test-dlc-ui.js",
+    "test:godot-title": "node tools/test-title.js",
     "test:godot-modes": "node tools/test-modes.js",
     "test:godot-ctf": "node tools/test-ctf.js",
     "test:godot-sandbox": "node tools/test-sandbox.js",

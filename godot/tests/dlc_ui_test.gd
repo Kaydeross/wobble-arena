@@ -392,8 +392,10 @@ func _layout_case(win: Vector2, ins_pt: Array, state: String, loc: String, sv: N
 		var bn := main.get_node("Safe/Col/Body/Home/Construction") as Button
 		check(bn.is_visible_in_tree() and safe.grow(0.5).encloses(bn.get_global_rect()), "%s banner inside the safe area" % tag)
 		check(bn.get_global_rect().size.x >= 400.0, "%s banner is wide" % tag)
-		var more := main.get_node("Safe/Col/Body/Home/Cols/Right/More") as Control
-		check(bn.get_global_rect().position.y >= more.get_global_rect().end.y + 8.0 * k - 0.6, "%s banner sits below the Walldrobe row" % tag)
+		var stage := main.get_node("Safe/Col/Body/Home/Stage") as Control     # (title redesign: the sign sits under the 3D stage, right of the menu rail)
+		check(bn.get_global_rect().position.y >= stage.get_global_rect().end.y + 8.0 * k - 0.6, "%s banner sits below the stage" % tag)
+		var rail := main.get_node("Safe/Rail") as Control
+		check(not rail.get_global_rect().grow(-0.5).intersects(bn.get_global_rect()), "%s banner clear of the menu rail" % tag)
 		check(main.get_node("Safe/Col/Build").get_global_rect().position.y >= bn.get_global_rect().end.y, "%s the version line is below the banner" % tag)
 		var tip := main.get_node("Safe/Col/Tip") as Label
 		if tip.visible: check(safe.encloses(tip.get_global_rect()), "%s tip inside the safe area" % tag)
