@@ -153,18 +153,13 @@ The scripted player is a crude yardstick (it only walks at the nearest enemy and
 
 **Melee retune (balance pass 3).** With the bosses on melee tools the scripted player's hammer could stunlock the low-force early bosses (Engineer 8/8 with 90 % health left on Normal, 8/8 with 75 % on Nightmare) while the Supervisor's Pipe Wrench (force 24, not scaled by `dmg_scale`) stunlocked the player (1/8 Normal, 0/8 Nightmare). The early bosses take the biggest buffs: Engineer hp 2.0 / damage 1.0 / speed 1.05 -> 2.8 / 1.6 / 1.2, Designer 3.0 / 1.45 / 1.2 -> 3.4 / 1.8 / 1.3. The Supervisor becomes a tanky, low-damage summoner: hp 3.0 -> 3.6, damage 0.9 -> 0.6 (the data floor), speed 0.95 -> 0.9; it keeps its one-tradie backup call at 50 % health. The Project Manager moves to 4.0 / 1.4 / 1.08 and The Client stays at 4.8 / 1.35 / 1.05 (the giant mallet already hurts). Boss health now climbs Engineer 2.8 < Designer 3.4 < Supervisor 3.6 < Project Manager 4.0 < The Client 4.8 at every difficulty (the floors keep the same order on Easy), checked in `arcade_test.gd`. The Supervisor is still the hardest stage for the non-dodging probe (2/8 Normal, 0/8 Nightmare): its damage is already at the `dmg_scale` floor of 0.6, so the rest of its sting is the pipe wrench's knockback; a human who keeps away, as the melee change intends, has a much better time than the probe. **Pass 4** adds the two fairness changes the review asked for: Easy/Normal scale the outgoing melee force / topple (0.75 / 0.65 and 0.9 / 0.8; Nightmare unchanged) and the backup call now shows a 1.5 s amber warning ring on the summon spot before the tradie lands.
 
-**Ring-out rule (owner report: "boss drop off from edge = stage clear").** `MatchSim._ring_out` leaves a bot that falls off
-the site `dead` with its health intact and `fell_t` set. A fall is **never a K.O.**: `ArcadeManager._fight` now decides by
-health, not by the transient `fell_t` flag, so only `hp <= 0` marks an enemy down — no flag, respawn or clear path can turn
-a ring-out into a stage clear. A fallen enemy (boss or crew, boss stages and Tradies alike) is put back **on the floor**
-(the bot spot farthest from the nearest living player, via `_safe_spot()`), with the **health fraction it had**, its trade
-tool in hand and 1.5 s of invulnerability; the fight continues. One fall is exactly one revive (`ArcadeManager.revived`
-counts them; no fall/revive churn), a ring-out pays nothing and records no clear, and a later real K.O. still pays and
-records the stage exactly once. Checked in `arcade_test.gd` (`_boss_ring_out`: every boss stage, a `fell_t`-lost case,
-two falls in a row, crew on a boss stage, Tradies, the clear flow after a fall). On this build the plain shove was already
-revived by the M2 `fell_t` path; the `fell_t`-lost case reproduces the owner's clear on the old decider (`dead && !fell_t`
-called `_down` -> `_cleared` -> paid and recorded), and now revives. The AFTER balance table above is measured with the fix;
-the BEFORE one included free ring-outs.
+**Ring-out rule (owner report: "when the boss falls off the edge it respawns; it should count as defeated").** `MatchSim._ring_out`
+leaves a bot that falls off the site `dead` with its health intact. In Arcade **any ring-out K.O.s the enemy**: `ArcadeManager._fight`
+downs every `dead` enemy (`_down` also zeroes its hp, so the boss bar and the guests' `am.hf` read 0) and it never respawns.
+A boss that rings out therefore **clears the stage** exactly like a hp <= 0 K.O. (the crew gives up, coins are paid once, the
+clear is recorded once). A minion or Tradie that rings out stays down too; on a no-boss stage the stage clears when every
+enemy is down. A live enemy that is merely low or falling is not touched (no rescue teleport). Checked in `arcade_test.gd`
+(`_boss_ring_out`: every boss stage, no respawn afterwards, minions on a boss stage, Tradies, a low live boss not teleported).
 
 **Last-two-stage fixes.** (1) The Client (and any Giant: Chaos mode too) was drawn away from his own body. `World.present` scaled the Fighter node by 1.5 about the world origin, but the wobbler places itself in world space, so the model sat at 1.5 x his position (about 15 m off near the arena edge) and the hand / shoulder points his swings read back from the rig were off too: he looked like he walked through things and his hits missed (about a quarter of a normal boss's damage with the same swings). The view now scales about his feet (node position = feet x (1 - k)). (2) The Project Manager's deadline closed the collision floor while the visible ground (`FloorPad`, a flat 58 m plane) stayed full size, so everyone dropped off ground that still looked solid; the pad now shrinks with the floor. (3) Scope-creep / backup workers could spawn on a spot the shrunk floor no longer covers and fall straight off; they now spawn on the remaining floor. Checked in `arcade_test.gd`.
 
@@ -232,6 +227,5 @@ checks it at every phone / tablet size, both handedness settings (`npm run test:
 
 Tests: `npm run test:godot-arcade` (`godot/tests/arcade_test.gd`: all six stages with a boosted hammer, lives / retry / run over, events, phases, once-only coins, saved
 records and the hat, two-seat co-op (seats, auto-revive, shared lives, per-seat pay) and co-op friendly fire (off by default, the option, crew unaffected), the
-ring-out rule (a fall never clears/pays/records, one revive per fall, the boss back on the floor with its health and tool, a later real K.O. still clears and pays,
-crew and Tradies falls too) and the speed audit (boss bands, permanent cap, additive phase steps, the short burst cap, and identical solo/co-op stat lines), a
+ring-out rule (any ring-out K.O.s the enemy for good, a boss ring-out clears and pays the stage once, minions and Tradies stay down, no respawn) and the speed audit (boss bands, permanent cap, additive phase steps, the short burst cap, and identical solo/co-op stat lines), a
 Classic match afterwards). Screenshots: `godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot arcade-<intro|fight|engineer|client|clear|victory> --out FILE.png`.

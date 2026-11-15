@@ -366,7 +366,7 @@ async function arcadeCoop(url) {
   const DN = jl(await host.waitLine(/^DOWN_SENT /, 30000));
   console.log('arcade down: ' + JSON.stringify(DN));
   assert.deepEqual(DN.dn, [1], 'the host says seat 1 is down');
-  assert.equal(DN.lives, 4, 'a downed seat costs no life');
+  assert.equal(DN.lives, 3, 'a seat death costs one shared life (4 -> 3)');
   const PD = jl(await peer.waitLine(/^DOWNED /, 30000));
   console.log('arcade guest downed: ' + JSON.stringify(PD));
   assert.equal(PD.seat, 1); assert.equal(PD.slot, 1);
@@ -378,7 +378,7 @@ async function arcadeCoop(url) {
   // -- the host auto-revives it: am.rv places the guest fighter at the host's spot/health fraction --
   const UP = jl(await host.waitLine(/^REVIVED_HOST /, 30000));
   console.log('arcade revive (host): ' + JSON.stringify(UP));
-  assert.equal(UP.state, 'fight'); assert.equal(UP.lives, 4, 'a revive costs no life');
+  assert.equal(UP.state, 'fight'); assert.equal(UP.lives, 3, 'the revive itself costs no life (the death paid)');
   assert.ok(UP.next_revive && UP.next_revive.n >= 1, 'the host recorded the revive instruction');
   const PR = jl(await peer.waitLine(/^REVIVED /, 30000));
   console.log('arcade guest revived: ' + JSON.stringify(PR));
