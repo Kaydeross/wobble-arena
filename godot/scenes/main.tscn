@@ -36,6 +36,11 @@ theme_override_constants/margin_top = 18
 theme_override_constants/margin_right = 28
 theme_override_constants/margin_bottom = 14
 
+[node name="Rail" type="VBoxContainer" parent="Safe"]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 12
+
 [node name="Col" type="VBoxContainer" parent="Safe"]
 layout_mode = 2
 theme_override_constants/separation = 14
@@ -90,32 +95,18 @@ layout_mode = 2
 theme_override_constants/separation = 16
 alignment = 1
 
-[node name="Cols" type="HBoxContainer" parent="Safe/Col/Body/Home"]
+[node name="Stage" type="Control" parent="Safe/Col/Body/Home"]
+custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_constants/separation = 20
 
-[node name="Left" type="VBoxContainer" parent="Safe/Col/Body/Home/Cols"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 7.0
-theme_override_constants/separation = 12
-alignment = 1
-
-[node name="Right" type="VBoxContainer" parent="Safe/Col/Body/Home/Cols"]
-layout_mode = 2
-size_flags_horizontal = 3
-size_flags_stretch_ratio = 3.0
-theme_override_constants/separation = 12
-alignment = 1
-
-[node name="Play" type="Button" parent="Safe/Col/Body/Home/Cols/Left"]
+[node name="Play" type="Button" parent="Safe/Rail"]
 custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"PrimaryButton"
 
-[node name="Stack" type="VBoxContainer" parent="Safe/Col/Body/Home/Cols/Left/Play"]
+[node name="Stack" type="VBoxContainer" parent="Safe/Rail/Play"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -128,7 +119,7 @@ mouse_filter = 2
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="Big" type="Label" parent="Safe/Col/Body/Home/Cols/Left/Play/Stack"]
+[node name="Big" type="Label" parent="Safe/Rail/Play/Stack"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.0627, 0.1686, 0.2078, 1)
 theme_override_colors/font_shadow_color = Color(1, 1, 1, 0.35)
@@ -136,7 +127,7 @@ theme_override_font_sizes/font_size = 84
 text = "Play"
 horizontal_alignment = 1
 
-[node name="Sub" type="Label" parent="Safe/Col/Body/Home/Cols/Left/Play/Stack"]
+[node name="Sub" type="Label" parent="Safe/Rail/Play/Stack"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.0627, 0.1686, 0.2078, 0.8)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0)
@@ -146,12 +137,12 @@ horizontal_alignment = 1
 clip_text = true
 text_overrun_behavior = 3
 
-[node name="Online" type="Button" parent="Safe/Col/Body/Home/Cols/Left"]
+[node name="Online" type="Button" parent="Safe/Rail"]
 custom_minimum_size = Vector2(0, 84)
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Stack" type="VBoxContainer" parent="Safe/Col/Body/Home/Cols/Left/Online"]
+[node name="Stack" type="VBoxContainer" parent="Safe/Rail/Online"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -164,13 +155,13 @@ mouse_filter = 2
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="Big" type="Label" parent="Safe/Col/Body/Home/Cols/Left/Online/Stack"]
+[node name="Big" type="Label" parent="Safe/Rail/Online/Stack"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 26
 text = "Play online with friends"
 horizontal_alignment = 1
 
-[node name="Sub" type="Label" parent="Safe/Col/Body/Home/Cols/Left/Online/Stack"]
+[node name="Sub" type="Label" parent="Safe/Rail/Online/Stack"]
 layout_mode = 2
 theme_type_variation = &"MutedLabel"
 theme_override_font_sizes/font_size = 16

@@ -7,6 +7,10 @@ extends Button
 @export var label := "DON'T ENTER":
 	set(v): label = v; queue_redraw()
 
+## The label's largest font size (the portrait title raises it: that canvas is 3 px per point).
+var max_font := 34.0:
+	set(v): max_font = v; queue_redraw()
+
 const EDGE := 5.0
 var _t := 0.0
 var _font: Font
@@ -48,7 +52,7 @@ func _draw() -> void:
 	var face := r.grow(-2.0 - EDGE)
 	draw_rect(face, HazardTape.BLACK)
 	draw_rect(face.grow(-2.0), HazardTape.YELLOW)
-	var fs := int(clampf(size.y * 0.46, 18.0, 34.0))
+	var fs := int(clampf(size.y * 0.46, 18.0, max_font))
 	var tw := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var asc := _font.get_ascent(fs)
 	var base := Vector2((size.x - tw) / 2.0, (size.y + asc - _font.get_descent(fs)) / 2.0)

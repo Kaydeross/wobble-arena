@@ -692,6 +692,13 @@
   "fr": "5 contre 5 avec événements aléatoires : pluie de caisses, gravité faible, tempêtes de recul, géants. Première équipe à 50 K.O. gagne. Bonne chance",
   "es": "5 contra 5 con eventos aleatorios: lluvia de cajas, gravedad baja, tormentas de empuje, gigantes. El primer equipo en 50 K.O. gana. ¡Buena suerte!"
  },
+ "9 Weapons + Site Yard": {
+  "zh_TW": "9 種武器 + 工地廣場",
+  "zh_CN": "9 种武器 + 工地广场",
+  "ja": "武器 9 種 + 工事現場",
+  "fr": "9 armes + Chantier",
+  "es": "9 armas + Obra"
+ },
  "A big farm on a sunny morning. Run into the big red barn and up to its hayloft, hide behind hay bales, fight round the tractor and the coop, or race over the haystack in the middle.": {
   "zh_TW": "陽光明媚的早晨，一座大農場。跑進紅色大穀倉，爬上它的草料閣樓，躲在乾草捆後面，繞著拖拉機和雞舍戰鬥，或是飛越中央的草垛。",
   "zh_CN": "阳光明媚的早晨，一座大农场。跑进红色大谷仓，爬上它的草料阁楼，躲在干草捆后面，绕着拖拉机和鸡舍战斗，或是飞越中央的草垛。",
@@ -1202,6 +1209,13 @@
   "ja": "アリーナが半分のサイズにリセット！こぢんまり",
   "fr": "Arène réinitialisée à moitié taille ! Cosy",
   "es": "¡Arena reiniciada a la mitad de tamaño! Acogedora"
+ },
+ "Arena: %s": {
+  "zh_TW": "競技場：%s",
+  "zh_CN": "竞技场：%s",
+  "ja": "アリーナ：%s",
+  "fr": "Arène : %s",
+  "es": "Arena: %s"
  },
  "Arena: %s (from your last Play setup).": {
   "zh_TW": "競技場：%s（取自你上次的遊戲設定）。",
@@ -4955,6 +4969,13 @@
   "fr": "Suivant",
   "es": "Siguiente"
  },
+ "Next pack": {
+  "zh_TW": "下一個",
+  "zh_CN": "下一个",
+  "ja": "次のパック",
+  "fr": "Pack suivant",
+  "es": "Pack siguiente"
+ },
  "Next stage": {
   "zh_TW": "下一關",
   "zh_CN": "下一关",
@@ -5718,6 +5739,13 @@
   "fr": "Entraînement · %d K.O.",
   "es": "Práctica · %d K.O."
  },
+ "Previous pack": {
+  "zh_TW": "上一個",
+  "zh_CN": "上一个",
+  "ja": "前のパック",
+  "fr": "Pack précédent",
+  "es": "Pack anterior"
+ },
  "Privacy policy": {
   "zh_TW": "隱私權政策",
   "zh_CN": "隐私政策",
@@ -6172,6 +6200,13 @@
   "ja": "ストライク！",
   "fr": "STRIKE !",
   "es": "¡PLENO!"
+ },
+ "SWAP PACK ›": {
+  "zh_TW": "換一個 ›",
+  "zh_CN": "换一个 ›",
+  "ja": "次のパック ›",
+  "fr": "AUTRE PACK ›",
+  "es": "OTRO PACK ›"
  },
  "Salute": {
   "zh_TW": "敬禮",
@@ -7146,12 +7181,26 @@
   "fr": "Bras grands ouverts, pas de côté",
   "es": "Brazos amplios y pasos laterales"
  },
+ "TAP TO OPEN": {
+  "zh_TW": "點擊打開",
+  "zh_CN": "点击打开",
+  "ja": "タップして開く",
+  "fr": "TOUCHER POUR OUVRIR",
+  "es": "TOCA PARA ABRIR"
+ },
  "TERMINAL RING-OUT!": {
   "zh_TW": "極限出界！",
   "zh_CN": "极限出界！",
   "ja": "限界場外！",
   "fr": "SORTIE EXTRÊME !",
   "es": "¡FUERA DE LÍMITE!"
+ },
+ "TEST IN %s": {
+  "zh_TW": "在%s試玩",
+  "zh_CN": "在%s试玩",
+  "ja": "%sで試す",
+  "fr": "ESSAYER : %s",
+  "es": "PROBAR EN %s"
  },
  "Tac-Reload": {
   "zh_TW": "戰術換彈",
@@ -7173,6 +7222,13 @@
   "ja": "スロットをタップで切り替え",
   "fr": "Touche un emplacement pour changer",
   "es": "Toca una ranura para cambiar"
+ },
+ "Tap a weapon to try it on": {
+  "zh_TW": "點擊武器來試試",
+  "zh_CN": "点击武器来试试",
+  "ja": "武器をタップして試す",
+  "fr": "Touchez une arme pour l'essayer",
+  "es": "Toca un arma para probarla"
  },
  "Tap to see it. Equip puts it on T.": {
   "zh_TW": "點一下預覽。裝備後會放在 T 鍵",
@@ -7271,6 +7327,13 @@
   "ja": "テストマップ",
   "fr": "Carte de test",
   "es": "Mapa de prueba"
+ },
+ "Test drive: nothing is saved.": {
+  "zh_TW": "試玩：這裡不會儲存進度。",
+  "zh_CN": "试玩：这里不会保存进度。",
+  "ja": "お試し：何も保存されません。",
+  "fr": "Essai : rien n'est enregistré.",
+  "es": "Prueba: no se guarda nada."
  },
  "Text and button size": {
   "zh_TW": "文字與按鈕大小",
@@ -7818,6 +7881,13 @@
   "fr": "Essayer tous les modes de jeu",
   "es": "Prueba todos los modos de juego"
  },
+ "Try every weapon of the pack on its arena. Nothing is saved.": {
+  "zh_TW": "在這個競技場試玩所有武器。這裡不會儲存進度。",
+  "zh_CN": "在这个竞技场试玩所有武器。这里不会保存进度。",
+  "ja": "このアリーナですべての武器を試せます。何も保存されません。",
+  "fr": "Essayez toutes les armes du pack dans son arène. Rien n'est enregistré.",
+  "es": "Prueba todas las armas del pack en su arena. No se guarda nada."
+ },
  "Turbo Racer": {
   "zh_TW": "極速賽車手",
   "zh_CN": "极速赛车手",
@@ -7901,6 +7971,13 @@
   "ja": "タイフーンブレード",
   "fr": "Lames typhon",
   "es": "Hojas tifón"
+ },
+ "UNLOCK PACK": {
+  "zh_TW": "解鎖",
+  "zh_CN": "解锁",
+  "ja": "解放する",
+  "fr": "DÉBLOQUER",
+  "es": "DESBLOQUEAR"
  },
  "Uncommon": {
   "zh_TW": "罕見",
@@ -9021,6 +9098,13 @@
   "ja": "ゆれ",
   "fr": "oscillation",
   "es": "balanceo"
+ },
+ "‹ SWAP PACK": {
+  "zh_TW": "‹ 換一個",
+  "zh_CN": "‹ 换一个",
+  "ja": "‹ 前のパック",
+  "fr": "‹ AUTRE PACK",
+  "es": "‹ OTRO PACK"
  },
  "♥  ·  %d left": {
   "zh_TW": "♥  ·  剩 %d 人",

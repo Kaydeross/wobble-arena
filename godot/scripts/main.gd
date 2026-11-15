@@ -16,8 +16,12 @@ extends Control
 ## sheet or page closes; on the title itself nothing happens, the app never quits on back).
 ## Laid out with containers inside a safe-area MarginContainer so nothing overlaps at any aspect ratio
 ## (tests/ui_layout_test.gd checks 852x393, 667x375, 1170x540, 1280x720 and 390x844 on every page and sheet).
-## Under the two Play buttons: Walldrobe and Shop (ui/locker.gd, one screen in two modes; the Shop button shows your
-## coins) and Goals (ui/goals_screen.gd: daily / weekly coin goals and milestones; its sub says how many to claim).
+## Layout (docs/TITLE.md): a LEFT MENU RAIL (Safe/Rail: Play, Quick play, Play online with friends, Walldrobe, Shop,
+## Goals; ui/locker.gd is one screen in two modes, the Shop button shows your coins; ui/goals_screen.gd: its sub says
+## how many goals wait to be claimed) and, right of it, the column (Safe/Col): the logo with the account chip and the
+## gear, the 3D STAGE (ui/title_showcase.gd: your wobbler on a site pedestal and a tower crane holding a DLC pack's
+## container: tap it and it is lowered and opened, see that file) and the DON'T ENTER sign. In portrait the column is
+## on top and the rail under it (thumbs), everything `_unit()` times bigger because that canvas is 3 px per point.
 ## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
@@ -27,6 +31,8 @@ const DLC_TIPS := [
 	"Scaffold towers and timber stacks make good cover.",
 	"Site rule: knock fighters off the slab for a K.O.",
 ]
+const RAIL_GAP := 20.0             ## canvas px between the rail and the column
+const TRIAL_BOTS := 2              ## bots in a DLC test drive (easy ones: it is a place to try the tools)
 const TIP_MIN_H := 600.0           ## canvas px: the tip line needs a taller title than the iPhone landscape canvas has
 const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
 const COMPACT_H := 620.0                  ## safe height (canvas px) below which the title tightens up (Quick play needs the room)
@@ -56,8 +62,11 @@ const O := "Safe/Col/Body/Online/Box/"
 @onready var gear: Button = $Safe/Col/Top/Gear
 @onready var home: Control = $Safe/Col/Body/Home
 @onready var online_panel: Control = $Safe/Col/Body/Online
-@onready var play: Button = $Safe/Col/Body/Home/Cols/Left/Play
-@onready var online_b: Button = $Safe/Col/Body/Home/Cols/Left/Online
+@onready var rail: VBoxContainer = $Safe/Rail          ## the left menu rail (under the stage in portrait)
+@onready var stage_slot: Control = $Safe/Col/Body/Home/Stage   ## where the 3D stage shows through (taps open the container)
+@onready var play: Button = $Safe/Rail/Play
+@onready var online_b: Button = $Safe/Rail/Online
+var showcase: TitleShowcase        ## the 3D stage behind the title + its controls (ui/title_showcase.gd)
 var quick_b: Button                ## Quick play: a random arena and mode straight into an offline match (logic/quick_play.gd)
 @onready var status: Label = get_node(O + "Foot/Status")
 var wizard: SetupWizard
@@ -100,11 +109,7 @@ func _ready() -> void:
 	locker.visible = false
 	safe.add_child(locker)
 	locker.closed.connect(close_locker)
-	var top := $Safe/Col/Top as HBoxContainer       # chip and gear on the left, the logo over the right column (hand sketch)
-	top.move_child($Safe/Col/Top/GuestChip, 0)
-	top.move_child(gear, 1)
-	top.move_child($Safe/Col/Top/Spacer, 2)
-	top.move_child($Safe/Col/Top/Logo, 3)
+	_build_showcase()                 # (before the sheets below, so every page and sheet opens on top of it)
 	_build_more()
 	_build_quick_play()
 	_stretch_title()
@@ -128,7 +133,8 @@ func _ready() -> void:
 	hub.arcade_requested.connect(play_arcade)
 	hub.closed.connect(func() -> void:
 		_coins_sub()
-		if Tier.is_pc(): dlc_b.grab_focus.call_deferred())
+		showcase.refresh()             # (it may have been bought: UNLOCK PACK becomes OWNED)
+		if Tier.is_pc(): (showcase.test_b if showcase.is_open() else dlc_b).grab_focus.call_deferred())
 	news = WhatsNew.new()
 	add_child(news)
 	news.closed.connect(func() -> void:
@@ -171,6 +177,7 @@ func _ready() -> void:
 	if not Save.cloud.pending.is_empty(): account.open("conflict")   # a cloud conflict found during a match
 	get_viewport().size_changed.connect(apply_safe_area)
 	get_viewport().size_changed.connect(_tip_room)
+	stage_slot.item_rect_changed.connect(_push_frame)
 	apply_safe_area()
 	if Tier.is_pc():
 		play.grab_focus.call_deferred()   # keyboard / gamepad start on Play
@@ -201,6 +208,7 @@ func go_back() -> bool:
 		show_lobby(false)
 		return true
 	if host_sheet.visible: show_host(false); return true
+	if showcase.is_open(): return showcase.back()      # the open DLC container: doors shut, back to the title
 	if locker.visible:
 		if locker.confirm.visible: locker.show_confirm(false)
 		else: locker.close()
@@ -216,6 +224,9 @@ func _unhandled_input(e: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST and is_inside_tree():
 		go_back()
+	elif what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready() and is_inside_tree():
+		apply_safe_area.call_deferred()       # the rail fits its words again
+		showcase.refresh.call_deferred()
 
 func _process(dt: float) -> void:
 	if session != null:
@@ -225,16 +236,77 @@ func _process(dt: float) -> void:
 func maps_for(mode: String) -> Array:
 	return SetupWizard.maps_for(mode)
 
-## The Walldrobe / Shop / Goals row under Play online: clear buttons, each with a one-line sub (the Shop's shows your
-## coins, the Goals one how many goals wait to be claimed).
+## The 3D stage (ui/title_showcase.gd): its picture goes behind the title's controls, its own controls (the TAP TO OPEN
+## tag, and Back / the pack bar while a container is open) on top of them. A tap on the stage area is forwarded so the
+## container can be picked with a ray; while it opens the rail and the column fade out and come back on Back.
+func _build_showcase() -> void:
+	showcase = TitleShowcase.new()
+	add_child(showcase)
+	move_child(showcase, $Background.get_index() + 1)
+	add_child(showcase.overlay)
+	move_child(showcase.overlay, safe.get_index() + 1)
+	showcase.covered = func() -> bool:
+		return (settings != null and settings.visible) or (goals != null and goals.visible) or (hub != null and hub.visible)
+	showcase.ui_changed.connect(_on_showcase_ui)
+	showcase.test_requested.connect(play_trial)
+	showcase.unlock_requested.connect(func(_p: DLCPackData) -> void: open_hub())   # the existing unlock flow: coins or the code
+	stage_slot.mouse_filter = Control.MOUSE_FILTER_STOP
+	stage_slot.gui_input.connect(func(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+			if showcase.tap_at((e as InputEventMouseButton).global_position): stage_slot.accept_event())
+	Save.changed.connect(showcase.refresh)
+	$Background.stage_3d = true
+
+## The open container takes the screen: the title's own controls fade with `k` (1 = gone, and out of the focus order).
+func _on_showcase_ui(k: float) -> void:
+	safe.modulate.a = 1.0 - k
+	safe.visible = k < 0.995
+
+## The stage and the rail belong to the title home: other pages (wizard, Walldrobe, online tab) replace them.
+func _home_layers() -> void:
+	var on := col.visible and home.visible
+	rail.visible = on
+	showcase.set_shown(on)
+	apply_safe_area()
+
+## The stage's frame: the padded safe area, where the idle scene sits (the Stage slot) and the touch-size factor.
+func _push_frame() -> void:
+	if showcase == null or not is_inside_tree(): return
+	var i := SafeArea.insets(get_viewport())
+	var vs := get_viewport_rect().size
+	var l := float(safe.get_theme_constant("margin_left"))
+	var t := float(safe.get_theme_constant("margin_top"))
+	var r := float(safe.get_theme_constant("margin_right"))
+	var b := float(safe.get_theme_constant("margin_bottom"))
+	showcase.set_frame(Rect2(l, t, vs.x - l - r, vs.y - t - b), stage_slot.get_global_rect(), _unit())
+
+## Touch-size factor: 1 in landscape (UiScale keeps 60 canvas px at 44 pt there). A portrait window shows the same
+## 1170 px wide canvas on a third of the points, so the title's controls grow until 60 * unit px is 44 pt again.
+func _unit() -> float:
+	var vs := get_viewport_rect().size
+	return 1.0 if vs.y <= vs.x else clampf(vs.y / vs.x * 1.12, 1.0, 2.45)
+
+## A DLC test drive (the showcase's "TEST IN <arena>"): a solo sandbox on the pack's arena with every weapon of the
+## pack on the floor round the start. Open to everyone, owner or not: the world's `trial` flag keeps coins, stats,
+## goals and history untouched, and nothing here touches the unlock (docs/TITLE.md).
+func play_trial(p: DLCPackData) -> void:
+	if p == null or not Content.maps.has(p.arena_id): return
+	if session != null: session.leave("")
+	var world: Node = load(WORLD).instantiate()
+	world.map_id = p.arena_id
+	world.mode_id = p.test_mode if Content.modes.has(p.test_mode) else "classic"
+	world.bot_count = TRIAL_BOTS
+	world.difficulty = "easy"
+	world.ko_limit = 0
+	world.dyn_choice = "off"
+	world.trial = true
+	world.trial_weapons = Array(p.real_weapons(Content.weapons))
+	get_tree().change_scene_to_node(world)
+
+## The rail's Walldrobe / Shop / Goals: clear buttons, each with a one-line sub (the Shop's shows your coins, the Goals
+## one how many goals wait to be claimed).
 func _build_more() -> void:
-	var right := home.get_node("Cols/Right") as VBoxContainer
-	var more := VBoxContainer.new()
-	more.name = "More"
-	more.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	more.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	more.add_theme_constant_override("separation", 12)   # right column under the logo: Walldrobe, Shop, Goals stacked
-	right.add_child(more)
+	var more := rail
 	home.add_theme_constant_override("separation", UiTheme.SP_3)
 	locker_b = _small_button("Walldrobe", "What you own")
 	locker_b.name = "Locker"
@@ -250,13 +322,14 @@ func _build_more() -> void:
 	Save.changed.connect(_coins_sub)
 	_coins_sub()
 
-## The two title columns are 70 / 30 wide (Play and the modes are the main thing, the three cards the side) and share
-## the height: Play takes the biggest share on the left, the three cards split the right column evenly, so both columns end at the same line above the DON'T ENTER sign (the buttons' minimums stay the floor).
+## The rail's six buttons share its height (Play takes the biggest share; the buttons' minimums stay the floor), and
+## the stage takes whatever the column has left above the DON'T ENTER sign.
 func _stretch_title() -> void:
 	home.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	for b: Button in [play, quick_b, online_b, locker_b, shop_b, goals_b]:
 		b.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	play.size_flags_stretch_ratio = 2.4
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	play.size_flags_stretch_ratio = 1.7
 
 ## Quick play, under Play: one tap and a random arena and mode (logic/quick_play.gd) starts at once, no wizard. The sub
 ## line says what it does (docs/WRITING.md); it is secondary to the big Play button.
@@ -292,7 +365,7 @@ func _build_quick_play() -> void:
 	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	st.add_child(sl)
 	play.get_parent().add_child(quick_b)
-	play.get_parent().move_child(quick_b, play.get_index() + 1)   # under Play (no reparenting: the layout tests know Play's path)
+	play.get_parent().move_child(quick_b, play.get_index() + 1)   # under Play in the rail
 	quick_b.visible = not dlc
 
 ## Quick play: a random game type, arena, class, floor, bot count and bot skill; straight into the offline match (no
@@ -306,7 +379,7 @@ func quick_play() -> void:
 	Settings.set_value("dyn", str(over["dyn"]))
 	play_offline({"mode": over["mode"], "map": over["map"], "bots": over["bots"], "difficulty": over["difficulty"]})
 
-## The DLC entry: a wide hazard-tape "DON'T ENTER" sign under the cards row. Pressing it plays the tape wipe into the
+## The DLC entry: a wide hazard-tape "DON'T ENTER" sign under the stage. Pressing it plays the tape wipe into the
 ## Construction title (and, once inside, "EXIT SITE" wipes back). Drawn in code, no images.
 func _build_dlc_banner() -> void:
 	var b := DontEnterSign.new()
@@ -373,6 +446,7 @@ func _coins_sub() -> void:
 		var sl := goals_b.get_node("Stack/Sub") as Label
 		sl.text = (tr("%d to claim") % n) if n > 0 else tr("Daily coin goals")
 		sl.add_theme_color_override("font_color", UiTheme.GOOD if n > 0 else UiTheme.MUTED)
+	if is_node_ready(): _fit_rail()
 
 ## The Goals screen over the title.
 func open_goals() -> void:
@@ -389,6 +463,7 @@ func open_news() -> void:
 ## The Walldrobe (shop = false) or the Shop instead of the title column.
 func open_locker(shop_mode: bool = false, tab: String = "") -> void:
 	col.visible = false
+	_home_layers()
 	wizard.visible = false
 	locker.visible = true
 	locker.open(shop_mode, tab)
@@ -396,6 +471,8 @@ func open_locker(shop_mode: bool = false, tab: String = "") -> void:
 func close_locker() -> void:
 	locker.visible = false
 	col.visible = true
+	_home_layers()
+	showcase.stage.refresh_look()       # the look may have changed: the wobbler on the stage wears it
 	if wizard.stage:                    # the look may have changed: the Character page renders it again
 		wizard.stage.baked.clear()
 		wizard.stage.current = ""
@@ -410,8 +487,8 @@ func show_tab(online: bool) -> void:
 			else "Please update Wobblers Arena before playing online.")
 		return
 	home.visible = not online
-	($Safe/Col/Top/Logo as WobbleLogo).font_size = _logo_font(online)     # a compact header: the room list needs the height
 	online_panel.visible = online
+	_home_layers()                            # (the rail and the stage leave with the home; the logo fits the header again)
 	$Safe/Col/Build.visible = not online      # (the version line waits for the title: the room list needs the height)
 	_tip_room()
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
@@ -436,12 +513,14 @@ func _tip_room() -> void:
 ## The setup wizard (page 0 = Game type) instead of the title column.
 func open_wizard(p: int = 0) -> void:
 	col.visible = false
+	_home_layers()
 	wizard.visible = true
 	wizard.go(p)
 
 func close_wizard() -> void:
 	wizard.visible = false
 	col.visible = true
+	_home_layers()
 	_play_sub()
 	if Tier.is_pc(): play.grab_focus.call_deferred()
 
@@ -477,51 +556,134 @@ func _status(t: String) -> void:
 	status.text = t
 	status.tooltip_text = t
 	var on := session != null and session.is_active()
-	var sub: Label = $Safe/Col/Body/Home/Cols/Left/Online/Stack/Sub
+	var sub: Label = online_b.get_node("Stack/Sub")
 	sub.text = (tr("Connected · %s") % t) if on else tr(ONLINE_SUB)
 	sub.tooltip_text = sub.text
+	online_b.tooltip_text = sub.text if on else online_b.tooltip_text
+	if is_node_ready(): _fit_rail()
 
-## The logo size: smaller when the title is compact, so the Quick play button fits under Play without the title column
-## overflowing the safe area on the shortest canvases (the layout test checks 926x428 at the Large scale too).
-func _logo_font(online: bool) -> int:
-	if online: return 46
-	var safe_h := _safe_height()
-	return 50 if safe_h < TINY_H else (58 if safe_h < COMPACT_H else 68)
+## The logo in the header: as big as the room beside the chip and the gear allows (the online tab keeps a compact one:
+## the room list needs the height). When even a small single line does not fit (a long account name on a small phone)
+## the two words stack.
+func _fit_logo(avail: float, max_font: int) -> void:
+	var logo := $Safe/Col/Top/Logo as WobbleLogo
+	for two: bool in [false, true]:
+		logo.lines = PackedStringArray(["WOBBLERS", "ARENA"]) if two else PackedStringArray(["WOBBLERS ARENA"])
+		var f := mini(max_font, 46) if two else max_font
+		var floor_f := 22 if two else 38
+		while f >= floor_f:
+			logo.font_size = f
+			if logo.get_combined_minimum_size().x <= avail: return
+			f -= 2
 
 ## The safe area's height in canvas px (the viewport minus the phone insets).
 func _safe_height() -> float:
 	var i := SafeArea.insets(get_viewport())
 	return get_viewport_rect().size.y - float(i[1]) - float(i[3])
 
-## Safe-area insets (notch, home indicator) plus our own padding.
+## Safe-area insets (notch, home indicator) plus our own padding, then the title's two parts: the rail and the column.
+## Landscape: the rail is a fixed-width strip on the left and the column takes the rest. Portrait: the column (logo,
+## stage, sign) is on top and the rail under it, where thumbs are.
 func apply_safe_area() -> void:
+	if not is_inside_tree(): return
 	var i := SafeArea.insets(get_viewport())
-	# short canvas (small phones at the 44 pt UI scale, UiScale): tighter padding, a smaller logo and a shorter Play,
-	# Online and Construction row so the Quick play button fits under Play without the title column overflowing the
-	# safe area
+	var vs := get_viewport_rect().size
+	var portrait := vs.y > vs.x
+	var u := _unit()
+	# short canvas (small phones at the 44 pt UI scale, UiScale): tighter padding and smaller words, so the rail's six
+	# buttons keep their 44 pt and the column still has a stage
 	var safe_h := _safe_height()
-	var short := safe_h < COMPACT_H
-	var tiny := safe_h < TINY_H
+	var short := safe_h < COMPACT_H and not portrait
+	var tiny := safe_h < TINY_H and not portrait
 	var m: Vector4 = MARGIN * (Vector4(1, 0.45, 1, 0.45) if short else Vector4.ONE)
 	safe.add_theme_constant_override("margin_left", int(m.x + i[0]))
 	safe.add_theme_constant_override("margin_top", int(m.y + i[1]))
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
-	($Safe/Col/Top/Logo as WobbleLogo).font_size = _logo_font(online_panel.visible)
-	play.custom_minimum_size.y = 54.0 if tiny else (72.0 if short else 100.0)   # (the Construction banner sits below the cards row)
-	(play.get_node("Stack/Big") as Label).add_theme_font_size_override("font_size", 34 if tiny else (54 if short else 84))
-	(play.get_node("Stack/Sub") as Label).add_theme_font_size_override("font_size", 15 if tiny else (19 if short else 21))
-	online_b.custom_minimum_size.y = 52.0 if short else 64.0
-	quick_b.custom_minimum_size.y = 52.0 if short else 56.0
-	for b: Button in [locker_b, shop_b, goals_b]: b.custom_minimum_size.y = 52.0 if short else 60.0
-	if dlc_b: dlc_b.custom_minimum_size.y = 60.0 if short else 62.0
+	var inner := Vector2(vs.x - float(int(m.x + i[0]) + int(m.z + i[2])), vs.y - float(int(m.y + i[1]) + int(m.w + i[3])))
+	var home_on := rail.visible
+	var sep := int(round((11.0 if tiny else float(UiTheme.SP_3)) * u))
+	rail.add_theme_constant_override("separation", sep)
 	col.add_theme_constant_override("separation", 11 if tiny else (UiTheme.SP_3 if short else UiTheme.SP_4))
+	var row := 60.0 * u                                   # 44 pt
+	for b: Button in [quick_b, online_b, locker_b, shop_b, goals_b]: b.custom_minimum_size.y = row
+	play.custom_minimum_size.y = row * (1.5 if portrait else 1.0)
+	if dlc_b:
+		dlc_b.custom_minimum_size.y = 62.0 * u
+		(dlc_b as DontEnterSign).max_font = 34.0 * minf(u, 2.0)
+	gear.custom_minimum_size = Vector2(60, 60) * u
+	gear.expand_icon = u > 1.0
+	gear.add_theme_constant_override("icon_max_width", int(34.0 * u))
+	($Safe/Col/Tip as Label).add_theme_font_size_override("font_size", int(round(16.0 * minf(u, 2.0))))
+	if chip: chip.custom_minimum_size = Vector2(60.0 * u, 60.0 * u)
+	who.add_theme_font_size_override("font_size", int(round(17.0 * minf(u, 2.0))))
+	($Safe/Col/Build as Label).add_theme_font_size_override("font_size", int(round(14.0 * minf(u, 1.8))))
+	var rail_w := 0.0
+	if not home_on:                                       # another page: the column has the whole safe area
+		col.custom_minimum_size = Vector2.ZERO
+		col.size_flags_horizontal = Control.SIZE_FILL
+		col.size_flags_vertical = Control.SIZE_FILL
+	elif portrait:
+		rail.custom_minimum_size = Vector2.ZERO
+		rail.size_flags_horizontal = Control.SIZE_FILL
+		rail.size_flags_vertical = Control.SIZE_SHRINK_END
+		rail_w = inner.x
+		_fit_rail(rail_w, tiny, short, u)
+		col.size_flags_horizontal = Control.SIZE_FILL
+		col.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		col.custom_minimum_size = Vector2(0, maxf(0.0, inner.y - rail.get_combined_minimum_size().y - RAIL_GAP * u))
+	else:
+		rail_w = floorf(clampf(inner.x * 0.36, 300.0, 430.0))
+		rail.custom_minimum_size = Vector2(rail_w, 0)
+		rail.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		rail.size_flags_vertical = Control.SIZE_FILL
+		_fit_rail(rail_w, tiny, short, u)
+		col.size_flags_horizontal = Control.SIZE_SHRINK_END
+		col.size_flags_vertical = Control.SIZE_FILL
+		col.custom_minimum_size = Vector2(maxf(0.0, inner.x - rail_w - RAIL_GAP), 0)
+	# the header: the logo takes what the chip and the gear leave
+	var col_w := inner.x if (not home_on or portrait) else inner.x - rail_w - RAIL_GAP
+	var chip_w: float = chip.get_combined_minimum_size().x if chip else 90.0
+	var max_font := 46 if online_panel.visible else (int(68.0 * minf(u, 1.9)) if not short else (50 if tiny else 58))
+	_fit_logo(col_w - chip_w - gear.custom_minimum_size.x - 3.0 * 16.0 - 2.0, max_font)
 	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
 		var cc := get_node_or_null(sheet + "/Center") as Control
 		if cc:
 			cc.offset_left = float(i[0]); cc.offset_top = float(i[1]); cc.offset_right = -float(i[2]); cc.offset_bottom = -float(i[3])
 	var hint := get_node_or_null("HostSheet/Center/Card/Box/Hint")
 	if hint: hint.visible = get_viewport_rect().size.y >= 500.0      # on the shortest canvases the arena hint gives way (it is in the tooltip too)
+	_push_frame.call_deferred()
+
+## The rail's words: each button's big line as large as the rail's width allows (never over its base size), and its
+## small line only when it fits on one line (it is the button's tooltip too, so nothing is lost when it does not).
+func _fit_rail(rail_w: float = -1.0, tiny := false, short := false, u := -1.0) -> void:
+	if rail == null or quick_b == null or locker_b == null or not is_inside_tree(): return
+	if u < 0.0:
+		u = _unit()
+		var sh := _safe_height()
+		var portrait := get_viewport_rect().size.y > get_viewport_rect().size.x
+		short = sh < COMPACT_H and not portrait
+		tiny = sh < TINY_H and not portrait
+	if rail_w <= 0.0: rail_w = maxf(rail.size.x, rail.custom_minimum_size.x)
+	if rail_w <= 0.0: return
+	var k := minf(u, 2.0)
+	var play_big := 36 if tiny else (44 if short else 56)
+	var base := {play: play_big, quick_b: 24, online_b: 24, locker_b: 24, shop_b: 24, goals_b: 24}
+	for b: Button in base:
+		var st := b.get_node("Stack") as Control
+		var w := rail_w - st.offset_left + st.offset_right - 4.0
+		var big := b.get_node("Stack/Big") as Label
+		var sub := b.get_node("Stack/Sub") as Label
+		var f := big.get_theme_font("font")
+		var fs := int(round(float(base[b]) * k))
+		while fs > 16 and f.get_string_size(tr(big.text), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > w: fs -= 1
+		big.add_theme_font_size_override("font_size", fs)
+		var ss := int(round((15.0 if tiny else (16.0 if b != play else 18.0)) * k))
+		sub.add_theme_font_size_override("font_size", ss)
+		var sf := sub.get_theme_font("font")      # (the longer of the shown text and its English key: both must fit)
+		var sw := maxf(sf.get_string_size(tr(sub.text), HORIZONTAL_ALIGNMENT_LEFT, -1, ss).x, sf.get_string_size(sub.text, HORIZONTAL_ALIGNMENT_LEFT, -1, ss).x)
+		sub.visible = sub.text != "" and sw <= w
+		if not sub.visible and sub.text != "" and b != play and b != quick_b and b != online_b: b.tooltip_text = sub.text
 
 # ---------------- online ----------------
 
@@ -1303,6 +1465,7 @@ func set_dlc(on: bool, animated := true) -> void:
 func _apply_dlc(on: bool) -> void:
 	dlc = on
 	$Background.mix = 1.0 if on else 0.0
+	_fit_rail.call_deferred()
 	var logo: WobbleLogo = $Safe/Col/Top/Logo
 	if on: logo.set_palette(Color(0.92, 0.9, 0.84), HazardTape.YELLOW, Color(0.1, 0.08, 0.06))
 	else: logo.set_palette(WobbleLogo.WHITE, WobbleLogo.YELLOW, WobbleLogo.INK)

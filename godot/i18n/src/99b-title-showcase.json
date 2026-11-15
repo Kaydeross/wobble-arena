@@ -1,0 +1,14 @@
+{
+ "TAP TO OPEN": { "zh_TW": "點擊打開", "zh_CN": "点击打开", "ja": "タップして開く", "fr": "TOUCHER POUR OUVRIR", "es": "TOCA PARA ABRIR" },
+ "‹ SWAP PACK": { "zh_TW": "‹ 換一個", "zh_CN": "‹ 换一个", "ja": "‹ 前のパック", "fr": "‹ AUTRE PACK", "es": "‹ OTRO PACK" },
+ "SWAP PACK ›": { "zh_TW": "換一個 ›", "zh_CN": "换一个 ›", "ja": "次のパック ›", "fr": "AUTRE PACK ›", "es": "OTRO PACK ›" },
+ "TEST IN %s": { "zh_TW": "在%s試玩", "zh_CN": "在%s试玩", "ja": "%sで試す", "fr": "ESSAYER : %s", "es": "PROBAR EN %s" },
+ "UNLOCK PACK": { "zh_TW": "解鎖", "zh_CN": "解锁", "ja": "解放する", "fr": "DÉBLOQUER", "es": "DESBLOQUEAR" },
+ "9 Weapons + Site Yard": { "zh_TW": "9 種武器 + 工地廣場", "zh_CN": "9 种武器 + 工地广场", "ja": "武器 9 種 + 工事現場", "fr": "9 armes + Chantier", "es": "9 armas + Obra" },
+ "Tap a weapon to try it on": { "zh_TW": "點擊武器來試試", "zh_CN": "点击武器来试试", "ja": "武器をタップして試す", "fr": "Touchez une arme pour l'essayer", "es": "Toca un arma para probarla" },
+ "Arena: %s": { "zh_TW": "競技場：%s", "zh_CN": "竞技场：%s", "ja": "アリーナ：%s", "fr": "Arène : %s", "es": "Arena: %s" },
+ "Try every weapon of the pack on its arena. Nothing is saved.": { "zh_TW": "在這個競技場試玩所有武器。這裡不會儲存進度。", "zh_CN": "在这个竞技场试玩所有武器。这里不会保存进度。", "ja": "このアリーナですべての武器を試せます。何も保存されません。", "fr": "Essayez toutes les armes du pack dans son arène. Rien n'est enregistré.", "es": "Prueba todas las armas del pack en su arena. No se guarda nada." },
+ "Previous pack": { "zh_TW": "上一個", "zh_CN": "上一个", "ja": "前のパック", "fr": "Pack précédent", "es": "Pack anterior" },
+ "Next pack": { "zh_TW": "下一個", "zh_CN": "下一个", "ja": "次のパック", "fr": "Pack suivant", "es": "Pack siguiente" },
+ "Test drive: nothing is saved.": { "zh_TW": "試玩：這裡不會儲存進度。", "zh_CN": "试玩：这里不会保存进度。", "ja": "お試し：何も保存されません。", "fr": "Essai : rien n'est enregistré.", "es": "Prueba: no se guarda nada." }
+}
