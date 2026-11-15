@@ -5,7 +5,8 @@ extends RefCounted
 ##   simTime -> input + bots (melee ticks inside) -> per fighter timers + physics -> bounce pads -> crates ->
 ##   projectiles (Weapons.step_all) -> ring-out -> separate -> net pinning -> animate tick (yaw, crouch, recoil climb,
 ##   bow arrow grab).
-## The melee sweep runs once per rendered frame after the animation wrote the hand/arm points: call sweep().
+## The melee sweep runs once per FIXED step, after the animation wrote the hand/arm points (World.sim_step calls
+## sweep(); headless tests call it directly). Keeping it off the rendered frame is what makes hits render-rate independent.
 ## Match setup follows loadMap (~7598) and setBotCfg (~7333).
 
 const BOT_CLASS_ORDER := ["bruiser", "kid", "alien", "elder", "wobbler"]   ## index.html ~4812
@@ -16,6 +17,9 @@ const BOT_POOL := ["Bot Wibble", "Bot Bonk", "Bot Gus", "Bot Pip", "Bot Moxie", 
 	"Bot Crumb", "Bot Zigzag"]
 const RING_OUT_Y := -25.0
 const TUNING_PATH := "res://data/extra/weapon_tuning.json"   ## Godot-only balance overlay (docs/DAMAGE.md)
+## The parsed-JSON cache lives in Content (static funcs, usable without the autoload): every match reads its tables from
+## there as deep copies, so one file is decoded once per process and a match may merge/alter its own tuning safely.
+const ContentData := preload("res://autoload/content.gd")
 ## Random start: a real match starts the player on a random safe spot of the map, at least this many metres from the
 ## void. Spots closer than this to a ring-out edge are skipped (a couple of bot spots are that close on volcano /
 ## crossroads); the map's own player / spawns / bots points are the candidates, so these are all designed-safe points.
@@ -35,7 +39,7 @@ var looks := {}                   ## FighterState -> {skin, hat, color}
 var diff := "normal"
 var difficulty: Dictionary = {}
 var match_start := 0.0
-var ring_out_y := RING_OUT_Y       ## below this you are out: the map's `lavaY` (Lava Pillars' lake) or RING_OUT_Y
+var ring_out_y := RING_OUT_Y       ## below this you are out: RING_OUT_Y
 ## Online: the NetMatch (net/net_match.gd) of this match, or null offline. step() calls its pre_step() before the
 ## controllers (netSnap) and post_controls() after them (netStep), like simStep.
 var net: RefCounted = null
@@ -61,8 +65,8 @@ var destruct: Destruct = null
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
 	combat.damage_rule = "zones"      # per-body-part damage offline; Combat.zones_active() falls back to classic online
-	combat.apply_tuning(Combat.read_json(TUNING_PATH) if FileAccess.file_exists(TUNING_PATH) else null)   # same gate (Combat.tuning_active)
-	pickups = Pickups.new(combat, Combat.read_json(content_dir.path_join("drops.json")), Combat.read_json(content_dir.path_join("crate-rates.json")))
+	combat.apply_tuning(ContentData.read_json(TUNING_PATH) if FileAccess.file_exists(TUNING_PATH) else null)   # same gate (Combat.tuning_active)
+	pickups = Pickups.new(combat, ContentData.read_json(content_dir.path_join("drops.json")), ContentData.read_json(content_dir.path_join("crate-rates.json")))
 
 ## The game mode (pickMode + setBotCfg): rules, teams, lives, K.O. limit (`limit` < 0 = the mode's preset). Call before
 ## setup(); pass ModeRules.bot_count(mode_id, ...) as setup's bot_count. See logic/mode_rules.gd.
@@ -93,17 +97,20 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	map_id = p_map_id
 	map = p_map
 	solids = FighterPhysics.solids_from_map(map)
-	ring_out_y = float(map.get("lavaY", RING_OUT_Y))
 	ladders = map_ladders
 	pads = map_pads
 	diff = p_diff
-	difficulty = (Combat.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
-	if destructible: dyn_choice = "off"   # breakable components stand on a steady floor (docs/DESTRUCTIBLE.md)
+	difficulty = (ContentData.read_json("res://data/difficulties.json") as Dictionary).get(diff, {})
+	# The breakables are picked by map box index; the moving floor may split the floor into tiles first, so keep one
+	# solid reference per map box from before (docs/DESTRUCTIBLE.md: breakable cover works on a moving floor too).
+	var box_solids: Array = solids.duplicate() if destructible else []
 	dyn.setup(map_id, map, solids, ladders, pads, dyn_choice, dyn_seed)   # dynSetup: may split the floor into tiles in `solids`
 	combat.solids = solids
 	if destructible:                      # swap the arena's chosen cover boxes for tagged breakable components
+		var moving := {}                  # drifting blocks stay what they are: never breakable
+		for e: Dictionary in dyn.drift: moving[int(e["i"])] = true
 		destruct = Destruct.new()
-		destruct.setup(self, map_id, view_parent, destruct_plan)
+		destruct.setup(self, map_id, view_parent, destruct_plan, box_solids, moving)
 		if destruct.total() > 0: combat.destruct = destruct
 		else:                              # bad config / no eligible cover: fail safe as a normal match
 			destruct.clear()
@@ -129,11 +136,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	var start_spot: Array = random_start_point(map, solids, ring_out_y, new_start_rng()) if want_random else []
 	if start_spot.size() == 3:
 		pp = start_spot
-	var rand_spawn: bool = map.get("randSpawn", false) and combat.spawns.size() > 0 and start_spot.size() < 3
-	if rand_spawn:                                    # Pillars: the player starts on a random pillar, facing the middle
-		var sp0: Array = combat.spawns[int(floor(combat.rng.next() * combat.spawns.size()))]
-		pp = [sp0[0], sp0[1], pp[2] if pp.size() > 2 else map.get("spawnY", 0.01)]
-	var face_middle: bool = start_spot.size() == 3 or rand_spawn
+	var face_middle: bool = start_spot.size() == 3
 	combat.place_at(player, float(pp[0]), float(pp[1]), float(pp[2]) if pp.size() > 2 else 0.01)
 	player.yaw = atan2(-float(pp[0]), -float(pp[1])) if face_middle else PI; player.face_yaw = player.yaw
 
@@ -153,7 +156,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		var j := int(floor(combat.rng.next() * (k + 1)))
 		var t: Variant = names[k]; names[k] = names[j]; names[j] = t
 	var hats: Array = []
-	for h: String in (Combat.read_json("res://data/cosmetics.json") as Dictionary).get("hats", []):
+	for h: String in (ContentData.read_json("res://data/cosmetics.json") as Dictionary).get("hats", []):
 		if h != "none" and h != "crown": hats.append(h)
 	var map_bots: Array = map.get("bots", [])
 	for i in bot_count:
@@ -190,6 +193,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		if combat.mode_id == "ninja": looks[b]["skin"] = "shadow"     # dressBots
 	if combat.mode_id == "construction": _dress_tradies(bots)
 	combat.rules.setup_shrink(map_id, map, solids)
+	combat.rules.ctf_setup(map, solids, ring_out_y)   # Capture the Flag: the stand
 
 # ============================== random starting spot ==============================
 
@@ -299,6 +303,7 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 	f.id = fighters.size()
 	f.is_player = is_player
 	f.set_class(cid, combat.classes.get(cid, {}))
+	f.tuned = combat.tuning_active()   # tuned class-scaled hit spheres (docs/DAMAGE.md); Combat.place_at re-arms on every life
 	f.phys.set_map(map, ladders)
 	f.phys.can_climb = is_player
 	f.hp = combat.max_hp(f)
@@ -308,7 +313,7 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 ## One fixed simulation step (simStep).
 func step(dt: float) -> void:
 	combat.time += dt
-	combat.rules.update(dt, pickups, dyn)   # updatePotato / updatePillars / updateShrink (+ the end-of-match countdown)
+	combat.rules.update(dt, pickups, dyn)   # updatePotato / updateShrink (+ the end-of-match countdown)
 	dyn.update(dyn_clock(), fighters)       # updateDyn
 	if destruct != null: destruct.step(dt)  # breakable components materialise again (docs/DESTRUCTIBLE.md)
 	var net_pre: Variant = net.call("pre_step") if net != null else null
@@ -333,6 +338,7 @@ func step(dt: float) -> void:
 	for f: FighterState in fighters:          # pinned under a net: nothing pushes them out
 		if f.trap_t > 0.0:
 			f.phys.px = f.trap_x; f.phys.pz = f.trap_z; f.phys.vx = 0.0; f.phys.vz = 0.0
+	combat.carry_tick(dt, get_meta("arcade_run") if has_meta("arcade_run") else null)   # Fastball Special (docs/DAMAGE.md)
 	for f: FighterState in fighters:          # the gameplay half of Fighter.animate
 		f.yaw += wrapf(f.face_yaw - f.yaw, -PI, PI) * minf(1.0, 12.0 * dt)
 		var c: Variant = controllers.get(f)
@@ -342,7 +348,7 @@ func step(dt: float) -> void:
 		combat.weapons.climb_tick(f, dt)
 		combat.weapons.grab_tick(f, dt)
 
-## meleeSweep for everyone (once per rendered frame, after the hand/arm points were written).
+## meleeSweep for everyone (once per fixed simulation step, after the animation points were written, see World.sim_step).
 func sweep() -> void:
 	for f: FighterState in fighters:
 		combat.melee_sweep(f)
@@ -354,14 +360,12 @@ func _ring_out() -> void:
 		if d.phys.py >= ring_out_y or d.elim or d.is_ghost or d.dead: continue
 		var a := d.last_attacker
 		var knocked := a != null and a != d and combat.time - d.last_hit_time < 10.0
-		# Arcade (PvE): a stage enemy that is shoved off the site is NOT a K.O. for the player (it is revived on the floor by
-		# ArcadeManager), so it must not pay K.O. coins, count a K.O./streak or flash "K.O.!" - only a plain fall is logged.
-		if knocked and not combat.pve_seats.is_empty() and not combat.pve_seats.has(d): knocked = false
 		d.st["streak"] = 0; d.st["multi"] = 0; d.st["deaths"] += 1; d.st["falls"] += 1
 		if knocked: combat.add_ko(a, d)
 		else: combat.ev({"type": "ko", "killer": null, "victim": d, "weapon": "", "fall": true})
 		if combat.net_started and d.net_slot >= 0 and (d.is_player or combat.net_host):     # tell the others about the fall too
 			combat.ev({"type": "net", "msg": NetSnapshot.encode_ko(a.net_slot if knocked and a.net_slot >= 0 else -1, d.net_slot)})
+		combat.rules.on_down(d, true)                 # Capture the Flag: the flag goes back to its stand
 		d.last_attacker = null
 		var last_life := combat.lives_mode != 0 and d.lives <= 1
 		if not last_life and not d.is_player and d.home == null:      # bots don't pop straight back

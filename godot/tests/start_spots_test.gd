@@ -3,11 +3,11 @@ extends SceneTree
 ## own safe points (its fixed player point + spawns + bot spots, deduplicated), on the floor (never inside a solid or
 ## under it) and at least 2 m from the void; different matches give different spots; random_start = false restores the
 ## old fixed spot, and -1 (auto) keeps the fixed spot in a test run (--no-save), which is what protects bot parity.
-## Every arena the game plays is checked, the generated ones included (Sandbox, Building Site, Pillars, Lava Pillars).
+## Every arena the game plays is checked, the generated ones included (Sandbox, Building Site).
 ##   godot --headless --path godot --script res://tests/start_spots_test.gd -- --no-save   (npm run test:godot-start-spots)
 
 const RANDOM_MAPS := ["arena", "park", "ice", "temple", "rooftops", "tower", "dojo", "summit", "volcano", "crossroads",
-	"blast", "siteyard", "pillars", "pillars2"]
+	"blast", "siteyard"]
 var fails := 0
 var content: Node
 
@@ -35,9 +35,6 @@ func _run() -> void:
 func _map(id: String) -> Dictionary:
 	if id == "custom": return MapBuilder.custom_map({})
 	if id == SiteMap.ID: return SiteMap.generate(424242)
-	if PillarsMap.IDS.has(id):
-		var m: Dictionary = PillarsMap.complete(content.get_map("pillars"))
-		return PillarsMap.lava_entry(m) if id == "pillars2" else m
 	return (content.get_map(id) as Dictionary).duplicate(true)   # (the test tags it with _id / _mode)
 
 func _sim(map: Dictionary, random_start: Variant, rng_seed := 0) -> MatchSim:
@@ -85,14 +82,13 @@ func _every_map() -> void:
 	for id: String in ids:
 		var map := _map(id)
 		map["_id"] = id
-		if id == "pillars" or id == "pillars2": map["_mode"] = "pillars"
 		var is_range := PracticeRange.is_range(map)
 		var sim := _sim(map, true, 11)
 		var p := sim.player
 		var x := p.phys.px
 		var z := p.phys.pz
 		var y := p.phys.py
-		var ring := float(map.get("lavaY", MatchSim.RING_OUT_Y))
+		var ring := MatchSim.RING_OUT_Y
 		if is_range:
 			var pp: Array = map.get("player", [0, 0])
 			check(absf(x - float(pp[0])) < 0.001 and absf(z - float(pp[1])) < 0.001, "%s: the range keeps its fixed spot" % id)

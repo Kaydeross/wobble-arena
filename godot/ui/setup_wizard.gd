@@ -2,11 +2,10 @@ class_name SetupWizard
 extends VBoxContainer
 ## Offline match setup, one choice per page (title screen Play opens it):
 ##   1 Game type (cards for ModeRules.PLAYABLE, read from code),
-##   2 Arena (cards for the maps that game type allows, the Moving floor row: Settings "dyn", and the Breakable props
-##   opt-in row: Settings "destructible", docs/DESTRUCTIBLE.md), 3 Players (you + 1..7 bots, team modes fix the count; bot
-##   skill), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
-##   of the four picks, each row jumps back to its page, and the big Start button).
-## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, class), so the next Play
+##   2 Arena (cards for the maps that game type allows and the Moving floor row: Settings "dyn"), 3 Players (you + 1..7 bots, team modes fix the count; bot
+##   skill and the K.O. limit: Auto / None / 5 / 10 / 20), 4 Character (Content.classes, real 3D renders of the Wobbler: ui/character_stage.gd), 5 Start (a summary
+##   of the picks, each row jumps back to its page, and the big Start button).
+## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, limit, class), so the next Play
 ## starts where the last one ended. Game types restrict arenas: when the remembered arena is not allowed in the new
 ## game type, the wizard moves to the nearest allowed one and says so in one line (`note`).
 ## Game types are grouped in labelled sections (Classic / Team / Special, data/extra/wizard.json: also each card's short
@@ -27,6 +26,8 @@ enum {P_MODE, P_ARENA, P_PLAYERS, P_CHAR, P_START}
 const BOT_MIN := 1
 const BOT_MAX := 7
 const DIFFS := ["easy", "normal", "hard", "insane"]
+const LIMITS := [-1, 0, 5, 10, 20]       ## -1 = mode preset / Auto, 0 = no limit
+const LIMIT_LABELS := ["Auto", "None", "5", "10", "20"]
 const GAP := 12
 const MAP_CARD := Vector2(220, 148)
 const MODE_CARD := Vector2(220, 136)
@@ -39,9 +40,9 @@ var class_only := false     ## set before add_child: only the Character page (no
 var map_id := "arena"
 var mode_id := "classic"
 var dyn := "random"
-var destruct := false       ## optional destructible environment mode (Settings "destructible"; offline only, docs/DESTRUCTIBLE.md)
 var bots := 3
 var diff := "normal"
+var limit := -1             ## K.O. limit: -1 = the mode's preset (Auto), 0 = none, 5 / 10 / 20
 var cls := "wobbler"
 var note := ""              ## one line shown in the header (arena moved because of the game type, ...)
 var _want_map := ""         ## the arena the player last tapped: a game type change returns to it when it is allowed again
@@ -65,9 +66,9 @@ var _mode_bs := {}
 var _class_bs := {}
 var _class_art := {}        ## class id -> TextureRect
 var _dyn_bs := {}
-var _dest_bs := {}
 var _bot_bs := {}
 var _diff_bs := {}
+var _limit_bs := {}
 var _sum_bs: Array = []
 var _sum_vals: Array = []
 var _styles := {}
@@ -196,10 +197,11 @@ func load_settings() -> void:
 	if stale: mode_id = "classic" if ms.has("classic") else ms[0]
 	dyn = str(Settings.get_value("dyn", "random"))
 	if not Dynamics.KINDS.has(dyn): dyn = "random"
-	destruct = bool(Settings.get_value("destructible", false))
 	bots = clampi(int(Settings.get_value("bots", 3)), BOT_MIN, BOT_MAX)
 	diff = str(Settings.get_value("difficulty", "normal"))
 	if not DIFFS.has(diff): diff = "normal"
+	limit = int(Settings.get_value("limit", -1))
+	if not LIMITS.has(limit): limit = -1
 	cls = str(Settings.get_value("class", "wobbler"))
 	if not Content.classes.has(cls) or not owns_class(cls): cls = "wobbler"
 	_want_map = "arena" if stale else str(Settings.get_value("offline_map", "arena"))
@@ -238,20 +240,6 @@ func set_dyn(k: String) -> void:
 	Settings.set_value("dyn", k)
 	_refresh()
 
-## Optional destructible environment mode: off | on. Offline only; the Practice Range, Sandbox and Construction ignore it.
-func set_destruct(k: String) -> void:
-	destruct = k == "on"
-	Settings.set_value("destructible", destruct)
-	_refresh()
-
-## True when the current game type allows the destructible mode at all (the range / sandbox / construction never do).
-func destruct_available() -> bool:
-	return not ["practice", "sandbox", "construction"].has(mode_id)
-
-## True when the current arena has breakable cover for the mode (docs/DESTRUCTIBLE.md): a real arena map with box geometry.
-func destruct_arena_ok() -> bool:
-	return destruct_available() and Destruct.has_arena(map_id)
-
 func set_bots(n: int) -> void:
 	bots = clampi(n, BOT_MIN, BOT_MAX)
 	Settings.set_value("bots", bots)
@@ -262,6 +250,22 @@ func set_diff(d: String) -> void:
 	Settings.set_value("difficulty", d)
 	_refresh()
 
+func set_limit(n: int) -> void:
+	limit = n if LIMITS.has(n) else -1
+	Settings.set_value("limit", limit)
+	_refresh()
+
+## The K.O. limit the chosen mode plays to right now (Auto follows the mode preset, with the endless brawl modes
+## defaulting to ModeRules.LIMITLESS_DEFAULT). 0 = no limit, a mode with lives / a clock / a ladder also ends without one.
+func limit_value() -> int:
+	return limit if limit >= 0 else ModeRules.preset_limit(mode_id, Content.modes)
+
+## The Start page's summary value for the K.O. limit row (compact: the row label says "Players", the pills say
+## "K.O. limit").
+func limit_text() -> String:
+	var n := limit_value()
+	return tr("None") if n <= 0 else tr("First to %d") % n
+
 func set_class(id: String) -> void:
 	cls = id
 	Settings.set_value("class", id)
@@ -270,7 +274,7 @@ func set_class(id: String) -> void:
 
 ## Writes every choice (Start does this once more, so a match always starts from what is on screen).
 func save() -> void:
-	for kv in [["offline_map", map_id], ["mode", mode_id], ["dyn", dyn], ["destructible", destruct], ["bots", bots], ["difficulty", diff], ["class", cls]]:
+	for kv in [["offline_map", map_id], ["mode", mode_id], ["dyn", dyn], ["bots", bots], ["difficulty", diff], ["limit", limit], ["class", cls]]:
 		Settings.set_value(kv[0], kv[1])
 
 # ---------------- navigation ----------------
@@ -697,8 +701,6 @@ func _build_arena(p: Control) -> void:
 	for k: String in Dynamics.KINDS: names.append(Dynamics.NAMES[k])
 	var row := _pills(p, "Floor", "Moving floor", Dynamics.KINDS, names, _dyn_bs, set_dyn)
 	row.tooltip_text = "Does the arena floor move? Random = a different moving floor every match"
-	var drow := _pills(p, "Props", "Breakable props", ["off", "on"], ["Off", "On"], _dest_bs, set_destruct)
-	drow.tooltip_text = "Optional offline mode: cover that breaks under bullets, melee and explosions and comes back after ~2 minutes. It works on every arena except the practice range, the sandbox and the generated / shrinking levels; the arena's best cover is usually chosen, the HUD shows how many are left (docs/DESTRUCTIBLE.md)."
 	_grid_page(p, P_ARENA, MAP_CARD.x)
 	_rebuild_maps()
 
@@ -735,6 +737,9 @@ func _build_players(p: Control) -> void:
 	var dn: Array = []
 	for d: String in DIFFS: dn.append(tr(d.capitalize()))
 	_pills(p, "Skill", "Bot skill", DIFFS, dn, _diff_bs, set_diff, 100)
+	var ln: Array = []
+	for l: String in LIMIT_LABELS: ln.append(tr(l))
+	_pills(p, "Limit", "K.O. limit", LIMITS, ln, _limit_bs, set_limit, 64)
 	players_hint = _label("", 17, "MutedLabel", true)
 	players_hint.name = "Hint"
 	players_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -788,7 +793,7 @@ func _stat_grid(id: String) -> GridContainer:
 
 func _build_start(p: Control) -> void:
 	p.alignment = BoxContainer.ALIGNMENT_CENTER
-	var hint := _label("Check your match. Tap a row to change it.", 18, "MutedLabel", true)
+	var hint := _label("Tap a row to change it", 18, "MutedLabel", true)
 	hint.name = "Hint"
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	p.add_child(hint)
@@ -841,32 +846,28 @@ func _refresh() -> void:
 	_select(_mode_bs, mode_id)
 	if detail_l: detail_l.text = tr("%s: %s") % [tr(mode_name(mode_id)), tr(mode_long(mode_id))]
 	_select(_dyn_bs, dyn)
-	var prop_ok := destruct_arena_ok()
-	_select(_dest_bs, "on" if destruct and prop_ok else "off")
-	for k in _dest_bs: (_dest_bs[k] as Button).disabled = not prop_ok
 	_select(_class_bs, cls)
 	_select(_diff_bs, diff)
+	_select(_limit_bs, limit)
 	var team := is_team_mode()
 	var flex := is_flex_teams()
 	var total := bot_total()
 	for n2 in _bot_bs:
 		var b: Button = _bot_bs[n2]
-		var fixed := ModeRules.fixed_bots(mode_id, Content.modes) >= 0     # Pillars / Practice Range set the count
+		var fixed := ModeRules.fixed_bots(mode_id, Content.modes) >= 0     # Practice Range sets the count
 		b.disabled = (team and not flex and n2 != total) or (flex and n2 % 2 == 0) or (fixed and n2 != total)
 		b.set_pressed_no_signal(n2 == (total if team or fixed else bots))
 	if players_l:
 		players_l.text = _players_text()
 		var t := ModeRules.team_size(mode_id, Content.modes, total)
-		if flex: players_hint.text = tr("Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).") % [t, t]
-		elif team: players_hint.text = tr("Bots are computer players. %s fixes the teams: %d vs %d.") % [tr(mode_name(mode_id)), t, t]
-		elif mode_id == "practice": players_hint.text = tr("The range has %d dummies: they stand, slide and pop back up. They never fight back.") % total
-		elif ModeRules.fixed_bots(mode_id, Content.modes) >= 0: players_hint.text = tr("%s fills every pillar: you + %d bots, one life each.") % [tr(mode_name(mode_id)), total]
-		else: players_hint.text = "Bots are computer players. Free for all: they fight you and each other."
+		if flex: players_hint.text = tr("Two teams: %d vs %d") % [t, t]
+		elif team: players_hint.text = tr("Fixed teams: %d vs %d") % [t, t]
+		elif mode_id == "practice": players_hint.text = tr("%d dummies. They never fight back") % total
+		else: players_hint.text = "Bots fight everyone. Free for all"
 	if _sum_vals.size() == 4:
 		_sum_vals[0].text = mode_name(mode_id)
-		var prop_line := (" · " + tr("Props")) if destruct and destruct_arena_ok() else ""
-		_sum_vals[1].text = tr("%s · Floor: %s") % [tr(map_name(map_id)), tr(Dynamics.NAMES.get(dyn, dyn))] + prop_line
-		_sum_vals[2].text = tr("%s · %s") % [_players_text(), tr(diff.capitalize())]
+		_sum_vals[1].text = tr("%s · Floor: %s") % [tr(map_name(map_id)), tr(Dynamics.NAMES.get(dyn, dyn))]
+		_sum_vals[2].text = tr("%s · %s · %s") % [_players_text(), tr(diff.capitalize()), limit_text()]
 		_sum_vals[3].text = class_name_of(cls)
 
 func _select(store: Dictionary, key: Variant) -> void:
@@ -1105,6 +1106,10 @@ class ModeIcon extends Control:
 			"tdm":
 				for x in [0.17, 0.36]: _person(x, 0.56, 0.8, Color("#8fd1ff"))
 				for x in [0.64, 0.83]: _person(x, 0.56, 0.8, Color("#ff8f6f"))
+			"flag":
+				draw_line(_p(0.32, 0.84), _p(0.32, 0.16), g, u * 0.07)
+				_poly([Vector2(0.34, 0.18), Vector2(0.8, 0.34), Vector2(0.34, 0.5)], UiTheme.ORANGE)
+				draw_line(_p(0.2, 0.84), _p(0.5, 0.84), g, u * 0.06)
 			"burst":
 				_star(8, 0.36, 0.18, g)
 			"giant":
@@ -1114,10 +1119,6 @@ class ModeIcon extends Control:
 				draw_circle(_p(0.5, 0.5), u * 0.3, g)
 				draw_circle(_p(0.62, 0.4), u * 0.26, col.darkened(0.6))
 				draw_circle(_p(0.76, 0.72), u * 0.04, g)
-			"pillars":
-				_rect(0.2, 0.5, 0.17, 0.3, g)
-				_rect(0.42, 0.28, 0.17, 0.52, g)
-				_rect(0.64, 0.4, 0.17, 0.4, g)
 			"hat":
 				var pts: Array = []
 				for i in 13:

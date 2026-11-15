@@ -32,7 +32,7 @@ const NOJOIN_TEXT := {
 	"build": "That room is running a different version of the game.",
 	"full": "That room is full.",
 	"inroom": "You're already in a room.",
-	"none": "No room with that code on this server. Check the letters, make sure the host still has the room open, and that you are both on the same server (a code only works on the server that made it).",
+	"none": "No room with that code on this server. Check the 4 digits, make sure the host still has the room open, and that you are both on the same server (a code only works on the server that made it).",
 	"kind": "That code is for a different kind of room (Arcade co-op or a normal PvP room). Check which one you meant to join.",
 }
 
@@ -124,6 +124,16 @@ func vote_rematch() -> void:
 	if started and not voted:
 		voted = true
 		send({"t": "rv"})
+
+## Arcade co-op (M4, docs/PROTOCOL.md 6.4): ask the host to start the current fight, go to the next stage or retry the
+## failed one. The host is the only run authority and applies it only while the run is in the matching card state
+## (intro / cleared / failed); a request in any other state is dropped like a forged `start`. Returns true when the
+## request went out (not whether the host took it).
+func arcade_request(a: String) -> bool:
+	if not (a in ["start", "next", "retry"]): return false
+	if phase != Phase.MATCH or not started or slot < 0: return false
+	send({"t": "arc", "a": a})
+	return true
 
 ## Leave the room on purpose (or because of `reason`): `leave` op, close the socket, `ended`.
 func leave(reason: String = "You left the room.") -> void:

@@ -48,6 +48,7 @@
     "test:godot-construction-data": "node tools/test-construction-data.js",
     "test:godot-dlc-ui": "node tools/test-dlc-ui.js",
     "test:godot-modes": "node tools/test-modes.js",
+    "test:godot-ctf": "node tools/test-ctf.js",
     "test:godot-sandbox": "node tools/test-sandbox.js",
     "test:godot-damage": "node tools/test-damage.js",
     "test:godot-skills": "node tools/test-skills.js",

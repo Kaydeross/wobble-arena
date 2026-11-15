@@ -174,6 +174,13 @@
   "fr": "il y a %d jours",
   "es": "hace %d días"
  },
+ "%d dummies. They never fight back": {
+  "zh_TW": "%d 個假人。它們不會還手",
+  "zh_CN": "%d 个假人。它们不会还手",
+  "ja": "ダミーが%d体。反撃はしない",
+  "fr": "%d mannequins. Ils ne ripostent jamais",
+  "es": "%d muñecos. Nunca devuelven el golpe"
+ },
  "%d fps   %.1f ms   avg %.0f   1%% low %.0f": {
   "zh_TW": "%d fps   %.1f ms   平均 %.0f   1%% 低 %.0f",
   "zh_CN": "%d fps   %.1f ms   平均 %.0f   1%% 低 %.0f",
@@ -265,6 +272,13 @@
   "fr": "%s (bot) est de retour",
   "es": "%s (bot) ha vuelto"
  },
+ "%s Crate": {
+  "zh_TW": "%s 補給箱",
+  "zh_CN": "%s 补给箱",
+  "ja": "%sクレート",
+  "fr": "Caisse %s",
+  "es": "Caja de %s"
+ },
  "%s WINS!": {
   "zh_TW": "%s 獲勝！",
   "zh_CN": "%s 获胜！",
@@ -278,13 +292,6 @@
   "ja": "%sクレート",
   "fr": "Caisses %s",
   "es": "Cajas %s"
- },
- "%s fills every pillar: you + %d bots, one life each.": {
-  "zh_TW": "%s 每根柱子都有人：你 + %d 名電腦玩家，每人一條命。",
-  "zh_CN": "%s 每根柱子都有人：你 + %d 名电脑玩家，每人一条命。",
-  "ja": "%s はすべての柱を使います：あなた + ボット %d 体、残機は1つずつです。",
-  "fr": "%s occupe chaque pilier : toi + %d bots, une vie chacun.",
-  "es": "%s ocupa cada pilar: tú + %d bots, una vida cada uno."
  },
  "%s has no %s: arena is now %s.": {
   "zh_TW": "%s 沒有 %s：競技場已改為 %s。",
@@ -306,13 +313,6 @@
   "ja": "%s が巨大化！",
   "fr": "%s est un géant !",
   "es": "¡%s es un gigante!"
- },
- "%s is a giant! Run!": {
-  "zh_TW": "%s 變巨人了！快跑！",
-  "zh_CN": "%s 变巨人了！快跑！",
-  "ja": "%s が巨大化！逃げろ！",
-  "fr": "%s est un géant ! Cours !",
-  "es": "¡%s es un gigante! ¡Corre!"
  },
  "%s is app-only: a web player is here, so it plays Classic.": {
   "zh_TW": "%s 僅限 App：房間內有網頁玩家，因此改玩經典模式。",
@@ -398,13 +398,6 @@
   "fr": "%s a quitté. Connexion au nouvel hôte…",
   "es": "%s se fue. Uniéndose al nuevo anfitrión…"
  },
- "%s left. Waiting for the new host…": {
-  "zh_TW": "%s 離開了。等待新房主…",
-  "zh_CN": "%s 离开了。等待新房主…",
-  "ja": "%s が退出しました。新しいホストを待っています…",
-  "fr": "%s est parti. En attente du nouvel hôte…",
-  "es": "%s se fue. Esperando al nuevo anfitrión…"
- },
  "%s left. You are now the host. ": {
   "zh_TW": "%s 已離開。你現在是房主。",
   "zh_CN": "%s 已离开。你现在是房主。",
@@ -440,12 +433,12 @@
   "fr": "%s a quitté. Désormais hôte, la partie se poursuit…",
   "es": "%s se fue. Ahora eres el anfitrión y la partida continúa…"
  },
- "%s left. You're the host now!": {
-  "zh_TW": "%s 已離開。你現在是房主！",
-  "zh_CN": "%s 已离开。你现在是房主！",
-  "ja": "%s が退出しました。あなたがホストです！",
-  "fr": "%s a quitté. Désormais hôte !",
-  "es": "¡%s se fue. Ahora eres el anfitrión!"
+ "%s took the flag!": {
+  "zh_TW": "%s 拿到旗幟了！",
+  "zh_CN": "%s 拿到旗帜了！",
+  "ja": "%s が旗を取った！",
+  "fr": "%s a pris le drapeau !",
+  "es": "¡%s agarró la bandera!"
  },
  "%s tried to join from the web browser: %s is app-only.": {
   "zh_TW": "%s 嘗試從網頁瀏覽器加入：%s 僅限 App。",
@@ -663,6 +656,13 @@
   "ja": "3対3",
   "fr": "3 contre 3",
   "es": "3 contra 3"
+ },
+ "4-digit code": {
+  "zh_TW": "4位數代碼",
+  "zh_CN": "4位数代码",
+  "ja": "4桁のコード",
+  "fr": "Code à 4 chiffres",
+  "es": "Código de 4 dígitos"
  },
  "4v4": {
   "zh_TW": "4 對 4",
@@ -1168,6 +1168,20 @@
   "fr": "Arène %dm · au plus petit",
   "es": "Arena %dm · en su tamaño mínimo"
  },
+ "Arena Growing!": {
+  "zh_TW": "競技場變大！",
+  "zh_CN": "竞技场变大！",
+  "ja": "アリーナ拡大！",
+  "fr": "L'arène grandit !",
+  "es": "¡La arena crece!"
+ },
+ "Arena Reset!": {
+  "zh_TW": "競技場重置！",
+  "zh_CN": "竞技场重置！",
+  "ja": "アリーナリセット！",
+  "fr": "Arène réinitialisée !",
+  "es": "¡Arena reiniciada!"
+ },
  "Arena back to %s.": {
   "zh_TW": "競技場已切回 %s。",
   "zh_CN": "竞技场已切回 %s。",
@@ -1315,6 +1329,20 @@
   "fr": "Salto arrière",
   "es": "Salto hacia atrás"
  },
+ "Backup Incoming!": {
+  "zh_TW": "援軍來了！",
+  "zh_CN": "援军来了！",
+  "ja": "援軍が来る！",
+  "fr": "Renforts en route !",
+  "es": "¡Llegan refuerzos!"
+ },
+ "Backup Tradies!": {
+  "zh_TW": "工人增援！",
+  "zh_CN": "工人增援！",
+  "ja": "職人の応援！",
+  "fr": "Ouvriers en renfort !",
+  "es": "¡Obreros de refuerzo!"
+ },
  "Balanced. No surprises": {
   "zh_TW": "均衡，沒有意外",
   "zh_CN": "均衡，没有意外",
@@ -1370,6 +1398,13 @@
   "ja": "ビーニー",
   "fr": "Bonnet",
   "es": "Gorro"
+ },
+ "Belly Bounce": {
+  "zh_TW": "肚皮彈跳",
+  "zh_CN": "肚皮弹跳",
+  "ja": "おなかバウンド",
+  "fr": "Rebond de bidon",
+  "es": "Rebote de panza"
  },
  "Best stage: %d": {
   "zh_TW": "最佳關卡：%d",
@@ -1567,26 +1602,12 @@
   "fr": "Bots",
   "es": "Bots"
  },
- "Bots are computer players. %s fixes the teams: %d vs %d.": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。%s 固定了隊伍：%d 對 %d。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。%s 固定了队伍：%d 对 %d。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。%s ではチームが固定されます：%d 対 %d。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. %s fixe les équipes : %d contre %d.",
-  "es": "Los bots son jugadores controlados por el ordenador. %s fija los equipos: %d contra %d."
- },
- "Bots are computer players. Free for all: they fight you and each other.": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。自由混戰：他們會與你和彼此對戰。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。自由混战：他们会与你和彼此对战。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。全員が敵同士の乱戦です。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Chacun pour soi : ils t'affrontent et s'affrontent entre eux.",
-  "es": "Los bots son jugadores controlados por el ordenador. Todos contra todos: te atacan a ti y se atacan entre ellos."
- },
- "Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。兩隊：%d 對 %d（奇數電腦玩家時仍保持雙方人數相等）。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。两队：%d 对 %d（奇数电脑玩家时仍保持双方人数相等）。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。2チーム：%d 対 %d（奇数のボットでも人数が揃うよう調整されます）。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Deux équipes : %d contre %d (un nombre impair de bots garde les équipes égales).",
-  "es": "Los bots son jugadores controlados por el ordenador. Dos equipos: %d contra %d (con un número impar de bots, los equipos siguen iguales)."
+ "Bots fight everyone. Free for all": {
+  "zh_TW": "機器人誰都打。大亂鬥",
+  "zh_CN": "机器人谁都打。大乱斗",
+  "ja": "ボットは全員と戦う。バトルロイヤル",
+  "fr": "Les bots se battent contre tous. Chacun pour soi",
+  "es": "Los bots luchan contra todos. Todos contra todos"
  },
  "Bought %s!%s": {
   "zh_TW": "已購買 %s！%s",
@@ -1889,6 +1910,13 @@
   "fr": "Capitaine Sel",
   "es": "Capitán Sal"
  },
+ "Capture the Flag": {
+  "zh_TW": "奪旗戰",
+  "zh_CN": "夺旗战",
+  "ja": "旗取り",
+  "fr": "Capture du drapeau",
+  "es": "Captura la bandera"
+ },
  "Cartwheel": {
   "zh_TW": "側手翻",
   "zh_CN": "侧手翻",
@@ -1924,13 +1952,6 @@
   "fr": "Changer le mot de passe",
   "es": "Cambiar contraseña"
  },
- "Change request approved! Weapons swapped!": {
-  "zh_TW": "修改需求已批准！武器已更換！",
-  "zh_CN": "修改需求已批准！武器已更换！",
-  "ja": "仕様変更承認！武器が変更された！",
-  "fr": "Demande de modification approuvée ! Changement d'armes !",
-  "es": "¡Solicitud de cambio aprobada! ¡Armas intercambiadas!"
- },
  "Chaos": {
   "zh_TW": "混亂",
   "zh_CN": "混乱",
@@ -1951,13 +1972,6 @@
   "ja": "断崖の橋",
   "fr": "Pont du gouffre",
   "es": "Puente del abismo"
- },
- "Check your match. Tap a row to change it.": {
-  "zh_TW": "確認你的比賽。點選一列即可更改。",
-  "zh_CN": "确认你的比赛。点选一行即可更改。",
-  "ja": "試合の内容を確認しましょう。項目をタップして変更できます。",
-  "fr": "Vérifie ta partie. Touche une ligne pour la modifier.",
-  "es": "Revisa tu partida. Toca una fila para cambiarla."
  },
  "Chef": {
   "zh_TW": "主廚",
@@ -2057,19 +2071,19 @@
   "fr": "Déjà réussie : pas de pièces cette fois",
   "es": "Ya superada: sin monedas esta vez"
  },
+ "Click to look": {
+  "zh_TW": "點擊轉動視角",
+  "zh_CN": "点击转动视角",
+  "ja": "クリックで視点操作",
+  "fr": "Clique pour viser",
+  "es": "Clic para mirar"
+ },
  "Click to look around   ·   Esc: menu": {
   "zh_TW": "點擊環顧四周   ·   Esc：選單",
   "zh_CN": "点击环顾四周   ·   Esc：菜单",
   "ja": "クリックで見回す   ·   Esc：メニュー",
   "fr": "Cliquer pour regarder autour   ·   Esc : menu",
   "es": "Haz clic para mirar alrededor   ·   Esc: menú"
- },
- "Click to look around · Esc: menu": {
-  "zh_TW": "點擊環顧四周 · Esc：選單",
-  "zh_CN": "点击环顾四周 · Esc：菜单",
-  "ja": "クリックで見回す · Esc：メニュー",
-  "fr": "Cliquer pour regarder autour · Échap : menu",
-  "es": "Haz clic para mirar alrededor · Esc: menú"
  },
  "Click to shoot, right-click to aim. E shoves, F kicks, Space jumps.": {
   "zh_TW": "點擊射擊，右鍵瞄準。E 推擠，F 踢擊，空白鍵跳躍。",
@@ -2484,13 +2498,6 @@
   "fr": "Caisse en approche : %s !",
   "es": "¡Caja en camino: %s!"
  },
- "Crate incoming: %s! Look up": {
-  "zh_TW": "補給箱來襲：%s！抬頭看！",
-  "zh_CN": "补给箱来袭：%s！抬头看！",
-  "ja": "クレート接近：%s！上を見て",
-  "fr": "Caisse en approche : %s ! Attention en haut",
-  "es": "¡Caja en camino: %s! ¡Mira arriba!"
- },
  "Crate rain": {
   "zh_TW": "補給箱雨",
   "zh_CN": "补给箱雨",
@@ -2574,6 +2581,13 @@
   "ja": "クリムゾンサムライ",
   "fr": "Samouraï cramoisi",
   "es": "Samurái carmesí"
+ },
+ "Crosshair": {
+  "zh_TW": "準星",
+  "zh_CN": "准星",
+  "ja": "照準",
+  "fr": "Viseur",
+  "es": "Mira"
  },
  "Crouch and crackle, blast lightning into the sky, then slam it into the ground": {
   "zh_TW": "蹲下蓄力，電光閃爍，把閃電射向天空，再砸向地面",
@@ -2680,12 +2694,19 @@
   "fr": "Dash / Recharger",
   "es": "Impulso / Recargar"
  },
- "Deadline approaching! Floor is shrinking!": {
-  "zh_TW": "截止日期臨近！地面正在縮小！",
-  "zh_CN": "截止日期临近！地面正在缩小！",
-  "ja": "納期が迫る！床が縮小しているぞ！",
-  "fr": "Date limite imminente ! Le sol rétrécit !",
-  "es": "¡Se acerca la fecha límite! ¡El suelo se encoge!"
+ "Dead even when the clock ran out": {
+  "zh_TW": "時間到時打成平手",
+  "zh_CN": "时间到时打成平手",
+  "ja": "時間切れで完全に同点",
+  "fr": "Égalité parfaite quand le temps est écoulé",
+  "es": "Empate total cuando se acaba el tiempo"
+ },
+ "Deadline!": {
+  "zh_TW": "截止日期！",
+  "zh_CN": "截止日期！",
+  "ja": "締め切り！",
+  "fr": "Date limite !",
+  "es": "¡Fecha límite!"
  },
  "Death Match": {
   "zh_TW": "死鬥",
@@ -2939,20 +2960,6 @@
   "fr": "Effets",
   "es": "Efectos"
  },
- "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or die and you are out for the match. Most K.O.s when the clock ends wins.": {
-  "zh_TW": "八根高柱環列在海面上，中央空無一物。間隙太寬跳不過，需要衝刺（任何武器都能在這裡衝刺）。每 10 秒，一把新武器會落入背包。掉下去或死亡，本場就出局。時間到時擊倒最多者獲勝。",
-  "zh_CN": "八根高柱环列在海面上，中央空无一物。间隙太宽跳不过，需要冲刺（任何武器都能在这里冲刺）。每 10 秒，一把新武器会落入背包。掉下去或死亡，本场就出局。时间到时击倒最多者获胜。",
-  "ja": "海の上に八本の高い柱が環状に並び、中央には何もない。隙間が広くてジャンプでは届かないので、ダッシュが必要（どの武器でもダッシュできる）。10秒ごとに新しい武器がインベントリに入る。落ちるか倒れると、その試合は脱落。時間切れ時にKOが最も多い人の勝ち。",
-  "fr": "Huit grands piliers en anneau au-dessus de la mer, rien au centre. Les écarts sont trop larges pour sauter : il faut un dash (n'importe quelle arme permet de dasher ici). Toutes les 10 secondes, une nouvelle arme arrive dans l'inventaire. Qui tombe ou meurt est éliminé pour la partie. Le plus de K.O. à la fin du temps gagne.",
-  "es": "Ocho altos pilares en círculo sobre el mar, sin nada en el centro. Los huecos son demasiado anchos para saltar, así que necesitas impulso (cualquier arma puede usar impulso aquí). Cada 10 segundos cae un arma nueva al inventario. Si caes o mueres, quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
- },
- "Eight tall pillars in a ring over the sea, with nothing in the middle. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall or get K.O.'d and you're out for the match. Most K.O.s when the clock ends wins.": {
-  "zh_TW": "海上八根高大的柱子排成一圈，中間空無一物。缺口太寬，跳不過去，所以需要衝刺（這裡任何武器都能衝刺）。每10秒，一把新武器會落進你的物品欄。摔落或被擊倒就會在這場比賽中出局。時間到時擊倒最多者獲勝。",
-  "zh_CN": "海上八根高大的柱子围成一圈，中间空无一物。缺口太宽，跳不过去，所以需要冲刺（这里任何武器都能冲刺）。每10秒，一把新武器会落进你的物品栏。摔落或被击倒就会在本场比赛中出局。时间到时击倒最多者获胜。",
-  "ja": "海の上に並ぶ背の高い柱が8本、中央は空っぽです。隙間が広すぎてジャンプでは越えられないので、ダッシュが必要です（ここではどの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに届きます。落ちるかKOされたら、その試合は脱落です。時間切れのときにKOが最も多い人の勝ちです。",
-  "fr": "Huit hauts piliers en cercle au-dessus de la mer, rien au milieu. Les trous sont trop larges pour sauter, il faut un dash (toutes les armes peuvent dasher ici). Toutes les 10 secondes, une nouvelle arme tombe dans l'inventaire. Tomber ou être mis K.O., c'est l'élimination pour le match. Le plus de K.O. à la fin du temps gagne.",
-  "es": "Ocho pilares altos en círculo sobre el mar, sin nada en medio. Los huecos son demasiado anchos para saltar, así que necesitas un impulso (cualquier arma puede impulsarte aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes o te dejan K.O., quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
- },
  "Email (for your account, never shown)": {
   "zh_TW": "電子郵件（用於帳號，不會顯示）",
   "zh_CN": "电子邮件（用于账号，不会显示）",
@@ -3044,6 +3051,13 @@
   "fr": "Chaque K.O. change ton arme",
   "es": "Cada K.O. cambia tu arma"
  },
+ "Everyone keeps the coins": {
+  "zh_TW": "人人都保留金幣",
+  "zh_CN": "人人都保留金币",
+  "ja": "コインは全員がもらえる",
+  "fr": "Chacun garde les pièces",
+  "es": "Todos conservan las monedas"
+ },
  "Everything drops from the sky": {
   "zh_TW": "所有東西都從天上掉下來",
   "zh_CN": "所有东西都从天上掉下来",
@@ -3106,6 +3120,20 @@
   "ja": "不合格",
   "fr": "ÉCHEC",
   "es": "SUSPENDIDO"
+ },
+ "FASTBALL SPECIAL!": {
+  "zh_TW": "高速球特攻！",
+  "zh_CN": "高速球特攻！",
+  "ja": "ファストボール・スペシャル！",
+  "fr": "SPÉCIAL BOULE RAPIDE !",
+  "es": "¡ESPECIAL BOLA RÁPIDA!"
+ },
+ "FLAG  %s %d/%d": {
+  "zh_TW": "旗幟  %s %d/%d",
+  "zh_CN": "旗帜  %s %d/%d",
+  "ja": "旗  %s %d/%d",
+  "fr": "DRAPEAU  %s %d/%d",
+  "es": "BANDERA  %s %d/%d"
  },
  "Fall": {
   "zh_TW": "墜落",
@@ -3183,6 +3211,13 @@
   "ja": "ラスボス",
   "fr": "Boss final",
   "es": "Jefe final"
+ },
+ "Finding a new host…": {
+  "zh_TW": "正在找新房主…",
+  "zh_CN": "正在找新房主…",
+  "ja": "新しいホストを探しています…",
+  "fr": "Recherche d'un nouvel hôte…",
+  "es": "Buscando nuevo anfitrión…"
  },
  "Finish 10 matches this week": {
   "zh_TW": "本週完成 10 場比賽",
@@ -3317,6 +3352,34 @@
   "fr": "Poing levé",
   "es": "Puño en alto"
  },
+ "Fixed teams: %d vs %d": {
+  "zh_TW": "固定隊伍：%d 對 %d",
+  "zh_CN": "固定队伍：%d 对 %d",
+  "ja": "固定チーム：%d 対 %d",
+  "fr": "Équipes fixes : %d contre %d",
+  "es": "Equipos fijos: %d contra %d"
+ },
+ "Flag back on its stand!": {
+  "zh_TW": "旗幟回到旗座了！",
+  "zh_CN": "旗帜回到旗座了！",
+  "ja": "旗が台座に戻った！",
+  "fr": "Le drapeau est revenu sur son socle !",
+  "es": "¡La bandera volvió a su base!"
+ },
+ "Flag dropped!": {
+  "zh_TW": "旗幟掉了！",
+  "zh_CN": "旗帜掉了！",
+  "ja": "旗が落ちた！",
+  "fr": "Drapeau lâché !",
+  "es": "¡Bandera caída!"
+ },
+ "Flag free": {
+  "zh_TW": "旗幟無人持有",
+  "zh_CN": "旗帜无人持有",
+  "ja": "旗は空き",
+  "fr": "Drapeau libre",
+  "es": "Bandera libre"
+ },
  "Flamethrower": {
   "zh_TW": "火焰噴射器",
   "zh_CN": "火焰喷射器",
@@ -3386,6 +3449,13 @@
   "ja": "パスワードを忘れた場合",
   "fr": "Mot de passe oublié ?",
   "es": "¿Olvidaste tu contraseña?"
+ },
+ "Fortress Stance": {
+  "zh_TW": "堡壘架式",
+  "zh_CN": "堡垒架势",
+  "ja": "フォートレススタンス",
+  "fr": "Posture forteresse",
+  "es": "Postura fortaleza"
  },
  "Fortress Yard": {
   "zh_TW": "要塞庭院",
@@ -3653,6 +3723,13 @@
   "fr": "Récupère les caisses",
   "es": "Recoge las cajas"
  },
+ "Grab the flag and hold it for 30 seconds to win for your team": {
+  "zh_TW": "搶到旗幟並握住 30 秒，讓你的隊伍獲勝",
+  "zh_CN": "抢到旗帜并握住 30 秒，让你的队伍获胜",
+  "ja": "旗を取って30秒持ち続ければ、チームの勝ち",
+  "fr": "Prends le drapeau et garde-le 30 secondes pour faire gagner ton équipe",
+  "es": "Agarra la bandera y sujétala 30 segundos para que gane tu equipo"
+ },
  "Gramps": {
   "zh_TW": "老爺爺",
   "zh_CN": "老爷爷",
@@ -3828,6 +3905,20 @@
   "fr": "Hauteur",
   "es": "Altura"
  },
+ "Held the flag for 30 seconds": {
+  "zh_TW": "握住旗幟 30 秒",
+  "zh_CN": "握住旗帜 30 秒",
+  "ja": "旗を30秒持ち続けた",
+  "fr": "Drapeau gardé 30 secondes",
+  "es": "Sostuvo la bandera 30 segundos"
+ },
+ "Held the flag the longest": {
+  "zh_TW": "握旗時間最長",
+  "zh_CN": "握旗时间最长",
+  "ja": "旗を持った時間が最長",
+  "fr": "A gardé le drapeau le plus longtemps",
+  "es": "Sostuvo la bandera más tiempo"
+ },
  "Hello, wobblers": {
   "zh_TW": "哈囉，搖搖人們",
   "zh_CN": "你好，摇摇人们",
@@ -3912,6 +4003,13 @@
   "fr": "Maintiens TIR pour tirer. Tape CORPS À CORPS pour bousculer, maintiens pour donner un coup de pied. SAUT franchit les trous. Atterrir, c'est une affaire personnelle.",
   "es": "Mantén DISPARAR para disparar. Toca CUERPO A CUERPO para empujar, mantenlo para patear. SALTO cruza huecos. Aterrizar depende de ti."
  },
+ "Hold the flag for 30 seconds to win": {
+  "zh_TW": "握住旗幟 30 秒即可獲勝",
+  "zh_CN": "握住旗帜 30 秒即可获胜",
+  "ja": "旗を30秒持てば勝ち",
+  "fr": "Garde le drapeau 30 secondes pour gagner",
+  "es": "Sujeta la bandera 30 segundos para ganar"
+ },
  "Hoodie": {
   "zh_TW": "連帽衫",
   "zh_CN": "连帽衫",
@@ -3925,6 +4023,13 @@
   "ja": "ジャンプ、キック、手を振る",
   "fr": "Saute, donne un coup de pied, salue",
   "es": "Salta, patea y saluda"
+ },
+ "Host": {
+  "zh_TW": "房主",
+  "zh_CN": "房主",
+  "ja": "ホスト",
+  "fr": "Hôte",
+  "es": "Anfitrión"
  },
  "Host a room": {
   "zh_TW": "建立房間",
@@ -4178,6 +4283,13 @@
   "fr": "Clavier : WASD déplacer · souris regarder · clic tirer · clic droit viser · Espace sauter · E bousculer · F coup de pied · Q corps à corps rapide · 1-3 armes · T G H emotes · Échap pause. Manette : sticks déplacer et regarder · RT tirer · LT viser · A sauter · RB bousculer · B coup de pied · Start pause.",
   "es": "Teclado: WASD mover · ratón mirar · clic disparar · clic derecho apuntar · Espacio saltar · E empujar · F patear · Q cuerpo a cuerpo rápido · 1-3 armas · T G H emotes · Esc pausa. Mando: sticks mover y mirar · RT disparar · LT apuntar · A saltar · RB empujar · B patear · Start pausa."
  },
+ "Kids mode": {
+  "zh_TW": "兒童模式",
+  "zh_CN": "儿童模式",
+  "ja": "キッズモード",
+  "fr": "Mode enfants",
+  "es": "Modo infantil"
+ },
  "Knock-out replays": {
   "zh_TW": "擊倒重播",
   "zh_CN": "击倒重播",
@@ -4198,6 +4310,13 @@
   "ja": "突き飛ばしの嵐",
   "fr": "Tempête de bousculades",
   "es": "Tormenta de empujones"
+ },
+ "LAUNCHED AT %d KM/H!": {
+  "zh_TW": "以 %d 公里/小時 擊飛！",
+  "zh_CN": "以 %d 公里/小时 击飞！",
+  "ja": "%d km/h で吹き飛ばし！",
+  "fr": "PROPULSÉ À %d KM/H !",
+  "es": "¡LANZADO A %d KM/H!"
  },
  "Lab Genius": {
   "zh_TW": "實驗天才",
@@ -4269,13 +4388,6 @@
   "fr": "Lave",
   "es": "Lava"
  },
- "Lava Pillars": {
-  "zh_TW": "熔岩柱子",
-  "zh_CN": "熔岩柱子",
-  "ja": "溶岩の柱",
-  "fr": "Piliers de lave",
-  "es": "Pilares de lava"
- },
  "Leave": {
   "zh_TW": "離開",
   "zh_CN": "离开",
@@ -4290,12 +4402,12 @@
   "fr": "Quitter le salon",
   "es": "Salir de la sala"
  },
- "Leave the room? You'll leave this match and go back to the title.": {
-  "zh_TW": "要離開房間嗎？你會結束這場比賽，回到標題畫面。",
-  "zh_CN": "要离开房间吗？你将结束这场比赛，返回标题画面。",
-  "ja": "ルームを出ますか？この試合を抜けてタイトルに戻ります。",
-  "fr": "Quitter le salon ? Cette partie s'arrête et l'on revient au titre.",
-  "es": "¿Salir de la sala? Abandonarás esta partida y volverás al título."
+ "Leave the room?": {
+  "zh_TW": "要離開房間嗎？",
+  "zh_CN": "要离开房间吗？",
+  "ja": "ルームを出ますか？",
+  "fr": "Quitter le salon ?",
+  "es": "¿Salir de la sala?"
  },
  "Left-handed": {
   "zh_TW": "左手模式",
@@ -4346,12 +4458,12 @@
   "fr": "Vies restantes : %d",
   "es": "Vidas restantes: %d"
  },
- "Load test incoming! Crates falling!": {
-  "zh_TW": "負載測試開始！板箱正在墜落！",
-  "zh_CN": "负载测试开始！板箱正在坠落！",
-  "ja": "荷重テスト開始！木箱が降ってくるぞ！",
-  "fr": "Test de charge imminent ! Caisses en chute !",
-  "es": "¡Prueba de carga entrante! ¡Cajas cayendo!"
+ "Load Test!": {
+  "zh_TW": "負載測試！",
+  "zh_CN": "负载测试！",
+  "ja": "負荷テスト！",
+  "fr": "Test de charge !",
+  "es": "¡Prueba de carga!"
  },
  "Lobby": {
   "zh_TW": "大廳",
@@ -4773,12 +4885,12 @@
   "fr": "Pistolet filet",
   "es": "Pistola red"
  },
- "New hat: %s. Pick it in the Walldrobe": {
-  "zh_TW": "新帽子：%s。可在衣櫥中選擇",
-  "zh_CN": "新帽子：%s。可在衣橱中选择",
-  "ja": "新しい帽子：%s。ワードローブで選べます",
-  "fr": "Nouveau chapeau : %s. À choisir dans la garde-robe",
-  "es": "Sombrero nuevo: %s. Elígelo en el armario"
+ "New hat: %s": {
+  "zh_TW": "新帽子：%s",
+  "zh_CN": "新帽子：%s",
+  "ja": "新しい帽子：%s",
+  "fr": "Nouveau chapeau : %s",
+  "es": "Sombrero nuevo: %s"
  },
  "New modes: Team Deathmatch, Deathmatch, Sudden Death and Chaos. Chaos is exactly what it sounds like": {
   "zh_TW": "新模式：團隊死鬥、死鬥、猝死賽和混亂。混亂就是字面上的意思",
@@ -4912,13 +5024,6 @@
   "ja": "まだ首位なし",
   "fr": "Pas encore de leader",
   "es": "Aún no hay líder"
- },
- "No leader yet. Be first!": {
-  "zh_TW": "還沒有領先者，搶個第一吧！",
-  "zh_CN": "还没有领先者，抢个第一吧！",
-  "ja": "まだ首位はいません。一番乗りしよう！",
-  "fr": "Personne en tête pour l'instant. Sois le premier !",
-  "es": "Aún no hay líder. ¡Sé el primero!"
  },
  "No outfit": {
   "zh_TW": "不穿服裝",
@@ -5158,6 +5263,13 @@
   "fr": "Le jeu en ligne utilise maintenant le nouveau serveur",
   "es": "El juego en línea ahora usa el servidor nuevo"
  },
+ "Online play uses your account name.": {
+  "zh_TW": "線上遊玩會使用你的帳號名稱。",
+  "zh_CN": "在线游玩会使用你的账号名称。",
+  "ja": "オンラインではアカウント名が使われます。",
+  "fr": "Le jeu en ligne utilise le nom de ton compte.",
+  "es": "El juego en línea usa el nombre de tu cuenta."
+ },
  "Only change this if a friend runs their own server": {
   "zh_TW": "只有朋友自己架設伺服器時才需要更改",
   "zh_CN": "只有朋友自己架设服务器时才需要更改",
@@ -5221,12 +5333,12 @@
   "fr": "ÉLIMINÉ",
   "es": "Fuera"
  },
- "Out of lives. The site wins this time.": {
-  "zh_TW": "生命用完了。這次工地贏了。",
-  "zh_CN": "生命用完了。这次工地赢了。",
-  "ja": "ライフがなくなりました。今回は現場の勝ちです。",
-  "fr": "Plus de vies. Le chantier gagne cette fois.",
-  "es": "Sin vidas. La obra gana esta vez."
+ "Out of lives": {
+  "zh_TW": "生命用完了",
+  "zh_CN": "生命用完了",
+  "ja": "ライフ切れ",
+  "fr": "Plus de vies",
+  "es": "Sin vidas"
  },
  "Out · %d left": {
   "zh_TW": "出局 · 剩 %d 人",
@@ -5333,6 +5445,13 @@
   "fr": "Affichage des performances",
   "es": "Lectura de rendimiento"
  },
+ "Phase Shift": {
+  "zh_TW": "相位轉移",
+  "zh_CN": "相位转移",
+  "ja": "フェイズシフト",
+  "fr": "Déphasage",
+  "es": "Cambio de fase"
+ },
  "Pick": {
   "zh_TW": "選擇",
   "zh_CN": "选择",
@@ -5430,20 +5549,6 @@
   "ja": "選択中",
   "fr": "Choisi",
   "es": "Elegido"
- },
- "Pillars": {
-  "zh_TW": "柱子",
-  "zh_CN": "柱子",
-  "ja": "ピラー",
-  "fr": "Piliers",
-  "es": "Pilares"
- },
- "Pillars, one life, a new weapon every 10s": {
-  "zh_TW": "柱子、一條命，每 10 秒換一把新武器",
-  "zh_CN": "柱子、一条命，每 10 秒换一把新武器",
-  "ja": "ピラー、残機1つ、10秒ごとに新しい武器",
-  "fr": "Piliers, une vie, une nouvelle arme toutes les 10 s",
-  "es": "Pilares, una vida, un arma nueva cada 10 s"
  },
  "Pipe Wrench": {
   "zh_TW": "管鉗",
@@ -5718,12 +5823,12 @@
   "fr": "Quitter la partie",
   "es": "Salir de la partida"
  },
- "Quit this match? It won't count, and you'll go back to the title.": {
-  "zh_TW": "要結束這場比賽嗎？不會計入成績，並回到標題畫面。",
-  "zh_CN": "要结束这场比赛吗？不会计入成绩，并返回标题画面。",
-  "ja": "この試合を終了しますか？記録には残らず、タイトルに戻ります。",
-  "fr": "Quitter la partie ? Elle ne comptera pas et l'on revient au titre.",
-  "es": "¿Terminar esta partida? No contará y volverás al título."
+ "Quit this match? It won't count.": {
+  "zh_TW": "要退出這場比賽嗎？不會計入成績。",
+  "zh_CN": "要退出这场比赛吗？不会计入成绩。",
+  "ja": "この試合をやめますか？記録されません。",
+  "fr": "Quitter ce match ? Il ne comptera pas.",
+  "es": "¿Salir de la partida? No contará."
  },
  "Quit to title": {
   "zh_TW": "回到標題畫面",
@@ -5858,13 +5963,6 @@
   "fr": "Replay · touche pour passer",
   "es": "Repetición · toca para saltar"
  },
- "Replay · you K.O.'d %s · tap to skip": {
-  "zh_TW": "重播 · 你擊倒了 %s · 點一下跳過",
-  "zh_CN": "重播 · 你击倒了 %s · 点一下跳过",
-  "ja": "リプレイ · %s をKOしたシーン · タップでスキップ",
-  "fr": "Replay · tu as mis K.O. %s · touche pour passer",
-  "es": "Repetición · tú dejaste K.O. a %s · toca para saltar"
- },
  "Reset to default": {
   "zh_TW": "重設為預設值",
   "zh_CN": "重置为默认值",
@@ -5878,13 +5976,6 @@
   "ja": "復活中…",
   "fr": "Réapparition…",
   "es": "Reapareciendo…"
- },
- "Respawning… shake it off": {
-  "zh_TW": "重生中…甩甩頭就好",
-  "zh_CN": "重生中…甩甩头就好",
-  "ja": "リスポーン中…気を取り直して",
-  "fr": "Réapparition… secoue-toi",
-  "es": "Reapareciendo… sacúdete"
  },
  "Resume": {
   "zh_TW": "繼續",
@@ -5900,12 +5991,12 @@
   "fr": "Réessayer l'étape",
   "es": "Reintentar etapa"
  },
- "Revision pads active! Step carefully!": {
-  "zh_TW": "修改彈跳墊已啟用！小心腳下！",
-  "zh_CN": "修改弹跳垫已启用！小心脚下！",
-  "ja": "修正パッド稼働中！足元に注意！",
-  "fr": "Plateformes de révision actives ! Attention où tu marches !",
-  "es": "¡Plataformas de revisión activas! ¡Pisa con cuidado!"
+ "Revision Pads!": {
+  "zh_TW": "修訂踏板！",
+  "zh_CN": "修订踏板！",
+  "ja": "改訂パッド！",
+  "fr": "Plaques de révision !",
+  "es": "¡Placas de revisión!"
  },
  "Revolver": {
   "zh_TW": "左輪手槍",
@@ -5991,6 +6082,13 @@
   "fr": "Salon",
   "es": "Sala"
  },
+ "Room %s": {
+  "zh_TW": "房間 %s",
+  "zh_CN": "房间 %s",
+  "ja": "ルーム %s",
+  "fr": "Salon %s",
+  "es": "Sala %s"
+ },
  "Room code %s": {
   "zh_TW": "房間代碼 %s",
   "zh_CN": "房间代码 %s",
@@ -6067,6 +6165,13 @@
   "ja": "SMG、ショットガン、スナイパー、ランチャー",
   "fr": "Mitraillettes, fusils à pompe, snipers, lance-roquettes",
   "es": "Subfusiles, escopetas, francotiradores, lanzadores"
+ },
+ "STRIKE!": {
+  "zh_TW": "全倒！",
+  "zh_CN": "全倒！",
+  "ja": "ストライク！",
+  "fr": "STRIKE !",
+  "es": "¡PLENO!"
  },
  "Salute": {
   "zh_TW": "敬禮",
@@ -6180,12 +6285,12 @@
   "fr": "Gamin",
   "es": "Pillín"
  },
- "Scope creep! Extra workers arriving!": {
-  "zh_TW": "需求蔓延！額外工人趕到了！",
-  "zh_CN": "需求蔓延！额外工人赶到了！",
-  "ja": "スコープの肥大化！追加の作業員が到着！",
-  "fr": "Dérive des objectifs ! Des ouvriers supplémentaires arrivent !",
-  "es": "¡Ampliación de alcance! ¡Llegan trabajadores adicionales!"
+ "Scope Creep!": {
+  "zh_TW": "範圍蔓延！",
+  "zh_CN": "范围蔓延！",
+  "ja": "仕様膨張！",
+  "fr": "Dérive du projet !",
+  "es": "¡Se amplía el alcance!"
  },
  "Scope is fluid. Mind the revision pads!": {
   "zh_TW": "需求變動中。注意修改彈跳墊！",
@@ -6270,6 +6375,13 @@
   "ja": "シード %d",
   "fr": "Graine %d",
   "es": "Semilla %d"
+ },
+ "Seismic Slam": {
+  "zh_TW": "震地猛擊",
+  "zh_CN": "震地猛击",
+  "ja": "サイズミックスラム",
+  "fr": "Impact sismique",
+  "es": "Golpe sísmico"
  },
  "Set new password": {
   "zh_TW": "設定新密碼",
@@ -6670,12 +6782,12 @@
   "fr": "Spectateur : %s  ·  %d restants  ·  toucher pour changer",
   "es": "Observando a %s  ·  quedan %d  ·  toca para cambiar"
  },
- "Spectating %s · %d left · tap to switch": {
-  "zh_TW": "觀戰 %s · 剩 %d 人 · 點一下切換",
-  "zh_CN": "观战 %s · 剩 %d 人 · 点一下切换",
-  "ja": "観戦中 %s · 残り %d 人 · タップで切り替え",
-  "fr": "Spectateur : %s · %d restants · touche pour changer",
-  "es": "Viendo a %s · quedan %d · toca para cambiar"
+ "Spectating %s · %d left": {
+  "zh_TW": "觀戰 %s · 剩 %d 人",
+  "zh_CN": "观战 %s · 剩 %d 人",
+  "ja": "観戦中 %s · 残り%d人",
+  "fr": "Spectateur de %s · %d restants",
+  "es": "Viendo a %s · quedan %d"
  },
  "Speed": {
   "zh_TW": "速度",
@@ -6859,48 +6971,6 @@
   "fr": "Démarrer",
   "es": "Empezar"
  },
- "Start on pillars. A new weapon every 10 s": {
-  "zh_TW": "從柱子上開始。每 10 秒出現一把新武器",
-  "zh_CN": "从柱子上开始。每 10 秒出现一把新武器",
-  "ja": "柱の上からスタート。10秒ごとに新しい武器",
-  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 s",
-  "es": "Empiezas sobre pilares. Un arma nueva cada 10 s"
- },
- "Start on pillars. A new weapon every 10 seconds. One life": {
-  "zh_TW": "從柱子上開始。每 10 秒出現新武器。只有一條命。",
-  "zh_CN": "从柱子上开始。每 10 秒出现新武器。只有一条命。",
-  "ja": "柱の上からスタート。10秒ごとに新しい武器。ライフは1つ。",
-  "fr": "Départ sur des piliers. Une nouvelle arme toutes les 10 secondes. Une seule vie",
-  "es": "Empiezas en pilares. Un arma nueva cada 10 segundos. Una sola vida"
- },
- "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon drops into your hands every 10 seconds. Fall or get K.O.'d and you're out. Most K.O.s after 3 minutes wins. No launchers, explosives or knockback guns": {
-  "zh_TW": "從高柱開局，柱子間距遠到跳不過去（任何武器都能衝刺！）。每 10 秒會有新武器掉進你手裡。掉下去或被擊倒就出局。3 分鐘後擊倒數最多者獲勝。沒有發射器、爆炸物或擊退槍",
-  "zh_CN": "从高柱开局，柱子间距远到跳不过去（任何武器都能冲刺！）。每 10 秒会有新武器掉进你手里。掉下去或被击倒就出局。3 分钟后击倒数最多者获胜。没有发射器、爆炸物或击退枪",
-  "ja": "高い柱の上からスタート。間隔が広すぎてジャンプでは届かない（どの武器でもダッシュできる！）。10秒ごとに新しい武器が手に落ちてくる。落ちるかKOされたら退場。3分後にKOが一番多い人の勝ち。ランチャー、爆弾、ノックバック銃はなし",
-  "fr": "Départ sur de hauts piliers trop espacés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme tombe dans tes mains toutes les 10 secondes. Tu tombes ou tu es mis K.O. et tu es éliminé. Le plus de K.O. après 3 minutes gagne. Pas de lance-roquettes, d'explosifs ni de pistolets de recul",
-  "es": "Empiezas sobre pilares altos separados demasiado para saltar (¡impúlsate con cualquier arma!). Cada 10 segundos cae un arma nueva en tus manos. Si caes o te hacen K.O., estás fuera. Gana quien más K.O. consiga tras 3 minutos. Nada de lanzadores, explosivos ni pistolas de empuje"
- },
- "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon every 10 seconds. Fall or die and you are out. Most K.O.s after 3 minutes wins.": {
-  "zh_TW": "從高高的柱子上開始，柱子之間太遠，跳不過去（用任何武器都能衝刺！）。每 10 秒出現一把新武器。掉落或死亡就出局。3 分鐘後擊倒最多者獲勝。",
-  "zh_CN": "从高高的柱子上开始，柱子之间太远，跳不过去（用任何武器都能冲刺！）。每 10 秒出现一把新武器。掉落或死亡就出局。3 分钟后击倒最多者获胜。",
-  "ja": "高い柱の上からスタート。柱の間は遠くてジャンプでは届きません（どの武器でもダッシュできます！）。10秒ごとに新しい武器が登場。落ちるか倒されたら脱落。3分後にKO数が最も多い人の勝ち。",
-  "fr": "Départ sur de hauts piliers trop éloignés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme toutes les 10 secondes. Tombe ou meurs et tu es éliminé. Le plus de K.O. après 3 minutes gagne.",
-  "es": "Empiezas sobre pilares altos demasiado separados para saltar (¡impúlsate con cualquier arma!). Un arma nueva cada 10 segundos. Si caes o mueres, quedas fuera. Gana quien tenga más K.O. a los 3 minutos."
- },
- "Start on tall pillars too far apart to jump (dash with any weapon!). A new weapon every 10 seconds. Fall or get K.O.'d and you're out. Most K.O.s after 3 minutes wins": {
-  "zh_TW": "從高柱開局，柱子間距遠到跳不過去（任何武器都能衝刺！）。每 10 秒會有新武器。掉下去或被擊倒就出局。3 分鐘後擊倒數最多者獲勝",
-  "zh_CN": "从高柱开局，柱子间距远到跳不过去（任何武器都能冲刺！）。每 10 秒会有新武器。掉下去或被击倒就出局。3 分钟后击倒数最多者获胜",
-  "ja": "高い柱の上からスタート。間隔が広すぎてジャンプでは届かない（どの武器でもダッシュできる！）。10秒ごとに新しい武器。落ちるかKOされたら退場。3分後にKOが一番多い人の勝ち",
-  "fr": "Départ sur de hauts piliers trop espacés pour sauter (dash avec n'importe quelle arme !). Une nouvelle arme toutes les 10 secondes. Tu tombes ou tu es mis K.O. et tu es éliminé. Le plus de K.O. après 3 minutes gagne",
-  "es": "Empiezas sobre pilares altos separados demasiado para saltar (¡impúlsate con cualquier arma!). Cada 10 segundos, un arma nueva. Si caes o te hacen K.O., estás fuera. Gana quien más K.O. consiga tras 3 minutos"
- },
- "Start on tall pillars too far apart to jump (dash with any weapon!). Every 10 seconds a new weapon drops into your inventory. Fall or die and you are out. Most K.O.s when the 3 minutes end wins. No launchers, explosives or knockback guns": {
-  "zh_TW": "從跳不過去的高柱子開始（任何武器都能衝刺）。每 10 秒，一把新武器掉進背包。掉下去或死亡就出局。3 分鐘結束時擊倒最多者獲勝。沒有發射器、爆裂武器或擊退槍",
-  "zh_CN": "从跳不过去的高柱子开始（任何武器都能冲刺）。每 10 秒，一把新武器掉进背包。掉下去或死亡就出局。3 分钟结束时击倒最多者获胜。没有发射器、爆炸武器或击退枪",
-  "ja": "跳んで渡れないほど離れた高い柱からスタート（どの武器でもダッシュ可）。10秒ごとに新しい武器がインベントリに入ります。落ちるか倒れると脱落。3分終了時にKOが最も多い人の勝ち。ランチャー、爆発物、ノックバック銃はなし",
-  "fr": "Départ sur de hauts piliers trop espacés pour sauter (dash avec n'importe quelle arme). Toutes les 10 secondes, une nouvelle arme arrive dans l'inventaire. Qui tombe ou meurt est éliminé. Le plus de K.O. à la fin des 3 minutes gagne. Ni lanceurs, ni explosifs, ni armes à recul",
-  "es": "Empiezas en altos pilares demasiado separados para saltar (usa impulso con cualquier arma). Cada 10 segundos cae un arma nueva al inventario. Si caes o mueres, quedas fuera. Gana quien tenga más K.O. al acabar los 3 minutos. Sin lanzadores, explosivos ni armas de empuje"
- },
  "Start soak test": {
   "zh_TW": "開始穩定性測試",
   "zh_CN": "开始稳定性测试",
@@ -7048,13 +7118,6 @@
   "fr": "Superviseur",
   "es": "Supervisor"
  },
- "Supervisor called in backup tradies!": {
-  "zh_TW": "監工呼叫了工友增援！",
-  "zh_CN": "监工呼叫了工友增援！",
-  "ja": "現場監督が応援の職人を呼んだ！",
-  "fr": "Le superviseur a appelé des ouvriers en renfort !",
-  "es": "¡El supervisor pidió refuerzos de obreros!"
- },
  "Sur-Ron Wheelie": {
   "zh_TW": "電動越野車前輪翹起",
   "zh_CN": "电动越野车翘头",
@@ -7082,6 +7145,27 @@
   "ja": "腕を大きく振って左右にステップ",
   "fr": "Bras grands ouverts, pas de côté",
   "es": "Brazos amplios y pasos laterales"
+ },
+ "TERMINAL RING-OUT!": {
+  "zh_TW": "極限出界！",
+  "zh_CN": "极限出界！",
+  "ja": "限界場外！",
+  "fr": "SORTIE EXTRÊME !",
+  "es": "¡FUERA DE LÍMITE!"
+ },
+ "Tac-Reload": {
+  "zh_TW": "戰術換彈",
+  "zh_CN": "战术换弹",
+  "ja": "タクティカルリロード",
+  "fr": "Rechargement tactique",
+  "es": "Recarga táctica"
+ },
+ "Tap a row to change it": {
+  "zh_TW": "點一列即可更改",
+  "zh_CN": "点一行即可更改",
+  "ja": "行をタップして変更",
+  "fr": "Touche une ligne pour changer",
+  "es": "Toca una fila para cambiarla"
  },
  "Tap a slot to switch": {
   "zh_TW": "點按欄位即可切換",
@@ -7230,12 +7314,12 @@
   "fr": "Le Client",
   "es": "El Cliente"
  },
- "The Client signed off. Every tradie is back on smoko.": {
-  "zh_TW": "客戶簽字驗收了。工友們都回去休息了。",
-  "zh_CN": "客户签字验收了。工友们都回去休息了。",
-  "ja": "依頼主が承認しました。職人たちは休憩に戻りました。",
-  "fr": "Le client a validé. Tous les ouvriers retournent en pause.",
-  "es": "El cliente dio el visto bueno. Todos los obreros vuelven al descanso."
+ "The Client signed off": {
+  "zh_TW": "客戶已簽收",
+  "zh_CN": "客户已签收",
+  "ja": "クライアントが承認",
+  "fr": "Le client a validé",
+  "es": "El cliente dio el visto bueno"
  },
  "The Construction update": {
   "zh_TW": "建築大更新",
@@ -7264,6 +7348,13 @@
   "ja": "ワードローブには持っているものだけが表示されます。それ以外はショップにあり、新しい「キャラクター」タブもあります",
   "fr": "La Garde-robe n'affiche que ce que tu possèdes. Le reste est dans la Boutique, avec un nouvel onglet Classe",
   "es": "El Armario solo muestra lo que tienes. Lo demás está en la Tienda, con una nueva pestaña de Clase"
+ },
+ "The aiming dot in the middle of the screen": {
+  "zh_TW": "螢幕中央的瞄準點",
+  "zh_CN": "屏幕中央的瞄准点",
+  "ja": "画面中央の照準ドット",
+  "fr": "Le point de visée au centre de l'écran",
+  "es": "El punto de mira en el centro de la pantalla"
  },
  "The arena is growing!": {
   "zh_TW": "競技場正在變大！",
@@ -7370,13 +7461,6 @@
   "fr": "Le nouvel hôte poursuit la partie…",
   "es": "El nuevo anfitrión continúa la partida…"
  },
- "The range has %d dummies: they stand, slide and pop back up. They never fight back.": {
-  "zh_TW": "練習場有 %d 個假人：它們會站立、滑動並彈起，從不反擊。",
-  "zh_CN": "练习场有 %d 个假人：它们会站立、滑动并弹起，从不反击。",
-  "ja": "練習場には %d 体のダミーがいます。立つ、滑る、起き上がるだけで、反撃はしません。",
-  "fr": "Le terrain d'entraînement compte %d mannequins : ils restent debout, glissent et se relèvent. Ils ne ripostent jamais.",
-  "es": "El campo de práctica tiene %d maniquíes: se quedan quietos, se deslizan y vuelven a levantarse. Nunca devuelven el golpe."
- },
  "The room code is still %s.": {
   "zh_TW": "房間代碼仍是 %s。",
   "zh_CN": "房间代码仍是 %s。",
@@ -7390,20 +7474,6 @@
   "ja": "ルームは引き続き全員に公開されています。",
   "fr": "Le salon reste ouvert à tous.",
   "es": "La sala sigue abierta para todos."
- },
- "The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you are out for the match. Most K.O.s when the clock ends wins.": {
-  "zh_TW": "同樣的八根高柱，這次立在燃燒天空下的熔岩湖上。間隙太寬跳不過，需要衝刺（任何武器都能在這裡衝刺）。每 10 秒，一把新武器會落入背包。掉下去，這場比賽你就出局。時間到時擊倒最多者獲勝。",
-  "zh_CN": "同样的八根高柱，这次立在燃烧天空下的熔岩湖上。间隙太宽跳不过，需要冲刺（任何武器都能在这里冲刺）。每 10 秒，一把新武器会落入背包。掉下去，这场比赛你就出局。时间到时击倒最多者获胜。",
-  "ja": "同じ8本の高い柱が、燃える空の下の溶岩湖の上に立っています。隙間が広くてジャンプでは届かないので、ダッシュが必要です（どの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに入ります。落ちたらその試合は脱落です。時間切れ時にKOが最も多い人の勝ちです。",
-  "fr": "Les mêmes huit grands piliers, cette fois au-dessus d'un lac de lave sous un ciel en feu. Les écarts sont trop larges pour sauter : il faut un dash (toutes les armes permettent de dasher ici). Toutes les 10 secondes, une nouvelle arme arrive dans l'inventaire. Qui tombe est éliminé pour la partie. Le plus de K.O. à la fin du temps gagne.",
-  "es": "Los mismos ocho pilares altos, ahora sobre un lago de lava bajo un cielo ardiente. Los huecos son demasiado anchos para saltar, así que necesitas impulso (cualquier arma puede usar impulso aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes, quedas fuera de la partida. Gana quien tenga más K.O. cuando se acabe el tiempo."
- },
- "The same eight tall pillars, now over a lake of lava under a burning sky. The gaps are too wide to jump, so you need a dash (any weapon can dash here). Every 10 seconds a new weapon lands in your inventory. Fall and you're out for the match. Most K.O.s when the clock ends wins. The floor is lava. Literally.": {
-  "zh_TW": "同樣的八根高柱，這次立在燃燒天空下的熔岩湖上。柱距太寬，跳不過去，所以需要衝刺（這裡任何武器都能衝刺）。每 10 秒會有新武器落進你的背包。掉下去，這一局就出局。時間到時擊倒數最多者獲勝。地板是熔岩。真的是熔岩。",
-  "zh_CN": "同样的八根高柱，这次立在燃烧天空下的熔岩湖上。柱距太宽，跳不过去，所以需要冲刺（这里任何武器都能冲刺）。每 10 秒会有新武器落进你的背包。掉下去，这一局就出局。时间到时击倒数最多者获胜。地板是熔岩。真的是熔岩。",
-  "ja": "同じ8本の高い柱が、今度は燃える空の下の溶岩の湖に立っています。間隔が広すぎてジャンプでは届かないので、ダッシュが必要です（ここではどの武器でもダッシュできます）。10秒ごとに新しい武器がインベントリに届きます。落ちたらその試合は退場。時間切れのときにKOが一番多い人の勝ち。床は溶岩です。文字どおり、溶岩です。",
-  "fr": "Les mêmes huit hauts piliers, désormais au-dessus d'un lac de lave sous un ciel en feu. Les écarts sont trop grands pour sauter, il faut donc un dash (n'importe quelle arme peut dasher ici). Toutes les 10 secondes, une nouvelle arme atterrit dans ton inventaire. Si tu tombes, tu es éliminé pour la partie. Le plus de K.O. quand le temps s'écoule gagne. Le sol, c'est de la lave. Littéralement.",
-  "es": "Los mismos ocho pilares altos, ahora sobre un lago de lava bajo un cielo ardiente. Los huecos son demasiado anchos para saltar, así que necesitas un impulso (cualquier arma puede impulsarse aquí). Cada 10 segundos cae un arma nueva en tu inventario. Si caes, quedas fuera de la partida. Gana quien más K.O. tenga cuando se acabe el tiempo. El suelo es lava. Literalmente."
  },
  "The server had a problem (%d). Try again in a moment.": {
   "zh_TW": "伺服器發生問題（%d）。請稍後再試。",
@@ -7622,6 +7692,13 @@
   "fr": "Basculer",
   "es": "Alternar"
  },
+ "Tool Crate!": {
+  "zh_TW": "工具箱！",
+  "zh_CN": "工具箱！",
+  "ja": "工具箱！",
+  "fr": "Caisse à outils !",
+  "es": "¡Caja de herramientas!"
+ },
  "Top hat": {
   "zh_TW": "高帽",
   "zh_CN": "高帽",
@@ -7797,6 +7874,13 @@
   "fr": "Deux équipes. Premier à 30 K.O.",
   "es": "Dos equipos. El primero a 30 K.O."
  },
+ "Two teams: %d vs %d": {
+  "zh_TW": "兩隊：%d 對 %d",
+  "zh_CN": "两队：%d 对 %d",
+  "ja": "2チーム：%d 対 %d",
+  "fr": "Deux équipes : %d contre %d",
+  "es": "Dos equipos: %d contra %d"
+ },
  "Type %s to confirm": {
   "zh_TW": "輸入 %s 以確認",
   "zh_CN": "输入 %s 以确认",
@@ -7901,6 +7985,13 @@
   "ja": "使用中：%s（%s）",
   "fr": "Utilisé : %s (%s)",
   "es": "En uso: %s (%s)"
+ },
+ "Vault Flip": {
+  "zh_TW": "翻滾躍擊",
+  "zh_CN": "翻滚跃击",
+  "ja": "ヴォールトフリップ",
+  "fr": "Saut périlleux",
+  "es": "Salto mortal"
  },
  "Version": {
   "zh_TW": "版本",
@@ -8013,6 +8104,13 @@
   "ja": "武器",
   "fr": "Armes",
   "es": "Armas"
+ },
+ "Weapons Swapped!": {
+  "zh_TW": "武器對調！",
+  "zh_CN": "武器对调！",
+  "ja": "武器チェンジ！",
+  "fr": "Armes échangées !",
+  "es": "¡Armas cambiadas!"
  },
  "Weapons are double size": {
   "zh_TW": "武器是兩倍大小",
@@ -8168,12 +8266,12 @@
   "fr": "Gagne une partie chaque jour pour enchaîner les jours. Oscille chaque jour !",
   "es": "Gana una partida cada día para mantener la racha. ¡Tambaléate a diario!"
  },
- "Win on Normal or Nightmare for the Site Foreman hat": {
-  "zh_TW": "在普通或噩夢難度通關，即可獲得工地領班帽",
-  "zh_CN": "在普通或噩梦难度通关，即可获得工地领班帽",
-  "ja": "ノーマルかナイトメアでクリアすると現場監督のヘルメットが手に入る",
-  "fr": "Gagne en Normal ou Cauchemar pour le casque de contremaître",
-  "es": "Gana en Normal o Pesadilla para el casco de capataz"
+ "Win on Normal or Nightmare for a hat": {
+  "zh_TW": "在普通或惡夢難度獲勝可得帽子",
+  "zh_CN": "在普通或噩梦难度获胜可得帽子",
+  "ja": "ノーマルかナイトメアで勝つと帽子がもらえる",
+  "fr": "Gagne en Normal ou Cauchemar pour un chapeau",
+  "es": "Gana en Normal o Pesadilla para un sombrero"
  },
  "Windows": {
   "zh_TW": "窗戶",
@@ -8434,6 +8532,13 @@
   "fr": "Tout est déjà possédé !",
   "es": "¡Ya tienes todo lo de aquí!"
  },
+ "You own the %s": {
+  "zh_TW": "你已有 %s",
+  "zh_CN": "你已有 %s",
+  "ja": "%sは持っています",
+  "fr": "Tu as déjà : %s",
+  "es": "Ya tienes: %s"
+ },
  "You play as %s.": {
   "zh_TW": "你將以 %s 上場。",
   "zh_CN": "你将以 %s 上场。",
@@ -8476,12 +8581,12 @@
   "fr": "Victoire !",
   "es": "¡Ganas!"
  },
- "You're a giant! Mind the furniture": {
-  "zh_TW": "你變成巨人了！小心家具",
-  "zh_CN": "你变成巨人了！小心家具",
-  "ja": "巨大化！家具にご注意",
-  "fr": "Tu es un géant ! Attention aux meubles",
-  "es": "¡Eres un gigante! Cuidado con los muebles"
+ "You're a giant!": {
+  "zh_TW": "你變巨人了！",
+  "zh_CN": "你变巨人了！",
+  "ja": "巨大化した！",
+  "fr": "Tu es géant !",
+  "es": "¡Eres gigante!"
  },
  "You're already in a room.": {
   "zh_TW": "你已經在房間裡了。",
@@ -8504,13 +8609,6 @@
   "fr": "Tu es éliminé ! Gros vacillement",
   "es": "¡Estás fuera! Gran tambaleo"
  },
- "You're out! Spectating from the sofa.": {
-  "zh_TW": "你出局了！在沙發上觀戰。",
-  "zh_CN": "你出局了！在沙发上观战。",
-  "ja": "脱落！ソファから観戦中です。",
-  "fr": "Éliminé ! Spectateur depuis le canapé.",
-  "es": "¡Estás fuera! Viendo desde el sofá."
- },
  "You're out! Spectating.": {
   "zh_TW": "你出局了！觀戰中。",
   "zh_CN": "你出局了！观战中。",
@@ -8532,12 +8630,12 @@
   "fr": "Tu es l'hôte maintenant : la partie continue.",
   "es": "Ahora eres el anfitrión: la partida sigue."
  },
- "Your %s is already in the Walldrobe": {
-  "zh_TW": "你的%s已在衣櫥中",
-  "zh_CN": "你的%s已在衣橱中",
-  "ja": "%s はすでにワードローブにあります",
-  "fr": "Votre %s est déjà dans la garde-robe",
-  "es": "Tu %s ya está en el armario"
+ "You're the host!": {
+  "zh_TW": "你是房主了！",
+  "zh_CN": "你是房主了！",
+  "ja": "あなたがホストです！",
+  "fr": "Tu es l'hôte !",
+  "es": "¡Eres el anfitrión!"
  },
  "Your account": {
   "zh_TW": "你的帳號",

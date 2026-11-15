@@ -43,7 +43,7 @@ const ACHIEVEMENTS := [
 ]
 ## The game types "Try every game type" counts (the Practice Range and Sandbox have no real end).
 const MODES := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4", "mega", "giant", "gungame", "tdm",
-	"deathmatch", "sudden", "chaos", "pillars", "explosive", "lowg", "construction"]
+	"deathmatch", "sudden", "chaos", "explosive", "lowg", "construction"]
 const STREAK_BASE := 20
 const STREAK_STEP := 10
 const STREAK_MAX := 6              ## days the streak bonus keeps growing

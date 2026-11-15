@@ -116,7 +116,7 @@ card Next → next_stage() 374-378                       (arena frozen behind th
                                                                 begin_stage: SiteMap.set_seed(arc.seed)
                                                                 NetMatch.setup: ghosts for seats+crew
                                                                 stage_ready: HUD strip + intro card
-  am {s:"intro"} ──────────────────────────────────────────►  card ("Waiting for the host")
+  am {s:"intro"} ──────────────────────────────────────────►  card (its Start asks the host: `arc start`)
   host presses Start → begin_fight 227-232  ── am ─────────►  card closes, fight starts
 ```
 
@@ -135,9 +135,9 @@ host + guest in one process) would fight over it — set it per world in `begin_
 `HostMatch.on_event` 211-216 announces, `take` removes, a joining player gets `crates` 434); the `load_test` hazard
 crates do not (`stage_events.gd:147-200` host-only nodes), so `am.ev` carries `{x, z, spot, warn}` for the guest's
 visuals and the damage stays host-side — widen `_land` 191 (it skips `is_ghost`) and `Combat.hit` on a ghost emits the
-`h` for its owner (`combat.gd:200-209`). Solo, death = stage failed (`_failed` 316-321); proposed for two: a dead player
-is *down* (pinned) while the teammate plays, revived after 6 s while a teammate is up, and the attempt fails only when
-**every seat is down at once**, costing one shared life — `seats == 1` keeps today's rule verbatim. `lives` is shared and
+`h` for its owner (`combat.gd:200-209`). Solo, death = stage failed (`_failed` 316-321); as built for two (owner, 2026-11-15): a dead player
+is *down* (pinned) while the teammate plays, **each death costs one shared life**, the seat revives after 6 s while a teammate is up, and the attempt fails when
+**every seat is down at once** (no extra charge, each death already paid) or the last life is spent (run over) — `seats == 1` keeps today's rule verbatim. `lives` is shared and
 host-authoritative (`am.lv`; the HUD strip already says "Lives n", `arcade_boss_hud.gd:95`). **Coins are per player and
 local**: each client applies the same stage result to its own `Save.dlc`/`Save.coins`, so the first-clear bonus is per
 save; each guest tracks its own K.O.s/time for its card.
@@ -155,8 +155,8 @@ hazard/shrink timing in `rs.arc`, plus a real `ArcadeManager` on the promoted gu
 - **Friendly bots** (a seat that starts or becomes a bot) must target the crew — today a bot with `ffa = false` only
   targets `sim.player`, so a teammate bot would attack the host: new PvE AI (target the crew, follow the player when
   idle). Unglamorous, but it is what makes "bots on" playable and M3's takeover useful.
-- Cards go to **both**: the host shows its own, the guest builds the same panel from `am` with a "Waiting for the host"
-  button state.
+- Cards go to **both**: the host shows its own, the guest builds the same panel from `am`, and the guest's buttons ask
+  the host (`arc start` / `next` / `retry`; M4) instead of moving the run locally.
 
 ## 5. Single-player assumptions (and what they become)
 
@@ -232,7 +232,7 @@ the run ending when the host leaves and decide M5 separately.
 ## 10. Decisions (owner, 2026-11-14)
 
 1. **Lives:** shared run lives, one HUD number.
-2. **Downed player:** auto-revive after 6 s while a teammate is still up; a revive does not cost an extra life.
+2. **Downed player:** every seat death costs one shared life (updated 2026-11-15); the seat auto-revives after 6 s while a teammate is still up (the revive itself is free). The run is over at 0 lives; all seats down with lives left fails the attempt and retries the stage with no extra charge. Solo is unchanged.
 3. **Records and coins:** co-op clears and first-clear coins are written on each player's save; the UI says so.
 4. **Seats:** two players per room.
 5. **Lobby:** a room may start with one human plus a teammate bot, so a friend can take the seat later.
@@ -252,7 +252,7 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
   rebuilds the site from `arc.seed`, maps the seats onto the net ghosts (`NetMatch.slot_fighter(arc.seats[k])`) and binds
   the same `ArcadeBossHud`. The GUEST PRESENTATION is done too: its HUD strip names the stage/lives and its boss bar is
   driven by `am.hf` (`arc.big` gives the ghost the 1.5x look), the intro/clear/failed/over/won cards are rebuilt from
-  `am.s`/`am.last`/`am.won` with the host's buttons disabled ("Waiting for the host"), `am.sh` sets its own shrinking
+  `am.s`/`am.last`/`am.won` with the host's buttons disabled (M4 makes them ask the host: §11), `am.sh` sets its own shrinking
   floor (`rules.shrink` + visuals), `am.dn`/`am.dnt` pin its own fighter behind a "Down! Back in N" overlay (no local
   respawn) and `am.rv` places it at the host's safe spot/health fraction with 1.5 s invulnerability, and each clear
   (`am.cn`) pays ITS OWN save once (its own `DlcSave.has_cleared`/first-clear bonus/`mark_cleared`/`set_best`/`Save.coins`/
@@ -263,13 +263,13 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
   (0.42) and shrinking floor (50 m), the guest leaving (seat 1 becomes a fighting teammate bot with its class), the
   guest rejoining mid-run (current stage `start`, seat 1 human again) and the host winning/leaving (victory paid on the
   guest's save, then "The host left. The Arcade run is over."); host and guests exit clean. Web guests are simply
-  refused. Remaining: M4 only (hazard `am.ev` visuals, weapon takes, guest `arc` button requests, phase toasts).
+  refused. M4 (guest parity) is the one milestone left at that point — it is done below.
 - **M2 (Arcade seats): done, offline-verified.** `ArcadeManager` is seat-aware: `seat_count` (1 or 2) and `seat_names`
   set before the first `load_map`; the seats are `sim.fighters[0..seat_count-1]` in room-slot order (crew after) and are
   read with `seat(k)`, `seat_name/label(k)`, `seat_alive`, `seat_is_down`, `seat_revive_left`, `living_seats`,
   `downed_seats`, `all_seats_down`, `seat_control(k)`. Rules: per-seat damage scale, a downed seat auto-revives after
-  `REVIVE_TIME` (6 s) at full class health on a safe spot with no life lost while a teammate is up, all seats down loses
-  exactly one shared life and retries the same stage, K.O.s are summed, `_pay()`/`_win()` return a `seats` array with
+  `REVIVE_TIME` (6 s) at full class health on a safe spot while a teammate is up (each seat death costs one shared life, the revive is free), all seats down
+  retries the same stage with no extra charge and 0 lives ends the run, K.O.s are summed, `_pay()`/`_win()` return a `seats` array with
   each seat's share (one local save is written), the HUD shows one line per seat with the down countdown, and the cards
   name the seats. Crew/boss targeting is nearest living seat (`BotBrain.pick_target` via the `pve_seats` sim meta; a
   `bot:true` seat is a full target and fights the crew); the 1-seat path is unchanged (`npm run test:godot-bots` parity
@@ -279,7 +279,6 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
   slot→seat mapping (`seat_count`/`seat_names`/`seat_bot` before a stage), mirror `seat_downed`/`seat_revived` as the
   downed-state messages (`am.dn` + revive countdown, ideally from `seat_is_down`/`seat_revive_left`), and deliver
   `last["seats"]`/`victory["seats"]` to each client so every save is paid on its own client (never two saves here).
-
 - **M3 (drop → bot → rejoin): done, net-verified.** `HostMatch.ghost_to_bot` is the arcade seat handover: a guest that
   drops keeps its fighter (class/look/name/weapon, alive if it was downed at the time) and the saved BotBrain drives it as
   a player seat (it targets the crew through `pve_seats`); `ArcadeManager.refresh_seats(slot, keep)` only re-flags it and
@@ -290,6 +289,21 @@ These settle section 8's questions; M1-M4 are in scope, M5 is out.
   Arcade run is over."). Test: the same scenario D covers drop (seat bot keeps `kid`/the player's name and targets
   "Engineer"), rejoin (`REJOIN` with `arc.st` 1 and matching seed, `slots[1].kind == "human"`) and host-left (the
   rejoining guest prints `HOSTLEFT` with the run-over reason). M5 (migration inside a run) stays cut.
+
+- **M4 (guest parity): done, net-verified.** `am` now carries `ev`: the active load-test crate and backup-call warning
+  rings (`StageEvents.active_events()`, one stable id per host event, with the seconds left) and a boss phase toast
+  ({phase, name}) that travels exactly once. The guest's `handle_remote` draws the matching red / amber rings itself and
+  toasts each new phase once (presentation only: no damage, no crate spawn, no timer, no state advance; repeated `am`s
+  neither double the rings nor repeat the toast). The guest's intro/clear/failed cards have **live buttons** now: they
+  ask the host with `{"t":"arc","a":"start"|"next"|"retry"}` (`GuestSession.arcade_request` from
+  `ArcadeManager._guest_arc`, one request per stage/state/action), and `HostSession.arcade_cmd` applies the request only
+  in the matching card state (`begin_fight` in intro, `next_stage` in cleared, `retry_stage` in failed) — anything else
+  is dropped as guarded exactly like a forged `start`; `ArcadeManager` also debounces the deferred reload, so a double
+  press cannot skip a stage. Test: the same scenario D run now takes its retry, its stage-2 transition and its stage-2
+  fight start from the GUEST's accepted requests (the host prints RETRY / ADVANCING / HOST_FIGHT with `via: guest arc
+  ...`); the guest draws 2 red + 1 amber `am.ev` rings without duplicates and shows one "Engineer is fired up!" phase
+  toast; and four forged wrong-state requests during the fight leave the run in `fight` (host ARC_IGNORED, all counted
+  as guarded). M5 (migration inside a run) stays cut.
 
 ## 12. Entry and lobby: co-op moved to the Online flow (owner, 2026-11-14)
 

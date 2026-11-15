@@ -6,14 +6,15 @@
    free-standing (open sides), visible from the surrounding floor and at fighter height - an enclosed or far-corner box
    is almost never chosen, a never-visible one is never chosen while visible cover exists. It never picks ground / roofs /
    boundary walls / stairs / spawns / ladders / pads / enclosed boxes.
-   Breakables load with collision and a bright accent frame, a non-breaking hit emits prop_hit (chips + dust + tap sound)
-   and advances the visible damage tier, bullets + melee + flame + explosions break them after their hp, a break removes
-   the solid / hides the mesh (recycled) / leaves rubble, broken components stay broken, then respawn after the config's
+   Breakables are part of every offline arena match (no option) and look exactly like the map's own boxes (no accent
+   frame); decor on a trunk (a tree crown) is lifted out of the merged decor and goes with it. They load with collision,
+   a non-breaking hit emits prop_hit (chips + dust + tap sound) and advances the visible damage tier, bullets + melee +
+   flame + explosions break them after their hp, a break removes the solid / hides the mesh (recycled) and shatters
+   into debris pieces that sink into the ground, broken components stay broken, then respawn after the config's
    randomised ~2 minute delay with collision + mesh back (fade-in) and can be broken again through several cycles without
-   node leaks. World wiring is tested through the REAL match path: the Setup Wizard toggle writes Settings, the launched
-   world reads it, and the world's own player fires the real gun at every selected component until it breaks (break
-   reaches the presentation layer, HUD count drops, respawn restores it). Offline gates (Practice Range / Sandbox /
-   generated / shrinking levels) hold and a zero-breakable level says "Breakables: 0" in the HUD.
+   node leaks. They run together with a moving floor (never a drifting block). World wiring is tested through the REAL
+   match path: the world's own player fires the real gun at every selected component until it breaks (break reaches the
+   presentation layer, respawn restores it). Offline gates (Practice Range / Sandbox / generated / shrinking levels) hold.
    Needs Godot (GODOT env var or the macOS default). Run: node tools/test-godot-destruct.js
    (add to package.json as: "test:godot-destruct": "node tools/test-godot-destruct.js") */
 const { spawnSync } = require('child_process');
@@ -34,4 +35,10 @@ console.log(lines.join('\n') || out.slice(0, 2000));
 const unexpected = out.split('\n').some(l => /SCRIPT ERROR/.test(l) || (/^ERROR/.test(l) && !/^ERROR: Destruct: /.test(l)));
 const ok = r.status === 0 && /^DESTRUCT ok/m.test(out) && !unexpected;
 if (!ok) { console.log('godot destruct test FAILED'); process.exit(1); }
+// PropDebris is visible and sane (tests/prop_debris_test.gd): pieces exist, are visible, in bounds, above ground, then sink away
+const r2 = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/prop_debris_test.gd', '--', '--no-save'],
+  { encoding: 'utf8', timeout: 600000 });
+const out2 = (r2.stdout || '') + (r2.stderr || '');
+console.log(out2.split('\n').filter(l => /^(PROPDEBRIS|FAIL)|SCRIPT ERROR/.test(l)).join('\n'));
+if (r2.status !== 0 || !/^PROPDEBRIS ok/m.test(out2) || /SCRIPT ERROR/.test(out2)) { console.log('prop debris test FAILED'); process.exit(1); }
 console.log('godot destruct test passes');

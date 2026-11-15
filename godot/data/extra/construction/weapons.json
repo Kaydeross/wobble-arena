@@ -134,7 +134,7 @@
   "force": 1.2,
   "maxForce": 1.6,
   "assist": 0.9,
-  "ammo": 30,
+  "ammo": 50,
   "recoil": 0.04,
   "muzzle": 1.1,
   "lift": 0.15,

@@ -11,9 +11,32 @@ extends Node3D
 ## dead, down_t, weapon, swing (-1 idle, 0..1.3), kick_t (-1 idle, 0..1), invuln, flash (seconds left, web 0.12 = full),
 ## class_id, skin, hat, color. Extras the web game has that the contract doesn't (yet): wish (Vector2 move input, for
 ## the stride), trap (bool, lying under a net), stiff (arm spring stiffness), fall_side (+1/-1).
+## Faces (Sprint 2.4, docs/GRAPHICS.md): rage (float, FighterState.rage_t seconds left) and off_stage / panic (bool,
+## airborne off the arena floor, falling to a ring-out); both optional, safe defaults keep the face idle.
 
 const SIM_DOWN := Vector3(0, -1, 0)
 const FLASH_FULL := 0.12            # web Fighter.flash after a hit (seconds)
+
+# --- faces (Sprint 2.4): the 2-mesh eye rig, transformed, never added to. Docs: docs/GRAPHICS.md "Faces".
+const EYE_SIZE := Vector3(0.1, 0.14, 0.06)   # the eye box the web game draws
+const EYE_X := 0.13                          # eye offset on the head (neck space)
+const EYE_Y := 0.36
+const EYE_Z := 0.32
+const BROW_SIZE := Vector3(0.13, 0.032, 0.05)   # brow bar merged into the eye mesh above LOW
+const BROW_Y := 0.105                            # brow centre above the eye centre (same mesh, one draw call)
+const X_EYE_SIZE := Vector3(0.15, 0.026, 0.05)   # one bar of the down/dead X (two bars, one surface)
+const BLINK_WAIT_MIN := 2.5                  # idle blink: seconds between blink starts (own RNG)
+const BLINK_WAIT_MAX := 4.5
+const BLINK_DUR := 0.16                      # how long the eyes take to close and open (~10 frames at 60 Hz)
+const ANGRY_ANGLE := 0.34                    # brow slant (rad) at full anger: inner ends down
+const ANGRY_SQUINT := 0.78                   # eye height at full anger
+const ANGRY_DROP := 0.006                    # eye/brow drop while angry (m)
+const PANIC_WIDE := 1.34                     # eye height at full panic
+const PANIC_WIDE_X := 1.18                   # eye width at full panic
+const PANIC_LIFT := 0.014                    # eye/brow lift while panicking (m)
+const PANIC_ANGLE := 0.11                    # brow inner ends up while panicking (rad)
+const FACE_K_ANGRY := 12.0                   # blend rates (1/s)
+const FACE_K_PANIC := 14.0
 
 ## Hit flash 0..1 (drives emission like the web game's emissive); decays by itself unless the state drives it.
 var flash: float = 0.0
@@ -24,36 +47,64 @@ var color: int = WobblerLooks.DEFAULT_COLOR
 var weapon: String = ""
 var cls: Dictionary = {}
 
-# --- rig nodes (same hierarchy as the JS Fighter)
+# --- rig nodes (same hierarchy as the JS Fighter). Post-v0.4.0 Sprint 4.2: the static meshes of every rigidly
+# animated node are merged into ONE MeshInstance3D per node ("body mesh", "head mesh", ...), so a fighter costs ~12
+# draws instead of ~35. The gameplay points the Fighter/Combat read (torso, head_mesh, hand, arm, arm_l, shoulder,
+# legs) stay real nodes with exactly the old transforms: torso/head_mesh are plain Node3D markers now (their geometry
+# lives in the body/neck merged meshes), and the ragdoll overlay's nodes (body, neck, legs, foot_meshes, arm, arm_l,
+# arm_sleeve, arm_hand_mesh, hand) are unchanged. See docs/GRAPHICS.md "Fighter mesh batching".
 var rig: Node3D                      # JS root: position, yaw, fall roll, squash
 var body: Node3D
 var neck: Node3D
-var torso: MeshInstance3D
-var head_mesh: MeshInstance3D
+var torso: Node3D                    # gameplay point (chest); the torso geometry is merged into body_mesh
+var head_mesh: Node3D                # gameplay point (head) + eye parent; the head geometry is merged into neck_mesh
 var eyes: Array[MeshInstance3D] = []
-var belt: MeshInstance3D
-var buckle: MeshInstance3D
 var legs: Array[Node3D] = []
 var arm_l: Node3D
-var hand_l: MeshInstance3D
 var shoulder: Node3D
 var arm: Node3D                      # the aiming arm, positioned in world space each frame
 var hand: Node3D
 var hat: Node3D
 var hat_spin: Node3D
 
-# --- materials (each part owns one, so flash/recolour work per fighter, like Fighter.mats)
+# --- merged (batched) meshes: one per rigid node, plus the standalone animated ones the ragdoll overlay writes
+var body_mesh: MeshInstance3D        # child of body: torso + belt + buckle + body-attached look parts
+var neck_mesh: MeshInstance3D        # child of neck: head + neck-attached look parts
+var arm_l_mesh: MeshInstance3D       # child of arm_l: off-arm sleeve + hand + armL look parts
+var arm_mesh: MeshInstance3D         # child of arm: look parts attached to the aiming arm (none in the shipped looks)
+var leg_meshes: Array[MeshInstance3D] = []   # children of legs[i] (named "Thigh" for the Locker): thigh + leg look parts
+var _hat_meshes: Array[MeshInstance3D] = []  # hat chunks: one merged mesh, or one per part for hats with >= 6 parts
+var _weapon_holder: Node3D
+var _weapon_mi: MeshInstance3D
+var _weapon_nodes: Dictionary = {}   # current key -> holder (locker_test reads it for the emote put-away contract)
+
+# --- materials. Post-batching every part colour is baked into the mesh's vertex COLOR and the surfaces share one
+# static material per role; the only per-fighter material is the flash one (hit flash / invulnerability drive emission).
 var _mats: Array[StandardMaterial3D] = []
-var _color_mats: Array[StandardMaterial3D] = []
-var _accent_mats: Array[StandardMaterial3D] = []
-var _leg_mats: Array[StandardMaterial3D] = []
-var _foot_mats: Array[StandardMaterial3D] = []
-var _tint: Array = []                # [mat, mul, mix]: outfit parts tinted from the top colour
-var _skin_nodes: Array[Node] = []
-var _cls_nodes: Array[Node] = []
-var _weapon_nodes: Dictionary = {}
+var _flash_mat: StandardMaterial3D
+var _flash_mat_cull: StandardMaterial3D = null
+var _skin_nodes: Array[Node] = []    # one marker per outfit part (site_map_test's Builder PPE contract); no meshes
+var _class_specs: Array = []         # WobblerLooks.class_parts(...) for the current class
+var _skin_specs: Array = []          # WobblerLooks.skin_parts(...) for the current outfit
+var _hat_specs: Array = []           # WobblerLooks.hat_parts(...) for the current hat
+var _team_tint := false              # recolor(color, true): the outfit keeps the team colour (world.gd)
+var _look_batch := 0                 # > 0 while setup() changes several look fields: rebuild once at the end
 var _flash_white := false
 var _flash_k := -1.0
+
+# --- merged-mesh cache. Geometry+colours depend only on class | outfit | hat | colour | team tint (not on the tier),
+# so every fighter with the same look shares the ArrayMeshes; LRU-bounded in entries AND bytes (see
+# look_cache_stats()). Weapons are cached separately by key (WeaponModels.build is fused into one surface).
+const LOOK_CACHE_MAX := 24
+const LOOK_CACHE_BYTES := 4 * 1024 * 1024
+const WEAPON_CACHE_MAX := 48
+static var _look_cache: Dictionary = {}
+static var _look_order: Array[String] = []
+static var _look_cache_bytes := 0
+static var _weapon_meshes: Dictionary = {}
+static var _weapon_order: Array[String] = []
+static var _weapon_bytes := 0
+static var _smats: Dictionary = {}
 
 # --- animation state (Fighter.animate)
 var lean := Spring2.new()
@@ -91,6 +142,29 @@ var fall_side: float = 1.0
 var _time: float = 0.0
 var _state_flash := false
 var _stiff_override := -1.0
+
+# --- faces (Sprint 2.4, docs/GRAPHICS.md "Faces"): the TWO eye meshes are transformed by the state, never added to.
+# Own deterministic blink clock/RNG (seeded once in setup(), never combat.rng, never the global RNG).
+var rage: float = 0.0                ## state "rage" (FighterState.rage_t seconds left): angry brows while > 0
+var off_stage := false               ## state "off_stage" / "panic": airborne off the arena floor (wide panic eyes)
+var blink_seed: int = -1             ## >= 0 pins the blink personality (tests / tools); -1 = derive from the identity
+var face_time: float = 0.0           ## the wobbler's own face clock, advanced only by animate()
+var blink_t: float = -1.0            ## seconds into the current blink, -1.0 = eyes open
+var blink_count := 0                 ## blinks started so far
+var blink_interval: float = 0.0      ## the wait drawn for the current blink cycle (2.5-4.5 s)
+var blink_started_at: float = -1.0   ## face_time of the last blink start
+var eye_open: float = 1.0            ## vertical eye openness the rig got this frame (1 = normal, 0 = shut)
+var brow_angle: float = 0.0          ## eye/brow slant the rig got this frame (rad; + = inner end down)
+var angry_k: float = 0.0             ## 0..1 blend to the angry face
+var panic_k: float = 0.0             ## 0..1 blend to the panic face
+var _blink_wait: float = 0.0         ## seconds until the next blink start
+var _x_eyes := false                 ## the down/dead X eye mesh is on
+var _face_rng := RandomNumberGenerator.new()
+var _eye_mesh: Mesh                  ## this tier's open-eye mesh (plain box on LOW, box + brow above)
+var _eye_base_scale: Array[Vector3] = [Vector3.ONE, Vector3.ONE]   ## class eye scale (alien 1.5)
+var _face_sig := Vector4(-1.0, 0.0, 0.0, 1.0)   ## (eye_open, brow_angle, lift, eye x scale) last applied; idle skips writes
+static var _eye_brow_cache: ArrayMesh = null
+static var _x_eye_cache: ArrayMesh = null
 
 # --- emotes (web Fighter.emote + emotePose; actors/emote_poses.gd). Visual only: play_emote(id) / stop_emote().
 var emote_id := ""                    ## the emote playing ("" = none)
@@ -195,13 +269,70 @@ static func _gfx_q() -> int:
 	return int(t.call("quality")) if t else 2
 
 
-## A flashing body material, sorted into the colour groups the web game recolours.
-func _mat(c: int, group: String = "") -> StandardMaterial3D:
-	var m := _make_mat(c)
-	_mats.append(m)
-	match group:
-		"color": _color_mats.append(m)
-		"accent": _accent_mats.append(m)
+## A flashing body material: albedo WHITE, the part colour comes from the baked vertex COLOR of the merged meshes
+## (vertex_color_is_srgb makes the sRGB part colours look exactly like the old per-part albedo). One per fighter.
+func _new_flash_mat() -> StandardMaterial3D:
+	var m := _make_mat(0xffffff)
+	m.vertex_color_use_as_albedo = true
+	m.vertex_color_is_srgb = true
+	_mats = [m]
+	return m
+
+
+## The per-wobbler flash material, or a second one with cull disabled for an open-shell ("sph") body/outfit part
+## (no shipped look needs it today; kept so a look change can never drop a part's two-sided look).
+func _role_material(role: String) -> Material:
+	match role:
+		"f":
+			return _flash_mat
+		"fo":
+			if _flash_mat_cull == null:
+				_flash_mat_cull = _new_flash_mat()
+				_flash_mat_cull.cull_mode = BaseMaterial3D.CULL_DISABLED
+				_mats.append(_flash_mat_cull)
+			return _flash_mat_cull
+		_:
+			return _shared_material(role)
+
+
+## Static materials shared by every wobbler (vertex-colour albedo; no per-fighter state). Roles:
+##   s  = outfit body/belt/hat, o = open shell (cull disabled), m = buckle (metallic), w = held weapon,
+##   e  = eyes (plain albedo, no vertex colours), g:<hex>:<energy> = glowing part (continuous emission).
+static func _shared_material(role: String) -> StandardMaterial3D:
+	var q := _gfx_q()
+	var key := "%d|%s" % [q, role]
+	if _smats.has(key):
+		return _smats[key]
+	var m := StandardMaterial3D.new()
+	m.roughness = 0.95
+	m.metallic = 0.0
+	m.emission_enabled = false
+	var vc := true
+	match role:
+		"m":
+			m.metallic = 0.3
+			m.roughness = 0.5
+		"o":
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		"e":
+			m.albedo_color = _col(WobblerLooks.EYE)
+			vc = false
+		_:
+			if role.begins_with("g:"):
+				var bits := role.split(":")
+				m.emission_enabled = true
+				m.emission = _col(int(bits[1]))
+				m.emission_energy_multiplier = float(bits[2])
+	if q >= 1:
+		m.diffuse_mode = BaseMaterial3D.DIFFUSE_LAMBERT_WRAP
+		m.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+		m.rim_enabled = true
+		m.rim = 0.6
+		m.rim_tint = 0.3
+	if vc:
+		m.vertex_color_use_as_albedo = true
+		m.vertex_color_is_srgb = true
+	_smats[key] = m
 	return m
 
 
@@ -237,98 +368,401 @@ func _group(parent: Node3D, p: Vector3, nm: String) -> Node3D:
 
 
 # ================================================================ build (Fighter constructor, ~4817)
+## The node skeleton only: rigid groups, the gameplay-point markers, the two eye meshes and the standalone meshes the
+## ragdoll overlay animates separately (arm_sleeve, arm_hand_mesh, foot_meshes). Every other mesh is merged per rigid
+## node by _rebuild_visual().
 func _build() -> void:
 	rig = _group(self, Vector3.ZERO, "Rig")
 	body = _group(rig, Vector3(0, 0.8, 0), "Body")
-	torso = _mesh(body, LowPoly.cyl(0.4, 0.34, 0.85, 6), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, 0.425, 0), "Torso")
+	torso = Node3D.new()                 # chest gameplay point (Fighter._read_points); geometry merged into body_mesh
+	torso.name = "Torso"
+	torso.position = Vector3(0, 0.425, 0)
+	body.add_child(torso)
 	neck = _group(body, Vector3(0, 0.85, 0), "Neck")
-	head_mesh = _mesh(neck, LowPoly.ico(0.36, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, 0.32, 0), "Head")
-	var eye_mat := _make_mat(WobblerLooks.EYE)
-	eye_mat.emission_enabled = false
-	for sx in [-0.13, 0.13]:
-		eyes.append(_mesh(neck, LowPoly.box(0.1, 0.14, 0.06), eye_mat, Vector3(sx, 0.36, 0.32), "Eye"))
-	var belt_mat := _make_mat(WobblerLooks.BELT)
-	belt_mat.emission_enabled = false
-	var buckle_mat := _make_mat(WobblerLooks.BUCKLE)
-	buckle_mat.emission_enabled = false
-	buckle_mat.metallic = 0.3
-	buckle_mat.roughness = 0.5
-	belt = _mesh(body, LowPoly.cyl(0.385, 0.36, 0.1, 6), belt_mat, Vector3(0, 0.17, 0), "Belt")
-	buckle = _mesh(body, LowPoly.box(0.11, 0.09, 0.05), buckle_mat, Vector3(0, 0.17, 0.37), "Buckle")
+	head_mesh = Node3D.new()             # head gameplay point (Fighter._read_points) + eye parent; geometry merged
+	head_mesh.name = "Head"
+	head_mesh.position = Vector3(0, 0.32, 0)
+	neck.add_child(head_mesh)
+	# faces (Sprint 2.4): MID / HIGH merge a brow bar into the SAME eye surface (2 meshes, 2 draw calls as before);
+	# LOW keeps the plain eye box, so the web build carries no extra geometry (docs/GRAPHICS.md "Faces"). The eye
+	# material is shared and static: it never flashes, exactly like before.
+	_eye_mesh = _face_eye_mesh() if _gfx_q() >= 1 else LowPoly.box(EYE_SIZE.x, EYE_SIZE.y, EYE_SIZE.z)
+	for sx in [-EYE_X, EYE_X]:
+		eyes.append(_mesh(neck, _eye_mesh, _shared_material("e"), Vector3(sx, EYE_Y, EYE_Z), "Eye"))
 	for x in [-0.2, 0.2]:
 		var g := _group(rig, Vector3(x, 0.8, 0), "Leg")
-		var lm := _mat(WobblerLooks.DEFAULT_COLOR, "color")
-		var fm := _mat(WobblerLooks.ACCENT, "accent")
-		_leg_mats.append(lm)
-		_foot_mats.append(fm)
-		_mesh(g, LowPoly.cyl(0.15, 0.12, 0.8, 5), lm, Vector3(0, -0.4, 0), "Thigh")
-		foot_meshes.append(_mesh(g, LowPoly.box(0.26, 0.12, 0.4), fm, Vector3(0, -0.74, 0.07), "Foot"))
 		legs.append(g)
+		# the ragdoll overlay writes foot_meshes[i].basis every overlay frame, so the foot stays its own mesh
+		var foot := MeshInstance3D.new()
+		foot.name = "Foot"
+		foot.position = Vector3(0, -0.74, 0.07)
+		g.add_child(foot)
+		foot_meshes.append(foot)
 	arm_l = _group(body, Vector3(0.52, 0.75, 0), "ArmL")             # local +X is the character's left
-	_mesh(arm_l, LowPoly.cyl(0.11, 0.09, 0.75, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.375, 0), "Sleeve")
-	hand_l = _mesh(arm_l, LowPoly.ico(0.13, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.78, 0), "HandL")
 	shoulder = _group(body, Vector3(-0.52, 0.75, 0), "Shoulder")        # right shoulder
 	arm = _group(self, Vector3.ZERO, "Arm")                              # aiming arm: free in world space
-	arm_sleeve = _mesh(arm, LowPoly.cyl(0.11, 0.09, 0.85, 5), _mat(WobblerLooks.DEFAULT_COLOR, "color"), Vector3(0, -0.425, 0), "Sleeve")
-	arm_hand_mesh = _mesh(arm, LowPoly.ico(0.14, 0), _mat(WobblerLooks.ACCENT, "accent"), Vector3(0, -0.85, 0), "Hand")
+	# the overlay stretches the sleeve and slides the hand along the arm: both stay their own meshes
+	arm_sleeve = _mesh(arm, LowPoly.cyl(0.11, 0.09, 0.85, 5), null, Vector3(0, -0.425, 0), "Sleeve")
+	arm_hand_mesh = _mesh(arm, LowPoly.ico(0.14, 0), null, Vector3(0, -0.85, 0), "Hand")
 	hand = _group(arm, Vector3(0, -0.85, 0), "Grip")
 	_xf_nodes = [rig, body, neck, legs[0], legs[1], foot_meshes[0], foot_meshes[1], arm_l, arm, arm_sleeve, arm_hand_mesh, hand]
+	_flash_mat = _new_flash_mat()
 
 
-## Builds a list of look parts (see WobblerLooks) under this rig. Returns the created nodes.
-func _add_parts(parts: Array, flashes: bool, extra_parents: Dictionary = {}) -> Array[Node]:
-	var out: Array[Node] = []
-	var sk := WobblerLooks.skin_def(skin_key)
-	var tone: int = sk.get("tone", WobblerLooks.ACCENT)
-	for pt in parts:
-		var parent: Node3D
-		match String(pt[0]):
-			"neck": parent = neck
-			"body": parent = body
-			"leg0": parent = legs[0]
-			"leg1": parent = legs[1]
-			"armL": parent = arm_l
-			"arm": parent = arm
-			_: parent = extra_parents.get(pt[0], null)
-		if parent == null:
-			continue
-		var spec: Variant = pt[2]
-		var c: int
-		var tinted := false
-		if spec is Array:
-			tinted = true
-			c = 0xffffff
-		elif spec is String:
-			c = tone if spec == "tone" else WobblerLooks.hex_mix(tone, 0.9, 0.0)
+# ============================== batching (post-v0.4.0 Sprint 4.2) ==============================
+## One part's local transform (pos, three.js XYZ Euler, scale) exactly like the pre-batching per-part nodes.
+static func _part_xf(pt: Array) -> Transform3D:
+	var p: Array = pt[3]
+	var b := Basis()
+	if pt.size() > 4 and pt[4] is Array:
+		var r: Array = pt[4]
+		b = _euler_xyz(Vector3(r[0], r[1], r[2]))
+	var s := Vector3.ONE
+	if pt.size() > 5 and pt[5] is Array:
+		s = Vector3(pt[5][0], pt[5][1], pt[5][2])
+	return Transform3D(b.scaled_local(s), Vector3(p[0], p[1], p[2]))
+
+
+## A part colour: int / "tone" / "toneD" / [mul, mix] (tinted from the outfit's top colour, hexMix).
+static func _spec_color(spec: Variant, main: int, skin_tone: int) -> Color:
+	if spec is Array:
+		return _col(WobblerLooks.hex_mix(main, float(spec[0]), float(spec[1])))
+	if spec is String:
+		return _col(skin_tone if spec == "tone" else WobblerLooks.hex_mix(skin_tone, 0.9, 0.0))
+	return _col(int(spec))
+
+
+## The material role a part bakes into: "f" flashable body/outfit, "fo" flashable open shell, "s" static,
+## "o" static open shell (seen from inside: beanie, viking helmet), "g:<hex>:<energy>" a continuously glowing part.
+static func _spec_role(pt: Array, is_static: bool) -> String:
+	var glow: Variant = pt[5] if pt.size() > 5 else null
+	if glow is Dictionary and glow.has("glow"):
+		return "g:%d:%s" % [int(glow["glow"]), str(glow.get("glow_k", 0.6))]
+	var open_shell: bool = String(pt[1][0]) == "sph"
+	if is_static:
+		return "o" if open_shell else "s"
+	return "fo" if open_shell else "f"
+
+
+static func _target_of(parent: String) -> String:
+	match parent:
+		"armL": return "arml"
+		"leg0", "leg1": return parent
+		"body", "neck", "arm": return parent
+		_: return ""
+
+
+func _parent_node(key: String) -> Node3D:
+	match key:
+		"neck": return neck
+		"body": return body
+		"leg0": return legs[0]
+		"leg1": return legs[1]
+		"armL": return arm_l
+		"arm": return arm
+		"hat": return hat
+		"spin": return hat_spin
+		_: return null
+
+
+## Appends one part's transformed, flat-shaded geometry + its baked colour into a target/role buffer.
+static func _append_geometry(buf: Dictionary, target: String, role: String, mesh: Mesh, xf: Transform3D, col: Color,
+		extra_scale := Vector3.ONE) -> void:
+	if not mesh is ArrayMesh:
+		return
+	var arrays := (mesh as ArrayMesh).surface_get_arrays(0)
+	if arrays.size() <= Mesh.ARRAY_NORMAL: return
+	var vv: Variant = arrays[Mesh.ARRAY_VERTEX]
+	var nv: Variant = arrays[Mesh.ARRAY_NORMAL]
+	if not (vv is PackedVector3Array) or not (nv is PackedVector3Array): return
+	var verts: PackedVector3Array = vv
+	var norms: PackedVector3Array = nv
+	if verts.is_empty() or verts.size() != norms.size():
+		return
+	var xf2 := xf
+	if extra_scale != Vector3.ONE:
+		xf2 = Transform3D(xf.basis.scaled_local(extra_scale), xf.origin)
+	if not buf.has(target):
+		buf[target] = {}
+	var roles: Dictionary = buf[target]
+	if not roles.has(role):
+		roles[role] = {"v": [], "n": [], "c": []}
+	var slot: Dictionary = roles[role]
+	var vs: Array = slot["v"]
+	var ns: Array = slot["n"]
+	var cs: Array = slot["c"]
+	var nb := xf2.basis.inverse().transposed()
+	for i in verts.size():
+		vs.append(xf2 * verts[i])
+		ns.append((nb * norms[i]).normalized())
+		cs.append(col)
+	slot["v"] = vs
+	slot["n"] = ns
+	slot["c"] = cs
+
+
+## Resolves a WobblerLooks part (pos/rot/scale against a rigid parent) and appends it. `is_static` = hats (never flash).
+func _add_look_part(buf: Dictionary, pt: Array, is_static: bool, is_class: bool, main: int, skin_tone: int,
+		no_head: bool) -> void:
+	var parent := String(pt[0])
+	if parent == "armL":
+		parent = "armL"
+	var target := _target_of(parent)
+	if target == "":
+		if parent == "hat" or parent == "spin":
+			target = parent
 		else:
-			c = int(spec)
-		var m := _mat(c) if flashes else _make_mat(c)
-		if tinted:
-			_tint.append([m, spec[0], spec[1]])
-		if pt.size() > 5 and pt[5] is Dictionary and pt[5].has("glow"):
-			m.emission = _col(pt[5]["glow"])
-			m.emission_energy_multiplier = pt[5].get("glow_k", 0.6)
-		if String(pt[1][0]) == "sph":
-			m.cull_mode = BaseMaterial3D.CULL_DISABLED            # open shells (beanie, viking helmet) are seen from inside too
-		var p: Array = pt[3]
-		var mi := _mesh(parent, LowPoly.from_spec(pt[1]), m, Vector3(p[0], p[1], p[2]))
-		var r := Vector3.ZERO
-		var s := Vector3.ONE
-		if pt.size() > 4:
-			r = Vector3(pt[4][0], pt[4][1], pt[4][2])
-		if pt.size() > 5 and pt[5] is Array:
-			s = Vector3(pt[5][0], pt[5][1], pt[5][2])
-		mi.basis = _euler_xyz(r).scaled_local(s)
-		out.append(mi)
+			return
+	if is_class and no_head and parent == "neck":
+		return                                    # class hair/antennae would float around a cup/log outfit
+	var role := _spec_role(pt, is_static)
+	var mesh := LowPoly.from_spec(pt[1])
+	_append_geometry(buf, target, role, mesh, _part_xf(pt), _spec_color(pt[2], main, skin_tone))
+
+
+## One ArrayMesh surface per role from a buffer (role order is deterministic: flash, static, open shell, metal, glow).
+static func _buf_to_mesh(roles: Dictionary) -> ArrayMesh:
+	var order: Array = []
+	for r: String in ["f", "fo", "s", "o", "m"]:
+		if roles.has(r):
+			order.append(r)
+	var glow_roles: Array = []
+	for r: String in roles:
+		if r.begins_with("g:") and not glow_roles.has(r):
+			glow_roles.append(r)
+	glow_roles.sort()
+	order.append_array(glow_roles)
+	var m := ArrayMesh.new()
+	for role: String in order:
+		var slot: Dictionary = roles[role]
+		var vs: Array = slot["v"]
+		if vs.is_empty():
+			continue
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(vs)
+		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(slot["n"])
+		arrays[Mesh.ARRAY_COLOR] = PackedColorArray(slot["c"])
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return m
+
+
+static func _roles_of(roles: Dictionary) -> PackedStringArray:
+	var m := _buf_to_mesh(roles)        # deterministic order, built once here to reuse its surface count
+	var out := PackedStringArray()
+	if m.get_surface_count() == 0:
+		return out
+	# the same role order _buf_to_mesh uses
+	for r: String in ["f", "fo", "s", "o", "m"]:
+		if roles.has(r):
+			out.append(r)
+	var glow_roles: Array = []
+	for r: String in roles:
+		if r.begins_with("g:") and not glow_roles.has(r):
+			glow_roles.append(r)
+	glow_roles.sort()
+	for r: String in glow_roles:
+		out.append(r)
 	return out
+
+
+static func _single_surface(mesh: Mesh, col: Color) -> ArrayMesh:
+	var out := ArrayMesh.new()
+	if not mesh is ArrayMesh:
+		return out
+	var arrays := (mesh as ArrayMesh).surface_get_arrays(0)
+	if arrays.size() <= Mesh.ARRAY_NORMAL: return out
+	var vv: Variant = arrays[Mesh.ARRAY_VERTEX]
+	var nv: Variant = arrays[Mesh.ARRAY_NORMAL]
+	if not (vv is PackedVector3Array) or not (nv is PackedVector3Array): return out
+	var verts: PackedVector3Array = vv
+	var norms: PackedVector3Array = nv
+	if verts.size() != norms.size(): return out
+	var cols := PackedColorArray()
+	cols.resize(verts.size())
+	cols.fill(col)
+	var a := []
+	a.resize(Mesh.ARRAY_MAX)
+	a[Mesh.ARRAY_VERTEX] = verts
+	a[Mesh.ARRAY_NORMAL] = norms
+	a[Mesh.ARRAY_COLOR] = cols
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, a)
+	return out
+
+
+static func _mesh_bytes(m: Mesh) -> int:
+	var total := 0
+	for s in m.get_surface_count():
+		var arr := m.surface_get_arrays(s)
+		if arr[Mesh.ARRAY_VERTEX] != null:
+			total += (arr[Mesh.ARRAY_VERTEX] as PackedVector3Array).size() * 12
+		if arr[Mesh.ARRAY_NORMAL] != null:
+			total += (arr[Mesh.ARRAY_NORMAL] as PackedVector3Array).size() * 12
+		if arr[Mesh.ARRAY_COLOR] != null:
+			total += (arr[Mesh.ARRAY_COLOR] as PackedColorArray).size() * 16
+	return total
+
+
+## The per-fighter colour palette, exactly the old per-material recolour rules (torso/sleeves = main, head/hands/feet =
+## accent or the class skin colour, thighs = pants, feet = shoes, outfit parts keep their own colour or a tint).
+func _palette() -> Dictionary:
+	var sk := WobblerLooks.skin_def(skin_key)
+	var sk_empty := sk.is_empty()
+	var main := color
+	if not sk_empty and not _team_tint:
+		main = int(sk.get("col", color))
+	var accent := WobblerLooks.ACCENT
+	var skin_tone := WobblerLooks.ACCENT
+	if not sk_empty:
+		skin_tone = int(sk.get("tone", WobblerLooks.ACCENT))
+		accent = skin_tone
+	var pants := main
+	var shoes := WobblerLooks.ACCENT
+	if not sk_empty:
+		var pv: Variant = sk.get("pants", main)
+		pants = skin_tone if pv is String else int(pv)
+		shoes = int(sk.get("shoes", skin_tone))
+	if cls.has("skin"):                                  # Zorp: green skin on head, hands and feet
+		accent = int(cls["skin"])
+		shoes = accent
+	return {"main": main, "accent": accent, "tone": skin_tone, "pants": pants, "shoes": shoes,
+		"wide": float(cls.get("wide", 1.0)), "noHead": sk.get("noHead", false), "noBelt": sk.get("noBelt", false),
+		"noTorso": sk.get("noTorso", false), "noHat": sk.get("noHat", false), "thin": float(sk.get("thin", 1.0))}
+
+
+## Builds every merged mesh for the CURRENT look (cached by class|outfit|hat|colour|team tint).
+func _build_visual() -> Dictionary:
+	var pal := _palette()
+	var main := int(pal["main"])
+	var accent := int(pal["accent"])
+	var tone := int(pal["tone"])
+	var skin_tone := tone
+	var wide: float = pal["wide"]
+	var deep := 1.0 + (wide - 1.0) * 0.5
+	var th: float = pal["thin"]
+	var no_head: bool = pal["noHead"]
+	var buf := {}
+	# --- base body / head / belt / legs / off arm (the old _build meshes, colours from the old material groups)
+	if not pal["noTorso"]:
+		_append_geometry(buf, "body", "f", LowPoly.cyl(0.4, 0.34, 0.85, 6),
+			Transform3D(Basis().scaled_local(Vector3(wide, 1, deep)), Vector3(0, 0.425, 0)), _col(main))
+	if not no_head:
+		_append_geometry(buf, "neck", "f", LowPoly.ico(0.36, 0), Transform3D(Basis(), Vector3(0, 0.32, 0)), _col(accent))
+	if not pal["noBelt"]:
+		_append_geometry(buf, "body", "s", LowPoly.cyl(0.385, 0.36, 0.1, 6),
+			Transform3D(Basis().scaled_local(Vector3(wide, 1, deep)), Vector3(0, 0.17, 0)), _col(WobblerLooks.BELT))
+		_append_geometry(buf, "body", "m", LowPoly.box(0.11, 0.09, 0.05),
+			Transform3D(Basis(), Vector3(0, 0.17, 0.37 * deep)), _col(WobblerLooks.BUCKLE))
+	for i in 2:
+		_append_geometry(buf, "leg%d" % i, "f", LowPoly.cyl(0.15, 0.12, 0.8, 5),
+			Transform3D(Basis(), Vector3(0, -0.4, 0)), _col(int(pal["pants"])), Vector3(th, 1, th))
+	# off arm: sleeve and hand share one rigid node, so one mesh (the sleeve is slimmed by `thin`, like the old node scale)
+	_append_geometry(buf, "arml", "f", LowPoly.cyl(0.11, 0.09, 0.75, 5),
+		Transform3D(Basis(), Vector3(0, -0.375, 0)), _col(main), Vector3(th, 1, th))
+	_append_geometry(buf, "arml", "f", LowPoly.ico(0.13, 0), Transform3D(Basis(), Vector3(0, -0.78, 0)), _col(accent))
+	# --- class accessories, then outfit parts (hats are separate chunks: some hat contracts need per-part meshes)
+	for pt: Array in _class_specs:
+		_add_look_part(buf, pt, false, true, main, skin_tone, no_head)
+	for pt: Array in _skin_specs:
+		_add_look_part(buf, pt, false, false, main, skin_tone, no_head)
+	# --- merged meshes + their surface roles
+	var meshes := {}
+	var roles := {}
+	var total := 0
+	for target: String in buf:
+		var m := _buf_to_mesh(buf[target])
+		if m.get_surface_count() == 0:
+			continue
+		meshes[target] = m
+		roles[target] = _roles_of(buf[target])
+		total += _mesh_bytes(m)
+	# --- the standalone animated meshes (node transforms stay exactly as before)
+	var sleeve := _single_surface(LowPoly.cyl(0.11, 0.09, 0.85, 5), _col(main))
+	var arm_hand := _single_surface(LowPoly.ico(0.14, 0), _col(accent))
+	var feet := _single_surface(LowPoly.box(0.26, 0.12, 0.4), _col(int(pal["shoes"])))
+	total += _mesh_bytes(sleeve) + _mesh_bytes(arm_hand) + _mesh_bytes(feet)
+	# --- hats: one merged mesh (or one per part for hats with >= 6 parts, which the site-map PPE contract counts)
+	var hat_chunks: Array = []
+	if hat_name != "none" and not _hat_specs.is_empty():
+		if _hat_specs.size() < 6:
+			var hbuf := {}
+			for pt: Array in _hat_specs:
+				_add_look_part(hbuf, pt, true, false, main, skin_tone, no_head)
+			for parent: String in hbuf:
+				var hm := _buf_to_mesh(hbuf[parent])
+				if hm.get_surface_count() == 0:
+					continue
+				hat_chunks.append({"parent": parent, "mesh": hm, "roles": _roles_of(hbuf[parent]),
+					"xf": Transform3D.IDENTITY})
+				total += _mesh_bytes(hm)
+		else:
+			for pt: Array in _hat_specs:
+				var role := _spec_role(pt, true)
+				var one := _single_surface(LowPoly.from_spec(pt[1]), _spec_color(pt[2], main, skin_tone))
+				var par := String(pt[0])
+				if par != "spin":
+					par = "hat"
+				hat_chunks.append({"parent": par, "mesh": one, "roles": PackedStringArray([role]),
+					"xf": _part_xf(pt)})
+				total += _mesh_bytes(one)
+	return {"meshes": meshes, "roles": roles, "sleeve": sleeve, "hand": arm_hand, "feet": feet,
+		"hat_chunks": hat_chunks, "bytes": total}
+
+
+## Look-cache lookup (LRU in entries AND bytes): a fighter with the same class/outfit/hat/colour/team tint shares the
+## merged ArrayMeshes of an earlier one. Rebuilt only on a look change, never per frame.
+func _look_visual() -> Dictionary:
+	var key := "%s|%s|%s|%d|%d" % [class_id, skin_key, hat_name, color, 1 if _team_tint else 0]
+	if _look_cache.has(key):
+		_look_order.erase(key)
+		_look_order.append(key)
+		return _look_cache[key]
+	var v := _build_visual()
+	_look_cache[key] = v
+	_look_order.append(key)
+	_look_cache_bytes += int(v["bytes"])
+	while _look_order.size() > 1 and (_look_order.size() > LOOK_CACHE_MAX \
+			or _look_cache_bytes > LOOK_CACHE_BYTES):
+		var old: String = _look_order[0]
+		if old == key:
+			break
+		_look_order.remove_at(0)
+		_look_cache_bytes -= int((_look_cache[old] as Dictionary)["bytes"])
+		_look_cache.erase(old)
+	return v
+
+
+## Cache diagnostics (docs/GRAPHICS.md "Fighter mesh batching"): entries, bytes and the bounds.
+static func look_cache_stats() -> Dictionary:
+	return {"entries": _look_cache.size(), "bytes": _look_cache_bytes, "max_entries": LOOK_CACHE_MAX,
+		"max_bytes": LOOK_CACHE_BYTES, "weapons": _weapon_meshes.size(), "weapon_bytes": _weapon_bytes}
+
+
+static func clear_look_cache() -> void:
+	_look_cache.clear()
+	_look_order.clear()
+	_look_cache_bytes = 0
+	_weapon_meshes.clear()
+	_weapon_order.clear()
+	_weapon_bytes = 0
 
 
 # ================================================================ looks
 func setup(p_class_id: String, p_skin: String = "none", p_hat: String = "none", p_color: int = WobblerLooks.DEFAULT_COLOR) -> void:
+	_look_batch += 1
 	color = p_color
 	set_class(p_class_id)
 	set_skin(p_skin)
 	set_hat(p_hat)
+	_look_batch -= 1
+	_rebuild_visual()
+	_face_setup()
+
+
+## Applies the current look (merged meshes + flags). Batched inside setup() so one look change rebuilds once.
+func _refresh_visual() -> void:
+	if _look_batch <= 0:
+		_rebuild_visual()
 
 
 ## Fighter.setClass + classLook: proportions plus a few cheap accessories. Looks only.
@@ -338,123 +772,243 @@ func set_class(id: String) -> void:
 		id = "wobbler"
 	class_id = id
 	cls = WobblerLooks.class_def(id)
-	for n in _cls_nodes:
-		_free_part(n)
-	_cls_nodes.clear()
 	var wide: float = cls.get("wide", 1.0)
 	var deep := 1.0 + (wide - 1.0) * 0.5
 	var arm_x := 0.52 * wide
 	neck.scale = Vector3.ONE * float(cls.get("head", 1.0))
-	torso.scale = Vector3(wide, 1, deep)
-	belt.scale = Vector3(wide, 1, deep)
-	buckle.position.z = 0.37 * deep
+	torso.scale = Vector3(wide, 1, deep)          # the gameplay marker keeps the old torso scale (tests / tools)
 	arm_l.position.x = arm_x
 	shoulder.position.x = -arm_x
 	var ek := 1.5 if id == "alien" else 1.0
-	for e in eyes:
-		e.scale = Vector3(ek, ek, 1)
-	_cls_nodes = _add_parts(WobblerLooks.class_parts(id, arm_x, deep), true)
-	_skin_flags()
-	recolor(color)
+	_face_sig.x = -1.0
+	for i in eyes.size():
+		_eye_base_scale[i] = Vector3(ek, ek, 1)
+		eyes[i].basis = Basis().scaled_local(_eye_base_scale[i])
+	_class_specs = WobblerLooks.class_parts(id, arm_x, deep)
+	_refresh_visual()
 
 
 ## Outfit (Fighter.setSkin). Keys come from cosmetics.json skins; unknown keys mean no outfit.
 func set_skin(key: String) -> void:
 	_gait_dirty = true
-	for n in _skin_nodes:
-		_free_part(n)
-	_skin_nodes.clear()
-	_tint.clear()
 	skin_key = key if WobblerLooks.skin_def(key).size() > 0 else "none"
-	if skin_key != "none":
-		_skin_nodes = _add_parts(WobblerLooks.skin_parts(skin_key), true)
-	recolor(color)
-	_skin_flags()
+	_skin_specs = WobblerLooks.skin_parts(skin_key) if skin_key != "none" else []
+	_refresh_visual()
 
 
 func set_hat(name: String) -> void:
 	_gait_dirty = true
-	if hat:
-		hat.free()
+	for mi: MeshInstance3D in _hat_meshes:
+		if is_instance_valid(mi):
+			mi.free()
+	_hat_meshes.clear()
+	if hat != null:
+		hat.free()                                # frees the spin group and its meshes too
 	hat = null
 	hat_spin = null
 	hat_name = name if WobblerLooks.HATS.has(name) else "none"
-	if hat_name == "none":
-		return
-	hat = _group(neck, Vector3(0, 0.62, 0), "Hat")
-	var extra := {"hat": hat}
-	if WobblerLooks.HAT_SPIN_Y.has(hat_name):
-		hat_spin = _group(hat, Vector3(0, WobblerLooks.HAT_SPIN_Y[hat_name], 0), "Spin")
-		extra["spin"] = hat_spin
-	_add_parts(WobblerLooks.hat_parts(hat_name), false, extra)
-	_skin_flags()
+	_hat_specs = [] if hat_name == "none" else WobblerLooks.hat_parts(hat_name)
+	if hat_name != "none":
+		hat = _group(neck, Vector3(0, 0.62, 0), "Hat")
+		if WobblerLooks.HAT_SPIN_Y.has(hat_name):
+			hat_spin = _group(hat, Vector3(0, WobblerLooks.HAT_SPIN_Y[hat_name], 0), "Spin")
+	_refresh_visual()
 
 
 ## Fighter.recolor: body colour; outfits keep their own top colour (team matches pass team = true to force `c`).
+## The colours are baked into the merged meshes, so this rebuilds them (cache shared per colour).
 func recolor(c: int, team: bool = false) -> void:
 	_gait_dirty = true
 	color = c
-	var sk := WobblerLooks.skin_def(skin_key)
-	var main: int = c if sk.is_empty() or team else int(sk.get("col", c))
-	for m in _color_mats:
-		m.albedo_color = _col(main)
-	if sk.is_empty():
-		for m in _accent_mats:
-			m.albedo_color = _col(WobblerLooks.ACCENT)
-	else:
-		for t in _tint:
-			t[0].albedo_color = _col(WobblerLooks.hex_mix(main, t[1], t[2]))
-		var tone: int = sk.get("tone", WobblerLooks.ACCENT)
-		for m in _accent_mats:
-			m.albedo_color = _col(tone)
-		var pants: Variant = sk.get("pants", main)
-		for m in _leg_mats:
-			m.albedo_color = _col(tone if pants is String else int(pants))
-		for m in _foot_mats:
-			m.albedo_color = _col(int(sk.get("shoes", tone)))
-	if cls.has("skin"):                                        # Zorp: green skin on head, hands and feet
-		for m in _accent_mats:
-			m.albedo_color = _col(int(cls["skin"]))
+	_team_tint = team
+	_refresh_visual()
 
 
-func _skin_flags() -> void:
+## Builds/updates the merged meshes for the current look and the per-outfit flags (eyes/hat visibility, thin limbs).
+func _rebuild_visual() -> void:
+	var look := _look_visual()
+	var meshes: Dictionary = look["meshes"]
+	var roles: Dictionary = look["roles"]
+	body_mesh = _apply_target(body, "BodyMesh", "body", look, body_mesh)
+	neck_mesh = _apply_target(neck, "HeadMesh", "neck", look, neck_mesh)
+	leg_meshes.resize(2)
+	leg_meshes[0] = _apply_target(legs[0], "Thigh", "leg0", look, leg_meshes[0])
+	leg_meshes[1] = _apply_target(legs[1], "Thigh", "leg1", look, leg_meshes[1])
+	arm_l_mesh = _apply_target(arm_l, "ArmLMesh", "arml", look, arm_l_mesh)
+	arm_mesh = _apply_target(arm, "ArmMerge", "arm", look, arm_mesh)
+	arm_sleeve.mesh = look["sleeve"]
+	arm_sleeve.material_override = _flash_mat
+	arm_hand_mesh.mesh = look["hand"]
+	arm_hand_mesh.material_override = _flash_mat
+	for i in 2:
+		foot_meshes[i].mesh = look["feet"]
+		foot_meshes[i].material_override = _flash_mat
+	_apply_hats(look)
+	_apply_look_flags()
+	_apply_flash()
+
+
+## Puts (or removes) one merged mesh on its rigid node and sets the per-surface materials.
+func _apply_target(parent: Node3D, nm: String, key: String, look: Dictionary, mi: MeshInstance3D) -> MeshInstance3D:
+	if not (look["meshes"] as Dictionary).has(key):
+		if mi != null and is_instance_valid(mi):
+			mi.free()
+		return null
+	if mi == null or not is_instance_valid(mi):
+		mi = MeshInstance3D.new()
+		mi.name = nm
+		parent.add_child(mi)
+	mi.mesh = look["meshes"][key]
+	mi.material_override = null
+	_apply_surface_materials(mi, look["roles"][key])
+	return mi
+
+
+## surface_set_override_material per merged surface: the flash material for body/outfit surfaces, shared statics for
+## belt/buckle/hats/glow (exactly the old per-part material roles, just fewer instances).
+func _apply_surface_materials(mi: MeshInstance3D, roles: PackedStringArray) -> void:
+	for i in roles.size():
+		mi.set_surface_override_material(i, _role_material(roles[i]))
+
+
+## Hats: one merged mesh chunk (or one per part for hats with >= 6 parts: the site-map PPE test counts hat meshes).
+func _apply_hats(look: Dictionary) -> void:
+	for mi: MeshInstance3D in _hat_meshes:
+		if is_instance_valid(mi):
+			mi.free()
+	_hat_meshes.clear()
+	if hat == null:
+		return
+	for ch: Dictionary in look["hat_chunks"]:
+		var parent: Node3D = hat if String(ch["parent"]) == "hat" else hat_spin
+		if parent == null:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.name = "HatMesh"
+		mi.mesh = ch["mesh"]
+		mi.transform = ch["xf"]
+		parent.add_child(mi)
+		_apply_surface_materials(mi, ch["roles"])
+		_hat_meshes.append(mi)
+
+
+## The old _skin_flags: eyes/hat visibility, slim (`thin`) arms/feet; plus one marker node per outfit part so the
+## site_map_test Builder PPE contract (_skin_nodes size/validity) keeps its meaning without a mesh per part.
+func _apply_look_flags() -> void:
 	var sk := WobblerLooks.skin_def(skin_key)
-	belt.visible = not sk.get("noBelt", false)
-	buckle.visible = belt.visible
-	head_mesh.visible = not sk.get("noHead", false)
-	torso.visible = not sk.get("noTorso", false)
+	var th := float(sk.get("thin", 1.0))        # web skinFlags `thin`: slim arms and legs (Ballerina)
 	for e in eyes:
 		e.visible = not sk.get("noEyes", false)
-	if hat:
+	if hat != null:
 		hat.visible = not sk.get("noHat", false)
-	for n in _cls_nodes:                        # class bits on the head (hair, antennae) would float around a cup / log
-		(n as Node3D).visible = not (sk.get("noHead", false) and n.get_parent() == neck)
-	var th := float(sk.get("thin", 1.0))        # web skinFlags `thin`: slim arms and legs (Ballerina)
-	for l in legs:
-		(l.get_node("Thigh") as Node3D).scale = Vector3(th, 1, th)
-		foot_meshes[legs.find(l)].scale = Vector3(minf(1.0, th * 1.2), 1, 1)
-	(arm_l.get_node("Sleeve") as Node3D).scale = Vector3(th, 1, th)
 	arm_sleeve.scale = Vector3(th, 1, th)
+	for i in 2:
+		foot_meshes[i].scale = Vector3(minf(1.0, th * 1.2), 1, 1)
+	for n: Node in _skin_nodes:
+		if is_instance_valid(n):
+			n.free()
+	_skin_nodes.clear()
+	for pt: Array in _skin_specs:
+		var parent := _parent_node(String(pt[0]))
+		if parent == null:
+			continue
+		var marker := Node3D.new()
+		marker.name = "SkinPart"
+		marker.transform = _part_xf(pt)
+		parent.add_child(marker)
+		_skin_nodes.append(marker)
 
 
-func _free_part(n: Node) -> void:
-	if n is MeshInstance3D:
-		var m: Material = n.material_override
-		_mats.erase(m)
-		_color_mats.erase(m)
-		_accent_mats.erase(m)
-	n.get_parent().remove_child(n)
-	n.free()
+# ================================================================ weapons
+## One merged ArrayMesh per weapon key: WeaponModels.build's per-part boxes fused into a single surface, colours baked
+## into vertex COLOR (the merged mesh is shared by every wobbler that ever held the weapon).
+static func _weapon_visual(k: String) -> ArrayMesh:
+	if _weapon_meshes.has(k):
+		_weapon_order.erase(k)
+		_weapon_order.append(k)
+		return _weapon_meshes[k]
+	var tree := WeaponModels.build(k)
+	var verts: Array = []
+	var norms: Array = []
+	var cols: Array = []
+	_collect_weapon(tree, Transform3D.IDENTITY, verts, norms, cols)
+	tree.free()
+	var m := ArrayMesh.new()
+	if not verts.is_empty():
+		var arrays := []
+		arrays.resize(Mesh.ARRAY_MAX)
+		arrays[Mesh.ARRAY_VERTEX] = PackedVector3Array(verts)
+		arrays[Mesh.ARRAY_NORMAL] = PackedVector3Array(norms)
+		arrays[Mesh.ARRAY_COLOR] = PackedColorArray(cols)
+		m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	if m.get_surface_count() == 0:
+		return m                     # nothing fusable: not cached, set_weapon() falls back to the per-part model
+	_weapon_meshes[k] = m
+	_weapon_order.append(k)
+	_weapon_bytes += _mesh_bytes(m)
+	while _weapon_order.size() > WEAPON_CACHE_MAX:
+		var old: String = _weapon_order[0]
+		_weapon_order.remove_at(0)
+		_weapon_bytes -= _mesh_bytes(_weapon_meshes[old])
+		_weapon_meshes.erase(old)
+	return m
 
 
-## Held weapon mesh in the aiming hand (built once per key). "" / null = empty hand.
+static func _collect_weapon(n: Node, parent_xf: Transform3D, verts: Array, norms: Array, cols: Array) -> void:
+	if not (n is Node3D):
+		return
+	if not (n as Node3D).visible:
+		return
+	var xf := parent_xf * (n as Node3D).transform
+	if n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		var mi := n as MeshInstance3D
+		var mat := mi.material_override as StandardMaterial3D
+		var col := mat.albedo_color if mat != null else Color.WHITE
+		var nb := xf.basis.inverse().transposed()
+		# Fuse every triangle surface. A weapon model may carry a non-triangle surface (the Net Gun's wireframe
+		# icosahedron is Mesh.PRIMITIVE_LINES and has no normals), so read the arrays as Variants and skip anything
+		# that cannot be fused into the triangle soup; without this guard the typed read below errors on Nil.
+		for si in mi.mesh.get_surface_count():
+			var arrays := mi.mesh.surface_get_arrays(si)
+			if arrays.size() <= Mesh.ARRAY_NORMAL: continue
+			var vv: Variant = arrays[Mesh.ARRAY_VERTEX]
+			var nv: Variant = arrays[Mesh.ARRAY_NORMAL]
+			if not (vv is PackedVector3Array) or not (nv is PackedVector3Array): continue
+			var v: PackedVector3Array = vv
+			var nn: PackedVector3Array = nv
+			if v.is_empty() or v.size() != nn.size(): continue
+			for i in v.size():
+				verts.append(xf * v[i])
+				norms.append((nb * nn[i]).normalized())
+				cols.append(col)
+	for c in n.get_children():
+		_collect_weapon(c, xf, verts, norms, cols)
+
+
+## Held weapon mesh in the aiming hand, fused into one MeshInstance3D (the holder is rebuilt on every weapon change,
+## so a fighter keeps exactly one held-weapon node pair and weapon pickups never grow its node tree).
 func set_weapon(key: Variant) -> void:
 	var k: String = "" if key == null else String(key)
 	weapon = k
-	if k != "" and not _weapon_nodes.has(k):
-		var holder := _group(hand, Vector3.ZERO, "W_" + k)
-		holder.add_child(WeaponModels.build(k, _make_mat))
-		_weapon_nodes[k] = holder
+	if _weapon_holder != null:
+		_weapon_holder.free()
+		_weapon_holder = null
+		_weapon_mi = null
+	_weapon_nodes.clear()
+	if k != "":
+		_weapon_holder = _group(hand, Vector3.ZERO, "W_" + k)
+		var fused := _weapon_visual(k)
+		if fused != null and fused.get_surface_count() > 0:
+			_weapon_mi = MeshInstance3D.new()
+			_weapon_mi.name = "Model"
+			_weapon_mi.mesh = fused
+			_weapon_mi.material_override = _shared_material("w")
+			_weapon_holder.add_child(_weapon_mi)
+		else:
+			# Fallback: nothing to fuse (a model made only of lines/points). Keep the old per-part nodes so a weapon
+			# can never turn invisible; no shipped key takes this path (they all have triangle surfaces).
+			_weapon_holder.add_child(WeaponModels.build(k))
+		_weapon_nodes[k] = _weapon_holder
 	_show_weapon()
 	var wd: Dictionary = WobblerLooks.data("weapons").get(k, {})
 	stiff = float(wd.get("stiff", 25.0)) if k != "" else 25.0
@@ -462,8 +1016,8 @@ func set_weapon(key: Variant) -> void:
 
 ## Emotes put the weapon away (web build 60): the held weapon shows only when no emote plays.
 func _show_weapon() -> void:
-	for wk in _weapon_nodes:
-		_weapon_nodes[wk].visible = wk == weapon and emote_id == ""
+	if _weapon_holder != null:
+		_weapon_holder.visible = weapon != "" and emote_id == ""
 
 
 # ================================================================ emotes
@@ -551,6 +1105,8 @@ func apply_state(s: Dictionary) -> void:
 	trap = s.get("trap", false)
 	invuln = s.get("invuln", false)
 	_stiff_override = s.get("stiff", -1.0)
+	rage = maxf(0.0, float(s.get("rage", 0.0)))               # faces (Sprint 2.4): optional, safe defaults
+	off_stage = bool(s.get("off_stage", s.get("panic", false)))
 	var nsw: float = s.get("swing", -1.0)
 	if nsw >= 0.0 and swing < 0.0:                            # meleeBegin: the lunge lean
 		swing_yaw = face_yaw
@@ -731,6 +1287,7 @@ func animate(dt: float) -> void:
 	var sh := rig.transform * (body.transform * shoulder.position)
 	arm.position = sh
 	arm.basis = Basis(_arc(SIM_DOWN, arm_dir)).scaled(Vector3.ONE * size_k)
+	_face_step(dt)
 	_apply_flash()
 
 
@@ -798,3 +1355,201 @@ func _count(n: Node) -> int:
 	for ch in n.get_children():
 		k += _count(ch)
 	return k
+
+
+## What a fighter costs the renderer (docs/GRAPHICS.md "Fighter mesh batching", the perf/gfx gates): MeshInstance3D
+## nodes (all / visible in tree), the surfaces they draw (all / visible), the unique materials and the node total.
+## Batched meshes have several surfaces but one mesh node; hidden held-weapon holders count in the "all" numbers only.
+func mesh_stats() -> Dictionary:
+	var out := {"meshes": 0, "meshes_visible": 0, "surfaces": 0, "surfaces_visible": 0, "nodes": 0,
+		"materials": 0}
+	var mats := {}
+	_stats_walk(self, out, mats)
+	out["materials"] = mats.size()
+	return out
+
+
+func _stats_walk(n: Node, out: Dictionary, mats: Dictionary) -> void:
+	out["nodes"] += 1
+	if n is MeshInstance3D:
+		var mi := n as MeshInstance3D
+		out["meshes"] += 1
+		var vis := mi.is_visible_in_tree()
+		if vis:
+			out["meshes_visible"] += 1
+		var mesh: Mesh = mi.mesh
+		var sf := 0 if mesh == null else mesh.get_surface_count()
+		out["surfaces"] += sf
+		if vis:
+			out["surfaces_visible"] += sf
+		if mi.material_override != null:
+			mats[mi.material_override] = true
+		for i in sf:
+			var m := mi.get_surface_override_material(i)
+			if m != null:
+				mats[m] = true
+	for ch in n.get_children():
+		_stats_walk(ch, out, mats)
+
+
+## Unique material instances this fighter renders with (the merged-mesh statics are shared; only the flash material and
+## an occasional cull-off flash clone are per fighter). Replaces the old per-part `_mats` leak check in the tests.
+func material_count() -> int:
+	return int(mesh_stats()["materials"])
+
+
+# ================================================================ faces (Sprint 2.4, docs/GRAPHICS.md "Faces")
+## The eye rig stays exactly TWO MeshInstance3D: every expression is a transform of those nodes (plus a mesh swap to the
+## shared X surface while dead / down). No node, material or draw call is added, and nothing the combat code reads
+## (hand, arm, shoulder, head, chest, legs) is touched, in either rig mode.
+##   idle    eyes open, a blink every 2.5-4.5 s (own deterministic RNG, seeded once in setup())
+##   blink   eyes close and open over a few frames (sin envelope, BLINK_DUR)
+##   angry   inner brow ends angle down + eyes squint: melee swing (swing >= 0) or rage up (state "rage" > 0)
+##   panic   wide eyes, brows lifted: airborne off the arena floor (state "off_stage" / "panic")
+##   x       crossed bars: dead or down_t > 0
+func face_state() -> String:
+	if dead or down_t > 0.0:
+		return "x"
+	if panic_k > 0.5:
+		return "panic"
+	if angry_k > 0.5:
+		return "angry"
+	if blink_t >= 0.0:
+		return "blink"
+	return "idle"
+
+
+## The blink personality: the owning Fighter's identity + look (gait_identity, the M0 pattern) or the pinned
+## `blink_seed`. Never the global RNG and never Combat.rng: presentation only, deterministic over the same dt sequence.
+func blink_identity() -> int:
+	if blink_seed >= 0:
+		return blink_seed
+	return (gait_identity() ^ 0x5F356495) & 0x7fffffff
+
+
+## Seed the blink clock once per setup (a look / owner change restarts the schedule deterministically).
+func _face_setup() -> void:
+	_face_rng = RandomNumberGenerator.new()
+	_face_rng.seed = blink_identity()
+	_blink_wait = _face_rng.randf_range(BLINK_WAIT_MIN, BLINK_WAIT_MAX)
+	blink_interval = _blink_wait
+	blink_t = -1.0
+	angry_k = 0.0
+	panic_k = 0.0
+	_x_set(false)
+	_face_sig.x = -1.0
+	_pose_eyes()
+
+
+## One face frame: blend toward the state's expression, run the blink clock, apply the transform to the two eyes.
+func _face_step(dt: float) -> void:
+	face_time += dt
+	var x_on := dead or down_t > 0.0
+	_blink_tick(dt)
+	var panic_target := 1.0 if off_stage and not grounded and not x_on else 0.0
+	var angry_target := 1.0 if (rage > 0.0 or swing >= 0.0) and not x_on else 0.0
+	panic_k += (panic_target - panic_k) * minf(1.0, dt * FACE_K_PANIC)
+	angry_k += (angry_target - angry_k) * minf(1.0, dt * FACE_K_ANGRY)
+	_x_set(x_on)
+	_pose_eyes()
+
+
+## Countdown to the next blink start; the interval between starts is drawn from [BLINK_WAIT_MIN, BLINK_WAIT_MAX].
+func _blink_tick(dt: float) -> void:
+	_blink_wait -= dt
+	if _blink_wait <= 0.0:
+		blink_t = 0.0
+		blink_started_at = face_time
+		blink_count += 1
+		blink_interval = _face_rng.randf_range(BLINK_WAIT_MIN, BLINK_WAIT_MAX)
+		_blink_wait += blink_interval
+	elif blink_t >= 0.0:
+		blink_t += dt
+		if blink_t >= BLINK_DUR:
+			blink_t = -1.0
+
+
+## Swap the two eye meshes to / from the shared crossed-bar X surface (still the same two meshes / draw calls).
+func _x_set(on: bool) -> void:
+	if on == _x_eyes:
+		return
+	_x_eyes = on
+	var m: Mesh = x_eye_mesh() if on else _eye_mesh
+	for e in eyes:
+		if e != null:
+			e.mesh = m
+
+
+## Apply this frame's expression to the two eye nodes (children of `neck`: the head and every gameplay point are
+## separate nodes, so faces can never move them).
+func _pose_eyes() -> void:
+	var x_on := _x_eyes
+	var panic := 0.0 if x_on else panic_k
+	var angry := (0.0 if x_on else angry_k) * (1.0 - panic)
+	var open := 1.0
+	if blink_t >= 0.0 and not x_on and panic < 0.5:
+		open = 1.0 - sin(PI * clampf(blink_t / BLINK_DUR, 0.0, 1.0))
+	eye_open = 1.0 if x_on else open * (1.0 - (1.0 - ANGRY_SQUINT) * angry) * (1.0 + (PANIC_WIDE - 1.0) * panic)
+	var inner := ANGRY_ANGLE * angry - PANIC_ANGLE * panic      # + = inner brow ends down
+	var lift := PANIC_LIFT * panic - ANGRY_DROP * angry
+	var sx := 1.0 + (PANIC_WIDE_X - 1.0) * panic
+	brow_angle = signf(-EYE_X) * inner
+	var sig := Vector4(eye_open, brow_angle, lift, sx)
+	if sig == _face_sig:                                        # unchanged (idle): skip the two node writes
+		return
+	_face_sig = sig
+	for i in eyes.size():
+		var e := eyes[i]
+		if e == null:
+			continue
+		var ex := -EYE_X if i == 0 else EYE_X
+		var b := _eye_base_scale[i]
+		var ang := signf(ex) * inner
+		e.basis = _euler_xyz(Vector3(0, 0, ang)).scaled_local(Vector3(b.x * sx, b.y * eye_open, b.z))
+		e.position = Vector3(ex, EYE_Y, EYE_Z) + Vector3(0, lift, 0)
+
+
+## The MID / HIGH open eye: the eye box plus a brow bar in ONE surface (one draw call). Static and shared by every
+## wobbler: +24 triangles per wobbler, no extra MeshInstance3D, material or draw call. LOW keeps the plain eye box.
+static func _face_eye_mesh() -> ArrayMesh:
+	if _eye_brow_cache != null:
+		return _eye_brow_cache
+	_eye_brow_cache = _combine_meshes([
+		[EYE_SIZE, Vector3.ZERO, 0.0],
+		[BROW_SIZE, Vector3(0.0, BROW_Y, 0.0), 0.0],
+	])
+	return _eye_brow_cache
+
+
+## The dead / down X eye: two crossed bars in one surface, swapped into the same two eye meshes while down. Shared.
+static func x_eye_mesh() -> ArrayMesh:
+	if _x_eye_cache != null:
+		return _x_eye_cache
+	var a := X_EYE_SIZE
+	_x_eye_cache = _combine_meshes([[a, Vector3.ZERO, PI / 4.0], [a, Vector3.ZERO, -PI / 4.0]])
+	return _x_eye_cache
+
+
+## One ArrayMesh surface from several (size, centre, Z rotation) boxes: the cached LowPoly box arrays transformed and
+## appended, so each face part stays a single draw call.
+static func _combine_meshes(parts: Array) -> ArrayMesh:
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	for part: Array in parts:
+		var sz: Vector3 = part[0]
+		var centre: Vector3 = part[1]
+		var rot := Basis(Vector3.BACK, float(part[2]))
+		var arrays := LowPoly.box(sz.x, sz.y, sz.z).surface_get_arrays(0)
+		var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var n: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		for i in v.size():
+			verts.append(rot * v[i] + centre)
+		for i in n.size():
+			norms.append(rot * n[i])
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = verts
+	out[Mesh.ARRAY_NORMAL] = norms
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, out)
+	return m

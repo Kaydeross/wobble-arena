@@ -51,13 +51,13 @@ const DEFAULTS := {
 	"cloud_dirty": false,   # the profile changed since the last cloud save (pushed when online again)
 	"cloud_user": "",       # lower-case account the local profile was last synced with ("" = none / guest)
 	"kill_cam": true,       # short slow-mo replay after a fast K.O. you score (offline, world/kill_cam.gd)
+	"crosshair": true,      # the aiming dot in the middle of the screen (ui/hud.gd); the charged-melee ring still shows when off
 	"enemy_arrows": true,   # small arrows at the screen edge point to living enemies that are off screen (ui/enemy_indicators.gd)
 	"chat": false,          # iOS ships with chat off: nothing is sent or shown
 	"blocked_names": "[]",  # lower-case player display names blocked on this device (autoload Safety)
 	"dyn": "random",        # dynamic arena: off (Steady) | random | wobble | tilt | quake | drift (docs/DYNAMICS.md)
-	"destructible": false,  # OPTIONAL destructible environment mode: breakable crates/barricades on three arenas, offline only (docs/DESTRUCTIBLE.md)
 	"mode": "classic",      # offline game mode (shared/modes.json id; the setup wizard offers ModeRules.PLAYABLE; the Construction hub sets construction)
-	"limit": -1,            # offline K.O. limit: -1 = the mode's preset, 0 = none, else 5 / 10 / 20
+	"limit": -1,            # offline K.O. limit: -1 = the mode's preset (endless brawl modes default to 20), 0 = none, else 5 / 10 / 20
 	"wobble_rig": "ragdoll",   # character animation: ragdoll (leg-driven floppy overlay, docs/RAGDOLL.md) | classic (web pose)
 	"leg_wobble": 0.55,        # seeded per-fighter leg wobble 0..1 in the ragdoll overlay (docs/RAGDOLL.md); 0 = exactly the old overlay pose
 	"offline_map": "arena", # offline arena (setup wizard page 1)
@@ -112,9 +112,17 @@ static func migrate_server_url(cfg: ConfigFile, shipped_default: String) -> bool
 	cfg.erase_section_key(SECTION, "server_url")
 	return true
 
+## True when the game should talk to the production server: every export, and also `godot --path godot` / the editor on a
+## desktop with a display, so a dev build plays the same online game as the shipped one. Set WOBBLE_DEV_SERVER=1 to use the
+## local `npm start` server instead. Headless runs (the test suites) always keep the local default.
+static func use_release_server() -> bool:
+	if not OS.has_feature("editor"):
+		return true
+	return DisplayServer.get_name() != "headless" and OS.get_environment("WOBBLE_DEV_SERVER") == ""
+
 ## The server a fresh install connects to: the configured production url in release exports, else the dev address.
 ## `config_path` and `release` are parameters so tests can exercise the release path in the editor.
-static func server_default(config_path: String = SERVER_CONFIG_PATH, release: bool = not OS.has_feature("editor")) -> String:
+static func server_default(config_path: String = SERVER_CONFIG_PATH, release: bool = use_release_server()) -> String:
 	if release and FileAccess.file_exists(config_path):
 		var f := FileAccess.open(config_path, FileAccess.READ)
 		var j := JSON.new()

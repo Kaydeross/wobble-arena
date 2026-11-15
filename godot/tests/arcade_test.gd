@@ -8,7 +8,8 @@ extends SceneTree
 ##    the run strip and the boss bar (only on boss stages), the stage-clear card, coins paid, Next stage, the victory card.
 ## 3. Lives and retry: dying on stage 2 costs a life and retries stage 2 on a fresh site; no lives left = run over.
 ## 4. Events fire at their intervals (load test crates, revision pads, backup call, deadline shrink, scope creep) and the crates hurt.
-## 5. Boss phases at 66 / 33 percent (bumps, toast, the Client's change request swaps tools).
+## 5. Boss phases at the stage table's thresholds (66 / 33 percent by default; data-driven), boss knockback resistance,
+##    the co-op economy (boss hp x1.35, +1 shared life), and the Client's change request swapping tools.
 ## 6. Coins once per first clear (not on a replay), arcade_best / arcade_clears saved and reloaded, the Site Foreman hat granted once.
 ## 7. A Classic match afterwards is unaffected (arcade flag cleared, no leaked or orphan nodes).
 
@@ -53,7 +54,9 @@ func _run() -> void:
 	await _full_run()
 	await _lives()
 	await _coop()
+	await _boss_hardening()
 	await _friendly_fire()
+	await _fastball()
 	await _balance()
 	await _events()
 	await _boss_weapon_crates()
@@ -156,13 +159,14 @@ func _free_world(w: Node) -> void:
 
 ## A world on a new Arcade run with two locally controlled player seats (offline co-op, docs/ARCADE_COOP_PLAN.md §4.1):
 ## seat 0 is the world's own player, seat 1 gets its own PlayerControl + InputState from ArcadeManager._bind_seats.
+## The run is launched with `p_seats = 2`, exactly like an online room: two seats get the extra shared life.
 ## `ff` = the Settings "arcade_ff" the run is built with (the hub's co-op friendly-fire toggle; off by default). Settings is
 ## put back off right after the launch so the next world in this file starts from the owner's default again.
 func _launch_coop(stage := 0, easy := true, dmg := 1.0, diff := "nightmare", cls := "", bot1 := false, dmg1 := 1.0,
 		ff := false) -> Node:
 	var st := root.get_node("Settings")
 	st.set_value("arcade_ff", ff)
-	var w: Node = AM.call("launch", 4242, diff, cls)
+	var w: Node = AM.call("launch", 4242, diff, cls, null, 2)
 	st.set_value("arcade_ff", false)
 	var arc = w.arcade
 	if easy: arc.difficulty_override = "easy"
@@ -440,7 +444,7 @@ func _full_run() -> void:
 func _hud_layout(w: Node, tag: String) -> void:
 	var hud: Control = w.hud
 	var ah: Control = w.arcade.hud
-	w.hud.toast("Crate incoming: Mammoth Sniper Rifle!")
+	w.hud.toast("Mammoth Sniper Rifle Crate")
 	for i in 3: w.tick(FRAME)
 	var vs: Vector2 = hud.get_viewport_rect().size
 	var r := Rect2(ah.position, ah.size)
@@ -513,6 +517,7 @@ func _coop() -> void:
 	var arc = w.arcade
 	var sim: MatchSim = w.sim
 	check(arc.seat_count == 2 and arc.seats.size() == 2, "co-op: two player seats (%d)" % arc.seats.size())
+	check(arc.lives == 4, "co-op: nightmare starts with 4 shared lives (3 + 1 for the second seat), lives %d" % arc.lives)
 	check(arc.seats[0] == sim.player and arc.seats[1] != sim.player, "co-op: seats are sim.fighters[0..1]")
 	var p2: FighterState = arc.seats[1]
 	check(p2.is_player and not p2.is_ghost and not p2.elim, "co-op: seat 2 is a full player (player flags, not a ghost)")
@@ -597,7 +602,7 @@ func _coop() -> void:
 	w.tick(FRAME)                                    # the manager sees the death and downs the seat
 	check(arc.seat_is_down(1) and arc.seat_alive(0), "co-op: only seat 2 is down (%s)" % [arc.downed_seats()])
 	check(downed_hits[0] == 1, "co-op: seat_downed carries the 6 s revive")
-	check(arc.lives == lives0 and arc.state == "fight", "co-op: a downed seat does not cost a life or fail the stage")
+	check(arc.lives == lives0 - 1 and arc.state == "fight", "co-op: a seat death costs one shared life and does not fail the stage (%d -> %d)" % [lives0, arc.lives])
 	check(arc.hud.plates[1].text.contains("Down"), "co-op: the HUD counts the seat down (%s)" % arc.hud.plates[1].text)
 	var t := 0.0
 	while arc.seat_is_down(1) and t < 9.0:
@@ -605,7 +610,7 @@ func _coop() -> void:
 		w.tick(FRAME); t += FRAME
 	check(not arc.seat_is_down(1) and revived_hits[0] == 1, "co-op: seat 2 auto-revives (%.2f s)" % t)
 	check(absf(t - 6.0) < 0.25, "co-op: the auto-revive takes ~6 s (%.2f)" % t)
-	check(arc.lives == lives0 and arc.state == "fight", "co-op: the revive costs no life")
+	check(arc.lives == lives0 - 1 and arc.state == "fight", "co-op: the revive itself costs no life")
 	check(not p2.dead and not p2.elim and p2.invuln > 0.0, "co-op: the revived seat is a live fighter again")
 	check(p2.hp >= sim.combat.max_hp(p2) - 0.01, "co-op: revived at full health for its class (%.0f/%.0f)" % [p2.hp, sim.combat.max_hp(p2)])
 	check(Vector2(p2.phys.px, p2.phys.pz).distance_to(Vector2(sim.player.phys.px, sim.player.phys.pz)) > 3.0 or Vector2(p2.phys.px, p2.phys.pz).distance_to(pos0) > 2.0, "co-op: the revive places the seat on a safe spot")
@@ -633,14 +638,51 @@ func _coop() -> void:
 	while (arc.state == "fight" or arc.state == "failing") and n < 900:
 		w.tick(FRAME); n += 1
 	check(arc.state == "failed", "co-op: both seats down fails the attempt (%s)" % arc.state)
-	check(arc.lives == lives0 - 1, "co-op: exactly one shared life lost (%d -> %d)" % [lives0, arc.lives])
+	check(arc.lives == lives0 - 2, "co-op: one life per seat death, the all-down fail adds nothing (%d -> %d)" % [lives0, arc.lives])
 	check(_ui(w, "ArcadeFailed") != null and arc.stage == 1, "co-op: the failed card shows once, same stage")
 	check(arc.seats[0].elim and arc.seats[1].elim and arc.seats[0].dead and arc.seats[1].dead, "co-op: every downed seat is out (eliminated/pinned) behind the card")
 	_press(_ui(w, "ArcadeFailed"), "Retry")
 	await _wait_frames(4)
-	check(arc.stage == 1 and arc.attempt == 1 and arc.lives == lives0 - 1, "co-op: retry retries stage 2 with the shared lives")
+	check(arc.stage == 1 and arc.attempt == 1 and arc.lives == lives0 - 2, "co-op: retry retries stage 2 with the shared lives")
 	check(arc.seats.size() == 2 and arc.seats[1].is_player and arc.seat_control(1) != null, "co-op: both seats are back on the retry")
 	check(_ui(w, "ArcadeIntro") != null, "co-op: the retry opens the intro card again")
+	await _free_world(w)
+	# -- every seat death costs a life, the seat revives, and the run is over at 0 lives --
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	_tick_safe(w, 20)
+	arc.lives = 3
+	_kill_seat(w, 1)
+	w.tick(FRAME)
+	check(arc.lives == 2 and arc.seat_is_down(1) and arc.state == "fight", "co-op: death 1 -> 2 lives, the seat is down, the fight goes on (%d)" % arc.lives)
+	var tr := 0.0
+	while arc.seat_is_down(1) and tr < 9.0:
+		sim.player.invuln = 5.0
+		w.tick(FRAME); tr += FRAME
+	check(not arc.seat_is_down(1) and arc.lives == 2, "co-op: the seat revived and the revive cost nothing (%d)" % arc.lives)
+	for i in 90:                                     # past the re-down grace: still no extra charge
+		sim.player.invuln = 5.0; arc.seats[1].invuln = 5.0
+		w.tick(FRAME)
+	check(arc.lives == 2 and arc.state == "fight", "co-op: no further charge while both seats are up")
+	_kill_seat(w, 1)
+	w.tick(FRAME)
+	check(arc.lives == 1 and arc.state == "fight", "co-op: death 2 -> 1 life (%d, %s)" % [arc.lives, arc.state])
+	tr = 0.0
+	while arc.seat_is_down(1) and tr < 9.0:
+		sim.player.invuln = 5.0
+		w.tick(FRAME); tr += FRAME
+	for i in 90:
+		sim.player.invuln = 5.0; arc.seats[1].invuln = 5.0
+		w.tick(FRAME)
+	_kill_seat(w, 1)                                 # the death that spends the last life
+	var n3 := 0
+	while arc.state in ["fight", "failing"] and n3 < 900:
+		sim.player.invuln = 5.0
+		w.tick(FRAME); n3 += 1
+	check(arc.lives == 0 and arc.state == "over", "co-op: the death at 1 life ends the run at 0 (%d, %s)" % [arc.lives, arc.state])
+	check(_ui(w, "ArcadeOver") != null, "co-op: the run-over card shows")
 	await _free_world(w)
 	# -- summed K.O.s, per-seat rewards, the clear card advances both seats --
 	w = _launch_coop(0)
@@ -671,6 +713,27 @@ func _coop() -> void:
 	check(arc.seats.size() == 2 and arc.seats[0] == w.sim.player and arc.seats[1].is_player, "co-op: both seats advance to the next stage")
 	check(arc.seat_control(1) != null and w.sim.fighters.size() == 2 + 1, "co-op: the next stage rebuilds both seats and the stage's crew")
 	check(_ui(w, "ArcadeIntro") != null, "co-op: the next stage's intro card")
+	await _free_world(w)
+	# -- online retry race: a ghost seat whose snapshot still reads dead at fight start is not downed until seen alive --
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	var gseat: FighterState = arc.seats[1]
+	gseat.net_human = true; gseat.net_slot = 1; gseat.is_ghost = true
+	gseat.dead = true                                # the stale snapshot from the failed attempt
+	_start_fight(w)
+	for i in 5:
+		sim.player.invuln = 5.0
+		w.tick(FRAME)
+	check(not arc.seat_is_down(1), "co-op: a stale-dead ghost seat is not downed at fight start (%s)" % [arc.downed_seats()])
+	gseat.dead = false                               # the first fresh snapshot: alive
+	sim.player.invuln = 5.0
+	w.tick(FRAME)
+	check(arc._seat_seen.has(1), "co-op: the ghost seat is marked seen once it is alive")
+	gseat.dead = true                                # now a genuine death
+	sim.player.invuln = 5.0
+	w.tick(FRAME)
+	check(arc.seat_is_down(1), "co-op: after being seen alive, a dead ghost seat is downed")
 	await _free_world(w)
 	# -- the single-player path is unchanged: one seat, the crew still hunts sim.player --
 	_unlock()
@@ -712,6 +775,70 @@ func _coop() -> void:
 	sim.combat.friendly_fire = false
 	check(sim.combat.bots_can_hit(arc.seats[0], crew) and not sim.combat.bots_can_hit(crew, arc.enemies[1]), "gates: crew vs crew is still not a fight")
 	await _free_world(w)
+
+# ---------------- 3b-2. boss ring-out hardening & the co-op economy (sprint 1.1) ----------------
+
+## 1.1: a boss takes 0.72 of every knockback (no one-hit ring-out through a fence gate at 100 % hp, docs/CONSTRUCTION_DLC.md),
+## a two-seat co-op run gives BOSSES x1.35 health (crew and solo are untouched) and +1 shared life per difficulty.
+func _boss_hardening() -> void:
+	_unlock()
+	var CO: GDScript = load("res://dlc/construction/arcade_coop.gd")
+	# -- boss knockback resistance: same force on a boss and on a crew tradie, 28 % less shove on the boss --
+	var w := _launch(1)                                # the Engineer: a boss stage with no crew of its own
+	var arc = w.arcade
+	_start_fight(w)
+	var sim: MatchSim = w.sim
+	var boss: FighterState = arc.boss
+	check(is_equal_approx(boss.cls_kb, 0.72), "boss knockback resistance is 0.72 (%.2f)" % boss.cls_kb)
+	var crew: FighterState = arc.spawn_minion()        # a Tradie: a full crew member, not a boss
+	check(crew != null and is_equal_approx(crew.cls_kb, 1.0), "crew keep full knockback (%.2f)" % (crew.cls_kb if crew else -1.0))
+	for f: FighterState in [boss, crew]:
+		f.invuln = 0.0; f.shield_t = 0.0; f.down_t = 0.0; f.hp = sim.combat.max_hp(f)
+		f.phys.vx = 0.0; f.phys.vz = 0.0
+	var bv := 0.0
+	if sim.combat.hit(boss, 0.5, 1.0, 0.0, 0.0, 20.0, false, null).get("applied", false): bv = absf(boss.phys.vx)
+	var cv := 0.0
+	if crew != null and sim.combat.hit(crew, 0.5, 1.0, 0.0, 0.0, 20.0, false, null).get("applied", false): cv = absf(crew.phys.vx)
+	check(cv > 0.0 and absf(bv / cv - 0.72) < 0.01,
+		"the same shove moves a boss %.2f m/s and a crew member %.2f m/s (x%.2f)" % [bv, cv, bv / maxf(cv, 0.001)])
+	await _free_world(w)
+	# -- co-op boss health x1.35, crew unchanged, solo numbers bit-identical --
+	var solo = AM.new()
+	solo.start_run(1, "nightmare", 1)
+	var coop = AM.new()
+	coop.start_run(1, "nightmare", 2)
+	check(is_equal_approx(solo.enemy_hp(2.8, true), 2.8) and is_equal_approx(coop.enemy_hp(2.8, true), 2.8 * 1.35),
+		"co-op boss hp is x1.35 (solo %.2f, co-op %.2f)" % [solo.enemy_hp(2.8, true), coop.enemy_hp(2.8, true)])
+	check(is_equal_approx(coop.enemy_hp(1.0, false), solo.enemy_hp(1.0, false)), "co-op crew hp is unchanged (%.2f)" % coop.enemy_hp(1.0, false))
+	check(is_equal_approx(solo.enemy_hp(2.8, false), 2.8), "solo numbers are untouched by the co-op multiplier")
+	solo.end_run()
+	coop.end_run()
+	var ws := _launch(1, true, 1.0, "nightmare")
+	_start_fight(ws)
+	var solo_hp: float = ws.arcade.boss.cls_hp
+	await _free_world(ws)
+	var wc := _launch_coop(1, true, 1.0, "nightmare")
+	_start_fight(wc)
+	check(is_equal_approx(wc.arcade.boss.cls_hp, solo_hp * 1.35),
+		"the co-op Engineer really has x1.35 health (%.2f vs solo %.2f)" % [wc.arcade.boss.cls_hp, solo_hp])
+	await _free_world(wc)
+	# -- shared lives: +1 with two seats; the arc the host sends carries it, and a guest with no lv adopts it --
+	check(int(CO.call("lives_for", "easy", 1)) == 5 and int(CO.call("lives_for", "easy", 2)) == 6, "easy: 5 solo / 6 co-op lives")
+	check(int(CO.call("lives_for", "normal", 1)) == 4 and int(CO.call("lives_for", "normal", 2)) == 5, "normal: 4 solo / 5 co-op lives")
+	check(int(CO.call("lives_for", "nightmare", 1)) == 3 and int(CO.call("lives_for", "nightmare", 2)) == 4, "nightmare: 3 solo / 4 co-op lives")
+	for diff: String in ["easy", "normal", "nightmare"]:
+		var a = AM.new()
+		a.start_run(1, diff, 2)
+		check(a.lives == int(CO.call("lives_for", diff, 2)), "%s co-op run starts with %d shared lives" % [diff, a.lives])
+		a.end_run()
+		var arc2: Dictionary = CO.call("run_start_arc", 7, diff, 2)
+		check(int(arc2["lv"]) == int(CO.call("lives_for", diff, 2)), "%s co-op start.arc carries lv %d" % [diff, int(arc2["lv"])])
+	var a_old: RefCounted = AM.new()
+	var arc_old: Dictionary = CO.call("run_start_arc", 7, "normal", 2)
+	arc_old.erase("lv")                                # an old host's arc without lv: the fallback must be the co-op count
+	a_old.init_online(arc_old, false)
+	check(a_old.lives == 5, "a guest adopts the co-op lives when the arc has no lv (%d)" % a_old.lives)
+	a_old.end_run()
 
 # ---------------- 3c. co-op friendly fire (owner decision: off by default, option in the hub) ----------------
 
@@ -799,6 +926,83 @@ func _friendly_fire() -> void:
 	mg.end_run()
 	st.set_value("arcade_ff", false)
 
+# ---------------- 3c-2. Fastball Special: co-op carry & the downed revive discount ----------------
+
+## Sprint 2.2 (docs/DAMAGE.md "Teammate carry/throw"): only a two-seat Arcade co-op run carries (solo never). A DOWNED seat
+## is hoisted as a limp body (no slam) and a landing on the site floor shaves 2.0 s off its revive countdown through
+## ArcadeManager.fastball_revive (found through the sim meta "arcade_run"); a LIVING teammate's body slams the first
+## crewman for 35 dmg / 20 force and toasts FASTBALL SPECIAL!.
+func _fastball() -> void:
+	_unlock()
+	# offline Arcade marks the sim (Combat.carry_tick finds the run through it); solo runs keep the feature off
+	var w := _launch(0)
+	var arc = w.arcade
+	check(w.sim.has_meta("arcade_run") and w.sim.get_meta("arcade_run") == arc, "fastball: offline Arcade sets the arcade_run meta")
+	check(not w.sim.combat.carry_active() and not w.sim.combat.arcade_coop, "fastball: a solo Arcade run never carries")
+	await _free_world(w)
+	# two seats: the gate is on, and throwing a DOWNED seat onto the floor shaves 2 s off its revive
+	w = _launch_coop(0)
+	arc = w.arcade
+	var sim: MatchSim = w.sim
+	check(sim.combat.carry_active() and sim.combat.arcade_coop, "fastball: two-seat co-op enables the Fastball Special")
+	_start_fight(w)
+	_tick_safe(w, 20)
+	var p: FighterState = arc.seats[0]
+	var mate: FighterState = arc.seats[1]
+	_kill_seat(w, 1)                                  # seat 2 goes down: the manager starts its 6 s countdown
+	w.tick(FRAME)
+	check(arc.seat_is_down(1) and mate.dead and mate.elim, "fastball: seat 2 is down (dead/elim)")
+	var spot: Array = sim.map.get("player", [0.0, 0.0]) if sim.map.get("player") is Array else [0.0, 0.0]
+	if spot.size() < 2: spot = [0.0, 0.0]
+	var syaw := atan2(-float(spot[0]), -float(spot[1]))   # aim the throw at the middle of the site
+	p.phys.place(float(spot[0]), 0.05, float(spot[1]))
+	p.yaw = syaw; p.face_yaw = syaw
+	mate.phys.place(p.phys.px + sin(syaw) * 1.0, p.phys.py, p.phys.pz + cos(syaw) * 1.0)
+	sim.combat.clear_inventory(p); sim.combat.set_weapon(p, "spatula")
+	p.slot = -1; p.shove_cool = 0.0
+	check(sim.combat.try_carry(p), "fastball: the player hoists the downed co-op seat")
+	check(mate.carry_limp and p.carrying == mate, "fastball: the body is limp (revive discount only, no slam)")
+	var left0: float = float(arc.seat_revive_left(1))
+	check(left0 > 5.0, "fastball: the natural revive countdown is ~6 s (%.2f)" % left0)
+	check(sim.combat.throw_carry(p), "fastball: the body is thrown (18 m/s forward + 6 up)")
+	var flown := 0.0
+	while flown < 3.0 and mate.ball_t >= 0.0:
+		p.invuln = 5.0
+		w.tick(FRAME); flown += FRAME
+	check(mate.ball_t < 0.0 and mate.phys.grounded, "fastball: the body lands on the floor (%.2f s)" % flown)
+	var expected: float = left0 - flown - 2.0
+	check(absf(arc.seat_revive_left(1) - expected) < 0.1,
+		"fastball: the floor landing shaved 2.0 s off the revive (%.2f -> %.2f, expected %.2f)" % [left0, arc.seat_revive_left(1), expected])
+	await _free_world(w)
+	# a LIVING teammate thrown at the crew body-slams the FIRST enemy it hits: 35 dmg / 20 force + the toast
+	w = _launch_coop(0)
+	arc = w.arcade
+	sim = w.sim
+	_start_fight(w)
+	_tick_safe(w, 20)
+	p = arc.seats[0]
+	mate = arc.seats[1]
+	var crew: FighterState = arc.enemies[0]
+	crew.hp = 400.0; crew.invuln = 0.0; crew.shield_t = 0.0; crew.down_t = 0.0; crew.cls_kb = 1.0
+	p.cls_dmg = 1.0; p.rage_t = 0.0; p.big_t = 0.0; p.invuln = 5.0; sim.combat.aim_mode = "normal"
+	for e: FighterState in arc.enemies:               # keep the other crew far away: "first enemy" is unambiguous
+		if e != crew: e.phys.place(40.0, 0.05, 40.0); e.invuln = 5.0
+	p.phys.place(0.0, 0.05, 0.0); mate.phys.place(0.0, 0.05, 1.0); crew.phys.place(0.0, 0.05, 8.0)
+	p.yaw = 0.0; p.face_yaw = 0.0
+	sim.combat.clear_inventory(p); sim.combat.set_weapon(p, "spatula")
+	p.slot = -1; p.shove_cool = 0.0
+	var toasts0 := int(w.counts.get("toast", 0))
+	check(sim.combat.try_carry(p), "fastball: a living teammate is hoisted")
+	var crew_hp := crew.hp
+	check(sim.combat.throw_carry(p), "fastball: the living body is thrown")
+	var slam_t := 0.0
+	while is_equal_approx(crew.hp, crew_hp) and slam_t < 2.0:
+		p.invuln = 5.0; mate.invuln = 5.0
+		w.tick(FRAME); slam_t += FRAME
+	check(is_equal_approx(crew_hp - crew.hp, 35.0), "fastball: the living body-slam deals 35 (%.2f after %.2f s)" % [crew_hp - crew.hp, slam_t])
+	check(int(w.counts.get("toast", 0)) > toasts0, "fastball: the FASTBALL SPECIAL! toast fired")
+	await _free_world(w)
+
 # ---------------- 3d. balance overlay: flame knockback, Air Blower damage ----------------
 
 ## The flame's per-tick force used to add up to a constant shove (it could carry a target that cannot walk against it).
@@ -861,6 +1065,11 @@ func _events() -> void:
 	_idle(w, 1.0)
 	check(int(arc.events.counts.get("load_test", 0)) == 1, "load test fires at 12 s")
 	check(arc.events._crates.size() == 3, "three crates are falling (%d)" % arc.events._crates.size())
+	var ev0: Array = arc.events.active_events()
+	var ev_ok := true
+	for e: Dictionary in ev0:
+		if str(e["t"]) != "load_test" or int(e["id"]) <= 0 or float(e["warn"]) <= 0.0: ev_ok = false
+	check(ev0.size() == 3 and ev_ok, "am.ev: one load-test descriptor per falling crate (ids + warning seconds) %s" % [ev0])
 	check(w.get_node_or_null("StageEvents") != null and w.get_node("StageEvents").get_child_count() >= 6, "crates and warning rings are shown")
 	var boss: FighterState = arc.boss
 	var hp0 := boss.hp
@@ -869,10 +1078,48 @@ func _events() -> void:
 	check(boss.hp < hp0 - 20.0, "a landing crate hurts the boss (%.0f -> %.0f)" % [hp0, boss.hp])
 	_idle(w, 2.6)
 	check(arc.events._crates.size() == 0, "the crates have landed")
+	check(arc.events.active_events().is_empty(), "am.ev: no warning descriptors once the crates landed")
 	_idle(w, 24.0 - 15.1 + 0.2)
 	_idle(w, 12.0)
 	var times: Array = arc.events.fired.filter(func(e: Array) -> bool: return e[1] == "load_test").map(func(e: Array) -> float: return e[0])
 	check(times.size() == 3 and absf(times[0] - 12.0) < 0.1 and absf(times[1] - 24.0) < 0.1 and absf(times[2] - 36.0) < 0.1, "load test every 12 s: %s" % [times])
+	# Wobble Reactions (Sprint 2.3): the falling load-test crates are the deflectable hazard of the tuned combat layer.
+	# Registration is weak + duck-typed on Combat.hazard_source (no DLC import from logic), a redirect drifts the crate
+	# (and its warning ring / am.ev descriptor) and the stage finish clears the registration again.
+	check(sim.combat.hazard_source != null and sim.combat.hazard_source.get_ref() == arc.events,
+		"reactions: StageEvents registers the falling crates on the combat")
+	var falling: int = arc.events._crates.size()
+	check(falling == 3, "reactions: three crates are falling for the redirect test (%d)" % falling)
+	var defs: Array = arc.events.deflectables()
+	check(defs.size() == falling and float((defs[0] as Dictionary).get("r", 0.0)) > 0.0,
+		"reactions: every falling crate exposes a collision sphere")
+	var cid := int(arc.events._crates[0]["id"])
+	var cx0 := float(arc.events._crates[0]["x"])
+	var cz0 := float(arc.events._crates[0]["z"])
+	var cy0 := float(arc.events._crates[0]["y"])
+	check(arc.events.deflect_crate(cid, 0.0, 1.0), "reactions: a falling crate can be deflected")
+	arc.events._update_crates(0.5)
+	var hc: Dictionary = arc.events._crates[0]
+	check(absf(float(hc["x"]) - cx0) < 0.001 and float(hc["z"]) > cz0 + 8.0 * 0.4
+		and float(hc["y"]) < cy0, "reactions: the deflected crate drifts down its heading and keeps falling")
+	var am_moved := false
+	for e: Dictionary in arc.events.active_events():
+		if int(e["id"]) == cid and absf(float(e["z"]) - float(hc["z"])) < 0.06: am_moved = true
+	check(am_moved, "reactions: am.ev reports the deflected warning spot")
+	var ring_node: Variant = hc.get("ring")
+	check(ring_node != null and is_instance_valid(ring_node)
+		and absf((ring_node as Node3D).position.x - float(hc["x"])) < 0.001
+		and absf((ring_node as Node3D).position.z - float(hc["z"])) < 0.001,
+		"reactions: the warning ring follows the deflected spot")
+	# the deflected crate resolves (lands) exactly once, at the drifted x/z
+	var n_before: int = arc.events._crates.size()
+	hc["left"] = 0.0
+	arc.events._update_crates(0.02)
+	check(arc.events._crates.size() == n_before - 1, "reactions: the deflected crate lands exactly once (%d -> %d)"
+		% [n_before, arc.events._crates.size()])
+	arc.events.finish()
+	check(sim.combat.hazard_source == null or sim.combat.hazard_source.get_ref() == null,
+		"reactions: the stage finish clears the deflect registration")
 	await _free_world(w)
 	# Designer: revision pads every 15 s for 8 s
 	w = _launch(2, true, 1.0)
@@ -901,7 +1148,14 @@ func _events() -> void:
 	check(arc.enemies.size() == 1, "no backup above 50 %")
 	boss.hp = sim.combat.max_hp(boss) * 0.49
 	_idle(w, 1.0)
-	check(arc.enemies.size() == 2 and sim.fighters.size() == n0 + 1, "backup call: 1 tradie joins (%d enemies)" % arc.enemies.size())
+	check(arc.enemies.size() == 1, "backup call: the warning ring comes first, no spawn yet")
+	check(arc.events._summons.size() == 1 and w.get_node_or_null("StageEvents") != null, "backup call: one warning ring on the floor")
+	var sev: Array = arc.events.active_events()
+	check(sev.size() == 1 and str(sev[0]["t"]) == "backup_call" and int(sev[0]["id"]) > 0 and float(sev[0]["warn"]) > 0.0,
+		"am.ev: the pending backup summon is a warning descriptor %s" % [sev])
+	_idle(w, 0.8)
+	check(arc.enemies.size() == 2 and sim.fighters.size() == n0 + 1, "backup call: 1 tradie joins after the warning (%d enemies)" % arc.enemies.size())
+	check(arc.events._summons.is_empty(), "backup call: the warning ring is gone once the tradie lands")
 	check(w.views.size() == sim.fighters.size(), "the new tradies have views")
 	check(int(arc.events.counts.get("backup_call", 0)) == 1, "backup called once")
 	boss.hp = sim.combat.max_hp(boss) * 0.2
@@ -978,10 +1232,11 @@ func _boss_weapon_crates() -> void:
 
 func _phases() -> void:
 	_unlock()
-	# The Client: Giant, change request swaps the tools at 66 and 33 %
+	# The Client: Giant, change request swaps the tools at the table's phases (its data says 66 / 33)
 	var w := _launch(5, true, 1.0)
 	var arc = w.arcade
 	_start_fight(w)
+	check(arc.phases() == [0.66, 0.33], "the Client's phase thresholds are the table's data (%s)" % [arc.phases()])
 	var sim: MatchSim = w.sim
 	var b: FighterState = arc.boss
 	var spd0 := b.phys.speed
@@ -1031,6 +1286,7 @@ func _phases() -> void:
 	w = _launch(1, true, 1.0)
 	arc = w.arcade
 	_start_fight(w)
+	check(arc.phases() == [0.66, 0.33], "a stage without its own phases falls back to PHASES (%s)" % [arc.phases()])
 	sim = w.sim
 	b = arc.boss
 	mx = sim.combat.max_hp(b)
@@ -1044,6 +1300,35 @@ func _phases() -> void:
 	check(arc.phase_n == 1 and seen_toast[0], "Engineer phase 1 announces itself")
 	check(arc.kit[b] == "drill", "the Engineer keeps its cordless drill")
 	await _free_world(w)
+	# The data path itself: a stage entry with change_request.params.phases fires at THOSE fractions (a test-only
+	# injection into the cached table, so the shipped balance keeps 66 / 33; restored right after).
+	var tabs: Array = AM.call("stages")
+	var saved_events: Array = (tabs[1]["events"] as Array).duplicate(true)
+	(tabs[1]["events"] as Array).append({"type": "change_request", "every": 0.0,
+		"params": {"phases": [0.6, 0.3], "random_weapon_swap": false}})
+	w = _launch(1, true, 1.0)
+	arc = w.arcade
+	_start_fight(w)
+	sim = w.sim
+	b = arc.boss
+	mx = sim.combat.max_hp(b)
+	check(arc.phases() == [0.6, 0.3], "custom phases come from the stage data (%s)" % [arc.phases()])
+	b.hp = mx * 0.65
+	for k in 3: w.tick(FRAME)
+	check(arc.phase_n == 0, "custom phases: nothing above 60 %% (at 65 %%)")
+	b.hp = mx * 0.59
+	for k in 3: w.tick(FRAME)
+	check(arc.phase_n == 1, "custom phases: phase 1 at 60 %% (%d)" % arc.phase_n)
+	b.hp = mx * 0.5
+	for k in 3: w.tick(FRAME)
+	check(arc.phase_n == 1, "custom phases: nothing between 60 and 30 %%")
+	b.hp = mx * 0.29
+	for k in 3: w.tick(FRAME)
+	check(arc.phase_n == 2, "custom phases: phase 2 at 30 %% (%d)" % arc.phase_n)
+	check(arc.kit[b] == "drill", "a random_weapon_swap: false phase does not swap the tool")
+	await _free_world(w)
+	tabs[1]["events"] = saved_events
+	check(AM.call("phase_thresholds", tabs[1]) == [0.66, 0.33], "without the param the default PHASES are back")
 
 # ---------------- 5b. a boss falling off the edge is not a K.O. ----------------
 
@@ -1059,14 +1344,13 @@ func _ring_out(f: FighterState, sim: MatchSim) -> void:
 func _keep_seats_alive(w: Node) -> void:
 	for f: FighterState in w.arcade.seats: f.invuln = 5.0
 
-## The owner report ("boss drop off from edge = stage clear"): a ring-out leaves the enemy dead with its health intact and
-## must never be a defeat. The boss comes back on the floor with the health it had, its trade tool and a short
-## invulnerability, the fight goes on, and only a real K.O. (hp <= 0) clears the stage.
+## The owner report ("when the boss falls off the edge it respawns; it should count as defeated"): a ring-out leaves the
+## enemy dead with its health intact. In Arcade any ring-out K.O.s the enemy for good, and a boss ring-out clears the stage.
 func _boss_ring_out() -> void:
 	_unlock()
 	var sv := _sv()
 	var diff := "nightmare"
-	# every boss stage: one fall -> one revive, health and tool kept, no pay/record, then a real K.O. clears
+	# every boss stage: a boss ring-out downs it (hp 0, bar empty), clears and pays the stage once, and it never respawns
 	for si in [1, 2, 3, 4, 5]:
 		var w := _launch(si, true, 1.0)
 		var arc = w.arcade
@@ -1076,137 +1360,29 @@ func _boss_ring_out() -> void:
 		var mx := sim.combat.max_hp(b)
 		b.hp = mx * 0.8
 		b.invuln = 0.0
-		var frac0 := b.hp / mx
-		var kit0: String = arc.kit[b]
-		var falls0 := int(b.st["falls"])
 		var coins0: int = sv.coins
 		_keep_seats_alive(w)
 		_ring_out(b, sim)
 		for k in 3: w.tick(FRAME)
-		check(arc.state == "fight", "stage %d: a boss ring-out never clears the stage (%s)" % [si + 1, arc.state])
-		check(not b.dead and not arc.downed.has(b), "stage %d: the boss is back on its feet" % (si + 1))
-		check(absf(b.hp / mx - frac0) < 0.02, "stage %d: it keeps its pre-fall health fraction (%.2f -> %.2f)" % [si + 1, frac0, b.hp / mx])
-		check(str(arc.kit[b]) == kit0 and b.weapon == kit0, "stage %d: its trade tool is back in hand (%s)" % [si + 1, b.weapon])
-		check(b.invuln > 0.0, "stage %d: it revives with a short invulnerability" % (si + 1))
-		check(b.phys.py > sim.ring_out_y and b.phys.py < 2.0, "stage %d: it is back on the floor (y %.2f)" % [si + 1, b.phys.py])
-		check(arc.hud.boss_visible(), "stage %d: the boss bar still shows" % (si + 1))
-		check(int(b.st["falls"]) == falls0 + 1, "stage %d: exactly one fall (no fall/revive churn)" % (si + 1))
-		check(int(arc.revived.get(b, 0)) == 1, "stage %d: revived once (%s)" % [si + 1, arc.revived.get(b, 0)])
-		var away := Vector2(b.phys.px - sim.player.phys.px, b.phys.pz - sim.player.phys.pz).length()
-		check(away > 2.5, "stage %d: it comes back away from the player (%.1f m)" % [si + 1, away])
-		check(sv.coins == coins0 and arc.history.is_empty() and not DlcSave.has_cleared(sv.dlc, _stage_id(si), diff),
-			"stage %d: a ring-out pays nothing and records no clear" % (si + 1))
-		# the fight really continues: 1.5 s later the boss is still up and did not fall again
-		for k in 90:
-			_keep_seats_alive(w)
-			w.tick(FRAME)
-		check(arc.state == "fight" and not b.dead and int(b.st["falls"]) == falls0 + 1 and int(arc.revived.get(b, 0)) == 1,
-			"stage %d: no repeated fall/revive churn (state %s, falls %s)" % [si + 1, arc.state, b.st["falls"]])
-		# ... and a later real kill still clears
-		b.invuln = 0.0
-		sim.combat.hit(b, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim.player)
-		for k in 3: w.tick(FRAME)
-		check(arc.state == "clearing" and arc.downed.has(b) and b.hp <= 0.0,
-			"stage %d: only hp <= 0 clears it (%s, hp %.1f)" % [si + 1, arc.state, b.hp])
-		await _free_world(w)
-	# The REAL fall, with the player as the last attacker (the hammer shove the owner reported): the boss is thrown off the
-	# slab by its own velocity (no teleport below the ring-out line), MatchSim._ring_out sees it, and the fall must not pay
-	# the player: no K.O. coins, no K.O. count, no streak, no "K.O.!" toast (only a plain fall), and the boss revives once.
-	for si in [2, 5]:
-		var wk := _launch(si, true, 1.0)
-		var arck = wk.arcade
-		_start_fight(wk)
-		var simk: MatchSim = wk.sim
-		var bk: FighterState = arck.boss
+		check(arc.state == "clearing", "stage %d: a boss ring-out clears the stage (%s)" % [si + 1, arc.state])
+		check(arc.downed.has(b) and b.dead, "stage %d: the boss is downed and dead" % (si + 1))
+		check(b.hp == 0.0 and arc.boss_frac() == 0.0, "stage %d: its hp and the boss bar read 0 (%.2f)" % [si + 1, b.hp])
+		for k in int((arc.CLEAR_DELAY + 0.3) / FRAME): w.tick(FRAME)
+		var t_stage: Dictionary = (AM.call("stages") as Array)[si]
+		var final_stage: bool = si == 5                   # the last stage ends the run: "won", with the victory bonus on top
+		check(arc.state == ("won" if final_stage else "cleared"), "stage %d: the clear card comes up after the delay (%s)" % [si + 1, arc.state])
+		var paid: int = sv.coins - coins0
+		var want: int = arc.stage_coins(t_stage)
+		check(paid >= want and (final_stage or paid < want + 400), "stage %d: the stage coins are paid once (%d, want %d)" % [si + 1, paid, want])
+		check(arc.history.size() == 1 and DlcSave.has_cleared(sv.dlc, _stage_id(si), diff),
+			"stage %d: the clear is recorded once (%s)" % [si + 1, arc.history])
+		# no respawn: 3 s later the boss is still dead and downed, and nothing was paid twice
 		var coins1: int = sv.coins
-		var kos1: int = int(sv.stats["kos"])
-		var ko1: int = simk.player.ko
-		bk.invuln = 0.0
-		bk.hp = simk.combat.max_hp(bk) * 0.6
-		bk.phys.place(31.5, 0.5, 0.0)
-		bk.phys.vx = 14.0
-		bk.last_attacker = simk.player
-		bk.last_hit_time = simk.combat.time
-		var falls1 := 0
-		for k in 400:
-			_keep_seats_alive(wk)
-			wk.tick(FRAME)
-			if bk.st["falls"] != falls1 and falls1 == 0: falls1 = int(bk.st["falls"])
-			if falls1 > 0 and k > 0 and not bk.dead and bk.phys.py > simk.ring_out_y and bk.phys.py < 2.0 and int(arck.revived.get(bk, 0)) == 1: break
-		check(int(bk.st["falls"]) == 1 and int(arck.revived.get(bk, 0)) == 1, "real fall (%s): one fall, one revive (falls %s, revived %s)" % [bk.name, bk.st["falls"], arck.revived.get(bk, 0)])
-		check(arck.state == "fight" and not bk.dead and not arck.downed.has(bk), "real fall (%s): the fight goes on (%s)" % [bk.name, arck.state])
-		check(simk.player.ko == ko1 and int(sv.stats["kos"]) == kos1, "real fall (%s): no K.O. is credited to the player (%d -> %d)" % [bk.name, ko1, simk.player.ko])
-		check(sv.coins == coins1, "real fall (%s): no K.O. coins are paid (%d -> %d)" % [bk.name, coins1, sv.coins])
-		check(int(simk.player.st["streak"]) == 0, "real fall (%s): no K.O. streak" % bk.name)
-		# the revived boss re-targets: it walks toward the player again (distance shrinks over 3 s)
-		var d0 := Vector2(bk.phys.px - simk.player.phys.px, bk.phys.pz - simk.player.phys.pz).length()
-		for k in 180:
-			_keep_seats_alive(wk)
-			wk.tick(FRAME)
-		var d1 := Vector2(bk.phys.px - simk.player.phys.px, bk.phys.pz - simk.player.phys.pz).length()
-		check(d1 < d0 - 4.0 or d1 < 3.0, "real fall (%s): the revived boss hunts the player again (%.1f -> %.1f m)" % [bk.name, d0, d1])
-		await _free_world(wk)
-	# The old clear decider was `dead && !fell_t`: any path that lost that transient flag between the fall and the
-	# manager's step (a bot respawn timer, a net re-build, a later code change) read as a K.O. and cleared the stage.
-	# The invariant is hp now, so a dead fighter with health left is a fall whatever the flag says.
-	var wf := _launch(2, true, 1.0)            # Designer
-	var arcf = wf.arcade
-	_start_fight(wf)
-	var simf: MatchSim = wf.sim
-	var bf: FighterState = arcf.boss
-	_keep_seats_alive(wf)
-	bf.hp = simf.combat.max_hp(bf) * 0.7
-	bf.dead = true
-	bf.fell_t = false                          # the flag lost: the pre-fix code called this a K.O. and cleared the stage
-	bf.death_t = 5.0
-	bf.phys.place(0.0, simf.ring_out_y - 5.0, 0.0)
-	wf.tick(FRAME)
-	check(arcf.state == "fight" and not bf.dead and not arcf.downed.has(bf) and absf(bf.hp / simf.combat.max_hp(bf) - 0.7) < 0.02,
-		"a dead-with-health boss is a fall whatever fell_t says (state %s, hp %.0f)" % [arcf.state, bf.hp])
-	await _free_world(wf)
-	# a clear after a fall pays and records exactly like a normal clear (Engineer, first clear on a fresh profile)
-	_unlock()
-	var w2 := _launch(1, true, 1.0)
-	var arc2 = w2.arcade
-	_start_fight(w2)
-	var sim2: MatchSim = w2.sim
-	var b2: FighterState = arc2.boss
-	var t2: Dictionary = (AM.call("stages") as Array)[1]
-	b2.hp = sim2.combat.max_hp(b2) * 0.5
-	b2.invuln = 0.0
-	_keep_seats_alive(w2)
-	_ring_out(b2, sim2)
-	for k in 3: w2.tick(FRAME)
-	check(arc2.state == "fight" and arc2.history.is_empty(), "the fall itself pays no clear")
-	var c0: int = sv.coins
-	b2.invuln = 0.0
-	sim2.combat.hit(b2, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim2.player)
-	for k in 3: w2.tick(FRAME)
-	check(arc2.state == "clearing", "the real K.O. starts the existing clear flow (%s)" % arc2.state)
-	for k in int((arc2.CLEAR_DELAY + 0.3) / FRAME): w2.tick(FRAME)
-	check(arc2.state == "cleared", "the clear card comes up after the delay (%s)" % arc2.state)
-	var paid: int = sv.coins - c0
-	var want: int = arc2.stage_coins(t2)
-	check(paid >= want and paid < want + 60, "the post-fall clear pays the stage coins once (%d, K.O. coins included)" % paid)
-	check(arc2.history.size() == 1 and DlcSave.has_cleared(sv.dlc, "engineer", diff) and DlcSave.best(sv.dlc, diff) == 2,
-		"the post-fall clear records the stage once (%s)" % [arc2.history])
-	await _free_world(w2)
-	# a second fall revives a second time: each fall is exactly one revive, still no defeat in between
-	var w3 := _launch(2, true, 1.0)            # Designer
-	var arc3 = w3.arcade
-	_start_fight(w3)
-	var sim3: MatchSim = w3.sim
-	var b3: FighterState = arc3.boss
-	for n in 2:
-		_keep_seats_alive(w3)
-		b3.invuln = 0.0
-		_ring_out(b3, sim3)
-		for k in 3: w3.tick(FRAME)
-		check(arc3.state == "fight" and not b3.dead, "fall %d: the fight continues" % (n + 1))
-	check(int(b3.st["falls"]) == 2 and int(arc3.revived.get(b3, 0)) == 2 and arc3.downed.is_empty(),
-		"two falls -> two revives, never a downed boss (%s)" % [arc3.revived.get(b3, 0)])
-	await _free_world(w3)
-	# a crew ring-out on a BOSS stage: the crew member revives too and only the boss' hp decides the clear
+		for k in 180: w.tick(FRAME)
+		check(b.dead and arc.downed.has(b) and b.hp == 0.0, "stage %d: the boss never respawns" % (si + 1))
+		check(sv.coins == coins1 and arc.history.size() == 1, "stage %d: no second payout or record" % (si + 1))
+		await _free_world(w)
+	# a minion ringing out on a boss stage stays down, and the fight goes on (only the boss decides the clear)
 	var w4 := _launch(1, true, 1.0)
 	var arc4 = w4.arcade
 	_start_fight(w4)
@@ -1217,12 +1393,14 @@ func _boss_ring_out() -> void:
 	crew.invuln = 0.0
 	_ring_out(crew, sim4)
 	for k in 3: w4.tick(FRAME)
-	check(arc4.state == "fight" and not crew.dead and not arc4.downed.has(crew),
-		"a crew ring-out on a boss stage revives too, no clear")
-	check(int(crew.st["falls"]) == 1 and int(arc4.revived.get(crew, 0)) == 1 and not arc4.downed.has(arc4.boss),
-		"the crew member is revived once and the boss is untouched")
+	check(arc4.state == "fight" and crew.dead and arc4.downed.has(crew), "a minion ring-out stays down, no clear (%s)" % arc4.state)
+	check(not arc4.downed.has(arc4.boss) and not arc4.boss.dead, "the boss is untouched by the minion's fall")
+	for k in 120:
+		_keep_seats_alive(w4)
+		w4.tick(FRAME)
+	check(crew.dead and arc4.state == "fight", "the fallen minion stays down (no respawn, state %s)" % arc4.state)
 	await _free_world(w4)
-	# a stage WITHOUT a boss: a tradie fall is not a clear either; the stage clears when every enemy is really down
+	# a stage WITHOUT a boss: one tradie ring-out leaves the fight on; ringing out all of them clears it
 	var w5 := _launch(0, true, 1.0)
 	var arc5 = w5.arcade
 	_start_fight(w5)
@@ -1232,13 +1410,27 @@ func _boss_ring_out() -> void:
 	e0.invuln = 0.0
 	_ring_out(e0, sim5)
 	for k in 3: w5.tick(FRAME)
-	check(arc5.state == "fight" and not e0.dead, "a tradie ring-out on stage 1 does not clear the stage")
+	check(arc5.state == "fight" and e0.dead and arc5.downed.has(e0), "a tradie ring-out on stage 1 stays down and does not clear")
 	for e: FighterState in arc5.enemies:
+		if arc5.downed.has(e): continue
 		e.invuln = 0.0
-		sim5.combat.hit(e, 1e6, 0.0, 1.0, 0.0, 5.0, false, sim5.player)
+		_ring_out(e, sim5)
 	for k in 3: w5.tick(FRAME)
-	check(arc5.state == "clearing", "stage 1 clears once every tradie is really down (%s)" % arc5.state)
+	check(arc5.state == "clearing", "stage 1 clears once every tradie has rung out (%s)" % arc5.state)
 	await _free_world(w5)
+	# a boss that is merely low and still alive (y -15, above the ring-out line) is not teleported back
+	var w6 := _launch(2, true, 1.0)
+	var arc6 = w6.arcade
+	_start_fight(w6)
+	var sim6: MatchSim = w6.sim
+	var b6: FighterState = arc6.boss
+	_keep_seats_alive(w6)
+	b6.invuln = 0.0
+	b6.phys.place(b6.phys.px, -15.0, b6.phys.pz)
+	w6.tick(FRAME)
+	check(not b6.dead and b6.phys.py < -10.0 and b6.phys.py > sim6.ring_out_y, "a live boss at y -15 is not teleported (y %.2f)" % b6.phys.py)
+	check(arc6.state == "fight" and not arc6.downed.has(b6), "a live low boss is not downed")
+	await _free_world(w6)
 
 # ---------------- 5c. boss movement speeds ----------------
 
@@ -1268,16 +1460,17 @@ func _boss_speeds() -> void:
 			if base >= float(band[0]) - 0.001 and base <= float(band[1]) + 0.001: in_band = true
 		check(base > 4.5 and in_band, "%s walks at %.2f m/s inside a boss band %s" % [ids[si], base, bands])
 		check(base <= player, "%s' base walk (%.2f) is at most the player's %.1f" % [ids[si], base, player])
-		# the phases: +5 %, then +10 % of the base in total -- additive, not x1.1 each time -- and capped
+		# the phases: the stage's own thresholds (data, 66 / 33 default), +5 %, then +10 % of the base in total -- additive,
+		# not x1.1 each time -- and capped
+		var ths: Array = arc.phases()
+		check(ths.size() == 2, "%s has two boss phases (%s)" % [ids[si], ths])
 		var mx: float = w.sim.combat.max_hp(b)
-		b.hp = mx * 0.65
-		for k in 3: w.tick(FRAME)
-		check(arc.phase_n == 1 and absf(b.phys.speed - minf(base * 1.05, cap)) < 0.001,
-			"%s phase 1: +5 %% (%.2f -> %.2f)" % [ids[si], base, b.phys.speed])
-		b.hp = mx * 0.32
-		for k in 3: w.tick(FRAME)
-		check(arc.phase_n == 2 and absf(b.phys.speed - minf(base * 1.10, cap)) < 0.001,
-			"%s phase 2: +10 %% in total, additive (%.2f -> %.2f, not x1.21)" % [ids[si], base, b.phys.speed])
+		for pi in ths.size():
+			b.hp = mx * (float(ths[pi]) - 0.01)
+			for k in 3: w.tick(FRAME)
+			var step := minf(arc.PHASE_SPEED_STEP * (pi + 1), arc.PHASE_SPEED_CAP)
+			check(arc.phase_n == pi + 1 and absf(b.phys.speed - minf(base * (1.0 + step), cap)) < 0.001,
+				"%s phase %d at %d %%: +%d %% (%.2f -> %.2f)" % [ids[si], pi + 1, roundi(float(ths[pi]) * 100.0), roundi(step * 100.0), base, b.phys.speed])
 		check(b.phys.speed <= cap, "%s' phase speed stays under the permanent cap %.1f" % [ids[si], cap])
 		# a Speed Boost pickup: a short burst, never past the buff cap and never over the player's speed from the base
 		b.spd_t = 12.0
@@ -1287,6 +1480,15 @@ func _boss_speeds() -> void:
 		check(b.spd_t <= 2.0, "%s' Speed Boost is a short burst (%.1f s left)" % [ids[si], b.spd_t])
 		check(b.spd_t <= 0.0 or b.phys.speed * b.phys.speed_mul <= player,
 			"%s' burst starts from a speed the player can run (%.2f)" % [ids[si], b.phys.speed * b.phys.speed_mul])
+		# Rage and Shield are never chased, and any buff that does land is only a short burst (a phase boss with 12 s
+		# Rage would hit for x2.16, a Shield would double its effective HP for 12 s).
+		check(not w.sim.pickups.bot_wants(b, {"key": "rage"}) and not w.sim.pickups.bot_wants(b, {"key": "shield"}),
+			"%s ignores Rage / Shield crates" % ids[si])
+		check(w.sim.pickups.bot_wants(b, {"key": "speed"}), "%s still takes a Speed crate" % ids[si])
+		b.rage_t = 12.0; b.shield_t = 12.0
+		arc.keep_kit(b)
+		check(b.rage_t <= 2.0 and b.shield_t <= 2.0,
+			"%s' Rage / Shield pickups are short bursts (%.1f / %.1f s)" % [ids[si], b.rage_t, b.shield_t])
 		await _free_world(w)
 	print("BOSS SPEEDS %s" % [speeds])
 	# the same boss in a two-seat co-op run: the same fixed stat line (speed, knockback taken, damage, rate, reload,
@@ -1390,6 +1592,10 @@ func _difficulties() -> void:
 		check(int(d["lives"]) == w[0] and is_equal_approx(float(d["dmg_mul"]), w[1]) and is_equal_approx(float(d["speed_mul"]), w[2]) and is_equal_approx(float(d["event_mul"]), w[3]), "%s: lives / damage / speed / event timing %s" % [k, d])
 	var n: Dictionary = tab["nightmare"]
 	check(is_equal_approx(float(n["hp_mul"]), 1.0) and float(n["hp_floor"]) == 0.0 and float(n["boss_hp_floor"]) == 0.0, "Nightmare keeps the table's health as written")
+	check(is_equal_approx(float(tab["easy"]["melee_force_mul"]), 0.75) and is_equal_approx(float(tab["normal"]["melee_force_mul"]), 0.9) \
+		and is_equal_approx(float(n["melee_force_mul"]), 1.0), "melee force scales down on Easy / Normal only")
+	check(is_equal_approx(float(tab["easy"]["melee_topple_mul"]), 0.65) and is_equal_approx(float(tab["normal"]["melee_topple_mul"]), 0.8) \
+		and is_equal_approx(float(n["melee_topple_mul"]), 1.0), "melee topple scales down on Easy / Normal only")
 	check(float(tab["easy"]["coin_mul"]) < float(tab["normal"]["coin_mul"]) and float(tab["normal"]["coin_mul"]) < float(n["coin_mul"]), "coin rewards grow with the difficulty")
 	var arcs := {}
 	for k: String in want:

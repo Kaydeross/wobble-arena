@@ -8,6 +8,9 @@ extends RefCounted
 ## Only the wobblers are posed from the recording: the FighterStates are never touched, so the match resumes exactly
 ## where it stopped. World decides when it runs (offline, Settings `kill_cam`, not in team modes, not while
 ## spectating or after the match is over).
+## Final K.O. impact freeze (Post-v0.4.0 Sprint 2.1, docs/GRAPHICS.md): the freeze / zoom state lives in
+## world/follow_camera.gd; the replay ticks it (it is the only per-frame callback while the match is paused) and films
+## through its zoomed FOV, so a replay that starts while the moment is still up keeps the effect.
 
 const REC_HZ := 30.0
 const REC_MAX := 120             ## 4 s of frames
@@ -128,6 +131,8 @@ func progress() -> float:
 
 ## One rendered frame of the replay: poses the wobblers and moves `cam`. false when it has ended.
 func step(dt: float, cam: Camera3D, solids: Array) -> bool:
+	var fc := cam as FollowCamera
+	if fc != null: fc.tick_impact()          # the final-K.O. freeze keeps its REAL-time clock running during the replay
 	if not active: return false
 	shown += dt
 	var sp := speed_at(idx)
@@ -177,7 +182,8 @@ func _camera(dt: float, cam: Camera3D, solids: Array, sa: Array, sb: Array, t: f
 		cam_pos = cam_pos.lerp(want, 1.0 - exp(-5.0 * dt))
 	look_at = pivot
 	cam.look_at_from_position(cam_pos, look_at, Vector3.UP)
-	cam.fov = FOV
+	var fc := cam as FollowCamera
+	cam.fov = fc.impact_fov(FOV) if fc != null else FOV
 
 func stop() -> void:
 	if not active: return

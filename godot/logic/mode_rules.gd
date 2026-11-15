@@ -12,18 +12,17 @@ extends RefCounted
 ##   {"type": "toast", "text"}                                 player messages (ladder rung, arena growing...)
 ##   {"type": "chaos_warn", "id", "name", "in"}              Chaos: an event is about to fire (banner + countdown)
 ##   {"type": "chaos", "id", "name", "dur"} / {"type": "chaos_end", "id"}   Chaos: an event started / ended
-## Godot-only modes (res://data/extra/modes.json, merged by merge_extra): Team Deathmatch (tdm: two teams sized by the
+## Godot-only modes (res://data/extra/modes.json, merged by merge_extra: Team Deathmatch (tdm: two teams sized by the
 ## Players page, team limit 30), Deathmatch (deathmatch: free for all to 20), Sudden Death (sudden: one life, a K.O. or
-## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events).
-## Pillars (initPillars, pillarGive, updatePillars): 8 fighters on the eight pillars (PillarsMap), one life, any weapon
-## dashes, a random weapon into everyone's inventory every 10 s (first at 1.2 s), last one standing or the most K.O.s
-## (fewest deaths on a tie) when the 3-minute clock runs out. Explosive: launchers only, always 300 health. Moon Drift
+## a fall eliminates, the player spectates until one fighter stands), Chaos (chaos: 5 v 5 to 50 with random events),
+## Capture the Flag (ctf, logic/ctf.gd: two teams, one flag, hold it 30 s or most hold time on the 5:00 clock; offline only).
+## DLC packs may add or extend modes too: every pack.json `modes` section is merged after the built-in file.
+## Explosive: launchers only, always 300 health. Moon Drift
 ## (lowg): its preset gravity 0.15 goes to Combat.grav_setting and every fighter's FighterPhysics.grav_scale (projG and
 ## the gentler jump follow from it). Practice Range (practice, the web PRACTICE button): the range maps' dummies
 ## (PracticeRange), no score.
 ## Sandbox (sandbox, offline only like the web game): build your own arena on 'custom' (SandboxLayout, ui/build_hud.gd),
-## then Play runs a free for all with bots on it, first to SANDBOX_LIMIT K.O.s. Pillars plays on Pillars or Lava
-## Pillars (pillars2, PillarsMap.lava_entry: the same rules, a lava lake that ends you).
+## then Play runs a free for all with bots on it, first to SANDBOX_LIMIT K.O.s.
 ## Not ported: Hot Potato (no mode in the web MODES table sets `potato` any more: dead code there).
 
 const TEAM_COL := [0x3b82f6, 0xef4444]                  ## TEAM_COL
@@ -36,27 +35,22 @@ const END_TIME := 3.4                                   ## endT: the game keeps 
 const MODE_DEFAULTS := {"count": 3, "hp": 200, "behav": "brawl", "ffa": true, "limit": 0}   ## MODE_DEFAULTS (pickMode)
 ## Modes the Godot port can play offline (the picker lists these). Sandbox and Construction belong to other tracks.
 const PLAYABLE := ["classic", "melee", "guns", "ninja", "duel", "t2", "t3", "t4", "mega", "giant", "gungame",
-	"tdm", "deathmatch", "sudden", "chaos", "pillars", "explosive", "lowg", "practice", "sandbox"]
+	"tdm", "deathmatch", "sudden", "chaos", "ctf", "explosive", "lowg", "practice", "sandbox"]
 ## Offline only (the web netMode sends Sandbox and Construction matches online as Classic).
-const OFFLINE_ONLY := ["sandbox", "construction"]
+const OFFLINE_ONLY := ["sandbox", "construction", "ctf"]
 const SANDBOX_LIMIT := 10            ## a test run on your arena ends at this many K.O.s (the web Sandbox has no limit)
+## Offline brawl modes whose data preset is "no K.O. limit" (the web menu's 0 button). Auto now gives them a win
+## condition instead of an endless match; an explicit 0 in Settings (or --limit=0) still means no limit.
+const LIMITLESS_BRAWL := ["classic", "melee", "guns", "ninja", "explosive", "giant", "lowg", "construction"]
+const LIMITLESS_DEFAULT := 20        ## K.O.s Auto plays these modes to (the web menu's 20 button)
 ## Short card line per mode: data/extra/wizard.json `short` (word for word the web menu's BLURB, see docs/WRITING.md).
 const WIZARD_PATH := "res://data/extra/wizard.json"
 static var _shorts: Dictionary = {}
-## Pillars (MODES.pillars, PIL_BAN, pillarGive): the weapons pillarGive hands out, in DROP_POOL order, with their WT
-## weight (common 8, uncommon 6, rare 4, epic 2.5, legendary 2 by RARITY) = unique DROP_POOL minus PIL_BAN, heal and
-## the power-ups (shared/modes.json cannot carry it: the web `allow` reads PIL_BAN, which the export does not see).
-## tools/modes-reference.js runs the real pillarGive, so a change on the web side fails the parity test.
-const PIL_POOL := [["shuriken", 6.0], ["bow", 4.0], ["knife", 6.0], ["ak", 6.0], ["smg", 6.0], ["revolver", 4.0], ["uzi", 4.0],
-	["mammoth", 2.0], ["trident", 4.0]]
-const PIL_TIME := 180.0              ## the 3-minute clock
-const PIL_FIRST := 1.2               ## the first weapon
-const PIL_EVERY := 10.0
-const PIL_BOTS := 7                  ## setBotCfg: every pillar without a player gets a bot
 ## Godot-only modes (not in shared/modes.json, which `npm run content` regenerates from the web game).
 const EXTRA_PATH := "res://data/extra/modes.json"
-const CONSTRUCTION_MODES_PATH := "res://data/extra/construction/modes.json"
 ## Chaos needs room for 10: maps with at least 9 bot spots away from the player (bots + spawns) and wander >= 20.
+## Capture the Flag: big maps with an open, walkable middle (tests/ctf_test.gd checks the stand on every one).
+const CTF_MAPS := ["crossroads", "donut", "fortress", "colosseum", "farm", "arenaxl"]
 const CHAOS_MAPS := ["arenaxl", "colosseum", "fortress", "rinkxl", "farm", "temple", "pirate", "rooftops"]
 ## Chaos events (CombatRng picks one every 15..25 s, never the same twice in a row). dur = seconds it lasts.
 const CHAOS_EVENTS := {
@@ -80,14 +74,14 @@ const BIG_ARENAS := ["arenaxl", "rinkxl", "colosseum", "fortress"]
 const MODE_MAPS := {"melee": ["arena", "park", "ice", "rooftops", "cloud", "tower", "brawlpit"] + NEW_ARENAS + BIG_ARENAS,
 	"guns": ["arena", "temple", "rooftops", "gunrange"] + NEW_ARENAS + BIG_ARENAS,
 	"ninja": ["dojo", "temple", "cloud", "rooftops", "tower", "arenaxl", "fortress"], "sandbox": ["custom"], "construction": ["siteyard", "sitegen"],
-	"mega": ["shrink", "squeeze"], "pillars": ["pillars", "pillars2"], "lowg": ["craterdome", "capsule"],
+	"mega": ["shrink", "squeeze"], "lowg": ["craterdome", "capsule"],
 	"giant": ["playroom"] + BIG_ARENAS, "explosive": ["blast", "arena", "park", "ice"] + BIG_ARENAS,
 	"duel": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS, "t2": TEAM_MAPS + ["colosseum", "fortress"] + NEW_ARENAS,
-	"t3": TEAM_MAPS + BIG_ARENAS, "t4": TEAM_MAPS + BIG_ARENAS, "chaos": CHAOS_MAPS, "practice": ["practice", "test"]}
+	"t3": TEAM_MAPS + BIG_ARENAS, "t4": TEAM_MAPS + BIG_ARENAS, "chaos": CHAOS_MAPS, "ctf": CTF_MAPS, "practice": ["practice", "test"]}
 ## MAP_ORDER (index.html ~3725): big open arenas first, then rooms and sky levels, the odd one-offs last. Arena lists follow it.
 const MAP_ORDER := ["test", "practice", "dojo", "blast", "gunrange", "brawlpit", "siteyard", "sitegen", "craterdome", "capsule", "playroom",
 	"arena", "park", "ice", "arenaxl", "rinkxl", "colosseum", "fortress", "temple", "farm", "rooftops", "tower", "shrink", "squeeze",
-	"crossroads", "donut", "chasm", "summit", "moonbase", "candy", "haunted", "beach", "volcano", "pirate", "pillars", "pillars2", "custom"]
+	"crossroads", "donut", "chasm", "summit", "moonbase", "candy", "haunted", "beach", "volcano", "pirate", "custom"]
 ## The shrinking floors (MAPS.shrink / MAPS.squeeze build(): `shrink = {...}`); the floor is the map's first box.
 const SHRINK := {
 	"shrink": {"S0": 64.0, "min": 16.0, "max": 40.0, "both": true, "D": 64.0, "rate": 55.0},
@@ -98,6 +92,7 @@ var _combat: WeakRef                 ## weak: Combat owns this object
 var combat: Combat:
 	get: return _combat.get_ref()
 var limit := 0                       ## cfg.limit: K.O.s (team K.O.s in team modes) to win, 0 = no limit
+var timeout_tie := false             ## Capture the Flag: the clock ended it level
 var match_over := false              ## matchOver
 var winner: FighterState = null      ## endWinner
 var end_t := 0.0                     ## endT
@@ -108,8 +103,8 @@ var shrink := {}
 ## event), left (s the running event has left), last (the previous event), giant (the fighter made a giant), kb0 (the
 ## knockback setting to restore), floor (the floor kind forced). Empty = not Chaos.
 var chaos := {}
-## Pillars (`pil`): t (clock left), next (s to the next weapon), first, timeout (the clock ended it). Empty = not Pillars.
-var pil := {}
+## Capture the Flag (logic/ctf.gd): the flag, its carrier and hold timers. null = not CTF.
+var ctf: CtfRules = null
 ## Online guest of a Godot host (net/net_match.gd sets it): the host decides the match end (`pend`) and runs the Chaos
 ## events (`gm` messages); this side only counts down and applies what the host says.
 var remote := false
@@ -117,10 +112,13 @@ var remote := false
 func _init(c: Combat) -> void:
 	_combat = weakref(c)
 
-## The K.O. limit a mode starts with (MODE_DEFAULTS + preset).
+## The K.O. limit a mode starts with (MODE_DEFAULTS + preset). A brawl mode whose preset limit is 0 and that has no
+## other end condition (lives, ladder, clock) gets LIMITLESS_DEFAULT, so Auto is a real match rather than an endless one.
 static func preset_limit(mode_id: String, modes: Dictionary) -> int:
 	if mode_id == "sandbox": return SANDBOX_LIMIT
-	return int(modes.get(mode_id, {}).get("preset", {}).get("limit", MODE_DEFAULTS["limit"]))
+	var n := int(modes.get(mode_id, {}).get("preset", {}).get("limit", MODE_DEFAULTS["limit"]))
+	if n <= 0 and LIMITLESS_BRAWL.has(mode_id): return LIMITLESS_DEFAULT
+	return n
 
 ## How many bots a mode plays with (setBotCfg): teams force teams * 2 - 1, otherwise `requested` (0..12). flexTeams
 ## (Team Deathmatch) keeps the teams even: an odd bot count (requested, rounded up, 1..7).
@@ -135,11 +133,9 @@ static func bot_count(mode_id: String, modes: Dictionary, requested: int) -> int
 	if fx >= 0: return fx
 	return clampi(requested, 0, 12)
 
-## Modes whose bot count is not the player's pick: Pillars (one bot per free pillar), the Practice Range (its 10
+## Modes whose bot count is not the player's pick: the Practice Range (its 10
 ## dummies). -1 = the Players page decides.
 static func fixed_bots(mode_id: String, modes: Dictionary) -> int:
-	var m: Dictionary = modes.get(mode_id, {})
-	if m.get("pillars", false): return PIL_BOTS
 	if mode_id == "practice": return 10
 	return -1
 
@@ -175,13 +171,22 @@ static func sort_maps(ids: Array) -> Array:
 		return ia < ib)
 	return out
 
-## Adds the Godot-only modes (EXTRA_PATH) to `modes` (shared/modes.json) in place: keys already there win, allowFrom
-## copies another mode's allowWeapons. Returns `modes`.
+## Adds the Godot-only modes to `modes` (shared/modes.json) in place: keys already there win, allowFrom copies another
+## mode's allowWeapons. `path` overrides the built-in file (default EXTRA_PATH); the DLC packs' `modes` sections join an
+## EXTRA_PATH merge only, in deterministic (sorted pack id) order: e.g. construction/modes.json extends the shared
+## construction mode with the 9 DLC tools and their crate weights. Returns `modes`.
 static func merge_extra(modes: Dictionary, path: String = EXTRA_PATH) -> Dictionary:
 	_merge_modes_file(modes, path)
-	if path == EXTRA_PATH and FileAccess.file_exists(CONSTRUCTION_MODES_PATH):
-		_merge_modes_file(modes, CONSTRUCTION_MODES_PATH)
+	if path == EXTRA_PATH:
+		for f: String in _pack_mode_paths():
+			_merge_modes_file(modes, f)
 	return modes
+
+## Every DLC pack's `modes` section file, in the Content pack registry's deterministic order ([] without a registry).
+static func _pack_mode_paths() -> Array:
+	var content: Variant = load("res://autoload/content.gd")
+	var paths: Variant = content.pack_paths("modes") if content != null else []
+	return paths if paths is Array else []
 
 static func _merge_modes_file(modes: Dictionary, path: String) -> void:
 	if not FileAccess.file_exists(path): return
@@ -190,13 +195,18 @@ static func _merge_modes_file(modes: Dictionary, path: String) -> void:
 	for k: String in x:
 		if k.begins_with("_") or not (x[k] is Dictionary): continue
 		if modes.has(k):
-			# Additive hook: if an existing mode has allowWeapons, extend it with any new allowed weapons
+			# Additive hooks: extend an existing mode's weapon list and crate weights with Godot-only extras.
 			var src: Dictionary = x[k]
 			var dst: Dictionary = modes[k]
 			if src.has("allowWeapons") and dst.get("allowWeapons") is Array:
 				for w in src["allowWeapons"]:
 					if not dst["allowWeapons"].has(w):
 						dst["allowWeapons"].append(w)
+			if src.get("dropWeights") is Dictionary:
+				var weights: Dictionary = dst.get("dropWeights", {})
+				for w: String in src["dropWeights"]:
+					weights[w] = float(src["dropWeights"][w])
+				dst["dropWeights"] = weights
 			continue
 		var m: Dictionary = (x[k] as Dictionary).duplicate(true)
 		if not m.has("allowWeapons"):
@@ -218,9 +228,10 @@ func configure(mode_id: String, p_limit: int = -1) -> void:
 	if mode_id == "explosive": c.hp_setting = 300.0           # Explosive is always 300 health
 	c.grav_setting = float(pre.get("grav", 1.0))               # pickMode: MODE_DEFAULTS.grav 1, Moon Drift's preset 0.15
 	limit = p_limit if p_limit >= 0 else preset_limit(mode_id, c.modes)
+	if m.get("ctf", false): limit = 0                           # Capture the Flag ends on the 30 s hold or the clock, never on K.O.s
 	match_over = false; winner = null; end_t = 0.0
 	chaos = {}
-	pil = {}
+	ctf = null
 
 ## setBotCfg team split + loadMap's per-fighter reset (dashes, lives) + initLadder. `bots` in setup order.
 func start_match(player: FighterState, bots: Array) -> void:
@@ -233,12 +244,20 @@ func start_match(player: FighterState, bots: Array) -> void:
 	for f: FighterState in [player] + bots:
 		f.dash_n = DASH_MAX; f.dash_regen = 0.0; f.dash_cd = 0.0; f.lives = c.lives_mode; f.elim = false
 		f.phys.grav_scale = c.grav_setting                     # cfg.grav (Moon Drift)
-	init_pillars()
 	for f: FighterState in [player] + bots:                     # initLadder
 		f.gg_rung = 0
 		if c.mode_id == "gungame" and not f.is_ghost: gg_give(f)
+	if c.mode.get("ctf", false): ctf = CtfRules.new(c)
 	if c.mode.get("chaos", false):
 		chaos = {"next": _chaos_gap() - CHAOS_WARN, "warn": 0.0, "id": "", "left": 0.0, "last": "", "giant": null, "kb0": c.kb_setting, "floor": ""}
+
+## A fighter went down (K.O. or ring-out): the flag drops (CtfRules.on_down). `fell` = off the map.
+func on_down(f: FighterState, fell: bool) -> void:
+	if ctf != null: ctf.on_down(f, fell)
+
+## MatchSim.setup, once the map and its solids exist: the Capture the Flag stand.
+func ctf_setup(map: Dictionary, solids: Array, ring_out_y: float) -> void:
+	if ctf != null: ctf.setup(map, solids, ring_out_y)
 
 ## One life: a K.O. or a fall eliminates at once (Sudden Death).
 func one_life() -> bool:
@@ -285,7 +304,7 @@ func end_match(w: FighterState) -> void:
 	var title := ""
 	if combat.teams: title = tr("YOUR TEAM WINS!") if won else tr("ENEMY TEAM WINS!")
 	else: title = tr("YOU WIN!") if w.is_player else tr("%s WINS!") % w.name.to_upper()
-	var sub := tr("Most K.O.s when the clock ran out") if pil.get("timeout", false) else tr("Last wobbler standing") if combat.lives_mode else (tr("Finished the Weapon Ladder") if combat.mode.get("ladder", false) else
+	var sub := ctf.sub_text() if ctf != null else tr("Last wobbler standing") if combat.lives_mode else (tr("Finished the Weapon Ladder") if combat.mode.get("ladder", false) else
 		(tr("First team to %d K.O.s") if combat.teams else tr("First to %d K.O.s")) % limit)
 	combat.ev({"type": "match_over", "winner": w, "won": won, "title": title, "sub": sub})
 
@@ -304,8 +323,8 @@ func eliminate(f: FighterState, counted: bool) -> void:
 	for x: FighterState in c.fighters:
 		if not x.elim and not x.left: alive.append(x)
 	var online := c.net_started
-	var spect := c.mode_id == "pillars" or online or bool(c.mode.get("spectate", false))    # the player watches the rest play on
-	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": tr("You're out! Spectating from the sofa.")})
+	var spect := online or bool(c.mode.get("spectate", false))    # the player watches the rest play on
+	if f.is_player and spect and not match_over: c.ev({"type": "toast", "text": tr("You're out!")})
 	if not match_over and not remote and c.lives_mode and (alive.size() <= 1 or (f.is_player and not spect)):
 		var best: FighterState = null                          # alive.sort((a, b) => b.lives - a.lives || b.ko - a.ko)[0] (stable)
 		for x: FighterState in alive:
@@ -332,56 +351,11 @@ func gg_advance(killer: FighterState) -> void:
 	if killer.is_player:
 		combat.ev({"type": "toast", "text": tr("Weapon %d of %d: %s") % [killer.gg_rung + 1, GG.size(), tr(str(combat.wdata(GG[killer.gg_rung]).get("name", "Spatula")))]})
 
-# ============================== Pillars ==============================
-
-## initPillars: the 3-minute clock and the first weapon in 1.2 s (Pillars only).
-func init_pillars() -> void:
-	pil = {"t": PIL_TIME, "next": PIL_FIRST, "first": false, "timeout": false} if combat.mode_id == "pillars" else {}
-
-## pillarGive: a random weapon (PIL_POOL weights) goes into the inventory; whatever was in the hand stays there.
-func pillar_give(f: FighterState) -> void:
-	var c := combat
-	var tot := 0.0
-	for e: Array in PIL_POOL: tot += e[1]
-	var r := c.rng.next() * tot
-	var key: String = PIL_POOL[0][0]
-	for e: Array in PIL_POOL:
-		r -= e[1]
-		if r <= 0.0: key = e[0]; break
-	var prev := f.slot
-	c.pickup(f, key)
-	if prev >= 0 and f.slots[prev] != null and f.slot != prev: c.equip_slot(f, prev)
-	if f.is_player: c.ev({"type": "toast", "text": tr("New weapon: %s! Don't drop it") % tr(str(c.wdata(key).get("name", key)))})
-
-## updatePillars: the weapon handout every 10 s and the clock (online only the host calls time).
-func update_pillars(dt: float) -> void:
-	if pil.is_empty() or match_over: return
-	var c := combat
-	pil["t"] -= dt; pil["next"] -= dt
-	if pil["next"] <= 0.0:
-		pil["next"] = PIL_EVERY
-		for f: FighterState in c.fighters:
-			if not f.dead and not f.elim and not f.is_ghost and not f.left: pillar_give(f)
-		pil["first"] = true
-	if pil["t"] <= 0.0 and not (c.net_started and not c.net_host):
-		var w: FighterState = null                 # most K.O.s, then fewest deaths, first in fighter order
-		for f: FighterState in c.fighters:
-			if f.left or (f.is_ghost and not (c.net_host and f.net_human)): continue     # online: the guests count too
-			if w == null or f.ko > w.ko or (f.ko == w.ko and int(f.st["deaths"]) < int(w.st["deaths"])): w = f
-		if w != null:
-			pil["timeout"] = true
-			end_match(w)
-
-## "2:41" for the Pillars clock.
-func pillars_clock() -> String:
-	var t := maxi(0, ceili(float(pil.get("t", 0.0))))
-	return "%d:%02d" % [t / 60, t % 60]
-
 # ============================== ninja dash ==============================
 
-## dashGear: only while holding a ninja weapon (anything in Pillars).
+## dashGear: only while holding a ninja weapon.
 func dash_gear(f: FighterState) -> bool:
-	return combat.mode_id == "pillars" or (f.slot >= 0 and DASH_GEAR.has(f.weapon))
+	return f.slot >= 0 and DASH_GEAR.has(f.weapon)
 
 ## doDash: a burst of speed toward (ix, iz) (the facing when there is no input). 3 charges.
 func do_dash(f: FighterState, ix: float, iz: float) -> bool:
@@ -392,7 +366,6 @@ func do_dash(f: FighterState, ix: float, iz: float) -> bool:
 	var p := f.phys
 	p.vx = ix / l * 24.0; p.vz = iz / l * 24.0
 	if p.grounded: p.vy = maxf(p.vy, 1.2)
-	if combat.mode_id == "pillars": f.dash_air_t = 0.45
 	f.dash_n -= 1; f.dash_cd = DASH_CD
 	if f.dash_n == DASH_MAX - 1: f.dash_regen = 0.0
 	combat.ev({"type": "puff", "kind": "dash", "x": p.px, "y": p.py + 0.9, "z": p.pz, "dx": ix / l, "dz": iz / l})
@@ -431,12 +404,12 @@ func update_shrink(dt: float, pickups: Pickups = null) -> void:
 		s["size"] = maxf(s["min"], s["size"] - (s["start"] - s["min"]) / s["rate"] * dt)
 	elif _all_down():                       # everyone fell: bring the arena back at half the original size
 		s["cycle"] += 1; s["start"] = maxf(14.0, float(Combat.js_round(s["S0"] * 0.5))); s["size"] = s["start"]; s["hold"] = 4.0
-		combat.ev({"type": "toast", "text": tr("Arena reset at half size! Cosy")})
+		combat.ev({"type": "toast", "text": tr("Arena Reset!")})
 	else:                                   # at its smallest: a short breather, then it starts growing again
 		s["rest"] = (5.0 if s["rest"] < 0.0 else s["rest"]) - dt
 		if s["rest"] <= 0.0:
 			s["rest"] = -1.0; s["dir"] = 1
-			combat.ev({"type": "toast", "text": tr("The arena is growing! Room to wobble")})
+			combat.ev({"type": "toast", "text": tr("Arena Growing!")})
 	var hd: float = s["size"] / 2.0 if s["both"] else s["D"] / 2.0
 	var b: Dictionary = s["box"]
 	b["minX"] = -s["size"] / 2.0; b["maxX"] = s["size"] / 2.0; b["minZ"] = -hd; b["maxZ"] = hd
@@ -618,10 +591,10 @@ func chaos_text() -> String:
 
 # ============================== per step ==============================
 
-## simStep's mode updates (updatePotato / updatePillars / updateShrink) plus the end-of-match countdown.
+## simStep's mode updates (updatePotato / updateShrink) plus the end-of-match countdown.
 func update(dt: float, pickups: Pickups = null, dyn: ArenaDyn = null) -> void:
-	update_pillars(dt)
 	update_shrink(dt, pickups)
+	if ctf != null: ctf.update(dt)
 	if not chaos.is_empty(): update_chaos(dt, pickups, dyn)
 	if end_t > 0.0:
 		end_t -= dt
@@ -636,12 +609,12 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	var t := ""
 	if c.mode.get("spectate", false):                       # Sudden Death: in or out, and how many are left
 		t = tr("Out · %d left") % survivors().size() if player.elim else tr("Alive · %d left") % survivors().size()
-	elif c.mode_id == "pillars":                           # updateKoText: the K.O. count (one life, no hearts)
-		t = tr("Out · %d left") % survivors().size() if player.elim else tr("%d K.O.s · %d left") % [player.ko, survivors().size()]
 	elif not c.brawl:                                       # the Practice Range's dummies
 		t = tr("Practice · %d K.O.s") % player.ko
 	elif c.lives_mode:
 		t = tr("Lives %d") % player.lives if player.lives > 0 else tr("Out")
+	elif ctf != null:                                       # Capture the Flag: the flag line below stands in for the score
+		pass
 	elif c.teams:
 		if with_teams:                                      # the world draws a TeamBoard instead (colour chips); text kept for tests/fallback
 			var mine := player.team
@@ -651,8 +624,8 @@ func hud_text(player: FighterState, with_teams := true) -> String:
 	var extra := ""
 	if c.mode_id == "gungame" and not match_over:
 		extra = tr("Weapon %d of %d · %s") % [player.gg_rung + 1, GG.size(), tr(str(c.wdata(GG[player.gg_rung]).get("name", "Spatula")))]
-	elif not pil.is_empty() and not match_over:
-		extra = tr("%s · New weapon in %d") % [pillars_clock(), maxi(0, ceili(float(pil["next"])))]
+	elif ctf != null and not match_over:
+		extra = ctf.hud_text()
 	elif chaos_text() != "":
 		extra = tr("Event: %s") % chaos_text()
 	elif not shrink.is_empty() and not match_over:

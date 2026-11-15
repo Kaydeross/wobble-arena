@@ -13,3 +13,4 @@ build/
 *.keystore
 *.jks
 deploy/nas/.env
+.DS_Store

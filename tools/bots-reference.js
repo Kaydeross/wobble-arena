@@ -97,7 +97,6 @@ const FLOOR = { minX: -15, maxX: 15, minZ: -15, maxZ: 15, top: 0, bottom: -1 };
 const WALL = { minX: -3, maxX: 3, minZ: 6, maxZ: 7, top: 3, bottom: 0 };
 const LEDGE = { minX: -12, maxX: -8, minZ: -12, maxZ: -8, top: 1.2, bottom: 0 };
 const ISLAND = { minX: 25, maxX: 35, minZ: -5, maxZ: 5, top: 0, bottom: -1 };
-const PIL = [[0, -14], [13.3, -4.3], [8.2, 11.3], [-8.2, 11.3], [-13.3, -4.3]];        // five pillars in a ring (gaps ~ 8 m)
 function scenario() {
   let s = 99991; const r = () => (s = s * 48271 % 2147483647, (s - 1) / 2147483646);
   const R = (a, b) => +(a + r() * (b - a)).toFixed(3), pick = a => a[Math.floor(r() * a.length)];
@@ -185,22 +184,6 @@ function scenario() {
       for (const i of [1, 2, 3, 4]) ops.push({ op: 'pickup', f: i, key: ['katana', 'knife', 'katana', 'knife'][i - 1] }, { op: 'set', f: i, key: 'dashN', val: 3 });
       for (let k = 0; k < 6; k++) { think(100); place(1 + (k % 4), R(-12, 12), R(-12, 12)); }
       ops.push({ op: 'cfg', key: 'mode', val: 'classic' });
-    },
-    pillars() {                                     // pillars: stop at the edge, walk to the edge facing the next pillar, jump and dash across
-      const pills = PIL.map(([x, z]) => ({ minX: x - 3.5, maxX: x + 3.5, minZ: z - 3.5, maxZ: z + 3.5, top: 10, bottom: -20 }));
-      ops.push({ op: 'cfg', key: 'solids', val: pills }, { op: 'cfg', key: 'spawns', val: PIL }, { op: 'cfg', key: 'edgeGuard', val: 1 }, { op: 'cfg', key: 'mode', val: 'pillars' }, { op: 'cfg', key: 'wander', val: 26 });
-      reset();
-      for (let i = 0; i < 5; i++) place(i, PIL[i][0], PIL[i][1], 10);
-      think(200);
-      for (const i of [1, 2]) ops.push({ op: 'set', f: i, key: 'grounded', val: false }, { op: 'set', f: i, key: 'hopT', val: 1.2 }, { op: 'set', f: i, key: 'hopY0', val: 10 }, { op: 'set', f: i, key: 'hopTo', val: 0 }, { op: 'set', f: i, key: 'escapeT', val: -1 }, { op: 'set', f: i, key: 'hopN', val: i === 1 ? 0 : 1 }, { op: 'set', f: i, key: 'dashN', val: 3 }, { op: 'set', f: i, key: 'dashCd', val: 0 });
-      place(1, PIL[1][0] - 3, PIL[1][1] - 2, 11); place(2, PIL[2][0], PIL[2][1] - 4, 10.8);
-      think(40);
-      reset();
-      ops.push({ op: 'pickup', f: 3, key: 'smg' }, { op: 'pickup', f: 4, key: 'bow' });
-      think(300);
-      ops.push({ op: 'cfg', key: 'solids', val: [FLOOR, WALL, LEDGE, ISLAND] }, { op: 'cfg', key: 'spawns', val: [[0, 0], [6, -6], [-7, 4], [3, 9]] }, { op: 'cfg', key: 'edgeGuard', val: 0 },
-        { op: 'cfg', key: 'mode', val: 'classic' }, { op: 'cfg', key: 'wander', val: 13 });
-      reset(); for (let i = 0; i < 5; i++) place(i, [0, 5, -6, 8, -4][i], [0, 5, 3, -6, -9][i]);
     },
     storm() {                                       // seeded chaos: difficulty, positions, states, weapons, crates
       const keys = ['smg', 'ak', 'rocket', 'glauncher', 'net', 'bow', 'knife', 'bat', 'shotgun', 'sniper', 'flame', 'katana', 'shuriken', 'typhoon', 'boomerang', 'snake', 'snow'];

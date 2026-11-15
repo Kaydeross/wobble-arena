@@ -38,6 +38,17 @@
   "allowFrom": "classic",
   "dropsAs": "classic"
  },
+ "ctf": {
+  "name": "Capture the Flag",
+  "desc": "Grab the flag and hold it for 30 seconds to win for your team",
+  "teams": 2,
+  "flexTeams": true,
+  "ctf": true,
+  "preset": {"limit": 0},
+  "start": null,
+  "allowFrom": "classic",
+  "dropsAs": "classic"
+ },
  "lowg": {
   "name": "Moon Drift",
   "desc": "Super low gravity. Float, soar and bonk rivals into orbit",

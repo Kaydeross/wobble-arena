@@ -1,0 +1,10 @@
+{
+ "_readme": "Construction DLC pack manifest (docs/CONSTRUCTION_DLC.md, section 'DLC pack manifest'). Content.load_dlc_packs() scans res://data/extra/*/pack.json in deterministic (sorted pack id) order and merges every declared section through its hook: weapons -> ExtraWeapons.merge, classes -> ExtraClasses.merge, modes -> ModeRules.merge_extra, stages -> published by path to ArcadeCoop.stages_path (the Arcade boss rush table). Files are relative to this folder. Fields: id (required, unique, equal to the folder name, lowercase), name (required, display name), version (optional integer >= 1, default 1), requires (optional array of other pack ids; a pack whose dependency is missing is ignored). Section keys are optional. Reserved for a future build (warned and ignored now): maps, cosmetics, strings. A malformed manifest is reported with push_error and its pack is skipped; the game keeps running.",
+ "id": "construction",
+ "name": "Construction",
+ "version": 1,
+ "requires": [],
+ "weapons": "weapons.json",
+ "modes": "modes.json",
+ "stages": "stages.json"
+}

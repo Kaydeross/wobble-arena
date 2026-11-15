@@ -104,34 +104,6 @@
   "fr": "Infernal",
   "es": "Infernal"
  },
- "Bots are computer players. Two teams: %d vs %d (odd bot counts keep it even).": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。兩隊：%d 對 %d（奇數電腦玩家時仍保持雙方人數相等）。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。两队：%d 对 %d（奇数电脑玩家时仍保持双方人数相等）。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。2チーム：%d 対 %d（奇数のボットでも人数が揃うよう調整されます）。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Deux équipes : %d contre %d (un nombre impair de bots garde les équipes égales).",
-  "es": "Los bots son jugadores controlados por el ordenador. Dos equipos: %d contra %d (con un número impar de bots, los equipos siguen iguales)."
- },
- "Bots are computer players. %s fixes the teams: %d vs %d.": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。%s 固定了隊伍：%d 對 %d。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。%s 固定了队伍：%d 对 %d。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。%s ではチームが固定されます：%d 対 %d。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. %s fixe les équipes : %d contre %d.",
-  "es": "Los bots son jugadores controlados por el ordenador. %s fija los equipos: %d contra %d."
- },
- "The range has %d dummies: they stand, slide and pop back up. They never fight back.": {
-  "zh_TW": "練習場有 %d 個假人：它們會站立、滑動並彈起，從不反擊。",
-  "zh_CN": "练习场有 %d 个假人：它们会站立、滑动并弹起，从不反击。",
-  "ja": "練習場には %d 体のダミーがいます。立つ、滑る、起き上がるだけで、反撃はしません。",
-  "fr": "Le terrain d'entraînement compte %d mannequins : ils restent debout, glissent et se relèvent. Ils ne ripostent jamais.",
-  "es": "El campo de práctica tiene %d maniquíes: se quedan quietos, se deslizan y vuelven a levantarse. Nunca devuelven el golpe."
- },
- "%s fills every pillar: you + %d bots, one life each.": {
-  "zh_TW": "%s 每根柱子都有人：你 + %d 名電腦玩家，每人一條命。",
-  "zh_CN": "%s 每根柱子都有人：你 + %d 名电脑玩家，每人一条命。",
-  "ja": "%s はすべての柱を使います：あなた + ボット %d 体、残機は1つずつです。",
-  "fr": "%s occupe chaque pilier : toi + %d bots, une vie chacun.",
-  "es": "%s ocupa cada pilar: tú + %d bots, una vida cada uno."
- },
  "Step %d of %d": {
   "zh_TW": "第 %d 步，共 %d 步",
   "zh_CN": "第 %d 步，共 %d 步",
@@ -173,13 +145,6 @@
   "ja": "%s · %s · %s",
   "fr": "%s · %s · %s",
   "es": "%s · %s · %s"
- },
- "Check your match. Tap a row to change it.": {
-  "zh_TW": "確認你的比賽。點選一列即可更改。",
-  "zh_CN": "确认你的比赛。点选一行即可更改。",
-  "ja": "試合の内容を確認しましょう。項目をタップして変更できます。",
-  "fr": "Vérifie ta partie. Touche une ligne pour la modifier.",
-  "es": "Revisa tu partida. Toca una fila para cambiarla."
  },
  "Change": {
   "zh_TW": "更改",
@@ -768,12 +733,5 @@
   "ja": "スロットをタップで切り替え",
   "fr": "Touche un emplacement pour changer",
   "es": "Toca una ranura para cambiar"
- },
- "Bots are computer players. Free for all: they fight you and each other.": {
-  "zh_TW": "電腦玩家是電腦控制的玩家。自由混戰：他們會與你和彼此對戰。",
-  "zh_CN": "电脑玩家是电脑控制的玩家。自由混战：他们会与你和彼此对战。",
-  "ja": "ボットはコンピューターが操作するプレイヤーです。全員が敵同士の乱戦です。",
-  "fr": "Les bots sont des joueurs contrôlés par l'ordinateur. Chacun pour soi : ils t'affrontent et s'affrontent entre eux.",
-  "es": "Los bots son jugadores controlados por el ordenador. Todos contra todos: te atacan a ti y se atacan entre ellos."
  }
 }

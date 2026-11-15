@@ -2,7 +2,9 @@ extends Node3D
 ## Offline match world: builds a map with MapBuilder, runs a MatchSim (the player + bots, combat, crates) at the web
 ## game's fixed step (SIM = 1/120, one accumulator, like `frame`/`simStep` in public/index.html ~10077 / ~9630),
 ## presents every fighter with a Wobbler, drains Combat events into effects, and feeds the HUD (ui/hud.tscn).
-## Per frame (like `frame`): camera -> sim steps -> animate/applyPose (Fighter.present) -> melee sweep -> effects/HUD.
+## Per frame (like `frame`): camera -> sim steps -> presentation (effects/HUD). The fighters' animation is part of the
+## FIXED simulation step (Fighter.sim_present + MatchSim.sweep inside sim_step), so melee hit detection is independent of
+## the render rate (30 fps phones land the same hits as 120 fps desktops); a rendered frame only adds the visual layer.
 ## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n> --dyn=<off|random|wobble|tilt|quake|drift>
 ## --mode=<id> --limit=<n>. Game modes (logic/mode_rules.gd): offline the mode comes from Settings "mode" and the K.O.
 ## limit from Settings "limit" (-1 = the mode's preset); this node adds team colours, the mode line, the dash puff,
@@ -35,7 +37,7 @@ const RANK_MIN_MS := 2500
 @export var rng_seed := 0          ## 0 = random
 @export var hp_setting := 200.0    ## cfg.hp (the web menu offers 100 / 150 / 200 / 300 / 500)
 @export var dyn_choice := ""       ## dynamic arena offline: "" = Settings "dyn" (default random), or off/random/wobble/tilt/quake/drift
-@export var destruct_choice := ""  ## destructible props offline: "" = Settings "destructible"; on/off force it (docs/DESTRUCTIBLE.md)
+@export var destruct_choice := ""  ## destructible props offline: always on ("" or "on"); "off" only for tests / soak runs (docs/DESTRUCTIBLE.md)
 @export var mode_id := ""          ## game mode offline: "" = Settings "mode" (default classic); see ModeRules.PLAYABLE
 @export var ko_limit := -1         ## K.O. limit offline: -1 = Settings "limit" (where -1 = the mode's preset), 0 = none
 @export var difficulty := ""       ## bot skill offline: "" = Settings "difficulty" (easy / normal / hard / insane, default normal)
@@ -85,15 +87,17 @@ var _crates := {}                  ## crate id -> Node3D
 var fx: FxSystem = null            ## pooled combat effects (world/fx.gd); null when fx_enabled is false
 var trails: Trails = null          ## melee / projectile ribbons (world/trails.gd)
 var _hitstop := 0                  ## rendered frames the presentation stays frozen (hitstop)
+var _sim_steps_since_present := 0  ## fixed steps run since the last rendered frame (0 = sim frozen: countdown / pause)
 var _fighters_root: Node3D
 var proj_views: ProjectileViews     ## rockets, grenades, arrows, nets, knives, explosions, flames
 var _touch_was := false
 var _mats := {}
+var _debris: PropDebris = null       ## broken props shatter into pieces here (under the map node, freed with it)
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
-var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event, breakables left)
-var _break_note := ""              ## destructible mode: "" = not wanted, else "Breakables: 0" when the setting is on but the map has none
+var _ctf_view: CtfView = null      ## Capture the Flag: the flag on its stand / on the carrier's back (world/ctf_view.gd)
+var _mode_l: Label                 ## the mode line (lives, ladder rung, arena size, dashes, chaos event)
 var _team_board: TeamBoard         ## team modes: coloured chips with each team's score and a YOU tag on yours
 var _banner: Label                 ## "YOU WIN!" at the end of a match
 var _banner_t := 0.0
@@ -209,7 +213,6 @@ func load_map(id: String) -> void:
 	Save.begin_match()
 	Ads.on_match_started(session != null)
 	map_id = id
-	_break_note = ""
 	if build_mode:                       # the blocks are BuildHud's (meshes + solids it can change); no crates
 		id = "custom"; map_id = id
 		var bm := MapBuilder.custom_map(MapBuilder.saved_custom().merged({"blocks": [], "blockCols": []}, true))
@@ -235,23 +238,17 @@ func load_map(id: String) -> void:
 		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
 			sim.dyn_choice = "random"            # Chaos: a random floor unless the player picked a moving one
 		sim.dyn_seed = Dynamics.hash32(rng_seed, 9, 0, 0) if rng_seed > 0 else randi()   # a fresh arena every match
-		# Destructible environment mode (docs/DESTRUCTIBLE.md): OFFLINE only, opt-in, never on the Practice Range, the
-		# Sandbox, Construction or the Arcade. Off means no analysis, no solids, no meshes, no RNG draws. On every real
-		# arena the breakables are picked from the map's own cover boxes, seeded per match (same seed = same set).
-		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode):
-			var want: bool = bool(Settings.get_value("destructible", false)) if destruct_choice == "" else destruct_choice == "on"
-			if want and Destruct.supported(id, map_node.map):
+		# Destructible props (docs/DESTRUCTIBLE.md): part of every OFFLINE arena match (no option), never on the Practice
+		# Range, the Sandbox, Construction or the Arcade. The breakables are picked from the map's own cover boxes, seeded
+		# per match (same seed = same set). A map with no usable cover simply has none.
+		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode) and destruct_choice != "off":
+			if Destruct.supported(id, map_node.map):
 				sim.destruct_seed = Dynamics.hash32(rng_seed, 17, 0, 0) if rng_seed > 0 else randi()
 				var break_plan := Destruct.plan_for(id, map_node.map, sim.destruct_seed, map_node.box_styles)
 				if not (break_plan.get("props", []) as Array).is_empty():
 					sim.destructible = true
 					sim.destruct_plan = break_plan
 					sim.view_parent = map_node   # the component meshes replace the merged map boxes at setup
-				else:
-					_break_note = tr("Breakables") + ": 0"   # the setting is on but this map has no usable cover
-			elif want:
-				# the setting is on but this level type has no breakables (a range, a generated site, a shrinking floor)
-				_break_note = tr("Breakables") + ": 0"
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
@@ -259,7 +256,9 @@ func load_map(id: String) -> void:
 	if session == null:                    # offline game mode (pickMode / setBotCfg)
 		var mid := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
 		if not sim.combat.modes.has(mid): mid = "classic"
-		sim.configure(mid, 0 if build_mode else (ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1))))
+		# The Arcade run is cleared stage by stage (never by a K.O. count), so it stays out of the offline limit default.
+		var lim := 0 if arcade != null else (ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1)))
+		sim.configure(mid, 0 if build_mode else lim)
 		bots = 0 if build_mode else ModeRules.bot_count(mid, sim.combat.modes, bot_count)
 	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
 	if not Content.difficulties.has(skill): skill = "normal"
@@ -290,6 +289,7 @@ func load_map(id: String) -> void:
 	kill_cam.setup(views.values())
 	if _kc_l: _kc_l.visible = false
 	_build_shrink_view()
+	_build_ctf_view()
 	cam.reset_view()
 	feed.clear()
 	acc = 0.0
@@ -299,6 +299,15 @@ func load_map(id: String) -> void:
 	hud.bind(self)
 	_setup_build()
 	if arcade != null: arcade.stage_ready(self)           # Arcade: the run strip and the stage's intro card
+
+## Capture the Flag: the stand, the pole and the flag (nothing in other modes).
+func _build_ctf_view() -> void:
+	if _ctf_view != null: _ctf_view.queue_free(); _ctf_view = null
+	if sim.combat.rules.ctf == null: return
+	_ctf_view = CtfView.new()
+	_ctf_view.name = "CtfView"
+	add_child(_ctf_view)
+	_ctf_view.bind(sim.combat.rules.ctf)
 
 ## Build mode on: the palette (BuildHud, last in UI so it sees touches first). Off: back to the normal HUD panels.
 func _setup_build() -> void:
@@ -335,7 +344,10 @@ func player_pos() -> Vector3:
 	var p := sim.player.phys
 	return Vector3(p.px, p.py, p.pz)
 
-## One fixed simulation step.
+## One fixed simulation step: the whole gameplay frame, INCLUDING the animation points the melee sweep reads.
+## The wobbler is advanced and the hand/tip points are sampled here, then MatchSim.sweep() runs the hits, so the same
+## simulated second gives the same sweeps (and the same hits) whatever the render rate: a 30 fps frame runs four of
+## these, a 120 fps frame one. A rendered frame only presents the result (see present()).
 func sim_step(dt: float) -> void:
 	control.cam_yaw = cam.move_basis()   # the camera yaw, held while auto-centre turns it under a held stick
 	var ap := cam.aim_point
@@ -343,8 +355,35 @@ func sim_step(dt: float) -> void:
 	var before: int = sim.player.st["falls"]
 	sim.step(dt)
 	if arcade != null: arcade.step(dt)
+	for v: Fighter in views.values():     # the gameplay points (hand / arm / head / chest / leg) the sweep reads
+		v.sim_present(dt)
+	sim.sweep()                           # meleeSweep: the fixed-step half of the old present() path
+	_drain_pose_events()                  # lean/head/arm spring kicks feed the pose the sweep samples
+	_sim_steps_since_present += 1
 	if sim.player.st["falls"] != before:
 		falls += 1
+
+## The animation-only Combat events (lean / head / arm spring kicks) are applied at the FIXED step: they move the wobbler
+## springs, the melee sweep samples the resulting hand/tip points, so applying them once per rendered frame would make
+## hit detection render-rate dependent (30 fps: 4 fixed steps between two kicks, 120 fps: 1). They are taken out of the
+## queue and the presentation drains everything else per frame (`_drain_events`).
+func _drain_pose_events() -> void:
+	var evs: Array = sim.combat.events
+	var has_pose := false
+	for e: Dictionary in evs:
+		var t := String(e["type"])
+		if t == "lean" or t == "head" or t == "arm":
+			has_pose = true; break
+	if not has_pose: return
+	var keep: Array = []
+	for e: Dictionary in evs:
+		var t := String(e["type"])
+		if t == "lean" or t == "head" or t == "arm":
+			var f: FighterState = e.get("f") if e.get("f") is FighterState else null
+			if f != null and views.has(f): views[f].on_event(e)
+		else:
+			keep.append(e)
+	sim.combat.events = keep
 
 ## One rendered frame: sim steps from the accumulator, then the presentation (animation, melee sweep, effects, HUD).
 func tick(delta: float) -> void:
@@ -390,11 +429,13 @@ func _process(delta: float) -> void:
 		cam.follow(minf(delta, 0.05), cam_target(), false, solids)
 		_update_hud(delta)
 
-## applyPose + meleeSweep + effects (also used by tests that step the sim by hand).
-## Hitstop freezes the presentation only (fighters' visible pose, particles, trails, projectile views); the fighters
-## still animate underneath (the gameplay points come from that) and the sim keeps its own clock.
+## The rendered-frame half: the per-frame visual layer only (scale/position, ragdoll overlay, juice, name tag,
+## effects, HUD). The animation points and the melee sweep are part of sim_step now (fixed step); when the sim is
+## frozen (countdown, pause) the idle wobble is advanced here instead so the fighters do not turn to statues.
+## Hitstop freezes the presentation only (visible pose, particles, trails, projectile views); the sim keeps its clock.
 func present(dt: float) -> void:
 	var frozen := _hitstop > 0 and dt > 0.0
+	var sim_frozen := _sim_steps_since_present == 0 and dt > 0.0
 	for v: Fighter in views.values():
 		v.visible = not v.state.left
 		var k := 1.5 if v.state.big_t > 0.0 else 1.0           # Chaos giant / the Arcade's Client
@@ -405,13 +446,15 @@ func present(dt: float) -> void:
 		v.scale = Vector3.ONE * k
 		v.position = Vector3(fp.px, fp.py, fp.pz) * (1.0 - k)
 		v.frozen = frozen
-		v.present(dt)
-	sim.sweep()
+		if sim_frozen: v.anim_present(dt)   # countdown / pause: no fixed step wrote a pose this frame
+		v.present_visual(dt)
+	_sim_steps_since_present = 0
 	_drain_events()
 	_audio_motion(dt)
 	_update_crates(dt)
 	_update_dyn_views()
 	_update_shrink_view()
+	if _ctf_view != null: _ctf_view.update(dt)
 	if not frozen: proj_views.update(dt)
 	if fx:
 		fx.watch(views, dt)
@@ -478,7 +521,7 @@ func _drain_events() -> void:
 			"eliminated":
 				if f:
 					hud.add_feed(null, f, "", false)
-					_toast("You're out! Big wobble" if f == sim.player else tr("%s is out!") % f.name)
+					_toast(tr("You're out!") if f == sim.player else tr("%s is out!") % f.name)
 			"respawn":                       # the player is back on their feet: forget the fall for the landing cue
 				if f == sim.player:
 					_sfx_g = true
@@ -491,28 +534,30 @@ func _drain_events() -> void:
 			"chaos_warn":
 				_show_banner(tr("%s!") % tr(str(e["name"])).to_upper(), tr("in %d…") % ceili(float(e["in"])), true, float(e["in"]))
 			"chaos":
-				if e["id"] == "giant" and f: _toast("You're a giant! Mind the furniture" if f == sim.player else tr("%s is a giant! Run!") % f.name)
+				if e["id"] == "giant" and f: _toast(tr("You're a giant!") if f == sim.player else tr("%s is a giant!") % f.name)
 				else: _toast(tr("%s!") % tr(str(e["name"])))
 			"chaos_end":
 				if e["id"] != "crates": _toast("Back to normal")
 	evs.clear()
 
-## A breakable prop broke (docs/DESTRUCTIBLE.md): a burst of its own coloured chips, a little dust, an optional ground
-## ring and a short camera shake. Presentation only, and every particle comes from the existing pooled MultiMeshes, so a
-## full arena of breaks still costs no new draw calls and stays inside the MID FX caps (<= 24 chips + 2 dust per break).
+## A breakable prop broke (docs/DESTRUCTIBLE.md): it shatters into small pieces of its own boxes that bounce, settle and
+## sink into the ground, and the decor on it (a tree crown) topples and bursts (PropDebris), plus a little dust and a
+## short camera shake. Presentation only.
 func _on_break(e: Dictionary) -> void:
-	var at := Vector3(float(e["x"]), float(e["y"]) + float(e["h"]) * 0.4, float(e["z"]))
 	var base := Vector3(float(e["x"]), float(e["y"]) + 0.08, float(e["z"]))
-	var col := MapBuilder.hex(int(e.get("color", 0xffffff)))
-	var trim := MapBuilder.hex(int(e.get("accent", 0xFF5AC8)))          # the destructible frame colour, not the body
+	var dir := Vector3.ZERO
+	var dv: Variant = e.get("dir", [])
+	if dv is Array and (dv as Array).size() >= 3: dir = Vector3(float(dv[0]), float(dv[1]), float(dv[2]))
+	var d: Destruct = sim.destruct if sim != null else null
+	var idx := int(e.get("index", -1))
+	if d != null and idx >= 0 and idx < d.props.size() and map_node != null:
+		if _debris == null or not is_instance_valid(_debris):
+			_debris = PropDebris.new()
+			map_node.add_child(_debris)
+		_debris.burst(d.props[idx], dir, fx.lv if fx else 1)
 	if fx:
-		var w := float(e.get("w", 1.4))
-		fx.chips(at, [col, trim, col.darkened(0.35)], mini(24, fx.cnt(12)), 5.5 + w * 0.6,
-			clampf(w * 0.16, 0.16, 0.28), 0.9, 18.0, 1.2)
 		fx.dust(base, mini(2, fx.cnt(2)), 3.0)
-		if fx.lv >= 1:
-			fx.ring(base + Vector3(0, -0.01, 0), trim, maxf(w, float(e.get("d", 1.4))) * 0.9, 0.3, 0.5)
-		add_shake(clampf(0.11 - at.distance_to(player_pos()) * 0.006, 0.03, 0.1))
+		add_shake(clampf(0.11 - base.distance_to(player_pos()) * 0.006, 0.03, 0.1))
 
 ## A breakable was hit but did not break (docs/DESTRUCTIBLE.md): a small burst of its own colour off the face that was
 ## hit, one dust, and the "clink"/"whack" tap from the event. Without this a player shooting cover had no feedback at all
@@ -520,13 +565,10 @@ func _on_break(e: Dictionary) -> void:
 func _on_prop_hit(e: Dictionary) -> void:
 	var at := Vector3(float(e.get("x", 0.0)), float(e.get("y", 0.0)), float(e.get("z", 0.0)))
 	var col := MapBuilder.hex(int(e.get("color", 0xffffff)))
-	var trim := MapBuilder.hex(int(e.get("accent", 0xFF5AC8)))
 	if fx:
 		var n := 2 if int(e.get("tier", 0)) <= 0 else 4
-		fx.chips(at, [col, trim, col.darkened(0.3)], mini(n, fx.cnt(4)), 3.2, 0.1, 0.45, 16.0, 1.4)
+		fx.chips(at, [col, col.darkened(0.15), col.darkened(0.3)], mini(n, fx.cnt(4)), 3.2, 0.1, 0.45, 16.0, 1.4)
 		fx.dust(at, 1, 1.4)
-		if int(e.get("tier", 0)) >= 2 and fx.lv >= 1:
-			fx.ring(at, trim, 0.4, 0.16, 0.6)
 
 ## A breakable component respawned (docs/DESTRUCTIBLE.md): the mesh fades in itself (Destruct), this only adds the
 ## cheap dust at its base so it does not pop silently. Presentation only, from the existing pooled particles.
@@ -719,6 +761,8 @@ func _build_dyn_views() -> void:
 		for e: Dictionary in d.drift: exclude[e["i"]] = true
 	else:
 		exclude[d.plan["floor"]] = true
+	if sim.destruct != null:   # the breakable boxes have their own meshes (Destruct): keep them out of the merged boxes
+		for k: int in sim.destruct.merge_exclude: exclude[k] = true
 	MapBuilder.rebuild_boxes(map_node, boxes, exclude)
 	if d.kind == "drift":
 		for e: Dictionary in d.drift:
@@ -921,14 +965,8 @@ func _update_mode_ui(delta: float) -> void:
 	if sim == null or _mode_l == null: return
 	var vs := get_viewport().get_visible_rect().size
 	var ins := SafeArea.insets(get_viewport())
-	var board := session == null and sim.combat.teams > 0 and spectating == null
+	var board := session == null and sim.combat.teams > 0 and spectating == null and sim.combat.rules.ctf == null   # Capture the Flag: the flag line stands in for the score
 	var t := sim.combat.rules.hud_text(sim.player, not board) if session == null else ""
-	var break_line := ""
-	if sim.destruct != null and sim.destruct.total() > 0:
-		break_line = "%s %d/%d" % [tr("Breakables"), sim.destruct.remaining(), sim.destruct.total()]   # how many are left
-	elif _break_note != "":
-		break_line = _break_note                                  # setting on, but this map has nothing breakable
-	if break_line != "": t += ("   " if t != "" else "") + break_line
 	if _mode_l.text != t: _mode_l.text = t
 	_mode_l.visible = t != ""
 	_mode_l.reset_size()
@@ -942,7 +980,7 @@ func _update_mode_ui(delta: float) -> void:
 		top += _team_board.size.y + 10.0
 	_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, top)
 	if spectating != null:                      # spectator line: who, how many left, how to switch
-		_mode_l.text = tr("Spectating %s · %d left · tap to switch") % [spectating.name, sim.combat.rules.survivors().size()]
+		_mode_l.text = tr("Spectating %s · %d left") % [spectating.name, sim.combat.rules.survivors().size()]
 		_mode_l.visible = true
 		_mode_l.reset_size()
 		_mode_l.position = Vector2(vs.x / 2.0 - _mode_l.size.x / 2.0, float(ins[1]) + MatchHud.TOP_STACK)
@@ -957,6 +995,7 @@ func _update_mode_ui(delta: float) -> void:
 
 ## endMatch's "YOU WIN!" pop (shown while the match runs on for ModeRules.END_TIME).
 func _show_banner(title: String, sub: String, won: bool, dur: float = ModeRules.END_TIME + 0.5) -> void:
+	hud.clear_toast()                      # one message at a time: the banner takes the stage, no toast stacked above it
 	_banner.text = title + "\n" + sub
 	_banner.add_theme_color_override("font_color", UiTheme.ACCENT if won else Color(1, 0.85, 0.8))
 	_banner.visible = true
@@ -1054,7 +1093,7 @@ func start_kill_cam() -> void:
 		$UI.add_child(_kc_l)
 		$UI.move_child(_kc_l, pause_menu.get_index())
 	var v: FighterState = kill_cam.views[kill_cam.vi].state
-	_kc_l.text = tr("Replay · you K.O.'d %s · tap to skip") % v.name
+	_kc_l.text = tr("Replay · tap to skip")
 	var top := SafeArea.insets(get_viewport())[1] as float
 	_kc_l.position = Vector2(get_viewport().get_visible_rect().size.x / 2.0 - _kc_l.get_minimum_size().x / 2.0, top + 14.0)
 	_kc_l.size = _kc_l.get_minimum_size()
@@ -1266,8 +1305,8 @@ func _resume_state() -> Dictionary:
 	return net_match.capture_resume() if net_match != null and _results == null else {}
 
 ## The host left and another player hosts now: the arena stays until their `start` (or `rehosted` ends it).
-func _on_net_host_changing(old_host: String) -> void:
-	_show_banner(tr("HOST CHANGED"), tr("%s left. Waiting for the new host…") % old_host, true, 4.0)
+func _on_net_host_changing(_old_host: String) -> void:
+	_show_banner(tr("HOST CHANGED"), tr("Finding a new host…"), true, 4.0)
 
 ## The relay made me the host: the HostSession carries the match on (its `start` rebuilds the arena) or, with no
 ## match running, the lobby takes over.
@@ -1285,7 +1324,7 @@ func _on_net_promoted(hs: GuestSession) -> void:
 	session = hs
 	_bind_net()
 	if (hs as HostSession).resuming():
-		_show_banner(tr("HOST CHANGED"), tr("%s left. You're the host now!") % str(hs.get("migrated")), true, 4.0)
+		_show_banner(tr("HOST CHANGED"), tr("You're the host!"), true, 4.0)
 	elif not hs.started:
 		_to_title(hs.status)
 

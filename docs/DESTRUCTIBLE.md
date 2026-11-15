@@ -1,44 +1,38 @@
-# Destructible environment mode (optional, M1 all maps)
+# Destructible props (M1 all maps, always on offline)
 
-An **optional offline mode** that makes part of every arena's own cover breakable. On each supported map it analyses the
-existing `maps.json` boxes, throws away everything essential, then picks about **half of the remaining cover components**
-with a per-match seed, swaps those boxes out of the merged map mesh and collision for tagged breakable ones, and lets
-bullets, melee, fire and explosions chip at them. A non-breaking hit **chips off debris with a tap sound and darkens the
-damage state**; a broken component loses its collision, bursts into the existing pooled debris (dust, a short camera shake,
-a sound) and leaves a flat rubble patch; **100-140 s later (randomised) it comes back** with collision and mesh, fades in,
-and can be broken again. It is **off by default**: a normal match runs no analysis, has no extra solids, meshes or RNG
-draws, and plays exactly as before.
+Part of every offline arena match (there is **no option**): part of each arena's own cover is breakable. On each
+supported map the mode analyses the existing `maps.json` boxes, throws away everything essential, then picks about **half
+of the remaining cover components** with a per-match seed, swaps those boxes out of the merged map mesh and collision for
+tagged breakable ones, and lets bullets, melee, fire and explosions chip at them. A breakable **looks exactly like the
+map's own boxes** - no frame, tint or marker; it is destructible and that's it. Decor that stands on it (a tree crown on
+its trunk, a lollipop head on its stick) is part of it. A non-breaking hit **chips off a few bits with a tap sound and
+darkens it a little**; a broken component loses its collision and **shatters into small pieces of its own boxes** that fly
+from the hit, bounce, settle and **sink into the ground**, while its crown topples over and bursts the same way;
+**100-140 s later (randomised) it comes back** with collision and mesh, fades in, and can be broken again.
 
 This is milestone **M1 "all maps"**. M0 shipped three hand-authored arenas; M1 replaces that data with a config and
 selects from each arena's existing boxes instead. Online, Arcade and cross-play are still out of scope (see
 `docs/DESTRUCTIBLE_ENV_STUDY.md`).
 
-## Turning it on
+## When it runs
 
 | Where | What |
 |---|---|
-| Settings | key `destructible` (bool, default `false`) - persisted like every other preference |
-| Setup Wizard → Arena | the **Breakable props** row: `Off` / `On` (next to Moving floor), then the Start summary says `Props` |
-| Command line | `--destruct=on` / `--destruct=off` (offline world; overrides Settings, handy for screenshots/soak runs) |
-
-The wizard row writes Settings the moment it is tapped and `wizard.save()` writes it again on Start, so a match launched
-offline (or by Quick Play, which does not touch the key) reads the same value in `World.load_map`. `Play again` on the
-results panel is a plain `load_map` on the same world and re-reads Settings, so it keeps the mode.
+| Offline arena match | always (Quick Play, the Setup Wizard's Start, `Play again`); there is no Settings key or wizard row |
+| Command line | `--destruct=off` turns it off for one offline world (tests, soak runs, screenshots) |
 
 **Mode gates (documented limits, not bugs):**
 
-- **Offline only.** Online rooms, host/guest sessions and Arcade co-op ignore the setting completely: breaks and
-  respawns are simulation state every peer would have to agree on.
-- **On every real arena map**, not just three. The mode never runs on the Practice Range / Test Map, Sandbox (custom),
-  Construction's generated `sitegen` site, Lava Pillars' generated lake, or the shrinking-floor maps
-  (`shrink` / `squeeze`): those own or generate their collision in ways this mode does not analyse. The wizard row
-  disables itself for those game types and the world ignores the setting there.
-- The mode **forces a steady floor** (`dyn = off`) for the match: breakable components are static boxes, and mixing them
-  with moving tiles would make them ride/floating. Setting the floor back on for a destructible match is a later task.
+- **Offline only.** Online rooms, host/guest sessions and Arcade co-op never have breakables: breaks and respawns are
+  simulation state every peer would have to agree on.
+- **On every real arena map**. Never on the Practice Range / Test Map, Sandbox (custom), Construction's generated
+  `sitegen` site, Lava Pillars' generated lake, or the shrinking-floor maps (`shrink` / `squeeze`): those own or
+  generate their collision in ways this mode does not analyse. Those levels simply have no breakables.
+- **Works with a moving floor.** The breakables are found by map box index from a snapshot taken before the moving floor
+  splits the floor into tiles (`MatchSim.setup`), so wobble / tilt / quake floors and breakables run together; with a
+  `drift` floor the drifting blocks are never breakable (if the seeded pick hit one, the pick is redone without them).
 - A supported map with **no eligible cover** (future content) gets no props and plays normally; a bad config is reported
   and adds no props. Never a broken match.
-- If the setting is on but the launched level has nothing breakable (an excluded level type, or a future map whose cover
-  is all essential), the HUD says `Breakables: 0` instead of silently pretending the mode is active.
 
 ## Which components are chosen
 
@@ -161,10 +155,9 @@ path feeds the same HP:
 - **explosions** (`explode` → `Destruct.break_blast`) - same radius and linear falloff as the fighters around it.
 
 A hit that does **not** break emits a `prop_hit` event: the world turns it into a small burst of the component's own
-colour (+ the accent frame colour) at the hit point, one dust puff and the "clink"/"whack" tap sound. The component also
-shows a damage state: the body darkens and the accent frame warms from bright accent (healthy) to amber (chipped,
-`hp <= 2/3`) to red (cracked, `hp <= 1/3`), with a short squash on every hit. So shooting a breakable always reacts, from
-the first bullet, and the state resets when it respawns.
+colour at the hit point, one dust puff and the "clink"/"whack" tap sound. The component also shows a damage state: the
+body darkens a little at `hp <= 2/3` and again at `hp <= 1/3`, with a short squash on every hit. So shooting a breakable
+always reacts, from the first bullet, and the state resets when it respawns.
 
 ## Respawn
 
@@ -172,35 +165,33 @@ the first bullet, and the state resets when it respawns.
   default**, drawn from the mode's own RNG (deterministic for a match seed, but not metronomic - the test requires two
   distinct delays among four breaks).
 - `Destruct.step(dt)` runs once per fixed sim step. At zero it restores the tagged solid in `sim.solids`, resets hp, makes
-  the mesh visible again (healthy materials), hides the rubble node, appends a `prop_respawn` + `pop` sound event, and fades
+  the mesh visible again (healthy materials, crown included), appends a `prop_respawn` + `pop` sound event, and fades
   the mesh in over `respawn.fadeSeconds` (`GeometryInstance3D.transparency` 1 -> 0, no per-material transparency changes).
   The component is immediately breakable again and can be broken/respawned repeatedly.
 - If a living fighter overlaps the box when the timer fires, the respawn is **postponed** by `respawn.retrySeconds` (2.5 s)
   instead of materialising around them, and retried until clear.
-- Meshes and rubble nodes are **recycled**: a break hides its mesh (never frees it) and reuses one lazily created rubble
-  node per component; the test runs several break -> respawn cycles and checks the node count stays flat.
+- Meshes are **recycled**: a break hides its mesh (never frees it); the test runs several break -> respawn cycles and
+  checks the node count stays flat. The flying pieces live in the world's `PropDebris` node and free themselves.
 
 ## Visuals and budget
 
-- A breakable wears a bright **accent frame**: a band round its top and bottom and a post on each corner, merged into one
-  mesh, plus a body tint toward the same accent. The accent is a saturated magenta (`colors.accent`), deliberately unlike
-  every map palette - important on the arena, whose own crates are already orange/yellow, so a tint alone was invisible
-  there. The frame is the first thing that reads as "this one breaks" at a distance.
-- Damage tiers (above) change the frame to amber then red and darken the body; a hit adds a small squash. All of it is
-  material/shared-mesh work: no new draw calls for the damage state.
-- One `MeshInstance3D` per component member box plus the merged frame (a capped wall is 2-3 draws), materials shared per
-  colour + damage tier, **no shadow casting**. Rubble is one unshaded, shadowless box per component, created on first
-  break and reused.
-- Hit/break effects stay inside the M0 budget: a hit is up to 4 chips + 1 dust, a break at most 24 chips + 2 dust + one
-  ring above LOW, all from the existing `FxSystem` pools; respawn adds one dust particle at the base.
+- A breakable is drawn with **the same mesh and material as the map's merged boxes** (`MapBuilder.box_mesh` +
+  `box_view_material`: `box.gdshader` faces on MID / HIGH, a plain box on LOW), casts shadows like them, and has no
+  marker of any kind.
+- **Crowns:** `MapBuilder.carve_decor` lifts the level-decor triangles that sit on each component out of the merged decor
+  meshes (never the far scenery) and gives them to the component as one `Crown` mesh (world-space vertices, shown at the
+  world origin). A triangle belongs to a component when its centre is above the lower 40 % of it (or at most 1.5 m below
+  its top) and at most 4 m above its top, within 2.4 m round a post / trunk (footprint <= 1 m) or 0.35 m round a wider
+  block. So a tree crown hides with its trunk, falls with it and comes back with it, and nothing is left floating.
+- **Break animation** (`godot/world/prop_debris.gd`, presentation only): every member box is cut into ~0.45 m cells and a
+  random subset (32 at MID / HIGH, 12 at LOW) flies out from the hit with a little spin, bounces on the floor, settles,
+  then after 1.1-1.8 s sinks into the floor while shrinking (0.7 s) and is freed. The crown copy tips over about the
+  trunk's foot for 0.55 s, then bursts into pieces of its average colour that do the same. At most 240 pieces live at
+  once; pieces share one unit box mesh and one material per colour, no shadows. A break also adds 2 dust puffs and a short
+  camera shake; a hit is up to 4 chips + 1 dust; respawn adds one dust puff at the base.
+- Damage tiers darken the body material (shared per colour + tier): no new draw calls for the damage state.
 - Empty plan / bad config means no meshes and no solids, so the caps are guaranteed by construction (budget cap 40 per
-  map; per-map mesh counts measured in the test, max 49 for Farm's 23 components, unchanged by the frame merge).
-
-## HUD
-
-The mode line (top centre, under the toast) shows `Breakables <remaining>/<total>` while the mode is live, updated on
-break/respawn. With the setting on but nothing breakable on the launched level it shows `Breakables: 0` (honest, not
-silent). With the mode off the line is unchanged (no mention).
+  map).
 
 ## Config (authoring data)
 
@@ -215,7 +206,6 @@ hand-edit `shared/*.json` or `godot/data/*.json` outside `extra/`, per `docs/WRI
   "budget": {"perMap": 40},
   "hp": {"min": 20, "max": 56, "volumeMin": 0.6, "volumeMax": 30.0},
   "respawn": {"minSeconds": 100, "maxSeconds": 140, "fadeSeconds": 0.35, "retrySeconds": 2.5},
-  "colors": {"accent": 16734920, "tint": 0.18, "rubble": 0.45},
   "selection": {"spawnClearance": 1.5, "ladderClearance": 1.5, "padClearance": 0.8, "edgeMargin": 0.9,
                 "minHeight": 0.8, "maxHeight": 5.5, "maxSpan": 8.0, "minThin": 0.35, "minArea": 0.5, "stackRatio": 2.0,
                 "weightCentre": 1.2, "weightVisible": 1.5, "weightOpen": 1.0, "weightHeight": 0.5, "minVisible": 0.25}
@@ -224,13 +214,12 @@ hand-edit `shared/*.json` or `godot/data/*.json` outside `extra/`, per `docs/WRI
 
 | Field | Meaning |
 |---|---|
-| `version` | must be `2` (M0's authored-props schema is rejected) |
+| `version` | must be `2` (M0's authored-props schema is rejected, and so is the old `colors` accent block) |
 | `enabled` | `false` makes the mode a no-op everywhere (validated as off by `Destruct.validate`) |
 | `fraction` | share of eligible components made breakable (`0.05..1.0`, shipped `0.5`) |
 | `budget.perMap` | hard cap of breakable components per map (`1..60`, shipped `40`) |
 | `hp` | hp band by volume; `min`/`max` `1..500`, `volumeMin < volumeMax` |
 | `respawn` | randomised delay band (30-600 s), fade-in and blocked-respawn retry |
-| `colors` | accent frame + body tint colour (24-bit), body tint mix `0..0.5`, rubble darkening `0..0.9` |
 | `selection` | every exclusion knob above plus the four usability exponents (`0..8`) and `minVisible` (`0..1`) |
 
 `Destruct.validate_config()` checks shape/ranges (cheap, runs on every setup); `Destruct.validate()` re-runs it and, for
@@ -242,15 +231,14 @@ fails on any problem; a bad config at match time is reported and the match runs 
 
 | File | Role |
 |---|---|
-| `godot/logic/destruct.gd` (`Destruct`, `RefCounted`) | config + validation, box analysis (component clustering, exclusions incl. enclosed), usability scoring + weighted seeded `plan_for()`, solid/mesh swap-in, `ray_hit` / `break_hit` / `break_blast` / `melee_sweep` / `flame_hit`, damage tiers + hit feedback events, respawn timers + fade, queries |
+| `godot/logic/destruct.gd` (`Destruct`, `RefCounted`) | config + validation, box analysis (component clustering, exclusions incl. enclosed), usability scoring + weighted seeded `plan_for()`, solid/mesh swap-in, `ray_hit` / `break_hit` / `break_blast` / `melee_sweep` / `flame_hit`, damage tiers + hit feedback events, crown columns, respawn timers + fade, queries |
 | `godot/data/extra/destructible.json` | the config above (no authored props) |
-| `godot/logic/match_sim.gd` | `destructible` / `destruct_seed` / `destruct_plan` / `view_parent` / `destruct`; forces `dyn = off`, calls `destruct.step(dt)` once per fixed step, `destruct.melee_sweep(f)` from `sweep()`, fails safe when no props |
+| `godot/logic/match_sim.gd` | `destructible` / `destruct_seed` / `destruct_plan` / `view_parent` / `destruct`; snapshots one solid per map box before the moving floor tiles the floor, keeps drifting blocks out, calls `destruct.step(dt)` once per fixed step, `destruct.melee_sweep(f)` from `sweep()`, fails safe when no props |
 | `godot/logic/combat.gd` | `combat.destruct` reference (null = mode off) |
 | `godot/logic/weapons.gd` | the hit hooks (hitscan, flame, `explode`), each behind `if combat.destruct != null` |
-| `godot/world/world.gd` | Settings/mode gating, per-match seed + plan, mode line (`Breakables x/y`, `Breakables: 0`), hit chips/tap -> `_on_prop_hit`, break -> chips/dust/shake, respawn -> a small dust puff; meshes are children of the built map so `load_map` clears them |
-| `godot/world/map_builder.gd` | unchanged: M1 reuses the existing `MapBuilder.rebuild_boxes(root, boxes, exclude)` used by dynamic arenas to prune the merged meshes |
-| `godot/autoload/settings.gd` | `"destructible": false` |
-| `godot/ui/setup_wizard.gd` | the Arena page's **Breakable props** row (disabled on the range / sandbox / construction) |
+| `godot/world/world.gd` | offline gating (`--destruct=off` only), per-match seed + plan, hit chips/tap -> `_on_prop_hit`, break -> `PropDebris.burst` + dust/shake, respawn -> a small dust puff; the moving-floor view rebuild keeps the breakable boxes out of the merged mesh; meshes are children of the built map so `load_map` clears them |
+| `godot/world/prop_debris.gd` (`PropDebris`) | the break animation: pieces that fly, settle and sink into the ground, the toppling crown |
+| `godot/world/map_builder.gd` | `rebuild_boxes` (prunes the merged meshes), `carve_decor` (lifts crowns out of the merged decor), `box_mesh` / `box_view_material` (a single box exactly like the merged ones) |
 | `godot/tests/destruct_test.gd` + `tools/test-godot-destruct.js` | the M1 test suite (incl. the real-match path) |
 | `docs/DESTRUCTIBLE.md` | this page |
 
@@ -264,10 +252,11 @@ same solids. Turning the mode on for an excluded map is also identical (no solid
 `godot/tests/destruct_test.gd` (run by `node tools/test-godot-destruct.js`, also `npm run test:godot-destruct`):
 
 1. Config: every knob validates; negative cases prove the validator rejects a v1 manifest, a missing `enabled`, a
-   fraction > 1, a bad budget, inverted hp/respawn bands, a bad accent, a missing exclusion rule, an out-of-range
-   usability weight and the old `arenas` schema.
+   fraction > 1, a bad budget, inverted hp/respawn bands, the old `colors` accent block, a missing exclusion rule, an
+   out-of-range usability weight and the old `arenas` schema.
 2. Off: no Destruct / tagged solids / meshes / RNG draws, baseline match identical in state hash and RNG; an excluded map
-   with the mode on is a no-op; mode-on takes no CombatRng draws; steady floor.
+   with the mode on is a no-op; mode-on takes no CombatRng draws; with a wobble and a drift floor the floor still moves,
+   the props load (never a drifting block), collision = map - picked boxes + props (+ tiles) and a prop breaks.
 3. **Every supported map**: components partition every box; eligible > 0; target = ~half within the budget and
    deterministic for a seed; different seeds vary; the selected boxes pass independent exclusion checks (not ground,
    hidden, spawn/ladder/pad-adjacent, structural, stair, boundary wall or enclosed; cover-sized; sane hp/kind); every
@@ -280,20 +269,24 @@ same solids. Turning the mode on for an excluded map is also identical (no solid
    break -> respawn cycles keep the node count flat; the rocket path is exercised once. Feedback: a non-breaking gun hit
    emits `prop_hit` + a tap sound and advances the visible damage tier (healthy -> chipped -> cracked -> reset on
    respawn); a spatula swing chips a component once per swing; a flame burst damages it.
-5. World wiring **and the real match path**: the Setup Wizard's Breakable props toggle writes Settings, the world the
-   wizard starts reads it, the merged map mesh is pruned, every selected component is a tagged solid with its own mesh,
-   and the world's own player fires the real gun at every selected component until it breaks - the break reaches the
-   presentation layer, removes the solid, hides the mesh and drops the HUD count to `Breakables 0/2`; respawn restores
-   them all and the HUD back to full; a single chip reaches the presentation layer; `load_map`/rematch rebuilds fresh;
-   `--destruct=on` overrides; Settings off = no props; the Practice Range / Sandbox gates hold and an excluded level with
-   the setting on shows `Breakables: 0`.
+5. World wiring **and the real match path**: there is no Settings key and no wizard option; a plain offline match has
+   breakables and no HUD counter; `--destruct=off` turns them off; no breakable has a frame and each wears the map's own
+   box material; the merged map mesh is pruned, every selected component is a tagged solid with its own mesh, and the
+   world's own player fires the real gun at every selected component until it breaks - the break reaches the
+   presentation layer, removes the solid, hides the mesh and shatters into `PropDebris` pieces that are all gone 4 s
+   later; respawn restores them all; a single chip reaches the presentation layer; `load_map`/rematch rebuilds fresh; the
+   Practice Range / Sandbox gates hold. On Haunted a breakable tree trunk carries its crown: the merged decor has no
+   crown triangles left, the crown hides with the trunk, topples as debris and comes back on respawn.
+
+`godot/tests/destruct_shots.gd` renders a before / break / settle / sink strip per map for a visual check (needs a
+window): `godot --path godot --resolution 960x540 --script res://tests/destruct_shots.gd -- --no-save --out DIR [map ...]`.
 
 ## Limits and the next milestone
 
 Known limits: offline only; every arena but no online; damage comes from bullets, melee, flame and explosions (thrown
 knives / arrows / nets and the blower do not chip cover, matching their role as utility weapons); components do not
-ride a moving floor (the mode forces `dyn = off`); a break removes the whole component (no cascade or partial fracture);
-respawn is a fade-in of the original boxes, not rebuilt geometry; rubble patches are static; bots do not seek cover
+ride the moving floor tiles (like the map's other cover boxes) and drifting blocks are never breakable; a break removes the whole component (no cascade or partial fracture);
+respawn is a fade-in of the original boxes, not rebuilt geometry; bots do not seek cover
 (nothing changed there).
 
 **Online (Godot-only rooms)** would need: a match rule (`start.rules.dest` like `dyn`/`dseed`/`dt0`), a host-authored

@@ -30,7 +30,7 @@ function baseInput(k) {                                      // 12 s: run around
     downT: k >= 350 && k < 420 ? 0.5 : 0,
     trapT: k >= 430 && k < 470 ? 0.5 : 0,
     spdT: k >= 180 && k < 300 ? 3 : 0,
-    dashSet: [140, 470, 612].includes(k) ? 0.6 : -1,
+    dashSet: -1,                       // the Pillars air dash is gone from the Godot port
     dead: k >= 640 && k < 680,
     climbIn: 0, tele: 0,
   };

@@ -13,9 +13,13 @@ extends SceneTree
 ## guest seat 1 down (`am.dn`/`am.dnt`) and revives it (`am.rv`), clears stage 1 and retries it (no double pay), advances to
 ## stage 2 (new `start` + fresh seed), the guest leaves (seat -> teammate bot with its class/kit) and rejoins mid-run,
 ## the host wins and leaves (the run ends for the guest).
+## M4: the retry / next-stage / stage-2 Start transitions are the GUEST's `arc` requests now (the host only flips the card
+## state and prints RETRY / ADVANCING / HOST_FIGHT when the run really moved); the host also fires one load-test and one
+## backup call for the guest's `am.ev` rings and reports wrong-state arc requests as ARC_IGNORED.
+##
 ## Prints JSON lines the Node side asserts: HOSTED, START_REFUSED, CAN_START, CAN_START_BACK, GUARDED_DROPPED, START_BOT,
-## START<n>, HOST_STAGE, HOST_FIGHT, PEER_IN, DOWN_SENT, REVIVED_HOST, CLEAR1_H, RETRY, HOST_FIGHT2, CLEAR2_H, ADVANCING,
-## HOST_HF, PEER_OUT, SEAT_BOT, REJOIN, HOST_WON, AM_SENT, LEAVE, DONE.
+## START<n>, HOST_STAGE, HOST_FIGHT, PEER_IN, DOWN_SENT, REVIVED_HOST, CLEAR1_H, HOST_FAILED, RETRY, RETRY_INTRO, HOST_FIGHT2,
+## CLEAR2_H, ADVANCING, STAGE2_INTRO, HOST_HF, ARC_IGNORED, PEER_OUT, SEAT_BOT, REJOIN, HOST_WON, AM_SENT, LEAVE, DONE.
 
 var session: HostSession = null
 var main: Control = null
@@ -40,15 +44,18 @@ var revived := false
 var clear1 := false
 var clear1_at := -1.0
 var clear1_done_at := -1.0
-var retry_started := false
-var retry_intro_at := -1.0
+var failed_shown := false
+var retry_seen := false
+var retry_intro := false
 var retry_fight := false
 var retry_fight_at := -1.0
 var clear2 := false
-var stage2_go := false
+var advance_seen := false
+var stage2_seen := false
 var stage2_fight := false
 var stage2_fight_at := -1.0
 var stage2_set := false
+var ignored_checked := false
 var peer_out := false
 var peer_out_at := -1.0
 var seat_bot_printed := false
@@ -224,35 +231,43 @@ func _process(dt: float) -> bool:
 			"first_bonus": int(m.last.get("first_bonus", -1))}))
 	# let the guest receive the "cleared" am and show its card before the world is rebuilt
 	if clear1 and m.state == "cleared" and clear1_done_at < 0.0: clear1_done_at = t
-	# retry the same stage: a fresh start, then a second clear that must pay 0 on both saves
-	if clear1 and not retry_started and clear1_done_at >= 0.0 and t - clear1_done_at > 0.6:
-		retry_started = true
+	# M4: the retry is the GUEST's request now (its failed card's Retry button). The host only flips the card state here;
+	# `RETRY` prints when the run really moved, so the runner proves a guest `arc retry` was accepted in the failed state.
+	if clear1 and not failed_shown and clear1_done_at >= 0.0 and t - clear1_done_at > 0.6:
+		failed_shown = true
 		m.state = "failed"
-		m.retry_stage()
-		print("RETRY ", JSON.stringify({"st": m.stage, "attempt": m.attempt, "seed": m.stage_seed()}))
-	if retry_started and not retry_fight and m.state == "intro" and m.stage == 0:
-		if retry_intro_at < 0.0: retry_intro_at = t
-		elif t - retry_intro_at > 0.4:
-			retry_fight = true
-			retry_fight_at = t
-			m.begin_fight()
-			print("HOST_FIGHT2 ", JSON.stringify({"st": m.stage, "state": m.state, "attempt": m.attempt}))
+		print("HOST_FAILED ", JSON.stringify({"st": m.stage, "attempt": m.attempt, "state": m.state, "guarded": session.guarded}))
+	if failed_shown and not retry_seen and m.attempt == 1:
+		retry_seen = true
+		print("RETRY ", JSON.stringify({"st": m.stage, "attempt": m.attempt, "seed": m.stage_seed(), "state": m.state,
+			"via": "guest arc retry", "guarded": session.guarded}))
+	# the retry's intro: the guest presses Start; the host only begins the fight when that request arrives
+	if retry_seen and not retry_intro and m.state == "intro" and m.stage == 0 and m.attempt == 1:
+		retry_intro = true
+		print("RETRY_INTRO ", JSON.stringify({"st": m.stage, "attempt": m.attempt, "state": m.state, "lives": m.lives}))
+	if retry_intro and not retry_fight and m.state == "fight" and m.attempt == 1:
+		retry_fight = true
+		retry_fight_at = t
+		print("HOST_FIGHT2 ", JSON.stringify({"st": m.stage, "state": m.state, "attempt": m.attempt, "via": "guest arc start"}))
 	if retry_fight and not clear2 and m.state == "fight" and t - retry_fight_at > 0.4:
 		clear2 = true
 		m._cleared()
 		print("CLEAR2_H ", JSON.stringify({"st": m.stage, "cn": m._am_seq, "coins": int(m.last.get("coins", 0)),
 			"first": bool(m.last.get("first", false)), "reward": int(m.last.get("reward", 0)),
 			"bonus": int(m.last.get("bonus", 0))}))
-	if clear2 and not stage2_go and m.state == "cleared":
-		stage2_go = true
-		m.next_stage()
-		print("ADVANCING ", JSON.stringify({"from": 0, "to": m.stage, "seed": m.stage_seed()}))
-	# stage 2: start the fight, then set the display numbers the guest mirrors (0.42 boss / 3 lives / 50 m floor)
-	if m.stage == 1 and not stage2_fight and m.state == "intro":
+	# M4: the cleared card's Next is the guest's request too; ADVANCING prints when the host's run really advanced
+	if clear2 and not advance_seen and m.stage == 1:
+		advance_seen = true
+		print("ADVANCING ", JSON.stringify({"from": 0, "to": m.stage, "seed": m.stage_seed(), "via": "guest arc next"}))
+	# stage 2: the intro's Start is the guest's request; once the fight runs set the display numbers the guest mirrors
+	# (0.42 boss / 3 lives / 50 m floor) and fire the M4 one-shot events the guest draws from `am.ev`.
+	if m.stage == 1 and not stage2_seen and m.state == "intro":
+		stage2_seen = true
+		print("STAGE2_INTRO ", JSON.stringify({"st": m.stage, "state": m.state, "lives": m.lives}))
+	if m.stage == 1 and not stage2_fight and m.state == "fight":
 		stage2_fight = true
 		stage2_fight_at = t
-		m.begin_fight()
-		print("HOST_FIGHT ", JSON.stringify({"st": m.stage, "state": m.state, "lives": m.lives}))
+		print("HOST_FIGHT ", JSON.stringify({"st": m.stage, "state": m.state, "lives": m.lives, "via": "guest arc start"}))
 	if stage2_fight and not stage2_set and m.state == "fight" and m.boss != null:
 		stage2_set = true
 		m.lives = 3
@@ -261,8 +276,18 @@ func _process(dt: float) -> bool:
 		var sz := float(box.maxX) - float(box.minX)
 		m.sim.combat.rules.shrink = {"S0": sz, "size": 50.0, "start": 50.0, "min": 16.0, "max": sz, "dir": -1, "cycle": 0,
 			"hold": 1.0e9, "both": true, "D": sz, "rate": 55.0, "rest": -1.0, "box": box, "id": str(m.sim.map_id)}
+		m.events._load_test({"crate_count": 2, "warning_time": 1.0})     # M4: red warning rings in am.ev
+		m.events._backup({"hp_threshold": 0.5, "summon_count": 1, "summon_bots": ["Bluey"], "warning_time": 1.0})  # amber
 		print("HOST_HF ", JSON.stringify({"st": m.stage, "hf": snappedf(m.boss_frac(), 0.01), "lives": m.lives,
-			"sh": snappedf(float(m.sim.combat.rules.shrink["size"]), 0.01)}))
+			"sh": snappedf(float(m.sim.combat.rules.shrink["size"]), 0.01),
+			"ev": (m._am_payload().get("ev", []) as Array).size()}))
+	# M4: wrong-state guest requests (next / retry / start while the fight runs, plus a junk action) must be dropped like a
+	# forged `start`: the run must not move and the host counts them as guarded.
+	if stage2_set and not ignored_checked and m.state == "fight" and t - stage2_fight_at > 1.6:
+		ignored_checked = true
+		var still: bool = m.state == "fight" and m.stage == 1
+		print("ARC_IGNORED ", JSON.stringify({"state": m.state, "stage": m.stage, "guarded": session.guarded, "ok": still}))
+		if not still: fail("a wrong-state arc request moved the run")
 	# the guest left: the seat is a teammate bot that keeps fighting and keeps the player's fighter
 	if stage2_fight and not peer_out and peer_in_at >= 0.0 and session.conns.is_empty():
 		peer_out = true
@@ -296,12 +321,12 @@ func _process(dt: float) -> bool:
 			"seat1_name": str(session.slots[1].get("name", "")) if session.slots.size() > 1 else "",
 			"stage": m.stage, "state": m.state}))
 	# ... then win (victory bonus on the host's own save) and leave: the run is over for the guest
-	if rejoined and not won_sent and t - rejoin_at > 1.2:
+	if rejoined and not won_sent and t - rejoin_at > 3.0:
 		won_sent = true
 		m._win()
 		print("HOST_WON ", JSON.stringify({"coins": int(m.victory.get("coins", 0)), "first": bool(m.victory.get("first", false)),
 			"hat_first": bool(m.victory.get("hat_first", false)), "cn": m._am_seq, "state": m.state}))
-	if won_sent and not left and t - rejoin_at > 2.4:
+	if won_sent and not left and t - rejoin_at > 4.2:
 		left = true
 		print("LEAVE ", JSON.stringify({"state": m.state, "reason": m.end_reason("You left the room.")}))
 		_finish(0)

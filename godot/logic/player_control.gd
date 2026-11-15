@@ -20,6 +20,11 @@ func _init(state: InputState) -> void:
 
 func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	var combat := sim.combat
+	# Fastball Special (docs/DAMAGE.md "Teammate carry/throw"): a hoisted teammate cannot act until it is thrown or freed.
+	if p.carried_by != null:
+		_charge_cancel(p)
+		_drain_taps()
+		return
 	if p.is_player:
 		combat.aim_mode = Combat.settings_aim_mode()   # docs/AIM.md: the Settings row applies live, one copy per step
 	var ph := p.phys
@@ -70,12 +75,16 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 		p.t_charge = -1.0; p.t_pend = -1.0
 		if p.throw_hold: p.throw_hold = false; p.throw_key = ""
 	if incap:
+		_charge_cancel(p)
 		_drain_taps()
 		return
 
 	# taps (key handlers)
+	if input.consume("signature"): Skills.do_signature(p, sim, p.face_yaw)   # class signature move (logic/skills.gd)
 	if input.consume("kick"): combat.do_kick(p, cam_yaw)
-	if input.consume("shove"): combat.shove(p, cam_yaw)
+	if input.consume("shove"):
+		# Fastball Special: a shove next to an empty-handed teammate hoists them instead of shoving (suppressed shove)
+		if not combat.try_carry(p) and p.carrying == null: combat.shove(p, cam_yaw)
 	if input.consume("spatula"): sim.quick_melee(p, cam_yaw)
 	if input.consume("spatula_equip"): combat.equip_slot(p, -1)   # touch: the Spatula tile is a real slot, not a swing
 	if input.consume("reload"): combat.start_reload(p)
@@ -91,8 +100,10 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	# --- kids mode: auto-aim / auto-fire and the edge guard (logic/kids_assist.gd) ---
 	# cy = the yaw the attacks use (the target's when the assist picked one), ap = the point the shots go to.
 	var cy := cam_yaw
+	var kids_fire := false        # the kids-mode assist is driving FIRE (auto-attack): it keeps the classic immediate swing
 	var kids := KidsAssist.assist(p, sim, w, cam_yaw, _kids_target, ph.wish_x, ph.wish_z, ph.want_jump)
 	if not kids.is_empty():
+		kids_fire = true
 		ph.wish_x = float(kids["wish_x"])
 		ph.wish_z = float(kids["wish_z"])
 		ph.want_jump = bool(kids["jump"])                     # the guard may cancel a hop into the void
@@ -110,10 +121,24 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	else:
 		_kids_target = null
 
+	# Fastball Special: while hoisting a teammate the fire key throws the body (no weapon fires) and the extra weight
+	# slows the carrier to CARRY_SPEED_MUL. Both write only while the tuned team / Arcade co-op gate is open.
+	if p.carrying != null:
+		if fire: combat.throw_carry(p)
+		ph.speed *= Combat.CARRY_SPEED_MUL
+		return
+
 	var t: String = w.get("type", "")
+	# Charged heavy melee (docs/DAMAGE.md "Charged heavy melee"): a non-throwable melee weapon while the overlay is on.
+	# Anything else (gun/bow/blower/trident), the web numbers, or online drops the charge; online the peer "sw" replay
+	# carries no heavy bit, so it keeps the classic immediate light swing.
+	if t != "melee" or w.get("throwable", false) or not combat.tuning_active() or combat.net_started or kids_fire:
+		_charge_cancel(p)
 	if t == "melee":
 		if w.get("throwable", false):   # trident: a tap jabs someone close, holding charges a throw
 			combat.weapons.trident_tick(p, fire, dt, cy)
+		elif combat.tuning_active() and not combat.net_started and not kids_fire:
+			_heavy_melee_tick(p, combat, dt, cy)
 		elif fire and p.cool <= 0.0 and p.swing < 0.0:
 			combat.try_melee(p, cy)
 		if p.swing >= 0.0 and combat.melee_tick(p, key, dt, cy): combat.after_swing(p)
@@ -127,8 +152,39 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	elif fire:
 		combat.weapons.try_fire(p, ap)
 
+## Charged heavy melee, the input state machine (docs/DAMAGE.md "Charged heavy melee"; tuning_active() + offline only):
+##   hold FIRE  -> charge_t grows; at Combat.HEAVY_CHARGE 0.45 s the Heavy Swing auto-releases while FIRE is still held;
+##   release    -> before the threshold it is the normal light swing (a quick tap), after it would be a heavy (it always
+##                 auto-released first, so this is the tap branch);
+##   after a swing / cooldown, holding on starts a new charge, so a held button chains Heavy Swings.
+## The raw input hold is used (not the kids-assist `fire`), so Kids mode keeps its plain tap rhythm and gets no free
+## heavies. A stun, net, knockdown, death, carry, weapon swap or non-melee weapon cancels the charge (see think()).
+func _heavy_melee_tick(p: FighterState, combat: Combat, dt: float, yaw: float) -> void:
+	if p.trap_t > 0.0 or p.stun > 0.0 or p.flash > 0.0:   # interrupted: a real hit (flash), a stun or the net cancels it
+		p.charge_t = -1.0
+		return
+	var held := input.is_held("fire")
+	if not held:
+		if p.charge_t >= 0.0:               # released early: the normal fast light swing
+			var heavy := p.charge_t >= Combat.HEAVY_CHARGE
+			p.charge_t = -1.0
+			combat.try_melee(p, yaw, heavy)
+		return
+	if p.cool > 0.0 or p.swing >= 0.0:      # mid-swing / cooling down: the next hold starts after it
+		return
+	if p.charge_t < 0.0: p.charge_t = 0.0
+	p.charge_t += dt
+	if p.charge_t >= Combat.HEAVY_CHARGE:   # auto-release: the Heavy Swing fires while FIRE is still held
+		p.charge_t = -1.0
+		combat.try_melee(p, yaw, true)
+
+## Drop a charged heavy melee in progress (also clears the swing's heavy flag; melee_begin re-writes it every swing).
+func _charge_cancel(p: FighterState) -> void:
+	p.charge_t = -1.0
+	p.heavy = false
+
 func _drain_taps() -> void:
-	for a in ["kick", "shove", "spatula", "spatula_equip", "reload", "slot1", "slot2", "slot3", "swap", "swap_back", "dash", "recover"]:
+	for a in ["kick", "shove", "spatula", "spatula_equip", "reload", "slot1", "slot2", "slot3", "swap", "swap_back", "dash", "recover", "signature"]:
 		while input.consume(a): pass
 
 ## cycleWeapon: the next filled slot after the current one, the spatula (-1) included (the web game's cycleWeapon).

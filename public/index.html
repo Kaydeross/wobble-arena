@@ -1288,7 +1288,7 @@ body.tplay #chat{display:none}
         <div class="onstat" id="on-sb-c" style="display:none"><span id="on-status-c"></span></div>
       </div>
       <div class="tab" id="pg-onjoin"><h2 class="step">Join with a code</h2>
-        <p class="onsub">Ask the host for the 5-letter code. It is on the big screen in their lobby.</p>
+        <p class="onsub">Ask the host for the room code. It is on the big screen in their lobby.</p>
         <input id="on-code" class="codein" type="text" maxlength="5" placeholder="CODE" autocomplete="off" spellcheck="false">
         <button class="big" id="on-join">Join room</button>
         <div class="onstat" id="on-sb-j" style="display:none"><span id="on-status-j"></span></div>
@@ -3385,7 +3385,7 @@ const WEAPONS = {
   sniper:  { name: 'Sniper', type: 'gun', cooldown: 1.3, stiff: 95, dmg: 50, range: 140, force: 8, maxForce: 12, assist: 0.5,
              ammo: 8, mag: 4, reload: 1.8, perRound: 0.5, rtype: 'shell', recoil: 4, muzzle: 2.05, spread: 0.0015, zoom: 17, speedMul: 0.8, color: 0x55663f },
   typhoon: { name: 'Typhoon Blades', type: 'typhoon', cooldown: 0.5, stiff: 80, dmg: 13, force: 5, speed: 42, assist: 0.9, ammo: 8, muzzle: 0.8, speedMul: 1.05, ninjaOnly: true, color: 0x7ee8ff },
-  mammoth: { name: 'Mammoth Pistol', type: 'gun', cooldown: 0.9, stiff: 55, dmg: 15, headMul: 230 / 15, range: 110, force: 11, maxForce: 12, assist: 0.5,
+  mammoth: { name: 'Mammoth Pistol', type: 'gun', cooldown: 0.9, stiff: 55, dmg: 15, headMul: 8, range: 110, force: 11, maxForce: 12, assist: 0.5,
              ammo: 8, mag: 3, reload: 1.8, rtype: 'mag', recoil: 5, muzzle: 1.45, lift: 0.22, spread: 0.002, zoom: 30, big: true, speedMul: 0.95, color: 0xb9bfc9 },
   glove:   { name: 'Spring Glove', type: 'gun', style: 'punch', cooldown: 0.85, stiff: 44, dmg: 0, range: 8.5, force: 20, maxForce: 22,
              topple: 0.55, ammo: 8, recoil: 2.5, muzzle: 0.6, spread: 0, speedMul: 1, color: 0xe3566b },
@@ -3396,7 +3396,7 @@ const WEAPONS = {
   trident: { name: 'Trident', type: 'melee', throwable: true, cooldown: 0.7, swingTime: 0.3, stiff: 40, dmg: 20, force: 9,
              tip: 2.6, thick: 0.5, lift: 0.5, topple: 0.1, hitSfx: 'clink', speedMul: 1, ammo: 8, color: 0x2fb8c8 },
   mallet:  { name: 'Giant Mallet', type: 'melee', cooldown: 1.3, swingTime: 0.62, stiff: 16, dmg: 28, force: 30,
-             tip: 2.1, thick: 0.5, lift: 0.55, topple: 0.85, hitSfx: 'whack', speedMul: 0.8, ammo: 4, color: 0xe3566b },
+             tip: 2.1, thick: 0.5, lift: 0.55, topple: 0.85, hitSfx: 'whack', speedMul: 0.8, ammo: 6, color: 0xe3566b },
   snow:    { name: 'Snowball Cannon', type: 'ball', cooldown: 1.3, stiff: 38, dmg: 22, force: 30, throwSpeed: 11, ammo: 2, muzzle: 1.3,
              speedMul: 0.9, color: 0xdff3fb },
   glauncher:{ name: 'Grenade Launcher', type: 'glauncher', cooldown: 0.85, stiff: 34, dmg: 66, force: 22, radius: 4.7, speed: 28, fuse: 2.4,
@@ -9890,7 +9890,7 @@ el('on-host').onclick = () => {                                    // hosting st
   hostFlow = true; showPage('mode');
 };
 el('on-diag').onclick = () => netDiag();
-el('on-join').onclick = () => { const c = el('on-code').value.trim().toUpperCase(); if (c.length < 4) { netStatus('Type the 5-letter code your friend sees.'); return; } netJoin(c); };
+el('on-join').onclick = () => { const c = el('on-code').value.trim().toUpperCase(); if (c.length < 4) { netStatus('Type the room code your friend gave you, or pick a room from the list.'); return; } netJoin(c); };
 el('on-code').onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') el('on-join').onclick(); }; el('on-code').onkeyup = e => e.stopPropagation(); el('on-rname').onkeydown = e => e.stopPropagation(); el('on-rname').onkeyup = e => e.stopPropagation();
 el('on-code').oninput = e => { e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
 el('on-start').onclick = () => netStartHosted();

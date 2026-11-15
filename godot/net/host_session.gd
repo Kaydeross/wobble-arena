@@ -8,7 +8,7 @@ extends GuestSession
 ## the world as a HostMatch (net/host_match.gd), which this session creates (make_match) and relays for.
 ## Rules (the Host sheet): mode, K.O. limit, health, gravity, knockback, crate rate, infinite ammo and the arena floor,
 ## sent in `start.rules` exactly as the web host's ruleSnap. Online modes: what the web host allows (netMode) plays for
-## everybody; an app-only mode (NetMatch.GODOT_MODES: Team Deathmatch, Death Match, Sudden Death, Chaos, Pillars, Moon
+## everybody; an app-only mode (NetMatch.GODOT_MODES: Team Deathmatch, Death Match, Sudden Death, Chaos, Moon
 ## Drift, the team modes) plays when every guest is a Godot client (`gd` in hello) and goes out as `rules.gmode`
 ## (`mode` stays Classic for the web); with a web guest in the room the match plays Classic and the host is told, and
 ## a web guest cannot join an app-only match that is running (`kick` with the reason).
@@ -17,7 +17,9 @@ extends GuestSession
 ## sheet's "Room type: Arcade co-op" (scripts/main.gd: host_room), plays the app-only `construction` mode, has two seats
 ## and sends the run as `start.arc` with every stage's `start`; the stage transition reuses the same "a new `start`
 ## rebuilds the world" path as a rematch. Its lobby starts only when two players are in (Start), or with one and the
-## teammate bot (Start with bot), so a co-op run is never silently started alone.
+## teammate bot (Start with bot), so a co-op run is never silently started alone. A guest's card buttons ask the host for
+## `start` / `next` / `retry` (docs/PROTOCOL.md 6.4, M4): `arcade_cmd` applies them only in the matching card state and
+## drops the rest as guarded.
 
 signal hosted(code: String)                  ## the room is open (code = room id)
 
@@ -65,7 +67,6 @@ var cid_slot := {}               ## server cid -> slot
 var slots: Array = []            ## the running match's slots (HostMatch fills the bots in)
 var limit := 0
 var dseed := 0
-var pp: Array = []               ## Pillars: the shuffled pillar of every slot (HostMatch makes it)
 var rv := {}                     ## slot -> true: rematch votes
 var rv_timer := -1.0
 var guarded := 0                 ## guest messages dropped by the guard rules (tests read it)
@@ -154,20 +155,20 @@ func is_host() -> bool:
 	return true
 
 ## netMode for the Godot host: modes the web game knows (shared modes.json), not team modes, not Sandbox /
-## Construction, and not Pillars (its `pp` / `pt` are not hosted for the web); anything else plays Classic.
+## Construction; anything else plays Classic.
 ## An Arcade co-op room plays Construction: it is app-only (a web guest is refused, never downgraded) and the map, lives
 ## and crew come from the run.
 func net_mode(m: String) -> String:
 	if arcade and m == "construction": return "construction"
 	var md: Dictionary = data("modes").get(m, {})
-	if md.is_empty() or md.get("teams") or m in ["sandbox", "construction", "pillars"]: return "classic"
+	if md.is_empty() or md.get("teams") or m in ModeRules.OFFLINE_ONLY: return "classic"
 	return m
 
-## Modes the Host sheet offers (ModeRules.PLAYABLE without the Practice Range).
+## Modes the Host sheet offers (ModeRules.PLAYABLE without the Practice Range and Capture the Flag, which is offline only).
 static func online_modes() -> Array:
 	var out: Array = []
 	for m: String in ModeRules.PLAYABLE:
-		if m != "practice" and all_modes().has(m): out.append(m)
+		if m != "practice" and m != "ctf" and all_modes().has(m): out.append(m)
 	return out
 
 static func online_mode(m: String) -> String:
@@ -222,6 +223,11 @@ func poll(dt: float) -> void:
 	_clock += dt
 	net.poll()
 	if phase == Phase.CLOSED: return
+	if phase == Phase.LOBBY or phase == Phase.MATCH:      # the host's own latency: a relay {op:ping} -> {op:pong} every PING_EVERY
+		_ping_t -= dt
+		if _ping_t <= 0.0:
+			_ping_t = PING_EVERY
+			net.send_op({"op": "ping", "ts": snappedf(_clock * 1000.0, 0.01)})
 	if phase == Phase.CONNECTING or phase == Phase.JOINING:
 		_connect_t -= dt
 		if _connect_t <= 0.0:
@@ -283,6 +289,9 @@ func _on_server(m: Dictionary) -> void:
 			var inner: Variant = m.get("m")
 			if inner is Dictionary: _host_recv(NetSnapshot.to_int32(m["from"]), inner)
 			else: guarded += 1
+		"pong":
+			var pts := NetSnapshot.num(m.get("ts"), 0.0, 1e12, -1.0)
+			if pts >= 0.0: ping_ms = maxi(0, roundi(_clock * 1000.0 - pts))
 		"noauth":
 			if net.token != "": _set_status("Your login expired. Log in again.")
 
@@ -428,6 +437,8 @@ func _host_recv(cid: int, m: Dictionary) -> void:
 	var s: int = cid_slot[cid]
 	if t == "rv":
 		vote(s); return
+	if t == "arc":                                   # Arcade co-op M4: a guest's card button request (state-gated below)
+		arcade_cmd(m); return
 	if t == "ping":
 		_to(cid, {"t": "pong", "ts": m.get("ts")}); return
 	var g := guard(m, s)
@@ -548,6 +559,22 @@ func arcade_send(m: Dictionary) -> void:
 	if record: sent.append(m)
 	m["t"] = "am"
 	_all(m)
+
+## Arcade co-op M4: a co-op guest asked to start the fight / go to the next stage / retry a failed one
+## (docs/PROTOCOL.md 6.4). The host is the only run authority: the request is applied only when the run is in the
+## matching card state (`intro` / `cleared` / `failed`); anything else (a wrong state, a duplicate press, a forged
+## message, a non-arcade room) is dropped exactly like a forged `start` (guarded). ArcadeManager re-checks the state and
+## debounces the reload, so two requests cannot move the run twice.
+func arcade_cmd(m: Dictionary) -> void:
+	var a := str(m.get("a", ""))
+	var hm := host_match()
+	var run: Variant = hm.sim.get_meta("arcade_run") if hm != null and hm.sim != null and hm.sim.has_meta("arcade_run") else null
+	if not arcade or not started or run == null or not ["start", "next", "retry"].has(a):
+		guarded += 1; return
+	var want: String = str({"start": "intro", "next": "cleared", "retry": "failed"}[a])
+	if str(run.get("state")) != want:
+		guarded += 1; return
+	run.call("begin_fight" if a == "start" else ("next_stage" if a == "next" else "retry_stage"))
 
 ## netGuard: a guest may only speak for its own fighter. Returns the fixed message, or {} to drop it.
 func guard(m: Dictionary, s: int) -> Dictionary:
@@ -680,7 +707,7 @@ static func _num(v: float) -> String:
 	return str(int(v)) if is_equal_approx(v, roundf(v)) else str(v)
 
 ## ruleSnap: the rules every client plays by. `joiner` = for somebody joining mid-match (dt0 = the arena clock now).
-## App-only modes add `gmode` (+ `gteam` sides, `pp` pillars); web clients read `mode` (Classic) and ignore the rest.
+## App-only modes add `gmode` (+ `gteam` sides); web clients read `mode` (Classic) and ignore the rest.
 func rule_snap(joiner: bool = false) -> Dictionary:
 	var r := {"mode": net_mode(mode_id), "hp": 300 if mode_id == "explosive" else hp, "crate": crate, "wstate": {},
 		"grav": 0.15 if mode_id == "lowg" else grav, "kb": kb, "inf": inf, "dyn": dyn_kind}
@@ -690,7 +717,6 @@ func rule_snap(joiner: bool = false) -> Dictionary:
 			var tm: Array = []
 			for k in maxi(slots.size(), opt_max): tm.append(k % 2)
 			r["gteam"] = tm
-		if mode_id == "pillars" and not pp.is_empty(): r["pp"] = pp.duplicate()
 	if started: r["dseed"] = dseed
 	if started and dyn_kind != "off":
 		var hm := host_match()
@@ -767,7 +793,6 @@ func _begin_match(s: Array, keep_seed: int = -1) -> void:
 	started = true
 	phase = Phase.MATCH
 	slots = s
-	pp = []
 	limit = eff_limit(mode_id)
 	dseed = keep_seed if keep_seed >= 0 else randi()
 	start_msg = {"slots": s, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap()}

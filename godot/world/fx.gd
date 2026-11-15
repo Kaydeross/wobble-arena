@@ -36,6 +36,8 @@ const PART_SIZE := {"head": 56, "torso": 44, "arms": 40, "legs": 38}
 const HOT := Color(1.0, 0.94, 0.62, 1.0)
 const SOOT := Color(0.13, 0.16, 0.18, 1.0)
 const EMBER := Color(0.95, 0.24, 0.08, 1.0)
+## Sprint 3.2 Live Wire shock: the cold electric blue of the spark burst (Combat's "spark" event).
+const SPARK := Color(0.62, 0.9, 1.0, 1.0)
 const DAMAGE_FLASH_SHADER := "res://shaders/hit_vignette.gdshader"
 ## web SPECKS: kind -> [colour, rise speed (negative falls), sideways drift]
 const SPECKS := {
@@ -44,6 +46,11 @@ const SPECKS := {
 	"star": [0xcfe6ff, 0.08, 0.3],
 }
 const CONFETTI := [0xff6b9a, 0xffd23f, 0x4fe0cf, 0x7aa8ff, 0xb48cff]
+## Final K.O. impact freeze / knockback speedometer (Post-v0.4.0 Sprint 2.1, docs/GRAPHICS.md): the victim's velocity at
+## the K.O. is read as m/s and shown in the comic HUD badge as km/h (m/s x 12). A ring-out whose launch was that slow has
+## no speed worth a number: the badge reads TERMINAL RING-OUT! instead.
+const LAUNCH_KMH := 12.0
+const RINGOUT_MIN_KMH := 24.0
 
 var lv := 2                         ## effects level this match (0 LOW, 1 MID, 2 HIGH)
 var world: Node                     ## the World (views, sim, cam); may be null in tests
@@ -55,6 +62,7 @@ var _watch := {}                    ## FighterState -> {g, vy, sp, vx, vz, foot}
 var _specks: Specks
 var _damage_flash := 0.0
 var _damage_mat: ShaderMaterial
+var _impact_over := false           ## rules.match_over at the end of the previous frame (the K.O. edge detector)
 
 ## The effects level: Settings "effects" (auto | low | medium | high), auto = the graphics tier.
 static func level() -> int:
@@ -384,6 +392,7 @@ func on_event(e: Dictionary) -> void:
 		"ko_burst":
 			if f: ko_burst(Vector3(f.phys.px, f.phys.py, f.phys.pz))
 		"ko":
+			_impact_ko(e)                 # the final K.O. freeze / speedometer (Sprint 2.1); pure presentation
 			_on_ko(e)
 		"explode":
 			_on_explode(Vector3(e["x"], e["y"], e["z"]), float(e.get("rad", 1.0)))
@@ -410,6 +419,50 @@ func on_event(e: Dictionary) -> void:
 				var d := Vector3(f.arm_x, f.arm_y, f.arm_z)
 				if d.length_squared() < 1e-4: d = Vector3(sin(f.yaw), 0, cos(f.yaw))
 				muzzle(Vector3(f.hand_x, f.hand_y, f.hand_z) + d.normalized() * 0.55, d.normalized(), str(e.get("key", "")))
+		"reaction":
+			_on_reaction(e)
+		"spark":
+			_on_spark(e)
+
+## Wobble Reactions (Post-v0.4.0 Sprint 2.3, docs/DAMAGE.md): the bowling-ball launch and the mid-air crate / projectile
+## redirect. Presentation only: the existing pooled builders and the FxSystem's own RNG. No sim state, no combat RNG draw.
+## `kind`: "bowl" (the netted fighter launched), "crate" (a load-test crate swatted aside), else an explosive projectile.
+func _on_reaction(e: Dictionary) -> void:
+	var at := Vector3(float(e.get("x", 0.0)), float(e.get("y", 0.0)), float(e.get("z", 0.0)))
+	var dir := Vector3(float(e.get("dx", 0.0)), 0.0, float(e.get("dz", 0.0)))
+	if dir.length_squared() < 1e-4: dir = Vector3.FORWARD
+	dir = dir.normalized()
+	match String(e.get("kind", "")):
+		"bowl":                                       # a body launched across the floor: skid dust, a ring, a spark fan
+			ring(at + Vector3(0.0, -0.35, 0.0), Color(1.0, 0.8, 0.25), 2.6, 0.45, 0.9)
+			if lv >= 1: ring(at + Vector3(0.0, -0.33, 0.0), Color(1.0, 0.96, 0.7), 1.5, 0.3, 0.7)
+			dust(at + Vector3(0.0, -0.35, 0.0), 16, 5.0)
+			sparks(at + Vector3(0.0, 0.35, 0.0), PART_COL["torso"], 30.0, 18.0)
+			for i in [2, 4, 6][lv]:
+				var d := (dir + Vector3(rng.randf_range(-0.35, 0.35), rng.randf_range(0.0, 0.3), rng.randf_range(-0.35, 0.35))).normalized()
+				streak(at + d * 0.4, d, rng.randf_range(0.7, 1.3), 0.045, Color(1.0, 0.88, 0.35, 0.95), 0.18, d * rng.randf_range(9.0, 14.0))
+		"crate":                                      # a falling crate swatted sideways: a puff, a ring and chips
+			puff(at, Color(1.0, 0.82, 0.29), 8, 4.5, [dir.x, 0.2, dir.z])
+			if lv >= 1: ring(at, Color(1.0, 0.86, 0.45), 1.3, 0.3, 0.6)
+			chips(at, [SOOT, Color(1.0, 0.7, 0.2, 1.0)], [3, 5, 7][lv], 4.0, 0.1, 0.4, 9.0, 1.5)
+		_:                                            # an explosive projectile swatted on: hot sparks and a smoke trail
+			sparks(at, Color(1.0, 0.72, 0.25, 1.0), 24.0, 16.0)
+			blob(at, dir * 2.0, 0.25, 0.12, 0.42, Color(1.0, 0.62, 0.2, 0.8), Color(0.4, 0.3, 0.25, 0.25), -1.0)
+			streak(at, dir, 0.9, 0.06, Color(1.0, 0.8, 0.3, 0.9), 0.16, dir * 8.0)
+
+## Sprint 3.2 Live Wire shock (docs/DAMAGE.md "Elemental and physics statuses"): the electric burst at the struck point.
+## Presentation only: pooled builders and the FxSystem's own RNG; Combat.apply_status emits the event behind the tuning
+## gate, so an untuned match never sends one and no combat RNG is drawn here.
+func _on_spark(e: Dictionary) -> void:
+	var at := Vector3(float(e.get("x", 0.0)), float(e.get("y", 0.0)), float(e.get("z", 0.0)))
+	sparks(at, SPARK, 26.0, 14.0)
+	blob(at, Vector3(0.0, 0.45, 0.0), 0.13, 0.12, 0.32, Color(0.85, 0.97, 1.0, 0.9), Color(0.2, 0.5, 1.0, 0.2))
+	if lv >= 1: ring(at, SPARK, 1.1, 0.2, 0.65)
+	for i in [2, 4, 6][lv]:                       # short jagged arcs around the hit: cold, fast spark streaks
+		var d := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.15, 1.0), rng.randf_range(-1.0, 1.0)).normalized()
+		streak(at + d * 0.15, d, rng.randf_range(0.35, 0.7), 0.034, Color(0.78, 0.95, 1.0, 0.95),
+			rng.randf_range(0.1, 0.18), d * rng.randf_range(4.0, 8.0))
+
 func _dash_dir(e: Dictionary) -> Vector3:
 	if e.has("dx"): return Vector3(float(e["dx"]), 0, float(e["dz"]))
 	if world == null: return Vector3.ZERO
@@ -469,6 +522,46 @@ func _on_ko(e: Dictionary) -> void:
 		_buzz("heavy")                      # a K.O. is the one moment that should be felt in the hand
 		_duck(-6.0, 0.5)                    # and the score steps back so the K.O. sting lands
 
+## Final K.O. impact freeze / knockback speedometer (Post-v0.4.0 Sprint 2.1, docs/GRAPHICS.md): a match-winning K.O., a
+## Sudden Death elimination or an Arcade boss K.O. starts a 0.9 s REAL 0.15x freeze + zoom focused on the decisive hit
+## (world/follow_camera.gd owns the state and the restore paths) and shows the comic HUD badge. The launch speed is the
+## victim's velocity AT the K.O. (Combat knocks them flying before the event is drained; a ring-out zeroes it, which is
+## exactly the "no launch speed" case). Presentation only: no sim state is written and no combat RNG draw is made.
+func _impact_ko(e: Dictionary) -> void:
+	if not _impact_allowed(): return
+	var v: FighterState = e.get("victim")
+	if v == null: return
+	var w := world
+	var c: Combat = w.sim.combat
+	var rules: ModeRules = c.rules
+	var decisive := false
+	if rules.match_over and not _impact_over:
+		decisive = true                                          # the K.O. that ended the match
+	elif v.elim and str(c.mode_id) == "sudden" and c.lives_mode == 1:
+		decisive = true                                          # Sudden Death: an elimination is a final one
+	elif w.arcade != null and w.arcade.boss == v:
+		decisive = true                                          # Arcade: the stage boss went down
+	if not decisive: return
+	var p := v.phys
+	var kmh := roundi(sqrt(p.vx * p.vx + p.vy * p.vy + p.vz * p.vz) * LAUNCH_KMH)
+	if bool(e.get("fall", false)) and kmh < int(RINGOUT_MIN_KMH): kmh = -1     # no launch speed: TERMINAL RING-OUT
+	w.cam.trigger_impact(kmh, Vector3(p.px, p.py + 1.2, p.pz))
+	_duck(-10.0, 1.2)                                            # the score steps right back for the freeze
+	if w.sim.player != null and (e.get("killer") == w.sim.player or v == w.sim.player):
+		_buzz("heavy")
+
+## Is this a match the freeze may run in? Offline, live gameplay only: online has one authoritative clock (never a local
+## time scale), a soak run is a benchmark and headless suites that step the world by hand opt in like kill_cam_in_tests
+## does (their match clocks must not be slowed by a global scale).
+func _impact_allowed() -> bool:
+	if world == null or world.sim == null or world.cam == null: return false
+	var w := world
+	if bool(w.paused) or bool(w.build_mode) or bool(w.results_open()): return false
+	if w.session != null or w.net_match != null: return false
+	if float(w.soak_duration) > 0.0: return false
+	if not bool(w.auto_run) and not bool(w.cam.impact_in_tests): return false
+	return true
+
 ## A nearby explosion (rocket, grenade, barrel) is felt and briefly ducks the music; one across the arena is distant
 ## and must not buzz a phone in your hand. Presentation only, like the rest of FxSystem.
 func _on_explode(at: Vector3, rad: float) -> void:
@@ -484,6 +577,8 @@ func _on_explode(at: Vector3, rad: float) -> void:
 
 ## Dust where fighters land hard, skid to a stop or sprint; a shockwave when a slam lands. Reads the states only.
 func watch(views: Dictionary, dt: float) -> void:
+	if world != null and world.sim != null:
+		_impact_over = bool(world.sim.combat.rules.match_over)   # the next frame's "the K.O. that ended the match" edge
 	if dt <= 0.0: return
 	var me: FighterState = world.sim.player if world != null else null
 	for st: FighterState in views:

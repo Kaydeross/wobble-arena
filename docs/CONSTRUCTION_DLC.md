@@ -16,7 +16,7 @@ Unit A introduces 9 new construction-themed tools, a 6-stage Arcade boss rush co
 | `tapemeasure` | Tape Measure | `melee` | 20 | 10 | 0.6s | 10 | Long whip-like melee (tip 3.3m), high lift 0.75 |
 | `cementbucket` | Cement Bucket | `ball` | 26 | 28 | 1.3s | 3 | Thrown ball projectile with slow lob, throwSpeed 9.5m/s |
 | `conelauncher` | Cone Launcher | `knife` | 34 | 14 | 0.75s | 6 | Thrown traffic cone projectile, speed 30m/s |
-| `anglegrinder` | Angle Grinder | `gun` (flame) | 1.5 | 1.2 | 0.08s | 30 | Short-range (5m) spark shower, burn 1.5s, limited fuel |
+| `anglegrinder` | Angle Grinder | `gun` (flame) | 1.5 | 1.2 | 0.08s | 50 | Short-range (5m) spark shower, burn 1.5s, limited fuel |
 | `drill` | Cordless Drill | `melee` | 12 | 6 | 0.28s | 18 | Very fast stab-like melee, swingTime 0.18s, tip 1.35m |
 
 ## Boss Rush Stages Table
@@ -26,7 +26,7 @@ Unit A introduces 9 new construction-themed tools, a 6-stage Arcade boss rush co
 | 1 | `tradies` | Tradies | No | `#ffa500` (16753920) | Dazza (Claw Hammer), Bluey (Pipe Wrench), Sparky (Live Wire), Chippy (Tape Measure) | None | 100 / 250 coins |
 | 2 | `engineer` | Engineer | Mini-boss | `#4aa3d8` (4891608) | Engineer (Cordless Drill, 2.8x HP, damage 1.6x, speed 1.2x, hard) | Falling load test crates every 12s; tool crates | 150 / 350 coins |
 | 3 | `designer` | Designer | Boss | `#e53935` (15022389) | Lead Designer (Spirit Level, 3.4x HP, damage 1.8x, speed 1.3x) | Revision boost pads every 15s; tool crates | 200 / 450 coins |
-| 4 | `supervisor` | Supervisor | Boss | `#ff8000` (16744448) | Supervisor (Pipe Wrench, 3.6x HP, damage 0.6x, speed 0.9x) | Backup call at 50% HP (1 tradie); tool crates | 250 / 600 coins |
+| 4 | `supervisor` | Supervisor | Boss | `#ff8000` (16744448) | Supervisor (Pipe Wrench, 3.6x HP, damage 0.6x, speed 0.9x) | Backup call at 50% HP (1 tradie, 1.5s warning ring); tool crates | 250 / 600 coins |
 | 5 | `project_manager` | Project Manager | Boss | `#8ec27a` (9356410) | Project Manager (Tape Measure, 4x HP, damage 1.4x, speed 1.08x) | Deadline floor shrink; Scope creep; tool crates | 350 / 800 coins |
 | 6 | `the_client` | The Client | Final Boss | `#ffd700` (16766720) | The Client (Giant Mallet, 4.8x HP, damage 1.35x, speed 1.05x, insane) | Giant 1.5x scale; melee change requests at 66% & 33% HP; tool crates | 500 / 1500 coins |
 
@@ -36,34 +36,99 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
 
 ## Data Files & Merge Pipeline
 
-1. **Weapons (`godot/data/extra/construction/weapons.json`)**:
+Since Sprint 4.1 the Construction DLC is a generic **data-only pack**: `godot/data/extra/construction/pack.json`
+declares the tables below; `Content.load_dlc_packs()` registers the pack and `Content.reload()` merges its tables through
+the existing hooks (see "DLC pack manifest" next). The files and their contents are unchanged; only the paths are
+manifest-driven now.
+
+1. **Weapons (`godot/data/extra/construction/weapons.json`, manifest section `weapons`)**:
    - Modelled on `ExtraClasses`, loaded through `ExtraWeapons`.
    - `ExtraWeapons.merge(weapons)` merges missing keys into `Content.weapons` and `Combat.weapons_data`.
    - Does not mutate or overwrite any shared weapons from `shared/weapons.json`.
 
-2. **Modes (`godot/data/extra/construction/modes.json`)**:
-   - Extends the `allowWeapons` list of the `construction` mode only.
-   - `ModeRules.merge_extra()` includes an additive hook that extends existing modes' `allowWeapons` without modifying other modes.
+2. **Modes (`godot/data/extra/construction/modes.json`, manifest section `modes`)**:
+   - Extends the `allowWeapons` list of the `construction` mode only, and adds the `dropWeights` entry for every DLC tool.
+   - `shared/drops.json` is the web export and cannot carry Godot-only keys, so `ModeRules.merge_extra()` merges `dropWeights` into the existing `construction` mode and `Pickups.pick_crate_key()` reads it as a crate-pool extension. The 9 tools are ~38 % of the Construction crate pool; the shared hammer / Live Wire / Air Blower identity stays intact.
 
-3. **Stages (`godot/data/extra/construction/stages.json`)**:
+3. **Stages (`godot/data/extra/construction/stages.json`, manifest section `stages`)**:
    - Self-contained arcade boss rush table.
+   - The manifest publishes its path; `ArcadeCoop.table()` reads it through `Content.pack_section_file("construction", "stages")` (no literal).
    - Validates all referenced cosmetics (skins and hats) against `godot/data/cosmetics.json`.
 
 4. **Translations (`godot/i18n/src/92-construction-data.json`)**:
    - Contains 5 language translations (`zh_TW`, `zh_CN`, `ja`, `fr`, `es`) for all weapon names, stage names, taglines, and event announcements.
    - Integrated via `tools/i18n.js` into `godot/i18n/strings.json` and `public/i18n-data.js`.
 
+## DLC pack manifest (`pack.json`, Sprint 4.1)
+
+Every folder under `godot/data/extra/` that holds a `pack.json` is a DLC pack. On startup `Content.reload()` calls
+`Content.load_dlc_packs()`, which scans the manifests, validates them and sorts the registry by pack id; the reload then
+merges the declared tables through the existing hooks. A future DLC is therefore data-only: add a folder + manifest +
+tables, no GDScript change.
+
+```
+godot/data/extra/
+  classes.json  modes.json  wizard.json  ...     built-in Godot extras (NOT a pack: shipped with the app, existing loaders)
+  construction/
+    pack.json                                    the manifest (the only file this refactor added)
+    weapons.json  modes.json  stages.json        the content (unchanged)
+```
+
+Manifest fields (see the file's `_readme` for the same list):
+
+| key | required | meaning |
+| --- | --- | --- |
+| `id` | yes | unique pack id, `^[a-z][a-z0-9_-]*$`, must equal the folder name |
+| `name` | yes | display name, e.g. `"Construction"` |
+| `version` | no | integer >= 1, default 1 |
+| `requires` | no | array of other pack ids this pack needs; the pack is skipped if one is missing |
+| `weapons` | no | file holding `{id: weapon}` (the `shared/weapons.json` shape) |
+| `classes` | no | file holding `{id: class}` (the `shared/classes.json` shape); built-in extras win |
+| `modes` | no | file holding `{id: mode}`: new modes are added, existing modes get the additive `allowWeapons` / `dropWeights` hooks |
+| `stages` | no | arcade stage table `{difficulties, stages[]}`; published by path, read by `ArcadeCoop` |
+| `maps`, `cosmetics`, `strings` | no | reserved for a future build: warned about and ignored (a newer pack does not break an older game) |
+| any `_*` key | no | author comment, ignored |
+
+Section values are file paths relative to the pack folder (no absolute paths, no `..`); a declared file must exist and parse
+as a JSON object. Every merge is additive: a pack adds or extends, it never overrides shared data or the built-in Godot
+extras. Pack order is sorted by id (never filesystem order); two packs defining the same table key report an error and the
+first (sorted) pack wins.
+
+**Errors.** A malformed manifest (bad JSON, missing/invalid `id`, `id` != folder, duplicate id, bad `requires`, or a
+declared section that is missing/invalid) is reported with `push_error`, `Content.scan_errors()` records why, and the whole
+pack is skipped: a broken DLC never stops `Content.reload()` or a match. Packs declaring a reserved section are kept (the
+section is ignored).
+
+**Registry API.** `Content.load_dlc_packs()` scans; `Content.pack_ids()`, `pack(id)`, `pack_section_file(id, section)`,
+`pack_paths(section)`, `pack_tables(section)`, `scan_errors()` expose the result. The accessors are static, so
+`load("res://autoload/content.gd").pack_section_file("construction", "stages")` works even in a script compiled before the
+autoload exists (the registry scans itself lazily). `ExtraWeapons` / `ExtraClasses` / `ModeRules` are unchanged call sites:
+they read the pack tables through the registry and cache them per registry generation, so `Content.reload()` refreshes them.
+
+### How to add a DLC pack with zero code
+
+1. Create `godot/data/extra/<pack_id>/` (lowercase id, e.g. `mechanical`).
+2. Add `pack.json`, e.g. `{"id": "mechanical", "name": "Mechanical", "weapons": "weapons.json", "modes": "modes.json"}`.
+3. Add the declared files next to it, in the `shared/*.json` schemas (`weapons`, `classes`, `modes`, `stages`).
+4. Start the game (or run `npm run test:godot-construction-data`): `Content` scans and merges the pack; no GDScript changes.
+5. Player-facing text still goes through `godot/i18n/src/*.json` + `node tools/i18n.js` (i18n is untouched by this refactor).
+
+Residual: `godot/dlc/construction/arcade_manager.gd` (the run manager) still reads `stages.json` through its own
+`STAGES_PATH` constant instead of the registry; both readers point at the same file today, so behaviour is identical. If a
+future pack moves its stage table, make the manager read `ArcadeCoop.table()`/the same `Content.pack_section_file` (small
+follow-up, not part of this refactor).
+
 ## Parity Guarantees
 
-- **Untouched Shared Data**: `shared/*.json`, `godot/data/weapons.json`, and `godot/data/modes.json` are completely unmodified, preserving bit-exact parity with the web reference.
+- **Shared Data Still Follows the Web**: the DLC data is Godot-only and does not touch the shared weapon or mode tables. The only shared changes in the same balance pass are the Mammoth Pistol `headMul` 15.33 -> 8 and Giant Mallet `ammo` 4 -> 6, both edited in `public/index.html` and re-exported with `npm run content`, so web and Godot still read identical numbers (see [BALANCE_FIXES.md](BALANCE_FIXES.md)).
 - **Combat Math & Sim Integrity**: No new weapon simulation code is introduced; all tools leverage proven existing combat types (`melee`, `gun` with punch/flame styles, `ball`, `knife`).
 - **No RNG Drift**: Crate draws and bot decisions in existing modes remain unchanged in sequence and frequency.
 - **Mode Isolation**: DLC weapons are flagged `constructionOnly: true` and are restricted to Construction mode.
 
 ## How to Add a Tool
 
-1. Add the tool entry to `godot/data/extra/construction/weapons.json` following the `shared/weapons.json` schema, marking `"constructionOnly": true`.
-2. Add its id to the `allowWeapons` list in `godot/data/extra/construction/modes.json`.
+1. Add the tool entry to `godot/data/extra/construction/weapons.json` following the `shared/weapons.json` schema, marking `"constructionOnly": true` (the pack manifest already declares that file; no code change).
+2. Add its id to the `allowWeapons` list and a positive `dropWeights` value in `godot/data/extra/construction/modes.json`.
 3. Add localized display names to `godot/i18n/src/92-construction-data.json`.
 4. Run `node tools/i18n.js` to build strings.
 5. Add test coverage in `godot/tests/construction_data_test.gd` and run `npm run test:godot-construction-data`.
@@ -133,7 +198,7 @@ down (stages with `boss: true`; the crew that is left gives up) or every enemy i
 | Normal | 0.7 | 0.9 / 1.4 | 0.65 | 1.0 | 1.15 | 4 | 1.0 |
 | Nightmare | 1.0 | none | 1.0 | 1.0 | 1.0 | 3 | 1.5 |
 
-The result is x the table's hp, never below the floor and never above the table's own value; boss phases (66 / 33 %) are unchanged. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
+The result is x the table's hp, never below the floor and never above the table's own value. A two-seat co-op run gives the **bosses** x1.35 health on top and +1 shared life (6 Easy / 5 Normal / 4 Nightmare); the crew and the solo run are untouched, so solo numbers stay bit-identical. Boss phases are per-stage data (`change_request.params.phases`, 66 % / 33 % default, see below). Melee force and topple are separate: Easy/Normal scale the outgoing shove without touching a weapon's damage or the table's `dmg_scale`. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
 
 **Difficulty tuning.** `godot/tests/arcade_balance.gd` (not in `npm test`, about 25 minutes for the full 3 difficulties x 6 stages x 8 seeds; run the difficulties in parallel processes): `godot --headless --path godot --script res://tests/arcade_balance.gd -- --no-save --seeds=8`. The scripted melee player of `arcade_test.gd` (the starting Wobbler, normal damage, no healing, one life, 100 s limit) fights each stage once per seed against the table's own bot skills. Wins out of the seeds, and the player's average health left on a win. These are the numbers for the table as it stands after the melee retune (below):
 
@@ -151,20 +216,15 @@ The scripted player is a crude yardstick (it only walks at the nearest enemy and
 
 **Health Packs and the early bosses (balance pass 2).** Enemies that grab a Health Pack used to heal 60 % of their max health, which made the bosses almost unkillable on Easy. Arcade enemies now heal `boss_heal` of their max health per pack: 5 % Easy, 8 % Normal, 10 % Nightmare (`FighterState.heal_frac`, set in `ArcadeManager._dress`; the player's pack is still 60 %). The boss health floors are 1.2 (Easy) and 1.4 (Normal); Nightmare keeps the table's health as written.
 
-**Melee retune (balance pass 3).** With the bosses on melee tools the scripted player's hammer could stunlock the low-force early bosses (Engineer 8/8 with 90 % health left on Normal, 8/8 with 75 % on Nightmare) while the Supervisor's Pipe Wrench (force 24, not scaled by `dmg_scale`) stunlocked the player (1/8 Normal, 0/8 Nightmare). The early bosses take the biggest buffs: Engineer hp 2.0 / damage 1.0 / speed 1.05 -> 2.8 / 1.6 / 1.2, Designer 3.0 / 1.45 / 1.2 -> 3.4 / 1.8 / 1.3. The Supervisor becomes a tanky, low-damage summoner: hp 3.0 -> 3.6, damage 0.9 -> 0.6 (the data floor), speed 0.95 -> 0.9; it keeps its one-tradie backup call at 50 % health. The Project Manager moves to 4.0 / 1.4 / 1.08 and The Client stays at 4.8 / 1.35 / 1.05 (the giant mallet already hurts). Boss health now climbs Engineer 2.8 < Designer 3.4 < Supervisor 3.6 < Project Manager 4.0 < The Client 4.8 at every difficulty (the floors keep the same order on Easy), checked in `arcade_test.gd`. The Supervisor is still the hardest stage for the non-dodging probe (2/8 Normal, 0/8 Nightmare): its damage is already at the `dmg_scale` floor of 0.6, so the rest of its sting is the pipe wrench's knockback; a human who keeps away, as the melee change intends, has a much better time than the probe.
+**Melee retune (balance pass 3).** With the bosses on melee tools the scripted player's hammer could stunlock the low-force early bosses (Engineer 8/8 with 90 % health left on Normal, 8/8 with 75 % on Nightmare) while the Supervisor's Pipe Wrench (force 24, not scaled by `dmg_scale`) stunlocked the player (1/8 Normal, 0/8 Nightmare). The early bosses take the biggest buffs: Engineer hp 2.0 / damage 1.0 / speed 1.05 -> 2.8 / 1.6 / 1.2, Designer 3.0 / 1.45 / 1.2 -> 3.4 / 1.8 / 1.3. The Supervisor becomes a tanky, low-damage summoner: hp 3.0 -> 3.6, damage 0.9 -> 0.6 (the data floor), speed 0.95 -> 0.9; it keeps its one-tradie backup call at 50 % health. The Project Manager moves to 4.0 / 1.4 / 1.08 and The Client stays at 4.8 / 1.35 / 1.05 (the giant mallet already hurts). Boss health now climbs Engineer 2.8 < Designer 3.4 < Supervisor 3.6 < Project Manager 4.0 < The Client 4.8 at every difficulty (the floors keep the same order on Easy), checked in `arcade_test.gd`. The Supervisor is still the hardest stage for the non-dodging probe (2/8 Normal, 0/8 Nightmare): its damage is already at the `dmg_scale` floor of 0.6, so the rest of its sting is the pipe wrench's knockback; a human who keeps away, as the melee change intends, has a much better time than the probe. **Pass 4** adds the two fairness changes the review asked for: Easy/Normal scale the outgoing melee force / topple (0.75 / 0.65 and 0.9 / 0.8; Nightmare unchanged) and the backup call now shows a 1.5 s amber warning ring on the summon spot before the tradie lands.
 
-**Ring-out rule (owner report: "boss drop off from edge = stage clear").** `MatchSim._ring_out` leaves a bot that falls off
-the site `dead` with its health intact and `fell_t` set. A fall is **never a K.O.**: `ArcadeManager._fight` now decides by
-health, not by the transient `fell_t` flag, so only `hp <= 0` marks an enemy down — no flag, respawn or clear path can turn
-a ring-out into a stage clear. A fallen enemy (boss or crew, boss stages and Tradies alike) is put back **on the floor**
-(the bot spot farthest from the nearest living player, via `_safe_spot()`), with the **health fraction it had**, its trade
-tool in hand and 1.5 s of invulnerability; the fight continues. One fall is exactly one revive (`ArcadeManager.revived`
-counts them; no fall/revive churn), a ring-out pays nothing and records no clear, and a later real K.O. still pays and
-records the stage exactly once. Checked in `arcade_test.gd` (`_boss_ring_out`: every boss stage, a `fell_t`-lost case,
-two falls in a row, crew on a boss stage, Tradies, the clear flow after a fall). On this build the plain shove was already
-revived by the M2 `fell_t` path; the `fell_t`-lost case reproduces the owner's clear on the old decider (`dead && !fell_t`
-called `_down` -> `_cleared` -> paid and recorded), and now revives. The AFTER balance table above is measured with the fix;
-the BEFORE one included free ring-outs.
+**Ring-out rule (owner report: "when the boss falls off the edge it respawns; it should count as defeated").** `MatchSim._ring_out`
+leaves a bot that falls off the site `dead` with its health intact. In Arcade **any ring-out K.O.s the enemy**: `ArcadeManager._fight`
+downs every `dead` enemy (`_down` also zeroes its hp, so the boss bar and the guests' `am.hf` read 0) and it never respawns.
+A boss that rings out therefore **clears the stage** exactly like a hp <= 0 K.O. (the crew gives up, coins are paid once, the
+clear is recorded once). A minion or Tradie that rings out stays down too; on a no-boss stage the stage clears when every
+enemy is down. A live enemy that is merely low or falling is not touched (no rescue teleport). Checked in `arcade_test.gd`
+(`_boss_ring_out`: every boss stage, no respawn afterwards, minions on a boss stage, Tradies, a low live boss not teleported).
 
 **Last-two-stage fixes.** (1) The Client (and any Giant: Chaos mode too) was drawn away from his own body. `World.present` scaled the Fighter node by 1.5 about the world origin, but the wobbler places itself in world space, so the model sat at 1.5 x his position (about 15 m off near the arena edge) and the hand / shoulder points his swings read back from the rig were off too: he looked like he walked through things and his hits missed (about a quarter of a normal boss's damage with the same swings). The view now scales about his feet (node position = feet x (1 - k)). (2) The Project Manager's deadline closed the collision floor while the visible ground (`FloorPad`, a flat 58 m plane) stayed full size, so everyone dropped off ground that still looked solid; the pad now shrinks with the floor. (3) Scope-creep / backup workers could spawn on a spot the shrunk floor no longer covers and fall straight off; they now spawn on the remaining floor. Checked in `arcade_test.gd`.
 
@@ -174,8 +234,13 @@ The stage table is the ONLY stat authority: `_arcade_line()` neutralises every m
 carries (`cls_dmg`, `cls_kb`, `cls_rate`, `cls_reload`, `cls_ammo`, `speed_mul`, `accel_mul`, `air_mul`, `jump_mul`), because
 the placeholder class is a bit of `BOT_CLASS_ORDER` slot bookkeeping, not a design stat. Bots are not hostile to each other
 (`combat.ffa = false`). The Client's `giant_scale` makes him a Giant (`big_t`, 1.5 x model; health and damage are divided
-back so the table's numbers hold). Boss phases at 66 % and 33 % health: damage x1.2 each and a small additive speed step
-(+5 %, then +10 % of the base in total, never compounding), with a toast; stages with `change_request` also swap tools.
+back so the table's numbers hold). A stage table may set its own boss phase thresholds in
+`change_request.params.phases` (highest first; The Client's data keeps the 66 % / 33 % default, and a stage without the
+param falls back to `ArcadeManager.PHASES`); the HUD's bar ticks follow the same list. At each phase the boss's damage is
+x1.2 and its walk speed takes a small additive step (+5 %, then +10 % of the base in total, never compounding), with a
+toast; stages with `change_request` also swap tools (unless `random_weapon_swap` is false). **Boss knockback:** every
+boss takes `ArcadeManager.BOSS_KB` (0.72) of a shove, so a 100 % boss cannot be one-hit ring-out cheesed through a
+fence gate; the crew keep the full number.
 
 **Boss movement speeds (owner report: "the Designer is too fast with its speed buff").** Measured against the player's
 7.5 m/s base (`FighterPhysics.speed`), every boss now walks in a band: slow melee tank 5.0-6.0, normal 6.0-7.2, fast
@@ -194,8 +259,6 @@ weapon's `dash` is a fixed impulse, identical for the player and every boss.
 | Project Manager | 5.13 / 6.21 | 7.12 / 8.61 | 6.00 -> 6.60 | normal |
 | The Client | 5.91 / 7.15 | 8.20 / 9.92 | 6.72 -> 7.39 | normal |
 
-A ring-out is also not a K.O. for the player: `MatchSim._ring_out` skips the K.O. credit (no K.O. coins, count, streak or "K.O.!" toast) for an Arcade enemy (any fighter outside `combat.pve_seats` while a run is on); it is logged as a plain fall and the enemy is revived.
-
 The co-op column is the root cause of the report: `_dress` overrode HP/speed but left the placeholder **class** multipliers
 on the fighter, and the class comes from the bot's slot (`BOT_CLASS_ORDER`): a solo boss was a Bruiser (`spd 0.88`, `kb
 0.65`, `dmg 1.12`) and a two-seat co-op boss a Scamp (`spd 1.22` = **39 % faster**, `kb 1.3` = 2x the knockback taken,
@@ -213,27 +276,26 @@ Normal sanity run after the change stayed in the same range (no free ring-out wi
 | --- | --- | --- |
 | `load_test` | Engineer | every `every` s, `crate_count` crates drop (one near you); a red ring warns `warning_time` s ahead; the landing hurts everyone within 2.8 m (30 dmg) |
 | `revision_pads` | Designer | every `every` s, 3 boost pads (bounce power x `boost_mul`) for `duration` s |
-| `backup_call` | Supervisor | once, at `hp_threshold` of the boss' health: `summon_count` tradies (`summon_bots` names) join in |
+| `backup_call` | Supervisor | once, at `hp_threshold` of the boss' health: `summon_count` tradies (`summon_bots` names) join in after a `warning_time` (1.5 s) amber ground ring, so the summon is telegraphed |
 | `deadline_shrink` | Project Manager | `ModeRules.shrink` on the site floor (the Mega / Shrink machinery): holds `every` s, closes in at `rate` m/s to `min_floor`, breathes back out and repeats; crate spots stay the map's own (`shrink["spots"]`) |
 | `scope_creep` | Project Manager | every `every` s, `spawn_extra` more tradies, at most `max_extra` alive |
 | `change_request` | The Client | at the boss phases: the boss (and you) get a random different tool; `giant_scale` |
 
 `whistle shove` and `red-tape net` are not in `stages.json`, so they are not built (only types present in the table are implemented).
 
-**HUD.** `arcade_boss_hud.gd`: a run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its bar in the stage's `hp_bar_color` (name inside, ticks at 66 / 33 %). It hangs in
+**HUD.** `arcade_boss_hud.gd`: a run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its bar in the stage's `hp_bar_color` (name inside, ticks at the stage's own phase thresholds, 66 / 33 % by default). It hangs in
 the `MatchHud.TOP_STACK` slot under the toast, between the K.O. panel and the radar (and the kill feed); `World._update_mode_ui` starts the mode line under it. `hud_test.gd`
 checks it at every phone / tablet size, both handedness settings (`npm run test:godot-ui`).
 
 **World hooks** (all `if arcade != null`): `begin_stage` (top of `load_map`), `setup_sim` (after `MatchSim.setup`), `stage_ready` (end of `load_map`), `step` (after each sim step),
 `show_panel` / `close_panel` / `add_view`; the kill cam is off in a run. Every other mode is byte-identical.
 
-**How to add a stage.** Append an entry to `godot/data/extra/construction/stages.json` (`id`, `name`, `tagline`, `boss`, `hp_bar_color`, `map_seed_offset`, `coin_reward`,
+**How to add a stage.** Append an entry to `godot/data/extra/construction/stages.json` (the file the pack manifest publishes as its `stages` section; `ArcadeCoop.table()` resolves it through the registry) (`id`, `name`, `tagline`, `boss`, `hp_bar_color`, `map_seed_offset`, `coin_reward`,
 `first_clear_bonus`, `bots[]`, `events[]`; see its `_readme`). Skins and hats must exist in `cosmetics.json`, tools in `weapons.json`. Add the name and tagline to a
 `godot/i18n/src/*.json` file (5 languages) and run `node tools/i18n.js`. A new event type: a `case` in `StageEvents.update` plus its `_xxx` method. Extend
 `godot/tests/arcade_test.gd` (the full run walks the whole table) and run `npm run test:godot-arcade`.
 
 Tests: `npm run test:godot-arcade` (`godot/tests/arcade_test.gd`: all six stages with a boosted hammer, lives / retry / run over, events, phases, once-only coins, saved
 records and the hat, two-seat co-op (seats, auto-revive, shared lives, per-seat pay) and co-op friendly fire (off by default, the option, crew unaffected), the
-ring-out rule (a fall never clears/pays/records, one revive per fall, the boss back on the floor with its health and tool, a later real K.O. still clears and pays,
-crew and Tradies falls too) and the speed audit (boss bands, permanent cap, additive phase steps, the short burst cap, and identical solo/co-op stat lines), a
+ring-out rule (any ring-out K.O.s the enemy for good, a boss ring-out clears and pays the stage once, minions and Tradies stay down, no respawn) and the speed audit (boss bands, permanent cap, additive phase steps, the short burst cap, and identical solo/co-op stat lines), a
 Classic match afterwards). Screenshots: `godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot arcade-<intro|fight|engineer|client|clear|victory> --out FILE.png`.

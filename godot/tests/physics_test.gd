@@ -31,13 +31,12 @@ func _initialize() -> void:
 			f.place(row[17][0], row[17][1], row[17][2]); f.grounded = false
 		f.wish_x = row[7]; f.wish_z = row[8]; f.want_jump = row[9] == 1; f.climb_in = row[16]
 		if row[10] >= 0: st.stun = row[10]
-		if row[14] >= 0: st.dash_air_t = row[14]
 		st.down_t = row[11]; st.trap_t = row[12]; st.spd_t = row[13]; st.dead = row[15] == 1
 		st.pad_cool -= DT              # Combat.timers
 		f.step(DT, solids, st)
 		f.bounce_pads(pads, st)
 		var err := maxf(maxf(absf(f.px - row[0]), absf(f.py - row[1])), maxf(absf(f.pz - row[2]), maxf(absf(f.vx - row[3]), maxf(absf(f.vy - row[4]), absf(f.vz - row[5])))))
-		err = maxf(err, maxf(absf(st.stun - row[18]), maxf(absf(st.dash_air_t - row[19]), absf(st.pad_cool - row[20]))))
+		err = maxf(err, maxf(absf(st.stun - row[18]), absf(st.pad_cool - row[20])))
 		if int(f.grounded) != int(row[6]) or int(not f.ladder.is_empty()) != int(row[21]): err = maxf(err, 1.0)
 		if err > 1e-6 and first_k < 0:
 			first_k = k

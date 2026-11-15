@@ -1,8 +1,37 @@
 {
- "_note": "Godot-only balance overlay (docs/DAMAGE.md 'Balance and cooldowns'). Merged over weapons.json by MatchSim and used only while Combat.tuning_active() (offline, or online with net_zones), so the JS parity tests and web peers keep the shared numbers. Optional fields: burst {n, regen} = n shots, then one charge back every regen s; swapCd = draw time after equipping.",
+ "_note": "Godot-only balance overlay (docs/DAMAGE.md 'Balance and cooldowns', 'Charged heavy melee' and 'Elemental and physics statuses'). Merged over weapons.json by MatchSim and used only while Combat.tuning_active() (offline, or online with net_zones), so the JS parity tests and web peers keep the shared numbers. Optional fields: burst {n, regen} = n shots, then one charge back every regen s; swapCd = draw time after equipping. Melee weapons name a swing archetype with swingStyle; swingStyles holds each archetype's arc/lift/tipMul/hitStart/hitEnd (a per-weapon style {..} overrides single parameters). Sprint 3.2 statuses are optional per-weapon sub-dictionaries read by Combat.apply_status: chill {time, speed, traction} = slowed move speed + slippery ground grip, shock {time} = hit-stun interrupt + spark event, heavy {time, grav, jump} = heavier gravity + weaker jump (walk speed unchanged).",
+ "swingStyles": {
+  "cleave": {
+   "arc": 3.4,
+   "lift": -0.02,
+   "tipMul": 1.0,
+   "hitStart": 0.04,
+   "hitEnd": 1.2
+  },
+  "crush": {
+   "arc": 2.2,
+   "lift": -0.28,
+   "tipMul": 0.92,
+   "hitStart": 0.1,
+   "hitEnd": 0.85
+  },
+  "thrust": {
+   "arc": 0.8,
+   "lift": 0.04,
+   "tipMul": 1.15,
+   "hitStart": 0.18,
+   "hitEnd": 0.6
+  },
+  "whip": {
+   "arc": 4.8,
+   "lift": 0.1,
+   "tipMul": 1.25,
+   "hitStart": 0.28,
+   "hitEnd": 1.2
+  }
+ },
  "weapons": {
   "mammoth": {
-   "headMul": 8,
    "cooldown": 1.4,
    "swapCd": 0.45,
    "force": 7,
@@ -16,7 +45,7 @@
    "swapCd": 0.6,
    "burst": {
     "n": 1,
-    "regen": 6
+    "regen": 4.5
    }
   },
   "rocket": {
@@ -25,7 +54,7 @@
    "swapCd": 0.45,
    "burst": {
     "n": 2,
-    "regen": 5
+    "regen": 3.5
    }
   },
   "glauncher": {
@@ -34,7 +63,7 @@
    "swapCd": 0.35,
    "burst": {
     "n": 3,
-    "regen": 4
+    "regen": 3.0
    }
   },
   "cluster": {
@@ -56,14 +85,23 @@
    "wobble": 0.5
   },
   "snow": {
-   "force": 24
+   "force": 24,
+   "chill": {
+    "time": 3.0,
+    "speed": 0.68,
+    "traction": 0.3
+   }
   },
   "mallet": {
    "force": 26,
-   "topple": 0.75
+   "topple": 0.75,
+   "swingStyle": "crush"
+  },
+  "bow": {
+   "ammo": 8
   },
   "net": {
-   "trap": 2.5
+   "trap": 2.0
   },
   "ak": {
    "dmg": 6,
@@ -84,7 +122,7 @@
    "wobble": 0.6
   },
   "uzi": {
-   "dmg": 3.4,
+   "dmg": 3.8,
    "force": 1.0,
    "maxForce": 1.6,
    "spread": 0.045,
@@ -122,7 +160,47 @@
    "maxForce": 1.2
   },
   "blower": {
-   "dmg": 2.5
+   "dmg": 2.8
+  },
+  "bat": {
+   "swingStyle": "cleave"
+  },
+  "spatula": {
+   "swingStyle": "cleave"
+  },
+  "spiritlevel": {
+   "swingStyle": "cleave"
+  },
+  "pipewrench": {
+   "swingStyle": "crush"
+  },
+  "hammer": {
+   "swingStyle": "crush"
+  },
+  "drill": {
+   "swingStyle": "thrust"
+  },
+  "katana": {
+   "swingStyle": "thrust"
+  },
+  "trident": {
+   "swingStyle": "thrust"
+  },
+  "tapemeasure": {
+   "swingStyle": "whip"
+  },
+  "wirewhip": {
+   "swingStyle": "whip",
+   "shock": {
+    "time": 0.35
+   }
+  },
+  "cementbucket": {
+   "heavy": {
+    "time": 4.0,
+    "grav": 1.4,
+    "jump": 0.65
+   }
   }
  },
  "drops": {

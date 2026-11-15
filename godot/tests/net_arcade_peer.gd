@@ -13,8 +13,12 @@ extends SceneTree
 ## and seat 1 back as a human (`slots[1].kind == "human"`, its own class). Then the host wins and leaves: it prints the
 ## victory it paid on its own save and, last, the run-over reason World/ArcadeManager give when the host leaves.
 ##
+## M4 (guest parity): the cards' buttons are live and ask the host (`arc start/next/retry`, printed as ARC_UI / ARC_FORGED),
+## `am.ev` warning rings are drawn once per host event id (PEER_EV / PEER_EV_GONE) and a boss phase toasts once
+## (PEER_PHASE / PEER_PHASE_DUP).
+##
 ## Prints JSON lines the Node side asserts: JOINED, START<n>, PEER_STAGE, AM, DOWNED, REVIVED, GUEST_SAVE, GUEST_CARD,
-## PEER_HUD, SHRINK, GUEST_VICTORY, HOSTLEFT, DONE.
+## ARC_UI, PEER_HUD, SHRINK, PEER_EV, PEER_EV_GONE, PEER_PHASE, PEER_PHASE_DUP, ARC_FORGED, GUEST_VICTORY, HOSTLEFT, DONE.
 
 var session := GuestSession.new()
 var world: Node = null
@@ -35,6 +39,18 @@ var shrink_printed := false
 var stage2_at := -1.0
 var quit_t := -1.0
 var done := false
+# ---- M4: guest card requests, am.ev warning rings and boss phase toasts ----
+var pressed_intro_for := -1
+var retry_pressed := false
+var next_pressed := false
+var forged_sent := false
+var phase_printed := false
+var phase_at := -1.0
+var phase_ev_n := 0
+var dup_printed := false
+var ev_printed := false
+var ev_gone_printed := false
+var max_rings := 0
 var _am_script: GDScript = null
 
 ## The guest-side run, built from a runtime-loaded script (no static DLC dependency at --script start-up; see the host test).
@@ -144,10 +160,13 @@ func _process(dt: float) -> bool:
 	if not m.am.is_empty() and str(m.am) != last_am:
 		last_am = str(m.am)
 		am_n += 1
+		var evs: Array = m.am.get("ev", []) if m.am.get("ev") is Array else []
+		for e: Variant in evs:
+			if e is Dictionary and str((e as Dictionary).get("t", "")) == "phase": phase_ev_n += 1
 		print("AM ", JSON.stringify({"n": am_n, "st": int(m.am.get("st", -1)), "lv": int(m.am.get("lv", -1)),
 			"s": str(m.am.get("s", "")), "dn": m.am.get("dn", []), "dnt": m.am.get("dnt", []), "hf": float(m.am.get("hf", 0.0)),
 			"sh": float(m.am.get("sh", 0.0)), "cn": int(m.am.get("cn", 0)), "bt": m.am.get("bt", []),
-			"rv": m.am.get("rv", {}), "state": m.state, "lives": m.lives}))
+			"rv": m.am.get("rv", {}), "ev": evs.size(), "state": m.state, "lives": m.lives}))
 	_guest_checks(m, nm)
 	return false
 
@@ -195,8 +214,24 @@ func _guest_checks(m, nm: NetMatch) -> void:
 		if card != card_seen:
 			card_seen = card
 			var wait: Node = world._results.find_child("Wait", true, false)
-			print("GUEST_CARD ", JSON.stringify({"name": card, "wait": wait != null,
+			var btns: Array = []
+			for n: String in ["Start", "Next", "Retry", "Quit"]:
+				if world._results.find_child(n, true, false) != null: btns.append(n)
+			print("GUEST_CARD ", JSON.stringify({"name": card, "wait": wait != null, "buttons": btns,
 				"wait_text": str(wait.text) if wait != null else ""}))
+		# M4: the guest's buttons are LIVE now: each one asks the host (start / next / retry); nothing moves locally.
+		# keyed on the Start button, not the node name: a card built while the previous one is still queue_free'd gets an auto name
+		if mode == "main" and world._results.find_child("Start", true, false) != null and starts >= 2 and pressed_intro_for != starts:
+			pressed_intro_for = starts                     # one Start per received `start` (the card stays up until am moves)
+			_press_guest("Start", "intro", "start")
+		if mode == "main" and card == "ArcadeFailed" and not retry_pressed:
+			retry_pressed = true
+			_press_guest("Retry", "failed", "retry")
+		if mode == "main" and card == "ArcadeClear" and int(m._guest_paid_cn) >= 2 and not next_pressed:
+			next_pressed = true
+			_press_guest("Next", "clear", "next")
+	else:
+		card_seen = ""
 	# -- the HUD strip names the stage/lives and the boss bar mirrors am.hf (and am.sh made the floor shrink) --
 	if mode == "main" and m.stage == 1 and m.state == "fight" and not hud_printed and m.hud != null \
 			and float(m.am.get("hf", 1.0)) < 0.9 and int(m.am.get("lv", 4)) == 3:
@@ -217,10 +252,54 @@ func _guest_checks(m, nm: NetMatch) -> void:
 		print("GUEST_VICTORY ", JSON.stringify({"coins": int(m.victory.get("coins", 0)), "first": bool(m.victory.get("first", false)),
 			"hat_first": bool(m.victory.get("hat_first", false)), "hat_owned": bool(m.victory.get("hat_owned", false)),
 			"save_coins": int(sv2.get("coins")) if sv2 != null else -1, "cn": m._guest_paid_cn}))
-	# the first guest leaves after stage 2's fight is running (the host then drops the seat)
+	# M4: `am.ev` hazard warning rings — one per host event id, red (2.8 m) for a load test, amber (1.6 m) for a backup
+	# call; repeated am must not double them, and they go when the host's list does.
+	var rings: Array = m.guest_rings()
+	if rings.size() > 0:
+		max_rings = maxi(max_rings, rings.size())
+		if not ev_printed:
+			ev_printed = true
+			var types: Array = []
+			for r: Dictionary in rings:
+				types.append("load_test" if is_equal_approx(float(r["radius"]), 2.8) else "backup_call")
+			print("PEER_EV ", JSON.stringify({"n": rings.size(), "types": types, "max": max_rings,
+				"am_ev": (m.am.get("ev", []) as Array).size()}))
+	elif ev_printed and not ev_gone_printed:
+		ev_gone_printed = true
+		print("PEER_EV_GONE ", JSON.stringify({"max": max_rings}))
+	# M4: a boss phase from `am.ev` toasts on the guest HUD once (a repeated am must not repeat it).
+	var toasts: Array = m.guest_phase_toasts()
+	if not phase_printed and toasts.size() > 0:
+		phase_printed = true
+		phase_at = t
+		print("PEER_PHASE ", JSON.stringify({"phase": int(m.am.get("ph", 0)), "text": str(toasts[0]),
+			"toasts": toasts.size(), "am_ev": (m.am.get("ev", []) as Array).size()}))
+	if phase_printed and not dup_printed and t - phase_at > 0.6:
+		dup_printed = true
+		print("PEER_PHASE_DUP ", JSON.stringify({"ev_phase_entries": phase_ev_n, "toasts": toasts.size()}))
+	# M4: wrong-state requests during the stage-2 fight — the host must drop every one of them (the run does not move).
+	if mode == "main" and m.stage == 1 and m.state == "fight" and not forged_sent:
+		forged_sent = true
+		for a: String in ["next", "retry", "start", "bogus"]: session.send({"t": "arc", "a": a})
+		print("ARC_FORGED ", JSON.stringify({"state": m.state, "stage": m.stage, "actions": 4}))
+	# the first guest leaves after stage 2's fight is running (the host then drops the seat); long enough for the M4
+	# warning rings (1 s warning) and the phase toast to be observed
 	if mode == "main" and m.stage == 1 and m.state == "fight":
 		if stage2_at < 0.0: stage2_at = t
-		elif t - stage2_at > 1.5: quit_t = 0.2
+		elif t - stage2_at > 3.0: quit_t = 0.2
+
+## A guest card button press (M4): the real panel button, which calls ArcadeManager._guest_arc -> session.arcade_request.
+## Prints what it found so the runner can prove the guest card has live buttons (not the old disabled "Waiting for the host").
+func _press_guest(button: String, card: String, action: String) -> void:
+	var b: Button = null
+	if world != null and world._results != null: b = world._results.find_child(button, true, false) as Button
+	print("ARC_UI ", JSON.stringify({"a": action, "card": card, "button": button, "found": b != null,
+		"disabled": b.disabled if b != null else true, "state": m_state()}))
+	if b != null: b.pressed.emit()
+
+## The guest's own run state (test aid: it is presentation, driven by the host's am).
+func m_state() -> String:
+	return str(world.arcade.state) if world != null and world.arcade != null else ""
 
 func _done() -> void:
 	if done: return

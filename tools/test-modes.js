@@ -1,11 +1,10 @@
 'use strict';
 /* Game modes in Godot (docs/COMBAT_PORTING.md, godot/logic/mode_rules.gd):
    1. parity: the web game's real mode code (tools/modes-reference.js) vs godot/tests/modes_parity_test.gd, every state
-      (incl. the Pillars weapon handout and clock: initPillars / pillarGive / updatePillars)
    2. gravity: Moon Drift's gravity 0.15 (cfg.grav) through the real web Fighter.physics (tools/physics-reference.js) on
       its two levels vs godot/tests/physics_test.gd with FighterPhysics.grav_scale 0.15
    3. matches: godot/tests/modes_test.gd plays every ported mode (and the Godot-only tdm / deathmatch / sudden / chaos)
-      headless with bots until the match ends by its rule (Pillars, Explosive and Moon Drift too).
+      headless with bots until the match ends by its rule (Explosive and Moon Drift too).
    npm run test:godot-modes   (MODES_ONLY=<mode> limits step 2 to one mode) */
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
@@ -40,7 +39,7 @@ let bad = 0;
 const only = process.env.MODES_ONLY ? ['--only=' + process.env.MODES_ONLY] : [];
 for (const [name, args, re] of [
   ['parity', ['res://tests/modes_parity_test.gd', '--', path.join(__dirname, '..', 'shared'), tf], /^(MODES|FIRST)/],
-  ['matches', ['res://tests/modes_test.gd', '--', '--no-save', ...only], /^(MATCH|SUDDEN|CHAOS|PILLARS|LAVA|LOWG|NODES|MODES|FAIL)/],
+  ['matches', ['res://tests/modes_test.gd', '--', '--no-save', ...only], /^(MATCH|SUDDEN|CHAOS|LAVA|LOWG|NODES|MODES|FAIL)/],
 ]) {
   const r = spawnSync(GODOT, ['--headless', '--path', GD, '--script', ...args], { encoding: 'utf8', timeout: 1200000, maxBuffer: 256 * 1024 * 1024 });
   const out = (r.stdout || '') + (r.stderr || '');

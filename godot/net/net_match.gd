@@ -10,8 +10,8 @@ extends RefCounted
 ## - my own state goes out as `S` at 30 Hz, plus `sw`/`f`/`k`/`ko`/`take` when they happen.
 ## MatchSim.step calls pre_step() / post_controls(); the world feeds handle() and on_event().
 ## Godot-only additions (docs/PROTOCOL.md 6.3, ignored by web clients): `rules.gmode` (an app-only mode: teams from
-## `rules.gteam`, Pillars spots from `rules.pp`), `gm` mode-state messages from a Godot host (K.O.s, ladder rungs,
-## Pillars clock, Chaos events), `start.rs` (the match state after a host migration) and `emote`.
+## `rules.gteam`), `gm` mode-state messages from a Godot host (K.O.s, ladder rungs,
+## Chaos events), `start.rs` (the match state after a host migration) and `emote`.
 
 const HZ := 30.0
 const PREDICT_MAX := 0.2         ## seconds a snapshot is carried forward
@@ -20,7 +20,7 @@ const SNAP := 6.0                ## metres: further off than this, jump straight
 ## Modes only Godot clients play online (the web client's netMode turns them into Classic): sent as `rules.gmode`.
 ## "construction" is the Arcade co-op room (docs/ARCADE_COOP_PLAN.md M1): app-only like the rest, and the only one whose
 ## map/HP/lives/crew come from the Arcade run (`start.arc`) instead of the Host sheet.
-const GODOT_MODES := ["tdm", "deathmatch", "sudden", "chaos", "pillars", "lowg", "duel", "t2", "t3", "t4", "construction"]
+const GODOT_MODES := ["tdm", "deathmatch", "sudden", "chaos", "lowg", "duel", "t2", "t3", "t4", "construction"]
 
 ## Squat flag holder so MatchSim's crouch easing works for ghosts (the web game reads g.squat).
 class GhostControl:
@@ -83,7 +83,7 @@ static func play_mode(modes: Dictionary, rules: Dictionary) -> String:
 	if is_gmode(modes, rules): return str(rules["gmode"])
 	var mode: Variant = rules.get("mode")
 	var md: Dictionary = modes.get(mode, {}) if mode is String else {}
-	if md.is_empty() or md.get("teams") or mode == "sandbox" or mode == "construction": return "classic"   # netMode
+	if md.is_empty() or md.get("teams") or mode == "sandbox" or mode == "construction" or mode == "ctf": return "classic"   # netMode
 	return mode
 
 static func is_gmode(modes: Dictionary, rules: Dictionary) -> bool:
@@ -101,17 +101,6 @@ static func rule_team(rules: Dictionary, s: int) -> int:
 	var t: Variant = rules.get("gteam")
 	if not (t is Array) or s < 0 or s >= (t as Array).size(): return -1
 	return clampi(NetSnapshot.to_int32(t[s]), 0, 1)
-
-## `rules.pp`: the pillar (spawn index) of slot `s` on a map with `n` spawns, -1 = none (a permutation of 0..n-1).
-static func rule_pillar(rules: Dictionary, s: int, n: int) -> int:
-	var pp: Variant = rules.get("pp")
-	if not (pp is Array) or (pp as Array).size() != n or n <= 0: return -1
-	var seen := {}
-	for v: Variant in pp:
-		var i := NetSnapshot.to_int32(v)
-		if i < 0 or i >= n or seen.has(i): return -1
-		seen[i] = true
-	return NetSnapshot.to_int32(pp[s % n])
 
 ## Dynamic arena from the rules (netStartMatch, guest side): {choice, seed, t0}. Unknown kind => steady.
 ## Set them on the MatchSim (dyn_choice / dyn_seed / dyn_t0) before setup().
@@ -161,7 +150,7 @@ func setup(start: Dictionary) -> Dictionary:
 	if start.get("rs") is Array: apply_resume(start["rs"], start.get("rsx", {}))
 	return looks
 
-## App-only mode on a guest: the host decides the end and runs the Chaos events; sides and pillar spots from the rules.
+## App-only mode on a guest: the host decides the end and runs the Chaos events; sides from the rules.
 func _setup_mode() -> void:
 	gmode = str(rules["gmode"]) if is_gmode(combat.modes, rules) else ""
 	if gmode == "": return
@@ -170,7 +159,6 @@ func _setup_mode() -> void:
 	r.limit = limit
 	if not r.chaos.is_empty(): r.chaos["next"] = INF
 	_assign_teams()
-	_place_pillars()
 
 ## Team modes: everybody's side from `rules.gteam` (the colours follow when the world builds the views).
 func _assign_teams() -> void:
@@ -180,18 +168,7 @@ func _assign_teams() -> void:
 		var f := slot_fighter(s)
 		if f != null: f.team = maxi(0, rule_team(rules, s))
 
-## Pillars: the fighters this side runs stand on the pillar the host shuffled for their slot, facing the middle.
-func _place_pillars() -> void:
-	if combat.mode_id != "pillars": return
-	var spots: Array = sim.map.get("spawns", [])
-	for f: FighterState in owned():
-		var i := rule_pillar(rules, f.net_slot, spots.size())
-		if i < 0: continue
-		var sp: Array = spots[i]
-		combat.place_at(f, float(sp[0]), float(sp[1]), float(sim.map.get("spawnY", 0.01)))
-		f.yaw = atan2(-float(sp[0]), -float(sp[1])); f.face_yaw = f.yaw
-
-## The match state from before a host migration (`start.rs`: one entry per slot) and `rsx` (pt: Pillars clock).
+## The match state from before a host migration (`start.rs`: one entry per slot) and `rsx`.
 func apply_resume(rs: Array, rsx: Variant) -> void:
 	for e: Variant in rs:
 		if not (e is Dictionary): continue
@@ -216,8 +193,6 @@ func apply_resume(rs: Array, rsx: Variant) -> void:
 		if hp > 0.0: f.hp = minf(hp, combat.max_hp(f))
 		if combat.mode_id == "gungame" and not f.is_ghost: combat.rules.gg_give(f)
 	combat.ev({"type": "toast", "text": "Host changed: the match goes on"})
-	if rsx is Dictionary and not combat.rules.pil.is_empty() and rsx.has("pt"):
-		combat.rules.pil["t"] = NetSnapshot.num(rsx.get("pt"), 0.0, ModeRules.PIL_TIME, ModeRules.PIL_TIME)
 
 ## The state a guest hands over when the relay promotes it to host (host migration): {} when there is no running
 ## match. slots / map / limit / rules of the old match, `l` = every slot's fighter, `dt0` = the arena clock.
@@ -232,7 +207,6 @@ func capture_resume() -> Dictionary:
 			"yaw": NetSnapshot.fixed(f.yaw, 2), "hp": NetSnapshot.fixed(f.hp, 1), "ko": f.ko, "dt": int(f.st["deaths"]),
 			"lv": f.lives, "el": 1 if f.elim else 0, "d": 1 if (f.dead or f.left) else 0, "gg": f.gg_rung})
 	var x := {}
-	if not combat.rules.pil.is_empty(): x["pt"] = NetSnapshot.fixed(float(combat.rules.pil["t"]), 1)
 	return {"slots": slots.duplicate(true), "map": sim.map_id, "limit": limit, "rules": rules.duplicate(true), "l": l, "rsx": x,
 		"dt0": roundf(maxf(0.0, sim.dyn_clock()) * 1000.0) / 1000.0, "my_slot": my_slot}
 
@@ -466,7 +440,7 @@ func handle(m: Dictionary) -> void:
 				var g2 := slot_changed(s, kind, GuestSession.clean_info(info, s))
 				if g2 != null: combat.ev({"type": "relook", "f": g2})
 
-## `gm` from a Godot host: "st" = K.O.s / deaths / ladder rungs per slot and the Pillars clock (1 Hz), "cw" / "cs" /
+## `gm` from a Godot host: "st" = K.O.s / deaths / ladder rungs per slot (1 Hz), "cw" / "cs" /
 ## "ce" = a Chaos event warned / started (g = the giant's slot) / ended.
 func _mode_message(m: Dictionary) -> void:
 	var k := str(m.get("k", ""))
@@ -482,8 +456,6 @@ func _mode_message(m: Dictionary) -> void:
 					if key == "ko": f.ko = v
 					elif key == "dt": f.st["deaths"] = v
 					elif f.is_ghost: f.gg_rung = mini(v, ModeRules.GG.size() - 1)
-			if m.has("pt") and not combat.rules.pil.is_empty():
-				combat.rules.pil["t"] = NetSnapshot.num(m.get("pt"), 0.0, ModeRules.PIL_TIME, combat.rules.pil["t"])
 		"cw", "cs", "ce":
 			var giant := slot_fighter(NetSnapshot.to_int32(m.get("g"))) if m.has("g") else null
 			var fl := str(m.get("fl", ""))

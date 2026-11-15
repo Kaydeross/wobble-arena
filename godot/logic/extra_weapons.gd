@@ -1,22 +1,23 @@
 class_name ExtraWeapons
 extends RefCounted
-## Godot-only construction weapons (res://data/extra/construction/weapons.json):
-## Pipe Wrench, Nail Gun, Jackhammer, Spirit Level, Tape Measure, Cement Bucket,
-## Cone Launcher, Angle Grinder, Cordless Drill.
-## Modelled on ExtraClasses. merge() adds them to weapons dictionary if missing.
-
-const PATH := "res://data/extra/construction/weapons.json"
+## Godot-only weapons from the DLC packs: every pack.json `weapons` section, e.g.
+## res://data/extra/construction/pack.json -> construction/weapons.json (Pipe Wrench, Nail Gun, Jackhammer, Spirit Level,
+## Tape Measure, Cement Bucket, Cone Launcher, Angle Grinder, Cordless Drill).
+## The manifests are scanned by Content.load_dlc_packs(); data() reads the merged section tables from the Content pack
+## registry (no hardcoded path here). merge() adds them to a weapons dictionary if missing, like ExtraClasses.merge.
 
 static var _d: Dictionary = {}
+static var _gen := -1
 
+## Every pack's `weapons` table, merged in deterministic pack order ({id: weapon}).
 static func data() -> Dictionary:
-	if _d.is_empty():
-		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(PATH)) if FileAccess.file_exists(PATH) else null
-		_d = {}
-		if v is Dictionary:
-			for k: String in v:
-				if not k.begins_with("_") and v[k] is Dictionary:
-					_d[k] = v[k]
+	var content: Variant = load("res://autoload/content.gd")
+	if content == null: return {}
+	var gen: int = content.generation()
+	if gen != _gen:                                          # rebuild only when the pack registry changed (reload())
+		var tables: Variant = content.pack_tables("weapons")  # lazily scans the manifests on first use
+		_d = tables if tables is Dictionary else {}
+		_gen = content.generation()                           # the lazy scan may have bumped it
 	return _d
 
 ## Adds extra weapons that `weapons` does not have yet (in place; returns it).

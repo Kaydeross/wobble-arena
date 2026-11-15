@@ -1,0 +1,212 @@
+{
+ "%s Crate": {
+  "zh_TW": "%s 補給箱",
+  "zh_CN": "%s 补给箱",
+  "ja": "%sクレート",
+  "fr": "Caisse %s",
+  "es": "Caja de %s"
+ },
+ "Arena Reset!": {
+  "zh_TW": "競技場重置！",
+  "zh_CN": "竞技场重置！",
+  "ja": "アリーナリセット！",
+  "fr": "Arène réinitialisée !",
+  "es": "¡Arena reiniciada!"
+ },
+ "Arena Growing!": {
+  "zh_TW": "競技場變大！",
+  "zh_CN": "竞技场变大！",
+  "ja": "アリーナ拡大！",
+  "fr": "L'arène grandit !",
+  "es": "¡La arena crece!"
+ },
+ "You're a giant!": {
+  "zh_TW": "你變巨人了！",
+  "zh_CN": "你变巨人了！",
+  "ja": "巨大化した！",
+  "fr": "Tu es géant !",
+  "es": "¡Eres gigante!"
+ },
+ "Finding a new host…": {
+  "zh_TW": "正在找新房主…",
+  "zh_CN": "正在找新房主…",
+  "ja": "新しいホストを探しています…",
+  "fr": "Recherche d'un nouvel hôte…",
+  "es": "Buscando nuevo anfitrión…"
+ },
+ "You're the host!": {
+  "zh_TW": "你是房主了！",
+  "zh_CN": "你是房主了！",
+  "ja": "あなたがホストです！",
+  "fr": "Tu es l'hôte !",
+  "es": "¡Eres el anfitrión!"
+ },
+ "Spectating %s · %d left": {
+  "zh_TW": "觀戰 %s · 剩 %d 人",
+  "zh_CN": "观战 %s · 剩 %d 人",
+  "ja": "観戦中 %s · 残り%d人",
+  "fr": "Spectateur de %s · %d restants",
+  "es": "Viendo a %s · quedan %d"
+ },
+ "Kids mode": {
+  "zh_TW": "兒童模式",
+  "zh_CN": "儿童模式",
+  "ja": "キッズモード",
+  "fr": "Mode enfants",
+  "es": "Modo infantil"
+ },
+ "Click to look": {
+  "zh_TW": "點擊轉動視角",
+  "zh_CN": "点击转动视角",
+  "ja": "クリックで視点操作",
+  "fr": "Clique pour viser",
+  "es": "Clic para mirar"
+ },
+ "Leave the room?": {
+  "zh_TW": "要離開房間嗎？",
+  "zh_CN": "要离开房间吗？",
+  "ja": "ルームを出ますか？",
+  "fr": "Quitter le salon ?",
+  "es": "¿Salir de la sala?"
+ },
+ "Quit this match? It won't count.": {
+  "zh_TW": "要退出這場比賽嗎？不會計入成績。",
+  "zh_CN": "要退出这场比赛吗？不会计入成绩。",
+  "ja": "この試合をやめますか？記録されません。",
+  "fr": "Quitter ce match ? Il ne comptera pas.",
+  "es": "¿Salir de la partida? No contará."
+ },
+ "Load Test!": {
+  "zh_TW": "負載測試！",
+  "zh_CN": "负载测试！",
+  "ja": "負荷テスト！",
+  "fr": "Test de charge !",
+  "es": "¡Prueba de carga!"
+ },
+ "Revision Pads!": {
+  "zh_TW": "修訂踏板！",
+  "zh_CN": "修订踏板！",
+  "ja": "改訂パッド！",
+  "fr": "Plaques de révision !",
+  "es": "¡Placas de revisión!"
+ },
+ "Backup Incoming!": {
+  "zh_TW": "援軍來了！",
+  "zh_CN": "援军来了！",
+  "ja": "援軍が来る！",
+  "fr": "Renforts en route !",
+  "es": "¡Llegan refuerzos!"
+ },
+ "Backup Tradies!": {
+  "zh_TW": "工人增援！",
+  "zh_CN": "工人增援！",
+  "ja": "職人の応援！",
+  "fr": "Ouvriers en renfort !",
+  "es": "¡Obreros de refuerzo!"
+ },
+ "Scope Creep!": {
+  "zh_TW": "範圍蔓延！",
+  "zh_CN": "范围蔓延！",
+  "ja": "仕様膨張！",
+  "fr": "Dérive du projet !",
+  "es": "¡Se amplía el alcance!"
+ },
+ "Tool Crate!": {
+  "zh_TW": "工具箱！",
+  "zh_CN": "工具箱！",
+  "ja": "工具箱！",
+  "fr": "Caisse à outils !",
+  "es": "¡Caja de herramientas!"
+ },
+ "Deadline!": {
+  "zh_TW": "截止日期！",
+  "zh_CN": "截止日期！",
+  "ja": "締め切り！",
+  "fr": "Date limite !",
+  "es": "¡Fecha límite!"
+ },
+ "Weapons Swapped!": {
+  "zh_TW": "武器對調！",
+  "zh_CN": "武器对调！",
+  "ja": "武器チェンジ！",
+  "fr": "Armes échangées !",
+  "es": "¡Armas cambiadas!"
+ },
+ "Everyone keeps the coins": {
+  "zh_TW": "人人都保留金幣",
+  "zh_CN": "人人都保留金币",
+  "ja": "コインは全員がもらえる",
+  "fr": "Chacun garde les pièces",
+  "es": "Todos conservan las monedas"
+ },
+ "Out of lives": {
+  "zh_TW": "生命用完了",
+  "zh_CN": "生命用完了",
+  "ja": "ライフ切れ",
+  "fr": "Plus de vies",
+  "es": "Sin vidas"
+ },
+ "The Client signed off": {
+  "zh_TW": "客戶已簽收",
+  "zh_CN": "客户已签收",
+  "ja": "クライアントが承認",
+  "fr": "Le client a validé",
+  "es": "El cliente dio el visto bueno"
+ },
+ "New hat: %s": {
+  "zh_TW": "新帽子：%s",
+  "zh_CN": "新帽子：%s",
+  "ja": "新しい帽子：%s",
+  "fr": "Nouveau chapeau : %s",
+  "es": "Sombrero nuevo: %s"
+ },
+ "You own the %s": {
+  "zh_TW": "你已有 %s",
+  "zh_CN": "你已有 %s",
+  "ja": "%sは持っています",
+  "fr": "Tu as déjà : %s",
+  "es": "Ya tienes: %s"
+ },
+ "Win on Normal or Nightmare for a hat": {
+  "zh_TW": "在普通或惡夢難度獲勝可得帽子",
+  "zh_CN": "在普通或噩梦难度获胜可得帽子",
+  "ja": "ノーマルかナイトメアで勝つと帽子がもらえる",
+  "fr": "Gagne en Normal ou Cauchemar pour un chapeau",
+  "es": "Gana en Normal o Pesadilla para un sombrero"
+ },
+ "Tap a row to change it": {
+  "zh_TW": "點一列即可更改",
+  "zh_CN": "点一行即可更改",
+  "ja": "行をタップして変更",
+  "fr": "Touche une ligne pour changer",
+  "es": "Toca una fila para cambiarla"
+ },
+ "Two teams: %d vs %d": {
+  "zh_TW": "兩隊：%d 對 %d",
+  "zh_CN": "两队：%d 对 %d",
+  "ja": "2チーム：%d 対 %d",
+  "fr": "Deux équipes : %d contre %d",
+  "es": "Dos equipos: %d contra %d"
+ },
+ "Fixed teams: %d vs %d": {
+  "zh_TW": "固定隊伍：%d 對 %d",
+  "zh_CN": "固定队伍：%d 对 %d",
+  "ja": "固定チーム：%d 対 %d",
+  "fr": "Équipes fixes : %d contre %d",
+  "es": "Equipos fijos: %d contra %d"
+ },
+ "%d dummies. They never fight back": {
+  "zh_TW": "%d 個假人。它們不會還手",
+  "zh_CN": "%d 个假人。它们不会还手",
+  "ja": "ダミーが%d体。反撃はしない",
+  "fr": "%d mannequins. Ils ne ripostent jamais",
+  "es": "%d muñecos. Nunca devuelven el golpe"
+ },
+ "Bots fight everyone. Free for all": {
+  "zh_TW": "機器人誰都打。大亂鬥",
+  "zh_CN": "机器人谁都打。大乱斗",
+  "ja": "ボットは全員と戦う。バトルロイヤル",
+  "fr": "Les bots se battent contre tous. Chacun pour soi",
+  "es": "Los bots luchan contra todos. Todos contra todos"
+ }
+}

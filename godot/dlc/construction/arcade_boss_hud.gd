@@ -179,6 +179,6 @@ func _draw_bar() -> void:
 		fill.bg_color = Color(col.r, col.g, col.b, 0.9)
 		fill.set_corner_radius_all(6)
 		fill.draw(bar.get_canvas_item(), inner)
-	for ph: float in ArcadeManager.PHASES:        # phase ticks at 66 / 33 %
+	for ph: float in m.phases():                  # the stage's own phase thresholds (table data; default 66 / 33 %)
 		var tx := 3.0 + (w - 6.0) * ph
 		bar.draw_line(Vector2(tx, 1.0), Vector2(tx, bar.size.y - 1.0), Color(1, 1, 1, 0.8), 2.0)

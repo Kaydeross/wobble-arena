@@ -11,7 +11,7 @@ if (sync.status !== 0) process.exit(1);
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/world_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 120000 });
 const out = (r.stdout || '') + (r.stderr || '');
-const lines = out.split('\n').filter(l => /^(TIER|MAPS|SIM|TOUCH|WORLD|FAIL)|ERROR|SCRIPT ERROR/.test(l));
+const lines = out.split('\n').filter(l => /^(TIER|MAPS|SIM|MELEE|TOUCH|WORLD|FAIL)|ERROR|SCRIPT ERROR/.test(l));
 console.log(lines.join('\n'));
 const ok = r.status === 0 && /^WORLD ok/m.test(out) && !/SCRIPT ERROR|^ERROR/m.test(out);
 if (!ok) { if (!lines.length) console.log(out.slice(0, 2000)); console.log('godot world test FAILED'); process.exit(1); }

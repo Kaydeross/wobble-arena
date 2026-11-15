@@ -70,6 +70,151 @@ moonbase-wide -40.0 / -2.4 %, moonbase-play -11.1 / -9.1 %. Pictures: `docs/styl
   Gameplay > Enemy arrows, default on). Six pooled 2D Controls inside the safe area, no 3D pass, so it does not appear
   in the budgets above; `godot/tests/enemy_indicators_test.gd` (`npm run test:godot-ui`) checks the geometry.
 
+## Faces (expressive procedural eye rig)
+
+The wobbler's face is the two eye meshes, animated by `FighterState` and nothing else (presentation only: it never
+writes state and never draws from `Combat.rng`). The rig stays exactly **two `MeshInstance3D`s**: every expression
+transforms those two nodes, so there is no extra node, material or draw call, and the game nodes combat reads (hand,
+arm, shoulder, head, chest, legs) are never touched (the gameplay points stay bit-identical in classic and ragdoll
+mode).
+
+| State | Trigger (state keys) | Face |
+|---|---|---|
+| idle | — | eyes open, one blink every 2.5-4.5 s (`RandomNumberGenerator` seeded once in `setup()` from the fighter identity + look, own clock: deterministic over the same frames, never the global RNG) |
+| blink | the blink window | eyes close and open over 0.16 s (sin envelope: ~5-6 closed frames at 60 Hz) |
+| angry | `swing >= 0` or `rage > 0` (`FighterState.rage_t`) | mirrored angled brows (inner ends down, 0.34 rad) plus a 0.78 squint |
+| panic | `off_stage` / `panic` while airborne off the floor | eyes wide (x1.18 / x1.34) and lifted 14 mm, brows lifted |
+| x | `dead` or `down_t > 0` | crossed bars per eye, one shared X mesh swapped into the same two meshes |
+
+`Fighter.visual_state()` sends the two face-only keys: `rage` = `FighterState.rage_t` (seconds of Rage left) and
+`off_stage` = airborne below the arena floor line (`py < -3 m`; every walkable floor top is at y >= 0 and the ring-out
+line is -25 m), so a fighter falling off the stage shows panic on the way down. Both are optional in the wobbler with
+idle-safe defaults.
+
+Mesh cost (measured by `npm run test:godot-wobbler`, which builds both tiers in one process): the brow bar is
+**merged into the eye mesh surface** on MID / HIGH, so the rig stays two meshes and two draw calls; LOW keeps the
+plain 36-vertex eye box, so the web build carries the pre-feature geometry exactly (same cached `LowPoly` mesh) and
+still gets blink / angry / panic / X through the node transform and the X mesh swap, just without brows.
+
+| Per wobbler | LOW (web) | MID / HIGH |
+|---|---|---|
+| eye `MeshInstance3D`s | 2 | 2 |
+| `MeshInstance3D`s, bare class (before -> after) | 20 -> 20 (12 after the Sprint 4.2 batching below) | 20 -> 20 (12 after batching) |
+| open-eye surface (verts / triangles) | 36 / 12 (unchanged, the pre-feature box) | 72 / 24 (eye + brow, one surface) |
+| X (dead / down) surface | 72 / 24, swapped into the same two meshes | 72 / 24, swapped into the same two meshes |
+| extra draw calls / nodes / materials | 0 | 0 |
+| brow geometry | none | merged into the eye surface |
+
+Only LOW pays anything while down (+12 triangles per eye in the same two draws; MID / HIGH swap 24 triangles for
+24). The X and eye+brow surfaces are static resources shared by every wobbler. A face frame is a handful of float
+ops and at most two node transforms (`Wobbler._face_step`, which skips the node writes while the pose is unchanged),
+measured inside the ragdoll budget run (`npm run test:godot-ragdoll`).
+
+`godot/tests/wobbler_test.gd` (`npm run test:godot-wobbler`) checks it deterministically: blink intervals over 40 s of
+simulated idle time land in 2.5-4.5 s with a few closed frames each and the eyes reopen; same seed + frames replays
+exactly; angry brows are mirrored and > 0.2 rad on a swing and on rage; panic eyes are wide only while airborne with
+`off_stage`; X eyes are the shared X mesh when dead / `down_t > 0` and clear on respawn; the rig still has exactly two
+eye meshes; no node or mesh count changes while expressing; a face never moves a game node; and LOW keeps the plain
+36-vertex eye mesh. The face-state table above is the test's `WOBBLER_FACE` output.
+
+## Fighter mesh batching (post-v0.4.0 Sprint 4.2)
+
+Before this pass a fighter was ~35 separate meshes, each with its own `StandardMaterial3D` (the old per-part
+`_mat()`/recolour groups), so 10 fighters cost about 350 draws before shadows. Now every mesh that moves rigidly with
+one animated node is merged into ONE `ArrayMesh` for that node, with the old part colours baked into the vertex
+`COLOR` array: body, head/neck, each thigh+leg, the off arm, the aiming-arm parts, the hat and the held weapon.
+
+What that means per fighter (measured by `npm run test:godot-wobbler`):
+
+| Per fighter | Before | After |
+|---|---|---|
+| `MeshInstance3D` (bare Wobbler + Spatula) | 20 | 12 |
+| Surfaces / main-pass draws (bare) | 20 | 14 |
+| Material instances (bare) | 10 | 5 |
+| Nodes, whole rig (bare) | 32 | 25 |
+| `MeshInstance3D` per shipped class (test look, incl. weapon history) | 34 / 50 / 49 / 60 / 54 | 12 / 13 / 13 / 18 / 14 |
+| Surfaces per shipped class | same | 14 / 15 / 15 / 20 / 16 |
+
+The merged meshes are:
+
+| Node | Merged contents | Surfaces |
+|---|---|---|
+| body | torso, belt, buckle, class/outfit body parts | 2-5: flashable body, belt, metallic buckle, (glow, open shell) |
+| neck (head) | head + class/outfit neck parts | 1-2 |
+| each leg (`Thigh`) | thigh + class/outfit leg parts (slimmed by the outfit's `thin` flag) | 1 |
+| off arm (`ArmLMesh`) | off-arm sleeve + hand + `armL` parts | 1 |
+| aiming arm parts | class/outfit `arm` parts (none shipped) | 1 |
+| hat (`HatMesh`) | all hat parts, or one mesh per part for hats with >= 6 parts | 1, or 6-8 |
+| held weapon | every `WeaponModels.build` box fused into one surface | 1 |
+
+These stay separate, on purpose:
+
+- the two eye `MeshInstance3D`s (the faces contract: expressions are transforms, X-mesh swap),
+- `arm_sleeve` and `arm_hand_mesh` (the ragdoll overlay stretches/slides them), and the two `foot_meshes` (the
+  overlay rotates each foot independently),
+- the hat with >= 6 parts: `npm run test:godot-site-map` counts the PPE hats' meshes (>= 6), so those keep per-part
+  meshes (open-shell/glow parts also always get their own surface: cull mode / emission cannot be merged),
+- the Net Gun's folded-net wireframe icosahedron: a `PRIMITIVE_LINES` surface with no normals cannot join the
+  triangle soup, so it is skipped (the held Net Gun keeps all its other surfaces and loses only that small wireframe
+  ball; every other weapon surface fuses). `test:godot-wobbler` equips every weapon key in `Content.weapons` and fails
+  if one shows no geometry or raises a script error; a model with nothing fusable falls back to the per-part nodes.
+- `torso` and `head_mesh`, now plain `Node3D` gameplay markers (the Fighter/Combat points; their geometry is in the
+  merged body/head meshes), and the `Thigh` name Locker test.
+
+Colours: the palette is exactly the old per-material recolour rules (top colour, outfit `col`/`tone`/`pants`/`shoes`,
+tinted `hexMix` parts, the class skin tint); the merged meshes have one static material per role
+(`s`/`o`/`m`/`e`/`w`/`g:<colour>:<energy>`), shared by every wobbler. Only the hit-flash material is per fighter
+(emission is per-instance), so a hit flash still never lights another fighter and glowing outfit parts keep their
+glow colour through the flash (they used to flash white too; the only deliberate visual deviation).
+
+Mesh nodes and surfaces are tier-independent except LOW's blob shadow (+1 mesh/surface per fighter) and the eye brows;
+only the material shading differs (LOW plain lambert, MID/HIGH wrap + rim).
+
+Costs and caching: geometry + colours depend only on class | outfit | hat | colour | team tint, so identical looks
+share the `ArrayMesh`es. The look cache is LRU-bounded to **24 looks / 4 MiB** (`Wobbler.look_cache_stats()`);
+`test:godot-wobbler` walks all 19 hats and 5 classes and measures the worst case at 24 entries / 1.07 MiB, while a
+real 10-fighter match uses ~11 look keys (~0.5 MiB). Weapons are cached separately (48 keys). A look change rebuilds
+once (~1 ms); nothing is rebuilt or re-merged per frame.
+
+### 10-fighter result (`npm run test:godot-gfx`, measured 2026-11-15)
+
+The bench now also runs the same Farm scene with ONE fighter (`solo1`), so the draw-call difference is the fighters'
+own cost **including whatever shadow passes the renderer runs** (HIGH 4 cascades, MID 2, LOW none: LOW fighters cast no
+real shadows, they get one blob-shadow quad each, so they count +1 mesh/surface there).
+
+| | HIGH before -> after | MID before -> after | LOW before -> after |
+|---|---|---|---|
+| 10 fighters, `MeshInstance3D` | 269 -> **135** (-49.8 %) | 269 -> **135** (-49.8 %) | 279 -> **145** (-48.0 %) |
+| 10 fighters, surfaces | 269 -> **155** (-42.4 %) | 269 -> **155** (-42.4 %) | 279 -> **165** (-40.9 %) |
+| 1 fighter, `MeshInstance3D` / surfaces | 20/20 -> **12/14** | 20/20 -> **12/14** | 21/21 -> **13/15** |
+| Farm whole-frame draws (10 fighters) | 1044 -> **736** (-29.5 %) | 561 -> **417** (-25.7 %) | 460 -> **390** (-15.2 %) |
+| Farm draws, 1 fighter | 452 -> **426** | 251 -> **243** | 275 -> **269** |
+| Fighter-attributable draws (10 minus 1) | 592 -> **310** (-47.6 %) | 310 -> **174** (-43.9 %) | 185 -> **121** (-34.6 %) |
+| ... per fighter, incl. shadow pass | 59.2 -> **31.0** | 31.0 -> **17.4** | 18.5 -> **12.1** |
+| `World.tick` CPU (Farm, 10 fighters) | 3.00 -> 3.17 ms | 3.16 -> 2.96 ms | 2.77 -> 2.91 ms |
+
+The draw-call and mesh numbers are deterministic. The CPU and wall-frame numbers move with machine load (both the
+before and the after run were recorded while other suites were running on this Mac): no CPU regression is visible in
+the 10-fighter match, but they are not a clean measurement. Frame budgets still have large headroom: HIGH Farm 736 /
+1400 draws, MID 417 / 800, LOW 390 / 650.
+
+### Why the 10-fighter target is not 60 draws (roadmap deviation)
+
+60 draws for 10 fighters means 6 per fighter. The floor with this rig is **12-14**: body, neck, two eyes, two legs,
+two feet, off arm, aiming-arm sleeve, aiming-arm hand, plus hat and weapon = 12 differently-animated transforms, every
+one of them read by the Fighter (gameplay points), the ragdoll overlay or the faces contract. Merging any two of them
+needs either a GPU-skinned single mesh with a `Skeleton3D`/vertex-animation shader replacing the per-node rig (a
+larger, riskier project: the overlay, the gameplay points and the Locker all mutate those nodes), or dropping one of
+those contracts (two eye meshes, per-limb ragdoll poses, per-part PPE hats). What shipped is the honest floor for the
+current rig: **-48..-50 % MeshInstance3D, -41..-42 % surfaces, -35..-48 % fighter-attributable draws** (and -25..-30 %
+of the whole Farm frame on the shadowed tiers). A skinned single-mesh fighter (~4 draws: body, two eyes, weapon) is listed as a separate future item in
+`docs/IMPROVEMENT_PLAN.md`.
+
+The contracts are gated in CI: `test:godot-wobbler` (per-class `MeshInstance3D`/surface budgets, shared meshes, one
+flash material per fighter, bounded cache), `test:godot-perf` (10 fighters: meshes <= 150, surfaces <= 175 at 135/155
+measured), `test:godot-ragdoll` (gameplay points still bit-identical between classic and ragdoll, untouched),
+`test:godot-site-map` (PPE hat/outfit meshes), `test:godot-locker` (hats, emotes put the weapon away).
+
 ## Performance budget (`npm run test:godot-gfx`)
 
 `godot/tests/gfx_bench.gd` builds Farm (40.7k decor tris), Candy (38.3k) and Crater Dome (18k, 51 moving pieces) with
@@ -87,8 +232,8 @@ CPU only, `--tier=high|mid|low` runs one.
 | Frame (dev Mac, sanity only) | 16.6 ms | 12 ms | 12 ms |
 
 Why: an iPhone 12 CPU is roughly 3x slower than the dev Mac, so 4 ms here is ~12 ms there, leaving the render thread
-room inside 16.6 ms. Draw calls and primitives do not depend on the device; ~10 fighters x ~35 parts (x shadow
-cascades) are most of the draws, the level itself is a few dozen. Metal on an A14 handles ~1000 simple draws per
+room inside 16.6 ms. Draw calls and primitives do not depend on the device; after the Sprint 4.2 batching ~10 fighters
+x ~14 `MeshInstance3D` / ~16 surfaces (x shadow cascades) are most of the draws, the level itself is a few dozen. Metal on an A14 handles ~1000 simple draws per
 frame; MID stays under 800.
 
 Re-measured 2026-11-14 on the 0.3.0 tree (Godot 4.7.2, Apple M2 Pro, 1170x540 window), after the #105 / #107 /
@@ -104,6 +249,9 @@ HIGH / MID and 10.1-11.2 ms on LOW (vsync off; the game's own frame cap is bypas
 Compared with the previous (pre-VFX) pass: CPU rose from 1.4-1.7 ms to about 2.0 ms on a normal match (the effects
 stress is the worst case, 3.2 ms), while draw calls and primitives are essentially unchanged (HIGH 902-1151 draws
 now vs 955-1237 before). Everything still has headroom against the budgets.
+
+After the Sprint 4.2 fighter mesh batching (2026-11-15, same bench): HIGH Farm 1044 -> 736 draws, MID 561 -> 417,
+LOW 460 -> 390, with the fighters' own cost down 35-48 % (table under "Fighter mesh batching").
 
 What is not measured here: GPU time on a phone and thermals (ROADMAP: 15 min on an iPhone 12 without throttling); that
 needs a TestFlight build and the soak below ("Measuring on device"). Fill rate is the MID risk: the vignette and the cloud layer are two blended layers (the
@@ -283,6 +431,32 @@ All under the 4 ms CPU / 1400-800-650 draw / 200k-130k-110k primitive budgets. T
 (five pools, trails, specks) plus the labels; the cost is CPU (~1 ms at HIGH caps, ~0.2 ms at LOW), i.e. under ~3 ms of
 an iPhone 12 frame at MID worst case. A normal match stays far below the caps (40 s, 8 fighters, HIGH: bits peak ~110,
 blobs 24, streaks 23).
+
+### Final K.O.: impact freeze, zoom and knockback speedometer (Post-v0.4.0 Sprint 2.1)
+
+The decisive K.O. of a match gets a short comic beat: a **0.15x** time-scale freeze for **0.9 s of REAL time** (measured
+with `Time.get_ticks_msec`, never with the scaled frame delta, so it ends after 0.9 s of wall clock whatever the frame
+rate or the tier), the camera zooms in on the hit (FOV narrowed up to 22 %, arm shortened up to 30 %, the orbit pivot
+leans 45 % toward the victim), and a fat rotated yellow sticker on the HUD reads the victim's launch speed:
+
+```
+LAUNCHED AT %d KM/H!        km/h = sqrt(vx*vx + vy*vy + vz*vz) * 12.0
+TERMINAL RING-OUT!          a ring-out with no launch speed left (below 24 km/h)
+```
+
+What triggers it (`world/fx.gd` reads the existing `ko` event, presentation only): the **K.O. that ends the match**
+(`rules.match_over` becoming true), **any Sudden Death elimination** (one life), or an **Arcade boss K.O.** (`world.arcade.boss`
+is the victim). The badge is real-time too: ~1.5 s, then gone. It never runs online (one authoritative clock), in a soak
+run (a benchmark) or in the hand-stepped headless suites (they opt in with `follow_camera.impact_in_tests`).
+
+Where it lives: `world/follow_camera.gd` owns the freeze/zoom state, `Engine.time_scale` and the REAL-time windows (its
+`reset_view` — called by `World.load_map` — `end_impact()` and `_exit_tree()` restore the time scale, so a restart, a
+teardown or a skipped replay can never leave the game in slow motion; `HUD.update` and `KillCam.step` tick it, the two
+callbacks that see every rendered frame, and the kill cam films through the zoomed FOV so a replay that starts while the
+moment is up keeps the effect); `world/fx.gd` decides when (`_impact_ko`); `ui/hud.gd` draws the badge. No extra pass or
+draw on any tier beyond the one PanelContainer sticker that exists only while it shows. Tests: `npm run test:godot-killcam`
+(freeze, restore, zoom, the exact km/h number, ring-out variant, arcade boss, teardown) and `npm run test:godot-ui`
+(badge text via `tr()`, layout clear of every HUD panel and the toast at every phone / tablet size).
 
 ## Still off
 

@@ -1,7 +1,7 @@
 extends SceneTree
-## Screenshots of Sandbox build mode, a match on a built arena and Lava Pillars (needs a real renderer, opens a window):
+## Screenshots of Sandbox build mode, a match on a built arena (needs a real renderer, opens a window):
 ##   godot --path godot --resolution 1170x540 --script res://tests/sandbox_shots.gd -- --no-save --out DIR
-## Saves DIR/godot-sandbox-build.png, -build-style.png, -match.png and -lavapillars.png (touch layer on, phone safe-area insets).
+## Saves DIR/godot-sandbox-build.png, -build-style.png, and -match.png (touch layer on, phone safe-area insets).
 
 const FRAME := 1.0 / 60.0
 var out_dir := "."
@@ -69,16 +69,5 @@ func _run() -> void:
 		world.tick(FRAME)
 	await _shot("match")
 	world.queue_free()
-	await process_frame
-	var w2: Node = load("res://world/world.tscn").instantiate()
-	w2.auto_run = false
-	w2.map_id = "pillars2"
-	w2.mode_id = "pillars"
-	w2.rng_seed = 21
-	root.add_child(w2)
-	await process_frame
-	await _tick(w2, 200)
-	await _shot("lavapillars")
-	w2.queue_free()
 	await process_frame
 	quit(0)

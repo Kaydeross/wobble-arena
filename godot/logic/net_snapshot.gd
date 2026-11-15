@@ -10,7 +10,7 @@ const NET_MAX := 8
 
 # ============================== `S` (state) ==============================
 
-## One `S` entry for a fighter this client runs. `extra` may hold `lv`, `el`, `pt` (Pillars clock, host only), `sq`.
+## One `S` entry for a fighter this client runs. `extra` may hold `lv`, `el`, `sq`.
 static func encode_entry(f: FighterState, extra: Dictionary = {}) -> Dictionary:
 	var p := f.phys
 	var e := {"id": f.net_slot, "x": fixed(p.px, 2), "y": fixed(p.py, 2), "z": fixed(p.pz, 2),
