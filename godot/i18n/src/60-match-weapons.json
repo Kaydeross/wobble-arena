@@ -34,6 +34,13 @@
   "fr": "Pas encore de leader",
   "es": "Aún no hay líder"
  },
+ "FASTBALL SPECIAL!": {
+  "zh_TW": "高速球特攻！",
+  "zh_CN": "高速球特攻！",
+  "ja": "ファストボール・スペシャル！",
+  "fr": "SPÉCIAL BOULE RAPIDE !",
+  "es": "¡ESPECIAL BOLA RÁPIDA!"
+ },
  "Click to look around   ·   Esc: menu": {
   "zh_TW": "點擊環顧四周   ·   Esc：選單",
   "zh_CN": "点击环顾四周   ·   Esc：菜单",
@@ -607,5 +614,68 @@
   "ja": "ライブワイヤー",
   "fr": "Fouet électrique",
   "es": "Látigo eléctrico"
+ },
+ "LAUNCHED AT %d KM/H!": {
+  "zh_TW": "以 %d 公里/小時 擊飛！",
+  "zh_CN": "以 %d 公里/小时 击飞！",
+  "ja": "%d km/h で吹き飛ばし！",
+  "fr": "PROPULSÉ À %d KM/H !",
+  "es": "¡LANZADO A %d KM/H!"
+ },
+ "TERMINAL RING-OUT!": {
+  "zh_TW": "極限出界！",
+  "zh_CN": "极限出界！",
+  "ja": "限界場外！",
+  "fr": "SORTIE EXTRÊME !",
+  "es": "¡FUERA DE LÍMITE!"
+ },
+ "STRIKE!": {
+  "zh_TW": "全倒！",
+  "zh_CN": "全倒！",
+  "ja": "ストライク！",
+  "fr": "STRIKE !",
+  "es": "¡PLENO!"
+ },
+ "Belly Bounce": {
+  "zh_TW": "肚皮彈跳",
+  "zh_CN": "肚皮弹跳",
+  "ja": "おなかバウンド",
+  "fr": "Rebond de bidon",
+  "es": "Rebote de panza"
+ },
+ "Seismic Slam": {
+  "zh_TW": "震地猛擊",
+  "zh_CN": "震地猛击",
+  "ja": "サイズミックスラム",
+  "fr": "Impact sismique",
+  "es": "Golpe sísmico"
+ },
+ "Vault Flip": {
+  "zh_TW": "翻滾躍擊",
+  "zh_CN": "翻滚跃击",
+  "ja": "ヴォールトフリップ",
+  "fr": "Saut périlleux",
+  "es": "Salto mortal"
+ },
+ "Fortress Stance": {
+  "zh_TW": "堡壘架式",
+  "zh_CN": "堡垒架势",
+  "ja": "フォートレススタンス",
+  "fr": "Posture forteresse",
+  "es": "Postura fortaleza"
+ },
+ "Tac-Reload": {
+  "zh_TW": "戰術換彈",
+  "zh_CN": "战术换弹",
+  "ja": "タクティカルリロード",
+  "fr": "Rechargement tactique",
+  "es": "Recarga táctica"
+ },
+ "Phase Shift": {
+  "zh_TW": "相位轉移",
+  "zh_CN": "相位转移",
+  "ja": "フェイズシフト",
+  "fr": "Déphasage",
+  "es": "Cambio de fase"
  }
 }

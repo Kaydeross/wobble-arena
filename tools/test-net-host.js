@@ -327,7 +327,7 @@ async function arcadeCoop(url) {
   assert.deepEqual(S1.arc.seats, [0, 1], 'start.arc.seats');
   assert.deepEqual(S1.arc.crew, [2, 3, 4, 5], 'start.arc.crew follows the seats');
   assert.equal(S1.arc.boss, -1, 'stage 1 has no boss');
-  assert.equal(S1.arc.state, 'intro'); assert.equal(S1.arc.lv, 4, 'normal difficulty = 4 shared lives');
+  assert.equal(S1.arc.state, 'intro'); assert.equal(S1.arc.lv, 5, 'normal difficulty = 4 shared lives + 1 for the co-op seat');
   assert.equal(S1.rules.gmode, 'construction', 'app-only construction gmode');
   const H0 = jl(await host.waitLine(/^HOST_STAGE /, 30000));
   console.log('arcade stage 1 (host): ' + JSON.stringify(H0));
@@ -366,7 +366,7 @@ async function arcadeCoop(url) {
   const DN = jl(await host.waitLine(/^DOWN_SENT /, 30000));
   console.log('arcade down: ' + JSON.stringify(DN));
   assert.deepEqual(DN.dn, [1], 'the host says seat 1 is down');
-  assert.equal(DN.lives, 3, 'a seat death costs one shared life (4 -> 3)');
+  assert.equal(DN.lives, 4, 'a seat death costs one shared life (5 -> 4)');
   const PD = jl(await peer.waitLine(/^DOWNED /, 30000));
   console.log('arcade guest downed: ' + JSON.stringify(PD));
   assert.equal(PD.seat, 1); assert.equal(PD.slot, 1);
@@ -378,7 +378,7 @@ async function arcadeCoop(url) {
   // -- the host auto-revives it: am.rv places the guest fighter at the host's spot/health fraction --
   const UP = jl(await host.waitLine(/^REVIVED_HOST /, 30000));
   console.log('arcade revive (host): ' + JSON.stringify(UP));
-  assert.equal(UP.state, 'fight'); assert.equal(UP.lives, 3, 'the revive itself costs no life (the death paid)');
+  assert.equal(UP.state, 'fight'); assert.equal(UP.lives, 4, 'the revive itself costs no life (the death paid)');
   assert.ok(UP.next_revive && UP.next_revive.n >= 1, 'the host recorded the revive instruction');
   const PR = jl(await peer.waitLine(/^REVIVED /, 30000));
   console.log('arcade guest revived: ' + JSON.stringify(PR));
@@ -403,8 +403,8 @@ async function arcadeCoop(url) {
   assert.ok(G1.save_coins >= G1.coins, 'Save.coins got the guest coins (' + G1.save_coins + ')');
   const CARD1 = jl(await peer.waitLine(/^GUEST_CARD .*ArcadeClear/, 15000));
   console.log('arcade guest clear card: ' + JSON.stringify(CARD1));
-  assert.equal(CARD1.name, 'ArcadeClear'); assert.equal(CARD1.wait, true, 'the guest card has host-controlled buttons');
-  assert.equal(CARD1.wait_text, 'Waiting for the host');
+  assert.equal(CARD1.name, 'ArcadeClear'); assert.equal(CARD1.wait, false, 'M4: the guest card has LIVE buttons now');
+  assert.ok(CARD1.buttons.includes('Next') && CARD1.buttons.includes('Quit'), 'the guest clear card offers Next / Quit: ' + CARD1.buttons);
 
   // -- a retry of the same stage pays NOTHING twice (same seeds rebuilt from a fresh start) --
   const RT = jl(await host.waitLine(/^RETRY /, 30000));
@@ -412,6 +412,7 @@ async function arcadeCoop(url) {
   console.log('arcade retry start: ' + JSON.stringify({ host: RT, guest: P2.arc }));
   assert.equal(P2.arc.st, 0, 'the retry is the same stage');
   assert.equal(RT.seed, Number(P2.arc.seed), 'the retry start carries the retry site seed');
+  assert.equal(RT.via, 'guest arc retry', 'M4: the retry came from the guest failed-card Retry request');
   const PF2 = jl(await peer.waitLine(/^PEER_STAGE .*"n":2/, 40000));
   assert.equal(PF2.seed, RT.seed, 'the guest rebuilt the retry site seed');
   const C2 = jl(await host.waitLine(/^CLEAR2_H /, 60000));
@@ -428,6 +429,7 @@ async function arcadeCoop(url) {
   // -- stage 2: a new start (fresh seed), the guest mirrors the HUD, the boss fraction and the shrinking floor --
   const ADV = jl(await host.waitLine(/^ADVANCING /, 30000));
   assert.equal(ADV.to, 1);
+  assert.equal(ADV.via, 'guest arc next', 'M4: the next stage came from the guest cleared-card Next request');
   const H2 = jl(await host.waitLine(/^HOST_STAGE .*"st":1/, 60000));
   console.log('arcade stage 2 (host): ' + JSON.stringify(H2));
   assert.equal(H2.st, 1); assert.equal(H2.enemies, 1, 'stage 2 is the Engineer alone');
@@ -526,8 +528,8 @@ async function arcadeCoop(url) {
     Promise.race([peer2.exited, sleep(60000).then(() => 'hang')])]);
   if (ch === 'hang') host.p.kill(); if (cp === 'hang') peer.p.kill(); if (cp2 === 'hang') peer2.p.kill();
   const ht = host.lines.map(x => x.l), pt = peer.lines.map(x => x.l), p2t = peer2.lines.map(x => x.l);
-  console.log(ht.filter(l => /^(HOSTED|ONLINE_CREATE|START_REFUSED|CAN_START|GUARDED_DROPPED|START_BOT|START|HOST_STAGE|PEER_IN|HOST_FIGHT|DOWN_SENT|REVIVED_HOST|CLEAR1_H|RETRY|CLEAR2_H|ADVANCING|HOST_HF|PEER_OUT|SEAT_BOT|REJOIN|HOST_WON|LEAVE|AM_SENT|DONE|FAIL)/.test(l)).map(l => 'ahost: ' + l).join('\n'));
-  console.log(pt.filter(l => /^(JOINED|START|PEER_STAGE|AM|DOWNED|REVIVED|GUEST_SAVE|GUEST_CARD|PEER_HUD|SHRINK|DONE|FAIL)/.test(l)).map(l => 'apeer: ' + l).join('\n'));
+  console.log(ht.filter(l => /^(HOSTED|ONLINE_CREATE|START_REFUSED|CAN_START|GUARDED_DROPPED|START_BOT|START|HOST_STAGE|PEER_IN|HOST_FIGHT|DOWN_SENT|REVIVED_HOST|CLEAR1_H|HOST_FAILED|RETRY|RETRY_INTRO|CLEAR2_H|ADVANCING|STAGE2_INTRO|HOST_HF|ARC_IGNORED|PEER_OUT|SEAT_BOT|REJOIN|HOST_WON|LEAVE|AM_SENT|DONE|FAIL)/.test(l)).map(l => 'ahost: ' + l).join('\n'));
+  console.log(pt.filter(l => /^(JOINED|START|PEER_STAGE|AM|DOWNED|REVIVED|GUEST_SAVE|GUEST_CARD|ARC_UI|PEER_HUD|SHRINK|PEER_EV|PEER_EV_GONE|PEER_PHASE|PEER_PHASE_DUP|ARC_FORGED|DONE|FAIL)/.test(l)).map(l => 'apeer: ' + l).join('\n'));
   console.log(p2t.filter(l => /^(JOINED|START|PEER_STAGE|GUEST_VICTORY|HOSTLEFT|DONE|FAIL)/.test(l)).map(l => 'apeer2: ' + l).join('\n'));
   const errs = [...ht, ...pt, ...p2t].filter(l => ERR.test(l));
   for (const l of errs) console.log('godot:', l);
@@ -540,6 +542,43 @@ async function arcadeCoop(url) {
   const amSent = jl(ht.find(l => /^AM_SENT /.test(l)));
   assert.ok(amSent.n > 30, 'the host sent am all along (' + amSent.n + ')');
   assert.ok(ht.some(l => /^HOST_FIGHT .*"st":0/.test(l)) && ht.some(l => /^HOST_FIGHT .*"st":1/.test(l)), 'the host started both fights');
+  // M4 guest parity: the guest's card buttons are live and ask the HOST (accepted only in the matching card state), the
+  // hazard warning rings / boss phase toast come from `am.ev` exactly once, and wrong-state requests are ignored.
+  const cards = pt.filter(l => /^GUEST_CARD /.test(l)).map(jl);
+  assert.ok(cards.some(c => c.name === 'ArcadeClear' && c.wait === false), 'the guest clear card has LIVE buttons');
+  assert.ok(cards.some(c => c.name === 'ArcadeFailed' && c.buttons.includes('Retry')), 'the guest failed card offers Retry');
+  const uiReqs = pt.filter(l => /^ARC_UI /.test(l)).map(jl);
+  console.log('arcade guest arc UI: ' + JSON.stringify(uiReqs));
+  assert.ok(uiReqs.every(u => u.found && !u.disabled), 'every guest card button is enabled: ' + JSON.stringify(uiReqs));
+  assert.ok(uiReqs.some(u => u.a === 'retry' && u.card === 'failed'), 'the guest pressed Retry on its failed card');
+  assert.ok(uiReqs.some(u => u.a === 'next' && u.card === 'clear'), 'the guest pressed Next on its second clear card');
+  assert.ok(uiReqs.filter(u => u.a === 'start' && u.card === 'intro').length >= 2, 'the guest pressed Start on the retry + stage-2 intro cards');
+  const ev = pt.filter(l => /^PEER_EV /.test(l)).map(jl);
+  assert.equal(ev.length, 1, 'the guest drew the am.ev warning rings once');
+  assert.equal(ev[0].n, 3, 'one ring per active host event (2 load-test crates + 1 backup summon): ' + JSON.stringify(ev[0]));
+  assert.deepEqual(ev[0].types.slice().sort(), ['backup_call', 'load_test', 'load_test'], 'the red load-test and amber backup rings');
+  assert.ok(ev[0].am_ev >= 3, 'the am carried the active ev descriptors');
+  const evGone = pt.filter(l => /^PEER_EV_GONE /.test(l)).map(jl);
+  assert.equal(evGone.length, 1, 'the guest rings go when the host events land');
+  assert.equal(evGone[0].max, 3, 'repeated am never duplicated the guest warning rings');
+  const ph = pt.filter(l => /^PEER_PHASE /.test(l)).map(jl);
+  assert.equal(ph.length, 1, 'the guest toasted the boss phase once');
+  assert.equal(ph[0].phase, 1, 'the toasted phase is the host phase 1 (42 % <= 66 %)');
+  assert.ok(/fired up/.test(ph[0].text), 'the phase toast text: ' + ph[0].text);
+  const phd = pt.filter(l => /^PEER_PHASE_DUP /.test(l)).map(jl);
+  assert.equal(phd.length, 1, 'the guest checked for duplicate phase toasts');
+  assert.equal(phd[0].ev_phase_entries, 1, 'the phase descriptor travelled exactly once in am.ev');
+  assert.equal(phd[0].toasts, 1, 'the guest showed exactly one phase toast');
+  const forged = pt.filter(l => /^ARC_FORGED /.test(l)).map(jl);
+  assert.equal(forged.length, 1, 'the guest sent forged wrong-state arc requests during the fight');
+  const ign = ht.filter(l => /^ARC_IGNORED /.test(l)).map(jl);
+  assert.equal(ign.length, 1, 'the host reported the wrong-state arc requests');
+  assert.equal(ign[0].state, 'fight', 'the run did not move on a wrong-state arc request');
+  assert.equal(ign[0].ok, true, 'wrong-state arc requests are ignored like a forged start');
+  assert.ok(ign[0].guarded >= 5, 'they were counted as guarded (guarded ' + ign[0].guarded + ')');
+  assert.ok(ht.some(l => /^RETRY .*"via":"guest arc retry"/.test(l)), 'the host accepted the guest arc retry in the failed state');
+  assert.ok(ht.some(l => /^ADVANCING .*"via":"guest arc next"/.test(l)), 'the host accepted the guest arc next in the cleared state');
+  assert.ok(ht.some(l => /^HOST_FIGHT .*"st":1.*"via":"guest arc start"/.test(l)), 'the host began the stage-2 fight on the guest arc start (intro state)');
   assert.ok(pt.some(l => /^DONE .*"stage":1/.test(l)), 'the first guest finished on stage 2');
   assert.equal(ch, 0, 'arcade host exit code'); assert.equal(cp, 0, 'arcade guest exit code'); assert.equal(cp2, 0, 'arcade rejoin exit code');
   console.log('D. arcade co-op passes');

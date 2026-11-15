@@ -5,8 +5,8 @@ extends RefCounted
 ## Uses plain 64-bit floats (not Vector3) so it stays numerically identical to the JS version.
 ## Solids are boxes {minX,maxX,minZ,maxZ,top,bottom}; build them with FighterPhysics.solids_from_map().
 ##
-## Status effects live on the fighter (FighterState: dead, down_t, trap_t, stun, spd_t, pad_cool), set by
-## Combat; step() reads them and counts `stun` down, exactly like Fighter.physics.
+## Status effects live on the fighter (FighterState: dead, down_t, trap_t, stun, spd_t, pad_cool, and the Sprint 3.2
+## chill_t / heavy_t), set by Combat; step() reads them and counts `stun` down, exactly like Fighter.physics.
 
 const R := 0.45
 const STEP := 0.55
@@ -72,11 +72,13 @@ func step(dt: float, solids: Array, st: FighterState) -> void:
 	var incap := st.dead or st.down_t > 0.0 or st.trap_t > 0.0
 	var ctrl := 0.0 if incap else 1.0
 	var spm := 1.4 if st.spd_t > 0.0 else 1.0
+	if st.chill_t > 0.0: spm *= st.chill_speed   # Snowball Cannon chill: 0.68x move speed (Sprint 3.2, overlay only)
 	var tx := wish_x * speed * speed_mul * ctrl * spm
 	var tz := wish_z * speed * speed_mul * ctrl * spm
 	var acc := 40.0 * accel_mul if grounded else 14.0 * air_mul
-	if ice_grip and grounded and not incap:
+	if (ice_grip or st.chill_t > 0.0) and grounded and not incap:
 		acc = 32.0 if hypot(wish_x, wish_z) > 0.05 else 20.0 * pow(0.05, ice_setting)
+		if st.chill_t > 0.0: acc *= st.chill_traction   # chill reuses the ice-grip machinery, only slipperier
 	if st.recover_air_t > 0.0:         # air recovery (Skills.do_recover): steer hard without losing the burst
 		st.recover_air_t -= dt
 		if not grounded and not incap:
@@ -97,11 +99,15 @@ func step(dt: float, solids: Array, st: FighterState) -> void:
 		vx += dx / length * md; vz += dz / length * md
 
 	if want_jump and grounded and not incap:
-		vy = (7.4 if grav_scale < 0.3 else 9.2) * jump_mul
+		var jm := jump_mul                        # Cement Bucket heavy status: 0.65x jump impulse (overlay only)
+		if st.heavy_t > 0.0: jm *= st.heavy_jump
+		vy = (7.4 if grav_scale < 0.3 else 9.2) * jm
 		grounded = false
 	want_jump = false
 
-	vy = maxf(vy - GRAV * grav_scale * dt, -22.0)
+	var gs := grav_scale
+	if st.heavy_t > 0.0: gs *= st.heavy_grav      # Cement Bucket heavy status: 1.4x gravity (overlay only)
+	vy = maxf(vy - GRAV * gs * dt, -22.0)
 	px += vx * dt; py += vy * dt; pz += vz * dt
 	if not is_nan(ceil_y):             # domed maps: the glass roof stops you drifting away
 		if vy > 30.0: vy = 30.0

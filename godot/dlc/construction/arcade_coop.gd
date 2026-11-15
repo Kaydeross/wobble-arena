@@ -12,10 +12,13 @@ extends RefCounted
 ##   boss  the boss' slot (-1 on a stage without one), big = the 1.5x Client visual
 ##   state/lv the host's run state ("intro" per stage) and the shared lives
 ##   ff    co-op friendly fire between the two seats (owner decision: false by default; hub toggle Settings arcade_ff)
-## The stage table (res://data/extra/construction/stages.json) is read here once and nowhere else in the net layer.
+## The stage table (the Construction pack's `stages` section: res://data/extra/construction/pack.json -> stages.json) is
+## read here once and nowhere else in the net layer. Its path comes from the Content pack registry, not a literal
+## (ArcadeCoop.stages_path), so a pack that moves its tables keeps working; this also runs without the Content autoload
+## instance (the registry's static scanner loads itself).
 ## ArcadeManager stays the run authority; `stage_arc(manager)` snapshots its live state for the next `start`.
 
-const STAGES_PATH := "res://data/extra/construction/stages.json"
+const PACK_ID := "construction"               ## the Construction DLC's pack (res://data/extra/construction/pack.json)
 const SEATS := 2                              ## owner decision: two players per room
 const TEAMMATE_NAME := "Teammate Bot"
 const DEFAULT_DIFF := "normal"
@@ -25,10 +28,16 @@ const STATES := ["idle", "intro", "fight", "clearing", "cleared", "failing", "fa
 
 static var _table: Dictionary = {}
 
+## The pack's stages file through the Content pack registry ("" when the pack or its `stages` section is missing).
+static func stages_path() -> String:
+	var content: Variant = load("res://autoload/content.gd")
+	return str(content.pack_section_file(PACK_ID, "stages")) if content != null else ""
+
 ## The parsed stages table ({difficulties, stages}).
 static func table() -> Dictionary:
 	if _table.is_empty():
-		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(STAGES_PATH)) if FileAccess.file_exists(STAGES_PATH) else null
+		var path := stages_path()
+		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) if path != "" and FileAccess.file_exists(path) else null
 		if v is Dictionary: _table = v
 	return _table
 
@@ -53,10 +62,12 @@ static func difficulties() -> Dictionary:
 static func norm_diff(id: String) -> String:
 	return id if difficulties().has(id) else DEFAULT_DIFF
 
-## The shared run lives at this difficulty (ArcadeManager start_run reads the same numbers).
-static func lives_for(diff: String) -> int:
+## The shared run lives at this difficulty: the table's number, +1 with two player seats (a co-op fight is longer:
+## 6 Easy / 5 Normal / 4 Nightmare). ArcadeManager.start_run reads the same numbers, and the host sends the result as
+## `start.arc.lv`, so host and guest agree.
+static func lives_for(diff: String, seats: int = 1) -> int:
 	var dd: Dictionary = difficulties().get(norm_diff(diff), {})
-	return int(dd.get("lives", 3))
+	return int(dd.get("lives", 3)) + (1 if seats >= SEATS else 0)
 
 ## The generated site of a stage: seed_base + the stage's offset + a fresh offset per retry (ArcadeManager.stage_seed).
 static func stage_seed(run: int, stage: int, attempt: int = 0) -> int:
@@ -118,7 +129,7 @@ static func arc_for_stage(run: int, diff: String, stage: int, lives: int, state:
 
 ## The arc of a brand-new run (stage 0).
 static func run_start_arc(run: int, diff: String, seat_count: int = SEATS, ff: bool = false) -> Dictionary:
-	return arc_for_stage(run, diff, 0, lives_for(diff), "intro", seat_count, 0, ff)
+	return arc_for_stage(run, diff, 0, lives_for(diff, seat_count), "intro", seat_count, 0, ff)
 
 ## The live arc of an ArcadeManager (dynamic: it does not reference the class, so there is no class_name cycle):
 ## the next stage's `start` and a mid-match rejoin both use exactly this snapshot. `m` is an ArcadeManager object, so

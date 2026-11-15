@@ -9,8 +9,9 @@ extends Control
 ##   JUMP    teal, held.
 ##   MELEE   tap = shove; hold (HOLD_KICK s) or flick (FLICK px) = kick. A ring fills while held, the icon turns into a boot.
 ##   context only while it applies: DASH (ninja weapon in hand, with charge pips), else RECOVER when knocked into the air (the "boing
-##           burst", logic/skills.gd; a ring shows the charge coming back), else RELOAD (gun with a magazine and spare
-##           ammo; shows the reload progress).
+##           burst", logic/skills.gd; a ring shows the charge coming back), else SIG (the class signature skill while it is
+##           ready, logic/skills.gd; each class has its own icon), else RELOAD (gun with a magazine and spare ammo; shows
+##           the reload progress).
 ##   AIM     double-tap the look area to toggle the scope (tap again twice to leave it).
 ##   weapons tap a hotbar slot to equip it; the fourth tile is the spatula, a real slot like the others (tap it again to
 ##           go back to the weapon it replaced); tap a weapon slot already in hand to swap back to the previous one;
@@ -107,8 +108,9 @@ var _look_tap := [-100000, Vector2.ZERO]   ## last quick tap on the look area: [
 var _hb := {"i": -1, "p0": Vector2.ZERO}   ## hotbar touch: slot under the finger, start position
 var _flash_slot := -1         ## hotbar slot flashing after a tap (visual only)
 var _prev_slot := -1           ## hotbar slot in hand before the last slot tap (swap back)
-var _ctx := ""                 ## "dash" | "recover" | "reload" | "" (hidden)
+var _ctx := ""                 ## "dash" | "recover" | "sig" | "reload" | "" (hidden)
 var _ctx_sig := ""
+var _sig_kind := ""            ## the signature move id of the icon to draw while the context button shows SIG
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -293,9 +295,13 @@ func pause_rect() -> Rect2:
 	var x: float = (8.0 * UNIT + _insets[0]) if lefty else (vs.x - 8.0 * UNIT - _insets[2] - s)
 	return Rect2(x, top, s, s)
 
-## What the contextual button does right now: "dash", "recover", "reload" or "" (hidden).
+## What the contextual button does right now: "dash", "recover", "sig", "reload" or "" (hidden).
 func context_action() -> String:
 	return _ctx
+
+## The signature move id shown while the context button offers SIG ("" = none); the touch layer picks its vector icon.
+func context_sig_kind() -> String:
+	return _sig_kind if _ctx == "sig" else ""
 
 ## Buttons drawn and touchable right now (FIRE, JUMP, MELEE and the context button when it applies).
 func visible_buttons() -> Array:
@@ -438,10 +444,14 @@ func _touch_down(i: int, p: Vector2) -> void:
 				"melee":
 					_melee = {"t": 0.0, "p0": p, "kicked": false}
 				"context":
-					if (_ctx == "reload" and sim and sim.player.reloading) or (_ctx == "recover" and sim and Skills.recover_n(sim.player) <= 0):
+					# A tap only fires while the offer still holds (the same stale-tap guard RECOVER / RELOAD use): a
+					# second finger on a SIG button after the cast, or a tap while the charge is not back, does nothing.
+					if (_ctx == "reload" and sim and sim.player.reloading) \
+							or (_ctx == "recover" and sim and Skills.recover_n(sim.player) <= 0) \
+							or (_ctx == "sig" and sim and not Skills.sig_offer(sim.player, sim)):
 						pass
 					else:
-						state.press(_ctx)
+						state.press("signature" if _ctx == "sig" else _ctx)
 				_:
 					state.hold("touch", b[2], true)
 			queue_redraw()
@@ -613,6 +623,10 @@ func _refresh_context() -> void:
 		elif Skills.recover_offer(p, sim):
 			id = "recover"
 			sig = "recover%d" % int(Skills.recover_ready_k(p) * 30.0)
+		elif Skills.sig_offer(p, sim):                 # class signature skill, only while it is ready + appropriate
+			id = "sig"
+			_sig_kind = Skills.sig_kind(p)
+			sig = "sig:" + _sig_kind
 		else:
 			var s: Variant = p.current_slot()
 			var w := sim.combat.wdata(p.weapon) if p.weapon != "" else {}
@@ -735,7 +749,8 @@ func _draw() -> void:
 					draw_arc(bc, rad * 0.32, 0, TAU, 24, Color(1, 1, 1, 0.5 * op), 1.5, true)
 					_icon("kick", bc, rad * 0.17, Color(1, 1, 1, 0.9 * op))
 			"context":
-				var cid := _ctx if _ctx != "" else ("dash" if _ctx_sig.begins_with("dash") else ("recover" if _ctx_sig.begins_with("recover") else "reload"))
+				var cid := _ctx if _ctx != "" else ("dash" if _ctx_sig.begins_with("dash") else ("recover" if _ctx_sig.begins_with("recover") else ("sig" if _ctx_sig.begins_with("sig") else "reload")))
+				if cid == "sig": cid = "sig_" + _sig_kind   # the class's own vector icon (sig_belly / sig_slam / ...)
 				var p: FighterState = sim.player if sim else null
 				var rk := Skills.recover_ready_k(p) if p != null and cid == "recover" else 1.0
 				if cid == "recover" and rk < 1.0:   # charge used: dim icon + a ring filling back up
@@ -877,3 +892,35 @@ func _icon(id: String, c: Vector2, s: float, col: Color) -> void:
 		"pause":
 			_cap(c + Vector2(-s * 0.4, -s * 0.6), c + Vector2(-s * 0.4, s * 0.6), s * 0.42, col)
 			_cap(c + Vector2(s * 0.4, -s * 0.6), c + Vector2(s * 0.4, s * 0.6), s * 0.42, col)
+		# class signature skills (Sprint 3.3): one icon per class move, drawn while the context button offers SIG
+		"sig_belly":   # a round belly with an up-bounce arrow
+			draw_circle(c + Vector2(0, s * 0.18), s * 0.62, col)
+			_cap(c + Vector2(0, -s * 0.05), c + Vector2(0, -s * 0.95), w, col)
+			_cap(c + Vector2(0, -s * 0.95), c + Vector2(-s * 0.35, -s * 0.55), w, col)
+			_cap(c + Vector2(0, -s * 0.95), c + Vector2(s * 0.35, -s * 0.55), w, col)
+		"sig_slam":    # a downward smash onto a shockwave
+			_cap(c + Vector2(0, -s * 1.0), c + Vector2(0, s * 0.15), w, col)
+			_cap(c + Vector2(0, s * 0.15), c + Vector2(-s * 0.4, -s * 0.3), w, col)
+			_cap(c + Vector2(0, s * 0.15), c + Vector2(s * 0.4, -s * 0.3), w, col)
+			draw_arc(c + Vector2(0, s * 0.55), s * 0.8, PI * 0.15, PI * 0.85, 16, col, w * 0.8, true)
+			_cap(c + Vector2(-s * 0.85, s * 0.9), c + Vector2(s * 0.85, s * 0.9), w * 0.7, col)
+		"sig_vault":   # a springboard: up chevron over a ground line
+			_cap(c + Vector2(-s * 0.55, s * 0.05), c + Vector2(0, -s * 0.8), w, col)
+			_cap(c + Vector2(0, -s * 0.8), c + Vector2(s * 0.55, s * 0.05), w, col)
+			_cap(c + Vector2(-s * 0.4, s * 0.45), c + Vector2(s * 0.4, s * 0.45), w * 0.7, col)
+			_cap(c + Vector2(-s * 0.7, s * 0.85), c + Vector2(s * 0.7, s * 0.85), w * 0.7, col)
+		"sig_fort":    # a shield: planted, nothing gets through
+			draw_colored_polygon(PackedVector2Array([c + Vector2(0, -s * 0.95), c + Vector2(s * 0.8, -s * 0.5),
+				c + Vector2(s * 0.62, s * 0.35), c + Vector2(0, s * 0.95), c + Vector2(-s * 0.62, s * 0.35),
+				c + Vector2(-s * 0.8, -s * 0.5)]), col)
+			draw_line(c + Vector2(0, -s * 0.95), c + Vector2(0, s * 0.95), Color(0, 0, 0, col.a * 0.35), w * 0.6, true)
+		"sig_tac":     # a fresh magazine with a bullet
+			draw_rect(Rect2(c + Vector2(-s * 0.5, -s * 0.35), Vector2(s * 0.7, s * 1.15)), col, true)
+			_cap(c + Vector2(s * 0.55, -s * 0.9), c + Vector2(s * 0.55, s * 0.5), w * 0.8, col)
+			draw_circle(c + Vector2(s * 0.55, -s * 0.9), s * 0.22, col)
+		"sig_phase":   # a dashed ghost outline
+			draw_arc(c, s * 0.75, -PI * 0.95, PI * 0.15, 20, col, w * 0.8, true)
+			draw_arc(c, s * 0.75, PI * 0.2, PI * 0.55, 10, col, w * 0.8, true)
+			draw_arc(c, s * 0.75, PI * 0.6, PI * 1.0, 12, col, w * 0.8, true)
+			draw_circle(c + Vector2(-s * 0.22, -s * 0.15), s * 0.13, col)
+			draw_circle(c + Vector2(s * 0.22, -s * 0.15), s * 0.13, col)

@@ -36,22 +36,87 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
 
 ## Data Files & Merge Pipeline
 
-1. **Weapons (`godot/data/extra/construction/weapons.json`)**:
+Since Sprint 4.1 the Construction DLC is a generic **data-only pack**: `godot/data/extra/construction/pack.json`
+declares the tables below; `Content.load_dlc_packs()` registers the pack and `Content.reload()` merges its tables through
+the existing hooks (see "DLC pack manifest" next). The files and their contents are unchanged; only the paths are
+manifest-driven now.
+
+1. **Weapons (`godot/data/extra/construction/weapons.json`, manifest section `weapons`)**:
    - Modelled on `ExtraClasses`, loaded through `ExtraWeapons`.
    - `ExtraWeapons.merge(weapons)` merges missing keys into `Content.weapons` and `Combat.weapons_data`.
    - Does not mutate or overwrite any shared weapons from `shared/weapons.json`.
 
-2. **Modes (`godot/data/extra/construction/modes.json`)**:
+2. **Modes (`godot/data/extra/construction/modes.json`, manifest section `modes`)**:
    - Extends the `allowWeapons` list of the `construction` mode only, and adds the `dropWeights` entry for every DLC tool.
    - `shared/drops.json` is the web export and cannot carry Godot-only keys, so `ModeRules.merge_extra()` merges `dropWeights` into the existing `construction` mode and `Pickups.pick_crate_key()` reads it as a crate-pool extension. The 9 tools are ~38 % of the Construction crate pool; the shared hammer / Live Wire / Air Blower identity stays intact.
 
-3. **Stages (`godot/data/extra/construction/stages.json`)**:
+3. **Stages (`godot/data/extra/construction/stages.json`, manifest section `stages`)**:
    - Self-contained arcade boss rush table.
+   - The manifest publishes its path; `ArcadeCoop.table()` reads it through `Content.pack_section_file("construction", "stages")` (no literal).
    - Validates all referenced cosmetics (skins and hats) against `godot/data/cosmetics.json`.
 
 4. **Translations (`godot/i18n/src/92-construction-data.json`)**:
    - Contains 5 language translations (`zh_TW`, `zh_CN`, `ja`, `fr`, `es`) for all weapon names, stage names, taglines, and event announcements.
    - Integrated via `tools/i18n.js` into `godot/i18n/strings.json` and `public/i18n-data.js`.
+
+## DLC pack manifest (`pack.json`, Sprint 4.1)
+
+Every folder under `godot/data/extra/` that holds a `pack.json` is a DLC pack. On startup `Content.reload()` calls
+`Content.load_dlc_packs()`, which scans the manifests, validates them and sorts the registry by pack id; the reload then
+merges the declared tables through the existing hooks. A future DLC is therefore data-only: add a folder + manifest +
+tables, no GDScript change.
+
+```
+godot/data/extra/
+  classes.json  modes.json  wizard.json  ...     built-in Godot extras (NOT a pack: shipped with the app, existing loaders)
+  construction/
+    pack.json                                    the manifest (the only file this refactor added)
+    weapons.json  modes.json  stages.json        the content (unchanged)
+```
+
+Manifest fields (see the file's `_readme` for the same list):
+
+| key | required | meaning |
+| --- | --- | --- |
+| `id` | yes | unique pack id, `^[a-z][a-z0-9_-]*$`, must equal the folder name |
+| `name` | yes | display name, e.g. `"Construction"` |
+| `version` | no | integer >= 1, default 1 |
+| `requires` | no | array of other pack ids this pack needs; the pack is skipped if one is missing |
+| `weapons` | no | file holding `{id: weapon}` (the `shared/weapons.json` shape) |
+| `classes` | no | file holding `{id: class}` (the `shared/classes.json` shape); built-in extras win |
+| `modes` | no | file holding `{id: mode}`: new modes are added, existing modes get the additive `allowWeapons` / `dropWeights` hooks |
+| `stages` | no | arcade stage table `{difficulties, stages[]}`; published by path, read by `ArcadeCoop` |
+| `maps`, `cosmetics`, `strings` | no | reserved for a future build: warned about and ignored (a newer pack does not break an older game) |
+| any `_*` key | no | author comment, ignored |
+
+Section values are file paths relative to the pack folder (no absolute paths, no `..`); a declared file must exist and parse
+as a JSON object. Every merge is additive: a pack adds or extends, it never overrides shared data or the built-in Godot
+extras. Pack order is sorted by id (never filesystem order); two packs defining the same table key report an error and the
+first (sorted) pack wins.
+
+**Errors.** A malformed manifest (bad JSON, missing/invalid `id`, `id` != folder, duplicate id, bad `requires`, or a
+declared section that is missing/invalid) is reported with `push_error`, `Content.scan_errors()` records why, and the whole
+pack is skipped: a broken DLC never stops `Content.reload()` or a match. Packs declaring a reserved section are kept (the
+section is ignored).
+
+**Registry API.** `Content.load_dlc_packs()` scans; `Content.pack_ids()`, `pack(id)`, `pack_section_file(id, section)`,
+`pack_paths(section)`, `pack_tables(section)`, `scan_errors()` expose the result. The accessors are static, so
+`load("res://autoload/content.gd").pack_section_file("construction", "stages")` works even in a script compiled before the
+autoload exists (the registry scans itself lazily). `ExtraWeapons` / `ExtraClasses` / `ModeRules` are unchanged call sites:
+they read the pack tables through the registry and cache them per registry generation, so `Content.reload()` refreshes them.
+
+### How to add a DLC pack with zero code
+
+1. Create `godot/data/extra/<pack_id>/` (lowercase id, e.g. `mechanical`).
+2. Add `pack.json`, e.g. `{"id": "mechanical", "name": "Mechanical", "weapons": "weapons.json", "modes": "modes.json"}`.
+3. Add the declared files next to it, in the `shared/*.json` schemas (`weapons`, `classes`, `modes`, `stages`).
+4. Start the game (or run `npm run test:godot-construction-data`): `Content` scans and merges the pack; no GDScript changes.
+5. Player-facing text still goes through `godot/i18n/src/*.json` + `node tools/i18n.js` (i18n is untouched by this refactor).
+
+Residual: `godot/dlc/construction/arcade_manager.gd` (the run manager) still reads `stages.json` through its own
+`STAGES_PATH` constant instead of the registry; both readers point at the same file today, so behaviour is identical. If a
+future pack moves its stage table, make the manager read `ArcadeCoop.table()`/the same `Content.pack_section_file` (small
+follow-up, not part of this refactor).
 
 ## Parity Guarantees
 
@@ -62,7 +127,7 @@ ammo runs out; the periodic kit refill applies only to the melee tool.
 
 ## How to Add a Tool
 
-1. Add the tool entry to `godot/data/extra/construction/weapons.json` following the `shared/weapons.json` schema, marking `"constructionOnly": true`.
+1. Add the tool entry to `godot/data/extra/construction/weapons.json` following the `shared/weapons.json` schema, marking `"constructionOnly": true` (the pack manifest already declares that file; no code change).
 2. Add its id to the `allowWeapons` list and a positive `dropWeights` value in `godot/data/extra/construction/modes.json`.
 3. Add localized display names to `godot/i18n/src/92-construction-data.json`.
 4. Run `node tools/i18n.js` to build strings.
@@ -133,7 +198,7 @@ down (stages with `boss: true`; the crew that is left gives up) or every enemy i
 | Normal | 0.7 | 0.9 / 1.4 | 0.65 | 1.0 | 1.15 | 4 | 1.0 |
 | Nightmare | 1.0 | none | 1.0 | 1.0 | 1.0 | 3 | 1.5 |
 
-The result is x the table's hp, never below the floor and never above the table's own value; boss phases (66 / 33 %) are unchanged. Melee force and topple are separate: Easy/Normal scale the outgoing shove without touching a weapon's damage or the table's `dmg_scale`. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
+The result is x the table's hp, never below the floor and never above the table's own value. A two-seat co-op run gives the **bosses** x1.35 health on top and +1 shared life (6 Easy / 5 Normal / 4 Nightmare); the crew and the solo run are untouched, so solo numbers stay bit-identical. Boss phases are per-stage data (`change_request.params.phases`, 66 % / 33 % default, see below). Melee force and topple are separate: Easy/Normal scale the outgoing shove without touching a weapon's damage or the table's `dmg_scale`. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
 
 **Difficulty tuning.** `godot/tests/arcade_balance.gd` (not in `npm test`, about 25 minutes for the full 3 difficulties x 6 stages x 8 seeds; run the difficulties in parallel processes): `godot --headless --path godot --script res://tests/arcade_balance.gd -- --no-save --seeds=8`. The scripted melee player of `arcade_test.gd` (the starting Wobbler, normal damage, no healing, one life, 100 s limit) fights each stage once per seed against the table's own bot skills. Wins out of the seeds, and the player's average health left on a win. These are the numbers for the table as it stands after the melee retune (below):
 
@@ -169,8 +234,13 @@ The stage table is the ONLY stat authority: `_arcade_line()` neutralises every m
 carries (`cls_dmg`, `cls_kb`, `cls_rate`, `cls_reload`, `cls_ammo`, `speed_mul`, `accel_mul`, `air_mul`, `jump_mul`), because
 the placeholder class is a bit of `BOT_CLASS_ORDER` slot bookkeeping, not a design stat. Bots are not hostile to each other
 (`combat.ffa = false`). The Client's `giant_scale` makes him a Giant (`big_t`, 1.5 x model; health and damage are divided
-back so the table's numbers hold). Boss phases at 66 % and 33 % health: damage x1.2 each and a small additive speed step
-(+5 %, then +10 % of the base in total, never compounding), with a toast; stages with `change_request` also swap tools.
+back so the table's numbers hold). A stage table may set its own boss phase thresholds in
+`change_request.params.phases` (highest first; The Client's data keeps the 66 % / 33 % default, and a stage without the
+param falls back to `ArcadeManager.PHASES`); the HUD's bar ticks follow the same list. At each phase the boss's damage is
+x1.2 and its walk speed takes a small additive step (+5 %, then +10 % of the base in total, never compounding), with a
+toast; stages with `change_request` also swap tools (unless `random_weapon_swap` is false). **Boss knockback:** every
+boss takes `ArcadeManager.BOSS_KB` (0.72) of a shove, so a 100 % boss cannot be one-hit ring-out cheesed through a
+fence gate; the crew keep the full number.
 
 **Boss movement speeds (owner report: "the Designer is too fast with its speed buff").** Measured against the player's
 7.5 m/s base (`FighterPhysics.speed`), every boss now walks in a band: slow melee tank 5.0-6.0, normal 6.0-7.2, fast
@@ -213,14 +283,14 @@ Normal sanity run after the change stayed in the same range (no free ring-out wi
 
 `whistle shove` and `red-tape net` are not in `stages.json`, so they are not built (only types present in the table are implemented).
 
-**HUD.** `arcade_boss_hud.gd`: a run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its bar in the stage's `hp_bar_color` (name inside, ticks at 66 / 33 %). It hangs in
+**HUD.** `arcade_boss_hud.gd`: a run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its bar in the stage's `hp_bar_color` (name inside, ticks at the stage's own phase thresholds, 66 / 33 % by default). It hangs in
 the `MatchHud.TOP_STACK` slot under the toast, between the K.O. panel and the radar (and the kill feed); `World._update_mode_ui` starts the mode line under it. `hud_test.gd`
 checks it at every phone / tablet size, both handedness settings (`npm run test:godot-ui`).
 
 **World hooks** (all `if arcade != null`): `begin_stage` (top of `load_map`), `setup_sim` (after `MatchSim.setup`), `stage_ready` (end of `load_map`), `step` (after each sim step),
 `show_panel` / `close_panel` / `add_view`; the kill cam is off in a run. Every other mode is byte-identical.
 
-**How to add a stage.** Append an entry to `godot/data/extra/construction/stages.json` (`id`, `name`, `tagline`, `boss`, `hp_bar_color`, `map_seed_offset`, `coin_reward`,
+**How to add a stage.** Append an entry to `godot/data/extra/construction/stages.json` (the file the pack manifest publishes as its `stages` section; `ArcadeCoop.table()` resolves it through the registry) (`id`, `name`, `tagline`, `boss`, `hp_bar_color`, `map_seed_offset`, `coin_reward`,
 `first_clear_bonus`, `bots[]`, `events[]`; see its `_readme`). Skins and hats must exist in `cosmetics.json`, tools in `weapons.json`. Add the name and tagline to a
 `godot/i18n/src/*.json` file (5 languages) and run `node tools/i18n.js`. A new event type: a `case` in `StageEvents.update` plus its `_xxx` method. Extend
 `godot/tests/arcade_test.gd` (the full run walks the whole table) and run `npm run test:godot-arcade`.

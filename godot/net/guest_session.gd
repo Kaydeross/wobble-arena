@@ -125,6 +125,16 @@ func vote_rematch() -> void:
 		voted = true
 		send({"t": "rv"})
 
+## Arcade co-op (M4, docs/PROTOCOL.md 6.4): ask the host to start the current fight, go to the next stage or retry the
+## failed one. The host is the only run authority and applies it only while the run is in the matching card state
+## (intro / cleared / failed); a request in any other state is dropped like a forged `start`. Returns true when the
+## request went out (not whether the host took it).
+func arcade_request(a: String) -> bool:
+	if not (a in ["start", "next", "retry"]): return false
+	if phase != Phase.MATCH or not started or slot < 0: return false
+	send({"t": "arc", "a": a})
+	return true
+
 ## Leave the room on purpose (or because of `reason`): `leave` op, close the socket, `ended`.
 func leave(reason: String = "You left the room.") -> void:
 	_finish(reason)

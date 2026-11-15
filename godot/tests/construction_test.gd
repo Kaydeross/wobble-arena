@@ -131,6 +131,14 @@ func _match() -> void:
 				if p.slots[s] != null and p.slots[s]["key"] == "blower": sim.combat.equip_slot(p, s)
 			blow_start = t
 			ammo0 = float(p.current_slot()["ammo"]) if p.current_slot() != null else 0.0
+		# The scenario pre-dates the charged-melee damage of the hammer brawl: the scripted player can be K.O.'d and
+		# respawn with the Construction start weapon (a new life clears the inventory). The assertion under test here is
+		# the blower's stun/blame, not surviving the fight, so keep the tool in hand and retarget when a target dies.
+		if t >= 18.0 and not p.dead and p.weapon != "blower":
+			sim.combat.pickup(p, "blower")
+			for s in 3:
+				if p.slots[s] != null and p.slots[s]["key"] == "blower": sim.combat.equip_slot(p, s)
+		if blow_target != null and blow_target.dead: blow_target = null
 		var tg := _nearest(sim, p)
 		var go := Vector2.ZERO
 		var fire := false

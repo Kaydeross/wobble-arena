@@ -1371,6 +1371,13 @@
   "fr": "Bonnet",
   "es": "Gorro"
  },
+ "Belly Bounce": {
+  "zh_TW": "肚皮彈跳",
+  "zh_CN": "肚皮弹跳",
+  "ja": "おなかバウンド",
+  "fr": "Rebond de bidon",
+  "es": "Rebote de panza"
+ },
  "Best stage: %d": {
   "zh_TW": "最佳關卡：%d",
   "zh_CN": "最佳关卡：%d",
@@ -3107,6 +3114,13 @@
   "fr": "ÉCHEC",
   "es": "SUSPENDIDO"
  },
+ "FASTBALL SPECIAL!": {
+  "zh_TW": "高速球特攻！",
+  "zh_CN": "高速球特攻！",
+  "ja": "ファストボール・スペシャル！",
+  "fr": "SPÉCIAL BOULE RAPIDE !",
+  "es": "¡ESPECIAL BOLA RÁPIDA!"
+ },
  "FLAG  %s %d/%d": {
   "zh_TW": "旗幟  %s %d/%d",
   "zh_CN": "旗帜  %s %d/%d",
@@ -3414,6 +3428,13 @@
   "ja": "パスワードを忘れた場合",
   "fr": "Mot de passe oublié ?",
   "es": "¿Olvidaste tu contraseña?"
+ },
+ "Fortress Stance": {
+  "zh_TW": "堡壘架式",
+  "zh_CN": "堡垒架势",
+  "ja": "フォートレススタンス",
+  "fr": "Posture forteresse",
+  "es": "Postura fortaleza"
  },
  "Fortress Yard": {
   "zh_TW": "要塞庭院",
@@ -4254,6 +4275,13 @@
   "ja": "突き飛ばしの嵐",
   "fr": "Tempête de bousculades",
   "es": "Tormenta de empujones"
+ },
+ "LAUNCHED AT %d KM/H!": {
+  "zh_TW": "以 %d 公里/小時 擊飛！",
+  "zh_CN": "以 %d 公里/小时 击飞！",
+  "ja": "%d km/h で吹き飛ばし！",
+  "fr": "PROPULSÉ À %d KM/H !",
+  "es": "¡LANZADO A %d KM/H!"
  },
  "Lab Genius": {
   "zh_TW": "實驗天才",
@@ -5382,6 +5410,13 @@
   "fr": "Affichage des performances",
   "es": "Lectura de rendimiento"
  },
+ "Phase Shift": {
+  "zh_TW": "相位轉移",
+  "zh_CN": "相位转移",
+  "ja": "フェイズシフト",
+  "fr": "Déphasage",
+  "es": "Cambio de fase"
+ },
  "Pick": {
   "zh_TW": "選擇",
   "zh_CN": "选择",
@@ -6103,6 +6138,13 @@
   "fr": "Mitraillettes, fusils à pompe, snipers, lance-roquettes",
   "es": "Subfusiles, escopetas, francotiradores, lanzadores"
  },
+ "STRIKE!": {
+  "zh_TW": "全倒！",
+  "zh_CN": "全倒！",
+  "ja": "ストライク！",
+  "fr": "STRIKE !",
+  "es": "¡PLENO!"
+ },
  "Salute": {
   "zh_TW": "敬禮",
   "zh_CN": "敬礼",
@@ -6305,6 +6347,13 @@
   "ja": "シード %d",
   "fr": "Graine %d",
   "es": "Semilla %d"
+ },
+ "Seismic Slam": {
+  "zh_TW": "震地猛擊",
+  "zh_CN": "震地猛击",
+  "ja": "サイズミックスラム",
+  "fr": "Impact sismique",
+  "es": "Golpe sísmico"
  },
  "Set new password": {
   "zh_TW": "設定新密碼",
@@ -7075,6 +7124,20 @@
   "ja": "腕を大きく振って左右にステップ",
   "fr": "Bras grands ouverts, pas de côté",
   "es": "Brazos amplios y pasos laterales"
+ },
+ "TERMINAL RING-OUT!": {
+  "zh_TW": "極限出界！",
+  "zh_CN": "极限出界！",
+  "ja": "限界場外！",
+  "fr": "SORTIE EXTRÊME !",
+  "es": "¡FUERA DE LÍMITE!"
+ },
+ "Tac-Reload": {
+  "zh_TW": "戰術換彈",
+  "zh_CN": "战术换弹",
+  "ja": "タクティカルリロード",
+  "fr": "Rechargement tactique",
+  "es": "Recarga táctica"
  },
  "Tap a slot to switch": {
   "zh_TW": "點按欄位即可切換",
@@ -7880,6 +7943,13 @@
   "ja": "使用中：%s（%s）",
   "fr": "Utilisé : %s (%s)",
   "es": "En uso: %s (%s)"
+ },
+ "Vault Flip": {
+  "zh_TW": "翻滾躍擊",
+  "zh_CN": "翻滚跃击",
+  "ja": "ヴォールトフリップ",
+  "fr": "Saut périlleux",
+  "es": "Salto mortal"
  },
  "Version": {
   "zh_TW": "版本",

@@ -45,6 +45,12 @@ var cls_kb := 1.0
 var cls_rate := 1.0
 var cls_reload := 1.0
 var cls_ammo := 1.0
+var cls_head := 1.0              ## class `head` multiplier (shared/classes.json): head hit sphere, tuned matches only
+var cls_size := 1.0              ## class `size` multiplier: chest/leg hit spheres, tuned matches only
+## True when this fighter's match uses the balance overlay, i.e. `Combat.tuning_active()` (docs/DAMAGE.md "Tuned
+## hitboxes"). Combat/MatchSim write it when a fighter is created and on every `place_at`; FighterState never reads the
+## Combat class itself (no static dependency: a bare FighterState and the JS-parity paths stay on `tuned = false`).
+var tuned := false
 var dmg_scale := 1.0             ## bots deal less (DIFFS dmg / dummies 0.45)
 var melee_force_mul := 1.0       ## outgoing melee force multiplier (Arcade difficulty; 1 = the weapon's own force)
 var melee_topple_mul := 1.0      ## outgoing melee topple chance multiplier (Arcade difficulty)
@@ -66,6 +72,17 @@ var shield_t := 0.0
 var rage_t := 0.0
 var big_t := 0.0                 ## Chaos "Giant" event: bigger hit spheres, double health, harder hits (ModeRules)
 var spd_t := 0.0                 ## speed boost: x1.4 run speed (FighterPhysics)
+## Elemental / physics statuses (Post-v0.4.0 Sprint 3.2, overlay only; docs/DAMAGE.md "Elemental and physics statuses").
+## Combat.apply_status sets them from the weapon's weapon_tuning.json entry, Combat.timers counts them down and
+## FighterPhysics reads them. The active multipliers keep their neutral 1.0 default, so a bare FighterState (the web
+## game, the JS parity paths, online without net_zones) never changes a step: only tuning-gated code writes these.
+var chill_t := 0.0               ## Snowball Cannon hit: >0 = chilled (refreshed by a new hit, never stacked)
+var chill_speed := 1.0           ## move-speed multiplier while chill_t > 0 (overlay chill.speed = 0.68)
+var chill_traction := 1.0        ## ground-grip multiplier while chill_t > 0 (overlay chill.traction = 0.3; 1 = normal grip)
+var shock_t := 0.0               ## Live Wire hit: >0 = the short hit-stun interrupt just happened (spark event already sent)
+var heavy_t := 0.0               ## Cement Bucket hit: >0 = heavier gravity and a weaker jump (walk speed unchanged)
+var heavy_grav := 1.0            ## gravity multiplier while heavy_t > 0 (overlay heavy.grav = 1.4)
+var heavy_jump := 1.0            ## jump-impulse multiplier while heavy_t > 0 (overlay heavy.jump = 0.65)
 var trap_t := 0.0
 var trap_net: RefCounted = null  ## the Weapons.TrapNet holding this fighter down (trapNet), null = none
 var trap_x := 0.0                ## pinned here while trapped (trapX / trapZ)
@@ -77,6 +94,13 @@ var burn_acc := 0.0
 var burner: FighterState = null
 var last_attacker: FighterState = null
 var last_hit_time := -99.0
+
+# --- teammate carry / throw, the Fastball Special (docs/DAMAGE.md): TEAM modes and Arcade co-op, tuned matches only ---
+var carrying: FighterState = null    ## the teammate this fighter hoists overhead (the normal shove and weapons are off)
+var carried_by: FighterState = null  ## the carrier holding this fighter overhead (pinned above it, not simulated normally)
+var carry_limp := false              ## hoisted while DOWNED (an Arcade co-op seat): no body-slam, only the revive discount
+var ball_t := -1.0                   ## a thrown body's flight time left, -1 = not flying (normal simulation)
+var ball_owner: FighterState = null  ## who threw this body (the body-slam's attacker / K.O. credit), null = not thrown
 
 # --- weapons / inventory ---
 var weapon := "spatula"          ## "" = nothing (dead)
@@ -126,6 +150,11 @@ var slam := false
 var stab := false
 var cyclone := false
 var assist_on := false
+## Charged heavy melee (docs/DAMAGE.md "Charged heavy melee"): PlayerControl's fire-key hold, Godot overlay only (offline,
+## tuning_active). Both keep their defaults on the web, the JS parity paths and online, because only the tuning-gated
+## input path writes `charge_t`; `melee_begin` always re-writes `heavy`, so a stale flag never reaches the next swing.
+var charge_t := -1.0             ## seconds FIRE has been held for a melee charge, -1 = not charging
+var heavy := false               ## this swing is a Heavy Swing: 1.45x damage / 1.5x force / breaks a parry (melee_sweep)
 var face_yaw := 0.0
 var kat_n := 0
 var kat_t := -9.0
@@ -194,12 +223,21 @@ func set_class(cid: String, c: Dictionary) -> void:
 	class_id = cid
 	cls_hp = float(c.get("hp", 1.0)); cls_dmg = float(c.get("dmg", 1.0)); cls_kb = float(c.get("kb", 1.0))
 	cls_rate = float(c.get("rate", 1.0)); cls_reload = float(c.get("reload", 1.0)); cls_ammo = float(c.get("ammo", 1.0))
+	cls_head = float(c.get("head", 1.0)); cls_size = float(c.get("size", 1.0))
 	phys.speed_mul = float(c.get("spd", 1.0)); phys.accel_mul = float(c.get("acc", 1.0))
 	phys.air_mul = float(c.get("air", 1.0)); phys.jump_mul = float(c.get("jump", 1.0))
 
 ## Hit spheres [cx, cy, cz, r, is_head] (Fighter.spheres). Head, chest and legs are the points written by the animation.
+## Classic (tuned = false): head 0.4, chest 0.62, legs 0.5; x1.5 for giants. Tuned matches scale the spheres by the
+## class (`head` on the head, `size` on chest and legs, clamped) so a Scamp's head is a bigger target and a Bulwark's is a
+## smaller one; the giant x1.5 applies on top. Untuned values stay bit-identical to the web game.
 func spheres(giant: bool) -> Array:
 	var k := 1.5 if (giant or big_t > 0.0) else 1.0
+	if tuned:
+		var hk := clampf(cls_head, 0.85, 1.25) * k
+		var sk := clampf(cls_size, 0.88, 1.15) * k
+		return [[head_x, head_y, head_z, 0.4 * hk, true], [chest_x, chest_y, chest_z, 0.62 * sk, false],
+			[leg_x, leg_y, leg_z, 0.5 * sk, false]]
 	return [[head_x, head_y, head_z, 0.4 * k, true], [chest_x, chest_y, chest_z, 0.62 * k, false],
 		[leg_x, leg_y, leg_z, 0.5 * k, false]]
 

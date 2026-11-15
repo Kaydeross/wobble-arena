@@ -21,13 +21,16 @@ extends RefCounted
 ## down); the downed seat auto-revives after REVIVE_TIME while a teammate is still up, every seat down (or the last life
 ## spent) fails the attempt, and the run is over at 0 lives. Solo is unchanged: the one death fails the attempt and costs the life. `_pay()` returns the per-seat rewards so the
 ## net layer can hand each client its share; this process still writes one save (the local player's).
+## The co-op run is a little longer (ArcadeCoop.lives_for: +1 shared life) and its BOSSES have x1.35 health and take
+## BOSS_KB (0.72) of every knockback, so two players cannot simply shove a 100 % boss out of the site in one hit.
 ##
 ## ONLINE CO-OP (M1, docs/PROTOCOL.md 6.4): `new_online(start.arc, is_host)` turns the run into the online authority
 ## (`online = true`). The HOST keeps every rule in this file (crew, stages, lives, events, coins on its own save) and sends
 ## the display state as `am` (~5 Hz + on change); its seats are the room's slots 0/1, which HostMatch turns into ghosts
 ## (humans) or keeps as teammate bots. The GUEST is presentation only: `begin_stage` rebuilds the stage's site from
-## `arc.seed`, `stage_ready` maps its seats onto the net ghosts and shows a "Waiting for the host" card, and
-## `handle_remote` takes the host's `am`. No step, combat or event code runs on the guest.
+## `arc.seed`, `stage_ready` maps its seats onto the net ghosts and shows a card, `handle_remote` takes the host's `am`
+## (M4: `am.ev` draws the hazard warning rings and boss phase toasts; its card buttons ask the host `{"t":"arc",...}` to
+## start/advance/retry) and no step, combat or event code runs on the guest.
 
 signal stage_started(index: int)
 signal stage_cleared(index: int, summary: Dictionary)
@@ -47,7 +50,9 @@ const FAIL_DELAY := 1.8                ## seconds the world runs on after you fa
 const CLEAR_DELAY := 1.4               ## ... and after the last enemy goes down
 const VICTORY_COINS := 2000
 const FOREMAN_HAT := "foreman"
-const PHASES := [0.66, 0.33]           ## boss phases (hp fraction)
+const PHASES := [0.66, 0.33]           ## boss phases (hp fraction): the DEFAULT; a stage's change_request may set its own list
+const BOSS_KB := 0.72                  ## a boss takes this fraction of knockback (no 1-hit ring-out cheese through the gates)
+const COOP_BOSS_HP := 1.35             ## two-seat co-op: boss health x this (solo numbers are untouched)
 const PHASE_SPEED_STEP := 0.05         ## each phase: +5 % of the boss' base walk speed, ADDITIVE (not x1.1 each time)
 const PHASE_SPEED_CAP := 0.10          ## ... and never more than +10 % in total, ever
 const PHASE_DMG := 1.2                 ## each phase: damage x1.2 (unchanged)
@@ -144,6 +149,9 @@ var _kit_t := 0.0
 var _deaths0: Array = []              ## per seat: st["deaths"] when the stage started (a fall counts as going down)
 var _seed_saved := -1
 var _stage_first := false
+## True between a card's Next/Retry and the rebuilt stage: a second (duplicate or forged) request is ignored instead of
+## skipping a stage. Cleared at the top of begin_stage.
+var _reload_pending := false
 ## Seat -> seconds of grace after its auto-revive, so a guest still reporting dead for a frame does not re-down it.
 var _seat_grace := {}
 ## Seat -> true once its fighter has been seen alive this stage. A ghost seat's `dead` can be a stale snapshot from the last
@@ -151,6 +159,7 @@ var _seat_grace := {}
 var _seat_seen := {}
 # ---------------- online co-op: the host's / the guest's extra state ----------------
 var _am_seq := 0                        ## bumped by _pay/_win: the guest applies a clear/victory exactly once per bump
+var _ev_phase: Dictionary = {}          ## a boss phase toast that still has to travel in `am.ev` (once)
 var _rv_n := 0                          ## bumped by _seat_up: the guest applies each revive exactly once (needs in `am.rv`)
 var _last_revive: Dictionary = {}       ## the latest revive instruction for `am.rv`: {n, k (room slot), x, y, z, hf, iv}
 var guest_ready := false                ## guest: stage_ready has run for the current stage (cards may be shown)
@@ -166,6 +175,12 @@ var _guest_rv_n := 0                    ## guest: the `am.rv.n` it already appli
 var _guest_pinned := false              ## guest: my fighter is pinned down (waiting for the host's revive)
 var _guest_card := ""                   ## guest: which card is up ("intro", "clear", "failed", "over", "won")
 var _down_l: Label = null               ## guest: the "Down! Back in N" overlay
+var _guest_fx: Node3D = null            ## guest: the root of its own hazard warning rings (`am.ev`), presentation only
+var _guest_ring_of := {}                ## guest: `am.ev` id -> its warning ring MeshInstance3D (dedupes repeated `am`)
+var _guest_phase_toasts: Array = []     ## guest: the phase toast texts it showed, one per new phase (tests)
+var _guest_arc_sent := ""               ## guest: "stage:state:action" of the last card request it sent (no double press)
+var _guest_arc_action := ""             ## guest: the card action it is waiting for the host to apply ("" = none)
+var _guest_arc_cd := 0.0                 ## guest: s until that request is re-sent (a dropped request must not need a 2nd tap)
 
 # ---------------- the table ----------------
 
@@ -209,12 +224,14 @@ static func site_map() -> String:
 
 ## The title's Arcade card: builds a World for a new run (null when the DLC is not owned or the table is missing).
 ## The caller puts it in the tree (scripts/main.gd: change_scene_to_node). `p_ff` overrides the co-op friendly-fire option
-## for tests; null (the game) reads Settings "arcade_ff" (the hub's toggle, off by default).
-static func launch(seed_value: int = 0, p_diff: String = DEFAULT_DIFF, p_class: String = "", p_ff: Variant = null) -> Node:
+## for tests; null (the game) reads Settings "arcade_ff" (the hub's toggle, off by default). `p_seats` = the player seats
+## (1 = the solo run the game launches; the offline co-op test harness passes 2, like an online room).
+static func launch(seed_value: int = 0, p_diff: String = DEFAULT_DIFF, p_class: String = "", p_ff: Variant = null,
+		p_seats: int = 1) -> Node:
 	if not DlcUnlock.owned() or count() == 0: return null
 	var w: Node = load("res://world/world.tscn").instantiate()
 	var run := ArcadeManager.new()
-	run.start_run(seed_value, p_diff)
+	run.start_run(seed_value, p_diff, p_seats)
 	run.player_class = p_class
 	run.friendly_fire = bool(p_ff) if p_ff != null else bool(Settings.get_value("arcade_ff", false))
 	if p_class != "": w.player_class = p_class
@@ -242,11 +259,11 @@ func init_online(arc: Dictionary, is_host: bool) -> void:
 	diff = ArcadeCoop.norm_diff(str(arc.get("diff", DEFAULT_DIFF)))
 	stage = clampi(int(arc.get("st", 0)), 0, maxi(0, count() - 1))
 	attempt = 0
-	lives = int(arc.get("lv", ArcadeCoop.lives_for(diff)))
 	state = str(arc.get("state", "intro"))
 	if not (state in ArcadeCoop.STATES): state = "intro"
 	seat_slots = (arc.get("seats", [0]) as Array).duplicate()
 	seat_count = clampi(seat_slots.size(), 1, ArcadeCoop.SEATS)
+	lives = int(arc.get("lv", ArcadeCoop.lives_for(diff, seat_count)))   # old hosts without `lv`: the co-op count
 	friendly_fire = bool(arc.get("ff", false))
 	rng.seed = seed_base
 	_seed_saved = SiteMap.current_seed
@@ -254,16 +271,19 @@ func init_online(arc: Dictionary, is_host: bool) -> void:
 	history = []; last = {}; victory = {}; host_last = {}; seat_down = {}
 	_am_seq = 0; _rv_n = 0; _last_revive = {}; guest_ready = false; _guest_own = -1
 	_guest_paid_cn = 0; _guest_t_stage = 0.0; _guest_rv_n = 0; _guest_pinned = false; _guest_card = ""
+	_guest_arc_sent = ""; _ev_phase = {}; _reload_pending = false
 	running = self
 
-func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF) -> void:
+func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF, p_seats: int = 1) -> void:
+	seat_count = clampi(p_seats, 1, ArcadeCoop.SEATS)      # two seats = the co-op run (a longer fight, one extra life)
 	diff = p_diff if difficulties().has(p_diff) else DEFAULT_DIFF
 	seed_base = p_seed if p_seed > 0 else randi_range(1, 900000)
 	rng.seed = seed_base
-	lives = int(diff_def().get("lives", LIVES)); stage = 0; attempt = 0; state = "idle"
+	lives = ArcadeCoop.lives_for(diff, seat_count); stage = 0; attempt = 0; state = "idle"
 	run_coins = 0; run_kos = 0; run_time = 0.0
 	history = []; last = {}; victory = {}
 	seats = []; seat_down = {}; seat_controls = []
+	_reload_pending = false; _ev_phase = {}; _guest_arc_sent = ""; _guest_clear_events()
 	_seed_saved = SiteMap.current_seed
 	friendly_fire = false
 	running = self
@@ -289,6 +309,8 @@ func end_run() -> void:
 	_seat_grace = {}; _am_seq = 0; _rv_n = 0; _last_revive = {}; guest_ready = false; host_last = {}
 	_guest_own = -1; _guest_boss_slot = -1; _guest_big = false; _guest_hf = 1.0; _guest_sh = 0.0
 	_guest_paid_cn = 0; _guest_t_stage = 0.0; _guest_rv_n = 0; _guest_pinned = false; _guest_card = ""
+	_guest_arc_sent = ""; _ev_phase = {}; _reload_pending = false
+	_guest_clear_events()
 	if _down_l != null and is_instance_valid(_down_l): _down_l.queue_free()
 	_down_l = null
 
@@ -312,6 +334,9 @@ func first_clear() -> bool:
 func begin_stage(w: Node) -> String:
 	world = w
 	_seat_seen = {}
+	_reload_pending = false
+	_ev_phase = {}
+	_guest_clear_events()
 	if _down_l != null and is_instance_valid(_down_l): _down_l.visible = false
 	var mp := site_map()
 	var a: Dictionary = {}
@@ -425,7 +450,9 @@ func setup_sim(s: MatchSim) -> void:
 	_deaths0 = []
 	for f: FighterState in seats: _deaths0.append(int(f.st["deaths"]))
 	s.set_meta("pve_seats", seats)             # BotBrain.pick_target: the crew hunts every seat, a seat bot hunts the crew
-	if online and host_mode: s.set_meta("arcade_run", self)   # HostSession's drop/rejoin seat re-flag (no static dep)
+	# Marks the sim as an Arcade match (offline too): HostSession's drop/rejoin seat re-flag and Combat's Fastball Special
+	# revive discount read it through the meta with has_method (no static DLC dependency either way).
+	s.set_meta("arcade_run", self)
 	events = StageEvents.new()
 	events.setup(self, s, d, rng)
 
@@ -491,10 +518,12 @@ func _bind_seats(s: MatchSim) -> void:
 		seat_controls.append(pc)
 
 ## The co-op friendly-fire rule for this stage's Combat (docs/CONSTRUCTION_DLC.md "Unit D"): only the two player seats are
-## paired by it. The crew and the enemies are never in `pve_seats`, so their fire still hurts every seat.
+## paired by it. The crew and the enemies are never in `pve_seats`, so their fire still hurts every seat. The same call
+## flags a two-seat run for the Fastball Special (Combat.arcade_coop): solo Arcade never carries.
 func _apply_friendly_fire(s: MatchSim) -> void:
 	s.combat.friendly_fire = friendly_fire
 	s.combat.pve_seats = seats.duplicate()
+	s.combat.arcade_coop = seats.size() > 1
 
 ## After the net layer dressed the stage (HostMatch.setup runs between setup_sim and stage_ready): a seat that became a
 ## ghost belongs to a remote client, so it must not carry local-player flags here. A host-run bot seat stays a player seat.
@@ -543,7 +572,7 @@ func stage_ready(w: Node) -> void:
 		_bind_guest_boss()
 		_ensure_down_overlay(w)
 		stage_started.emit(stage)
-		_guest_sync(true)                               # intro card ("Waiting for the host") or the am's card
+		_guest_sync(true)                               # intro card (its Start asks the host) or the am's card
 		return
 	events.world = w
 	_refresh_seats()                           # the net layer (if any) has dressed the stage by now
@@ -612,7 +641,8 @@ func down_overlay_text() -> String:
 	return str(_down_l.text) if _down_l != null and is_instance_valid(_down_l) and _down_l.visible else ""
 
 ## The card the guest shows for the host's current state, rebuilt only when the state's card changes.
-## No card means the fight is running: any card (the intro included) closes.
+## No card means the fight is running: any card (the intro included) closes. The guest's buttons ask the HOST for the
+## card's action (start the fight / next stage / retry) - the guest never moves the run itself (M4).
 func _guest_sync(force := false) -> void:
 	if world == null or not guest_ready: return
 	var want := ""
@@ -629,12 +659,33 @@ func _guest_sync(force := false) -> void:
 		return
 	if want == _guest_card and not force: return
 	_guest_card = want
+	_guest_arc_sent = ""                    # a new card may ask the host again exactly once
+	_guest_arc_action = ""; _guest_arc_cd = 0.0
 	match want:
-		"intro": world.show_panel(ArcadePanels.intro(self, stage_def(), Callable(), true))
-		"clear": world.show_panel(ArcadePanels.clear(self, last, Callable(), Callable(), true))
-		"failed": world.show_panel(ArcadePanels.failed(self, Callable(), Callable(), true))
-		"over": world.show_panel(ArcadePanels.over(self, Callable(), true))
-		"won": world.show_panel(ArcadePanels.won(self, Callable(), true))
+		"intro": world.show_panel(ArcadePanels.intro(self, stage_def(), _guest_arc.bind("start")))
+		"clear": world.show_panel(ArcadePanels.clear(self, last, _guest_arc.bind("next"), quit_run))
+		"failed": world.show_panel(ArcadePanels.failed(self, _guest_arc.bind("retry"), quit_run))
+		"over": world.show_panel(ArcadePanels.over(self, quit_run))
+		"won": world.show_panel(ArcadePanels.won(self, quit_run))
+
+## A guest card button: ask the host to start the fight / advance / retry (docs/PROTOCOL.md 6.4). The host applies it
+## only when the run is in the matching card state (intro / cleared / failed) and drops it otherwise; the guest never
+## advances state locally. One request per (stage, state, action), so a double tap cannot move the run twice.
+func _guest_arc(a: String) -> void:
+	if not online or host_mode or world == null or world.session == null: return
+	var key := "%d:%s:%s" % [stage, state, a]
+	if key == _guest_arc_sent: return
+	_guest_arc_sent = key
+	# The host applies the request only in the matching card state; a request that raced the host's own state change
+	# (or a lost one) is re-sent about once a second while the card is still up, so the player never has to tap twice.
+	_guest_arc_action = a
+	_guest_arc_cd = 1.2
+	_send_guest_arc()
+
+## Send the pending card request to the host (the host is the only run authority; it drops it in a wrong state).
+func _send_guest_arc() -> void:
+	if _guest_arc_action == "" or world == null or world.session == null: return
+	if world.session.has_method("arcade_request"): world.session.call("arcade_request", _guest_arc_action)
 
 ## The guest's seat index of its own fighter (-1 before the stage is bound).
 func own_seat() -> int:
@@ -650,7 +701,7 @@ func begin_fight() -> void:
 	if world != null:
 		world.close_panel()
 		if world.hud != null: world.hud.toast(tr("Stage %d of %d: %s") % [stage + 1, count(), tr(str(stage_def()["name"]))])
-	_am_send()                                  # the guests' "Waiting for the host" card closes with the host's Start
+	_am_send()                                  # the guests' intro card closes with the host's fight state
 
 ## After every sim step (World.sim_step).
 func step(dt: float) -> void:
@@ -668,6 +719,13 @@ func step(dt: float) -> void:
 ## Guest per-step: its own stage clock (for its card), the revive countdown and the downed overlay.
 func _guest_step(dt: float) -> void:
 	if sim == null: return
+	if _guest_arc_action != "" and state in ["intro", "cleared", "failed"]:
+		_guest_arc_cd -= dt
+		if _guest_arc_cd <= 0.0:
+			_guest_arc_cd = 1.2
+			_send_guest_arc()
+	elif state in ["fight", "clearing", "failing", "over", "won"]:
+		_guest_arc_action = ""; _guest_arc_cd = 0.0
 	if state == "fight": _guest_t_stage += dt
 	for k: int in seat_down.keys():
 		seat_down[k] = maxf(float(seat_down[k]) - dt, 0.0)
@@ -689,8 +747,9 @@ func _guest_overlay() -> void:
 
 ## Client-safe view of an `am` message from a Godot host (docs/PROTOCOL.md 6.4). Presentation only: it never advances a
 ## stage, damages anyone or pays the HOST's save. What it does drive here: the stage/lives/boss bar, the shrinking floor,
-## my own down/revive (pinned until `am.rv`), the cards ("Waiting for the host"), the run-over/victory cards, and MY OWN
-## save (coins/records, first-clear bonus, victory hat) exactly once per clear/victory.
+## my own down/revive (pinned until `am.rv`), the cards (their buttons ask the host), the run-over/victory cards, the hazard
+## warning rings / boss phase toasts from `am.ev` (M4, drawn here, never simulated), and MY OWN save (coins/records,
+## first-clear bonus, victory hat) exactly once per clear/victory.
 func handle_remote(m: Dictionary) -> void:
 	if not online or host_mode or world == null: return
 	var st := int(m.get("st", stage))
@@ -708,6 +767,7 @@ func handle_remote(m: Dictionary) -> void:
 	_guest_shrink()
 	_guest_downed(m)
 	_guest_revive(m)
+	_guest_events(m)
 	if state in ["clearing", "cleared"] and cn > _guest_paid_cn: _guest_pay(cn)
 	elif state == "won" and cn > _guest_paid_cn: _guest_win(cn)
 	if state != prev or state == "cleared": _guest_sync()
@@ -754,6 +814,85 @@ func _guest_revive(m: Dictionary) -> void:
 	_guest_pinned = false
 	seat_down.erase(_guest_own)
 	_guest_overlay()
+
+## The host's one-shot stage events for the guest's presentation (M4): draw a red warning ring for every load-test crate
+## still in the air, an amber one for a backup call's pending summon, and toast a new boss phase. Rings are keyed by the
+## host's event id, so a repeated `am` never doubles them; they go away when the host's list drops the id (the landing /
+## summon stays host-side). Nothing here damages, spawns a crate or advances state.
+func _guest_events(m: Dictionary) -> void:
+	var evs: Array = m.get("ev", []) if m.get("ev") is Array else []
+	var keep := {}
+	for item: Variant in evs:
+		if not (item is Dictionary): continue
+		var e: Dictionary = item
+		match str(e.get("t", "")):
+			"load_test", "backup_call":
+				var id := int(e.get("id", -1))
+				if id < 0: continue
+				keep[id] = true
+				if not _guest_ring_of.has(id):
+					_guest_ring(id, str(e["t"]), float(e.get("x", 0.0)), float(e.get("z", 0.0)))
+			"phase":
+				var n := int(e.get("phase", 0))
+				if n <= _guest_phase_toasts.size(): continue            # already toasted (a repeated am cannot double it)
+				_guest_phase_toast(n, str(e.get("name", "")))
+	for id: int in _guest_ring_of.keys().duplicate():
+		if not keep.has(id): _free_guest_ring(id)
+
+## A flat warning ring on the guest's floor: red for a load-test crate, amber for a backup tradie (the same colours the
+## host's StageEvents draws). Client-side visual only: no collision, no damage, no timer.
+func _guest_ring(id: int, type: String, x: float, z: float) -> void:
+	if world == null: return
+	if _guest_fx == null or not is_instance_valid(_guest_fx):
+		_guest_fx = Node3D.new()
+		_guest_fx.name = "ArcadeGuestEvents"
+		world.add_child(_guest_fx)
+	var ring := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	var r := StageEvents.BACKUP_R if type == "backup_call" else StageEvents.CRATE_R
+	cm.top_radius = r; cm.bottom_radius = r; cm.height = 0.06; cm.radial_segments = 20
+	ring.mesh = cm
+	var mt := StandardMaterial3D.new()
+	mt.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mt.albedo_color = Color(1.0, 0.55, 0.1, 0.5) if type == "backup_call" else Color(1.0, 0.18, 0.12, 0.45)
+	mt.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	ring.material_override = mt
+	ring.position = Vector3(x, 0.08, z)
+	_guest_fx.add_child(ring)
+	_guest_ring_of[id] = ring
+
+func _free_guest_ring(id: int) -> void:
+	var n: Variant = _guest_ring_of.get(id)
+	_guest_ring_of.erase(id)
+	if n != null and is_instance_valid(n): (n as Node).queue_free()
+
+## A new boss phase: the same toast the host shows, once. The host sends the phase descriptor exactly once, and the new
+## phase number gate keeps a duplicated `am` from repeating it.
+func _guest_phase_toast(n: int, name: String) -> void:
+	var text := tr("%s is fired up!" if n == 1 else "%s is furious!") % tr(name)
+	_guest_phase_toasts.append(text)
+	if world != null and world.hud != null: world.hud.toast(text)
+
+## Drop the guest's warning rings and phase state (a new stage rebuilds the world: the host's ids start over).
+func _guest_clear_events() -> void:
+	for id: int in _guest_ring_of.keys().duplicate(): _free_guest_ring(id)
+	_guest_ring_of.clear()
+	if _guest_fx != null and is_instance_valid(_guest_fx):
+		_guest_fx.queue_free()
+	_guest_fx = null
+	_guest_phase_toasts.clear()
+
+## The guest's warning rings from `am.ev` (tests): one {id, radius} entry per active hazard ring it drew.
+func guest_rings() -> Array:
+	var out: Array = []
+	for id: int in _guest_ring_of.keys():
+		var n: Variant = _guest_ring_of[id]
+		out.append({"id": id, "radius": (n as MeshInstance3D).mesh.top_radius if n != null and is_instance_valid(n) else 0.0})
+	return out
+
+## The guest's boss phase toasts, one text per new phase (tests: count them to prove no duplicate toasts).
+func guest_phase_toasts() -> Array:
+	return _guest_phase_toasts.duplicate()
 
 ## The guest's own copy of the host's shrinking floor (`am.sh`): the site never shrinks by itself here (no stage events
 ## run on a guest), so hold the local mode clock still and set the size the host sends. World._update_shrink_view then
@@ -833,7 +972,10 @@ func _am_tick(dt: float) -> void:
 	if _am_t <= 0.0 or state != _am_state: _am_send()
 
 ## `{t:"am", st, of, s(state), lv(lives), hf(boss hp fraction), sh(shrink size), dn:[downed slots], dnt:[s to revive],
-## rv:{n,k,x,y,z,hf,iv}, bt:[bot-played slots], cn (clear/victory counter), last, won, ph?, vic?}`.
+## rv:{n,k,x,y,z,hf,iv}, bt:[bot-played slots], cn (clear/victory counter), last, won, ev:[one-shot event descriptors],
+## ph?, vic?}`. `ev` (M4) carries the active hazard warning rings/crates and backup-call summons
+## ({t:"load_test"|"backup_call", id, x, z, warn}) and a boss phase toast ({t:"phase", phase, name}) that travels once;
+## it is presentation only: the guest draws rings / toasts from it and never damages, spawns or advances anything.
 func _am_payload() -> Dictionary:
 	var sh := 0.0
 	if sim != null:
@@ -848,8 +990,10 @@ func _am_payload() -> Dictionary:
 	for k in range(1, seats.size()):
 		var f: FighterState = seats[k]
 		if f != null and not f.is_ghost and sim != null and sim.controllers.get(f) is BotBrain: bt.append(_seat_slot(k))
+	var ev: Array = events.active_events() if events != null else []
+	if not _ev_phase.is_empty(): ev.append(_ev_phase.duplicate(true))
 	var p := {"t": "am", "st": stage, "of": count(), "s": state, "lv": lives, "hf": boss_frac(), "sh": sh,
-		"dn": dn, "dnt": dnt, "bt": bt, "cn": _am_seq, "last": last, "won": state == "won"}
+		"dn": dn, "dnt": dnt, "bt": bt, "ev": ev, "cn": _am_seq, "last": last, "won": state == "won"}
 	if not _last_revive.is_empty(): p["rv"] = _last_revive            # the guest places its own fighter from this once
 	if not victory.is_empty(): p["vic"] = victory                    # the guest pays the victory bonus from its own save
 	if phase_n > 0: p["ph"] = phase_n                                # boss phase (the guest's bar / toasts)
@@ -872,8 +1016,10 @@ func _am_send() -> void:
 	_am_t = 0.2
 	_am_state = state
 	if not online or not host_mode or world == null: return
+	var p := _am_payload()
+	_ev_phase = {}                         # the phase toast travels exactly once (`am` repeats every 0.2 s)
 	var s = world.session          # HostSession (typed as GuestSession on World: RefCounted, not a Node)
-	if s != null and s.has_method("arcade_send"): s.call("arcade_send", _am_payload())
+	if s != null and s.has_method("arcade_send"): s.call("arcade_send", p)
 
 func _fight(dt: float) -> void:
 	t_stage += dt
@@ -1060,6 +1206,17 @@ func seat_is_down(k: int) -> bool:
 func seat_revive_left(k: int) -> float:
 	return float(seat_down.get(k, 0.0))
 
+## Fastball Special (Sprint 2.2, docs/DAMAGE.md "Teammate carry/throw"): a DOWNED seat thrown by its teammate and landing
+## on the site floor loses `seconds` off its auto-revive countdown. Combat.carry_tick calls this through the sim meta
+## "arcade_run" with has_method (no static DLC dependency here either). Returns the seconds actually shaved (0 = not a
+## downed seat, not in the fight, or nothing left to shave). The HUD counts the new time from seat_revive_left().
+func fastball_revive(f: FighterState, seconds: float = 2.0) -> float:
+	var k := seat_index(f)
+	if k < 0 or not seat_down.has(k) or state != "fight": return 0.0
+	var before := float(seat_down[k])
+	seat_down[k] = maxf(0.0, before - seconds)
+	return before - float(seat_down[k])
+
 ## The seats still in the fight, in seat order.
 func living_seats() -> Array:
 	var out: Array = []
@@ -1178,17 +1335,18 @@ func _win() -> void:
 	world.show_panel(ArcadePanels.won(self, quit_run))
 
 func next_stage() -> void:
-	if state != "cleared" or is_last_stage(): return
+	if state != "cleared" or is_last_stage() or _reload_pending: return
 	stage += 1
 	attempt = 0
 	_reload()
 
 func retry_stage() -> void:
-	if state != "failed": return
+	if state != "failed" or _reload_pending: return
 	attempt += 1
 	_reload()
 
 func _reload() -> void:
+	_reload_pending = true                 # a duplicate/forged card request cannot advance twice before load_map runs
 	if world != null: world.load_map.call_deferred(world.map_id)
 
 func quit_run() -> void:
@@ -1231,9 +1389,11 @@ func _arcade_line(f: FighterState) -> void:
 ## One stage bot from its table entry: name, look, tool, health, damage, speed and skill. Boss scale like Giant (big_t).
 ## The Arcade stat line above is applied first (class multipliers are not a table stat), then the walk speed is the bot
 ## skill's speed x the entry's `speed`, clamped into a boss band (slower / normal / faster) and scaled by the difficulty.
+## A BOSS also takes BOSS_KB of every knockback: a 100 % hp boss cannot be shoved out through a fence gate in one hit.
 func _dress(b: FighterState, spec: Dictionary, giant: bool, is_boss := false) -> void:
 	var c := sim.combat
 	_arcade_line(b)
+	if is_boss: b.cls_kb = BOSS_KB
 	b.name = str(spec.get("name", b.name))
 	sim.looks[b] = {"skin": str(spec.get("skin", "builder")), "hat": str(spec.get("hat", "none")), "color": int(spec.get("color", 0xf08a3c))}
 	var dn := difficulty_override if difficulty_override != "" else str(spec.get("difficulty", "normal"))
@@ -1274,11 +1434,15 @@ static func _boss_band(spec: Dictionary) -> Array:
 	if mul <= 0.95: return BOSS_SPEED_SLOW
 	return BOSS_SPEED_NORMAL
 
-## A table hp multiplier at this difficulty: x hp_mul, never below the floor (boss / non-boss), never above the table's own value.
+## A table hp multiplier at this difficulty: x hp_mul, never below the floor (boss / non-boss), never above the table's own
+## value. A two-seat co-op run gives BOSSES x1.35 health (the fight has two players and every seat death costs a shared
+## life); crew and the solo run are untouched, so solo numbers stay bit-identical.
 func enemy_hp(table_hp: float, is_boss: bool) -> float:
 	var df := diff_def()
 	var floor_hp := float(df.get("boss_hp_floor" if is_boss else "hp_floor", 0.0))
-	return minf(table_hp, maxf(table_hp * float(df.get("hp_mul", 1.0)), floor_hp))
+	var hp := minf(table_hp, maxf(table_hp * float(df.get("hp_mul", 1.0)), floor_hp))
+	if is_boss and seat_count >= 2: hp *= COOP_BOSS_HP
+	return hp
 
 ## The fighter's trade tool in hand (replaces whatever else it carried).
 func give_weapon(f: FighterState, key: String) -> void:
@@ -1375,20 +1539,43 @@ func boss_active() -> bool:
 		return _guest_boss_slot >= 0 and state in ["fight", "clearing", "failing"] and _guest_hf > 0.0
 	return boss != null and state == "fight" and not downed.has(boss)
 
-## Boss phases: at 66 % and 33 % health the boss hits harder and gets a SMALL, additive speed step (+5 %, then +10 % of
-## its base walk speed in total), with a toast; the stage's change request (The Client) also swaps tools. Speed is set
-## from the stored base every time, so the steps never compound (the old x1.1 each phase reached x1.21), and the result
-## stays under BOSS_SPEED_CAP (a player can always outrun it).
+## The hp fractions the boss phases trigger at, highest first: the stage's `change_request.params.phases` when the table
+## sets one (data-driven), else PHASES (0.66 / 0.33). Junk entries are dropped; the list is sorted so a table typo cannot
+## make a later phase fire before an earlier one.
+static func phase_thresholds(d: Dictionary) -> Array:
+	for ev: Variant in d.get("events", []):
+		if not (ev is Dictionary) or str((ev as Dictionary).get("type", "")) != "change_request": continue
+		var v: Variant = ((ev as Dictionary).get("params", {}) as Dictionary).get("phases")
+		if not (v is Array) or (v as Array).is_empty(): continue
+		var out: Array = []
+		for f: Variant in v:
+			if (f is float or f is int) and float(f) > 0.0 and float(f) < 1.0: out.append(float(f))
+		if out.is_empty(): continue
+		out.sort(); out.reverse()
+		return out
+	return PHASES
+
+## This stage's phase thresholds (the table's data, PHASES fallback). The HUD ticks and `_phases()` both read this.
+func phases() -> Array:
+	return phase_thresholds(stage_def())
+
+## Boss phases: the encounter's hp fractions (data, default 66 / 33 %): the boss hits harder and gets a SMALL, additive
+## speed step (+5 %, then +10 % of its base walk speed in total), with a toast; the stage's change request also swaps tools.
+## Speed is set from the stored base every time, so the steps never compound (the old x1.1 each phase reached x1.21), and
+## the result stays under BOSS_SPEED_CAP (a player can always outrun it). Online, the host also sends a one-shot phase
+## descriptor in `am.ev` so a guest can show the same toast.
 func _phases() -> void:
-	if boss == null or phase_n >= PHASES.size(): return
-	if boss_frac() > float(PHASES[phase_n]) or boss.dead: return
+	var ths := phases()
+	if boss == null or phase_n >= ths.size(): return
+	if boss_frac() > float(ths[phase_n]) or boss.dead: return
 	phase_n += 1
 	phase_log.append([t_stage, phase_n])
 	var base := float(speed0.get(boss, boss.phys.speed))
 	boss.phys.speed = minf(base * (1.0 + minf(PHASE_SPEED_STEP * phase_n, PHASE_SPEED_CAP)), BOSS_SPEED_CAP)
 	boss.dmg_scale *= PHASE_DMG
 	var key := "%s is fired up!" if phase_n == 1 else "%s is furious!"
-	sim.combat.ev({"type": "toast", "text": tr(key) % boss.name})
+	sim.combat.ev({"type": "toast", "text": tr(key) % tr(boss.name)})
+	if online and host_mode: _ev_phase = {"t": "phase", "phase": phase_n, "name": boss.name}
 	if events != null: events.on_phase(phase_n)
 
 ## The finished-run tidy: results for the title card.
