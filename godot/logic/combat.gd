@@ -102,6 +102,13 @@ var bowl_slides := {}
 ## and no ownership cycle is created. Null in every non-Arcade match (the redirect paths then cost one null check).
 var hazard_source: WeakRef = null
 
+# --- class signature skills (Post-v0.4.0 Sprint 3.3, tuning only; docs/DAMAGE.md "Class signature skills") ---
+## FighterState -> its live signature move windows: {"fort": s, "rate": s, "slam": s}. Skills owns the rules and
+## counts these down (Skills.tick); Combat only stores the table because the hit() knockback gate must read it. Cleared
+## by place_at on a fresh life and by dispose at the match end; empty in every untuned match, so the parity paths never
+## see it (the hit() gate then costs one is_empty check).
+var sig_fx := {}
+
 # --- net (filled by the net layer) ---
 var net_started := false
 var net_host := false
@@ -134,6 +141,7 @@ func dispose() -> void:
 	arcade_coop = false
 	bowl_slides.clear()
 	hazard_source = null
+	sig_fx.clear()
 
 ## Parsed content is immutable between releases. Every caller receives a deep copy so one match can merge or alter its
 ## own tuning without changing later matches; repeated matches avoid decoding the same JSON again.
@@ -165,16 +173,27 @@ func wdata(key: String) -> Dictionary:
 		if tw != null: return tw
 	return weapons_data.get(key, {})
 
-## Merge a weapon_tuning.json overlay ({weapons: {key: {field: value}}, drops: {key: weight}}) over the loaded weapons.
-## Takes effect only while tuning_active().
+## Merge a weapon_tuning.json overlay ({weapons: {key: {field: value}}, drops: {key: weight}, swingStyles: {style:
+## {param: value}}}) over the loaded weapons. Takes effect only while tuning_active().
+## A MELEE weapon that names a `swingStyle` gets that archetype's parameters resolved into its own `swingStyleDef`
+## dictionary (a distinct key: shared weapon records already use `style` for guns, e.g. "punch" / "flame"), so wdata()
+## returns a ready dictionary and the per-frame melee paths only read values (no merge/allocation per call). A
+## per-weapon `swingStyleDef` object overrides individual archetype parameters (a data edit without code edits).
 func apply_tuning(t: Variant) -> void:
 	tuned_weapons = {}; tuned_drops = {}
 	if not t is Dictionary: return
+	var styles: Dictionary = t.get("swingStyles", {})
 	var ws: Dictionary = t.get("weapons", {})
 	for k: String in ws:
 		if not weapons_data.has(k): continue
 		var m: Dictionary = (weapons_data[k] as Dictionary).duplicate(true)
 		m.merge(ws[k], true)
+		var sid := str(m.get("swingStyle", ""))
+		if sid != "" and str(m.get("type", "")) == "melee" and styles.get(sid) is Dictionary:
+			var st: Dictionary = (styles[sid] as Dictionary).duplicate()
+			var own: Variant = m.get("swingStyleDef")
+			if own is Dictionary: st.merge(own, true)   # a per-weapon override wins
+			m["swingStyleDef"] = st
 		tuned_weapons[k] = m
 	tuned_drops = (t.get("drops", {}) as Dictionary).duplicate()
 
@@ -338,12 +357,16 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 			force *= got / want
 		flame_push[v] = [spent + got, time]
 	var p := v.phys
-	p.vx += dx * force * kf * fk
-	p.vz += dz * force * kf * fk
-	if not light:
-		p.vy += (maxf(dy * force, 0.0) + force * 0.18) * fk
-		p.grounded = false
-		v.stun = maxf(v.stun, 0.55 if force >= 9.0 else clampf_js(0.04 + force * 0.025, 0.06, 0.4))
+	# Fortress Stance (class signature skill, tuning only): a planted tank takes the damage but no velocity, no stun and
+	# no launch at all. The gate is one is_empty() on the signature table in every untuned / parity match, so the classic
+	# knockback below is bit-identical there.
+	if not Skills.fortress_active(self, v):
+		p.vx += dx * force * kf * fk
+		p.vz += dz * force * kf * fk
+		if not light:
+			p.vy += (maxf(dy * force, 0.0) + force * 0.18) * fk
+			p.grounded = false
+			v.stun = maxf(v.stun, 0.55 if force >= 9.0 else clampf_js(0.04 + force * 0.025, 0.06, 0.4))
 	var s := sin(v.yaw)
 	var c := cos(v.yaw)
 	var d_f := dx * s + dz * c
@@ -363,7 +386,8 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		v.fall_side = -1 if rng.next() < 0.5 else 1
 		v.down_t = 0.0; v.kick_t = -1.0
 		if p.py > -1.0:
-			p.vy = maxf(p.vy, 6.5)
+			# Fortress Stance: the K.O. keeps its burst VFX but a planted tank is never launched by the fatal hit either.
+			if not Skills.fortress_active(self, v): p.vy = maxf(p.vy, 6.5)
 			ev({"type": "ko_burst", "f": v})
 		clear_inventory(v)
 		set_weapon(v, "")
@@ -395,17 +419,24 @@ func add_ko(killer: FighterState, victim: FighterState) -> void:
 	ev({"type": "ko", "killer": killer, "victim": victim, "weapon": wn})
 	rules.check_limit(killer)
 
-## Fall over (never longer than 1.6 s); a moment of "can't be tripped" follows getting up.
-func topple(f: FighterState, dur: float, msg: String = "") -> bool:
+## The knockdown state both topple() and the signature moves' topple_flat() set: alive, not already down and not inside
+## the get-up immunity; a swing / kick / charge in progress is cancelled and the body falls. No random number here.
+func _topple_state(f: FighterState, dur: float) -> bool:
 	if f.dead or f.down_t > 0.0 or f.getup_immune > 0.0:
 		return false
 	f.down_t = minf(dur, 1.6)
-	f.fall_side = -1 if rng.next() < 0.5 else 1
 	f.swing = -1.0; f.kick_t = -1.0; f.stun = maxf(f.stun, 0.35)
 	if f.return_slot >= 0:
 		var r := f.return_slot
 		f.return_slot = -1
 		equip_slot(f, r if f.slots[r] != null else -1)
+	return true
+
+## Fall over (never longer than 1.6 s); a moment of "can't be tripped" follows getting up.
+func topple(f: FighterState, dur: float, msg: String = "") -> bool:
+	if not _topple_state(f, dur):
+		return false
+	f.fall_side = -1 if rng.next() < 0.5 else 1
 	var a := rng.range_f(-3, 3)
 	var b := rng.range_f(-3, 3)
 	kick_head(f, a, b)
@@ -417,6 +448,70 @@ func topple(f: FighterState, dur: float, msg: String = "") -> bool:
 		ev({"type": "toast", "text": msg if msg != "" else "Whoops! You fell over"})
 	return true
 
+## Deterministic knockdown for the tuned class signature skills (Seismic Slam's shockwave): exactly the state topple()
+## sets, but a fixed fall side and fixed shove angles, so it never advances combat.rng (the signature test asserts the
+## RNG state is unchanged). The web game / parity paths never call this.
+func topple_flat(f: FighterState, dur: float) -> bool:
+	if not _topple_state(f, dur):
+		return false
+	f.fall_side = 1
+	kick_head(f, 2.0, 0.0)
+	push_arm(f, 1.0, 0.0, 0.0)
+	ev({"type": "sfx", "name": "boing", "f": f})
+	return true
+
+# ============================== elemental / physics statuses ==============================
+
+## Post-v0.4.0 Sprint 3.2 (docs/DAMAGE.md "Elemental and physics statuses"): a hit from a weapon whose weapon_tuning.json
+## entry carries a status sub-dictionary tags the fighter. The status TABLE is the overlay data, not code: `chill
+## {time, speed, traction}` on the Snowball Cannon, `shock {time}` on the Live Wire and `heavy {time, grav, jump}` on the
+## Cement Bucket. Every branch below is behind tuning_active(), nothing here draws a random number, and re-applying only
+## refreshes the timer (maxf): there is exactly one copy of each multiplier, on exactly the matching weapon's hit.
+## The literals are the defaults for an overlay entry that omits a value.
+const CHILL_TIME := 3.0
+const CHILL_SPEED := 0.68
+const CHILL_TRACTION := 0.3
+const SHOCK_TIME := 0.35
+const HEAVY_TIME := 4.0
+const HEAVY_GRAV := 1.4
+const HEAVY_JUMP := 0.65
+
+## Apply the status of weapon data `w` (already overlay-merged by wdata()) to `v`, the fighter that weapon just hit.
+## Called from the melee hit path (melee_sweep) and from Weapons.step_balls for the rolling ball weapons, i.e. once per
+## applied hit and never per tick. The sub-dicts are is-Dictionary-guarded: a gun keeps its String `style` key and our
+## `chill` / `shock` / `heavy` names never collide with the swing style (`swingStyleDef`) or any shared weapon field.
+func apply_status(v: FighterState, w: Dictionary) -> void:
+	if not tuning_active() or v == null or v.dead: return
+	var ch: Variant = w.get("chill")
+	if ch is Dictionary:
+		var cd: Dictionary = ch
+		v.chill_t = maxf(v.chill_t, float(cd.get("time", CHILL_TIME)))
+		v.chill_speed = float(cd.get("speed", CHILL_SPEED))
+		v.chill_traction = float(cd.get("traction", CHILL_TRACTION))
+	var sh: Variant = w.get("shock")
+	if sh is Dictionary:
+		var sd: Dictionary = sh
+		var t := float(sd.get("time", SHOCK_TIME))
+		v.shock_t = maxf(v.shock_t, t)
+		v.stun = maxf(v.stun, t)          # the short hit-stun; hit()'s force stagger may already be longer
+		_interrupt(v)                     # stop a swing / kick / throw wind-up / bow draw / charge
+		ev({"type": "spark", "f": v, "x": v.chest_x, "y": v.chest_y, "z": v.chest_z})
+	var hv: Variant = w.get("heavy")
+	if hv is Dictionary:
+		var hd: Dictionary = hv
+		v.heavy_t = maxf(v.heavy_t, float(hd.get("time", HEAVY_TIME)))
+		v.heavy_grav = float(hd.get("grav", HEAVY_GRAV))
+		v.heavy_jump = float(hd.get("jump", HEAVY_JUMP))
+
+## The shock's hit-stun interrupt: whatever the victim was winding up is cancelled (the player / bot has to press again).
+func _interrupt(v: FighterState) -> void:
+	v.swing = -1.0; v.bat_valid = false; v.slam = false; v.stab = false; v.cyclone = false; v.assist_on = false
+	v.kick_t = -1.0
+	v.throw_key = ""; v.throw_hold = false
+	v.t_charge = -1.0
+	v.draw = 0.0; v.nocked = false
+	v.charge_t = -1.0; v.heavy = false
+
 # ============================== timers / respawn ==============================
 
 ## Fighter.timers: per-step countdowns. Not ported: emotes (visual only).
@@ -427,6 +522,11 @@ func timers(f: FighterState, dt: float) -> void:
 	if f.spd_t > 0.0: f.spd_t -= dt
 	if f.rage_t > 0.0: f.rage_t -= dt
 	if f.shield_t > 0.0: f.shield_t -= dt
+	# Sprint 3.2 statuses: only tuning-gated code ever sets these, so the three countdowns are inert (0.0) in every
+	# web / parity match. Clamped at 0 so a `> 0.0` read in FighterPhysics turns off cleanly.
+	if f.chill_t > 0.0: f.chill_t = maxf(0.0, f.chill_t - dt)
+	if f.shock_t > 0.0: f.shock_t = maxf(0.0, f.shock_t - dt)
+	if f.heavy_t > 0.0: f.heavy_t = maxf(0.0, f.heavy_t - dt)
 	f.cool -= dt * f.cls_rate; f.melee_cool -= dt; f.shove_cool -= dt; f.parry_t -= dt; f.kick_cool -= dt; f.pad_cool -= dt
 	if f.invuln > 0.0: f.invuln -= dt
 	if f.flash > 0.0: f.flash -= dt
@@ -500,6 +600,13 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
 	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null; f.parry_t = 0.0
+	f.charge_t = -1.0; f.heavy = false   # a fresh life starts with no charged heavy melee in hand
+	f.chill_t = 0.0; f.shock_t = 0.0; f.heavy_t = 0.0   # Sprint 3.2 statuses do not survive a fresh life
+	# Phase Shift's i-frames are the one signature window written into an existing FighterState field, so a fresh life
+	# must not inherit them. place_at never touches invuln otherwise (the web game's placeAt keeps it: the combat parity
+	# fixture compares it per op), and this branch only runs when the tuned move was actually used (sig_fx is empty in
+	# every parity path).
+	if sig_fx.has(f) and (sig_fx[f] as Dictionary).has("phase"): f.invuln = 0.0
 	# Fastball Special: a fresh life lets go of (and is let go by) its carried teammate and forgets a throw in flight; the
 	# carrier's link is cut on BOTH sides so a revived body never stays pinned to a carrier that moved on.
 	if f.carrying != null: f.carrying.carried_by = null
@@ -507,6 +614,7 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	f.carrying = null; f.carried_by = null; f.carry_limp = false; f.ball_t = -1.0; f.ball_owner = null
 	bowl_slides.erase(f)              # a fresh life is not still sliding as a bowling ball
 	flame_push.erase(f)               # a fresh life does not inherit the last one's spent flame budget
+	sig_fx.erase(f)                   # ... nor a signature move window (Fortress Stance / Tac-Reload / a dive in flight)
 	Skills.reset(f)
 	clear_inventory(f); set_weapon(f, "spatula")
 	var start: Variant = mode.get("start")
@@ -518,6 +626,7 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 func set_weapon(f: FighterState, key: String) -> void:
 	f.weapon = key
 	f.swing = -1.0; f.bat_valid = false; f.nocked = false; f.grab_t = -1.0; f.draw = 0.0
+	f.charge_t = -1.0; f.heavy = false   # swapping weapons cancels a charge in progress (docs/DAMAGE.md)
 	ev({"type": "weapon", "f": f, "key": key})
 
 func equip_slot(f: FighterState, i: int) -> bool:
@@ -735,8 +844,10 @@ func shove(f: FighterState, yaw: float) -> void:
 
 ## A tuned offline shove is also a short parry. Only a melee hit from roughly in front counts; the attacker's swing is
 ## cancelled and they are staggered away. The web/classic path never reaches this (tuning_active is false).
+## A Heavy Swing cannot be parried ("Charged heavy melee"): melee_sweep strips the victim's parry_t instead of deflecting.
 func try_parry(v: FighterState, attacker: FighterState) -> bool:
 	if not tuning_active() or v == null or attacker == null or v.parry_t <= 0.0 or v.dead or attacker.dead: return false
+	if attacker.heavy: return false
 	var dx := attacker.phys.px - v.phys.px
 	var dz := attacker.phys.pz - v.phys.pz
 	var d := sqrt(dx * dx + dz * dz)
@@ -1048,9 +1159,28 @@ func katana_target(f: FighterState, yaw: float) -> FighterState:
 		if sc < bs: bs = sc; best = e
 	return best
 
-## meleeBegin: start a swing of weapon `key` toward `yaw` (sets the cooldown, lunges forward).
-func melee_begin(f: FighterState, key: String, yaw: float) -> void:
+# --- charged heavy melee + swing archetypes (Sprint 3.1, docs/DAMAGE.md "Charged heavy melee") ---
+## Godot overlay only: hold FIRE with a melee weapon for HEAVY_CHARGE 0.45 s and the swing becomes a Heavy Swing (1.45x
+## damage, 1.5x force, a parry is smashed instead of deflecting the hit). Every branch is gated on tuning_active(); the
+## input path additionally refuses while `net_started` (the peer "sw" replay carries no heavy bit), and nothing here
+## draws a random number. A missing `swingStyleDef` dictionary = the shared/web swing: the literals in
+## melee_tick/melee_sweep are then used verbatim, so the no-style path stays bit-identical.
+const HEAVY_CHARGE := 0.45        ## s of held FIRE that charges a Heavy Swing (auto-released while still held)
+const HEAVY_DMG_MUL := 1.45       ## Heavy Swing damage multiplier (melee_sweep, before the body-part multiplier)
+const HEAVY_FORCE_MUL := 1.5      ## ... and knockback-force multiplier
+const NO_STYLE := {}              ## the no-archetype swing: read-only, so the hot paths never allocate a fallback dict
+
+## The crosshair charge ring fraction: 0 = no charge, 1 = a full Heavy Swing (HUD, Combat.charge_frac). Static so the HUD
+## and the tests share the exact rule; nothing random.
+static func charge_frac(t: float) -> float:
+	if t <= 0.0: return 0.0
+	return clampf(t / HEAVY_CHARGE, 0.0, 1.0)
+
+## meleeBegin: start a swing of weapon `key` toward `yaw` (sets the cooldown, lunges forward). `heavy` = the charged Heavy
+## Swing; only the tuning-gated input path passes true (a bare Combat, the web replay and bots always get the classic swing).
+func melee_begin(f: FighterState, key: String, yaw: float, heavy: bool = false) -> void:
 	var w := wdata(key)
+	f.heavy = heavy and tuning_active()
 	f.swing = 0.0; f.swing_yaw = yaw; f.swing_hit = {}; f.bat_valid = false; f.cool = float(w["cooldown"])
 	f.slam = not f.phys.grounded and not f.dead and f.down_t <= 0.0     # swung in the air: a big overhead smack
 	f.stab = false; f.assist_on = false
@@ -1085,17 +1215,28 @@ func melee_begin(f: FighterState, key: String, yaw: float) -> void:
 			if f.phys.grounded: f.phys.vy = maxf(f.phys.vy, 1.5)
 			ev({"type": "puff", "x": f.phys.px, "y": f.phys.py + 1.0, "z": f.phys.pz, "kind": "dash"})
 	ev({"type": "sfx", "name": "swing", "f": f})
+	# Gold-rim presentation hook (docs/DAMAGE.md): nothing in the sim consumes it, the visual layer may; no random number.
+	if f.heavy: ev({"type": "heavy_swing", "f": f})
 
-## meleeTick: advance the swing and set the arm target (aim_*). Returns true on the step the swing ends.
+## meleeTick: advance the swing and set the arm target (aim_*). Returns true on the step the swing ends. A swing archetype
+## (`w.swingStyleDef`, from weapon_tuning.json swingStyles) narrows/widens the base arc (`arc`) and tilts it (`lift`);
+## the other poses (slam / cyclone / stab) keep their own shape and only read the style's tip/time window in melee_sweep.
 func melee_tick(f: FighterState, key: String, dt: float, yaw: float) -> bool:
 	var w := wdata(key)
+	var sd: Variant = w.get("swingStyleDef") if w.has("swingStyleDef") else null
+	var sty: Dictionary = sd if sd is Dictionary else NO_STYLE
 	var st_time := float(w.get("swingTime", 0.34)) if w.get("swingTime", 0) else 0.34
 	f.swing += dt / (st_time * (1.6 if f.cyclone else 1.0))
 	if f.assist_on: yaw = f.swing_yaw
 	var s := sin(yaw)
 	var c := cos(yaw)
 	var t := clampf_js(f.swing, 0.0, 1.0)
-	var a := lerp_js(1.7, -1.7, t)
+	var half := 1.7
+	var lift := -0.02
+	if not sty.is_empty():
+		if sty.has("arc"): half = float(sty["arc"]) * 0.5
+		if sty.has("lift"): lift = float(sty["lift"])
+	var a := lerp_js(half, -half, t)
 	var v: Array
 	if f.slam:
 		var pitch := lerp_js(1.25, -1.3, t)
@@ -1113,19 +1254,20 @@ func melee_tick(f: FighterState, key: String, dt: float, yaw: float) -> bool:
 		var yy := 0.18 if t < 0.3 else -0.02
 		v = norm3(s * cos(ap) - c * sin(ap), yy, c * cos(ap) + s * sin(ap))
 	else:
-		v = norm3(s * cos(a) - c * sin(a), -0.02, c * cos(a) + s * sin(a))
+		v = norm3(s * cos(a) - c * sin(a), lift, c * cos(a) + s * sin(a))
 	f.aim_x = v[0]; f.aim_y = v[1]; f.aim_z = v[2]
 	if f.swing >= 1.3:
-		f.swing = -1.0; f.slam = false; f.stab = false; f.cyclone = false; f.assist_on = false
+		f.swing = -1.0; f.slam = false; f.stab = false; f.cyclone = false; f.assist_on = false; f.heavy = false
 		return true
 	return false
 
-## Melee input (the left click with a melee weapon): returns true if a swing started.
-func try_melee(f: FighterState, yaw: float) -> bool:
+## Melee input (the left click with a melee weapon): returns true if a swing started. `heavy` = the charged Heavy Swing
+## (only the tuning-gated PlayerControl path passes true; bots/quick melee/classic callers keep the classic swing).
+func try_melee(f: FighterState, yaw: float, heavy: bool = false) -> bool:
 	var w := wdata(f.weapon)
 	if w.get("type", "") != "melee" or f.cool > 0.0 or f.swing >= 0.0 or f.throw_key != "" or f.dead or f.down_t > 0.0:
 		return false
-	melee_begin(f, f.weapon, yaw)
+	melee_begin(f, f.weapon, yaw, heavy)
 	if f.slot >= 0: f.set_ammo(f.get_ammo() - 1)
 	return true
 
@@ -1143,12 +1285,22 @@ func after_swing(f: FighterState) -> void:
 ## halfway between against every enemy's hit spheres; `swing_hit` makes one swing hit each target once.
 func melee_sweep(f: FighterState) -> void:
 	var w := wdata(f.weapon)
-	if w.is_empty() or w.get("type", "") != "melee" or f.swing < (0.3 if f.stab else 0.04) or f.swing > 1.2 or f.dead or f.down_t > 0.0:
+	var sd: Variant = w.get("swingStyleDef") if w.has("swingStyleDef") else null
+	var sty: Dictionary = sd if sd is Dictionary else NO_STYLE
+	# The hit timing window is the swing archetype's (normalized swing time 0..1.3): defaults are the classic .04/1.2 and
+	# a stab still waits for .3; a style may move either end (e.g. crush ends at .85, a whip starts at .28).
+	var sw0 := 0.3 if f.stab else 0.04
+	var sw1 := 1.2
+	if not sty.is_empty():
+		if sty.has("hitStart"): sw0 = maxf(sw0, float(sty["hitStart"]))
+		if sty.has("hitEnd"): sw1 = float(sty["hitEnd"])
+	if w.is_empty() or w.get("type", "") != "melee" or f.swing < sw0 or f.swing > sw1 or f.dead or f.down_t > 0.0:
 		f.bat_valid = false; return
 	var now := f.bat_now
 	var prev := f.bat_prev
 	var tip := float(w["tip"])
 	var tip_eff := (tip * 1.2 if f.stab else (tip * 1.1 if f.cyclone else tip)) * (2.2 if giant else 1.0)
+	if not sty.is_empty() and sty.has("tipMul"): tip_eff *= float(sty["tipMul"])
 	var n := FighterState.BAT_N
 	for i in n:
 		var s := lerp_js(FighterState.BAT_BASE, tip_eff, float(i) / float(n - 1))
@@ -1181,7 +1333,13 @@ func melee_sweep(f: FighterState) -> void:
 						if dx * dx + dy * dy + dz * dz < rr * rr:
 							touched = true; tp_at = [ax, ay, az]; tp_head = sp[4]; break
 			if not touched: continue
-			if try_parry(e, f): continue
+			# A Heavy Swing smashes through a tuned parry instead of being deflected (docs/DAMAGE.md).
+			var heavy := f.heavy
+			if heavy:
+				if e.parry_t > 0.0:
+					e.parry_t = 0.0
+					ev({"type": "parry_break", "f": e, "attacker": f, "x": e.phys.px, "y": e.phys.py + 1.4, "z": e.phys.pz})
+			elif try_parry(e, f): continue
 			f.swing_hit[e] = true
 			# knock them the way the weapon was moving, mixed with "away from the swinger"
 			var j := (n - 1) * 3
@@ -1198,6 +1356,10 @@ func melee_sweep(f: FighterState) -> void:
 			var slam_mul := float(w.get("slamMul", 1.3)) if w.get("slamMul", 0) else 1.3
 			var dmg := float(w["dmg"]) * f.dmg_scale * (slam_mul if f.slam else (1.6 if f.cyclone else 1.0))
 			var force := float(w["force"]) * f.melee_force_mul * (1.1 if f.slam else (1.5 if f.cyclone else 1.0))
+			# Charged Heavy Swing (overlay only; `heavy` is false unless melee_begin was told so while tuning is on).
+			if heavy:
+				dmg *= HEAVY_DMG_MUL
+				force *= HEAVY_FORCE_MUL
 			# body part: a bat on the head only counts as a headshot when the table allows melee heads (classic: never)
 			var part := body_part(e, tp_at[0], tp_at[1], tp_at[2], tp_head and bool(zone_table().get("meleeHead", false)))
 			var pm := part_mul(part)
@@ -1210,6 +1372,7 @@ func melee_sweep(f: FighterState) -> void:
 				var tp := float(w.get("topple", 0.0)) * f.melee_topple_mul
 				if not bowled and tp and rng.next() < tp: topple(e, 1.1)
 				ev({"type": "sfx", "name": w.get("hitSfx", "clink"), "f": e})
+				apply_status(e, w)     # Sprint 3.2: the weapon data says if this hit chills/shocks/weighs them down
 		# Wobble Reactions (tuning only): the weapon line also swats a falling load-test crate / an explosive shot aside.
 		if tuning_active(): _deflect_melee(f, w, now, prev, n, thick)
 	for i in n * 3: prev[i] = now[i]

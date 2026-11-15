@@ -36,6 +36,8 @@ const PART_SIZE := {"head": 56, "torso": 44, "arms": 40, "legs": 38}
 const HOT := Color(1.0, 0.94, 0.62, 1.0)
 const SOOT := Color(0.13, 0.16, 0.18, 1.0)
 const EMBER := Color(0.95, 0.24, 0.08, 1.0)
+## Sprint 3.2 Live Wire shock: the cold electric blue of the spark burst (Combat's "spark" event).
+const SPARK := Color(0.62, 0.9, 1.0, 1.0)
 const DAMAGE_FLASH_SHADER := "res://shaders/hit_vignette.gdshader"
 ## web SPECKS: kind -> [colour, rise speed (negative falls), sideways drift]
 const SPECKS := {
@@ -419,6 +421,8 @@ func on_event(e: Dictionary) -> void:
 				muzzle(Vector3(f.hand_x, f.hand_y, f.hand_z) + d.normalized() * 0.55, d.normalized(), str(e.get("key", "")))
 		"reaction":
 			_on_reaction(e)
+		"spark":
+			_on_spark(e)
 
 ## Wobble Reactions (Post-v0.4.0 Sprint 2.3, docs/DAMAGE.md): the bowling-ball launch and the mid-air crate / projectile
 ## redirect. Presentation only: the existing pooled builders and the FxSystem's own RNG. No sim state, no combat RNG draw.
@@ -445,6 +449,19 @@ func _on_reaction(e: Dictionary) -> void:
 			sparks(at, Color(1.0, 0.72, 0.25, 1.0), 24.0, 16.0)
 			blob(at, dir * 2.0, 0.25, 0.12, 0.42, Color(1.0, 0.62, 0.2, 0.8), Color(0.4, 0.3, 0.25, 0.25), -1.0)
 			streak(at, dir, 0.9, 0.06, Color(1.0, 0.8, 0.3, 0.9), 0.16, dir * 8.0)
+
+## Sprint 3.2 Live Wire shock (docs/DAMAGE.md "Elemental and physics statuses"): the electric burst at the struck point.
+## Presentation only: pooled builders and the FxSystem's own RNG; Combat.apply_status emits the event behind the tuning
+## gate, so an untuned match never sends one and no combat RNG is drawn here.
+func _on_spark(e: Dictionary) -> void:
+	var at := Vector3(float(e.get("x", 0.0)), float(e.get("y", 0.0)), float(e.get("z", 0.0)))
+	sparks(at, SPARK, 26.0, 14.0)
+	blob(at, Vector3(0.0, 0.45, 0.0), 0.13, 0.12, 0.32, Color(0.85, 0.97, 1.0, 0.9), Color(0.2, 0.5, 1.0, 0.2))
+	if lv >= 1: ring(at, SPARK, 1.1, 0.2, 0.65)
+	for i in [2, 4, 6][lv]:                       # short jagged arcs around the hit: cold, fast spark streaks
+		var d := Vector3(rng.randf_range(-1.0, 1.0), rng.randf_range(-0.15, 1.0), rng.randf_range(-1.0, 1.0)).normalized()
+		streak(at + d * 0.15, d, rng.randf_range(0.35, 0.7), 0.034, Color(0.78, 0.95, 1.0, 0.95),
+			rng.randf_range(0.1, 0.18), d * rng.randf_range(4.0, 8.0))
 
 func _dash_dir(e: Dictionary) -> Vector3:
 	if e.has("dx"): return Vector3(float(e["dx"]), 0, float(e["dz"]))

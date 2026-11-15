@@ -14,6 +14,7 @@ const TOAST_TIME := 2.2
 const TOP_STACK := 70.0           ## what hangs under the toast (team board, mode line, spectator line) starts this far below the top inset
 const IMPACT_BADGE_W := 0.82      ## most of the safe width the comic impact badge may take (it scales down beyond this)
 const IMPACT_TOP := 84.0          ## top of the comic impact badge (canvas px under the safe top: below the score / radar line)
+const HEAVY_FLASH_TIME := 0.18    ## s the gold rim flash lasts after a Heavy Swing starts (docs/DAMAGE.md)
 
 var world: Node
 var sim: MatchSim
@@ -47,6 +48,8 @@ var _impact_l: Label
 var _impact_text := ""            ## the text currently on the badge (re-pop only when it changes)
 var _last_ko := -1
 var _lowhp_t := 0.0             ## seconds to the next low-health heartbeat (0 = not playing)
+var _charge_k := 0.0            ## charged heavy melee: crosshair arc 0..1 (Combat.charge_frac, docs/DAMAGE.md)
+var _heavy_flash := 0.0         ## s left of the gold rim flash after a Heavy Swing starts
 
 ## The `Sfx` autoload by tree lookup, never as a bare global identifier: a test's main loop can compile this class
 ## before the autoloads are registered (see world/fx.gd for the same pattern).
@@ -453,6 +456,11 @@ func update(delta: float) -> void:
 	_center.visible = p.dead and not p.elim
 	_center.reset_size()
 	_center.position = Vector2(vs.x / 2.0 - _center.size.x / 2.0, vs.y * 0.38)
+	# Charged heavy melee (docs/DAMAGE.md): the crosshair ring fills while FIRE is held and a Heavy Swing flashes a gold
+	# rim. Presentation only, no new tr() text (so no i18n keys) and no extra node/draw pass: it rides the crosshair redraw.
+	_charge_k = Combat.charge_frac(p.charge_t)
+	if p.heavy and p.swing >= 0.0 and p.swing < 0.2: _heavy_flash = HEAVY_FLASH_TIME
+	_heavy_flash = maxf(0.0, _heavy_flash - delta)
 	_cross.position = vs / 2.0
 	_cross.queue_redraw()
 	_plates.size = vs
@@ -553,3 +561,13 @@ func _draw_cross() -> void:
 		_cross.draw_line(d * 5.5, d * 11.5, Color(1, 1, 1, 0.95), 2.0, true)
 	_cross.draw_circle(Vector2.ZERO, 2.4, ink)
 	_cross.draw_circle(Vector2.ZERO, 1.4, Color.WHITE)
+	# Charged heavy melee: the gold charge arc (the weapon stays visible while the button is held) and, for the first
+	# HEAVY_FLASH_TIME of a Heavy Swing, a gold rim around the screen edge. Both are pure draws of sim state.
+	var gold := UiTheme.ACCENT
+	if _charge_k > 0.0:
+		_cross.draw_arc(Vector2.ZERO, 17.0, -PI * 0.5, -PI * 0.5 + TAU * _charge_k, 28, Color(gold, 0.9), 3.0, true)
+		if _charge_k >= 0.98: _cross.draw_arc(Vector2.ZERO, 21.0, 0.0, TAU, 32, Color(1, 1, 1, 0.85), 1.5, true)
+	if _heavy_flash > 0.0:
+		var vs := get_viewport_rect().size
+		var k := clampf(_heavy_flash / HEAVY_FLASH_TIME, 0.0, 1.0)
+		_cross.draw_rect(Rect2(-vs * 0.5, vs), Color(gold.r, gold.g, gold.b, 0.9 * k), false, 6.0)

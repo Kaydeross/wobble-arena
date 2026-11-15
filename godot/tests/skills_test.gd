@@ -48,6 +48,16 @@ func _initialize() -> void:
 	_controls()
 	_carry()
 	_reactions()
+	_statuses()
+	_status_physics()
+	_charged_melee()
+	_signature()
+	# the touch-context check needs a real node inside the tree, so it runs on the first frame
+	process_frame.connect(_sig_context_and_report, CONNECT_ONE_SHOT)
+
+## Deferred tail: the touch layer must be inside the tree for its real button geometry (viewport rect).
+func _sig_context_and_report() -> void:
+	_sig_context()
 	print("SKILLS %d checks, %d failed" % [checks, fails])
 	quit(0 if fails == 0 else 1)
 
@@ -96,7 +106,12 @@ func _tuning() -> void:
 	bare.pickup(picker_web, "bow")
 	ok(picker_web.get_ammo() == 12, "shared/web bow pickup still gives 12 volleys (%d)" % picker_web.get_ammo())
 	ok(float(c.tuned_drops.get("meteor", 9.0)) < float(sim.pickups.drops["base"]["meteor"]), "meteor crate weight lowered")
-	ok(c.wdata("spatula") == bare.wdata("spatula"), "untuned weapons unchanged")
+	# The only tuned difference of a melee weapon is its swing archetype (Sprint 3.1): `swingStyle` + the resolved
+	# `style` dictionary. Strip those two keys and the spatula is still the shared/web weapon, field for field.
+	var tuned_spatula: Dictionary = (c.wdata("spatula") as Dictionary).duplicate(true)
+	tuned_spatula.erase("swingStyle")
+	tuned_spatula.erase("swingStyleDef")
+	ok(tuned_spatula == bare.wdata("spatula"), "untuned weapon fields unchanged (the spatula only adds its swing style)")
 	c.damage_rule = "classic"
 	ok(not c.tuning_active() and float(c.wdata("mammoth")["headMul"]) == shared_head, "classic rule (parity tests): shared numbers")
 	c.damage_rule = "zones"
@@ -717,3 +732,777 @@ func _reactions() -> void:
 	c3.weapons.fire_gun(a3, "sniper")
 	ok(r4.vz < 0.0, "redirect: tuning off never redirects")
 	s3.dispose()
+
+# 8. Charged heavy melee + swing archetypes (Sprint 3.1, docs/DAMAGE.md "Charged heavy melee"): holding FIRE 0.45 s
+#   auto-fires a Heavy Swing (1.45x dmg / 1.5x force / parry smash), a quick tap stays the light swing; the swingStyle
+#   archetypes are data (arc/lift in melee_tick, tipMul/hit window in melee_sweep); offline only (net_started disables
+#   the charge); tuning off is the classic path; nothing draws a random number.
+func _charged_melee() -> void:
+	var sim := new_sim(0)
+	var c := sim.combat
+	var p := sim.player
+	var pc: PlayerControl = sim.controllers[p]
+	ok(c.tuning_active(), "charged melee: the overlay is on offline")
+	# --- the archetype data: swingStyles resolved into wdata(key).style ---
+	var style_ids := {"cleave": ["bat", "spatula", "spiritlevel"], "crush": ["mallet", "pipewrench", "hammer"],
+		"thrust": ["drill", "katana", "trident"], "whip": ["tapemeasure", "wirewhip"]}
+	for sid: String in style_ids:
+		for key: String in style_ids[sid]:
+			var tw := c.wdata(key)
+			ok(str(tw.get("swingStyle", "")) == sid and (tw.get("swingStyleDef") as Dictionary).has("arc"),
+				"swing style: %s is %s" % [key, sid])
+	var cleave_style: Dictionary = c.wdata("bat")["swingStyleDef"]
+	ok(is_equal_approx(float(cleave_style["arc"]), 3.4) and is_equal_approx(float(cleave_style["lift"]), -0.02) \
+		and is_equal_approx(float(cleave_style["tipMul"]), 1.0) and is_equal_approx(float(cleave_style["hitStart"]), 0.04) \
+		and is_equal_approx(float(cleave_style["hitEnd"]), 1.2), "cleave is the classic swing (3.4 / -0.02 / 1 / .04 / 1.2)")
+	ok(is_equal_approx(float((c.wdata("mallet")["swingStyleDef"] as Dictionary)["lift"]), -0.28), "crush chops down (lift -0.28)")
+	ok(is_equal_approx(float((c.wdata("katana")["swingStyleDef"] as Dictionary)["tipMul"]), 1.15), "thrust reaches further (tipMul 1.15)")
+	ok(is_equal_approx(float((c.wdata("wirewhip")["swingStyleDef"] as Dictionary)["hitStart"]), 0.28), "whip lands late (hitStart .28)")
+	var bare := Combat.new()
+	bare.load_content()
+	ok(not (bare.wdata("bat") as Dictionary).has("swingStyleDef") and not (bare.wdata("bat") as Dictionary).has("swingStyle"),
+		"shared/web bat has no swingStyle (tuning off: the classic swing)")
+	ok(Combat.charge_frac(-1.0) == 0.0 and is_equal_approx(Combat.charge_frac(Combat.HEAVY_CHARGE * 0.5), 0.5) \
+		and Combat.charge_frac(Combat.HEAVY_CHARGE * 2.0) == 1.0, "charge_frac maps 0..0.45 s to the HUD ring 0..1")
+	bare.dispose()
+	# --- the style changes the pose arc (melee_tick) and the reach (melee_sweep tipMul) ---
+	p.phys.place(0.0, 0.0, 0.0); p.phys.grounded = true; pose(p)
+	p.weapon = "bat"; p.cool = 0.0; p.swing = -1.0
+	c.melee_begin(p, "bat", 0.0)
+	p.swing = 0.25
+	c.melee_tick(p, "bat", 0.0, 0.0)
+	var cleave_x := p.aim_x
+	var cleave_y := p.aim_y
+	var cleave_z := p.aim_z
+	p.weapon = "drill"; p.cool = 0.0; p.swing = -1.0
+	c.melee_begin(p, "drill", 0.0)
+	p.swing = 0.25
+	c.melee_tick(p, "drill", 0.0, 0.0)
+	ok(absf(p.aim_x) < absf(cleave_x) and p.aim_z > cleave_z + 0.1,
+		"style arc: thrust points ahead (%.2f / %.2f) where cleave sweeps sideways (%.2f / %.2f)" % [p.aim_x, p.aim_z, cleave_x, cleave_z])
+	p.weapon = "mallet"; p.cool = 0.0; p.swing = -1.0
+	c.melee_begin(p, "mallet", 0.0)
+	p.swing = 0.25
+	c.melee_tick(p, "mallet", 0.0, 0.0)
+	ok(p.aim_y < cleave_y - 0.1, "style lift: crush swings down (%.2f vs cleave %.2f)" % [p.aim_y, cleave_y])
+	# tipMul: the sampled weapon line (bat_now) reaches tip * tipMul
+	p.phys.place(0.0, 0.0, 0.0); p.phys.grounded = true; pose(p)
+	p.weapon = "bat"; p.cool = 0.0; p.swing = -1.0; p.bat_valid = false
+	c.melee_begin(p, "bat", 0.0); p.swing = 0.5
+	c.melee_sweep(p)
+	var reach_bat := sqrt(pow(p.bat_now[21] - p.hand_x, 2) + pow(p.bat_now[22] - p.hand_y, 2) + pow(p.bat_now[23] - p.hand_z, 2))
+	ok(is_equal_approx(reach_bat, 1.85), "cleave tipMul 1.0: the bat line reaches its 1.85 m tip (%s)" % reach_bat)
+	p.weapon = "wirewhip"; p.cool = 0.0; p.swing = -1.0; p.bat_valid = false
+	c.melee_begin(p, "wirewhip", 0.0); p.swing = 0.5
+	c.melee_sweep(p)
+	var reach_whip := sqrt(pow(p.bat_now[21] - p.hand_x, 2) + pow(p.bat_now[22] - p.hand_y, 2) + pow(p.bat_now[23] - p.hand_z, 2))
+	ok(is_equal_approx(reach_whip, 3.15 * 1.25), "whip tipMul 1.25: the wire reaches 3.94 m (%s)" % reach_whip)
+	# --- the hit timing window: at swing .9 cleave is still inside (.04-1.2), crush has ended (.85) ---
+	var e: FighterState = sim.add_fighter("wobbler")
+	e.team = 0; e.hp = 1000.0; e.invuln = 0.0
+	e.phys.place(0.0, 0.0, 1.5); e.phys.grounded = true; e.yaw = 0.0; e.face_yaw = PI; pose(e)
+	p.phys.place(0.0, 0.0, 0.0); p.phys.grounded = true; p.yaw = 0.0; p.face_yaw = 0.0; pose(p)
+	p.weapon = "bat"; p.cool = 0.0; p.swing = -1.0; p.bat_valid = false
+	c.melee_begin(p, "bat", 0.0); p.swing = 0.9
+	c.melee_sweep(p); c.melee_sweep(p)
+	ok(e.hp < 1000.0, "hit window: cleave still hits at .9")
+	e.hp = 1000.0
+	p.weapon = "mallet"; p.cool = 0.0; p.swing = -1.0; p.bat_valid = false
+	c.melee_begin(p, "mallet", 0.0); p.swing = 0.9
+	c.melee_sweep(p); c.melee_sweep(p)
+	ok(is_equal_approx(e.hp, 1000.0), "hit window: crush (hitEnd .85) has passed at .9")
+	# keep the extra fighter out of the way of the input tests below
+	e.phys.place(0.0, 0.0, 50.0); e.phys.vx = 0.0; e.phys.vy = 0.0; e.phys.vz = 0.0
+	p.weapon = "spatula"; p.cool = 0.0; p.swing = -1.0
+	p.phys.place(0.0, 0.0, 0.0); pose(p)
+	# --- the input state machine (PlayerControl): tap = light, hold .45 s auto-fires heavy, release early = light ---
+	pc.input.clear(); p.charge_t = -1.0; p.heavy = false
+	pc.input.hold("script", "fire", true)
+	sim.step(DT)
+	pc.input.hold("script", "fire", false)
+	sim.step(DT)
+	ok(p.swing >= 0.0 and not p.heavy, "quick tap: the normal light swing (a tap never charges)")
+	p.swing = -1.0; p.cool = 0.0; p.charge_t = -1.0
+	pc.input.clear()
+	var st0 := c.rng.state
+	pc.input.hold("script", "fire", true)
+	var steps := 0
+	while p.swing < 0.0 and steps < 200:
+		sim.step(DT); steps += 1
+	ok(steps >= 54 and steps <= 56, "charge: the Heavy Swing auto-fires at 0.45 s while FIRE is held (%d steps = %.3f s)" % [steps, steps * DT])
+	ok(p.heavy, "the auto-fired swing is a Heavy Swing")
+	ok(c.rng.state == st0, "charging a Heavy Swing draws no random numbers")
+	pc.input.clear()
+	# release before the threshold: still the light swing, and the charge never survives into the swing
+	p.swing = -1.0; p.cool = 0.0; p.charge_t = -1.0; p.heavy = false
+	pc.input.hold("script", "fire", true)
+	for i in 10: sim.step(DT)
+	ok(p.swing < 0.0 and p.charge_t > 0.0 and p.charge_t < Combat.HEAVY_CHARGE,
+		"under 0.45 s: still charging (%.3f s)" % p.charge_t)
+	pc.input.hold("script", "fire", false)
+	sim.step(DT)
+	ok(p.swing >= 0.0 and not p.heavy, "release before 0.45 s: the normal light swing")
+	# the exact 0.45 boundary: 0.44 + one step is under, the step that crosses fires
+	p.swing = -1.0; p.cool = 0.0; p.charge_t = 0.44; p.heavy = false
+	pc.input.hold("script", "fire", true)
+	sim.step(DT)
+	ok(p.swing < 0.0 and not p.heavy, "0.44 s + one step is still under the 0.45 s threshold")
+	p.charge_t = Combat.HEAVY_CHARGE - DT * 0.5
+	sim.step(DT)
+	ok(p.swing >= 0.0 and p.heavy, "the first step that crosses 0.45 s fires the Heavy Swing")
+	pc.input.clear()
+	# --- online: the peer "sw" replay carries no heavy bit, so charging is disabled while net_started ---
+	c.net_started = true; c.net_zones = true
+	p.swing = -1.0; p.cool = 0.0; p.charge_t = -1.0; p.heavy = false
+	pc.input.hold("script", "fire", true)
+	sim.step(DT)
+	ok(p.swing >= 0.0 and not p.heavy and p.charge_t < 0.0, "online (net_started): no charge, the classic immediate light swing")
+	pc.input.clear()
+	c.net_zones = false; c.net_started = false
+	# --- tuning off (web/parity path): no charge state at all, a heavy request stays light ---
+	c.damage_rule = "classic"
+	p.swing = -1.0; p.cool = 0.0; p.charge_t = -1.0; p.heavy = false
+	pc.input.hold("script", "fire", true)
+	sim.step(DT)
+	ok(p.swing >= 0.0 and not p.heavy and p.charge_t < 0.0, "tuning off: fire swings at once, light, no charge state")
+	pc.input.clear()
+	p.swing = -1.0; p.cool = 0.0
+	c.melee_begin(p, "spatula", 0.0, true)
+	ok(not p.heavy, "tuning off: melee_begin(heavy=true) stays light (web/parity path)")
+	c.damage_rule = "zones"
+	p.swing = -1.0; p.cool = 0.0
+	# --- the multipliers and the parry smash, on a scripted contact ---
+	p.weapon = "spatula"
+	var light := _charged_hit(c, p, e, false)
+	var st_light := c.rng.state
+	var heavy := _charged_hit(c, p, e, true)
+	ok(light["dmg"] > 0.0 and is_equal_approx(float(heavy["dmg"]) / float(light["dmg"]), Combat.HEAVY_DMG_MUL),
+		"Heavy Swing deals 1.45x damage (%.3f vs %.3f)" % [float(heavy["dmg"]), float(light["dmg"])])
+	ok(is_equal_approx(float(heavy["force"]) / float(light["force"]), Combat.HEAVY_FORCE_MUL),
+		"Heavy Swing carries 1.5x force (%.3f vs %.3f)" % [float(heavy["force"]), float(light["force"])])
+	ok(c.rng.state == st_light, "a Heavy Swing hit draws no random numbers")
+	# light: the tuned parry deflects it; heavy: the parry is smashed and the damage lands
+	e.parry_t = 0.22; e.hp = 1000.0
+	p.phys.place(0.0, 0.0, 0.0); p.phys.grounded = true; p.face_yaw = 0.0; pose(p)
+	e.phys.place(0.0, 0.0, 1.5); e.phys.grounded = true; e.face_yaw = PI; pose(e)
+	p.weapon = "spatula"; p.stun = 0.0; p.cool = 0.0; p.swing = -1.0; p.bat_valid = false
+	c.melee_begin(p, "spatula", 0.0)
+	p.swing = 0.5
+	c.melee_sweep(p); c.events.clear(); c.melee_sweep(p)
+	ok(is_equal_approx(e.hp, 1000.0) and p.swing < 0.0 and p.stun >= 0.6 and is_equal_approx(e.parry_t, 0.0),
+		"a light swing is still parried (no damage, the attacker is staggered)")
+	p.stun = 0.0; p.cool = 0.0; p.swing = -1.0; p.bat_valid = false
+	e.parry_t = 0.22; e.hp = 1000.0
+	c.melee_begin(p, "spatula", 0.0, true)
+	p.swing = 0.5
+	c.melee_sweep(p); c.events.clear(); c.melee_sweep(p)
+	var broke := false
+	var parried := false
+	for ev: Dictionary in c.events:
+		if ev.get("type") == "parry_break": broke = true
+		if ev.get("type") == "parry": parried = true
+	ok(e.hp < 1000.0 and is_equal_approx(e.parry_t, 0.0) and broke and not parried,
+		"a Heavy Swing smashes the parry: damage lands, parry_t is consumed, parry_break event")
+	# no flag leak: a heavy event only for the heavy swing; a following light swing is not heavy
+	c.events.clear()
+	c.melee_begin(p, "spatula", 0.0, true)
+	ok(c.events.any(func(ev: Dictionary) -> bool: return ev.get("type") == "heavy_swing"),
+		"a Heavy Swing emits the heavy_swing event (the gold-rim hook)")
+	c.events.clear()
+	c.melee_begin(p, "spatula", 0.0)
+	ok(not p.heavy and not c.events.any(func(ev: Dictionary) -> bool: return ev.get("type") == "heavy_swing"),
+		"the next light swing carries no heavy flag (no leak)")
+	# --- cancel paths: weapon swap, net, stun, knockdown, carried ---
+	p.swing = -1.0; p.cool = 0.0; p.charge_t = 0.3
+	c.set_weapon(p, "bat")
+	ok(is_equal_approx(p.charge_t, -1.0) and not p.heavy, "a weapon swap cancels the charge")
+	p.charge_t = 0.3; p.trap_t = 1.0; p.swing = -1.0; p.cool = 0.0
+	pc.input.clear(); pc.input.hold("script", "fire", true)
+	sim.step(DT)
+	ok(p.charge_t < 0.0, "the net cancels the charge")
+	p.trap_t = 0.0; p.stun = 0.5; p.charge_t = 0.3
+	sim.step(DT)
+	ok(p.charge_t < 0.0, "a stun (a real hit) cancels the charge")
+	p.stun = 0.0; p.flash = 0.12; p.charge_t = 0.3
+	sim.step(DT)
+	ok(p.charge_t < 0.0, "being hit (the victim flash) cancels the charge")
+	p.flash = 0.0; p.down_t = 1.0; p.charge_t = 0.3
+	sim.step(DT)
+	ok(p.charge_t < 0.0, "a knockdown cancels the charge")
+	p.down_t = 0.0; p.carried_by = e; p.charge_t = 0.3
+	sim.step(DT)
+	ok(p.charge_t < 0.0, "being carried cancels the charge")
+	p.carried_by = null; pc.input.clear(); c.set_weapon(p, "spatula")
+	# --- bots never charge (BotBrain keeps tapping melee_begin) ---
+	var bs := new_sim(2)
+	for i in 120: bs.step(DT)
+	var bot_charged := false
+	for b: FighterState in bs.fighters:
+		if b.charge_t >= 0.0 or b.heavy: bot_charged = true
+	ok(not bot_charged, "bots never charge a Heavy Swing (they keep tapping melee_begin)")
+	bs.dispose()
+	# --- a data edit of the archetype changes the swing without a code edit (resolved through wdata) ---
+	c.apply_tuning({"swingStyles": {"cleave": {"arc": 0.8, "lift": -0.02, "tipMul": 1.0, "hitStart": 0.04, "hitEnd": 1.2}},
+		"weapons": {"bat": {"swingStyle": "cleave"}}})
+	p.weapon = "bat"; p.cool = 0.0; p.swing = -1.0
+	c.melee_begin(p, "bat", 0.0)
+	p.swing = 0.25
+	c.melee_tick(p, "bat", 0.0, 0.0)
+	ok(absf(p.aim_x) < absf(cleave_x) and absf(p.aim_x - cleave_x) > 0.1,
+		"a data edit of the style arc changes the swing arc without code edits (%.2f vs %.2f)" % [p.aim_x, cleave_x])
+	sim.dispose()
+
+# 9. Elemental and physics statuses (Post-v0.4.0 Sprint 3.2, docs/DAMAGE.md "Elemental and physics statuses"): the status
+#   table is weapon_tuning.json data (chill on the Snowball Cannon, shock on the Live Wire, heavy on the Cement Bucket),
+#   applied by Combat.apply_status from the real hit paths and read by FighterPhysics; overlay-only, no combat RNG,
+#   re-apply refreshes instead of stacking, place_at clears. The Angle Grinder is a flame-type GUN: no shared hit path.
+func _statuses() -> void:
+	var sim := new_sim(0)
+	var c := sim.combat
+	var a := sim.player
+	ok(c.tuning_active(), "statuses: the offline match runs with the overlay")
+	# --- 9a. the table: overlay-only data with the brief's numbers; the shared web tables stay clean ---
+	var bare := Combat.new()
+	bare.load_content()
+	var bare_snow: Dictionary = bare.wdata("snow")
+	ok(not bare.tuning_active() and not bare_snow.has("chill"), "shared/web snow has no chill entry (tuning off: unchanged)")
+	var chill: Dictionary = c.wdata("snow").get("chill")
+	ok(is_equal_approx(float(chill.get("time", 0.0)), 3.0) and is_equal_approx(float(chill.get("speed", 0.0)), 0.68) \
+		and float(chill.get("traction", 1.0)) == 0.3, "snow: chill {time 3.0, speed 0.68, traction 0.3} (%s)" % [chill])
+	var shock: Dictionary = c.wdata("wirewhip").get("shock")
+	ok(is_equal_approx(float(shock.get("time", 0.0)), 0.35), "wirewhip: shock {time 0.35} (%s)" % [shock])
+	var heavy: Dictionary = c.wdata("cementbucket").get("heavy")
+	ok(is_equal_approx(float(heavy.get("time", 0.0)), 4.0) and is_equal_approx(float(heavy.get("grav", 1.0)), 1.4) \
+		and is_equal_approx(float(heavy.get("jump", 1.0)), 0.65), "cementbucket: heavy {time 4.0, grav 1.4, jump 0.65} (%s)" % [heavy])
+	var ag: Dictionary = c.wdata("anglegrinder")
+	ok(str(ag.get("type", "")) == "gun" and str(ag.get("style", "")) == "flame" and not ag.has("shock"),
+		"Angle Grinder: flame-type gun, so it does not share the Live Wire's shock")
+	bare.dispose()
+	# --- 9b. the real melee path: only a Live Wire swing shocks; the other melee weapons apply nothing ---
+	var v := sim.add_fighter("wobbler")
+	c.place_at(v, 0.0, 1.2); pose(v); pose(a)
+	v.hp = 1e6; v.invuln = 0.0
+	c.events.clear()
+	_swing(c, a, "bat")
+	ok(v.chill_t == 0.0 and v.shock_t == 0.0 and v.heavy_t == 0.0, "a Big Bat swing applies no status")
+	c.place_at(v, 0.0, 1.2); pose(v)
+	v.hp = 1e6; v.invuln = 0.0; v.down_t = 0.0; v.stun = 0.0
+	c.events.clear()
+	_swing(c, a, "wirewhip")
+	ok(v.shock_t == 0.35, "Live Wire hit: shock_t is exactly 0.35 s (%s)" % v.shock_t)
+	ok(v.chill_t == 0.0 and v.heavy_t == 0.0, "Live Wire hit applies only shock")
+	ok(v.stun >= 0.35, "Live Wire shock hit-stuns (stun %s)" % v.stun)
+	ok(_has_event(c, "spark"), "Live Wire shock emits the spark VFX event")
+	# --- 9c. the real ball path: rolling Snowball -> chill, Cement Bucket -> heavy, never each other ---
+	var b1 := sim.add_fighter("wobbler")
+	_ball_hit(c, a, "snow", b1, 6.0, 6.0)
+	ok(b1.chill_t == 3.0 and b1.chill_speed == 0.68 and b1.chill_traction == 0.3,
+		"Snowball rolling hit: chill_t exactly 3.0 s, 0.68x speed, reduced traction (%s / %s / %s)" % [b1.chill_t, b1.chill_speed, b1.chill_traction])
+	ok(b1.shock_t == 0.0 and b1.heavy_t == 0.0, "Snowball hit applies only chill")
+	var b2 := sim.add_fighter("wobbler")
+	_ball_hit(c, a, "cementbucket", b2, 10.0, 6.0)
+	ok(b2.heavy_t == 4.0 and b2.heavy_grav == 1.4 and b2.heavy_jump == 0.65,
+		"Cement Bucket rolling hit: heavy_t exactly 4.0 s, 1.4x gravity, 0.65x jump (%s / %s / %s)" % [b2.heavy_t, b2.heavy_grav, b2.heavy_jump])
+	ok(b2.chill_t == 0.0 and b2.shock_t == 0.0, "Cement Bucket hit applies only heavy")
+	c.weapons.balls.clear()
+	# --- 9d. apply_status unit checks: refresh-not-stack, timers, place_at, no combat RNG ---
+	var x := sim.add_fighter("wobbler")
+	c.place_at(x, 20.0, 20.0)
+	var rng0: int = c.rng.state
+	c.apply_status(x, c.wdata("snow"))
+	ok(x.chill_t == 3.0 and x.chill_speed == 0.68 and x.chill_traction == 0.3, "apply_status(snow): chill_t 3.0")
+	c.apply_status(x, c.wdata("wirewhip"))
+	ok(x.shock_t == 0.35 and x.stun >= 0.35, "apply_status(wirewhip): shock_t 0.35 + hit-stun")
+	c.apply_status(x, c.wdata("cementbucket"))
+	ok(x.heavy_t == 4.0 and x.heavy_grav == 1.4 and x.heavy_jump == 0.65, "apply_status(cementbucket): heavy_t 4.0")
+	ok(c.rng.state == rng0, "apply_status draws no combat RNG")
+	var sp := sim.add_fighter("wobbler")
+	c.place_at(sp, 24.0, 20.0)
+	c.apply_status(sp, c.wdata("spatula"))
+	ok(sp.chill_t == 0.0 and sp.shock_t == 0.0 and sp.heavy_t == 0.0, "a weapon without a status entry applies none")
+	c.timers(x, 1.0)
+	ok(x.chill_t == 2.0 and x.shock_t == 0.0 and x.heavy_t == 3.0,
+		"Combat.timers counts the statuses down (%s / %s / %s)" % [x.chill_t, x.shock_t, x.heavy_t])
+	c.apply_status(x, c.wdata("snow"))
+	ok(x.chill_t == 3.0 and x.chill_speed == 0.68, "re-apply refreshes the timer to 3.0 (maxf, not 6.0) and keeps one 0.68x")
+	c.timers(x, 0.1)
+	ok(x.shock_t == 0.0 and is_equal_approx(x.heavy_t, 2.9), "the timers keep counting down to 0")
+	c.place_at(x, 20.0, 20.0)
+	ok(x.chill_t == 0.0 and x.shock_t == 0.0 and x.heavy_t == 0.0, "place_at (and so respawn) clears the statuses")
+	# --- 9e. the shock interrupt cancels every wind-up (swing / kick / throw / bow draw / charged heavy) ---
+	x.swing = 0.6; x.bat_valid = true; x.slam = true; x.stab = true; x.cyclone = true; x.assist_on = true
+	x.kick_t = 0.2; x.throw_key = "knife"; x.throw_hold = true
+	x.t_charge = 0.3; x.draw = 0.5; x.nocked = true; x.charge_t = 0.7; x.heavy = true
+	c.apply_status(x, c.wdata("wirewhip"))
+	ok(x.swing == -1.0 and not x.bat_valid and not x.slam and not x.stab and not x.cyclone and not x.assist_on,
+		"shock cancels an in-progress swing")
+	ok(x.kick_t == -1.0, "shock cancels a kick")
+	ok(x.throw_key == "" and not x.throw_hold, "shock cancels a throw wind-up")
+	ok(x.t_charge == -1.0 and x.draw == 0.0 and not x.nocked, "shock cancels a bow draw / trident charge")
+	ok(x.charge_t == -1.0 and not x.heavy, "shock cancels a charged Heavy Swing")
+	# --- 9f. every branch is gated: a classic-rule combat (tuning off) applies nothing ---
+	var gv := sim.add_fighter("wobbler")
+	c.place_at(gv, 28.0, 20.0)
+	c.damage_rule = "classic"
+	ok(not c.tuning_active(), "classic rule: tuning off")
+	c.apply_status(gv, c.wdata("snow"))
+	ok(gv.chill_t == 0.0, "tuning off: apply_status is a no-op")
+	c.damage_rule = "zones"
+	ok(c.tuning_active(), "zones rule: tuning back on")
+	sim.dispose()
+
+## One rolling-ball hit through the real Weapons.step_balls path: a big ball dropped onto the victim so the roll hit (and
+## its Combat.topple) runs, and Combat.apply_status sees the same hit result the hit path applied.
+func _ball_hit(c: Combat, owner: FighterState, key: String, v: FighterState, x: float, z: float) -> void:
+	c.place_at(v, x, z)
+	pose(v)
+	var b := Weapons.Ball.new()
+	b.kind = "ball"; b.key = key; b.w = c.wdata(key); b.owner = owner
+	b.px = x; b.pz = z; b.r = 1.0
+	b.py = v.phys.py + 0.8 + 0.2 - 0.45         # ball_y(b) ~ the victim's hip height (r = 0.35 + roll_t * 0.6)
+	b.rolling = true; b.roll_t = 0.1; b.age = 0.2; b.heading = 0.0   # roll_t stays below the >0.2 wall-smash check
+	c.weapons.balls.append(b)
+	c.weapons.step_balls(DT)
+
+func _has_event(c: Combat, type: String) -> bool:
+	for e: Dictionary in c.events:
+		if str(e.get("type", "")) == type: return true
+	return false
+
+## 9g. the physics-level formulas: a bare FighterState (no Combat, as in the JS parity suite) still reads the fields.
+func _status_physics() -> void:
+	var bare := FighterState.new()
+	ok(bare.chill_t == 0.0 and bare.shock_t == 0.0 and bare.heavy_t == 0.0 and bare.chill_speed == 1.0 \
+		and bare.chill_traction == 1.0 and bare.heavy_grav == 1.0 and bare.heavy_jump == 1.0,
+		"bare FighterState: neutral status fields with identity multipliers")
+	var floor := [{"minX": -50.0, "maxX": 50.0, "minZ": -50.0, "maxZ": 50.0, "top": 0.0, "bottom": -1.0}]
+	var n := FighterState.new(); n.phys.place(0.0, 0.0, 0.0); n.phys.wish_x = 1.0
+	_run(n, floor, 240)
+	ok(n.phys.vx == 7.5, "normal run speed is 7.5 m/s (%s)" % n.phys.vx)
+	var ch := FighterState.new(); ch.phys.place(0.0, 0.0, 0.0); ch.phys.wish_x = 1.0
+	ch.chill_t = 3.0; ch.chill_speed = 0.68; ch.chill_traction = 0.3
+	_run(ch, floor, 240)
+	ok(is_equal_approx(ch.phys.vx, 7.5 * 0.68), "chill: move speed is 0.68x (%s vs %s m/s)" % [ch.phys.vx, n.phys.vx])
+	var n2 := FighterState.new(); n2.phys.place(0.0, 0.0, 0.0); n2.phys.vx = 6.0; n2.phys.grounded = true
+	var c2 := FighterState.new(); c2.phys.place(0.0, 0.0, 0.0); c2.phys.vx = 6.0; c2.phys.grounded = true
+	c2.chill_t = 3.0; c2.chill_speed = 0.68; c2.chill_traction = 0.3
+	n2.phys.step(DT, floor, n2); c2.phys.step(DT, floor, c2)
+	var decel_n := 6.0 - n2.phys.vx
+	var decel_c := 6.0 - c2.phys.vx
+	ok(decel_c > 0.0 and decel_c < decel_n * 0.2,
+		"chill: ground traction reduced (one-step decel %s vs normal %s m/s)" % [decel_c, decel_n])
+	var hg := FighterState.new(); hg.phys.place(0.0, 10.0, 0.0); hg.phys.grounded = false
+	hg.heavy_t = 4.0; hg.heavy_grav = 1.4; hg.heavy_jump = 0.65
+	hg.phys.step(DT, [], hg)
+	ok(is_equal_approx(hg.phys.vy, -24.0 * 1.4 * DT), "heavy: gravity is 1.4x (vy %s after one step)" % hg.phys.vy)
+	var j := FighterState.new(); j.phys.place(0.0, 0.0, 0.0); j.phys.grounded = true; j.phys.want_jump = true
+	j.heavy_t = 4.0; j.heavy_grav = 1.4; j.heavy_jump = 0.65
+	j.phys.step(DT, floor, j)
+	ok(is_equal_approx(j.phys.vy, 9.2 * 0.65 - 24.0 * 1.4 * DT), "heavy: jump impulse is 0.65x (vy %s after the jump step)" % j.phys.vy)
+	var jn := FighterState.new(); jn.phys.place(0.0, 0.0, 0.0); jn.phys.grounded = true; jn.phys.want_jump = true
+	jn.phys.step(DT, floor, jn)
+	ok(is_equal_approx(jn.phys.vy, 9.2 - 24.0 * DT), "normal jump unchanged (%s)" % jn.phys.vy)
+	var hw := FighterState.new(); hw.phys.place(0.0, 0.0, 0.0); hw.phys.wish_x = 1.0
+	hw.heavy_t = 4.0; hw.heavy_grav = 1.4; hw.heavy_jump = 0.65
+	_run(hw, floor, 240)
+	ok(hw.phys.vx == 7.5, "heavy: walk speed is unchanged (%s m/s)" % hw.phys.vx)
+
+func _run(st: FighterState, solids: Array, steps: int) -> void:
+	for i in steps: st.phys.step(DT, solids, st)
+
+## One scripted melee contact for the charged-heavy test: attacker/victim posed 1.5 m apart, a spatula swing at swing 0.5
+## (the first sweep writes the samples, the second one contacts) and the hit event's {dmg, force}. The caller owns the
+## victim's hp/parry state.
+func _charged_hit(c: Combat, a: FighterState, v: FighterState, heavy: bool) -> Dictionary:
+	a.weapon = "spatula"
+	a.phys.place(0.0, 0.0, 0.0); a.phys.grounded = true; a.yaw = 0.0; a.face_yaw = 0.0
+	a.cool = 0.0; a.swing = -1.0; a.bat_valid = false
+	v.phys.place(0.0, 0.0, 1.5); v.phys.grounded = true; v.yaw = 0.0; v.face_yaw = PI
+	pose(a); pose(v)
+	a.hp = 1000.0; v.hp = 1000.0
+	v.invuln = 0.0; v.down_t = 0.0; v.shield_t = 0.0; v.big_t = 0.0; v.trap_t = 0.0; v.parry_t = 0.0; v.dead = false
+	c.melee_begin(a, "spatula", 0.0, heavy)
+	a.swing = 0.5
+	c.melee_sweep(a)          # samples only (bat_valid was false)
+	c.events.clear()
+	c.melee_sweep(a)          # contacts
+	var out := {"dmg": 1000.0 - v.hp, "force": 0.0}
+	for ev: Dictionary in c.events:
+		if ev.get("type") == "hit" and ev.get("f") == v: out["force"] = float(ev["force"])
+	return out
+
+# 10. Class signature active skills (Post-v0.4.0 Sprint 3.3, docs/DAMAGE.md "Class signature skills"): one move per
+# class on a shared 12 s "sig" charge, gated on tuning_active(), triggered by the touch context button / the signature
+# key. No new combat.rng draws (the slam's knockdown is the deterministic Combat.topple_flat).
+
+## The last "hit" event aimed at `v` ({} = no hit), read from the raw Combat event list.
+func _hit_of(c: Combat, v: FighterState) -> Dictionary:
+	var out := {}
+	for e: Dictionary in c.events:
+		if e.get("type") == "hit" and e.get("f") == v: out = e
+	return out
+
+## The knockback factor hit() multiplies a victim's force by (mode / class / giant multipliers).
+func _fk(c: Combat, v: FighterState) -> float:
+	return (c.kb_setting if c.kb_setting != 0.0 else 1.0) * 0.8 \
+		* (float(c.mode.get("kbMul", 1.0)) if c.mode.get("kbMul", 0) else 1.0) * v.cls_kb * (0.5 if v.big_t > 0.0 else 1.0)
+
+func _signature() -> void:
+	_sig_map()
+	_sig_gate_charges()
+	_sig_moves()
+	_sig_fortress()
+	_sig_bots()
+
+## 10a. the class -> move table is total: every shipped class id maps or is documented as none (only Elder).
+func _sig_map() -> void:
+	var sim := new_sim(0)
+	var c := sim.combat
+	var want := {"wobbler": "belly", "bruiser": "slam", "champ": "slam", "rampage": "slam", "kid": "vault",
+		"dash": "vault", "tank": "fort", "alien": "tac", "ace": "tac", "ghost": "phase", "elder": ""}
+	for cid: String in c.classes:
+		ok(want.has(cid), "shipped class %s is covered by the signature table (or SIG_NONE)" % cid)
+		ok(Skills.sig_of(cid) == str(want.get(cid, "")), "class %s -> signature '%s'" % [cid, Skills.sig_of(cid)])
+	for cid: String in want:
+		ok(c.classes.has(cid), "signature class %s ships" % cid)
+	ok(Skills.SIG_NONE.size() == 1 and str(Skills.SIG_NONE[0]) == "elder" and Skills.sig_of("elder") == "",
+		"Elder (Gramps) is documented as having no signature move")
+	ok(Skills.sig_of("no_such_class") == "", "an unknown class id gets no signature move")
+	ok(Skills.SIG_NAMES.size() == 6, "six signature move names")
+	for k: String in Skills.SIG_NAMES:
+		ok(Skills.SIG_CLASS.values().has(k), "move %s is reachable from a class" % k)
+	ok(Skills.sig_kind(FighterState.new()) == "belly", "a bare FighterState is a Wobbler (Belly Bounce)")
+	sim.dispose()
+
+## 10b. the write gate, the one charge and the 12 s regen in Skills.tick, and place_at / recovery-pool isolation.
+func _sig_gate_charges() -> void:
+	var sim := new_sim(0)
+	var c := sim.combat
+	var p := sim.player
+	c.place_at(p, 0.0, 0.0)
+	ok(Skills.sig_kind(p) == "belly" and Skills.sig_ready(p) and Skills.sig_ready_k(p) == 1.0,
+		"Wobbler: Belly Bounce ready on a fresh life")
+	ok(Skills.sig_offer(p, sim) and Skills.sig_block(p, sim) == "", "ready + castable: the context button offers it")
+	c.apply_tuning({})                       # the web numbers / parity gate
+	ok(not c.tuning_active() and Skills.sig_block(p, sim) == "off" and not Skills.do_signature(p, sim, 0.0),
+		"tuning off: the class signature is refused")
+	ok(not p.skill_cd.has("sig") and not p.skill_n.has("sig"), "tuning off: no charge state is written either")
+	c.apply_tuning(Combat.read_json(MatchSim.TUNING_PATH))
+	ok(c.tuning_active() and Skills.sig_ready(p), "tuning on again: ready")
+	var st0 := c.rng.state
+	ok(Skills.do_signature(p, sim, 0.0), "Belly Bounce cast")
+	ok(c.rng.state == st0, "the cast itself draws no combat RNG")
+	ok(int(p.skill_n.get("sig", 1)) == 0 and is_equal_approx(float(p.skill_cd.get("sig", 0.0)), Skills.SIGNATURE_CD),
+		"one charge spent, 12.0 s cooldown (%.2f)" % float(p.skill_cd.get("sig", 0.0)))
+	ok(not Skills.sig_ready(p) and not Skills.sig_offer(p, sim) and Skills.sig_block(p, sim) == "charge",
+		"on cooldown: not ready and not offered")
+	ok(Skills.sig_ready_k(p) == 0.0, "0%% back right after the cast")
+	for i in int(6.0 / DT): Skills.tick(c, p, DT)
+	ok(Skills.sig_ready_k(p) > 0.49 and Skills.sig_ready_k(p) < 0.51, "half back at 6 s (%.3f)" % Skills.sig_ready_k(p))
+	for i in int(5.9 / DT): Skills.tick(c, p, DT)
+	ok(not Skills.sig_ready(p), "still cooling at 11.9 s")
+	for i in 40: Skills.tick(c, p, DT)
+	ok(Skills.sig_ready(p) and not p.skill_cd.has("sig") and not p.skill_n.has("sig"),
+		"back after 12.0 s and the ids are forgotten when full")
+	# the recovery charge is a different skill id: signature regen never touches it
+	p.skill_n["recover"] = 0; p.skill_cd["recover"] = 1.0
+	ok(Skills.do_signature(p, sim, 0.0), "second cast")
+	ok(is_equal_approx(float(p.skill_cd.get("recover", 0.0)), 1.0), "the recovery charge is not the signature charge")
+	ok(not Skills.sig_ready(p), "on cooldown before a fresh life")
+	c.place_at(p, 0.0, 0.0)
+	ok(Skills.sig_ready(p) and not c.sig_fx.has(p), "place_at refills the signature and clears its move windows")
+	# refusals: dead / down / trapped
+	p.dead = true
+	ok(Skills.sig_block(p, sim) == "dead", "dead: refused")
+	p.dead = false; p.down_t = 1.0
+	ok(Skills.sig_block(p, sim) == "down", "knocked down: refused")
+	p.down_t = 0.0; p.trap_t = 1.0
+	ok(Skills.sig_block(p, sim) == "trapped", "netted: refused")
+	p.trap_t = 0.0
+	sim.dispose()
+
+## 10c. every move's exact numbers and refusals (radii, damage, force, durations, directions).
+func _sig_moves() -> void:
+	# --- Belly Bounce (wobbler) ---
+	var sim := new_sim(0)
+	var c := sim.combat
+	var p := sim.player
+	var e := sim.add_fighter("bruiser")
+	c.place_at(p, 0.0, 0.0); c.place_at(e, 0.0, 2.9)
+	p.phys.grounded = true; p.phys.vy = 0.0
+	pose(p); pose(e)
+	e.hp = 100.0
+	var st := c.rng.state
+	c.events.clear()
+	ok(Skills.do_signature(p, sim, 0.0), "belly: cast")
+	ok(c.rng.state == st, "belly: no RNG draw")
+	var he := _hit_of(c, e)
+	ok(not he.is_empty() and is_equal_approx(float(he["dmg"]), Skills.SIG_BELLY_DMG),
+		"belly: 10 damage (%.2f)" % float(he.get("dmg", -1.0)))
+	ok(is_equal_approx(float(he.get("force", 0.0)), Skills.SIG_BELLY_FORCE), "belly: 15 force")
+	var fk := _fk(c, e)
+	ok(is_equal_approx(e.phys.vz, Skills.SIG_BELLY_FORCE * fk) and absf(e.phys.vx) < 1e-9, "belly: knocked away down +z")
+	ok(is_equal_approx(e.phys.vy, (Skills.SIG_BELLY_UP * Skills.SIG_BELLY_FORCE + Skills.SIG_BELLY_FORCE * 0.18) * fk),
+		"belly: knocked up by the 0.55 y direction (vy %.3f)" % e.phys.vy)
+	ok(e.stun >= 0.55, "belly: force 15 is a heavy stagger (stun %.2f)" % e.stun)
+	ok(p.phys.vy >= Skills.SIG_BELLY_HOP and not p.phys.grounded, "belly: the caster bounces (vy %.2f)" % p.phys.vy)
+	var e2 := sim.add_fighter("wobbler")
+	c.place_at(e2, 0.0, 3.1); c.place_at(p, 0.0, 0.0)
+	pose(p); pose(e2); e2.hp = 100.0
+	c.events.clear()
+	ok(Skills.do_signature(p, sim, 0.0), "belly: cast at the 3.1 m target")
+	ok(_hit_of(c, e2).is_empty() and is_equal_approx(e2.hp, 100.0), "belly: 3.1 m is outside the 3.0 m radius")
+	c.place_at(e2, 0.0, 1.0); c.place_at(p, 0.0, 0.0)
+	pose(p); e2.phys.py = 2.1; pose(e2)
+	c.events.clear()
+	ok(Skills.do_signature(p, sim, 0.0) and _hit_of(c, e2).is_empty(), "belly: 2.1 m above is outside the 2.0 m band")
+	sim.dispose()
+
+	# --- Seismic Slam (bruiser): airborne dive -> 3.8 m / 2.5 m AoE 18 dmg / 22 force + 1.1 s topple_flat ---
+	var s2 := new_sim(0)
+	var c2 := s2.combat
+	var b := s2.add_fighter("bruiser")
+	var en := s2.add_fighter("wobbler")
+	c2.place_at(b, 0.0, 0.0); c2.place_at(en, 3.7, 0.0)
+	pose(b); pose(en)
+	b.phys.grounded = true
+	ok(Skills.sig_block(b, s2) == "grounded" and not Skills.do_signature(b, s2, 0.0), "slam: refused on the ground")
+	airborne(s2, b, 3.0)
+	ok(Skills.sig_block(b, s2) == "" and Skills.do_signature(b, s2, 0.0), "slam: cast in the air")
+	ok(is_equal_approx(b.phys.vy, Skills.SIG_SLAM_DIVE), "slam: dives at the -22 m/s terminal speed (%.1f)" % b.phys.vy)
+	ok(c2.sig_fx.has(b) and (c2.sig_fx[b] as Dictionary).has("slam"), "slam: armed until the landing")
+	en.hp = 100.0; en.invuln = 0.0
+	var st2 := c2.rng.state
+	c2.events.clear()
+	b.phys.grounded = true; b.phys.py = 0.0
+	Skills.tick(c2, b, DT)
+	ok(c2.rng.state == st2, "slam landing: topple_flat draws no combat RNG")
+	var hs := _hit_of(c2, en)
+	ok(is_equal_approx(float(hs.get("dmg", 0.0)), Skills.SIG_SLAM_DMG * b.cls_dmg),
+		"slam: 18 damage before the class multiplier (%.2f)" % float(hs.get("dmg", -1.0)))
+	ok(is_equal_approx(float(hs.get("force", 0.0)), Skills.SIG_SLAM_FORCE), "slam: 22 force")
+	ok(is_equal_approx(en.down_t, Skills.SIG_SLAM_DOWN) and en.fall_side == 1 and en.getup_immune == 0.0,
+		"slam: deterministic 1.1 s knockdown on a fixed fall side")
+	ok(not c2.sig_fx.has(b) or not (c2.sig_fx[b] as Dictionary).has("slam"), "slam: the landing consumed the armed dive")
+	c2.place_at(en, 3.9, 0.0); pose(en); en.hp = 100.0; en.down_t = 0.0
+	airborne(s2, b, 3.0)
+	ok(Skills.do_signature(b, s2, 0.0), "slam: cast for the 3.9 m target")
+	en.hp = 100.0; en.invuln = 0.0
+	b.phys.grounded = true; b.phys.py = 0.0
+	c2.events.clear()
+	Skills.tick(c2, b, DT)
+	ok(_hit_of(c2, en).is_empty(), "slam: 3.9 m is outside the 3.8 m radius")
+	c2.place_at(en, 0.0, 1.0); pose(en); en.hp = 100.0
+	airborne(s2, b, 3.0)
+	ok(Skills.do_signature(b, s2, 0.0), "slam: cast for the 2.6 m high target")
+	en.phys.py = 2.6; en.invuln = 0.0
+	b.phys.grounded = true; b.phys.py = 0.0
+	c2.events.clear()
+	Skills.tick(c2, b, DT)
+	ok(_hit_of(c2, en).is_empty(), "slam: 2.6 m above is outside the 2.5 m band")
+	s2.dispose()
+
+	# --- Vault Flip (kid): 1.5 s speed burst, front springboard only ---
+	var s3 := new_sim(0)
+	var c3 := s3.combat
+	var k := s3.add_fighter("kid")
+	var kv := s3.add_fighter("wobbler")
+	c3.place_at(k, 0.0, 0.0); c3.place_at(kv, 0.0, 1.9)
+	pose(k); pose(kv)
+	k.face_yaw = 0.0; k.phys.vy = 0.0; k.phys.grounded = true; kv.hp = 100.0
+	c3.events.clear()
+	ok(Skills.do_signature(k, s3, k.face_yaw), "vault: cast")
+	ok(is_equal_approx(k.spd_t, Skills.SIG_VAULT_SPD), "vault: 1.5 s speed burst")
+	var hv := _hit_of(c3, kv)
+	ok(is_equal_approx(float(hv.get("dmg", 0.0)), Skills.SIG_VAULT_DMG * k.cls_dmg),
+		"vault: 6 damage before the class multiplier (%.2f)" % float(hv.get("dmg", -1.0)))
+	ok(is_equal_approx(float(hv.get("force", 0.0)), Skills.SIG_VAULT_FORCE), "vault: 10 force")
+	ok(k.phys.vy >= Skills.SIG_VAULT_VY and not k.phys.grounded, "vault: springboard bounce (vy %.2f)" % k.phys.vy)
+	var kb := s3.add_fighter("wobbler")
+	c3.place_at(kv, 20.0, 0.0)                 # the first springboard target leaves the arena of this check
+	c3.place_at(kb, 0.0, -1.9); c3.place_at(k, 0.0, 0.0)
+	pose(k); pose(kb)
+	k.face_yaw = 0.0; k.phys.vy = 0.0; k.phys.grounded = true; k.spd_t = 0.0; kb.hp = 100.0
+	c3.events.clear()
+	ok(Skills.do_signature(k, s3, 0.0), "vault: cast with the target behind")
+	ok(_hit_of(c3, kb).is_empty() and k.phys.vy == 0.0, "vault: an opponent behind is not springboarded")
+	ok(is_equal_approx(k.spd_t, Skills.SIG_VAULT_SPD), "vault: the speed burst is unconditional")
+	c3.place_at(k, 0.0, 0.0); k.phys.grounded = true; k.spd_t = 0.0
+	var khp := int(c3.wdata("katana")["dmg"])   # far above: outside the 2.0 m reach
+	c3.place_at(kb, 0.0, 2.1); pose(kb); kb.hp = 100.0
+	c3.events.clear()
+	ok(Skills.do_signature(k, s3, 0.0) and _hit_of(c3, kb).is_empty(), "vault: 2.1 m is outside the 2.0 m reach")
+	ok(khp > 0, "katana table sane")
+	s3.dispose()
+
+	# --- Tac-Reload (ace): instant magazine + 1.5 s x1.5 fire rate ---
+	var s4 := new_sim(0)
+	var c4 := s4.combat
+	var ac := s4.add_fighter("ace")
+	c4.place_at(ac, 0.0, 0.0)
+	ok(Skills.sig_block(ac, s4) == "gun" and not Skills.do_signature(ac, s4, 0.0), "tac: refused without a firearm")
+	c4.pickup(ac, "smg")
+	var sl: Dictionary = ac.current_slot()
+	sl["mag"] = 0
+	var cap := int(c4.wdata("smg")["mag"])
+	var reserve := int(sl["ammo"])
+	ok(cap > 0 and reserve > 0, "tac: smg with a magazine and spare ammo")
+	c4.start_reload(ac)
+	ok(ac.reloading, "tac: reload in progress")
+	var st4 := c4.rng.state
+	ok(Skills.do_signature(ac, s4, 0.0), "tac: cast with a firearm in hand")
+	ok(c4.rng.state == st4, "tac: no RNG draw")
+	ok(not ac.reloading, "tac: the reload is cancelled")
+	ok(int(sl["mag"]) == mini(cap, reserve), "tac: magazine instantly refilled to min(mag, ammo) (%d)" % int(sl["mag"]))
+	ok(c4.sig_fx.has(ac) and is_equal_approx(float((c4.sig_fx[ac] as Dictionary).get("rate", 0.0)), Skills.SIG_RATE_TIME),
+		"tac: 1.5 s fire-rate window")
+	ac.cool = 1.0
+	c4.timers(ac, DT)                        # the normal cool recovery (Combat.timers) + the extra half (Skills.tick)
+	ok(is_equal_approx(ac.cool, 1.0 - DT * ac.cls_rate * Skills.SIG_RATE_MUL),
+		"tac: x1.5 cooldown recovery (%.5f)" % ac.cool)
+	for i in int(Skills.SIG_RATE_TIME / DT) + 2: Skills.tick(c4, ac, DT)
+	ok(not c4.sig_fx.has(ac), "tac: the x1.5 window expires after 1.5 s")
+	s4.dispose()
+
+	# --- Phase Shift (ghost): 0.6 s invulnerability, cleared by a fresh life ---
+	var s5 := new_sim(0)
+	var c5 := s5.combat
+	var g := s5.add_fighter("ghost")
+	var atk := s5.add_fighter("wobbler")
+	c5.place_at(g, 0.0, 0.0); c5.place_at(atk, 0.0, 2.0)
+	pose(g); pose(atk); g.hp = 100.0; g.invuln = 0.0
+	ok(Skills.do_signature(g, s5, 0.0), "phase: cast")
+	ok(is_equal_approx(g.invuln, Skills.SIG_PHASE_TIME), "phase: 0.6 s invulnerable")
+	ok(not c5.hit(g, 30.0, 1.0, 0.0, 0.0, 20.0, false, atk)["applied"] and is_equal_approx(g.hp, 100.0),
+		"phase: attacks pass through (no damage, no knockback)")
+	# a fresh life never keeps the i-frames (place_at only touches invuln when a Phase window is live: parity safe)
+	c5.place_at(g, 0.0, 0.0)
+	ok(g.invuln == 0.0, "phase: place_at clears the invuln (no stale i-frames on a fresh life)")
+	pose(g); g.hp = 100.0; g.invuln = 0.0
+	ok(Skills.do_signature(g, s5, 0.0), "phase: re-cast for the expiry check")
+	for i in int(Skills.SIG_PHASE_TIME / DT) + 2: c5.timers(g, DT)
+	ok(g.invuln <= 0.0, "phase: the window runs out")
+	ok(c5.hit(g, 30.0, 1.0, 0.0, 0.0, 20.0, false, atk)["applied"] and g.hp < 100.0, "phase: a normal hit lands after it")
+	s5.dispose()
+
+## 10d. Fortress Stance (tank): hit()-level knockback immunity (damage and K.O. still happen, just no launch), the
+## front parry window, and the 1.5 s expiry.
+func _sig_fortress() -> void:
+	var sim := new_sim(0)
+	var c := sim.combat
+	var t := sim.add_fighter("tank")
+	var a := sim.add_fighter("wobbler")
+	c.place_at(t, 0.0, 0.0); c.place_at(a, 0.0, 2.0)
+	pose(t); pose(a)
+	t.phys.grounded = false
+	ok(Skills.sig_block(t, sim) == "air" and not Skills.do_signature(t, sim, 0.0), "fortress: refused in the air")
+	t.phys.grounded = true
+	var st := c.rng.state
+	ok(Skills.do_signature(t, sim, 0.0), "fortress: cast on the ground")
+	ok(c.rng.state == st, "fortress: no RNG draw")
+	ok(Skills.fortress_active(c, t) and is_equal_approx(t.parry_t, Skills.SIG_FORT_TIME),
+		"fortress: 1.5 s immunity window doubles as the parry window")
+	# damage lands, nothing else moves
+	t.hp = 1000.0; t.stun = 0.0; t.phys.vx = 0.0; t.phys.vy = 0.0; t.phys.vz = 0.0; t.phys.grounded = true
+	var hp0 := t.hp
+	ok(c.hit(t, 30.0, 1.0, 0.4, 0.0, 20.0, false, a)["applied"], "fortress: the hit still applies")
+	ok(is_equal_approx(hp0 - t.hp, 30.0 * a.cls_dmg), "fortress: the hp damage is normal (%.2f)" % (hp0 - t.hp))
+	ok(t.phys.vx == 0.0 and t.phys.vz == 0.0 and t.phys.vy == 0.0 and t.stun == 0.0 and t.phys.grounded,
+		"fortress: no knockback, no stun and no launch while planted")
+	# a K.O. hit kills without launching
+	c.place_at(t, 0.0, 0.0); t.phys.grounded = true
+	ok(Skills.do_signature(t, sim, 0.0), "fortress: re-cast for the K.O. check")
+	t.hp = 5.0; t.phys.vx = 0.0; t.phys.vy = 0.0; t.phys.vz = 0.0; t.phys.grounded = true
+	c.events.clear()
+	c.hit(t, 30.0, 1.0, 0.4, 0.0, 20.0, false, a)
+	ok(t.dead and t.hp <= 0.0, "fortress: a lethal hit still kills")
+	ok(t.phys.vy == 0.0, "fortress: ... but a K.O. never launches the planted tank (vy %.2f)" % t.phys.vy)
+	# front melee is parried; a hit from behind is not (only the knockback immunity holds there)
+	c.place_at(t, 0.0, 0.0); t.phys.grounded = true; t.face_yaw = 0.0
+	ok(Skills.do_signature(t, sim, 0.0), "fortress: re-cast for the parry check")
+	a.dead = false; a.swing = 0.5; a.phys.place(0.0, 0.0, 2.0)
+	ok(c.try_parry(t, a), "fortress: a melee hit from the front is parried")
+	ok(a.swing < 0.0 and a.stun >= 0.6, "fortress: the parried attacker is staggered, swing cancelled")
+	c.place_at(t, 0.0, 0.0); t.phys.grounded = true; t.face_yaw = 0.0
+	ok(Skills.do_signature(t, sim, 0.0), "fortress: re-cast for the behind check")
+	a.dead = false; a.swing = 0.5; a.stun = 0.0; a.phys.place(0.0, 0.0, -2.0)
+	ok(not c.try_parry(t, a), "fortress: a hit from behind is not parried")
+	# expiry: the knockback returns
+	c.place_at(t, 0.0, 0.0); t.phys.grounded = true
+	ok(Skills.do_signature(t, sim, 0.0), "fortress: re-cast for the expiry check")
+	for i in int(Skills.SIG_FORT_TIME / DT) + 2: c.timers(t, DT)
+	ok(not Skills.fortress_active(c, t), "fortress: the 1.5 s window expires")
+	t.hp = 1000.0; t.phys.vx = 0.0; t.phys.vz = 0.0; t.phys.vy = 0.0
+	c.hit(t, 30.0, 1.0, 0.4, 0.0, 20.0, false, a)
+	ok(t.phys.vx > 0.0 and t.phys.vy > 0.0, "fortress: after the window a normal hit knocks back again")
+	sim.dispose()
+
+## 10e. the touch context button: SIG only while ready + appropriate, DASH > RECOVER > SIG > RELOAD, one tap = one
+## "signature" press, a stale tap during the cooldown does nothing.
+func _sig_context() -> void:
+	var sim := new_sim(0)
+	var c := sim.combat
+	var p := sim.player
+	c.place_at(p, 0.0, 0.0)
+	var tc: Control = load("res://input/touch_controls.gd").new()
+	var st := InputState.new()
+	tc.state = st
+	tc.sim = sim
+	root.add_child(tc)
+	tc._refresh_context()
+	ok(tc.context_action() == "sig" and tc.context_sig_kind() == "belly",
+		"context: a ready Wobbler offers SIG with the belly icon (%s / %s)" % [tc.context_action(), tc.context_sig_kind()])
+	ok(tc.visible_buttons().size() == 4, "context: SIG is the 4th action button")
+	var ctx: Array = tc.button_rect(tc.button("context"))
+	tc._touch_down(0, ctx[0]); tc._touch_up(0, ctx[0])
+	ok(st.consume("signature") and not st.consume("signature"), "context: one SIG tap = exactly one signature press")
+	ok(Skills.do_signature(p, sim, p.face_yaw), "context: the tapped action casts the signature")
+	tc._refresh_context()
+	ok(tc.context_action() != "sig", "context: on cooldown SIG is not offered")
+	# a stale offer (the charge went away between frames) never fires a tap
+	tc._ctx = "sig"
+	tc._touch_down(0, ctx[0]); tc._touch_up(0, ctx[0])
+	ok(not st.consume("signature"), "context: a stale SIG tap during the cooldown does nothing")
+	# priority: DASH (gear) > RECOVER (air after a hit) > SIG > RELOAD
+	c.pickup(p, "katana")
+	for i in 3:
+		if p.slots[i] != null and p.slots[i]["key"] == "katana": c.equip_slot(p, i)
+	tc._refresh_context()
+	ok(tc.context_action() == "dash", "context: DASH outranks SIG (%s)" % tc.context_action())
+	c.clear_inventory(p); c.set_weapon(p, "spatula")
+	p.phys.place(p.phys.px, 3.0, p.phys.pz); p.phys.grounded = false; p.down_t = 0.0; p.trap_t = 0.0
+	p.last_hit_time = c.time - 0.5
+	tc._refresh_context()
+	ok(tc.context_action() == "recover", "context: RECOVER outranks SIG (%s)" % tc.context_action())
+	p.phys.grounded = true
+	c.pickup(p, "smg")
+	var sl: Dictionary = p.current_slot()
+	sl["mag"] = 3
+	p.skill_n["sig"] = 0; p.skill_cd["sig"] = Skills.SIGNATURE_CD
+	tc._refresh_context()
+	ok(tc.context_action() == "reload", "context: SIG cooling + a gun -> RELOAD (%s)" % tc.context_action())
+	Skills.reset(p)                       # full signature charge again
+	tc._refresh_context()
+	ok(tc.context_action() == "sig", "context: a ready SIG outranks RELOAD (%s)" % tc.context_action())
+	p.class_id = "elder"                  # documented no-signature class: the button falls through
+	tc._refresh_context()
+	ok(tc.context_action() == "reload", "context: Elder (no signature) falls through to RELOAD (%s)" % tc.context_action())
+	p.class_id = "tank"                   # ground-only move is not offered in the air? (tank on the ground: offered)
+	p.skill_n["sig"] = 0; p.skill_cd["sig"] = Skills.SIGNATURE_CD
+	tc._refresh_context()
+	ok(tc.context_action() != "sig", "context: a tank on cooldown shows no SIG")
+	root.remove_child(tc)
+	tc.free()
+	sim.dispose()
+
+## 10f. bots never cast a signature skill (no BotBrain change), so the bot/parity traces are untouched.
+func _sig_bots() -> void:
+	var sim := new_sim(3)
+	for i in 600:
+		for b: FighterState in sim.fighters.slice(1): pose(b)
+		sim.step(DT)
+	var used := false
+	for b: FighterState in sim.fighters.slice(1):
+		if b.skill_n.has("sig") or b.skill_cd.has("sig") or sim.combat.sig_fx.has(b): used = true
+	ok(not used, "bots never cast a signature skill")
+	sim.dispose()

@@ -203,11 +203,13 @@ func _touch_test() -> void:
 	check(not st.consume("shove"), "touch MELEE hold does not also shove")
 	_touch(tc, 2, melee[0], true); _drag(tc, 2, melee[0] + Vector2(0, -60)); _touch(tc, 2, melee[0] + Vector2(0, -60), false)
 	check(st.consume("kick") and not st.consume("shove"), "touch MELEE flick = kick")
-	# context button: hidden empty-handed, RELOAD with a gun, DASH with a ninja weapon
+	# context button: a ready class signature skill owns it (Sprint 3.3), then RELOAD with a gun, DASH with a ninja weapon
 	var sim: MatchSim = world.sim
 	var p := sim.player
 	tc._process(0.016)
-	check(tc.context_action() == "" and tc.visible_buttons().size() == 3, "context button hidden empty-handed (%s)" % [tc.visible_buttons()])
+	check(tc.context_action() == "sig" and tc.visible_buttons().size() == 4,
+		"context button offers the class signature when ready (%s)" % [tc.context_action()])
+	p.skill_n["sig"] = 0; p.skill_cd["sig"] = Skills.SIGNATURE_CD   # spend it: the fallbacks below show instead
 	sim.combat.pickup(p, "smg")
 	var gs: Dictionary = p.current_slot()
 	gs["mag"] = 3

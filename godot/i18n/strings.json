@@ -1371,6 +1371,13 @@
   "fr": "Bonnet",
   "es": "Gorro"
  },
+ "Belly Bounce": {
+  "zh_TW": "肚皮彈跳",
+  "zh_CN": "肚皮弹跳",
+  "ja": "おなかバウンド",
+  "fr": "Rebond de bidon",
+  "es": "Rebote de panza"
+ },
  "Best stage: %d": {
   "zh_TW": "最佳關卡：%d",
   "zh_CN": "最佳关卡：%d",
@@ -3422,6 +3429,13 @@
   "fr": "Mot de passe oublié ?",
   "es": "¿Olvidaste tu contraseña?"
  },
+ "Fortress Stance": {
+  "zh_TW": "堡壘架式",
+  "zh_CN": "堡垒架势",
+  "ja": "フォートレススタンス",
+  "fr": "Posture forteresse",
+  "es": "Postura fortaleza"
+ },
  "Fortress Yard": {
   "zh_TW": "要塞庭院",
   "zh_CN": "要塞庭院",
@@ -5396,6 +5410,13 @@
   "fr": "Affichage des performances",
   "es": "Lectura de rendimiento"
  },
+ "Phase Shift": {
+  "zh_TW": "相位轉移",
+  "zh_CN": "相位转移",
+  "ja": "フェイズシフト",
+  "fr": "Déphasage",
+  "es": "Cambio de fase"
+ },
  "Pick": {
   "zh_TW": "選擇",
   "zh_CN": "选择",
@@ -6327,6 +6348,13 @@
   "fr": "Graine %d",
   "es": "Semilla %d"
  },
+ "Seismic Slam": {
+  "zh_TW": "震地猛擊",
+  "zh_CN": "震地猛击",
+  "ja": "サイズミックスラム",
+  "fr": "Impact sismique",
+  "es": "Golpe sísmico"
+ },
  "Set new password": {
   "zh_TW": "設定新密碼",
   "zh_CN": "设置新密码",
@@ -7103,6 +7131,13 @@
   "ja": "限界場外！",
   "fr": "SORTIE EXTRÊME !",
   "es": "¡FUERA DE LÍMITE!"
+ },
+ "Tac-Reload": {
+  "zh_TW": "戰術換彈",
+  "zh_CN": "战术换弹",
+  "ja": "タクティカルリロード",
+  "fr": "Rechargement tactique",
+  "es": "Recarga táctica"
  },
  "Tap a slot to switch": {
   "zh_TW": "點按欄位即可切換",
@@ -7908,6 +7943,13 @@
   "ja": "使用中：%s（%s）",
   "fr": "Utilisé : %s (%s)",
   "es": "En uso: %s (%s)"
+ },
+ "Vault Flip": {
+  "zh_TW": "翻滾躍擊",
+  "zh_CN": "翻滚跃击",
+  "ja": "ヴォールトフリップ",
+  "fr": "Saut périlleux",
+  "es": "Salto mortal"
  },
  "Version": {
   "zh_TW": "版本",

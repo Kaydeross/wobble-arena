@@ -635,5 +635,47 @@
   "ja": "ストライク！",
   "fr": "STRIKE !",
   "es": "¡PLENO!"
+ },
+ "Belly Bounce": {
+  "zh_TW": "肚皮彈跳",
+  "zh_CN": "肚皮弹跳",
+  "ja": "おなかバウンド",
+  "fr": "Rebond de bidon",
+  "es": "Rebote de panza"
+ },
+ "Seismic Slam": {
+  "zh_TW": "震地猛擊",
+  "zh_CN": "震地猛击",
+  "ja": "サイズミックスラム",
+  "fr": "Impact sismique",
+  "es": "Golpe sísmico"
+ },
+ "Vault Flip": {
+  "zh_TW": "翻滾躍擊",
+  "zh_CN": "翻滚跃击",
+  "ja": "ヴォールトフリップ",
+  "fr": "Saut périlleux",
+  "es": "Salto mortal"
+ },
+ "Fortress Stance": {
+  "zh_TW": "堡壘架式",
+  "zh_CN": "堡垒架势",
+  "ja": "フォートレススタンス",
+  "fr": "Posture forteresse",
+  "es": "Postura fortaleza"
+ },
+ "Tac-Reload": {
+  "zh_TW": "戰術換彈",
+  "zh_CN": "战术换弹",
+  "ja": "タクティカルリロード",
+  "fr": "Rechargement tactique",
+  "es": "Recarga táctica"
+ },
+ "Phase Shift": {
+  "zh_TW": "相位轉移",
+  "zh_CN": "相位转移",
+  "ja": "フェイズシフト",
+  "fr": "Déphasage",
+  "es": "Cambio de fase"
  }
 }

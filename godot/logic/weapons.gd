@@ -1673,6 +1673,7 @@ func step_balls(dt: float) -> void:
 					b.hit_set[f] = true
 					var dn := Combat.norm3(sin(b.heading) + dx * 0.15, 0.38, cos(b.heading) + dz * 0.15)
 					var ds := b.owner.dmg_scale if b.owner != null else 1.0
-					combat.hit(f, float(b.w["dmg"]) * ds * (0.7 + b.r * 0.3), dn[0], dn[1], dn[2], float(b.w["force"]) * (0.8 + b.r * 0.25), false, b.owner)
+					var hr := combat.hit(f, float(b.w["dmg"]) * ds * (0.7 + b.r * 0.3), dn[0], dn[1], dn[2], float(b.w["force"]) * (0.8 + b.r * 0.25), false, b.owner)
+					if bool(hr["applied"]): combat.apply_status(f, b.w)   # Sprint 3.2: Snowball -> chill, Cement Bucket -> heavy
 					combat.topple(f, 1.5)
 					combat.ev({"type": "sfx", "name": "whack", "x": b.px, "y": b.py, "z": b.pz})

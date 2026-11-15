@@ -72,6 +72,17 @@ var shield_t := 0.0
 var rage_t := 0.0
 var big_t := 0.0                 ## Chaos "Giant" event: bigger hit spheres, double health, harder hits (ModeRules)
 var spd_t := 0.0                 ## speed boost: x1.4 run speed (FighterPhysics)
+## Elemental / physics statuses (Post-v0.4.0 Sprint 3.2, overlay only; docs/DAMAGE.md "Elemental and physics statuses").
+## Combat.apply_status sets them from the weapon's weapon_tuning.json entry, Combat.timers counts them down and
+## FighterPhysics reads them. The active multipliers keep their neutral 1.0 default, so a bare FighterState (the web
+## game, the JS parity paths, online without net_zones) never changes a step: only tuning-gated code writes these.
+var chill_t := 0.0               ## Snowball Cannon hit: >0 = chilled (refreshed by a new hit, never stacked)
+var chill_speed := 1.0           ## move-speed multiplier while chill_t > 0 (overlay chill.speed = 0.68)
+var chill_traction := 1.0        ## ground-grip multiplier while chill_t > 0 (overlay chill.traction = 0.3; 1 = normal grip)
+var shock_t := 0.0               ## Live Wire hit: >0 = the short hit-stun interrupt just happened (spark event already sent)
+var heavy_t := 0.0               ## Cement Bucket hit: >0 = heavier gravity and a weaker jump (walk speed unchanged)
+var heavy_grav := 1.0            ## gravity multiplier while heavy_t > 0 (overlay heavy.grav = 1.4)
+var heavy_jump := 1.0            ## jump-impulse multiplier while heavy_t > 0 (overlay heavy.jump = 0.65)
 var trap_t := 0.0
 var trap_net: RefCounted = null  ## the Weapons.TrapNet holding this fighter down (trapNet), null = none
 var trap_x := 0.0                ## pinned here while trapped (trapX / trapZ)
@@ -139,6 +150,11 @@ var slam := false
 var stab := false
 var cyclone := false
 var assist_on := false
+## Charged heavy melee (docs/DAMAGE.md "Charged heavy melee"): PlayerControl's fire-key hold, Godot overlay only (offline,
+## tuning_active). Both keep their defaults on the web, the JS parity paths and online, because only the tuning-gated
+## input path writes `charge_t`; `melee_begin` always re-writes `heavy`, so a stale flag never reaches the next swing.
+var charge_t := -1.0             ## seconds FIRE has been held for a melee charge, -1 = not charging
+var heavy := false               ## this swing is a Heavy Swing: 1.45x damage / 1.5x force / breaks a parry (melee_sweep)
 var face_yaw := 0.0
 var kat_n := 0
 var kat_t := -9.0
