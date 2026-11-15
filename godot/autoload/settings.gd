@@ -111,9 +111,17 @@ static func migrate_server_url(cfg: ConfigFile, shipped_default: String) -> bool
 	cfg.erase_section_key(SECTION, "server_url")
 	return true
 
+## True when the game should talk to the production server: every export, and also `godot --path godot` / the editor on a
+## desktop with a display, so a dev build plays the same online game as the shipped one. Set WOBBLE_DEV_SERVER=1 to use the
+## local `npm start` server instead. Headless runs (the test suites) always keep the local default.
+static func use_release_server() -> bool:
+	if not OS.has_feature("editor"):
+		return true
+	return DisplayServer.get_name() != "headless" and OS.get_environment("WOBBLE_DEV_SERVER") == ""
+
 ## The server a fresh install connects to: the configured production url in release exports, else the dev address.
 ## `config_path` and `release` are parameters so tests can exercise the release path in the editor.
-static func server_default(config_path: String = SERVER_CONFIG_PATH, release: bool = not OS.has_feature("editor")) -> String:
+static func server_default(config_path: String = SERVER_CONFIG_PATH, release: bool = use_release_server()) -> String:
 	if release and FileAccess.file_exists(config_path):
 		var f := FileAccess.open(config_path, FileAccess.READ)
 		var j := JSON.new()
