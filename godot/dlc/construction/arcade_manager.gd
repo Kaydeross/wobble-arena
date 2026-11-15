@@ -179,6 +179,8 @@ var _guest_fx: Node3D = null            ## guest: the root of its own hazard war
 var _guest_ring_of := {}                ## guest: `am.ev` id -> its warning ring MeshInstance3D (dedupes repeated `am`)
 var _guest_phase_toasts: Array = []     ## guest: the phase toast texts it showed, one per new phase (tests)
 var _guest_arc_sent := ""               ## guest: "stage:state:action" of the last card request it sent (no double press)
+var _guest_arc_action := ""             ## guest: the card action it is waiting for the host to apply ("" = none)
+var _guest_arc_cd := 0.0                 ## guest: s until that request is re-sent (a dropped request must not need a 2nd tap)
 
 # ---------------- the table ----------------
 
@@ -658,6 +660,7 @@ func _guest_sync(force := false) -> void:
 	if want == _guest_card and not force: return
 	_guest_card = want
 	_guest_arc_sent = ""                    # a new card may ask the host again exactly once
+	_guest_arc_action = ""; _guest_arc_cd = 0.0
 	match want:
 		"intro": world.show_panel(ArcadePanels.intro(self, stage_def(), _guest_arc.bind("start")))
 		"clear": world.show_panel(ArcadePanels.clear(self, last, _guest_arc.bind("next"), quit_run))
@@ -673,7 +676,16 @@ func _guest_arc(a: String) -> void:
 	var key := "%d:%s:%s" % [stage, state, a]
 	if key == _guest_arc_sent: return
 	_guest_arc_sent = key
-	if world.session.has_method("arcade_request"): world.session.call("arcade_request", a)
+	# The host applies the request only in the matching card state; a request that raced the host's own state change
+	# (or a lost one) is re-sent about once a second while the card is still up, so the player never has to tap twice.
+	_guest_arc_action = a
+	_guest_arc_cd = 1.2
+	_send_guest_arc()
+
+## Send the pending card request to the host (the host is the only run authority; it drops it in a wrong state).
+func _send_guest_arc() -> void:
+	if _guest_arc_action == "" or world == null or world.session == null: return
+	if world.session.has_method("arcade_request"): world.session.call("arcade_request", _guest_arc_action)
 
 ## The guest's seat index of its own fighter (-1 before the stage is bound).
 func own_seat() -> int:
@@ -707,6 +719,13 @@ func step(dt: float) -> void:
 ## Guest per-step: its own stage clock (for its card), the revive countdown and the downed overlay.
 func _guest_step(dt: float) -> void:
 	if sim == null: return
+	if _guest_arc_action != "" and state in ["intro", "cleared", "failed"]:
+		_guest_arc_cd -= dt
+		if _guest_arc_cd <= 0.0:
+			_guest_arc_cd = 1.2
+			_send_guest_arc()
+	elif state in ["fight", "clearing", "failing", "over", "won"]:
+		_guest_arc_action = ""; _guest_arc_cd = 0.0
 	if state == "fight": _guest_t_stage += dt
 	for k: int in seat_down.keys():
 		seat_down[k] = maxf(float(seat_down[k]) - dt, 0.0)
