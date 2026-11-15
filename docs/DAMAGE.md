@@ -15,7 +15,10 @@ Splash (rockets, grenades), the flamethrower and the Spring Glove hit the whole 
 
 ## How the part is decided (`Combat.body_part`)
 
-The hit spheres are unchanged (head 0.4, chest 0.62, legs 0.5; x1.5 for giants). The struck point is: the ray hit point for guns (per pellet; a volley is labelled with the head if any pellet hit it, else the part that took most damage), the projectile position for knives and arrows, the bat sample that touched for melee (the chest for Cyclone body contact). Then:
+The hit spheres are the classic ones (head 0.4, chest 0.62, legs 0.5; x1.5 for giants) unless the balance overlay is in
+use, where a class scales them ("Tuned hitboxes" below). The struck point is: the ray hit point for guns (per pellet; a
+volley is labelled with the head if any pellet hit it, else the part that took most damage), the projectile position for
+knives and arrows, the bat sample that touched for melee (the chest for Cyclone body contact). Then:
 
 1. the head sphere was hit -> **head** (exactly the old head flag);
 2. point lower than `chest - legsBelow` (0.45) -> **legs**;
@@ -50,7 +53,9 @@ The balance overlay's numbers and rules are checked by `npm run test:godot-arcad
 overlay"): the tuned flame/blower values versus the shared ones, the flame contact cap (a 60-tick stream cannot carry a
 stunned target, one contact adds at most `maxForce` m/s, further ticks add nothing and a new contact after 0.4 s pushes
 again) and the blower's per-puff damage (shared blower still does none). `npm run test:godot-gunfeel` covers the rest of
-the overlay.
+the overlay. `npm run test:godot-skills` checks the bow ammo (8 volleys; the shared pickup keeps 12), the net trap
+(2.0 s) and Uzi damage (3.8), plus the tuned hit spheres: the clamps, the giant x1.5 on top, the exact classic values for
+a bare `FighterState` / classic rule / online-without-`net_zones`, and that the flag is re-armed by `place_at`.
 
 ## Balance and cooldowns
 
@@ -74,6 +79,9 @@ Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` ar
 | Minigun | `force` / `maxForce` | 2 / 2.6 | 1.4 / 1.8 | a held stream pushed people off ledges |
 | Snowball Cannon | `force` | 30 | 24 | |
 | Giant Mallet | `force` / `topple` | 30 / 0.85 | 26 / 0.75 | |
+| Twin Fang Bow | `ammo` (volleys) | 12 | 8 | a pickup was 1152 damage at full draw (12 volleys = 24 arrows x 48); 8 volleys = 768 |
+| Net Gun | `trap` | 4.5 s | 2.0 s | the pin was 2.5 s; one ammo still buys a long free-hit window |
+| Dual Uzis | `dmg` | 4.4 | 3.8 | a 40-round mag is 152 damage, so one mag K.O.s a 150 HP class (was 3.4 = 136) |
 | Flamethrower | `force` / `maxForce` | 1.2 / 1.6 | 0.6 / 1.2 | per-tick push; a stream pinned whoever could not walk against it |
 | Air Blower | `dmg` | - (no damage) | 2.8 per puff | it was not a weapon: only a push; a full tank can now finish a 150 HP class |
 | crates | Meteor weight (`drops.json` base) | 1.4 | 0.6 | `drops` in the overlay, read by `Pickups.pick_crate_key` |
@@ -113,11 +121,35 @@ parity tests keep the no-damage blower (`tuning_active()` gate).
 
 Same gate as above (`Combat.tuning_active()`), so web peers and parity tests are untouched. `npm run test:godot-gunfeel`.
 
-- **Net Gun**: `trap` 4.5 s -> 2.5 s.
+- **Net Gun**: `trap` 4.5 s -> 2.0 s (2.5 s before Sprint 1.2).
 - **Scatter**: the player's gun assist is `Weapons.PLAYER_ASSIST` (0.8) instead of a perfect lock; bots keep their own `assist`. Gun `spread` is widened and damage / `force` / `maxForce` lowered (AK, SMG, Uzis, Minigun, Shotgun, Revolver, Sniper, Mammoth).
 - **Bloom**: `bloomAdd` per shot on top of `spread`, capped at `bloomMax`, cooling at `bloomDecay` per second (default 0.05). Sustained fire sprays; tap-firing stays accurate.
 - **Arm wobble**: weapons with `wobble` get random arm nudges every 0.12-0.35 s (`Weapons.climb_tick`), stronger while moving and halved when aiming. The visible arm jerks (`push_arm`) and a small part (`WOB_AIM`) reaches the shot direction.
 - **Stacked knockback**: each gun hit adds `GUN_KICK_STEP` to the victim's `gun_kick`; the next push is divided by `1 + GUN_KICK_DAMP * gun_kick`; it recovers at `GUN_KICK_RECOVER` per second. A stream of bullets no longer pins someone against a wall; damage is unchanged by the stack.
+
+### Tuned hitboxes (overlay only)
+
+Same gate (`Combat.tuning_active()`): the hit spheres follow the class from `shared/classes.json` instead of being the same
+for everyone. `FighterState.set_class` stores the class `head` and `size` multipliers (`cls_head`, `cls_size`), and
+`FighterState.spheres` scales them:
+
+| sphere | classic | tuned |
+| --- | --- | --- |
+| head | 0.4 | `0.4 * clampf(cls_head, 0.85, 1.25)` |
+| chest | 0.62 | `0.62 * clampf(cls_size, 0.88, 1.15)` |
+| legs | 0.5 | `0.5 * clampf(cls_size, 0.88, 1.15)` |
+
+The Chaos Giant `x1.5` multiplier still applies on top of the class scale. So a Scamp (`head` 1.4, `size` 0.86) has a
+0.5 head (clamped to +25 %) and 0.5456 / 0.44 body spheres, a Bulwark (`tank`: `head` 0.85, `size` 1.16) a 0.34 head
+and 0.713 / 0.575 body, a Bruiser (`head` 0.92, `size` 1.12) 0.368 / 0.6944 / 0.56, and a Wobbler stays exactly
+0.4 / 0.62 / 0.5.
+
+`FighterState` never reads the `Combat` class itself (that would be a static dependency cycle): it carries a plain
+`tuned` flag that the simulation writes from `Combat.tuning_active()` when a fighter is created (`MatchSim._new_fighter`)
+and on every `Combat.place_at` (respawn / new life, which also re-arms arcade enemies and revives). Default false, so a
+bare `FighterState` and every parity path (the JS `bots_parity_test`, `combat_test`) keep the exact classic spheres—
+the untuned tables are the same floats as before. The flag is a per-life snapshot: a match never flips the gate mid-life,
+and Arcade runs (offline, tuned) arm their crew/enemies through `add_fighter` / `place_at`.
 
 ### Skills (`godot/logic/skills.gd`)
 

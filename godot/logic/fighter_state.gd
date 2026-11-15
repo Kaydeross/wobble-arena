@@ -45,6 +45,12 @@ var cls_kb := 1.0
 var cls_rate := 1.0
 var cls_reload := 1.0
 var cls_ammo := 1.0
+var cls_head := 1.0              ## class `head` multiplier (shared/classes.json): head hit sphere, tuned matches only
+var cls_size := 1.0              ## class `size` multiplier: chest/leg hit spheres, tuned matches only
+## True when this fighter's match uses the balance overlay, i.e. `Combat.tuning_active()` (docs/DAMAGE.md "Tuned
+## hitboxes"). Combat/MatchSim write it when a fighter is created and on every `place_at`; FighterState never reads the
+## Combat class itself (no static dependency: a bare FighterState and the JS-parity paths stay on `tuned = false`).
+var tuned := false
 var dmg_scale := 1.0             ## bots deal less (DIFFS dmg / dummies 0.45)
 var melee_force_mul := 1.0       ## outgoing melee force multiplier (Arcade difficulty; 1 = the weapon's own force)
 var melee_topple_mul := 1.0      ## outgoing melee topple chance multiplier (Arcade difficulty)
@@ -194,12 +200,21 @@ func set_class(cid: String, c: Dictionary) -> void:
 	class_id = cid
 	cls_hp = float(c.get("hp", 1.0)); cls_dmg = float(c.get("dmg", 1.0)); cls_kb = float(c.get("kb", 1.0))
 	cls_rate = float(c.get("rate", 1.0)); cls_reload = float(c.get("reload", 1.0)); cls_ammo = float(c.get("ammo", 1.0))
+	cls_head = float(c.get("head", 1.0)); cls_size = float(c.get("size", 1.0))
 	phys.speed_mul = float(c.get("spd", 1.0)); phys.accel_mul = float(c.get("acc", 1.0))
 	phys.air_mul = float(c.get("air", 1.0)); phys.jump_mul = float(c.get("jump", 1.0))
 
 ## Hit spheres [cx, cy, cz, r, is_head] (Fighter.spheres). Head, chest and legs are the points written by the animation.
+## Classic (tuned = false): head 0.4, chest 0.62, legs 0.5; x1.5 for giants. Tuned matches scale the spheres by the
+## class (`head` on the head, `size` on chest and legs, clamped) so a Scamp's head is a bigger target and a Bulwark's is a
+## smaller one; the giant x1.5 applies on top. Untuned values stay bit-identical to the web game.
 func spheres(giant: bool) -> Array:
 	var k := 1.5 if (giant or big_t > 0.0) else 1.0
+	if tuned:
+		var hk := clampf(cls_head, 0.85, 1.25) * k
+		var sk := clampf(cls_size, 0.88, 1.15) * k
+		return [[head_x, head_y, head_z, 0.4 * hk, true], [chest_x, chest_y, chest_z, 0.62 * sk, false],
+			[leg_x, leg_y, leg_z, 0.5 * sk, false]]
 	return [[head_x, head_y, head_z, 0.4 * k, true], [chest_x, chest_y, chest_z, 0.62 * k, false],
 		[leg_x, leg_y, leg_z, 0.5 * k, false]]
 

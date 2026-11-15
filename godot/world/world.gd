@@ -2,7 +2,9 @@ extends Node3D
 ## Offline match world: builds a map with MapBuilder, runs a MatchSim (the player + bots, combat, crates) at the web
 ## game's fixed step (SIM = 1/120, one accumulator, like `frame`/`simStep` in public/index.html ~10077 / ~9630),
 ## presents every fighter with a Wobbler, drains Combat events into effects, and feeds the HUD (ui/hud.tscn).
-## Per frame (like `frame`): camera -> sim steps -> animate/applyPose (Fighter.present) -> melee sweep -> effects/HUD.
+## Per frame (like `frame`): camera -> sim steps -> presentation (effects/HUD). The fighters' animation is part of the
+## FIXED simulation step (Fighter.sim_present + MatchSim.sweep inside sim_step), so melee hit detection is independent of
+## the render rate (30 fps phones land the same hits as 120 fps desktops); a rendered frame only adds the visual layer.
 ## Command line (after `--`): --map=<id> --class=<id> --bots=<n> --seed=<n> --dyn=<off|random|wobble|tilt|quake|drift>
 ## --mode=<id> --limit=<n>. Game modes (logic/mode_rules.gd): offline the mode comes from Settings "mode" and the K.O.
 ## limit from Settings "limit" (-1 = the mode's preset); this node adds team colours, the mode line, the dash puff,
@@ -85,6 +87,7 @@ var _crates := {}                  ## crate id -> Node3D
 var fx: FxSystem = null            ## pooled combat effects (world/fx.gd); null when fx_enabled is false
 var trails: Trails = null          ## melee / projectile ribbons (world/trails.gd)
 var _hitstop := 0                  ## rendered frames the presentation stays frozen (hitstop)
+var _sim_steps_since_present := 0  ## fixed steps run since the last rendered frame (0 = sim frozen: countdown / pause)
 var _fighters_root: Node3D
 var proj_views: ProjectileViews     ## rockets, grenades, arrows, nets, knives, explosions, flames
 var _touch_was := false
@@ -341,7 +344,10 @@ func player_pos() -> Vector3:
 	var p := sim.player.phys
 	return Vector3(p.px, p.py, p.pz)
 
-## One fixed simulation step.
+## One fixed simulation step: the whole gameplay frame, INCLUDING the animation points the melee sweep reads.
+## The wobbler is advanced and the hand/tip points are sampled here, then MatchSim.sweep() runs the hits, so the same
+## simulated second gives the same sweeps (and the same hits) whatever the render rate: a 30 fps frame runs four of
+## these, a 120 fps frame one. A rendered frame only presents the result (see present()).
 func sim_step(dt: float) -> void:
 	control.cam_yaw = cam.move_basis()   # the camera yaw, held while auto-centre turns it under a held stick
 	var ap := cam.aim_point
@@ -349,8 +355,35 @@ func sim_step(dt: float) -> void:
 	var before: int = sim.player.st["falls"]
 	sim.step(dt)
 	if arcade != null: arcade.step(dt)
+	for v: Fighter in views.values():     # the gameplay points (hand / arm / head / chest / leg) the sweep reads
+		v.sim_present(dt)
+	sim.sweep()                           # meleeSweep: the fixed-step half of the old present() path
+	_drain_pose_events()                  # lean/head/arm spring kicks feed the pose the sweep samples
+	_sim_steps_since_present += 1
 	if sim.player.st["falls"] != before:
 		falls += 1
+
+## The animation-only Combat events (lean / head / arm spring kicks) are applied at the FIXED step: they move the wobbler
+## springs, the melee sweep samples the resulting hand/tip points, so applying them once per rendered frame would make
+## hit detection render-rate dependent (30 fps: 4 fixed steps between two kicks, 120 fps: 1). They are taken out of the
+## queue and the presentation drains everything else per frame (`_drain_events`).
+func _drain_pose_events() -> void:
+	var evs: Array = sim.combat.events
+	var has_pose := false
+	for e: Dictionary in evs:
+		var t := String(e["type"])
+		if t == "lean" or t == "head" or t == "arm":
+			has_pose = true; break
+	if not has_pose: return
+	var keep: Array = []
+	for e: Dictionary in evs:
+		var t := String(e["type"])
+		if t == "lean" or t == "head" or t == "arm":
+			var f: FighterState = e.get("f") if e.get("f") is FighterState else null
+			if f != null and views.has(f): views[f].on_event(e)
+		else:
+			keep.append(e)
+	sim.combat.events = keep
 
 ## One rendered frame: sim steps from the accumulator, then the presentation (animation, melee sweep, effects, HUD).
 func tick(delta: float) -> void:
@@ -396,11 +429,13 @@ func _process(delta: float) -> void:
 		cam.follow(minf(delta, 0.05), cam_target(), false, solids)
 		_update_hud(delta)
 
-## applyPose + meleeSweep + effects (also used by tests that step the sim by hand).
-## Hitstop freezes the presentation only (fighters' visible pose, particles, trails, projectile views); the fighters
-## still animate underneath (the gameplay points come from that) and the sim keeps its own clock.
+## The rendered-frame half: the per-frame visual layer only (scale/position, ragdoll overlay, juice, name tag,
+## effects, HUD). The animation points and the melee sweep are part of sim_step now (fixed step); when the sim is
+## frozen (countdown, pause) the idle wobble is advanced here instead so the fighters do not turn to statues.
+## Hitstop freezes the presentation only (visible pose, particles, trails, projectile views); the sim keeps its clock.
 func present(dt: float) -> void:
 	var frozen := _hitstop > 0 and dt > 0.0
+	var sim_frozen := _sim_steps_since_present == 0 and dt > 0.0
 	for v: Fighter in views.values():
 		v.visible = not v.state.left
 		var k := 1.5 if v.state.big_t > 0.0 else 1.0           # Chaos giant / the Arcade's Client
@@ -411,8 +446,9 @@ func present(dt: float) -> void:
 		v.scale = Vector3.ONE * k
 		v.position = Vector3(fp.px, fp.py, fp.pz) * (1.0 - k)
 		v.frozen = frozen
-		v.present(dt)
-	sim.sweep()
+		if sim_frozen: v.anim_present(dt)   # countdown / pause: no fixed step wrote a pose this frame
+		v.present_visual(dt)
+	_sim_steps_since_present = 0
 	_drain_events()
 	_audio_motion(dt)
 	_update_crates(dt)

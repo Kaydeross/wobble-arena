@@ -61,8 +61,11 @@
    "force": 26,
    "topple": 0.75
   },
+  "bow": {
+   "ammo": 8
+  },
   "net": {
-   "trap": 2.5
+   "trap": 2.0
   },
   "ak": {
    "dmg": 6,
@@ -83,7 +86,7 @@
    "wobble": 0.6
   },
   "uzi": {
-   "dmg": 3.4,
+   "dmg": 3.8,
    "force": 1.0,
    "maxForce": 1.6,
    "spread": 0.045,

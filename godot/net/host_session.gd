@@ -17,7 +17,9 @@ extends GuestSession
 ## sheet's "Room type: Arcade co-op" (scripts/main.gd: host_room), plays the app-only `construction` mode, has two seats
 ## and sends the run as `start.arc` with every stage's `start`; the stage transition reuses the same "a new `start`
 ## rebuilds the world" path as a rematch. Its lobby starts only when two players are in (Start), or with one and the
-## teammate bot (Start with bot), so a co-op run is never silently started alone.
+## teammate bot (Start with bot), so a co-op run is never silently started alone. A guest's card buttons ask the host for
+## `start` / `next` / `retry` (docs/PROTOCOL.md 6.4, M4): `arcade_cmd` applies them only in the matching card state and
+## drops the rest as guarded.
 
 signal hosted(code: String)                  ## the room is open (code = room id)
 
@@ -427,6 +429,8 @@ func _host_recv(cid: int, m: Dictionary) -> void:
 	var s: int = cid_slot[cid]
 	if t == "rv":
 		vote(s); return
+	if t == "arc":                                   # Arcade co-op M4: a guest's card button request (state-gated below)
+		arcade_cmd(m); return
 	if t == "ping":
 		_to(cid, {"t": "pong", "ts": m.get("ts")}); return
 	var g := guard(m, s)
@@ -547,6 +551,22 @@ func arcade_send(m: Dictionary) -> void:
 	if record: sent.append(m)
 	m["t"] = "am"
 	_all(m)
+
+## Arcade co-op M4: a co-op guest asked to start the fight / go to the next stage / retry a failed one
+## (docs/PROTOCOL.md 6.4). The host is the only run authority: the request is applied only when the run is in the
+## matching card state (`intro` / `cleared` / `failed`); anything else (a wrong state, a duplicate press, a forged
+## message, a non-arcade room) is dropped exactly like a forged `start` (guarded). ArcadeManager re-checks the state and
+## debounces the reload, so two requests cannot move the run twice.
+func arcade_cmd(m: Dictionary) -> void:
+	var a := str(m.get("a", ""))
+	var hm := host_match()
+	var run: Variant = hm.sim.get_meta("arcade_run") if hm != null and hm.sim != null and hm.sim.has_meta("arcade_run") else null
+	if not arcade or not started or run == null or not ["start", "next", "retry"].has(a):
+		guarded += 1; return
+	var want: String = str({"start": "intro", "next": "cleared", "retry": "failed"}[a])
+	if str(run.get("state")) != want:
+		guarded += 1; return
+	run.call("begin_fight" if a == "start" else ("next_stage" if a == "next" else "retry_stage"))
 
 ## netGuard: a guest may only speak for its own fighter. Returns the fixed message, or {} to drop it.
 func guard(m: Dictionary, s: int) -> Dictionary:

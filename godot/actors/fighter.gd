@@ -69,11 +69,31 @@ func visual_state() -> Dictionary:
 	v["skin"] = look["skin"]; v["hat"] = look["hat"]; v["color"] = look["color"]
 	return v
 
-## Feed + animate the wobbler, then read the animation points back into the state (before the melee sweep).
+## Feed + animate the wobbler, then read the animation points back into the state.
+## The World calls this from its FIXED simulation step (world.gd sim_step), not from the rendered frame: the melee
+## hit sweep reads the hand/arm points right after it, so hit detection must not depend on the render rate. `present`
+## keeps the old "animate + read + visual" behaviour for tests and standalone users.
 func present(dt: float) -> void:
+	sim_present(dt)
+	present_visual(dt)
+
+## The gameplay half of present(): advance the procedural rig and the gameplay points the combat code reads back.
+func sim_present(dt: float) -> void:
 	if juice: juice.restore()             # back to the pose animate() left: the gameplay points never see the juice
 	wobbler.apply_state(visual_state())
 	wobbler.animate(dt)
+	_read_points()
+
+## Animate only (the fixed-step loop already read the points): the countdown and other sim-frozen frames keep the
+## idle wobble alive without touching the gameplay points.
+func anim_present(dt: float) -> void:
+	if dt <= 0.0: return
+	if juice: juice.restore()
+	wobbler.apply_state(visual_state())
+	wobbler.animate(dt)
+
+## Read the animation points (hand, arm, off hand, shoulder, head, chest, legs) into the state.
+func _read_points() -> void:
 	var f := state
 	var hp := wobbler.hand.global_position
 	f.hand_x = hp.x; f.hand_y = hp.y; f.hand_z = hp.z
@@ -89,6 +109,11 @@ func present(dt: float) -> void:
 	var ch := wobbler.torso.global_position
 	f.chest_x = ch.x; f.chest_y = ch.y; f.chest_z = ch.z
 	f.update_leg()
+
+## The visual half of present(): the ragdoll overlay, the squash/stretch juice and the name tag. Read AFTER the
+## gameplay points (the juice and the overlay move visible nodes only; sim_present restores the classic pose first).
+func present_visual(dt: float) -> void:
+	var f := state
 	if wobbler.rig_mode == "ragdoll":       # visible pose only, after the gameplay points above were read
 		wobbler.overlay(dt)
 	if juice: juice.apply(wobbler, dt, frozen)

@@ -10,16 +10,19 @@ extends RefCounted
 ##   deadline_shrink the floor shrinks with the Mega / Shrink mode machinery (ModeRules.shrink): holds `every` s, then
 ##                   closes in at `rate` m/s down to min_floor, breathes back out and closes again.
 ##   scope_creep     every N s: spawn_extra more tradies, at most max_extra alive at once.
-##   change_request  at the boss phases (66 / 33 % health): the boss (and you) get a random different melee tool;
-##                   giant_scale makes the boss a Giant (the manager flags big_t).
+##   change_request  at the boss phases (the stage table's hp thresholds, default 66 / 33 %): the boss (and you) get a
+##                   random different melee tool; giant_scale makes the boss a Giant (the manager flags big_t).
 ##   weapon_drop     every N s on a boss stage: a gun or thrown tool arrives as a real pickup crate. The boss may take
 ##                   it while holding its melee kit; its ammo is not topped up.
-## `counts` / `fired` record what fired and when (tests).
+## `counts` / `fired` record what fired and when (tests). `active_events()` is the online co-op host's `am.ev` source
+## (docs/ARCADE_COOP_PLAN.md M4): the warning rings still on the floor, so a guest can draw the same red / amber rings
+## without simulating the event (presentation only, the damage and the summon stay here).
 
 const CRATE_R := 2.8
 const CRATE_DMG := 30.0
 const CRATE_FORCE := 12.0
 const CRATE_DROP_Y := 16.0
+const BACKUP_R := 1.6
 const PAD_R := 1.5
 const PAD_BASE_POWER := 17.0
 const PAD_COUNT := 3
@@ -41,6 +44,7 @@ var _root: Node3D = null
 var _swap_pool: Array = []
 var _weapon_drop_cid := 900000
 var _was_holding := true
+var _ev_id := 0                        ## a stable id per warning event: `am.ev` dedupes the guest's rings by it
 
 func setup(manager: ArcadeManager, s: MatchSim, stage: Dictionary, p_rng: RandomNumberGenerator) -> void:
 	m = manager
@@ -68,6 +72,26 @@ func _fire(type: String) -> void:
 	counts[type] = int(counts.get(type, 0)) + 1
 	fired.append([m.t_stage, type])
 
+## A stable id for one warning event (a falling crate, a pending summon): the host sends it in `am.ev` and the guest
+## keys its warning rings by it, so a repeated `am` neither doubles nor loses a ring.
+func _next_ev_id() -> int:
+	_ev_id += 1
+	return _ev_id
+
+## `am.ev` (M4): every warning ring still active on the floor, as {t:"load_test"|"backup_call", id, x, z, warn} where
+## `warn` = seconds left before it lands/joins. Presentation only: the guest draws matching rings from these; it never
+## damages, spawns crates or runs a timer itself.
+func active_events() -> Array:
+	var out: Array = []
+	for h: Dictionary in _crates:
+		out.append({"t": "load_test", "id": int(h["id"]), "x": snappedf(float(h["x"]), 0.01), "z": snappedf(float(h["z"]), 0.01),
+			"warn": snappedf(maxf(float(h["left"]), 0.0), 0.1)})
+	for s: Dictionary in _summons:
+		var spot: Array = s["spot"]
+		out.append({"t": "backup_call", "id": int(s["id"]), "x": snappedf(float(spot[0]), 0.01), "z": snappedf(float(spot[1]), 0.01),
+			"warn": snappedf(maxf(float(s["left"]), 0.0), 0.1)})
+	return out
+
 # ---------------- per step ----------------
 
 func update(dt: float) -> void:
@@ -94,10 +118,14 @@ func update(dt: float) -> void:
 	_update_pads(dt)
 	_update_summons(dt)
 
-## The manager's boss phase n (1 = 66 %, 2 = 33 %): the change request swaps tools.
+## The manager's boss phase n (1 = the first threshold): the change request swaps tools. The thresholds are the stage's
+## own data (`change_request.params.phases`, PHASES fallback), so a phase the table does not list never swaps anything.
 func on_phase(n: int) -> void:
+	var ths: Array = m.phases() if m != null else ArcadeManager.PHASES
 	for e: Dictionary in evs:
-		if e["type"] == "change_request" and bool((e["params"] as Dictionary).get("random_weapon_swap", true)):
+		if e["type"] != "change_request": continue
+		if n < 1 or n > ths.size(): continue
+		if bool((e["params"] as Dictionary).get("random_weapon_swap", true)):
 			_change_request(n)
 
 ## The stage is over: pads and crates go away, and a pending backup call is cancelled (no ring, no late spawn).
@@ -152,7 +180,7 @@ func _load_test(p: Dictionary) -> void:
 		_crates.append(_new_crate(x, z, warn))
 
 func _new_crate(x: float, z: float, warn: float) -> Dictionary:
-	var h := {"x": x, "z": z, "gy": 0.0, "left": warn, "dur": maxf(warn, 0.1), "node": null, "ring": null}
+	var h := {"id": _next_ev_id(), "x": x, "z": z, "gy": 0.0, "left": warn, "dur": maxf(warn, 0.1), "node": null, "ring": null}
 	if world != null:
 		var ring := _warning_ring(x, z, 0.0, CRATE_R, Color(1.0, 0.18, 0.12, 0.45))
 		var box := MeshInstance3D.new()
@@ -262,8 +290,8 @@ func _backup(p: Dictionary) -> void:
 	for i in int(p.get("summon_count", 2)):
 		var spot: Array = m.pick_minion_spot()
 		var gy := float(spot[2]) if spot.size() > 2 else 0.0
-		var ring := _warning_ring(float(spot[0]), float(spot[1]), gy, 1.6, Color(1.0, 0.55, 0.1, 0.5))
-		_summons.append({"name": str(names[i % names.size()]) if names.size() > 0 else "", "spot": spot, "left": warn, "node": ring})
+		var ring := _warning_ring(float(spot[0]), float(spot[1]), gy, BACKUP_R, Color(1.0, 0.55, 0.1, 0.5))
+		_summons.append({"id": _next_ev_id(), "name": str(names[i % names.size()]) if names.size() > 0 else "", "spot": spot, "left": warn, "node": ring})
 
 func _update_summons(dt: float) -> void:
 	for i in range(_summons.size() - 1, -1, -1):

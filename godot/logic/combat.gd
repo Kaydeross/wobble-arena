@@ -478,6 +478,7 @@ func respawn(f: FighterState) -> void:
 
 ## placeAt: teleport and reset for a fresh life (also the match start).
 func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
+	f.tuned = tuning_active()         # class-scaled hit spheres only with the balance overlay (docs/DAMAGE.md)
 	f.phys.place(x, y, z)
 	f.hp = max_hp(f); f.dead = false; f.burn = 0.0
 	f.down_t = 0.0; f.getup_immune = 0.0; f.kick_t = -1.0; f.swing = -1.0; f.stun = 0.0; f.trap_t = 0.0; f.trap_net = null; f.parry_t = 0.0

@@ -133,7 +133,7 @@ down (stages with `boss: true`; the crew that is left gives up) or every enemy i
 | Normal | 0.7 | 0.9 / 1.4 | 0.65 | 1.0 | 1.15 | 4 | 1.0 |
 | Nightmare | 1.0 | none | 1.0 | 1.0 | 1.0 | 3 | 1.5 |
 
-The result is x the table's hp, never below the floor and never above the table's own value; boss phases (66 / 33 %) are unchanged. Melee force and topple are separate: Easy/Normal scale the outgoing shove without touching a weapon's damage or the table's `dmg_scale`. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
+The result is x the table's hp, never below the floor and never above the table's own value. A two-seat co-op run gives the **bosses** x1.35 health on top and +1 shared life (6 Easy / 5 Normal / 4 Nightmare); the crew and the solo run are untouched, so solo numbers stay bit-identical. Boss phases are per-stage data (`change_request.params.phases`, 66 % / 33 % default, see below). Melee force and topple are separate: Easy/Normal scale the outgoing shove without touching a weapon's damage or the table's `dmg_scale`. Saves: `dlc.arcade_best` and `dlc.arcade_clears` are dictionaries keyed `easy` / `normal` / `nightmare`; an older save with the single int / Array is moved under `nightmare` (it was played at the old balance), nothing is lost. The first-clear coins of a stage are paid once PER difficulty; the victory bonus (2000 x coin multiplier) once per difficulty. The Site Foreman hat comes with the first victory on Normal or Nightmare (an Easy victory pays coins only and its card says "Win on Normal or Nightmare for the Site Foreman hat").
 
 **Difficulty tuning.** `godot/tests/arcade_balance.gd` (not in `npm test`, about 25 minutes for the full 3 difficulties x 6 stages x 8 seeds; run the difficulties in parallel processes): `godot --headless --path godot --script res://tests/arcade_balance.gd -- --no-save --seeds=8`. The scripted melee player of `arcade_test.gd` (the starting Wobbler, normal damage, no healing, one life, 100 s limit) fights each stage once per seed against the table's own bot skills. Wins out of the seeds, and the player's average health left on a win. These are the numbers for the table as it stands after the melee retune (below):
 
@@ -169,8 +169,13 @@ The stage table is the ONLY stat authority: `_arcade_line()` neutralises every m
 carries (`cls_dmg`, `cls_kb`, `cls_rate`, `cls_reload`, `cls_ammo`, `speed_mul`, `accel_mul`, `air_mul`, `jump_mul`), because
 the placeholder class is a bit of `BOT_CLASS_ORDER` slot bookkeeping, not a design stat. Bots are not hostile to each other
 (`combat.ffa = false`). The Client's `giant_scale` makes him a Giant (`big_t`, 1.5 x model; health and damage are divided
-back so the table's numbers hold). Boss phases at 66 % and 33 % health: damage x1.2 each and a small additive speed step
-(+5 %, then +10 % of the base in total, never compounding), with a toast; stages with `change_request` also swap tools.
+back so the table's numbers hold). A stage table may set its own boss phase thresholds in
+`change_request.params.phases` (highest first; The Client's data keeps the 66 % / 33 % default, and a stage without the
+param falls back to `ArcadeManager.PHASES`); the HUD's bar ticks follow the same list. At each phase the boss's damage is
+x1.2 and its walk speed takes a small additive step (+5 %, then +10 % of the base in total, never compounding), with a
+toast; stages with `change_request` also swap tools (unless `random_weapon_swap` is false). **Boss knockback:** every
+boss takes `ArcadeManager.BOSS_KB` (0.72) of a shove, so a 100 % boss cannot be one-hit ring-out cheesed through a
+fence gate; the crew keep the full number.
 
 **Boss movement speeds (owner report: "the Designer is too fast with its speed buff").** Measured against the player's
 7.5 m/s base (`FighterPhysics.speed`), every boss now walks in a band: slow melee tank 5.0-6.0, normal 6.0-7.2, fast
@@ -213,7 +218,7 @@ Normal sanity run after the change stayed in the same range (no free ring-out wi
 
 `whistle shove` and `red-tape net` are not in `stages.json`, so they are not built (only types present in the table are implemented).
 
-**HUD.** `arcade_boss_hud.gd`: a run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its bar in the stage's `hp_bar_color` (name inside, ticks at 66 / 33 %). It hangs in
+**HUD.** `arcade_boss_hud.gd`: a run strip ("Stage 3 / 6   Lives 2") and, while a boss stands, its bar in the stage's `hp_bar_color` (name inside, ticks at the stage's own phase thresholds, 66 / 33 % by default). It hangs in
 the `MatchHud.TOP_STACK` slot under the toast, between the K.O. panel and the radar (and the kill feed); `World._update_mode_ui` starts the mode line under it. `hud_test.gd`
 checks it at every phone / tablet size, both handedness settings (`npm run test:godot-ui`).
 

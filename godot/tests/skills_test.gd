@@ -1,6 +1,6 @@
 extends SceneTree
-## Balance overlay, weapon burst pools, swap draw time and the air recovery ("boing burst"), logic/skills.gd and
-## docs/DAMAGE.md "Balance and cooldowns". npm run test:godot-skills
+## Balance overlay, tuned class hitboxes, weapon burst pools, swap draw time and the air recovery ("boing burst"),
+## logic/skills.gd and docs/DAMAGE.md "Balance and cooldowns". npm run test:godot-skills
 ## godot --headless --path godot --script res://tests/skills_test.gd
 
 const DT := 1.0 / 120.0
@@ -39,6 +39,7 @@ func airborne(sim: MatchSim, f: FighterState, y: float, vx: float = 0.0, vy: flo
 
 func _initialize() -> void:
 	_tuning()
+	_hitboxes()
 	_bursts()
 	_swap()
 	_recover()
@@ -71,6 +72,27 @@ func _tuning() -> void:
 		and is_equal_approx(float(c.wdata("meteor")["burst"]["regen"]), 4.5), "heavy launchers recharge in 3.0-4.5 s")
 	ok(is_equal_approx(float(c.wdata("blower")["dmg"]), 2.8), "Air Blower puff does 2.8 (a full tank can finish a 150 HP class)")
 	ok(float(c.wdata("minigun")["force"]) < float(bare.wdata("minigun")["force"]), "minigun knockback lowered")
+	# Sprint 1.2: bow ammo, net trap and Uzi damage (all through Combat.wdata(); shared numbers stay the web ones)
+	var bow := c.wdata("bow")
+	ok(float(bow["ammo"]) == 8.0 and float(bare.wdata("bow")["ammo"]) == 12.0,
+		"Twin Fang Bow: 8 volleys tuned (shared 12)")
+	ok(float(bow["ammo"]) * 2.0 * float(bow["dmg"]) == 768.0,
+		"bow pickup is 768 damage at full draw (8 volleys x 2 arrows x 48)")
+	ok(float(c.wdata("net")["trap"]) == 2.0 and float(bare.wdata("net")["trap"]) == 4.5,
+		"Net Gun: trap 2.0 s tuned (shared 4.5, tuned was 2.5)")
+	ok(float(c.wdata("uzi")["dmg"]) == 3.8 and float(bare.wdata("uzi")["dmg"]) == 4.4,
+		"Uzi: 3.8 damage tuned (shared 4.4, tuned was 3.4)")
+	ok(float(c.wdata("uzi")["mag"]) * float(c.wdata("uzi")["dmg"]) == 152.0,
+		"one Uzi mag is 152 damage (40 rounds), enough for a 150 HP class")
+	# the tuned bow ammo reaches the pickup budget, the shared one keeps 12
+	var picker := FighterState.new()
+	picker.set_class("wobbler", c.classes["wobbler"])
+	c.pickup(picker, "bow")
+	ok(picker.get_ammo() == 8, "tuned bow pickup gives 8 volleys (%d)" % picker.get_ammo())
+	var picker_web := FighterState.new()
+	picker_web.set_class("wobbler", bare.classes["wobbler"])
+	bare.pickup(picker_web, "bow")
+	ok(picker_web.get_ammo() == 12, "shared/web bow pickup still gives 12 volleys (%d)" % picker_web.get_ammo())
 	ok(float(c.tuned_drops.get("meteor", 9.0)) < float(sim.pickups.drops["base"]["meteor"]), "meteor crate weight lowered")
 	ok(c.wdata("spatula") == bare.wdata("spatula"), "untuned weapons unchanged")
 	c.damage_rule = "classic"
@@ -81,6 +103,77 @@ func _tuning() -> void:
 	c.net_zones = true
 	ok(c.tuning_active(), "online with net_zones: tuning on")
 	sim.dispose(); bare.dispose()
+
+# 1b. tuned class hit spheres (docs/DAMAGE.md "Tuned hitboxes"): the class `head` scales the head sphere, `size` the
+# chest/legs, both clamped; a bare FighterState, the classic rule, the web and online-without-net_zones keep exactly
+# 0.4 / 0.62 / 0.5 (x1.5 for giants). No random numbers anywhere.
+func _hitboxes() -> void:
+	var sim := new_sim()                  # offline MatchSim: the overlay is on, so every fighter is armed
+	var c := sim.combat
+	ok(sim.player.tuned and c.tuning_active(), "offline match: the player is armed with the tuned hit spheres")
+	# A bare FighterState is what the JS-parity tests and the web shape use: never scaled.
+	var bare := FighterState.new()
+	bare.set_class("kid", c.classes["kid"])
+	ok(not bare.tuned, "bare FighterState: untuned by default")
+	ok(bare.cls_head == 1.4 and bare.cls_size == 0.86, "set_class stores the class head/size (%s / %s)" % [bare.cls_head, bare.cls_size])
+	var b0 := bare.spheres(false)
+	ok(float(b0[0][3]) == 0.4 and float(b0[1][3]) == 0.62 and float(b0[2][3]) == 0.5,
+		"untuned spheres are exactly 0.4 / 0.62 / 0.5 (%s)" % [[float(b0[0][3]), float(b0[1][3]), float(b0[2][3])]])
+	var b1 := bare.spheres(true)
+	ok(float(b1[0][3]) == 0.4 * 1.5 and float(b1[1][3]) == 0.62 * 1.5 and float(b1[2][3]) == 0.5 * 1.5,
+		"untuned giant spheres are the old 1.5x values (%s)" % [[float(b1[0][3]), float(b1[1][3]), float(b1[2][3])]])
+	bare.big_t = 1.0
+	ok(float(bare.spheres(false)[0][3]) == 0.4 * 1.5, "untuned Chaos Giant (big_t) also x1.5")
+	# Tuned: neutral class multipliers keep the classic radii bit-identically (Wobbler 1 / 1).
+	var p0 := sim.player.spheres(false)
+	ok(float(p0[0][3]) == 0.4 and float(p0[1][3]) == 0.62 and float(p0[2][3]) == 0.5,
+		"tuned Wobbler (1 / 1): still exactly 0.4 / 0.62 / 0.5")
+	var st0 := c.rng.state
+	var kid := sim.add_fighter("kid")             # head 1.4, size 0.86 -> clamped to 1.25 / 0.88
+	var ks := kid.spheres(false)
+	ok(is_equal_approx(float(ks[0][3]), 0.4 * 1.25), "Scamp head 1.4 clamps to +25%% (%.3f)" % float(ks[0][3]))
+	ok(is_equal_approx(float(ks[1][3]), 0.62 * 0.88) and is_equal_approx(float(ks[2][3]), 0.5 * 0.88),
+		"Scamp size 0.86 clamps to 0.88 (chest %.4f, legs %.4f)" % [float(ks[1][3]), float(ks[2][3])])
+	var alien := sim.add_fighter("alien")         # head 1.3 -> also clamped to 1.25
+	ok(float(alien.spheres(false)[0][3]) == float(ks[0][3]), "every head >= 1.25 class clamps to the same head radius")
+	var tank := sim.add_fighter("tank")           # Bulwark: head 0.85 (smallest), size 1.16 -> clamped to 1.15
+	var ts := tank.spheres(false)
+	ok(is_equal_approx(float(ts[0][3]), 0.4 * 0.85), "Bulwark head 0.85 stays 0.85 (smallest target, %.3f)" % float(ts[0][3]))
+	ok(is_equal_approx(float(ts[1][3]), 0.62 * 1.15) and is_equal_approx(float(ts[2][3]), 0.5 * 1.15),
+		"Bulwark size 1.16 clamps to 1.15 (chest %.4f, legs %.4f)" % [float(ts[1][3]), float(ts[2][3])])
+	var bruiser := sim.add_fighter("bruiser")     # head 0.92, size 1.12: inside the clamps
+	var bs := bruiser.spheres(false)
+	ok(is_equal_approx(float(bs[0][3]), 0.4 * 0.92) and is_equal_approx(float(bs[1][3]), 0.62 * 1.12),
+		"Bruiser scales inside the clamps (head %.3f, chest %.4f)" % [float(bs[0][3]), float(bs[1][3])])
+	# The giant x1.5 still applies on top of the class scale.
+	var gk := kid.spheres(true)
+	ok(is_equal_approx(float(gk[0][3]), 0.4 * 1.25 * 1.5) and is_equal_approx(float(gk[1][3]), 0.62 * 0.88 * 1.5),
+		"giant x1.5 applies on top of the class scale (head %.3f)" % float(gk[0][3]))
+	# No class may scale past the clamp bounds.
+	var head_max := 0.0
+	var body_max := 0.0
+	for cid: String in c.classes:
+		var s := sim.add_fighter(cid).spheres(false)
+		head_max = maxf(head_max, float(s[0][3])); body_max = maxf(body_max, float(s[1][3]))
+	ok(head_max <= 0.4 * 1.25 + 1e-9 and body_max <= 0.62 * 1.15 + 1e-9,
+		"clamp bounds hold for every class (head <= %.3f, chest <= %.3f)" % [head_max, body_max])
+	ok(c.rng.state == st0, "hit spheres draw no random numbers")
+	# The flag is re-armed whenever a life (re)starts: classic rule, online without net_zones and no overlay all disarm.
+	c.damage_rule = "classic"
+	c.place_at(kid, 0.0, 0.0)
+	var off := kid.spheres(false)
+	ok(not kid.tuned and float(off[0][3]) == 0.4 and float(off[1][3]) == 0.62,
+		"classic rule: place_at restores the web spheres for a Scamp (head %.3f)" % float(off[0][3]))
+	c.damage_rule = "zones"; c.net_started = true
+	c.place_at(kid, 0.0, 0.0)
+	ok(not kid.tuned and float(kid.spheres(false)[0][3]) == 0.4, "online without net_zones: classic spheres (web parity)")
+	c.net_zones = true
+	c.place_at(kid, 0.0, 0.0)
+	ok(kid.tuned and is_equal_approx(float(kid.spheres(false)[0][3]), 0.4 * 1.25), "online with net_zones: tuned spheres")
+	c.net_zones = false; c.net_started = false; c.apply_tuning({})
+	c.place_at(kid, 0.0, 0.0)
+	ok(not kid.tuned and float(kid.spheres(false)[0][3]) == 0.4, "no overlay (empty tuning): classic spheres")
+	sim.dispose()
 
 # 2. burst pools: n shots, then one charge back every regen s; firing is refused while empty
 func _bursts() -> void:

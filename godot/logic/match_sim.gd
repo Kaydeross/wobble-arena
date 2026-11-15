@@ -5,7 +5,8 @@ extends RefCounted
 ##   simTime -> input + bots (melee ticks inside) -> per fighter timers + physics -> bounce pads -> crates ->
 ##   projectiles (Weapons.step_all) -> ring-out -> separate -> net pinning -> animate tick (yaw, crouch, recoil climb,
 ##   bow arrow grab).
-## The melee sweep runs once per rendered frame after the animation wrote the hand/arm points: call sweep().
+## The melee sweep runs once per FIXED step, after the animation wrote the hand/arm points (World.sim_step calls
+## sweep(); headless tests call it directly). Keeping it off the rendered frame is what makes hits render-rate independent.
 ## Match setup follows loadMap (~7598) and setBotCfg (~7333).
 
 const BOT_CLASS_ORDER := ["bruiser", "kid", "alien", "elder", "wobbler"]   ## index.html ~4812
@@ -299,6 +300,7 @@ func _new_fighter(cid: String, is_player: bool) -> FighterState:
 	f.id = fighters.size()
 	f.is_player = is_player
 	f.set_class(cid, combat.classes.get(cid, {}))
+	f.tuned = combat.tuning_active()   # tuned class-scaled hit spheres (docs/DAMAGE.md); Combat.place_at re-arms on every life
 	f.phys.set_map(map, ladders)
 	f.phys.can_climb = is_player
 	f.hp = combat.max_hp(f)
@@ -342,7 +344,7 @@ func step(dt: float) -> void:
 		combat.weapons.climb_tick(f, dt)
 		combat.weapons.grab_tick(f, dt)
 
-## meleeSweep for everyone (once per rendered frame, after the hand/arm points were written).
+## meleeSweep for everyone (once per fixed simulation step, after the animation points were written, see World.sim_step).
 func sweep() -> void:
 	for f: FighterState in fighters:
 		combat.melee_sweep(f)

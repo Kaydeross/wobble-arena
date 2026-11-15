@@ -41,6 +41,7 @@ func _run() -> void:
 
 	for id in ["arena", "practice"]:
 		_sim_map(id)
+	_melee_cadence_test()
 	_touch_test()
 
 	print("WORLD %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
@@ -98,6 +99,66 @@ func _sim_map(id: String) -> void:
 	check(world.cam.global_position.y > world.phys.py, "%s camera above the player" % id)
 	print("SIM %s steps=%d landed=%.3fs end=(%.2f, %.3f, %.2f) moved=%.2fm min_y=%.4f" % [id, steps, landed_at, world.phys.px, world.phys.py, world.phys.pz, moved, min_y_after_land])
 	world.free()
+
+## Roadmap 1.3 regression: the melee bone/tip sample and combat.melee_sweep() run inside the FIXED simulation step
+## (world.gd sim_step), not in the rendered frame. Two identical scripted duels, one presented at 30 fps and one at
+## 120 fps for the same simulated second (120 fixed steps each), must sample the same pose and land the same swing.
+## Before the fix the pose was advanced by the frame delta in present() (30 animate calls vs 120, different dt), so
+## the sampled hand point and the hits differed with the render rate.
+func _melee_cadence_test() -> void:
+	var a := _melee_run(30)
+	var b := _melee_run(120)
+	check(a["ok"] and b["ok"], "fixed step: both cadence runs set up")
+	if not (a["ok"] and b["ok"]): return
+	check(int(a["hits"]) > 0, "fixed step: the scripted spatula swing lands at 30 fps (%d hits)" % int(a["hits"]))
+	check(int(a["hits"]) == int(b["hits"]), "fixed step: same hits at 30 and 120 fps (%d vs %d)" % [int(a["hits"]), int(b["hits"])])
+	check(absf(float(a["hp"]) - float(b["hp"])) < 1e-9, "fixed step: same damage at 30 and 120 fps (%.4f vs %.4f)" % [a["hp"], b["hp"]])
+	var dh: float = (Vector3(a["hand"]) - Vector3(b["hand"])).length()
+	var da: float = (Vector3(a["arm"]) - Vector3(b["arm"])).length()
+	check(dh < 1e-9, "fixed step: the sampled hand point is render-rate independent (%s m)" % str(dh))
+	check(da < 1e-9, "fixed step: the sampled arm direction is render-rate independent (%s)" % str(da))
+	print("MELEE cadence=30/120 fps hits=%d hp=%.3f hand=(%.3f,%.3f,%.3f)" % [int(a["hits"]), a["hp"], a["hand"].x, a["hand"].y, a["hand"].z])
+
+## One scripted duel: the player faces a statue bot 1.05 m away and swings the spatula once. Frames run `fps` times a
+## second, each frame stepping the sim at its fixed SIM and presenting once, exactly like World.tick does.
+func _melee_run(fps: int) -> Dictionary:
+	var world: Node = load("res://world/world.tscn").instantiate()
+	world.map_id = "arena"
+	world.mode_id = "classic"
+	world.auto_run = false
+	world.bot_count = 1
+	world.dyn_choice = "off"
+	world.rng_seed = 4242
+	root.add_child(world)
+	if world.sim == null or world.sim.fighters.size() < 2: return {"ok": false}
+	var c: Combat = world.sim.combat
+	world.cam.yaw = 0.0                             # face +z for the scripted swing (the camera behind the player)
+	var p: FighterState = world.sim.player
+	var b: FighterState = world.sim.fighters[1]
+	world.sim.controllers.erase(b)                     # a statue target: identical in both runs
+	var at: Vector3 = world.player_pos()
+	p.phys.px = at.x; p.phys.pz = at.z; p.phys.py = 0.0
+	p.phys.vx = 0.0; p.phys.vy = 0.0; p.phys.vz = 0.0; p.phys.grounded = true
+	p.yaw = 0.0; p.face_yaw = 0.0
+	b.phys.px = at.x; b.phys.pz = at.z + 1.05; b.phys.py = 0.0
+	b.phys.vx = 0.0; b.phys.vy = 0.0; b.phys.vz = 0.0; b.phys.grounded = true
+	b.hp = 500.0
+	c.set_weapon(p, "spatula")                          # skip the pickup phase: a clean, scripted swing
+	var out := {"ok": true, "hits": 0, "hp": b.hp, "hand": Vector3.ZERO, "arm": Vector3.ZERO}
+	var started: bool = c.try_melee(p, 0.0)
+	if not started: return {"ok": false}
+	var frames := 1 * fps                              # one simulated second
+	var per_frame: int = int(round((1.0 / float(fps)) / world.SIM))
+	for i in frames:
+		for k in per_frame:
+			world.sim_step(world.SIM)
+		world.present(1.0 / float(fps))
+	out["hits"] = int(p.st["hits"])
+	out["hp"] = b.hp
+	out["hand"] = Vector3(p.hand_x, p.hand_y, p.hand_z)
+	out["arm"] = Vector3(p.arm_x, p.arm_y, p.arm_z)
+	world.free()
+	return out
 
 func _touch(tc: Control, i: int, pos: Vector2, pressed: bool) -> void:
 	var e := InputEventScreenTouch.new()
