@@ -133,7 +133,8 @@ func _screen() -> void:
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	vp.add_child(main)
 	await process_frame
-	check((main.shop_b.get_node("Stack/Sub") as Label).text == "You have 500 coins", "title Shop button shows the coins")
+	# Hero Stage title: the coins sit on the top-right coin chip (the Shop tile keeps them in its tooltip)
+	check(main._coins_l.text == "500" and main.shop_b.tooltip_text == "You have 500 coins", "title coin chip shows the coins (%s)" % main._coins_l.text)
 	main.locker_b.pressed.emit()
 	await process_frame
 	var l = main.locker

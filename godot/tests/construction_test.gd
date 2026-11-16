@@ -52,10 +52,10 @@ func _title() -> void:
 	var w = main.wizard   # the setup wizard (ui/setup_wizard.gd): game type page lists the modes
 	var names: Array = []
 	for m: String in w.modes(): names.append(w.mode_name(m))
-	check(names.has("Classic") and not names.has("Construction"), "wizard modes %s (Construction lives behind the banner)" % [names])
+	check(names.has("Classic") and not names.has("Construction"), "wizard modes %s (Construction lives behind the pill)" % [names])
 	check(w.maps_for("classic").has("arena") and w.maps_for("classic").has("practice") and not w.maps_for("classic").has("siteyard"), "classic maps %s" % [w.maps_for("classic")])
 	check(w.maps_for("construction") == ["siteyard", "sitegen"], "construction maps %s" % [w.maps_for("construction")])
-	check(main.get_node("Safe/Col/Body/Home/Construction") != null, "the title has the Construction banner")
+	check(main.showcase.pill != null and main.showcase.site_b != null, "the title has the Construction pill and sign")
 	print("TITLE modes=%s" % [names])
 	vp.queue_free()
 	await process_frame

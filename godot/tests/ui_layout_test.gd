@@ -70,9 +70,10 @@ var TOUCH_PX := 60.0
 ## smallest touch target seen per case (pt), printed at the end
 var min_pt := {}
 ## Title column blocks (paths under Main) that must not overlap each other.
-const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body", "Safe/Col/Tip", "Safe/Col/Build"]
-const HOME := ["Safe/Col/Body/Home/Cols/Left/Play", "Safe/Col/Body/Home/Cols/Left/Online", "Safe/Col/Body/Home/Cols/Right/More/Locker", "Safe/Col/Body/Home/Cols/Right/More/Shop",
-	"Safe/Col/Body/Home/Cols/Right/More/Goals", "Safe/Col/Body/Home/Construction"]
+const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Col/Body"]
+## The title home (docs/TITLE.md, Hero Stage): the logo and chips on top, the icon dock, Play and the version line.
+const HOME := ["Safe/Col/Top/Logo", "Safe/Col/Top/Coins", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear", "Safe/Hero/Dock", "Safe/Hero/Play", "Safe/Hero/Build"]
+const DOCK_ITEMS := 5        ## Quick play, Online, Walldrobe, Shop, Goals
 const OB := "Safe/Col/Body/Online/Box/"
 ## the online panel (back, name, the room list, join with a code, host, account, status, roster): must not overlap
 const ONLINE := [OB + "Head/Back", OB + "Head/Title", OB + "Head/Name", OB + "Main/Rooms/Head/Refresh", OB + "Main/Rooms/Scroll",
@@ -335,7 +336,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 		groups.append(WFRAME)
 	else:
 		var on_panel := scr in ["online"] or scr.begins_with("lobby") or scr.begins_with("rooms") or scr.begins_with("host")
-		var blocks: Array = BLOCKS.filter(func(b: String) -> bool: return not ((on_panel and (b.ends_with("/Tip") or b.ends_with("/Build"))) or (b.ends_with("/Tip") and not main.get_node(b).visible)))
+		var blocks: Array = BLOCKS
 		inside = blocks + (ONLINE if on_panel else HOME)
 		groups.append(blocks)
 		if scr == "online" or scr.begins_with("rooms"):
@@ -343,7 +344,9 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 			if win.x > win.y: _touch_sizes(main, ONLINE, tag)
 			_scroll_rows(main, over_scroll, safe, tag, win.x > win.y)
 			_rooms_state(main.browser, scr, tag)
-		elif not on_panel: groups.append(HOME)
+		elif not on_panel:
+			groups.append(HOME)
+			if scr == "title": _title_home(main, safe, tag, win.x > win.y)
 		if scr.begins_with("host"):
 			var hs: Array = HOST_FRAME + HOST_TABS[scr]
 			inside = inside + hs; groups.append(hs)
@@ -371,10 +374,14 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	if lock: _locker_grid(main.locker, safe, tag)
 	# the whole column fits (containers would otherwise overflow past the bottom)
 	var col: Control = over_col if over_col != null else main.wizard if wiz else main.locker if lock else main.account.card if acct else main.get_node("Safe/Col")
+	if scr == "title":
+		var dock_min: float = main.dock.get_combined_minimum_size().y
+		check(dock_min <= safe.size.y + 0.5, "%s the dock's min height %.0f fits %.0f" % [tag, dock_min, safe.size.y])
 	check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 	_labels_fit(main, tag)
 	var layer: Control = over if over != null else main.account.card if acct else main.locker if lock else main.wizard if wiz \
-		else main.get_node("HostSheet/Center/Card") if scr.begins_with("host") else main.get_node("Lobby/Center/Card") if scr.begins_with("lobby") else main.get_node("Safe/Col")
+		else main.get_node("HostSheet/Center/Card") if scr.begins_with("host") else main.get_node("Lobby/Center/Card") if scr.begins_with("lobby") \
+		else main.get_node("Safe") if scr == "title" else main.get_node("Safe/Col")      # (the title: the column and the hero controls)
 	_congestion(main, layer, tag, k, win.x > win.y)
 	_bars(main, tag, scr)
 	if lock:
@@ -393,8 +400,8 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	elif over == null:
 		_not_cut(main.account.card if acct else main.get_node("Safe/Col"), tag)   # (the title's own labels are checked on the title screen)
 		if scr == "title" and lang_tag == "":
-			check(main.get_node("Safe/Col/Body/Home/Cols/Left/Play/Stack/Big").text == "Play", "%s Play button says Play" % tag)
-			check(main.get_node("Safe/Col/Body/Home/Cols/Left/Online/Stack/Big").text == "Play online with friends", "%s online button label" % tag)
+			check(main.get_node("Safe/Hero/Play/Row/Big").text == "Play", "%s Play button says Play" % tag)
+			check(main.get_node("Safe/Hero/Dock/Row/Online/Stack/Word").text == "Online", "%s online button label" % tag)
 			check(main.who.text == "Guest", "%s chip says Guest (%s)" % [tag, main.who.text])
 			_no_word(main.get_node("Safe/Col/Top"), "offline", tag, true)   # no status pill saying "Offline"
 	if acct:
@@ -402,6 +409,29 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	print("UI %s canvas %dx%d checked" % [tag, cs.x, cs.y])
 	vp.queue_free()
 	await process_frame
+
+## The Hero Stage title home: the dock (exactly DOCK_ITEMS tiles, each a 44 pt target), Play and the version line in
+## the bottom corners, the chips at the top; the CONSTRUCTION pill on the stage is inside the safe area, a full touch
+## target and clear of every other title control. All of it landscape (the game is landscape only).
+func _title_home(main: Control, safe: Rect2, tag: String, landscape: bool) -> void:
+	var dock: Control = main.dock
+	var dr := dock.get_global_rect()
+	var pr := (main.play as Control).get_global_rect()
+	check(safe.grow(0.5).encloses(dr) and safe.grow(0.5).encloses(pr), "%s dock %s and Play %s inside the safe area" % [tag, dr, pr])
+	if landscape: check(dr.end.x <= pr.position.x + 0.5 and dr.get_center().x < safe.get_center().x and pr.get_center().x > safe.get_center().x, "%s the dock is bottom left and Play bottom right" % tag)
+	var n := 0
+	for c in main.dock.row.get_children():
+		if c is BaseButton and (c as Control).visible: n += 1
+	check(n == DOCK_ITEMS, "%s the dock holds %d buttons (want %d)" % [tag, n, DOCK_ITEMS])
+	check(main.coins_chip.is_visible_in_tree(), "%s the coin chip shows" % tag)
+	var pill: Button = main.showcase.pill
+	check(pill.is_visible_in_tree(), "%s the CONSTRUCTION pill shows" % tag)
+	var tr := pill.get_global_rect()
+	check(safe.grow(0.5).encloses(tr), "%s pill %s inside the safe area" % [tag, tr])
+	if touch_case: _tap(pill, tag, "Pill")
+	for p: String in HOME:
+		var o: Rect2 = (main.get_node(p) as Control).get_global_rect()
+		check(not tr.grow(-0.5).intersects(o), "%s the pill %s overlaps %s %s" % [tag, tr, p, o])
 
 ## Rect of a control as it shows: cut to the scroll areas / clipping panels it sits in (empty when scrolled out of sight).
 func _shown_rect(c: Control) -> Rect2:
@@ -482,7 +512,7 @@ func _text_whole(c: Control, txt: String, tag: String) -> void:
 ## Buttons in the busy bars (MAX_BAR at most): title top row and cards row, wizard footer, Walldrobe header / footer.
 func _bars(main: Control, tag: String, scr: String) -> void:
 	var bars: Array = []
-	if scr == "title": bars = ["Safe/Col/Top", "Safe/Col/Body/Home/Cols/Right/More"]
+	if scr == "title": bars = ["Safe/Col/Top"]      # (the dock is its own panel: _title_home counts it)
 	elif scr.begins_with("w"): bars = ["Safe/Wizard/Foot", "Safe/Wizard/Head"]
 	elif (scr.begins_with("l") and scr != "lobby") or (scr.begins_with("s") and not scr.begins_with("set-")): bars = ["Safe/Locker/Head", "Safe/Locker/Foot"]
 	for p: String in bars:

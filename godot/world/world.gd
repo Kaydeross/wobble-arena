@@ -49,6 +49,11 @@ var build_hud: BuildHud = null
 ## Construction DLC Arcade run (dlc/construction/arcade_manager.gd): the boss rush this World plays, set by the title's Arcade card
 ## before the world enters the tree. null = every other match: none of the arcade hooks below run.
 var arcade: ArcadeManager = null
+## DLC test drive (the title showcase's "TEST IN <arena>", ui/title_showcase.gd): a solo sandbox on a pack's arena with
+## `trial_weapons` laid out as a rack round the player's start (they come back after a pick, like the Practice Range).
+## Open to players who do not own the pack, so NOTHING is saved or earned: no coins, stats, goals, history or ranking.
+@export var trial := false
+var trial_weapons: Array = []
 ## Soak test (world/soak_run.gd): > 0 = a scripted-player performance run of this many seconds over `soak_maps`, logged to
 ## `soak_dir`. Built by SoakRun.make_world; the sim, combat and physics play as usual.
 @export var soak_duration := 0.0
@@ -188,6 +193,22 @@ func _exit_tree() -> void:
 	if sim:
 		sim.dispose()
 
+## The test drive's rack: every `trial_weapons` entry the mode can hand out, on an arc in front of the player's start
+## (Pickups.place_perm: open on the floor, back 2.5 s after a pick). No random numbers are drawn.
+func _place_trial_rack() -> void:
+	var keys: Array = []
+	for k: Variant in trial_weapons:
+		var id := str(k)
+		if not sim.combat.wdata(id).is_empty() and sim.pickups.usable(id) and not keys.has(id): keys.append(id)
+	var p := sim.player.phys
+	var n := keys.size()
+	for i in n:
+		var a := (float(i) / float(maxi(1, n)) ) * TAU
+		sim.pickups.place_perm(keys[i], p.px + sin(a) * TRIAL_RING, p.pz + cos(a) * TRIAL_RING)
+	_toast(tr("Test drive: nothing is saved."))
+
+const TRIAL_RING := 4.5            ## metres from the player's start to each test-drive weapon
+
 ## loadMap: a fresh match on `id`.
 func load_map(id: String) -> void:
 	_connect_rank_hooks()                                 # Arcade clear/victory -> the leaderboard (once, never blocking)
@@ -210,7 +231,7 @@ func load_map(id: String) -> void:
 	_banner_t = 0.0
 	spectating = null; touch.spectate_mode = false
 	_reward = {}
-	Save.begin_match()
+	if not trial: Save.begin_match()
 	Ads.on_match_started(session != null)
 	map_id = id
 	if build_mode:                       # the blocks are BuildHud's (meshes + solids it can change); no crates
@@ -265,6 +286,7 @@ func load_map(id: String) -> void:
 	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, session.sim_bots(start_msg) if session != null else bots, skill)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
 	if arcade != null: arcade.setup_sim(sim)              # Arcade: the stage's fighters, tools and events
+	if trial: _place_trial_rack()
 	_build_dyn_views()
 	if session != null:
 		net_match = session.make_match(sim)   # NetMatch (guest) or HostMatch (net/host_match.gd: bots, relaying)
@@ -406,7 +428,7 @@ func tick(delta: float) -> void:
 		cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
 		if not locked:                       # the countdown freezes the sim: no acc, no sim_step, no catch-up on GO
 			acc += minf(dt, 0.1)
-			if not paused: Save.add_play_time(dt)
+			if not paused and not trial: Save.add_play_time(dt)
 			while acc >= SIM:
 				sim_step(SIM)
 				acc -= SIM
@@ -488,7 +510,7 @@ func _drain_events() -> void:
 				if views.has(f): views[f].on_event(e)
 			"hit":
 				if e.get("attacker") == sim.player and f != sim.player:
-					Save.on_hit(bool(e.get("head", false)))
+					if not trial: Save.on_hit(bool(e.get("head", false)))
 					if f: kill_cam.note_hit(f)         # (hit puffs and flashes are drawn by FxSystem)
 			"ko":
 				_on_ko(e)
@@ -509,11 +531,11 @@ func _drain_events() -> void:
 			"prop_respawn":
 				_on_prop_respawn(e)      # a broken component materialised again: a small dust puff at its base
 			"match_end":
-				_reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
+				if not trial: _reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
 			"match_over":
 				_show_banner(tr(str(e["title"])), tr(str(e["sub"])), bool(e["won"]))
-				if session == null:
+				if session == null and not trial:
 					_reward = Save.finish_match(bool(e["won"]), str(sim.combat.mode.get("name", sim.combat.mode_id)), str(map_node.map.get("name", map_id)), false, sim.combat.mode_id)
 			"match_finished":
 				if session == null: _show_offline_results(bool(e["won"]), str(e["winner"].name) if e.get("winner") else "")
@@ -587,7 +609,7 @@ func _on_ko(e: Dictionary) -> void:
 	if k == sim.player or v == sim.player:
 		if bool(e.get("fall", false)): Sfx.play("fall", 0.9)
 		else: Sfx.play("ko", 0.9)
-	Save.on_ko(k == sim.player and v != sim.player, v == sim.player, melee)
+	if not trial: Save.on_ko(k == sim.player and v != sim.player, v == sim.player, melee)
 	var txt := ""
 	if k == null: txt = "%s fell off" % v.name if e.get("fall", false) else "%s was K.O.'d" % v.name
 	else: txt = "%s  [%s]  %s" % [k.name, e.get("weapon", ""), v.name]

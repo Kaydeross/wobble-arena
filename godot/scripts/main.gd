@@ -1,8 +1,8 @@
 extends Control
-## Title scene, readable in two seconds: the logo, one big "Play" (offline, against computer players: opens the setup
-## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), a smaller "Quick play" under it
-## (logic/quick_play.gd: an all-random offline match straight away, no wizard: random arena and mode), one secondary
-## "Play online with friends" (its sub line says it needs internet, or the room state while connected). The online
+## Title scene, readable in two seconds: the logo, one huge "Play" (offline, against computer players: opens the setup
+## wizard, ui/setup_wizard.gd: Game type -> Arena -> Players -> Character -> Start), and an icon dock with "Quick play"
+## (logic/quick_play.gd: an all-random offline match straight away, no wizard: random arena and mode), "Online" (the
+## online panel), Walldrobe, Shop and Goals. The online
 ## panel: your name, the public room list (ui/room_browser.gd: tap a room to join, Refresh, the row / kind of room,
 ## empty / error states), "Join with a code" for private rooms (GuestSession), "Host a room" (the host sheet: room name,
 ## room type Versus / Arcade co-op, public / private, seats, bots -> HostSession) and an account button; both roles wait
@@ -11,13 +11,17 @@ extends Control
 ## start it.
 ## A chip saying who you are ("Guest" or "Signed in as NAME"; tap it for the Account sheet, ui/account_sheet.gd),
 ## a gear for the Settings screen (ui/settings_screen.gd: Controls, Camera, Graphics, Audio, Gameplay, Account,
-## About) and a small tip line. On the very first launch the how-to cards (ui/intro_cards.gd) show once.
+## About) and a coin chip (tap: the Shop). On the very first launch the how-to cards (ui/intro_cards.gd) show once.
 ## Back everywhere: the Back buttons, Escape / controller B (ui_cancel) and Android's back gesture (go_back(): the top
 ## sheet or page closes; on the title itself nothing happens, the app never quits on back).
 ## Laid out with containers inside a safe-area MarginContainer so nothing overlaps at any aspect ratio
-## (tests/ui_layout_test.gd checks 852x393, 667x375, 1170x540, 1280x720 and 390x844 on every page and sheet).
-## Under the two Play buttons: Walldrobe and Shop (ui/locker.gd, one screen in two modes; the Shop button shows your
-## coins) and Goals (ui/goals_screen.gd: daily / weekly coin goals and milestones; its sub says how many to claim).
+## (tests/ui_layout_test.gd checks 852x393, 667x375, 1170x540 and 1280x720 on every page and sheet).
+## Layout (docs/TITLE.md, "Hero Stage"): the 3D STAGE (ui/title_showcase.gd: your wobbler big on a site pedestal and a
+## tower crane holding a DLC pack's container) fills the whole screen behind everything. On top, in the safe area: the
+## logo (two lines) top left; the coin chip (tap: the Shop), the account chip and the gear top right; the icon dock
+## bottom left (Quick play, Online, Walldrobe, Shop, Goals: ui/title_dock.gd); one huge Play button bottom right with the
+## version under it. The single DLC entry is the hazard-striped CONSTRUCTION pill hanging from the container (tap it, or
+## the container: the showcase opens). Landscape only.
 ## Command line (after `--`): --join=ROOM [--server=ws://host:3000/ws] [--name=NAME] joins straight away;
 ## --mode=ID / --map=ID preselect the wizard (the world reads them too when it starts).
 
@@ -27,10 +31,9 @@ const DLC_TIPS := [
 	"Scaffold towers and timber stacks make good cover.",
 	"Site rule: knock fighters off the slab for a K.O.",
 ]
-const TIP_MIN_H := 600.0           ## canvas px: the tip line needs a taller title than the iPhone landscape canvas has
-const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area
-const COMPACT_H := 620.0                  ## safe height (canvas px) below which the title tightens up (Quick play needs the room)
-const TINY_H := 505.0                     ## the very shortest canvases (iPhone X / 13 mini at the 44 pt scale): smallest title
+const TRIAL_BOTS := 2              ## bots in a DLC test drive (easy ones: it is a place to try the tools)
+const MARGIN := Vector4(28, 18, 28, 14)   ## left, top, right, bottom padding inside the safe area (the other pages)
+const HOME_MARGIN := Vector4(28, 16, 28, 20)   ## the same on the title home: a little more air under the dock and Play
 const TIPS := [
 	"Tip: push the stick to the edge to sprint.",
 	"Tip: knock other players off the edge to score.",
@@ -45,6 +48,9 @@ const TIPS := [
 ]
 const ONLINE_SUB := "Needs internet · public rooms or a code"
 
+## The tip the Play button's tooltip carries (the title has no room for a tip line any more).
+var tip_text := ""
+
 ## Set by the world when it hands an active session back (host migration) and/or a message to show.
 var session: GuestSession = null
 var notice := ""
@@ -56,9 +62,14 @@ const O := "Safe/Col/Body/Online/Box/"
 @onready var gear: Button = $Safe/Col/Top/Gear
 @onready var home: Control = $Safe/Col/Body/Home
 @onready var online_panel: Control = $Safe/Col/Body/Online
-@onready var play: Button = $Safe/Col/Body/Home/Cols/Left/Play
-@onready var online_b: Button = $Safe/Col/Body/Home/Cols/Left/Online
-var quick_b: Button                ## Quick play: a random arena and mode straight into an offline match (logic/quick_play.gd)
+@onready var hero: Control = $Safe/Hero               ## the title home's own controls: the dock, Play and the version line
+var play: Button                   ## the huge yellow Play button (bottom right)
+var online_b: Button               ## Online (dock)
+var dock: TitleDock                ## the icon dock (bottom left)
+var coins_chip: PanelContainer     ## the coin count (top right); tap: the Shop
+var _coins_l: Label
+var showcase: TitleShowcase        ## the 3D stage behind the title + its controls (ui/title_showcase.gd)
+var quick_b: Button                ## Quick play (dock): a random arena and mode straight into an offline match (logic/quick_play.gd)
 @onready var status: Label = get_node(O + "Foot/Status")
 var wizard: SetupWizard
 var locker: LockerScreen            ## the Walldrobe / Shop screen (hidden until opened)
@@ -66,11 +77,9 @@ var locker_b: Button
 var shop_b: Button
 var goals_b: Button
 var goals: GoalsScreen              ## the Goals screen (title: Goals)
-var hub: ConstructionHub            ## the Construction DLC hub (the yellow banner under the cards row)
-var dlc_b: Button                   ## the DON'T ENTER sign (node "Construction"): starts the tape wipe into the Construction title
+var hub: ConstructionHub            ## the Construction DLC hub (Play on the Construction title, UNLOCK PACK)
 var dlc := false                    ## the Construction title is showing (never saved: the app always opens on the normal title)
 var _wipe: DlcTransition
-var _play_sub_default := ""
 var news_dot: Control
 var news: WhatsNew                  ## the What's new card (patch notes; opens once per new version)
 var settings: SettingsScreen        ## the Settings screen (gear)
@@ -100,16 +109,10 @@ func _ready() -> void:
 	locker.visible = false
 	safe.add_child(locker)
 	locker.closed.connect(close_locker)
-	var top := $Safe/Col/Top as HBoxContainer       # chip and gear on the left, the logo over the right column (hand sketch)
-	top.move_child($Safe/Col/Top/GuestChip, 0)
-	top.move_child(gear, 1)
-	top.move_child($Safe/Col/Top/Spacer, 2)
-	top.move_child($Safe/Col/Top/Logo, 3)
-	_build_more()
-	_build_quick_play()
-	_stretch_title()
-	play.pressed.connect(func() -> void: if dlc: open_hub() else: open_wizard())   # on the Construction title Play opens the hub
-	online_b.pressed.connect(show_tab.bind(true))
+	_build_hero()
+	_build_showcase()                 # (before the sheets below, so every page and sheet opens on top of it)
+	_build_coins()
+	_build_wipe()
 	(get_node(O + "Head/Back") as Button).pressed.connect(show_tab.bind(false))
 	gear.icon = _gear_icon()
 	gear.pressed.connect(show_settings.bind(true))
@@ -120,15 +123,16 @@ func _ready() -> void:
 	goals = GoalsScreen.new()
 	add_child(goals)
 	goals.closed.connect(func() -> void:
-		_coins_sub()
+		_refresh_dock()
 		if Tier.is_pc(): goals_b.grab_focus.call_deferred())
 	hub = ConstructionHub.new()
 	add_child(hub)
 	hub.start_requested.connect(play_offline)
 	hub.arcade_requested.connect(play_arcade)
 	hub.closed.connect(func() -> void:
-		_coins_sub()
-		if Tier.is_pc(): dlc_b.grab_focus.call_deferred())
+		_refresh_dock()
+		showcase.refresh()             # (it may have been bought: UNLOCK PACK becomes OWNED)
+		if Tier.is_pc(): (showcase.test_b if showcase.is_open() else showcase.pill).grab_focus.call_deferred())
 	news = WhatsNew.new()
 	add_child(news)
 	news.closed.connect(func() -> void:
@@ -138,7 +142,7 @@ func _ready() -> void:
 	_news_dot()
 	_build_host_sheet()
 	_build_lobby()
-	$Safe/Col/Tip.text = TIPS[randi() % TIPS.size()]
+	tip_text = tr(TIPS[randi() % TIPS.size()])
 	account = AccountSheet.new()
 	add_child(account)
 	account.closed.connect(func() -> void:
@@ -162,7 +166,7 @@ func _ready() -> void:
 		elif a.begins_with("--name="): _ui["name"].text = a.substr(7)
 		elif a.begins_with("--mode=") and SetupWizard.modes().has(a.substr(7)): wizard.set_mode(a.substr(7))
 		elif a.begins_with("--map=") and Content.maps.has(a.substr(6)): wizard.set_map(a.substr(6))
-	_play_sub()
+	_tip_room()
 	show_tab(notice != "" or session != null or join != "")
 	if join != "" and session == null:
 		_ui["room"].text = join
@@ -201,6 +205,7 @@ func go_back() -> bool:
 		show_lobby(false)
 		return true
 	if host_sheet.visible: show_host(false); return true
+	if showcase.is_open(): return showcase.back()      # the open DLC container: doors shut, back to the title
 	if locker.visible:
 		if locker.confirm.visible: locker.show_confirm(false)
 		else: locker.close()
@@ -216,6 +221,9 @@ func _unhandled_input(e: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST and is_inside_tree():
 		go_back()
+	elif what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready() and is_inside_tree():
+		apply_safe_area.call_deferred()       # the rail fits its words again
+		showcase.refresh.call_deferred()
 
 func _process(dt: float) -> void:
 	if session != null:
@@ -225,75 +233,182 @@ func _process(dt: float) -> void:
 func maps_for(mode: String) -> Array:
 	return SetupWizard.maps_for(mode)
 
-## The Walldrobe / Shop / Goals row under Play online: clear buttons, each with a one-line sub (the Shop's shows your
-## coins, the Goals one how many goals wait to be claimed).
-func _build_more() -> void:
-	var right := home.get_node("Cols/Right") as VBoxContainer
-	var more := VBoxContainer.new()
-	more.name = "More"
-	more.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	more.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	more.add_theme_constant_override("separation", 12)   # right column under the logo: Walldrobe, Shop, Goals stacked
-	right.add_child(more)
+## The 3D stage (ui/title_showcase.gd): its picture fills the whole screen behind the title's controls, its own controls
+## (the CONSTRUCTION pill, and Back / the pack bar while a container is open) on top of them. The stage itself is the tap
+## layer under the controls (a tap on the container opens it: the title's containers ignore the mouse for that); while a
+## container opens the title's controls fade out and come back on Back.
+func _build_showcase() -> void:
+	showcase = TitleShowcase.new()
+	add_child(showcase)
+	move_child(showcase, $Background.get_index() + 1)
+	add_child(showcase.overlay)
+	move_child(showcase.overlay, safe.get_index() + 1)
+	showcase.covered = func() -> bool:
+		return (settings != null and settings.visible) or (goals != null and goals.visible) or (hub != null and hub.visible)
+	showcase.ui_changed.connect(_on_showcase_ui)
+	showcase.test_requested.connect(play_trial)
+	showcase.unlock_requested.connect(func(_p: DLCPackData) -> void: open_hub())   # the existing unlock flow: coins or the code
+	showcase.site_requested.connect(toggle_dlc)                                    # DON'T ENTER / EXIT SITE: the Construction title
+	Save.changed.connect(showcase.refresh)
+	$Background.stage_3d = true
+
+## The open container takes the screen: the title's own controls fade with `k` (1 = gone, and out of the focus order).
+func _on_showcase_ui(k: float) -> void:
+	safe.modulate.a = 1.0 - k
+	safe.visible = k < 0.995
+
+## The stage and the title's controls belong to the title home: other pages (wizard, Walldrobe, online tab) replace them.
+func _home_layers() -> void:
+	var on := col.visible and home.visible
+	hero.visible = on
+	coins_chip.visible = on
+	showcase.set_shown(on)
+	apply_safe_area()
+
+## The stage's frame: the padded safe area (the idle scene is framed inside it) and the touch-size factor.
+func _push_frame() -> void:
+	if showcase == null or not is_inside_tree(): return
+	var vs := get_viewport_rect().size
+	var l := float(safe.get_theme_constant("margin_left"))
+	var t := float(safe.get_theme_constant("margin_top"))
+	var r := float(safe.get_theme_constant("margin_right"))
+	var b := float(safe.get_theme_constant("margin_bottom"))
+	showcase.set_frame(Rect2(l, t, vs.x - l - r, vs.y - t - b), _unit())
+
+## Touch-size factor: 1 in landscape (UiScale keeps 60 canvas px at 44 pt there). A portrait window shows the same
+## 1170 px wide canvas on a third of the points, so the title's controls grow until 60 * unit px is 44 pt again.
+func _unit() -> float:
+	var vs := get_viewport_rect().size
+	return 1.0 if vs.y <= vs.x else clampf(vs.y / vs.x * 1.12, 1.0, 2.45)
+
+## A DLC test drive (the showcase's "TEST IN <arena>"): a solo sandbox on the pack's arena with every weapon of the
+## pack on the floor round the start. Open to everyone, owner or not: the world's `trial` flag keeps coins, stats,
+## goals and history untouched, and nothing here touches the unlock (docs/TITLE.md).
+func play_trial(p: DLCPackData) -> void:
+	if p == null or not Content.maps.has(p.arena_id): return
+	if session != null: session.leave("")
+	var world: Node = load(WORLD).instantiate()
+	world.map_id = p.arena_id
+	world.mode_id = p.test_mode if Content.modes.has(p.test_mode) else "classic"
+	world.bot_count = TRIAL_BOTS
+	world.difficulty = "easy"
+	world.ko_limit = 0
+	world.dyn_choice = "off"
+	world.trial = true
+	world.trial_weapons = Array(p.real_weapons(Content.weapons))
+	get_tree().change_scene_to_node(world)
+
+## The title's own controls: the icon dock (Quick play, Online, Walldrobe, Shop, Goals), the huge Play button and the
+## version line (all in `hero`, laid out by apply_safe_area). Routes are the ones the old menu rail had.
+func _build_hero() -> void:
 	home.add_theme_constant_override("separation", UiTheme.SP_3)
-	locker_b = _small_button("Walldrobe", "What you own")
-	locker_b.name = "Locker"
-	locker_b.pressed.connect(open_locker.bind(false))
-	more.add_child(locker_b)
-	shop_b = _small_button("Shop", "")
-	shop_b.pressed.connect(open_locker.bind(true))
-	more.add_child(shop_b)
-	goals_b = _small_button("Goals", "")
-	goals_b.pressed.connect(open_goals)
-	more.add_child(goals_b)
-	_build_dlc_banner()
-	Save.changed.connect(_coins_sub)
-	_coins_sub()
-
-## The two title columns are 70 / 30 wide (Play and the modes are the main thing, the three cards the side) and share
-## the height: Play takes the biggest share on the left, the three cards split the right column evenly, so both columns end at the same line above the DON'T ENTER sign (the buttons' minimums stay the floor).
-func _stretch_title() -> void:
 	home.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	for b: Button in [play, quick_b, online_b, locker_b, shop_b, goals_b]:
-		b.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	play.size_flags_stretch_ratio = 2.4
-
-## Quick play, under Play: one tap and a random arena and mode (logic/quick_play.gd) starts at once, no wizard. The sub
-## line says what it does (docs/WRITING.md); it is secondary to the big Play button.
-func _build_quick_play() -> void:
-	quick_b = Button.new()
-	quick_b.name = "Quick"
-	quick_b.custom_minimum_size = Vector2(0, 56)
-	quick_b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dock = TitleDock.new()
+	hero.add_child(dock)
+	quick_b = dock.add_item("Quick", "quick", "Quick play")
 	quick_b.tooltip_text = tr("Random arena and mode")
 	quick_b.pressed.connect(quick_play)
-	var st := VBoxContainer.new()
-	st.name = "Stack"
-	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	st.offset_left = 20; st.offset_right = -20
-	st.alignment = BoxContainer.ALIGNMENT_CENTER
-	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	st.add_theme_constant_override("separation", 0)
-	quick_b.add_child(st)
-	var bl := Label.new()
-	bl.name = "Big"
-	bl.text = tr("Quick play")
-	bl.add_theme_font_size_override("font_size", 28)
-	bl.add_theme_font_override("font", UiTheme.font(700))
-	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	st.add_child(bl)
-	var sl := Label.new()
-	sl.name = "Sub"
-	sl.text = tr("Random arena and mode")
-	sl.theme_type_variation = &"MutedLabel"
-	sl.add_theme_font_size_override("font_size", 16)
-	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sl.clip_text = true
-	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	st.add_child(sl)
-	play.get_parent().add_child(quick_b)
-	play.get_parent().move_child(quick_b, play.get_index() + 1)   # under Play (no reparenting: the layout tests know Play's path)
-	quick_b.visible = not dlc
+	online_b = dock.add_item("Online", "online", "Online")
+	online_b.tooltip_text = tr(ONLINE_SUB)
+	online_b.pressed.connect(show_tab.bind(true))
+	locker_b = dock.add_item("Locker", "wall", "Walldrobe")
+	locker_b.tooltip_text = tr("What you own")
+	locker_b.pressed.connect(open_locker.bind(false))
+	shop_b = dock.add_item("Shop", "shop", "Shop")
+	shop_b.pressed.connect(open_locker.bind(true))
+	goals_b = dock.add_item("Goals", "goals", "Goals")
+	goals_b.pressed.connect(open_goals)
+	play = Button.new()
+	play.name = "Play"
+	play.theme_type_variation = &"PrimaryButton"
+	play.set("accessibility_name", "Play")
+	var pr := HBoxContainer.new()                  # the triangle and the word (a Button's own icon would not centre beside its text)
+	pr.name = "Row"
+	pr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pr.alignment = BoxContainer.ALIGNMENT_CENTER
+	pr.add_theme_constant_override("separation", 14)
+	play.add_child(pr)
+	var pi := TextureRect.new()
+	pi.name = "Icon"
+	pi.texture = _play_icon()
+	pi.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pi.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pi.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pi.modulate = UiTheme.INK
+	pr.add_child(pi)
+	var pl := Label.new()
+	pl.name = "Big"
+	pl.text = "Play"
+	pl.add_theme_font_override("font", UiTheme.font(700))
+	pl.add_theme_color_override("font_color", UiTheme.INK)
+	pl.add_theme_color_override("font_shadow_color", Color(1, 1, 1, 0.35))
+	pl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pr.add_child(pl)
+	play.pressed.connect(func() -> void: if dlc: open_hub() else: open_wizard())   # on the Construction title Play opens the hub
+	hero.add_child(play)
+	hero.move_child(play, 0)
+	Save.changed.connect(_refresh_dock)
+	_refresh_dock()
+
+## The coin chip (top right, beside the account chip and the gear): tap it for the Shop.
+func _build_coins() -> void:
+	coins_chip = PanelContainer.new()
+	coins_chip.name = "Coins"
+	coins_chip.theme_type_variation = &"ChipPanel"
+	coins_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	coins_chip.focus_mode = Control.FOCUS_ALL
+	coins_chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var sb := UiTheme.box(Color(UiTheme.PANEL.r, UiTheme.PANEL.g, UiTheme.PANEL.b, 0.9), 99, UiTheme.PANEL_EDGE, UiTheme.BORDER, 4)
+	sb.content_margin_left = 10; sb.content_margin_right = 16; sb.content_margin_top = 5; sb.content_margin_bottom = 5
+	coins_chip.add_theme_stylebox_override("panel", sb)
+	var row := HBoxContainer.new()
+	row.name = "Row"
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	coins_chip.add_child(row)
+	var ic := LockerScreen.LockerIcon.new("coin", 30)
+	ic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(ic)
+	_coins_l = Label.new()
+	_coins_l.name = "Amount"
+	_coins_l.add_theme_font_size_override("font_size", 20)
+	_coins_l.add_theme_font_override("font", UiTheme.font(700))
+	_coins_l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_coins_l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_coins_l)
+	var top := $Safe/Col/Top
+	top.add_child(coins_chip)
+	top.move_child(coins_chip, $Safe/Col/Top/GuestChip.get_index())
+	coins_chip.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed) \
+				or e.is_action_pressed("ui_accept"):
+			coins_chip.accept_event()
+			open_locker(true))
+	coins_chip.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_refresh_dock()
+
+## The Play button's triangle (no image files), drawn dark so it sits on the yellow like the label.
+static func _play_icon() -> ImageTexture:
+	var n := 64
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	var a := Vector2(14, 8)
+	var b := Vector2(14, 56)
+	var c := Vector2(54, 32)
+	for y in n:
+		for x in n:
+			var p := Vector2(x + 0.5, y + 0.5)
+			var d := minf(minf(_edge(p, a, b), _edge(p, b, c)), _edge(p, c, a))   # inside when all three are positive
+			var cov := clampf(d + 0.5, 0.0, 1.0)
+			if cov > 0.0: img.set_pixel(x, y, Color(1, 1, 1, cov))
+	return ImageTexture.create_from_image(img)
+
+static func _edge(p: Vector2, a: Vector2, b: Vector2) -> float:
+	var e := b - a
+	return (e.x * (p.y - a.y) - e.y * (p.x - a.x)) / e.length() * -1.0
 
 ## Quick play: a random game type, arena, class, floor, bot count and bot skill; straight into the offline match (no
 ## wizard). The world takes the class and the floor from Settings, so those two are written first (like the
@@ -306,16 +421,8 @@ func quick_play() -> void:
 	Settings.set_value("dyn", str(over["dyn"]))
 	play_offline({"mode": over["mode"], "map": over["map"], "bots": over["bots"], "difficulty": over["difficulty"]})
 
-## The DLC entry: a wide hazard-tape "DON'T ENTER" sign under the cards row. Pressing it plays the tape wipe into the
-## Construction title (and, once inside, "EXIT SITE" wipes back). Drawn in code, no images.
-func _build_dlc_banner() -> void:
-	var b := DontEnterSign.new()
-	b.name = "Construction"
-	b.custom_minimum_size = Vector2(0, 56)
-	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.pressed.connect(toggle_dlc)
-	home.add_child(b)
-	dlc_b = b
+## The tape wipe that plays between the normal and the Construction title (the DON'T ENTER / EXIT SITE sign and pill).
+func _build_wipe() -> void:
 	_wipe = DlcTransition.new()
 	_wipe.name = "Wipe"
 	add_child(_wipe)
@@ -335,44 +442,16 @@ func _news_dot() -> void:
 	var newest := WhatsNew.newest_version()
 	news_dot.visible = newest != "" and newest != Save.last_seen_news
 
-func _small_button(big: String, sub: String) -> Button:
-	var b := Button.new()
-	b.name = big
-	b.custom_minimum_size = Vector2(0, 60)
-	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var st := VBoxContainer.new()
-	st.name = "Stack"
-	st.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	st.offset_left = 14; st.offset_right = -14
-	st.alignment = BoxContainer.ALIGNMENT_CENTER
-	st.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	st.add_theme_constant_override("separation", -4)
-	b.add_child(st)
-	var bl := Label.new()
-	bl.name = "Big"
-	bl.text = big
-	bl.add_theme_font_size_override("font_size", 24)
-	bl.add_theme_font_override("font", UiTheme.font(700))
-	bl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	st.add_child(bl)
-	var sl := Label.new()
-	sl.name = "Sub"
-	sl.text = sub
-	sl.theme_type_variation = &"MutedLabel"
-	sl.add_theme_font_size_override("font_size", 15)
-	sl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sl.clip_text = true
-	sl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	st.add_child(sl)
-	return b
-
-func _coins_sub() -> void:
-	if shop_b: (shop_b.get_node("Stack/Sub") as Label).text = tr("You have %d coins") % Save.coins
+## The coin count, the Shop's and the Goals' tooltips, and the badge on the Goals tile (how many goals wait to be claimed).
+func _refresh_dock() -> void:
+	if _coins_l: _coins_l.text = str(Save.coins)
+	if coins_chip: coins_chip.tooltip_text = tr("You have %d coins") % Save.coins
+	if shop_b: shop_b.tooltip_text = tr("You have %d coins") % Save.coins
 	if goals_b:
 		var n := Save.goals_to_claim()
-		var sl := goals_b.get_node("Stack/Sub") as Label
-		sl.text = (tr("%d to claim") % n) if n > 0 else tr("Daily coin goals")
-		sl.add_theme_color_override("font_color", UiTheme.GOOD if n > 0 else UiTheme.MUTED)
+		goals_b.set_badge(n)
+		goals_b.tooltip_text = (tr("%d to claim") % n) if n > 0 else tr("Daily coin goals")
+	if is_node_ready(): apply_safe_area.call_deferred()
 
 ## The Goals screen over the title.
 func open_goals() -> void:
@@ -389,6 +468,7 @@ func open_news() -> void:
 ## The Walldrobe (shop = false) or the Shop instead of the title column.
 func open_locker(shop_mode: bool = false, tab: String = "") -> void:
 	col.visible = false
+	_home_layers()
 	wizard.visible = false
 	locker.visible = true
 	locker.open(shop_mode, tab)
@@ -396,10 +476,12 @@ func open_locker(shop_mode: bool = false, tab: String = "") -> void:
 func close_locker() -> void:
 	locker.visible = false
 	col.visible = true
+	_home_layers()
+	showcase.stage.refresh_look()       # the look may have changed: the wobbler on the stage wears it
 	if wizard.stage:                    # the look may have changed: the Character page renders it again
 		wizard.stage.baked.clear()
 		wizard.stage.current = ""
-	_coins_sub()
+	_refresh_dock()
 	if Tier.is_pc(): locker_b.grab_focus.call_deferred()
 
 ## The title (Play / Play online with friends) or the online panel.
@@ -410,9 +492,8 @@ func show_tab(online: bool) -> void:
 			else "Please update Wobblers Arena before playing online.")
 		return
 	home.visible = not online
-	($Safe/Col/Top/Logo as WobbleLogo).font_size = _logo_font(online)     # a compact header: the room list needs the height
 	online_panel.visible = online
-	$Safe/Col/Build.visible = not online      # (the version line waits for the title: the room list needs the height)
+	_home_layers()                            # (the dock, Play and the stage leave with the home; the logo fits the header again)
 	_tip_room()
 	if online and Tier.is_pc(): (get_node(O + "Head/Back") as Button).grab_focus.call_deferred()
 	elif not online and Tier.is_pc(): online_b.grab_focus.call_deferred()
@@ -423,31 +504,27 @@ func _remote_online_blocked() -> bool:
 func _refresh_remote_gates() -> void:
 	var blocked := _remote_online_blocked()
 	online_b.disabled = blocked and session == null
+	online_b.modulate.a = 0.5 if online_b.disabled else 1.0
 	online_b.tooltip_text = ("Update the game to play online." if RemoteConfig.update_required()
 		else ("Online play is temporarily unavailable." if RemoteConfig.killed("online") else ONLINE_SUB))
 
-## The tip line shows on the title only when the canvas is tall enough for it after the Construction banner (the
-## tip is the Play button's tooltip too); the room list needs the height.
+## The tip (the Play button's tooltip, with the last setup).
 func _tip_room() -> void:
-	var tip := $Safe/Col/Tip as Label
-	tip.visible = not online_panel.visible and get_viewport_rect().size.y >= TIP_MIN_H
-	play.tooltip_text = (tr("Last time: %s") % wizard.summary_line()) + ("" if tip.visible else "\n" + tip.text)
+	play.tooltip_text = (tr("Last time: %s") % wizard.summary_line()) + "\n" + tip_text
 
 ## The setup wizard (page 0 = Game type) instead of the title column.
 func open_wizard(p: int = 0) -> void:
 	col.visible = false
+	_home_layers()
 	wizard.visible = true
 	wizard.go(p)
 
 func close_wizard() -> void:
 	wizard.visible = false
 	col.visible = true
-	_play_sub()
-	if Tier.is_pc(): play.grab_focus.call_deferred()
-
-## Play keeps one plain sub line; the last setup is its tooltip (the wizard opens on it anyway).
-func _play_sub() -> void:
+	_home_layers()
 	_tip_room()
+	if Tier.is_pc(): play.grab_focus.call_deferred()
 
 func show_settings(on: bool, section := "") -> void:
 	if on:
@@ -472,56 +549,124 @@ static func _gear_icon() -> ImageTexture:
 			if cov > 0.0: img.set_pixel(x, y, Color(1, 1, 1, cov))
 	return ImageTexture.create_from_image(img)
 
-## Status line in the online panel; while connected the Play online button's sub line shows it too.
+## Status line in the online panel; while connected the Online button's tooltip shows it too.
 func _status(t: String) -> void:
 	status.text = t
 	status.tooltip_text = t
-	var on := session != null and session.is_active()
-	var sub: Label = $Safe/Col/Body/Home/Cols/Left/Online/Stack/Sub
-	sub.text = (tr("Connected · %s") % t) if on else tr(ONLINE_SUB)
-	sub.tooltip_text = sub.text
+	if session != null and session.is_active(): online_b.tooltip_text = tr("Connected · %s") % t
 
-## The logo size: smaller when the title is compact, so the Quick play button fits under Play without the title column
-## overflowing the safe area on the shortest canvases (the layout test checks 926x428 at the Large scale too).
-func _logo_font(online: bool) -> int:
-	if online: return 46
-	var safe_h := _safe_height()
-	return 50 if safe_h < TINY_H else (58 if safe_h < COMPACT_H else 68)
+## The logo in the header: as big as the room beside the chip and the gear allows (the online tab keeps a compact one:
+## the room list needs the height). When even a small single line does not fit (a long account name on a small phone)
+## the two words stack.
+func _fit_logo(avail: float, max_font: int) -> void:
+	var logo := $Safe/Col/Top/Logo as WobbleLogo
+	for two: bool in [false, true]:
+		logo.lines = PackedStringArray(["WOBBLERS", "ARENA"]) if two else PackedStringArray(["WOBBLERS ARENA"])
+		var f := mini(max_font, 46) if two else max_font
+		var floor_f := 22 if two else 38
+		while f >= floor_f:
+			logo.font_size = f
+			if logo.get_combined_minimum_size().x <= avail: return
+			f -= 2
+
+## The title home's logo: two lines (WOBBLERS / ARENA), `max_font` unless the room beside the chips is narrower.
+func _fit_logo_two(avail: float, max_font: int) -> void:
+	var logo := $Safe/Col/Top/Logo as WobbleLogo
+	logo.lines = PackedStringArray(["WOBBLERS", "ARENA"])
+	var f := max_font
+	while f > 24:
+		logo.font_size = f
+		if logo.get_combined_minimum_size().x <= avail: return
+		f -= 2
 
 ## The safe area's height in canvas px (the viewport minus the phone insets).
 func _safe_height() -> float:
 	var i := SafeArea.insets(get_viewport())
 	return get_viewport_rect().size.y - float(i[1]) - float(i[3])
 
-## Safe-area insets (notch, home indicator) plus our own padding.
+## Safe-area insets (notch, home indicator) plus our own padding, then the title home: the logo and the chips in the top
+## row (Safe/Col/Top), the dock bottom left, Play bottom right with the version under it (Safe/Hero, anchored to the
+## corners of the padded safe area). Landscape; the other pages (wizard, Walldrobe, online tab) keep the old padding
+## and take the column.
 func apply_safe_area() -> void:
+	if not is_inside_tree(): return
 	var i := SafeArea.insets(get_viewport())
-	# short canvas (small phones at the 44 pt UI scale, UiScale): tighter padding, a smaller logo and a shorter Play,
-	# Online and Construction row so the Quick play button fits under Play without the title column overflowing the
-	# safe area
+	var vs := get_viewport_rect().size
+	var u := _unit()
+	var home_on := hero.visible
 	var safe_h := _safe_height()
-	var short := safe_h < COMPACT_H
-	var tiny := safe_h < TINY_H
-	var m: Vector4 = MARGIN * (Vector4(1, 0.45, 1, 0.45) if short else Vector4.ONE)
+	var short := safe_h < 620.0 and not home_on      # (the online panel and the wizard need the height on small phones)
+	var m: Vector4 = HOME_MARGIN if home_on else MARGIN * (Vector4(1, 0.45, 1, 0.45) if short else Vector4.ONE)
 	safe.add_theme_constant_override("margin_left", int(m.x + i[0]))
 	safe.add_theme_constant_override("margin_top", int(m.y + i[1]))
 	safe.add_theme_constant_override("margin_right", int(m.z + i[2]))
 	safe.add_theme_constant_override("margin_bottom", int(m.w + i[3]))
-	($Safe/Col/Top/Logo as WobbleLogo).font_size = _logo_font(online_panel.visible)
-	play.custom_minimum_size.y = 54.0 if tiny else (72.0 if short else 100.0)   # (the Construction banner sits below the cards row)
-	(play.get_node("Stack/Big") as Label).add_theme_font_size_override("font_size", 34 if tiny else (54 if short else 84))
-	(play.get_node("Stack/Sub") as Label).add_theme_font_size_override("font_size", 15 if tiny else (19 if short else 21))
-	online_b.custom_minimum_size.y = 52.0 if short else 64.0
-	quick_b.custom_minimum_size.y = 52.0 if short else 56.0
-	for b: Button in [locker_b, shop_b, goals_b]: b.custom_minimum_size.y = 52.0 if short else 60.0
-	if dlc_b: dlc_b.custom_minimum_size.y = 60.0 if short else 62.0
-	col.add_theme_constant_override("separation", 11 if tiny else (UiTheme.SP_3 if short else UiTheme.SP_4))
+	var inner := Vector2(vs.x - float(int(m.x + i[0]) + int(m.z + i[2])), vs.y - float(int(m.y + i[1]) + int(m.w + i[3])))
+	col.add_theme_constant_override("separation", UiTheme.SP_3 if short else UiTheme.SP_4)
+	var k := minf(u, 2.0)
+	gear.custom_minimum_size = Vector2(60, 60) * u
+	gear.expand_icon = u > 1.0
+	gear.add_theme_constant_override("icon_max_width", int(34.0 * u))
+	if chip: chip.custom_minimum_size = Vector2(60.0 * u, 60.0 * u)
+	who.add_theme_font_size_override("font_size", int(round(17.0 * k)))
+	if coins_chip: coins_chip.custom_minimum_size = Vector2(0, 60.0 * u)
+	if _coins_l: _coins_l.add_theme_font_size_override("font_size", int(round(20.0 * k)))
+	col.size_flags_horizontal = Control.SIZE_FILL
+	col.size_flags_vertical = Control.SIZE_FILL
+	var top := $Safe/Col/Top as HBoxContainer
+	var logo := $Safe/Col/Top/Logo as WobbleLogo
+	for c: Control in [gear, chip, coins_chip]:
+		if c: c.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if home_on else Control.SIZE_SHRINK_CENTER
+	logo.size_flags_vertical = Control.SIZE_SHRINK_BEGIN if home_on else Control.SIZE_SHRINK_CENTER
+	if home_on:
+		_fit_hero(inner, u)
+		# the logo: two lines, as big as 5 % of the width (the mock's 44 pt on an 852 pt phone), never wider than what the chips leave
+		var chips_w := gear.custom_minimum_size.x + (chip.get_combined_minimum_size().x if chip else 90.0) + coins_chip.get_combined_minimum_size().x + 3.0 * 16.0 + 24.0
+		_fit_logo_two(inner.x - chips_w, int(clampf(inner.x * 0.057 * minf(u, 1.9), 40.0, 92.0)))
+	else:
+		var chip_w: float = chip.get_combined_minimum_size().x if chip else 90.0
+		var max_font := 46 if online_panel.visible else (int(68.0 * minf(u, 1.9)) if not short else 58)
+		_fit_logo(inner.x - chip_w - gear.custom_minimum_size.x - 3.0 * 16.0 - 2.0, max_font)
+	top.add_theme_constant_override("separation", 12 if home_on else 16)
 	for sheet: String in ["HostSheet", "Lobby"]:      # a sheet's card is centred in the safe area, not on the whole screen
 		var cc := get_node_or_null(sheet + "/Center") as Control
 		if cc:
 			cc.offset_left = float(i[0]); cc.offset_top = float(i[1]); cc.offset_right = -float(i[2]); cc.offset_bottom = -float(i[3])
 	var hint := get_node_or_null("HostSheet/Center/Card/Box/Hint")
 	if hint: hint.visible = get_viewport_rect().size.y >= 500.0      # on the shortest canvases the arena hint gives way (it is in the tooltip too)
+	_push_frame.call_deferred()
+
+## Dock bottom left, Play bottom right, the version under it: each anchored to its corner of the hero area.
+func _fit_hero(inner: Vector2, u: float) -> void:
+	var k := minf(u, 2.0)
+	var d := dock.fit(k)
+	_corner(dock, false, d, Vector2.ZERO)
+	var build := hero.get_node("Build") as Label
+	build.add_theme_font_size_override("font_size", int(round(14.0 * minf(u, 1.8))))
+	var bs := build.get_combined_minimum_size()
+	_corner(build, true, bs, Vector2.ZERO)
+	var ph := clampf(inner.y * 0.21, 84.0 * k, 128.0 * k)
+	var pw := clampf(inner.x * 0.31, 250.0 * k, 400.0 * k)
+	(play.get_node("Row/Big") as Label).add_theme_font_size_override("font_size", int(ph * 0.6))
+	(play.get_node("Row/Icon") as TextureRect).custom_minimum_size = Vector2(ph * 0.42, ph * 0.42)
+	play.custom_minimum_size = Vector2(pw, ph)
+	var lift := bs.y + 2.0
+	if inner.y > inner.x: lift += d.y + 12.0 * k      # (portrait is not a target, but Play must never sit on the dock)
+	_corner(play, true, Vector2(pw, ph), Vector2(0, lift))
+
+## Anchors `c` to the bottom right (right = true) or bottom left corner of the hero area, `gap` away from it.
+func _corner(c: Control, right: bool, sz: Vector2, gap: Vector2) -> void:
+	c.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT if right else Control.PRESET_BOTTOM_LEFT, false)
+	c.grow_horizontal = Control.GROW_DIRECTION_BEGIN if right else Control.GROW_DIRECTION_END
+	c.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	c.offset_bottom = -gap.y
+	c.offset_top = -gap.y - sz.y
+	if right:
+		c.offset_right = -gap.x
+		c.offset_left = -gap.x - sz.x
+	else:
+		c.offset_left = gap.x
+		c.offset_right = gap.x + sz.x
 
 # ---------------- online ----------------
 
@@ -1306,13 +1451,14 @@ func _apply_dlc(on: bool) -> void:
 	var logo: WobbleLogo = $Safe/Col/Top/Logo
 	if on: logo.set_palette(Color(0.92, 0.9, 0.84), HazardTape.YELLOW, Color(0.1, 0.08, 0.06))
 	else: logo.set_palette(WobbleLogo.WHITE, WobbleLogo.YELLOW, WobbleLogo.INK)
-	(dlc_b as DontEnterSign).label = tr("EXIT SITE") if on else tr("DON'T ENTER")
-	var sub := play.get_node("Stack/Sub") as Label
-	if on: _play_sub_default = sub.text
-	sub.text = tr("Construction · Classic or Arcade") if on else _play_sub_default
-	var tip := $Safe/Col/Tip as Label
-	tip.text = tr((DLC_TIPS if on else TIPS)[randi() % (DLC_TIPS if on else TIPS).size()])
+	showcase.site_exit = on                   # (the pill and the opened sign say EXIT SITE on the Construction title)
+	if showcase.is_open(): showcase.snap(false)   # (the tape hides the container going back up)
+	showcase.refresh()
+	var tips: Array = DLC_TIPS if on else TIPS
+	tip_text = tr(tips[randi() % tips.size()])
+	_tip_room()
 	if quick_b: quick_b.visible = not on      # the Construction title starts through its hub, not a quick random match
+	apply_safe_area.call_deferred()
 
 ## Logo and Play button thump in after the tape clears.
 func _drop_in() -> void:

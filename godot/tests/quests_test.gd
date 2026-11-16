@@ -187,7 +187,8 @@ func _screen() -> void:
 	await process_frame
 	var gb: Button = main.goals_b
 	var n := sv.goals_to_claim()
-	check(n > 0 and (gb.get_node("Stack/Sub") as Label).text == "%d to claim" % n, "the title's Goals button says how many to claim (%s)" % (gb.get_node("Stack/Sub") as Label).text)
+	# Hero Stage title: the Goals dock tile carries a count badge (and the "N to claim" tooltip) instead of a sub-line
+	check(n > 0 and gb.tile.badge == n and gb.tooltip_text == "%d to claim" % n, "the title's Goals tile shows how many to claim (badge %d, %s)" % [gb.tile.badge, gb.tooltip_text])
 	gb.pressed.emit()
 	for i in 3: await process_frame
 	var gs = main.goals
@@ -214,7 +215,7 @@ func _screen() -> void:
 	check(gs.coins_l.text == str(sv.coins), "the coins in the header follow")
 	check(gs.streak_l.text.contains("1 day"), "the play streak shows (%s)" % gs.streak_l.text)
 	check(main.go_back() and not gs.visible, "Back closes Goals")
-	check((gb.get_node("Stack/Sub") as Label).text == ("%d to claim" % (n - 1) if n > 1 else "Daily coin goals"), "the Goals button follows the claims")
+	check(gb.tile.badge == n - 1 and gb.tooltip_text == ("%d to claim" % (n - 1) if n > 1 else "Daily coin goals"), "the Goals tile follows the claims (badge %d)" % gb.tile.badge)
 	sv.reset()
 	sv.day_override = -1
 	vp.queue_free()

@@ -163,10 +163,14 @@ func _flow() -> void:
 	main.wizard.load_settings()
 	check(main.wizard.mode_id == "classic" and main.wizard.map_id == "arena", "a remembered Construction start leaves the wizard on Classic / arena (%s %s)" % [main.wizard.mode_id, main.wizard.map_id])
 	st.set_value("mode", "classic"); st.set_value("offline_map", "arena")
-	# the banner
-	var banner := main.get_node_or_null("Safe/Col/Body/Home/Construction") as Button
-	check(banner != null and banner.is_visible_in_tree(), "the title has the Construction banner")
-	check((banner as DontEnterSign).label == "DON'T ENTER", "the sign says DON'T ENTER")
+	# the DLC entries: the CONSTRUCTION pill on the stage (opens the showcase) and, in the opened showcase, the DON'T ENTER sign
+	var pill: DlcPill = main.showcase.pill
+	var sign_b: DontEnterSign = main.showcase.site_b
+	check(pill != null and pill.is_visible_in_tree() and pill.label == "CONSTRUCTION" and pill.tag == "NEW", "the title has the CONSTRUCTION - NEW pill")
+	check(main.get_node_or_null("Safe/Col/Body/Home/Construction") == null, "the full-width DON'T ENTER bar is gone from the title")
+	main.showcase.snap(true)
+	check(sign_b.is_visible_in_tree() and sign_b.label == "DON'T ENTER", "the opened showcase says DON'T ENTER")
+	main.showcase.snap(false)
 	var hub = main.hub
 	check(hub != null and not hub.visible, "the hub waits behind the banner")
 	main.open_hub()
@@ -179,13 +183,14 @@ func _flow() -> void:
 	check(main.go_back() and not hub.visible, "go_back() closes the hub")
 	# the DON'T ENTER wipe: the title turns into the Construction title, whose Play opens the hub
 	main.set_dlc(true, false)
-	check(main.dlc and (banner as DontEnterSign).label == "EXIT SITE", "the Construction title shows EXIT SITE")
+	check(main.dlc and pill.label == "EXIT SITE" and sign_b.label == "EXIT SITE", "the Construction title shows EXIT SITE")
 	main.play.pressed.emit()
 	check(hub.visible and not main.wizard.visible, "Play on the Construction title opens the hub")
 	check(main.go_back() and not hub.visible, "go_back() closes the hub again")
 	main.set_dlc(false, false)
-	check(not main.dlc and (banner as DontEnterSign).label == "DON'T ENTER", "EXIT SITE returns to the normal title")
-	banner.pressed.emit()
+	check(not main.dlc and pill.label == "CONSTRUCTION" and sign_b.label == "DON'T ENTER", "EXIT SITE returns to the normal title")
+	main.showcase.snap(true)
+	sign_b.pressed.emit()
 	check(main._wipe.busy, "the sign starts the tape wipe")
 	main._wipe.busy = false; main._wipe.visible = false   # (the tween finishes on its own; this test does not wait for it)
 	# locked hub
@@ -389,14 +394,10 @@ func _layout_case(win: Vector2, ins_pt: Array, state: String, loc: String, sv: N
 			var st := card.get_node("Margin/Stack") as Control
 			check(st.get_combined_minimum_size().y <= card.size.y - 2.0 * UiTheme.SP_3 + 0.5, "%s card '%s' words (%.0f) fit the card (%.0f)" % [tag, card.name, st.get_combined_minimum_size().y, card.size.y])
 	if state == "title":
-		var bn := main.get_node("Safe/Col/Body/Home/Construction") as Button
-		check(bn.is_visible_in_tree() and safe.grow(0.5).encloses(bn.get_global_rect()), "%s banner inside the safe area" % tag)
-		check(bn.get_global_rect().size.x >= 400.0, "%s banner is wide" % tag)
-		var more := main.get_node("Safe/Col/Body/Home/Cols/Right/More") as Control
-		check(bn.get_global_rect().position.y >= more.get_global_rect().end.y + 8.0 * k - 0.6, "%s banner sits below the Walldrobe row" % tag)
-		check(main.get_node("Safe/Col/Build").get_global_rect().position.y >= bn.get_global_rect().end.y, "%s the version line is below the banner" % tag)
-		var tip := main.get_node("Safe/Col/Tip") as Label
-		if tip.visible: check(safe.encloses(tip.get_global_rect()), "%s tip inside the safe area" % tag)
+		var pl: DlcPill = main.showcase.pill
+		check(pl.is_visible_in_tree() and safe.grow(0.5).encloses(pl.get_global_rect()), "%s pill inside the safe area" % tag)
+		for n: String in ["Safe/Hero/Play", "Safe/Hero/Dock", "Safe/Hero/Build", "Safe/Col/Top/Logo", "Safe/Col/Top/Coins", "Safe/Col/Top/GuestChip", "Safe/Col/Top/Gear"]:
+			check(not (main.get_node(n) as Control).get_global_rect().grow(-0.5).intersects(pl.get_global_rect()), "%s pill clear of %s" % [tag, n])
 	print("DLC %s canvas %dx%d checked" % [tag, cs.x, cs.y])
 	vp.queue_free()
 	await process_frame

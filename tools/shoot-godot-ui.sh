@@ -1,6 +1,7 @@
 #!/bin/sh
 # Renders the Godot UI for visual review (needs a real renderer: opens a window for a moment).
 #   sh tools/shoot-godot-ui.sh [suffix] [shot ...]     shots: title title-online title-settings wizard-mode wizard-arena
+#     title-site (the Construction title) title-open title-open-owned title-weapon (the DLC showcase: docs/TITLE.md)
 #     wizard-players wizard-character wizard-start match touch touch-lefty fps pause (default: these, plus title and
 #     wizard-character in iPhone portrait 390x844 as *-portrait.png), title-construction construction
 # Walldrobe / Shop set (internally "locker"): locker-skin locker-hat locker-color locker-emote locker-class shop
