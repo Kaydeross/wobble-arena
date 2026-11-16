@@ -1,10 +1,10 @@
 extends SceneTree
-## Title redesign test (headless, tools/test-title.js, npm run test:godot-title): the left menu rail, the 3D stage and
-## the DLC showcase (scripts/main.gd, ui/title_showcase.gd, ui/showcase_stage.gd, dlc/dlc_pack_data.gd, docs/TITLE.md).
+## Title redesign test (headless, tools/test-title.js, npm run test:godot-title): the "Hero Stage" title (the icon
+## dock, Play, the chips, the CONSTRUCTION pill on the full-screen 3D stage) and the DLC showcase (scripts/main.gd, ui/title_showcase.gd, ui/showcase_stage.gd, dlc/dlc_pack_data.gd, docs/TITLE.md).
 ##   data     the pack registry: the Construction pack's 9 weapon ids are real Construction weapons, its arena is Site
 ##            Yard, and is_unlocked follows the profile live (no stored bool)
-##   routes   every rail button and header control still goes where it went before the redesign
-##   sizes    at 852x393, 667x375 and 390x844 (with phone insets): every title control, the TAP TO OPEN tag, the opened
+##   routes   every dock button, Play, the chips and the DLC entries still go where they went before the redesign
+##   sizes    at 852x393, 667x375 and 932x430 (with phone insets), landscape only: every title control, the pill, the opened
 ##            bar (Back, swap arrows, TEST IN, UNLOCK PACK) and every rack cell is at least 44 x 44 pt, inside the safe
 ##            area, and nothing interactive overlaps
 ##   states   idle -> open (a ray-picked tap on the container, and the tag button) -> pick a weapon (the wobbler holds
@@ -20,7 +20,7 @@ const MIN_TOUCH := 44.0
 const CASES := [
 	[Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
 	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]],
-	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0]],
+	[Vector2(932, 430), [59.0, 0.0, 59.0, 21.0]],
 ]
 ## Scripts that use the autoloads are loaded at run time (a --script main loop compiles before the autoloads exist).
 var TS: GDScript
@@ -150,13 +150,14 @@ func _routes() -> void:
 	var a: Array = await _main_in(Vector2(1170, 540))
 	var vp: SubViewport = a[0]
 	var m: Control = a[1]
-	var rail: Control = m.get_node("Safe/Rail")
+	var rail: Control = m.hero
 	var names: Array = []
-	for c in rail.get_children(): if c is BaseButton: names.append(str(c.name))
-	check(names == ["Play", "Quick", "Online", "Locker", "Shop", "Goals"], "the rail holds the six menu actions in order (%s)" % [names])
-	check((m.play.get_node("Stack/Big") as Label).text == "Play" and (m.quick_b.get_node("Stack/Big") as Label).text == "Quick play"
-		and (m.online_b.get_node("Stack/Big") as Label).text == "Play online with friends" and (m.locker_b.get_node("Stack/Big") as Label).text == "Walldrobe"
-		and (m.shop_b.get_node("Stack/Big") as Label).text == "Shop" and (m.goals_b.get_node("Stack/Big") as Label).text == "Goals", "the rail keeps the real labels")
+	for c in m.dock.row.get_children(): if c is BaseButton: names.append(str(c.name))
+	check(names == ["Quick", "Online", "Locker", "Shop", "Goals"], "the dock holds the five menu actions in order (%s)" % [names])
+	check((m.play.get_node("Row/Big") as Label).text == "Play" and (m.quick_b.get_node("Stack/Word") as Label).text == "Quick play"
+		and (m.online_b.get_node("Stack/Word") as Label).text == "Online" and (m.locker_b.get_node("Stack/Word") as Label).text == "Walldrobe"
+		and (m.shop_b.get_node("Stack/Word") as Label).text == "Shop" and (m.goals_b.get_node("Stack/Word") as Label).text == "Goals", "the dock keeps the real words")
+	check(m.get_node_or_null("Safe/Rail") == null and m.get_node_or_null("Safe/Col/Body/Home/Construction") == null, "no menu rail and no DON'T ENTER bar any more")
 	# Play -> the setup wizard, page 0
 	m.play.pressed.emit()
 	check(m.wizard.visible and m.wizard.page == 0 and not m.col.visible and not rail.visible, "Play opens the setup wizard")
@@ -168,7 +169,7 @@ func _routes() -> void:
 	check(_has_target(m.quick_b.pressed, "quick_play"), "Quick play is wired to quick_play")
 	# Play online -> the online panel
 	m.online_b.pressed.emit()
-	check(m.online_panel.visible and not m.home.visible and not rail.visible and not m.showcase.visible, "Play online opens the online panel")
+	check(m.online_panel.visible and not m.home.visible and not rail.visible and not m.showcase.visible and not m.coins_chip.visible, "Online opens the online panel")
 	m.go_back()
 	check(m.home.visible and rail.visible and m.showcase.visible, "Back from the online panel")
 	# Walldrobe / Shop
@@ -193,9 +194,24 @@ func _routes() -> void:
 	check(m.account.visible, "the chip opens the Account sheet")
 	m.go_back()
 	check(not m.account.visible and not m.settings.visible, "Back from the sheets")
-	# the DON'T ENTER sign -> the Construction title, whose Play opens the hub
-	var sign_b := m.get_node("Safe/Col/Body/Home/Construction") as Button
-	check(sign_b == m.dlc_b and _has_target(sign_b.pressed, "toggle_dlc"), "the DON'T ENTER sign is wired to toggle_dlc")
+	# the coin chip -> the Shop
+	var evc := InputEventMouseButton.new()
+	evc.button_index = MOUSE_BUTTON_LEFT; evc.pressed = true
+	m.coins_chip.gui_input.emit(evc)
+	check(m.locker.visible and m.locker.shop, "the coin chip opens the Shop")
+	m.go_back()
+	check(not m.locker.visible and rail.visible and m.coins_chip.visible, "Back from the Shop (chip)")
+	check(m._coins_l.text == str(root.get_node("Save").coins), "the coin chip shows the coins")
+	# the DLC entries: the DON'T ENTER sign (in the opened showcase) and the pill on the Construction title -> toggle_dlc
+	check(_has_target(m.showcase.site_requested, "toggle_dlc"), "the DON'T ENTER / EXIT SITE sign is wired to toggle_dlc")
+	check(m.showcase.pill.pressed.get_connections().size() >= 1 and m.showcase.pill.label == "CONSTRUCTION" and m.showcase.pill.tag == "NEW", "the pill says CONSTRUCTION - NEW while the pack is not owned")
+	m.showcase.snap(true)
+	check(m.showcase.site_b.is_visible_in_tree() and m.showcase.site_b.label == "DON'T ENTER", "the opened showcase shows the DON'T ENTER sign")
+	m.showcase.snap(false)
+	m.set_dlc(true, false)
+	check(m.showcase.site_exit and m.showcase.pill.label == "EXIT SITE" and m.showcase.pill.tag == "", "on the Construction title the pill says EXIT SITE")
+	check(m.showcase.pill.visible and not m.showcase.is_open(), "the Construction title: the container is closed again")
+	m.set_dlc(false, false)
 	m.set_dlc(true, false)
 	m.play.pressed.emit()
 	check(m.dlc and m.hub.visible and not m.wizard.visible, "Construction title: Play opens the hub")
@@ -235,27 +251,50 @@ func _sizes(win: Vector2, ins_pt: Array) -> void:
 	var sc = m.showcase
 	var tag := "%dx%d" % [win.x, win.y]
 	check(sc.packs.size() == 2, "%s two packs in the showcase" % tag)
-	# idle: every title control
+	# idle: every title control. The dock items count with their word (the whole item is the touch target).
 	var idle := {"Play": m.play, "Quick": m.quick_b, "Online": m.online_b, "Walldrobe": m.locker_b, "Shop": m.shop_b, "Goals": m.goals_b,
-		"Chip": m.chip, "Gear": m.gear, "DontEnter": m.dlc_b, "TapToOpen": sc.tap_b}
+		"Coins": m.coins_chip, "Chip": m.chip, "Gear": m.gear, "Pill": sc.pill}
 	var rects := {}
 	for n: String in idle:
 		var c: Control = idle[n]
 		_big(c, win, cs, tag, n)
 		rects[n] = c.get_global_rect()
 		check(safe.grow(0.5).encloses(rects[n]), "%s %s %s inside the safe area %s" % [tag, n, rects[n], safe])
+	for n: String in ["Quick", "Online", "Walldrobe", "Shop", "Goals"]:    # (the dock panel hugs its items: only the panel is checked against the rest)
+		rects.erase(n)
+	rects["Dock"] = m.dock.get_global_rect()
+	rects["Logo"] = (m.get_node("Safe/Col/Top/Logo") as Control).get_global_rect()
+	rects["Version"] = (m.hero.get_node("Build") as Control).get_global_rect()
+	check(safe.grow(0.5).encloses(rects["Dock"]) and safe.grow(0.5).encloses(rects["Logo"]) and safe.grow(0.5).encloses(rects["Version"]), "%s dock, logo and version inside the safe area" % tag)
 	_apart(rects, tag + " idle")
-	var slot: Rect2 = m.stage_slot.get_global_rect()
-	check(_pt(slot.size.x, win, cs) >= 150.0 and _pt(slot.size.y, win, cs) >= 110.0, "%s the stage has room (%.0f x %.0f pt)" % [tag, _pt(slot.size.x, win, cs), _pt(slot.size.y, win, cs)])
+	# the dock's words: legible (11 pt or more) and each fits its item; the items are apart; the no-subtitle rule: Play is one word
+	var items: Dictionary = {}
+	for it: Control in m.dock.row.get_children(): items[it.name] = it.get_global_rect()
+	_apart(items, tag + " dock items")
+	for it in m.dock.row.get_children():
+		var w: Label = it.word
+		var fs := w.get_theme_font_size("font_size")
+		check(float(fs) * win.x / cs.x >= 11.0 and fs >= UiTheme.MIN_FONT, "%s dock word '%s' is %.1f pt (need 11+)" % [tag, w.text, float(fs) * win.x / cs.x])
+		check(w.get_theme_font("font").get_string_size(w.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x <= (it as Control).size.x + 0.5, "%s dock word '%s' fits its item" % [tag, w.text])
+	check(m.play.get_node("Row").get_child_count() == 2 and m.play.get_node_or_null("Stack") == null, "%s Play is just the triangle and the word (no subtitle)" % tag)
 	var box: Rect2 = sc.container_screen_rect()
 	check(_pt(box.size.x, win, cs) >= MIN_TOUCH and _pt(box.size.y, win, cs) >= MIN_TOUCH, "%s the hanging container is a 44 pt target (%.0f x %.0f pt)" % [tag, _pt(box.size.x, win, cs), _pt(box.size.y, win, cs)])
-	check(slot.grow(2.0).encloses(box), "%s the container %s hangs inside the stage %s" % [tag, box, slot])
+	check(safe.grow(2.0).encloses(box), "%s the container %s hangs inside the safe area %s" % [tag, box, safe])
+	for n: String in ["Logo", "Coins", "Chip", "Gear", "Dock", "Play"]:
+		var o: Rect2 = rects[n] if rects.has(n) else (idle[n] as Control).get_global_rect()
+		check(not box.grow(-1.0).intersects(o), "%s the container %s clear of %s %s" % [tag, box, n, o])
+	var hero_pct := 0.0
+	var wob_i: Vector2 = sc.stage.project(sc.stage.wobbler().global_position + Vector3(0, 0.1, 0)) * sc.size
+	var wob_h: Vector2 = sc.stage.project(sc.stage.wobbler().global_position + Vector3(0, 2.5 * sc.stage.WOB_IDLE_SCALE, 0)) * sc.size
+	hero_pct = (wob_i.y - wob_h.y) / cs.y
+	check(hero_pct >= 0.5 and hero_pct <= 0.8, "%s the idle wobbler is big: %.0f %% of the screen height" % [tag, hero_pct * 100.0])
 	check(sc.tap_at(box.get_center()), "%s a tap on the container opens it" % tag)
 	sc.snap(true)
 	await frames(3)
 	# opened: the bar, Back, the header and the rack cells
 	check(not m.get_node("Safe").visible, "%s the title's own controls are away while the container is open" % tag)
-	var open_c := {"Back": sc.back_b, "Prev": sc.prev_b, "Next": sc.next_b, "Test": sc.test_b}
+	check(sc.site_b.is_visible_in_tree() and not sc.pill.visible, "%s opened: the DON'T ENTER sign shows, the pill is away" % tag)
+	var open_c := {"Back": sc.back_b, "Prev": sc.prev_b, "Next": sc.next_b, "Test": sc.test_b, "Site": sc.site_b}
 	open_c["Unlock" if not sc.pack().is_unlocked else "Owned"] = sc.unlock_b if not sc.pack().is_unlocked else sc.owned_chip
 	rects = {}
 	for n: String in open_c:
@@ -295,8 +334,8 @@ func _sizes(win: Vector2, ins_pt: Array) -> void:
 	check(safe.grow(0.5).encloses(sc.bar.get_global_rect()), "%s owned: the bar %s stays inside the safe area" % [tag, sc.bar.get_global_rect()])
 	save.dlc["owned"] = false
 	sc.refresh()
-	print("TITLE %s canvas %dx%d checked (rail %.0f pt wide, stage %.0f x %.0f pt, cell %.0f x %.0f pt)" % [tag, cs.x, cs.y, _pt(m.rail.size.x, win, cs),
-		_pt(slot.size.x, win, cs), _pt(slot.size.y, win, cs), _pt(sc.cell_screen_rect(0).size.x, win, cs), _pt(sc.cell_screen_rect(0).size.y, win, cs)])
+	print("TITLE %s canvas %dx%d checked (hero %.0f %% tall, container %.0f x %.0f pt, cell %.0f x %.0f pt)" % [tag, cs.x, cs.y, hero_pct * 100.0,
+		_pt(box.size.x, win, cs), _pt(box.size.y, win, cs), _pt(sc.cell_screen_rect(0).size.x, win, cs), _pt(sc.cell_screen_rect(0).size.y, win, cs)])
 	vp.queue_free()
 	PACKS.extra = []
 	await frames(2)
@@ -318,15 +357,15 @@ func _consistent(sc, m: Control, tag: String) -> void:
 		check(is_zero_approx(st.lower) and is_zero_approx(st.doors) and is_zero_approx(st.cam_k) and is_zero_approx(st.hoist) and is_zero_approx(sc.ui_k),
 			"%s IDLE pose is the hover (%.2f %.2f %.2f %.2f ui %.2f)" % [tag, st.lower, st.doors, st.cam_k, st.hoist, sc.ui_k])
 		check(m.get_node("Safe").visible and is_equal_approx(m.get_node("Safe").modulate.a, 1.0), "%s IDLE: the title's controls are back" % tag)
-		check(not sc.catcher.visible and sc.tap_b.visible and not sc.back_b.visible and not sc.bar.visible, "%s IDLE: only the tag shows" % tag)
+		check(not sc.catcher.visible and sc.pill.visible and not sc.back_b.visible and not sc.bar.visible and not sc.site_b.visible, "%s IDLE: only the pill shows" % tag)
 		check(st.selected == -1 and st.held_weapon() == "", "%s IDLE: the wobbler's hands are empty" % tag)
 	elif s == TS.State.OPENED:
 		check(is_equal_approx(st.lower, 1.0) and is_equal_approx(st.doors, 1.0) and is_equal_approx(st.cam_k, 1.0) and is_zero_approx(st.hoist) and is_equal_approx(sc.ui_k, 1.0),
 			"%s OPENED pose is landed and open (%.2f %.2f %.2f %.2f ui %.2f)" % [tag, st.lower, st.doors, st.cam_k, st.hoist, sc.ui_k])
 		check(not m.get_node("Safe").visible, "%s OPENED: the title's controls are away" % tag)
-		check(sc.catcher.visible and not sc.tap_b.visible and sc.back_b.visible and not sc.back_b.disabled and not sc.test_b.disabled, "%s OPENED: Back and the bar are live" % tag)
+		check(sc.catcher.visible and not sc.pill.visible and sc.back_b.visible and not sc.back_b.disabled and not sc.test_b.disabled, "%s OPENED: Back and the bar are live" % tag)
 	else:
-		check(sc.catcher.visible and not sc.tap_b.visible, "%s mid-animation: the catcher shields the title" % tag)
+		check(sc.catcher.visible and not sc.pill.visible, "%s mid-animation: the catcher shields the title" % tag)
 		check(sc._tw != null and sc._tw.is_valid() and sc._tw.is_running(), "%s mid-animation: a tween is driving it (never a dead state)" % tag)
 	for v: float in [st.lower, st.doors, st.cam_k, st.hoist, sc.ui_k]:
 		check(v >= -0.2 and v <= 1.2 and is_finite(v), "%s pose value %.2f in range" % [tag, v])
@@ -346,9 +385,9 @@ func _states() -> void:
 	check(sc.packs.size() == 2 and sc.pack().pack_id == "construction", "the showcase starts on the shipped pack")
 	# a tap beside the container does nothing; a tap on it (ray pick through the stage slot) opens
 	var box: Rect2 = sc.container_screen_rect()
-	_click(m.stage_slot, m.stage_slot.get_global_rect().position + Vector2(6, 6))
+	_click(sc, Vector2(6, 6))
 	check(sc.state == TS.State.IDLE, "a tap on empty stage does not open")
-	_click(m.stage_slot, box.get_center())
+	_click(sc, box.get_center())
 	check(sc.state == TS.State.OPENING, "a tap on the container starts OPENING (%d)" % sc.state)
 	_consistent(sc, m, "opening")
 	check(not sc.open(), "open() while OPENING is ignored")
@@ -394,7 +433,7 @@ func _states() -> void:
 	check(sc.index == 0, "wrapped back to the first pack")
 	_consistent(sc, m, "closed")
 	# Back mid-opening reverses at once; opening mid-closing reverses again
-	sc.tap_b.pressed.emit()
+	sc.pill.pressed.emit()
 	await frames(3)
 	check(sc.state == TS.State.OPENING, "the tag button opens too")
 	check(m.go_back() and sc.state == TS.State.CLOSING, "go_back() mid-opening starts CLOSING")
@@ -419,12 +458,12 @@ func _states() -> void:
 		sc.speed = [1.0, 3.0, 8.0, 20.0, 2.0, 40.0][round_i]
 		for f in 90:
 			match rng.randi_range(0, 7):
-				0: sc.tap_b.pressed.emit()
+				0: sc.pill.pressed.emit()
 				1: sc.back_b.pressed.emit()
 				2: sc.next_b.pressed.emit()
 				3: sc.prev_b.pressed.emit()
 				4: _click(sc.catcher, sc.cell_screen_rect(rng.randi_range(0, 9)).get_center())
-				5: _click(m.stage_slot, sc.container_screen_rect().get_center())
+				5: _click(sc, sc.container_screen_rect().get_center())
 				6: m.go_back()
 				7: pass
 			if f % 3 == 0: await process_frame
@@ -481,7 +520,7 @@ func _one_pack() -> void:
 	var sc = m.showcase
 	sc.speed = 20.0
 	check(sc.packs.size() == 1, "the shipped game has one pack")
-	sc.tap_b.pressed.emit()
+	sc.pill.pressed.emit()
 	check(await until(func() -> bool: return sc.state == TS.State.OPENED, 6.0), "one pack: opens")
 	check(not sc.prev_b.visible and not sc.next_b.visible, "one pack: no swap arrows")
 	check(not sc.swap(1) and not sc.swap(-1) and sc.state == TS.State.OPENED, "one pack: swap() is a no-op")

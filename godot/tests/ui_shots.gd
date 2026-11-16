@@ -141,9 +141,18 @@ func _start() -> void:
 			var md: String = {"newmodes-mode": "chaos", "newmodes-players": "tdm", "newmodes-mode2": "lowg", "wizard-team": "tdm"}.get(shot, "classic")
 			for kv in [["offline_map", "arena"], ["mode", md], ["dyn", "random"], ["bots", 5], ["difficulty", "normal"], ["class", "wobbler"]]:
 				_settings().set_value(kv[0], kv[1])
+		if shot.begins_with("title") and not shot.begins_with("title-online") and not shot.begins_with("title-settings"):   # a few goals waiting: the Goals badge shows
+			var sv0: Node = root.get_node("Save")
+			sv0.begin_match()
+			for k in 3: sv0.on_ko(true, false, k == 0)
+			sv0.on_hit(true)
+			sv0.finish_match(true, "Classic", "Arena", false, "classic")
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
-		if shot == "title-online":
+		if shot == "title-owned":                         # the idle title with the pack owned (no NEW on the pill)
+			root.get_node("Save").dlc["owned"] = true
+			m.showcase.refresh()
+		elif shot == "title-online":
 			m.show_tab(true)
 			m.get_node("Safe/Col/Body/Online/Box/Foot/Roster").text = "In the room: Alice, Bob"
 		elif shot == "title-settings":

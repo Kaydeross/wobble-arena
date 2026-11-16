@@ -3,14 +3,14 @@ extends SceneTree
 ##   1 logic/quick_play.gd qp.pick(): every seed yields a valid playable game type / arena / class / bot count /
 ##     bot skill / floor (checked against the loaded content), the same seed picks the same match, and several seeds
 ##     give variety (more than one game type and arena); the Practice Range, Sandbox and Construction are never picked.
-##   2 The real title (scenes/main.tscn) builds with the Quick play button under Play: it is visible on the title,
+##   2 The real title (scenes/main.tscn) builds with the Quick play button in the icon dock: it is visible on the title,
 ##     hidden on the online tab like the rest of Home, inside the safe area and at least 44 pt tall and wide on the
 ##     smallest landscape / portrait canvases, clear of Play, with its sub line / tooltip and a pressed handler.
 ##   godot --headless --path godot --script res://tests/quick_play_test.gd -- --no-save   (npm run test:godot-quick-play)
 
 const MAIN := "res://scenes/main.tscn"
 const MIN_TOUCH := 44.0
-const QUICK := "Safe/Rail/Quick"            ## the title's left menu rail (docs/TITLE.md)
+const QUICK := "Safe/Hero/Dock/Row/Quick"   ## the title's icon dock (docs/TITLE.md)
 ## The smallest supported landscape sizes (with and without phone insets), the design canvas and portrait; `mode` is the
 ## Settings ui_scale (ui/ui_scale.gd) the layout test uses. 926x428 at the Large scale is the tightest title in the game.
 const CASES := [
@@ -24,7 +24,7 @@ const CASES := [
 	[Vector2(390, 844), [0.0, 59.0, 0.0, 34.0], "normal"],    # portrait: the whole landscape layout scaled down
 ]
 ## Title column blocks that must stay inside the safe area (same as the layout test's own check).
-const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Body", "Safe/Col/Build"]
+const BLOCKS := ["Safe/Col/Top/Logo", "Safe/Col/Top/GuestChip", "Safe/Col/Body", "Safe/Hero/Build"]
 var fails := 0
 var qp: GDScript                  ## logic/quick_play.gd, loaded after the autoloads exist (a --script main loop compiles
 var sw: GDScript                  ## its own dependencies before that, and class scripts that name an autoload fail then)
@@ -126,7 +126,7 @@ func _title() -> void:
 		var tag := "%dx%d" % [win.x, win.y]
 		check(main.quick_b != null, "%s the title built the Quick play button" % tag)
 		var qb: Button = main.get_node_or_null(QUICK) as Button
-		check(qb != null and qb == main.quick_b, "%s the button sits under Play at %s" % [tag, QUICK])
+		check(qb != null and qb == main.quick_b, "%s the button sits in the dock at %s" % [tag, QUICK])
 		if qb == null:
 			vp.queue_free()
 			continue
@@ -142,13 +142,13 @@ func _title() -> void:
 		check(not r.grow(-0.5).intersects(play_rect.grow(-0.5)), "%s Quick play does not overlap Play" % tag)
 		for other: Button in [main.play, main.online_b]:
 			check(not r.grow(-0.5).intersects(other.get_global_rect().grow(-0.5)), "%s Quick play does not overlap %s" % [tag, other.name])
-		var rail: Control = main.get_node("Safe/Rail")
-		check(rail.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s the rail's min height %.0f fits %.0f" % [tag, rail.get_combined_minimum_size().y, safe.size.y])
+		var dock: Control = main.dock
+		check(safe.grow(0.5).encloses(dock.get_global_rect()), "%s the dock %s fits the safe area" % [tag, dock.get_global_rect()])
 		var col: Control = main.get_node("Safe/Col")
 		check(col.get_combined_minimum_size().y <= safe.size.y + 0.5, "%s title column min height %.0f fits %.0f" % [tag, col.get_combined_minimum_size().y, safe.size.y])
 		check(main.quick_b.tooltip_text == "Random arena and mode", "%s tooltip says what it does (%s)" % [tag, main.quick_b.tooltip_text])
-		var sub: Label = main.quick_b.get_node("Stack/Sub")
-		check(sub.text == "Random arena and mode", "%s sub line says what it does (%s)" % [tag, sub.text])
+		var word: Label = main.quick_b.get_node("Stack/Word")
+		check(word.text == "Quick play", "%s the dock word says Quick play (%s)" % [tag, word.text])
 		check(qb.pressed.get_connections().size() > 0, "%s Quick play is wired" % tag)
 		for b: String in BLOCKS:      # the title column still fits the safe area with the extra button (Build is the lowest)
 			var br: Rect2 = (main.get_node(b) as Control).get_global_rect()
