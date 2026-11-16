@@ -34,6 +34,7 @@
     "test:godot-combat": "node tools/test-combat.js",
     "test:godot-integration": "node tools/test-integration.js",
     "test:godot-weapons": "node tools/test-weapon-models.js",
+    "test:godot-pack-models": "node tools/test-pack-models.js",
     "test:godot-netguest": "node tools/test-net-guest.js",
     "test:crossplay-web": "node tools/crossplay-web.js",
     "test:godot-ui": "node tools/test-ui.js",

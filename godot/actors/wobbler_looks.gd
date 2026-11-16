@@ -32,6 +32,7 @@ static func data(name: String) -> Dictionary:
 		d = {}
 	if name == "classes": ExtraClasses.merge(d)          # + the Godot-only classes (res://data/extra/classes.json)
 	if name == "cosmetics": _merge_extra_hats(d)         # + the Construction DLC hard hats (res://data/extra/locker.json extra_hats)
+	if name == "cosmetics": _merge_extra_skins(d)        # + the pack outfits (locker.json extra_skins)
 	_json[name] = d
 	return d
 
@@ -44,6 +45,14 @@ static func _merge_extra_hats(cos: Dictionary) -> void:
 	if not (v is Dictionary) or not (cos.get("hats") is Array): return
 	for h in v.get("extra_hats", []):
 		if not (cos["hats"] as Array).has(h): (cos["hats"] as Array).append(h)
+
+
+## Adds the pack outfits (locker.json `extra_skins`: cosmetics.json skin entries) to cosmetics' `skins`, so the look code, Save and the Walldrobe know them.
+static func _merge_extra_skins(cos: Dictionary) -> void:
+	var v = JSON.parse_string(FileAccess.get_file_as_string(LOCKER_PATH)) if FileAccess.file_exists(LOCKER_PATH) else null
+	if not (v is Dictionary) or not (cos.get("skins") is Dictionary): return
+	for k: String in (v as Dictionary).get("extra_skins", {}):
+		if not (cos["skins"] as Dictionary).has(k): cos["skins"][k] = v["extra_skins"][k]
 
 
 static func class_def(id: String) -> Dictionary:
@@ -177,7 +186,12 @@ const HATS := {
 
 
 static func hat_parts(name: String) -> Array:
-	return HATS.get(name, [])
+	return HATS[name] if HATS.has(name) else PackLooks.hat(name)
+
+
+## A hat that has parts: a core hat or one of the pack hats (godot/dlc/<pack>/<pack>_looks.gd).
+static func has_hat(name: String) -> bool:
+	return HATS.has(name) or not PackLooks.hat(name).is_empty()
 
 
 # ---------------------------------------------------------------- class accessories (Fighter.classLook, ~5285)
@@ -303,6 +317,10 @@ static func skin_parts(key: String) -> Array:
 		"ballerina": return _ballerina()
 		"assassino": return _assassino()
 		"thunder": return _thunder()
+	var packp := PackLooks.skin(key)                            # the pack outfits (godot/dlc/<pack>/<pack>_looks.gd)
+	if not packp.is_empty():
+		if not PackLooks.replaces_head(key): _add_face(packp, 0.165)
+		return packp
 	var p := []
 	var mouth := 0.165
 	match key:
@@ -347,13 +365,17 @@ static func skin_parts(key: String) -> Array:
 				p.append(["leg%d" % k, ["cyl", 0.135, 0.125, 0.2, 6], 0xf5f5f5, [0, -0.62, 0]])
 		_:
 			return []
-	# the face every outfit adds (the eyes are the wobbler's own): ears, nose, mouth sitting ON the flat-faced head
+	_add_face(p, mouth)
+	return p
+
+
+## The face every outfit adds (the eyes are the wobbler's own): ears, nose, mouth sitting ON the flat-faced head.
+static func _add_face(p: Array, mouth: float) -> void:
 	for sx in [-1.0, 1.0]:
 		p.append(["neck", ["box", 0.07, 0.13, 0.1], "toneD", [sx * 0.355, 0.32, 0]])
 	p.append(["neck", ["box", 0.065, 0.075, 0.09], "toneD", [0, 0.285, 0.375]])
 	var mz := maxf(head_surf(-0.055, mouth), maxf(head_surf(0.0, mouth), head_surf(0.055, mouth)))
 	p.append(["neck", ["box", 0.11, 0.024, 0.05], 0x7a2c2c, [0, mouth, mz + 0.002]])
-	return p
 
 
 # ---- the mythic / legendary outfits that replace the head and / or torso (web buildSkinParts ~4610..4760). Ported
