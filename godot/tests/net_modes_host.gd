@@ -1,12 +1,15 @@
 extends SceneTree
 ## Online modes / host migration HOST test, headless (run by tools/test-net-host.js with the real server, a guest in
 ## Node and a second Godot process, tests/net_modes_peer.gd):
-##   godot --headless --path godot --script res://tests/net_modes_host.gd -- ws://127.0.0.1:PORT/ws modes|migrate --no-save
+##   godot --headless --path godot --script res://tests/net_modes_host.gd -- ws://127.0.0.1:PORT/ws modes|migrate|zones --no-save
 ## modes: hosts a private room (4 seats, 1 bot, K.O. limit 3) whose guests are all Godot clients (`gd`), plays every
 ##   app-only mode of MODES in turn (set_rules between matches, rematch votes), forces the first Chaos event early,
 ##   prints MATCH_OVER per mode and ALL_MODES at the end, then waits for the guests to leave.
 ## migrate: hosts a Classic room on a Wobble floor; once the web guest (slot 2) has a K.O. it leaves the room (the
 ##   relay then promotes the Godot guest, which carries the match on). Prints ME / LEAVING.
+## zones: hosts a Classic room with no guests yet, starts alone (every peer is on the app, so `rules.nz`), prints
+##   ZONES host=1, waits for the Node runner's web joiner to be refused, then a Godot guest joins mid-match and gets
+##   `nz` too; the host leaves once that guest has gone.
 
 const MODES := [["tdm", "arena"], ["deathmatch", "arena"], ["sudden", "arena"], ["chaos", "arenaxl"],
 	["explosive", "arena"], ["lowg", "craterdome"], ["gungame", "arena"]]
@@ -22,6 +25,8 @@ var print_t := 0.0
 var over_seen := false
 var chaos_forced := false
 var done := false
+var nz_printed := false
+var zones_peer_seen := false
 var fails := 0
 
 func fail(what: String) -> void:
@@ -49,12 +54,19 @@ func _begin(args: PackedStringArray) -> void:
 		"hp": 150, "kb": 1.5, "crate": "fast"}
 	if scen == "migrate":
 		opts = {"name": "Godot migrate", "pub": false, "max": 4, "bots": 1, "lim": 0, "mode": "classic", "map": "arena", "dyn": "wobble"}
+	if scen == "zones":
+		opts = {"name": "Godot zones", "pub": false, "max": 4, "bots": 1, "lim": 3, "mode": "classic", "map": "arena", "dyn": "off",
+			"hp": 200, "kb": 1.0, "crate": "normal"}
 	session.begin_host(args[0], opts, {"name": "GodotHost", "skin": "none", "hat": "none", "color": 0x39b5a8, "cls": "wobbler"})
 
 func _on_roster(r: Array) -> void:
 	var names: Array = []
 	for e: Dictionary in r: names.append("%d:%s:%s" % [e["id"], e["name"], "gd" if e.has("gd") else "web"])
 	print("ROSTER n=%d %s mode=%s started=%s" % [r.size(), " ".join(names), session.mode_id, session.started])
+	if scen == "zones":
+		if session.started and r.size() > 1: zones_peer_seen = true
+		if zones_peer_seen and session.started and r.size() <= 1: _finish.call_deferred()
+		return
 	if r.size() == 3 and not session.started and starts == 0:
 		print("STARTING ok=%s" % session.start_match())
 	if done and r.size() <= 1:
@@ -63,7 +75,7 @@ func _on_roster(r: Array) -> void:
 func _on_start(s: Dictionary) -> void:
 	starts += 1
 	print("START n=%d map=%s limit=%d rules=%s" % [starts, s["map"], s["limit"], JSON.stringify(s["rules"])])
-	t = 0.0; over_seen = false; chaos_forced = false
+	t = 0.0; over_seen = false; chaos_forced = false; nz_printed = false
 	if world == null:
 		world = load("res://world/world.tscn").instantiate()
 		world.session = session
@@ -84,12 +96,19 @@ func _process(dt: float) -> bool:
 	if t_total > 300.0:
 		fail("timeout"); quit(1); return false
 	if world == null:
+		if scen == "zones" and not session.started and session.phase == GuestSession.Phase.LOBBY and t_total > 0.6:
+			print("STARTING ok=%s" % session.start_match())
 		session.poll(dt)
 		return false
 	var nm: HostMatch = world.net_match as HostMatch
 	if nm == null: return false
 	t += dt
 	var sim: MatchSim = world.sim
+	if not nz_printed:
+		nz_printed = true
+		print("ZONES host=%d" % (1 if sim.combat.net_zones else 0))
+	if scen == "zones":
+		return false
 	var r := sim.combat.rules
 	if scen == "migrate":
 		print_t -= dt

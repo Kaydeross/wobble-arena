@@ -76,6 +76,7 @@ static func apply_rules(c: Combat, rules: Dictionary) -> void:
 	c.ffa = true
 	c.net_started = true
 	c.net_host = false
+	c.net_zones = rules.get("nz") == true      # the host set it at match start: every peer is on the app (zones + tuning)
 
 ## The mode a client plays from `rules`: an app-only `gmode` (Godot host, every player on the app), else `mode`
 ## through netMode (unknown / team modes, Sandbox and Construction play Classic).

@@ -115,6 +115,8 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-killcam
         if: matrix.shard == 'rest'
+      - run: npm run test:godot-podium
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-camera
         if: matrix.shard == 'rest'
       - run: npm run test:godot-construction-data

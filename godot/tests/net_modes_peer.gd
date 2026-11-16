@@ -92,8 +92,8 @@ func _process(dt: float) -> bool:
 	var c := sim.combat
 	if not mode_printed and t > 0.3:
 		mode_printed = true
-		print("MODE n=%d mode=%s gmode=%s teams=%d team=%d grav=%.2f maxhp=%.0f remote=%s limit=%d host=%s pos=%.2f,%.2f" % [starts, c.mode_id, nm.gmode,
-			c.teams, p.team, p.phys.grav_scale, c.max_hp(p), c.rules.remote, c.rules.limit, nm is HostMatch, p.phys.px, p.phys.pz])
+		print("MODE n=%d mode=%s gmode=%s teams=%d team=%d grav=%.2f maxhp=%.0f remote=%s limit=%d zones=%s tuned=%s host=%s pos=%.2f,%.2f" % [starts, c.mode_id, nm.gmode,
+			c.teams, p.team, p.phys.grav_scale, c.max_hp(p), c.rules.remote, c.rules.limit, c.net_zones, c.tuning_active(), nm is HostMatch, p.phys.px, p.phys.pz])
 	var ch := c.rules.chaos
 	if not ch.is_empty() and (float(ch.get("left", 0.0)) > 0.0 or str(ch.get("last", "")) != "") and not chaos_printed:
 		chaos_printed = true                  # running now, or already over (crate rain lasts no time)
@@ -114,6 +114,9 @@ func _process(dt: float) -> bool:
 				parts.append("%s:%s:ko%d" % [hm.slots[k]["kind"], hm.slots[k]["name"], f.ko if f else -1])
 			print("RESUMED %s dyn=%.2f kind=%s" % [" ".join(parts), sim.dyn_clock(), sim.dyn.kind])
 		if resumed and t > 3.0 and session.roster.size() <= 1: _done()
+		return false
+	if scen == "zones":                                     # a mid-match join: report the rules, then leave
+		if mode_printed and t > 1.2 and quit_t < 0.0: quit_t = 0.5
 		return false
 	if nm.over and not end_seen:
 		end_seen = true

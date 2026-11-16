@@ -247,6 +247,9 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 | `/api/delete` | POST | `password` (not needed for a name-only account) | `{ok}` — revokes every session; **required by App Store 5.1.1(v)** |
 | `/api/rank` | GET | query `board=kos\|wins\|arcade`, `limit?` | `{ok, board, entries: [{rank, name, score, updated, me?}], you?}` — public; a valid Bearer token adds `you` |
 | `/api/rank` | POST | `kos?`, `wins?`, `matches?`, `arcade_best?`, `arcade_diff?` (`easy`\|`normal`\|`nightmare`, default `normal`), `board?`, `limit?` | `{ok, board, entries, you, stats}` — authenticated; stores the account's bests (monotonic) and returns the requested board |
+| `/api/wallet` | GET | – | `{ok, coins, seeded, today:{day,granted,cap}, ledger}` — authenticated; seeds once from the cloud save (4.3) |
+| `/api/wallet/grant` | POST | `id`, `reason` (`ko`\|`match`\|`quest`\|`streak`\|`earn`), `amount`, `kos?`, `won?` | `{ok, coins, added, ...}` — authenticated, capped per request and per day (4.3) |
+| `/api/wallet/spend` | POST | `id`, `item` (`kind:key`, e.g. `skin:cowboy`) | `{ok, coins, spent, item}` — authenticated; 409 `coins` when short, 400 `item` when unknown (4.3) |
 | `/health` | GET | – | `{ok, rooms, players, accounts, saved}` |
 
 `user` is `{username, email, created, hasPassword}` (`email` is `''` for a name-only account).
@@ -262,7 +265,7 @@ client can tell "this server build has no such endpoint" apart from "the game fi
 an endpoint may still answer its 404 with the plain text `not found`; clients must treat both as the same condition.
 Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
 
-The `data` blob is the whole client save (settings, coins, owned cosmetics, stats). Its schema belongs to the web client today; see §7 for why the server must own the economy before iOS ships.
+The `data` blob is the whole client save (settings, coins, owned cosmetics, stats). Coins in the blob are **no longer authoritative** for a signed-in account: the server wallet (4.3) owns the balance, and a cloud-save merge can never raise it. The blob keeps `wallet.coins` for the web client, but the Godot client overwrites it with the server balance after every wallet reply and when it takes a cloud save. Owned cosmetics and the rest of the blob stay client data.
 
 ### 4.1 Ranking (leaderboard)
 
@@ -315,6 +318,53 @@ First-party analytics, no account and no token (`events.js`, full list in `docs/
 - Limits: body 32 KB (`413`), 30 batches per IP per minute (`429 err:"slow"`, in memory). The IP is used only for that limit and is never stored.
 - Storage: the accounts store (Upstash if configured, else `data/db.json`), one append-only bucket per UTC day (`ev:YYYY-MM-DD`), max 20000 events per day (oldest dropped), expiring after 31 days.
 - Reply `{ok:true, n}`. Clients fire and forget: on any failure they retry once, then drop the batch.
+
+### 4.3 Server-authoritative coin wallet
+
+Signed-in coins live on the server (`wallet.js`), in the same store as accounts. Guests are unchanged: they keep the
+local profile and no wallet call is made. The three routes need `Authorization: Bearer <token>`; without a valid token
+they answer `401 err:"auth"`.
+
+- **Storage.** One record per account with the balance and an append-only ledger of the newest 100 entries
+  `{reason, amount, id, time, item?}`, oldest first. `reason` is `migrate`, a grant reason, or `spend` (negative
+  amount). Operations on one account are serialised in the server process, so two simultaneous requests cannot lose an
+  update. Idempotency ids (8–64 chars of `A-Za-z0-9_-`) are remembered for the newest 300 operations. A repeated id
+  returns the current balance with `replay: true` and changes nothing. Several server instances sharing one database
+  are **not** safe yet: that needs an atomic compare-and-set in the store, so run one wallet instance.
+- **Read (`GET /api/wallet`).** `{ok, coins, seeded, today:{day, granted, cap}, ledger}`. On the first wallet use it
+  seeds the balance **once** from the account's existing cloud-save `wallet.coins`, clamped to **100000** (the blob is
+  still client-trusted), and records a `migrate` ledger entry. An account with no cloud save seeds 0. Later cloud saves
+  never re-seed or raise the balance.
+- **Grants (`POST /api/wallet/grant`).** Body `{id, reason, amount, kos?, won?}`. `amount` is a whole number ≥ 1.
+  Per-request caps come from the shipped rewards (`godot/autoload/save.gd`, `godot/logic/quests.gd`):
+
+  | reason | what it pays | per-request cap |
+  |---|---|---|
+  | `ko` | one K.O. (`KO_COINS` 5) | 5 |
+  | `match` | the end-of-match `MATCH_COINS` 40 + `WIN_COINS` 60 when `won`, plus `KO_COINS` 5 per `kos` (0–60) | 100–400 |
+  | `quest` | one claimed goal: daily goal up to 150, weekly/weekly bonus 400, daily bonus 100, milestone up to 300 | 500 |
+  | `streak` | first win of a day: `STREAK_BASE` 20 + `STREAK_STEP` 10 × (up to `STREAK_MAX` 6 − 1) | 100 |
+  | `earn` | a generic client award (`SaveProfile.add_coins`) | 1000 |
+
+  There is also a **per-UTC-day cap of 5000** earned coins per account (`409 err:"cap"`); refused grants change
+  nothing. Over-cap requests are `400 err:"cap"`, unknown reasons `400 err:"reason"`, bad amounts `400 err:"amount"`,
+  malformed ids `400 err:"id"`. Wallet calls are rate limited per account: 60 grants and 30 spends a minute
+  (`429 err:"slow"`).
+- **Spends (`POST /api/wallet/spend`).** Body `{id, item}` where `item` is `kind:key` from a server-side price table
+  that mirrors the shipped content: **outfits** (`skin:`), **shop emotes** (`emote:`), the Godot-only **classes**
+  (`class:tank` 1500, `class:dash` 1200, `class:ace` 2000) and the Construction DLC (`dlc:construction` 1500, bought
+  with coins — there is no separate entitlement). Unknown items are `400 err:"item"`; insufficient balance is
+  `409 err:"coins"` with `{coins, price, item}` and changes nothing. A successful spend returns the new balance and
+  `spent`. `tools/test-server.js` checks the table against `godot/data/extra/locker.json`,
+  `godot/data/extra/classes.json` and `DlcUnlock.PRICE`, so shipped price drift fails `npm test`.
+- **Client (Godot).** `Save.cloud` (an `AccountApi`) fetches the balance after sign-in and keeps an operation queue in
+  the local settings (`wallet_ops`, tied to the account name). Earning and spending when signed in append an
+  idempotent operation, apply it locally for an instant UI and replay it to the server; a network failure retries, and
+  the balance shown is the server's balance plus any operations still queued. A rejected purchase is rolled back
+  locally. The cloud-save merge ignores `wallet.coins` when comparing saves and cannot raise the balance. Kids mode and
+  `--no-save` runs stay guest-local and need no network.
+- **Old servers.** A build without these routes answers `404` (JSON on this build, plain text on older ones). The
+  client keeps queued operations and retries; it does not fall back to trusting client coins.
 
 ---
 
@@ -375,8 +425,8 @@ A Godot client can host a room that web and Godot guests join. It speaks exactly
 - **Start:** slots = the roster (human) plus, for the free seats, as many `bot` seats as the host picked and `empty`
   for the rest (the web host fills every seat with a bot or none; an `empty` seat is just a seat a late joiner can
   take). The `start` goes out after the host's match is set up, so bot seats carry the bots' real name / look / class.
-  `rules` = `{mode, hp, crate, wstate, grav, kb, inf, dyn, dseed, dt0?}`; `mode` through `HostSession.net_mode`
-  (= `netMode`); a fresh `dseed` every match and rematch;
+  `rules` = `{mode, hp, crate, wstate, grav, kb, inf, dyn, dseed, dt0?, nz?}`; `mode` through `HostSession.net_mode`
+  (= `netMode`); `nz` when every peer is a Godot client (see 6.3); a fresh `dseed` every match and rematch;
   `limit` 0 in lives / ladder modes.
 - **In match:** the host's own fighter and every bot in one `S` at 30 Hz (`sw`/`f`/`k` when they start an action);
   crates spawned only by the host, announced with `crate {cid, key, spot}`; every take (host, bot or guest) as
@@ -399,17 +449,19 @@ A Godot client can host a room that web and Godot guests join. It speaks exactly
 
 Everything here is optional and additive: the web client never sends it and drops or ignores it on receipt (unknown
 `t` values fall through its `netHandle`, unknown `rules` / `start` / roster fields are not read, its `netGuard` drops
-unknown guest messages). `PROTO` stays 1.
+unknown guest messages). `PROTO` stays 1; the Godot capability level (`gd`) is now **2**, and a host refuses a lower
+level (an old build would ignore `rules.nz` and its shots would use the classic damage rule).
 
 | Where | Field | Meaning |
 |---|---|---|
-| `hello` (guest → host) | `gd: 1` | "I am a Godot client" (capability level 1). |
+| `hello` (guest → host) | `gd: 2` | "I am a Godot client", capability level 2: it understands `rules.nz` (`docs/DAMAGE.md`). A host refuses a lower level with `kick {msg}` (the player must update the app), because an old build would ignore `nz` and its shots would use the classic rule. |
 | `hello` | `pslot` | After a host migration: my slot in the old match, so a Godot host gives it back. |
-| `welcome` (host → guest) | `gd: 1` | The host is a Godot client. |
+| `welcome` (host → guest) | `gd: 2` | The host is a Godot client (its capability level). |
 | `welcome` | `rsm: 1` | Host migration: this host carries the running match on; keep the arena and wait for `start`. |
-| `roster` entries, `slots` entries | `gd: 1` | That player is a Godot client (a Godot host marks web players in its lobby). |
+| `roster` entries, `slots` entries | `gd: 2` | That player is a Godot client (a Godot host marks web players in its lobby). |
 | `roster` | `rl` | The Godot host's rules for the lobby line: `{want, mode, lim, hp, grav, kb, crate, inf, dyn, map}` (`want` = the host's pick, `mode` = what plays). |
 | `start.rules` | `gmode` | An app-only mode the Godot clients play (`mode` stays the web fallback, Classic): `tdm`, `deathmatch`, `sudden`, `chaos`, `lowg`, `duel`, `t2`, `t3`, `t4`, and (`6.4`) `construction` for an Arcade co-op room (`NetMatch.GODOT_MODES`). Sent only when every guest said `gd`. |
+| `start.rules` | `nz` | Unified combat rules: the host sets it at match start only when `web_guests()` is empty (every peer is a Godot client). Both sides set `Combat.net_zones` from it, which turns on the body-part zones table and the Godot balance/tuning overlay (docs/DAMAGE.md). Omitted = the classic web rule. A web guest who tries to join a running `nz` match gets `kick {msg}` (no mid-match fallback); in the lobby a web guest may join and the next match omits `nz`. |
 | `start.rules` | `gteam` | Team modes: the side (0 blue / 1 red) of every slot, `slot % 2`. |
 | `start.rules` | `pp` | Removed with the Godot Pillars mode: `pp` / `pt` are no longer sent or read by Godot hosts or guests (the web game still has them, 2.2). |
 | `start.rules` | `grav: 0.15` | Moon Drift (`gmode: lowg`). |
@@ -430,6 +482,11 @@ Rules a Godot host follows:
 - **Mode choice:** the Host sheet's pick plays when it is web-compatible (`netMode`) or every guest is a Godot client;
   otherwise the match plays Classic, the lobby line says why ("app-only: a web player is here") and the host's status
   names the web player. A web guest who joins a running app-only match gets `kick {msg}` with the reason.
+- **Unified combat (`rules.nz`):** latched at match start from `web_guests()` being empty, sent on every `start`
+  (including a mid-match join, so a Godot guest gets it); a web guest who tries to join a running zones match is
+  refused with `kick {msg}` through the same path (never a mid-match downgrade to Classic). The flag needs every app
+  peer at capability level 2, so a capability-1 app build is refused at `hello` (see 6.3's `gd` row): a room is always
+  either all-zones or all-classic, never a mix.
 - **Match end:** in an app-only mode the Godot guests never end the match themselves (`ModeRules.remote`): the host's
   K.O. limit / last one standing decides and sends `pend`. Team results name the side.
 - **Determinism:** the host's random source is seeded from the arena seed (`dseed`); Chaos events and
