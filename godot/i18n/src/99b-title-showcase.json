@@ -10,5 +10,13 @@
  "Try every weapon of the pack on its arena. Nothing is saved.": { "zh_TW": "在這個競技場試玩所有武器。這裡不會儲存進度。", "zh_CN": "在这个竞技场试玩所有武器。这里不会保存进度。", "ja": "このアリーナですべての武器を試せます。何も保存されません。", "fr": "Essayez toutes les armes du pack dans son arène. Rien n'est enregistré.", "es": "Prueba todas las armas del pack en su arena. No se guarda nada." },
  "Previous pack": { "zh_TW": "上一個", "zh_CN": "上一个", "ja": "前のパック", "fr": "Pack précédent", "es": "Pack anterior" },
  "Next pack": { "zh_TW": "下一個", "zh_CN": "下一个", "ja": "次のパック", "fr": "Pack suivant", "es": "Pack siguiente" },
- "Test drive: nothing is saved.": { "zh_TW": "試玩：這裡不會儲存進度。", "zh_CN": "试玩：这里不会保存进度。", "ja": "お試し：何も保存されません。", "fr": "Essai : rien n'est enregistré.", "es": "Prueba: no se guarda nada." }
+ "Test drive: nothing is saved.": { "zh_TW": "試玩：這裡不會儲存進度。", "zh_CN": "试玩：这里不会保存进度。", "ja": "お試し：何も保存されません。", "fr": "Essai : rien n'est enregistré.", "es": "Prueba: no se guarda nada." },
+ "Online": { "zh_TW": "線上", "zh_CN": "在线", "ja": "オンライン", "fr": "En ligne", "es": "En línea" },
+ "Quick play": { "zh_TW": "快速開始", "zh_CN": "快速开始", "ja": "クイックプレイ", "fr": "Partie rapide", "es": "Juego rápido" },
+ "NEW": { "zh_TW": "新", "zh_CN": "新", "ja": "NEW", "fr": "NOUVEAU", "es": "NUEVO" },
+ "EXIT SITE": { "zh_TW": "離開工地", "zh_CN": "离开工地", "ja": "現場を出る", "fr": "QUITTER LE CHANTIER", "es": "SALIR DE LA OBRA" },
+ "DON'T ENTER": { "zh_TW": "禁止進入", "zh_CN": "禁止进入", "ja": "立入禁止", "fr": "ENTRÉE INTERDITE", "es": "NO ENTRAR" },
+ "Tap to open": { "zh_TW": "點擊打開", "zh_CN": "点击打开", "ja": "タップして開く", "fr": "Touchez pour ouvrir", "es": "Toca para abrir" },
+ "Back to the arena": { "zh_TW": "回到競技場", "zh_CN": "回到竞技场", "ja": "アリーナに戻る", "fr": "Retour à l'arène", "es": "Volver a la arena" },
+ "Enter the Construction site": { "zh_TW": "進入建築工地", "zh_CN": "进入建筑工地", "ja": "工事現場に入る", "fr": "Entrer sur le chantier", "es": "Entrar en la obra" }
 }

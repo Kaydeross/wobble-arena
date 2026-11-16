@@ -36,10 +36,13 @@ const JIB_Y := 5.75                     ## underside of the jib
 const WOB_POS := Vector3(-2.75, 0.0, 0.85)
 const WOB_POS_COMPACT := Vector3(-1.6, 0.0, 1.15)
 const WOB_YAW := 0.42
+const WOB_IDLE_POS := Vector3(-2.1, 0.0, 0.9)   ## the title's hero shot: the wobbler stands forward and big (docs/TITLE.md)
+const WOB_IDLE_SCALE := 1.7
+const WOB_IDLE_YAW := 0.3
 const ELEV := deg_to_rad(8.0)           ## the camera looks this much down
 const FOV := 30.0
 ## What each framing must show: [focus point, width, height] in metres.
-const IDLE_VIEW := [Vector3(0.0, 2.62, 0.0), 9.4, 8.7]
+const IDLE_VIEW := [Vector3(-1.2, 2.3, 0.0), 12.6, 6.4]   ## the hero shot: container top right, the wobbler centre left
 const OPEN_VIEW := [Vector3(0.35, 1.25, 0.0), 8.4, 3.6]
 const OPEN_VIEW_COMPACT := [Vector3(0.72, 1.3, 0.0), 6.1, 4.0]
 
@@ -59,7 +62,7 @@ var cam_k := 0.0
 var hoist := 0.0
 var pop := 0.0
 var selected := -1                      ## rack cell of the weapon in hand (-1 = none)
-var idle_rect := Rect2(0.3, 0.1, 0.65, 0.8)   ## where the idle scene sits in the picture (0..1 of the viewport)
+var idle_rect := Rect2(0.0, 0.0, 1.0, 1.0)    ## where the idle scene sits in the picture (0..1 of the viewport): the title's safe area
 var open_rect := Rect2(0.04, 0.16, 0.92, 0.6) ## where the open container sits
 var compact := false: set = set_compact  ## portrait: the wobbler stands closer and the open framing is tighter
 var weapon_ids: Array[String] = []      ## the rack, cell by cell (cell COLS * ROWS - 1 is the arena badge)
@@ -582,9 +585,7 @@ func refresh_look() -> void:
 func set_compact(v: bool) -> void:
 	if v == compact: return
 	compact = v
-	if _pivot != null:
-		_pivot.position = WOB_POS_COMPACT if compact else WOB_POS
-		apply_pose()
+	if _pivot != null: apply_pose()
 
 func fit_camera() -> void:
 	pass                                   # (CharacterStage fits one wobbler; this stage frames itself in apply_pose)
@@ -634,6 +635,10 @@ func apply_pose() -> void:
 	var a := frame_pos(IDLE_VIEW, idle_rect)
 	var b := frame_pos(OPEN_VIEW_COMPACT if compact else OPEN_VIEW, open_rect)
 	var ck := cam_k * cam_k * (3.0 - 2.0 * cam_k)
+	if _pivot != null:                       # the hero stands forward and big on the title and steps back to its rack place
+		_pivot.position = WOB_IDLE_POS.lerp(WOB_POS_COMPACT if compact else WOB_POS, ck)
+		_pivot.scale = Vector3.ONE * lerpf(WOB_IDLE_SCALE, 1.0, ck)
+		_pivot.rotation.y = lerpf(WOB_IDLE_YAW, WOB_YAW, ck)
 	_cam.position = a.lerp(b, ck) + Vector3(0, sin(_t * 47.0) * _shake * 0.08, 0)
 
 ## The landing: a ring of dust blobs and a small camera shake (the showcase plays the thud sound).

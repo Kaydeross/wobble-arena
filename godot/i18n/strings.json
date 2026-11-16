@@ -1329,6 +1329,13 @@
   "fr": "Retour à la normale",
   "es": "Vuelta a la normalidad"
  },
+ "Back to the arena": {
+  "zh_TW": "回到競技場",
+  "zh_CN": "回到竞技场",
+  "ja": "アリーナに戻る",
+  "fr": "Retour à l'arène",
+  "es": "Volver a la arena"
+ },
  "Back to title": {
   "zh_TW": "返回標題",
   "zh_CN": "返回标题",
@@ -2652,6 +2659,13 @@
   "fr": "CARTE DE DÉVELOPPEMENT (supprimée à la publication). Mannequins fixes et mobiles de 10 à 60 mètres, et un présentoir des meilleures armes à distance. Pas de caisses.",
   "es": "MAPA DE DESARROLLO (se elimina al publicar el juego). Maniquíes quietos y en movimiento de 10 a 60 metros, y un estante con las mejores armas a distancia. Sin cajas."
  },
+ "DON'T ENTER": {
+  "zh_TW": "禁止進入",
+  "zh_CN": "禁止进入",
+  "ja": "立入禁止",
+  "fr": "ENTRÉE INTERDITE",
+  "es": "NO ENTRAR"
+ },
  "Daily coin goals": {
   "zh_TW": "每日金幣目標",
   "zh_CN": "每日金币目标",
@@ -2925,6 +2939,13 @@
   "fr": "L'ÉQUIPE ADVERSE GAGNE !",
   "es": "¡GANA EL EQUIPO ENEMIGO!"
  },
+ "EXIT SITE": {
+  "zh_TW": "離開工地",
+  "zh_CN": "离开工地",
+  "ja": "現場を出る",
+  "fr": "QUITTER LE CHANTIER",
+  "es": "SALIR DE LA OBRA"
+ },
  "Each K.O. swaps your weapon": {
   "zh_TW": "每次擊倒都會換一把武器",
   "zh_CN": "每次击倒都会换一把武器",
@@ -3022,6 +3043,13 @@
   "ja": "コードを入力",
   "fr": "Saisir un code",
   "es": "Introducir código"
+ },
+ "Enter the Construction site": {
+  "zh_TW": "進入建築工地",
+  "zh_CN": "进入建筑工地",
+  "ja": "工事現場に入る",
+  "fr": "Entrer sur le chantier",
+  "es": "Entrar en la obra"
  },
  "Epic": {
   "zh_TW": "史詩",
@@ -4857,6 +4885,13 @@
   "fr": "Mythique",
   "es": "Mítico"
  },
+ "NEW": {
+  "zh_TW": "新",
+  "zh_CN": "新",
+  "ja": "NEW",
+  "fr": "NOUVEAU",
+  "es": "NUEVO"
+ },
  "Nail Gun": {
   "zh_TW": "釘槍",
   "zh_CN": "钉枪",
@@ -5276,6 +5311,13 @@
   "ja": "少々お待ちください…",
   "fr": "Un instant…",
   "es": "Un momento…"
+ },
+ "Online": {
+  "zh_TW": "線上",
+  "zh_CN": "在线",
+  "ja": "オンライン",
+  "fr": "En ligne",
+  "es": "En línea"
  },
  "Online play now uses the new server": {
   "zh_TW": "線上對戰現在使用新伺服器",
@@ -5829,6 +5871,13 @@
   "ja": "地震",
   "fr": "Séisme",
   "es": "Sismo"
+ },
+ "Quick play": {
+  "zh_TW": "快速開始",
+  "zh_CN": "快速开始",
+  "ja": "クイックプレイ",
+  "fr": "Partie rapide",
+  "es": "Juego rápido"
  },
  "Quick play: one tap for a random arena and mode": {
   "zh_TW": "快速遊戲：一鍵進入隨機場地和模式",
@@ -7229,6 +7278,13 @@
   "ja": "武器をタップして試す",
   "fr": "Touchez une arme pour l'essayer",
   "es": "Toca un arma para probarla"
+ },
+ "Tap to open": {
+  "zh_TW": "點擊打開",
+  "zh_CN": "点击打开",
+  "ja": "タップして開く",
+  "fr": "Touchez pour ouvrir",
+  "es": "Toca para abrir"
  },
  "Tap to see it. Equip puts it on T.": {
   "zh_TW": "點一下預覽。裝備後會放在 T 鍵",

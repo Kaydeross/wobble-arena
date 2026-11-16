@@ -4,14 +4,17 @@ extends Control
 ## wobbler on a site pedestal, a tower crane holding a DLC pack's container) drawn behind the title, plus `overlay`,
 ## the controls that sit on top of it. Data-driven: the packs come from DLCPacks (dlc/dlc_packs.gd).
 ##
-## IDLE      the container hangs closed; a "TAP TO OPEN" tag dangles under it (a real Button: mouse, touch, keyboard,
-##           gamepad and screen readers), and a tap on the container itself is picked with a ray (tap_at).
+## IDLE      the container hangs closed, top right of the full-screen stage; a hazard-striped "CONSTRUCTION - NEW" pill
+##           hangs under it (a real Button: mouse, touch, keyboard, gamepad and screen readers), and a tap on the
+##           container itself is picked with a ray (tap_at, from this control's own gui_input).
 ## OPENING   the title's own controls fade (ui_k -> 1, the owner hides them), the camera moves in, the crane lowers
 ##           the container onto the pedestal (dust + thud), the latch lifts and both doors swing open.
 ## OPENED    the pack's weapons hang on the racks: tap one (ray pick) or focus it (a proxy Button per rack cell) and
 ##           the wobbler holds it, wearing the pack's hat. Preview only: nothing is saved. Bottom bar: Back,
 ##           "< SWAP PACK" / "SWAP PACK >" (two packs or more), "TEST IN <ARENA>" (test_requested), and
 ##           "UNLOCK PACK" (unlock_requested) or an OWNED badge. Ownership is read live from the pack every refresh.
+##           The DON'T ENTER sign (top right) leads on to the Construction title (site_requested); on that title the
+##           pill and the sign read EXIT SITE instead (`site_exit`).
 ## SWAPPING  doors shut, the container is hoisted out of the picture, the next pack's comes down and opens.
 ## CLOSING   doors shut, the container is hoisted back to its hover, the camera and the title return.
 ##
@@ -21,6 +24,7 @@ extends Control
 
 signal test_requested(pack: DLCPackData)
 signal unlock_requested(pack: DLCPackData)
+signal site_requested()                ## the DON'T ENTER / EXIT SITE sign or pill: the owner switches title
 signal ui_changed(k: float)            ## 0 = the title's own controls show, 1 = they are gone
 signal state_changed(state: int)
 
@@ -41,11 +45,12 @@ var shown := true                      ## the title home is showing (the owner h
 var covered := Callable()              ## -> bool: an opaque page covers the title (no need to render)
 var unit := 1.0                        ## touch-size factor (portrait: the canvas is 3 px per pt, so everything grows)
 var safe_rect := Rect2()               ## the safe area in canvas px, padding included (the owner sets it)
-var idle_slot := Rect2()               ## where the idle scene sits (global canvas rect; the owner sets it)
+var site_exit := false                 ## the Construction title is showing: the pill and the sign say EXIT SITE
 var ui_k := 0.0: set = _set_ui_k
 var thuds := 0                         ## landings so far (tests)
 
-var tap_b: Button
+var pill: DlcPill
+var site_b: DontEnterSign
 var back_b: Button
 var prev_b: Button
 var next_b: Button
@@ -65,7 +70,6 @@ var _queued_back := false
 var _t := 0.0
 var _heavy: Font
 var _pixel_scale := 1.0
-var _glow: StyleBoxFlat
 
 func _init() -> void:
 	name = "Showcase"
@@ -92,6 +96,7 @@ func _ready() -> void:
 	reload_packs()
 	resized.connect(_fit)
 	overlay.draw.connect(_draw_tag_line)
+	gui_input.connect(_on_stage_input)
 	_fit()
 	_sync_active()
 
@@ -119,7 +124,7 @@ func refresh() -> void:
 	var p := pack()
 	visible = p != null and shown
 	if p == null:
-		tap_b.visible = false
+		pill.visible = false
 		return
 	var own := p.is_unlocked
 	stage.relabel()
@@ -127,9 +132,14 @@ func refresh() -> void:
 	_name_l.add_theme_color_override("font_color", p.accent_color)
 	_sub_l.text = tr(p.subtitle)
 	_lock.visible = not own
-	tap_b.text = tr("TAP TO OPEN")
-	tap_b.tooltip_text = tr(p.display_name) + ": " + tr(p.subtitle)
-	tap_b.set("accessibility_name", "%s. %s" % [tap_b.tooltip_text, tap_b.text])
+	pill.label = tr("EXIT SITE") if site_exit else tr(p.display_name).to_upper()
+	pill.lead = "‹" if site_exit else ""
+	pill.tag = "" if (own or site_exit) else tr("NEW")
+	pill.tooltip_text = tr("Back to the arena") if site_exit else tr(p.display_name) + ": " + tr(p.subtitle)
+	pill.set("accessibility_name", (pill.tooltip_text if site_exit else "%s. %s" % [pill.tooltip_text, tr("Tap to open")]))
+	site_b.label = tr("EXIT SITE") if site_exit else tr("DON'T ENTER")
+	site_b.tooltip_text = tr("Back to the arena") if site_exit else tr("Enter the Construction site")
+	site_b.set("accessibility_name", site_b.tooltip_text)
 	var arena := tr(str(Content.get_map(p.arena_id).get("name", p.arena_id)))
 	test_b.text = tr("TEST IN %s") % arena.to_upper()
 	test_b.tooltip_text = tr("Try every weapon of the pack on its arena. Nothing is saved.")
@@ -177,24 +187,18 @@ func _build_overlay() -> void:
 	catcher.visible = false
 	catcher.gui_input.connect(_on_catcher_input)
 	overlay.add_child(catcher)
-	# the tag under the hanging container
-	tap_b = Button.new()
-	tap_b.name = "TapToOpen"
-	tap_b.add_theme_font_override("font", _heavy)
-	for st: String in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
-		var sb := ConstructionStyle.tape_box(ConstructionStyle.YELLOW_HI if st == "hover" else (ConstructionStyle.YELLOW_DK if st.contains("pressed") else ConstructionStyle.YELLOW), 4)
-		sb.content_margin_left = 16; sb.content_margin_right = 16; sb.content_margin_top = 6; sb.content_margin_bottom = 8
-		if st == "focus":
-			sb.draw_center = false
-			sb.border_color = Color.WHITE
-			sb.shadow_size = 0
-			sb.expand_margin_left = 3; sb.expand_margin_right = 3; sb.expand_margin_top = 3; sb.expand_margin_bottom = 3
-		tap_b.add_theme_stylebox_override(st, sb)
-	for c: String in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
-		tap_b.add_theme_color_override(c, ConstructionStyle.BLACK)
-	tap_b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	tap_b.pressed.connect(func() -> void: open())
-	overlay.add_child(tap_b)
+	# the pill under the hanging container
+	pill = DlcPill.new()
+	pill.name = "Pill"
+	pill.pressed.connect(func() -> void:
+		if site_exit: site_requested.emit()
+		else: open())
+	overlay.add_child(pill)
+	site_b = DontEnterSign.new()
+	site_b.name = "Site"
+	site_b.pressed.connect(func() -> void:
+		if state == State.OPENED: site_requested.emit())
+	overlay.add_child(site_b)
 	# the pack header (opened)
 	header = PanelContainer.new()
 	header.name = "Header"
@@ -317,12 +321,13 @@ func _show_opened_ui() -> void:
 	var live := state == State.OPENED
 	if catcher == null: return
 	catcher.visible = on
-	tap_b.visible = state == State.IDLE and pack() != null
-	for c: Control in [header, caption, back_b, bar]:
+	pill.visible = state == State.IDLE and pack() != null
+	mouse_filter = Control.MOUSE_FILTER_STOP if state == State.IDLE and shown else Control.MOUSE_FILTER_IGNORE
+	for c: Control in [header, caption, back_b, bar, site_b]:
 		if c == null: continue
 		c.visible = on
 		c.modulate.a = ui_k
-	for b: Button in [prev_b, next_b, test_b, unlock_b]:
+	for b: Button in [prev_b, next_b, test_b, unlock_b, site_b]:
 		if b: b.disabled = not live
 	if back_b: back_b.disabled = state == State.CLOSING
 	for b: Button in proxies:
@@ -332,7 +337,7 @@ func _show_opened_ui() -> void:
 
 func _set_ui_k(v: float) -> void:
 	ui_k = v
-	for c: Control in [header, caption, back_b, bar]:
+	for c: Control in [header, caption, back_b, bar, site_b]:
 		if c: c.modulate.a = v
 	ui_changed.emit(v)
 
@@ -350,10 +355,9 @@ func _fit() -> void:
 	stage.size = Vector2i(maxi(64, int(px.x)), maxi(64, int(px.y)))
 	_layout()
 
-## The owner's numbers: the safe area, where the idle scene goes, and the touch-size factor.
-func set_frame(safe: Rect2, slot: Rect2, u: float) -> void:
+## The owner's numbers: the safe area (the idle scene is framed inside it) and the touch-size factor.
+func set_frame(safe: Rect2, u: float) -> void:
 	safe_rect = safe
-	idle_slot = slot
 	unit = u
 	_layout()
 
@@ -368,9 +372,13 @@ func _layout() -> void:
 	var fs := int(round(20.0 * minf(unit, 2.0)))
 	var portrait := size.y > size.x
 	stage.compact = portrait
-	tap_b.add_theme_font_size_override("font_size", int(round(19.0 * minf(unit, 2.0))))
-	tap_b.custom_minimum_size = Vector2(t, t)
-	tap_b.size = tap_b.get_combined_minimum_size()
+	pill.font_px = 21.0 * minf(unit, 2.0)
+	pill.min_h = t
+	pill.size = pill.get_combined_minimum_size()
+	site_b.max_font = 30.0 * minf(unit, 2.0)
+	site_b.custom_minimum_size = Vector2(maxf(210.0 * minf(unit, 2.0), t * 3.4), t)
+	site_b.size = site_b.custom_minimum_size
+	site_b.position = Vector2(s.end.x - site_b.size.x, s.position.y)
 	_name_l.add_theme_font_size_override("font_size", int(round(26.0 * minf(unit, 1.8))))
 	_sub_l.add_theme_font_size_override("font_size", int(round(18.0 * minf(unit, 1.8))))
 	_lock.custom_minimum_size = Vector2(22, 27) * minf(unit, 1.8)
@@ -406,26 +414,28 @@ func _layout() -> void:
 	bar.position = Vector2(s.end.x - bw, bar_y)
 	header.size = Vector2.ZERO
 	header.size = header.get_combined_minimum_size()
-	header.position = Vector2(s.position.x + (s.size.x - header.size.x) * 0.5, s.position.y)
+	var hx := s.position.x + (s.size.x - header.size.x) * 0.5
+	header.position = Vector2(minf(hx, site_b.position.x - GAP - header.size.x), s.position.y)   # (the sign has the top right)
 	caption.size = Vector2(s.size.x, caption.get_combined_minimum_size().y)
 	caption.position = Vector2(s.position.x, bar_y - GAP * 0.5 - caption.size.y)
 	var top := header.position.y + header.size.y + GAP
 	var open := Rect2(s.position.x, top, s.size.x, maxf(40.0, caption.position.y - GAP * 0.5 - top))
 	stage.open_rect = _norm(open)
-	var slot := idle_slot if idle_slot.size.x > 8.0 and idle_slot.size.y > 8.0 else Rect2(global_position + size * Vector2(0.4, 0.15), size * Vector2(0.55, 0.7))
-	stage.idle_rect = _norm(slot)
+	stage.idle_rect = _norm(Rect2(s.position + global_position, s.size))
 	stage.apply_pose()
 	_place()
 
-## The tag under the container and the rack proxies follow the 3D scene.
+## The pill under the container and the rack proxies follow the 3D scene.
 func _place() -> void:
-	if stage == null or tap_b == null: return
-	if tap_b.visible:
-		var a := stage.project(stage.crate_pos() + Vector3(0, -0.2, ShowcaseStage.BOX.z * 0.5)) * size
-		var bob := sin(_t * 2.2) * 3.0 * unit
-		var c := a + Vector2(0, 18.0 * unit + tap_b.size.y * 0.5 + bob)
-		tap_b.position = c - tap_b.size * 0.5
-		tap_b.pivot_offset = tap_b.size * 0.5
+	if stage == null or pill == null: return
+	if pill.visible:
+		var a := stage.project(stage.crate_pos() + Vector3(0, 0.0, ShowcaseStage.BOX.z * 0.5)) * size
+		var bob := sin(_t * 2.0) * 2.0 * unit
+		var c := a + Vector2(0, 16.0 * unit + pill.size.y * 0.5 + bob)
+		var s := safe_rect if safe_rect.size.x > 1.0 else Rect2(Vector2.ZERO, size)
+		var pos := c - pill.size * 0.5
+		pos.x = clampf(pos.x, s.position.x, maxf(s.position.x, s.end.x - pill.size.x))
+		pill.position = pos
 		overlay.queue_redraw()
 	if state != State.IDLE:
 		var t := TOUCH * unit
@@ -439,21 +449,12 @@ func _place() -> void:
 			b.size = sz
 			b.position = c - sz * 0.5
 
-## The string the tag hangs on, and its soft pulse.
+## The rod the pill hangs on.
 func _draw_tag_line() -> void:
-	if tap_b == null or not tap_b.visible or stage == null: return
+	if pill == null or not pill.visible or stage == null: return
 	var a := stage.project(stage.crate_pos() + Vector3(0, 0.0, ShowcaseStage.BOX.z * 0.5)) * size
-	var b := tap_b.position + Vector2(tap_b.size.x * 0.5, 2.0)
-	overlay.draw_line(a, b, Color(ConstructionStyle.BLACK, 0.9), 2.0 * unit, true)
-	var pulse := 0.5 + 0.5 * sin(_t * 3.2)
-	if _glow == null:
-		_glow = StyleBoxFlat.new()
-		_glow.draw_center = false
-		_glow.set_corner_radius_all(16)
-		_glow.anti_aliasing = true
-	_glow.border_color = Color(1.0, 0.82, 0.25, 0.12 + 0.3 * pulse)
-	_glow.set_border_width_all(int(round((2.0 + pulse * 2.0) * unit)))
-	overlay.draw_style_box(_glow, Rect2(tap_b.position, tap_b.size).grow((3.0 + pulse * 4.0) * unit))
+	var b := pill.position + Vector2(pill.size.x * 0.5, 3.0)
+	overlay.draw_line(a, b, Color(ConstructionStyle.BLACK, 0.9), 3.0 * unit, true)
 
 ## The screen rect (global canvas px) of rack cell `i`: what a finger has to hit.
 func cell_screen_rect(i: int) -> Rect2:
@@ -475,6 +476,11 @@ func tap_at(global_pos: Vector2) -> bool:
 	if state != State.IDLE or pack() == null or not shown: return false
 	if stage.pick(_uv(global_pos)).get("kind", "") != "container": return false
 	return open()
+
+## A tap on the idle stage (this control is the layer under the title's controls): opens when it lands on the container.
+func _on_stage_input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+		if tap_at((e as InputEventMouseButton).global_position): accept_event()
 
 func _on_catcher_input(e: InputEvent) -> void:
 	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT): return
@@ -552,7 +558,7 @@ func _on_closed() -> void:
 	stage.doors = 0.0; stage.lower = 0.0; stage.cam_k = 0.0; stage.hoist = 0.0
 	ui_k = 0.0
 	_set_state(State.IDLE)
-	if _pc() and shown: tap_b.grab_focus.call_deferred()
+	if _pc() and shown: pill.grab_focus.call_deferred()
 
 ## OPENED -> SWAPPING -> OPENED on the pack `dir` steps on (wraps). false = ignored (one pack, or not OPENED).
 func swap(dir: int) -> bool:
@@ -618,7 +624,4 @@ func _process(dt: float) -> void:
 	_t += dt
 	_sync_active()
 	if not stage.active: return
-	if state == State.IDLE:
-		var pulse := 1.0 + 0.035 * sin(_t * 3.2)
-		tap_b.scale = Vector2(pulse, pulse) if not tap_b.is_hovered() else tap_b.scale
 	_place()
