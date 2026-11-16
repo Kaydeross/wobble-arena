@@ -17,7 +17,9 @@ const PROTO := 1
 ## compatibility is really decided by `proto` in hello/welcome (PROTOCOL.md 6.1), see GuestSession's retry.
 const BUILD := "b77.0"
 ## Godot capability level sent as `gd` in hello / welcome / roster entries (Godot-only additive field, PROTOCOL.md 6.3).
-const GD := 1
+## 1 = the original Godot client. 2 adds the unified combat rules (`rules.nz`): a capability-1 build ignores the flag and
+## would compute its shots with the classic rule, so a `nz` host refuses it (host_session.gd `_hello`).
+const GD := 2
 
 var ws := WebSocketPeer.new()
 var state := WebSocketPeer.STATE_CLOSED

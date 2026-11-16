@@ -1,6 +1,7 @@
 # Body-part damage
 
-Where a hit lands changes its damage. Godot only for now; the web game still has just the headshot bonus.
+Where a hit lands changes its damage. The web game still has just the headshot bonus, so the full table applies offline
+and online only when every peer is on the Godot app (see "Rules and net compatibility").
 
 ## Table (`shared/damage.json`, copied to `godot/data/` by `node tools/sync-shared.js`)
 
@@ -42,7 +43,8 @@ full gate.
 ## Rules and net compatibility
 
 - `Combat.damage_rule`: `"classic"` (default of a bare `Combat`, used by the JS parity tests) or `"zones"` (set by `MatchSim` for offline matches).
-- `Combat.zones_active()` is false whenever `net_started`, unless `Combat.net_zones` is set: web clients compute their own shots with the classic rule and the shooter decides the damage it sends in `h`, so mixing rules would make the same shot hurt differently depending on who fired it. Turn `net_zones` on only when every client (including the web game) reads `shared/damage.json`.
+- `Combat.zones_active()` is false whenever `net_started`, unless `Combat.net_zones` is set: web clients compute their own shots with the classic rule and the shooter decides the damage it sends in `h`, so mixing rules would make the same shot hurt differently depending on who fired it.
+- **The host sets `net_zones` at match start**, not the tests. `HostSession._begin_match` latches `rules.nz` when `web_guests()` is empty (every peer runs the Godot app); `NetMatch.apply_rules` copies it onto `Combat.net_zones` on the host and on every guest. A guest that receives no flag keeps the classic rule, so older app builds and the web game stay compatible. The flag is latched for the whole match: a Godot guest who joins mid-match gets it, and a web guest is refused with `kick` through the same refusal path as an app-only mode. A web guest may join between matches (the lobby); the next match then starts without `nz`.
 - With `classic` every non-head multiplier is exactly 1.0 and the head value is the old one, so damage is bit-identical to the web game (`npm run test:godot-combat` stays green).
 
 ## Tests
@@ -59,7 +61,7 @@ a bare `FighterState` / classic rule / online-without-`net_zones`, and that the 
 
 ## Balance and cooldowns
 
-Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` are untouched. `godot/data/extra/weapon_tuning.json` is an overlay that `MatchSim._init` merges (`Combat.apply_tuning`) next to `damage_rule = "zones"`. It is used only while `Combat.tuning_active()`, which is the same gate as the zones table (`zones_active()`): offline matches, or online with `net_zones`. A bare `Combat` (the JS parity tests, `combat_test`) and any match on the classic rule (`bots_parity_test`) see the shared numbers. Online, web peers keep the old numbers too; damage is computed by the attacker, so a Godot player online also uses the web numbers until `net_zones` is turned on.
+Godot only, and parity-neutral: `shared/*.json` and `godot/data/weapons.json` are untouched. `godot/data/extra/weapon_tuning.json` is an overlay that `MatchSim._init` merges (`Combat.apply_tuning`) next to `damage_rule = "zones"`. It is used only while `Combat.tuning_active()`, which is the same gate as the zones table (`zones_active()`): offline matches, or online with `net_zones`. A bare `Combat` (the JS parity tests, `combat_test`) and any match on the classic rule (`bots_parity_test`) see the shared numbers. Online, web peers keep the old numbers; in an all-app match the host sets `rules.nz` (above), so the host and its Godot guests all run the overlay and damage is still computed by the attacker (`h`).
 
 ### Tuning table (overlay vs shared)
 
