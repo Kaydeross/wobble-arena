@@ -4,8 +4,12 @@ extends Control
 ## lines, arcs and polygons. Used by the Walldrobe / Shop emote cards and the in-match emote wheel (EmoteIcon.paint).
 ## Unknown ids get a generic star, so a new emote never shows a blank card.
 
+const MASK_FILL := Color(0.03, 0.06, 0.09)      ## the flat dark fill of a mystery emote (same as the outfit silhouettes)
+const MASK_GLYPH := Color(0.17, 0.27, 0.34)
+
 var id := ""
 var rarity_col := Color.WHITE
+var masked := false          ## a mystery emote (unowned, for sale): tier-coloured rim, flat dark disc, the glyph only as a faint shape
 
 func _init(p_id: String = "", min_size: float = 64.0) -> void:
 	id = p_id
@@ -18,6 +22,10 @@ func _draw() -> void:
 	if r <= 4.0: return
 	var c := size / 2.0
 	draw_circle(c, r, Color(rarity_col, 0.95))
+	if masked:
+		draw_circle(c, r * 0.86, MASK_FILL)
+		paint(self, id, c, r * 0.62, MASK_GLYPH)
+		return
 	draw_circle(c, r * 0.86, Color(rarity_col.darkened(0.55), 1.0))
 	paint(self, id, c, r * 0.62, Color.WHITE)
 

@@ -853,12 +853,12 @@
   "fr": "Un nouveau chantier à chaque fois : une cour clôturée avec une grue, une pelleteuse, un bulldozer, des tas de terre, des conteneurs, des tours d'échafaudage et une tranchée avec un tremplin. Grimpez aux échelles, sautez de machine en machine et méfiez-vous des portails ouverts.",
   "es": "Una obra nueva cada vez: un recinto vallado con grúa, excavadora, bulldozer, montones de tierra, contenedores, torres de andamio y una zanja con trampolín. Sube escaleras, salta de máquina en máquina y cuidado con las puertas abiertas."
  },
- "A new title screen: Play on the left, the rest on the right": {
-  "zh_TW": "全新標題畫面：左邊是開始遊戲，其餘在右邊",
-  "zh_CN": "全新标题画面：左边是开始游戏，其余在右边",
-  "ja": "新しいタイトル画面：左にプレイ、右にそのほか",
-  "fr": "Un nouvel écran titre : Jouer à gauche, le reste à droite",
-  "es": "Una nueva pantalla de título: Jugar a la izquierda, lo demás a la derecha"
+ "A new title screen: a big Play button, everything else in the dock, and the DLC hangs off the crane": {
+  "zh_TW": "全新標題畫面：大大的開始按鈕，其餘功能收進底部選單，擴充包掛在吊車上",
+  "zh_CN": "全新标题画面：大大的开始按钮，其余功能收进底部菜单，扩展包挂在吊车上",
+  "ja": "新しいタイトル画面：大きなプレイボタン、ほかの機能は下のドックに、DLCはクレーンに吊り下げ",
+  "fr": "Un nouvel écran titre : un gros bouton Jouer, le reste dans le dock, et le DLC pend à la grue",
+  "es": "Una nueva pantalla de título: un gran botón Jugar, lo demás en el dock y el DLC cuelga de la grúa"
  },
  "A plus-shaped street high above the city. Four arms, a raised hub and nothing but sky in the corners, so every shove can be the last. Bounce pads fling you back toward the middle.": {
   "zh_TW": "高懸於城市之上的十字形街道。四條臂、一個高起的中心，四角只有天空，所以每一次推擠都可能是最後一次。彈跳墊會把你彈回中間。",
@@ -964,6 +964,13 @@
   "ja": "AK-47",
   "fr": "AK-47",
   "es": "AK-47"
+ },
+ "ARENA": {
+  "zh_TW": "擂台",
+  "zh_CN": "擂台",
+  "ja": "大乱闘",
+  "fr": "ARENA",
+  "es": "ARENA"
  },
  "About": {
   "zh_TW": "關於",
@@ -1853,6 +1860,13 @@
   "ja": "%d コインで購入",
   "fr": "Acheter pour %d",
   "es": "Comprar por %d"
+ },
+ "Buy it to reveal it": {
+  "zh_TW": "購買後揭曉",
+  "zh_CN": "购买后揭晓",
+  "ja": "買うと中身がわかる",
+  "fr": "Achetez-le pour le révéler",
+  "es": "Cómpralo para revelarlo"
  },
  "Buy outfits, emotes and classes with coins": {
   "zh_TW": "用金幣購買服裝、表情動作和角色",
@@ -4877,6 +4891,13 @@
   "ja": "BGM実装！ゲームも一緒に鼻歌まじりで、みんなをボンクしよう",
   "fr": "De la musique ! Le jeu fredonne enfin pendant que tu bouscules tout le monde",
   "es": "¡Música! Por fin el juego tararea mientras tú empujas a todo el mundo"
+ },
+ "Mystery %s": {
+  "zh_TW": "神秘%s",
+  "zh_CN": "神秘%s",
+  "ja": "ミステリー%s",
+  "fr": "%s mystère",
+  "es": "%s misterioso"
  },
  "Mythic": {
   "zh_TW": "神話",
@@ -8174,6 +8195,20 @@
   "ja": "移動はWASD、視点はマウス。クリックでマウスをキャプチャ、Escで解除。ゆれは自動です。",
   "fr": "WASD pour te déplacer, la souris pour regarder. Clique une fois pour capturer la souris ; Esc la libère. L'oscillation est automatique.",
   "es": "WASD para moverte, el ratón para mirar. Haz clic una vez para capturar el ratón; Esc lo suelta. El balanceo es automático."
+ },
+ "WOBBLERS": {
+  "zh_TW": "搖擺",
+  "zh_CN": "摇摆",
+  "ja": "グラグラ",
+  "fr": "WOBBLERS",
+  "es": "WOBBLERS"
+ },
+ "WOBBLERS ARENA": {
+  "zh_TW": "搖擺擂台",
+  "zh_CN": "摇摆擂台",
+  "ja": "グラグラ大乱闘",
+  "fr": "WOBBLERS ARENA",
+  "es": "WOBBLERS ARENA"
  },
  "Wait a moment": {
   "zh_TW": "請稍等一下",

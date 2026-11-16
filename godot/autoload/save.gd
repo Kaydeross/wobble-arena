@@ -454,11 +454,15 @@ func next_unlock() -> Dictionary:
 	var best := {}
 	for k: String in LockerData.shop_skins():
 		if not skins.has(k) and (best.is_empty() or LockerData.skin_price(k) < int(best["price"])):
-			best = {"kind": "skin", "key": k, "name": LockerData.skin_name(k), "price": LockerData.skin_price(k)}
+			best = {"kind": "skin", "key": k, "name": _next_name(LockerData.skin_rarity(k), LockerData.skin_name(k)), "price": LockerData.skin_price(k)}
 	for k: String in LockerData.shop_emotes():
 		if not owned.has(k) and (best.is_empty() or LockerData.emote_price(k) < int(best["price"])):
-			best = {"kind": "emote", "key": k, "name": LockerData.emote_name(k), "price": LockerData.emote_price(k)}
+			best = {"kind": "emote", "key": k, "name": _next_name(LockerData.emote_rarity(k), LockerData.emote_name(k)), "price": LockerData.emote_price(k)}
 	return best
+
+## Every unowned item that costs coins stays a mystery in the results too ("Mystery Rare"): only its price shows.
+func _next_name(rarity: String, _real: String) -> String:
+	return LockerData.mystery_name(rarity)
 
 # ============================== match rewards + stats ==============================
 

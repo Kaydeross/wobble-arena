@@ -129,3 +129,7 @@ static func rarity_rank(r: String) -> int:
 
 static func rarity_color(r: String) -> Color:
 	return RAR_COL.get(r, RAR_COL["common"])
+
+## The name a masked item shows: "Mystery Rare", "Mystery Mythic" (translated).
+static func mystery_name(r: String) -> String:
+	return TranslationServer.translate("Mystery %s") % TranslationServer.translate(rarity_label(r))

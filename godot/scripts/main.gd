@@ -184,12 +184,15 @@ func _ready() -> void:
 	intro.closed.connect(func() -> void: if Tier.is_pc(): play.grab_focus.call_deferred())
 	var first: bool = auto_intro if auto_intro is bool else (Settings.persist and not bool(Settings.get_value("seen_intro", false)))
 	var quiet := session == null and join == "" and notice == ""
+	var newest := WhatsNew.newest_version()
+	# A brand-new player does not need the old notes. Mark them seen on the FIRST visit whichever card opens: before, this
+	# only ran when the intro did not open, so a new player's first return to the title (after Play / Quick play) popped
+	# What's new.
+	if first and Save.persist: Save.mark_news_seen(newest)
 	if first and quiet: intro.open()
 	else:
-		var newest := WhatsNew.newest_version()
 		var unseen: bool = auto_news if auto_news is bool else (Save.persist and newest != "" and newest != Save.last_seen_news)
 		if unseen and quiet and not first: news.open()
-		elif first and Save.persist: Save.mark_news_seen(newest)   # a brand-new player does not need the old notes
 
 ## Back (Escape / controller B via ui_cancel, Android's back gesture): close the top thing. The wizard and the Walldrobe
 ## handle ui_cancel themselves; the back gesture reaches them through here. On the bare title nothing happens.
@@ -561,7 +564,7 @@ func _status(t: String) -> void:
 func _fit_logo(avail: float, max_font: int) -> void:
 	var logo := $Safe/Col/Top/Logo as WobbleLogo
 	for two: bool in [false, true]:
-		logo.lines = PackedStringArray(["WOBBLERS", "ARENA"]) if two else PackedStringArray(["WOBBLERS ARENA"])
+		logo.lines = WobbleLogo.names(two)
 		var f := mini(max_font, 46) if two else max_font
 		var floor_f := 22 if two else 38
 		while f >= floor_f:
@@ -572,7 +575,7 @@ func _fit_logo(avail: float, max_font: int) -> void:
 ## The title home's logo: two lines (WOBBLERS / ARENA), `max_font` unless the room beside the chips is narrower.
 func _fit_logo_two(avail: float, max_font: int) -> void:
 	var logo := $Safe/Col/Top/Logo as WobbleLogo
-	logo.lines = PackedStringArray(["WOBBLERS", "ARENA"])
+	logo.lines = WobbleLogo.names(true)
 	var f := max_font
 	while f > 24:
 		logo.font_size = f

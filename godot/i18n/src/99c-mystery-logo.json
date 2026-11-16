@@ -1,0 +1,37 @@
+{
+ "WOBBLERS ARENA": {
+  "zh_TW": "搖擺擂台",
+  "zh_CN": "摇摆擂台",
+  "ja": "グラグラ大乱闘",
+  "fr": "WOBBLERS ARENA",
+  "es": "WOBBLERS ARENA"
+ },
+ "WOBBLERS": {
+  "zh_TW": "搖擺",
+  "zh_CN": "摇摆",
+  "ja": "グラグラ",
+  "fr": "WOBBLERS",
+  "es": "WOBBLERS"
+ },
+ "ARENA": {
+  "zh_TW": "擂台",
+  "zh_CN": "擂台",
+  "ja": "大乱闘",
+  "fr": "ARENA",
+  "es": "ARENA"
+ },
+ "Mystery %s": {
+  "zh_TW": "神秘%s",
+  "zh_CN": "神秘%s",
+  "ja": "ミステリー%s",
+  "fr": "%s mystère",
+  "es": "%s misterioso"
+ },
+ "Buy it to reveal it": {
+  "zh_TW": "購買後揭曉",
+  "zh_CN": "购买后揭晓",
+  "ja": "買うと中身がわかる",
+  "fr": "Achetez-le pour le révéler",
+  "es": "Cómpralo para revelarlo"
+ }
+}

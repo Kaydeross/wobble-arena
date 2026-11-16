@@ -89,7 +89,7 @@ func _entry(e: Dictionary, open_it: bool) -> void:
 	var key := v.replace(".", "_")
 	var h := Button.new()
 	h.name = "Head_" + key
-	h.text = "v%s · %s" % [v, e["title"]] if e["title"] != "" else "v" + v
+	h.text = "v%s · %s" % [v, tr(e["title"])] if e["title"] != "" else "v" + v
 	h.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	h.custom_minimum_size = Vector2(0, TOUCH)
 	h.add_theme_font_size_override("font_size", 24)
