@@ -121,3 +121,25 @@ So the stage costs about 50 draw calls and 7 k triangles, shadow pass included. 
 between 1.5 and 7.5 ms on all three renderers (130 fps or more) and too noisy to give a per-renderer cost.
 **Not measured on a device**: an iPhone and the web export in a phone browser still need a real run (the perf overlay,
 Settings > Graphics, works on the title).
+
+## Pack selector and pack transitions
+
+`ui/pack_selector.gd` (`PackSelector`, a `UiPage`) is the deck of every pack: reached from the opened container's top-left
+**Packs** chip (`TitleShowcase.packs_requested` -> `main.open_packs`), so the idle title stays as clean as above. The cards
+come from `PackRegistry.ids()` (the hub's order) and `DLCPacks`; the centred card is scaled up, the others dimmed and
+smaller with parallax between their layers (badge, weapon icons, pattern rail, backdrop glow). Swipe (a drag of 14 px
+or more; a tap on a side card centres it), the two arrows, the page dots (header, or their own row in portrait),
+Left / Right and the pad all move it, **clamped** at both ends. The big button says PLAY (owned) or UNLOCK PACK (locked).
+UNLOCK PACK emits `unlock_requested` (the existing hub card: coins or the code); PLAY plays the pack's transition and the
+hub opens at its switch point (`play_requested` -> `main._open_hub_from_selector`); the hub's Back returns to the selector.
+The secret code stays in Settings > About (seven taps) and unlocks every pack (`DlcUnlock.redeem_with`).
+
+`ui/pack_transition.gd` (`PackTransition.play(pack_id, parent, on_done, on_end)`) is one drawn transition per pack, 0.9 to
+1.4 s: construction = the hazard-tape wipe (`ui/dlc_transition.gd`, untouched), kitchen = a flame wall
+(`shaders/pack_flame_wipe.gdshader`, the only shader) + embers + a frying-pan CLANG, xmas = snow swirl, wrapping paper, a
+ribbon cross and a bow that unwraps again, australia = three layers of dust, a sunburst, a spinning boomerang with streaks
+and a whip crack. Each is a function of one number `p` (cover 0 to 0.45, `on_done` at 0.5, reveal 0.55 to 1). The lowest
+graphics tier (Settings > Graphics > Effects: Low, or the web build) plays a plain colour wipe. A tap, key or pad button
+skips it, a safety timer ends it at 2x its length + 1 s, and headless runs end it at once with the same callbacks. At most 60
+particles, drawn from fixed arrays with a local `RandomNumberGenerator`. Test: `npm run test:godot-pack-selector`; images:
+`godot/tests/pack_selector_shots.gd` (windowed Godot, run by hand).

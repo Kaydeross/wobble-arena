@@ -91,11 +91,15 @@ const server = http.createServer((req, res) => {
   try { url = decodeURIComponent((req.url || '/').split('?')[0]); } catch (e) { res.writeHead(400); res.end('bad request'); return; }
   if (url === '/api/config') {
     try {
-      const body = fs.readFileSync(REMOTE_CONFIG_PATH, 'utf8');
-      const parsed = JSON.parse(body);
+      const parsed = JSON.parse(fs.readFileSync(REMOTE_CONFIG_PATH, 'utf8'));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('config is not an object');
+      /* tester_unlock: lets the secret code work in a release build (TestFlight). Off unless the file says a real true, or TESTER_UNLOCK=1|true|yes
+         is set in the host's environment (an env value of 0|false|no forces it off). Never anything but a boolean on the wire. */
+      const envT = String(process.env.TESTER_UNLOCK || '').toLowerCase();
+      parsed.tester_unlock = envT ? /^(1|true|yes)$/.test(envT) : parsed.tester_unlock === true;
+      const out = JSON.stringify(parsed);
       res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff' });
-      res.end(req.method === 'HEAD' ? undefined : body);
+      res.end(req.method === 'HEAD' ? undefined : out);
     } catch (e) {
       console.error('remote config unavailable:', e.message);
       res.writeHead(503, { 'content-type': 'application/json', 'cache-control': 'no-store' });

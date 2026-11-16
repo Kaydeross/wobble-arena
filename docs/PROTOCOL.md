@@ -366,6 +366,19 @@ they answer `401 err:"auth"`.
 - **Old servers.** A build without these routes answers `404` (JSON on this build, plain text on older ones). The
   client keeps queued operations and retries; it does not fall back to trusting client coins.
 
+### 4.4 Remote config (`GET /api/config`)
+
+Non-secret launch policy, served by `server.js` from the file named by `REMOTE_CONFIG` (default `remote-config.json`); the Godot client
+(`godot/autoload/remote_config.gd`) bundles a copy (`godot/data/extra/remote_config.json`) as the offline default and sanitises every
+value by shape. Keys: `schema`, `featured_mode`, `news`, `minimum_version`, `ads{}`, `kill_switches{online,ads,purchases}`,
+`analytics`, `tester_unlock`, `updated`.
+
+- `tester_unlock` (boolean, **default false** in the client, the bundled copy and the file): when `true`, a **release** build accepts the
+  secret code (`DlcUnlock.dev_code_allowed()` is "not a release build, or `tester_unlock`") and shows the seven-tap entry in Settings > About.
+  Only a JSON `true` counts on the client (`"true"`, `1` are ignored). The server environment variable `TESTER_UNLOCK` (`1|true|yes` on,
+  `0|false|no` off) overrides the file, and the server always sends a real boolean. The client re-reads the value every time the
+  config refreshes. Owner steps: `docs/OWNER_RELEASE_RUNBOOK.md` 4.9.
+
 ---
 
 ## 5. Shared content ids a second client must know

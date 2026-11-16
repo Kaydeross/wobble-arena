@@ -6537,6 +6537,13 @@
   "fr": "JOUER",
   "es": "JUGAR"
  },
+ "Pack %d of %d": {
+  "zh_TW": "第%d個，共%d個",
+  "zh_CN": "第%d个，共%d个",
+  "ja": "%d / %d",
+  "fr": "Pack %d sur %d",
+  "es": "Pack %d de %d"
+ },
  "Packs": {
   "zh_TW": "擴充包",
   "zh_CN": "扩展包",

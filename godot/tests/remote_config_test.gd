@@ -30,6 +30,11 @@ func _init() -> void:
 	assert(clean["ads"]["first_session_grace_s"] == 0)
 	assert(clean["kill_switches"]["ads"])
 	assert(not clean.has("secret"))
+	assert(clean["tester_unlock"] == false and RC.DEFAULTS["tester_unlock"] == false and RC.validate({})["tester_unlock"] == false)
+	assert(RC.validate({"tester_unlock": true})["tester_unlock"] == true)
+	for junk: Variant in ["true", 1, "yes", null, [true]]:
+		assert(RC.validate({"tester_unlock": junk})["tester_unlock"] == false)
+	assert(RC.read_config(RC.BUNDLED_PATH).get("tester_unlock", true) == false)
 	assert(RC.version_less("0.2.9", "0.3.0"))
 	assert(not RC.version_less("0.3.0", "0.3.0"))
 	assert(RC.version_less("0.3.0", "1.0.0"))

@@ -78,6 +78,8 @@ var shop_b: Button
 var goals_b: Button
 var goals: GoalsScreen              ## the Goals screen (title: Goals)
 var hub: ConstructionHub            ## the Construction DLC hub (Play on the Construction title, UNLOCK PACK)
+var selector: PackSelector          ## the pack selector (ui/pack_selector.gd): the deck of every pack, ENTER plays that pack's transition and opens its hub
+var _hub_from_selector := false     ## the hub was opened from the selector: its Back returns there
 var dlc := false                    ## the Construction title is showing (never saved: the app always opens on the normal title)
 var _wipe: DlcTransition
 var news_dot: Control
@@ -130,10 +132,22 @@ func _ready() -> void:
 	add_child(hub)
 	hub.start_requested.connect(play_offline)
 	hub.arcade_requested.connect(play_arcade)
+	selector = PackSelector.new()
+	add_child(selector)
+	move_child(selector, hub.get_index())     # (the hub opens over the selector)
+	selector.play_requested.connect(_open_hub_from_selector)
+	selector.unlock_requested.connect(_open_hub_from_selector)
+	selector.closed.connect(func() -> void:
+		_refresh_dock()
+		showcase.refresh()
+		if Tier.is_pc(): (showcase.packs_b if showcase.is_open() else showcase.pill).grab_focus.call_deferred())
 	hub.closed.connect(func() -> void:
 		_refresh_dock()
 		showcase.refresh()             # (it may have been bought: UNLOCK PACK becomes OWNED)
-		if Tier.is_pc(): (showcase.test_b if showcase.is_open() else showcase.pill).grab_focus.call_deferred())
+		if _hub_from_selector:         # the hub came from the pack selector: Back returns there, on the pack just left
+			_hub_from_selector = false
+			selector.open_at(hub.pack_id)
+		elif Tier.is_pc(): (showcase.test_b if showcase.is_open() else showcase.pill).grab_focus.call_deferred())
 	news = WhatsNew.new()
 	add_child(news)
 	news.closed.connect(func() -> void:
@@ -211,6 +225,7 @@ func go_back() -> bool:
 	if settings.visible: return settings.back()
 	if goals.visible: return goals.back()
 	if hub.visible: return hub.back()
+	if selector.visible: return selector.back()
 	if lobby.visible:
 		if session: session.leave("You left the room.")
 		show_lobby(false)
@@ -258,11 +273,12 @@ func _build_showcase() -> void:
 	add_child(showcase.overlay)
 	move_child(showcase.overlay, safe.get_index() + 1)
 	showcase.covered = func() -> bool:
-		return (settings != null and settings.visible) or (goals != null and goals.visible) or (hub != null and hub.visible)
+		return (settings != null and settings.visible) or (goals != null and goals.visible) or (hub != null and hub.visible) or (selector != null and selector.visible)
 	showcase.ui_changed.connect(_on_showcase_ui)
 	showcase.test_requested.connect(play_trial)
 	showcase.unlock_requested.connect(func(p: DLCPackData) -> void: open_hub(p.pack_id))   # the existing unlock flow: coins or the code, on that pack
 	showcase.play_requested.connect(func(p: DLCPackData) -> void: open_hub(p.pack_id))     # an owned pack: its hub (Classic / Arcade)
+	showcase.packs_requested.connect(func() -> void: open_packs(showcase.pack().pack_id if showcase.pack() != null else ""))
 	showcase.site_requested.connect(toggle_dlc)                                    # DON'T ENTER / EXIT SITE: the Construction title
 	Save.changed.connect(showcase.refresh)
 	$Background.stage_3d = true
@@ -494,6 +510,16 @@ func open_goals() -> void:
 ## show first ("" = Construction, the original page).
 func open_hub(pack: String = "") -> void:
 	hub.open_pack(pack)
+
+## The pack selector (the deck of every pack) over the title, centred on `pack` ("" = the first).
+func open_packs(pack: String = "") -> void:
+	selector.open_at(pack)
+
+## The selector's ENTER (the transition has covered the screen) or UNLOCK: the hub opens on that pack, and its Back comes back.
+func _open_hub_from_selector(pack: String) -> void:
+	_hub_from_selector = true
+	selector.visible = false
+	open_hub(pack)
 
 ## The What's new card over the title.
 func open_news() -> void:
