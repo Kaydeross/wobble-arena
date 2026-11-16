@@ -28,10 +28,12 @@ static func make(r: Dictionary) -> Control:
 	c.add_theme_color_override("font_color", UiTheme.ACCENT)
 	row.add_child(c)
 	var earned := int(r.get("coins", 0))
+	var count_tw := {"tw": null}                        # the count-up tween, so a grant can stop it overwriting the win
 	if animate and earned > 0 and DisplayServer.get_name() != "headless":   # count-up (~1 s); the text is already final under headless / tests
 		c.text = TranslationServer.translate("+%d coins") % 0
 		c.ready.connect(func() -> void:
 			var tw := c.create_tween()
+			count_tw["tw"] = tw
 			tw.tween_method(func(v: float) -> void: c.text = TranslationServer.translate("+%d coins") % int(round(v)), 0.0, float(earned), 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
 	var k := Label.new()
 	k.name = "Kos"
@@ -39,29 +41,34 @@ static func make(r: Dictionary) -> Control:
 	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	k.text = _kos_text(r, int(r.get("total", 0)))
 	box.add_child(k)
-	# Double coins: one rewarded video (or the Remove ads free perk) pays an EXTRA earned amount, once per results panel.
-	# Nothing is built as visible without a registered provider: AdUi owns that test.
-	var ad_state := {"claimed": false, "total": int(r.get("total", 0))}
-	var double_b := Button.new()
-	double_b.name = "DoubleCoins"
-	double_b.text = TranslationServer.translate("Double coins")
-	double_b.custom_minimum_size = Vector2(0, 56)
-	double_b.add_theme_font_size_override("font_size", 23)
-	double_b.theme_type_variation = &"PrimaryButton"
-	double_b.visible = earned > 0 and AdUi.rewarded_visible(AdUi.DOUBLE_COINS)
-	var grant := func(granted: bool) -> void:
-		if not granted or ad_state["claimed"] or not is_instance_valid(double_b): return
-		ad_state["claimed"] = true
-		var sv := AdUi.save()
-		if sv != null: sv.call("add_coins", earned)
-		ad_state["total"] = int(ad_state["total"]) + earned
-		c.text = TranslationServer.translate("+%d coins") % (earned * 2)
-		k.text = _kos_text(r, int(ad_state["total"]))
-		double_b.visible = false
-	double_b.pressed.connect(func() -> void:
-		if ad_state["claimed"]: return
-		AdUi.request_reward(AdUi.DOUBLE_COINS, grant))
-	if double_b.visible:
+	# Double coins: one rewarded video (or the Remove ads free perk) pays an EXTRA earned amount, once per results panel
+	# and once per match summary (`ad_doubled`), so rebuilding the panel cannot offer or pay it twice. The control is
+	# built only when AdUi's policy allows it: a Button made and then left out of the tree is an orphaned node that keeps
+	# its theme styles and glyph textures alive past shutdown (the headless RID leak at exit).
+	if earned > 0 and not bool(r.get("ad_doubled", false)) and AdUi.rewarded_visible(AdUi.DOUBLE_COINS):
+		var ad_state := {"claimed": false, "total": int(r.get("total", 0))}
+		var double_b := Button.new()
+		double_b.name = "DoubleCoins"
+		double_b.text = TranslationServer.translate("Double coins")
+		double_b.custom_minimum_size = Vector2(0, 56)
+		double_b.add_theme_font_size_override("font_size", 23)
+		double_b.theme_type_variation = &"PrimaryButton"
+		var grant := func(granted: bool) -> void:
+			if not granted or ad_state["claimed"] or not is_instance_valid(double_b): return
+			ad_state["claimed"] = true                 # one grant per panel, however often the provider reports back
+			r["ad_doubled"] = true                     # ... and one per match summary, so a rebuilt panel re-offers nothing
+			var sv := AdUi.save()
+			if sv != null: sv.call("add_coins", earned)
+			ad_state["total"] = int(ad_state["total"]) + earned
+			r["total"] = int(ad_state["total"])
+			if count_tw["tw"] is Tween: (count_tw["tw"] as Tween).kill()
+			count_tw["tw"] = null
+			c.text = TranslationServer.translate("+%d coins") % (earned * 2)
+			k.text = _kos_text(r, int(ad_state["total"]))
+			double_b.visible = false
+		double_b.pressed.connect(func() -> void:
+			if ad_state["claimed"]: return
+			AdUi.request_reward(AdUi.DOUBLE_COINS, grant))
 		box.add_child(double_b)
 		AdUi.prepare(AdUi.DOUBLE_COINS)
 	var cls: Array = r.get("classes", [])
