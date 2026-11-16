@@ -36,7 +36,7 @@ Each run overwrites `build/android/` (gitignored). Logs go to `build/android/log
 
 1. **Checks:** Godot version and Android export templates.
 2. **Build info:** writes `godot/build_info.cfg` (version, build number, commit; gitignored), same as iOS.
-3. **Version stamp:** temporarily sets `version/code` and `version/name` on the Android preset, then restores `export_presets.cfg` after the export (so the committed file stays at the placeholder `1` / `0.4.0`).
+3. **Version stamp:** temporarily sets `version/code` and `version/name` on the Android preset, then restores `export_presets.cfg` after the export (so the committed file stays at the placeholder `1` / `0.5.0`).
 4. **Import + export:** `godot --headless --import`, then `--export-release "Android"` (or `--export-debug`).
 5. **Optional install:** `adb install -r` and a launcher monkey start.
 
