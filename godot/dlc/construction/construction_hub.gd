@@ -63,6 +63,7 @@ var _bot_bs := {}
 var _diff_bs := {}
 var _locks: Array = []            ## the padlock controls (shown while locked)
 var _tags := {}                   ## card -> its footer label
+var landing: PackLanding          ## the pack's landing page: animated backdrop + hero band (ui/pack_landing.gd)
 
 func _init() -> void:
 	super._init()
@@ -98,6 +99,8 @@ func _ready() -> void:
 	main_view.alignment = BoxContainer.ALIGNMENT_CENTER
 	main_view.add_theme_constant_override("separation", UiTheme.SP_3)
 	col.add_child(main_view)
+	landing = PackLanding.new()
+	landing.attach(self)
 	var cards := HBoxContainer.new()
 	cards.name = "Cards"
 	cards.add_theme_constant_override("separation", UiTheme.SP_4)
@@ -177,10 +180,11 @@ func back() -> bool:
 
 ## The card's frame in the pack's colour.
 func _style_card(c: Button, accent: Color) -> void:
+	var fill: Color = landing.card_fill() if landing != null else Color(0, 0, 0, 0)   # a pack landing page tints the cards (alpha 0 = keep ours)
 	for st: String in ["normal", "disabled", "pressed", "hover_pressed", "hover", "focus"]:
-		var sb := UiTheme.box(Color(0.075, 0.2, 0.245, 0.96), UiTheme.RADIUS, accent, 3, 6)
-		if st == "hover": sb.bg_color = Color(0.1, 0.26, 0.31, 0.98)
-		if st == "pressed" or st == "hover_pressed": sb.bg_color = Color(0.05, 0.15, 0.19, 1.0)
+		var sb := UiTheme.box(Color(0.075, 0.2, 0.245, 0.96) if fill.a <= 0.0 else fill, UiTheme.RADIUS, accent, 3, 6)
+		if st == "hover": sb.bg_color = Color(0.1, 0.26, 0.31, 0.98) if fill.a <= 0.0 else fill.lightened(0.1)
+		if st == "pressed" or st == "hover_pressed": sb.bg_color = Color(0.05, 0.15, 0.19, 1.0) if fill.a <= 0.0 else fill.darkened(0.25)
 		if st == "focus":
 			sb.draw_center = false
 			sb.border_color = Color.WHITE
@@ -318,6 +322,7 @@ func pick_pack(id: String) -> void:
 func _apply_pack() -> void:
 	if tabs == null: return
 	var accent := _accent()
+	if landing != null: landing.set_pack(pack_id)
 	if arc_step == 0 and not pre.visible: title_l.text = tr(PackRegistry.display_name(pack_id))
 	var custom := pack_id != "construction"
 	var cd := PackRegistry.text(pack_id, "classic_desc")

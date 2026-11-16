@@ -1,0 +1,38 @@
+{
+ "_readme": "Landing page data (ui/pack_landing.gd): the hero band of the pack hub. All text is an English tr() key. backdrop = scene kind (ui/pack_landing_scene.gd). Construction keeps its own look: the scene is only a light overlay.",
+ "backdrop": "construction",
+ "overlay": true,
+ "palette": {
+  "top": "#0b2a35",
+  "bottom": "#08202a",
+  "glow": "#ffc21a",
+  "ink": "#f4f1ea",
+  "card": "#133a46",
+  "accent2": "#14120b"
+ },
+ "headline": "Construction",
+ "tagline": "Cranes, cones and chaos",
+ "features": [
+  "9 weapons from the tool shed",
+  "A new building site every match",
+  "Boss rush up to the Client"
+ ],
+ "weapon_roles": {
+  "pipewrench": "Slow, heavy swing",
+  "nailgun": "Rapid-fire nails",
+  "jackhammer": "Short-range shove",
+  "spiritlevel": "Long, quick reach",
+  "tapemeasure": "Longest reach of all",
+  "cementbucket": "Lobbed, huge knockback",
+  "conelauncher": "Fires traffic cones",
+  "anglegrinder": "Sparks at close range",
+  "drill": "Fast, short stabs"
+ },
+ "wobbler": {
+  "class": "wobbler",
+  "hat": "hardhat",
+  "skin": "none",
+  "color": 15249482
+ },
+ "arena_seed": 7
+}
