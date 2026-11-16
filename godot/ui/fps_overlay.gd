@@ -83,6 +83,7 @@ func toggle() -> void:
 
 ## Sees every event before the scene does (the touch layer marks its touches handled).
 func _on_window_input(e: InputEvent) -> void:
+	if OS.has_feature("release"): return   # tester shortcuts (F3, three-finger tap) are debug-only; the Settings switch still works
 	if e is InputEventKey and e.pressed and not e.echo and e.keycode == KEY_F3:
 		toggle()
 	elif e is InputEventScreenTouch:

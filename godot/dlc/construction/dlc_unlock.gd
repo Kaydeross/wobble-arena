@@ -51,12 +51,17 @@ static func reset_attempts() -> void:
 	_wrong = 0
 	_locked_until = 0
 
+## The developer code works in debug / editor builds only; a release export refuses it (and the 7-tap entry is hidden).
+static func dev_code_allowed() -> bool:
+	return not OS.has_feature("release")
+
 ## The developer code (exact, case-sensitive; spaces round it are ignored). true = DLC and everything else unlocked.
 static func redeem(code: String, sv: Object = null) -> bool:
 	return redeem_with(code, DEV_HASH, sv)
 
 ## redeem() against any hash (tests use a throwaway code / hash pair; the game always passes DEV_HASH).
 static func redeem_with(code: String, hash: String, sv: Object = null) -> bool:
+	if not dev_code_allowed(): return false
 	if cooldown_left() > 0.0: return false
 	if hash_of(code) != hash:
 		_wrong += 1
