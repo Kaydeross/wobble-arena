@@ -68,6 +68,7 @@
     "test:godot-services": "node tools/test-services.js",
     "test:godot-killcam": "node tools/test-killcam.js",
     "test:godot-settings": "node tools/test-settings.js",
+    "test:godot-analytics": "node tools/test-analytics.js",
     "test:godot-fx": "node tools/test-fx.js",
     "test:godot-flow": "node tools/test-godot-flow.js",
     "test:godot-maps": "node tools/test-godot-maps.js",

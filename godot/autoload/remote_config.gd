@@ -71,6 +71,10 @@ func refresh() -> void:
 		_request = null
 		_finish(false, "Could not start config request")
 
+## The server's http(s) base (same host as the game server); "" when none is configured. Also used by Analytics.
+func api_base() -> String:
+	return _api_base()
+
 func _api_base() -> String:
 	var st := get_tree().root.get_node_or_null("Settings") if is_inside_tree() else null
 	if st == null:

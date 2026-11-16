@@ -289,6 +289,7 @@ func load_map(id: String) -> void:
 	var skill := difficulty if difficulty != "" else str(Settings.get_value("difficulty", "normal"))
 	if not Content.difficulties.has(skill): skill = "normal"
 	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, session.sim_bots(start_msg) if session != null else bots, skill)
+	if not tutorial: Analytics.match_started(sim.combat.mode_id, map_id, session != null)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
 	if arcade != null: arcade.setup_sim(sim)              # Arcade: the stage's fighters, tools and events
 	if trial and not tutorial: _place_trial_rack()
@@ -1218,6 +1219,7 @@ func _connect_rank_hooks() -> void:
 ## finishMatch offline: the result with Play again / Title (themed, centred, over the HUD).
 func _show_offline_results(won: bool, winner_name: String) -> void:
 	Ads.on_match_finished(false)
+	if not tutorial: Analytics.match_finished("win" if won else "loss")
 	_maybe_submit_rank()
 	if _results: _results.queue_free()
 	_banner.visible = false
@@ -1451,6 +1453,7 @@ func _relook(f: FighterState) -> void:
 ## pend: the host ended the match. Results + rematch vote (themed panel, centred, over the HUD).
 func _show_results(winner: String) -> void:
 	Ads.on_match_finished(true)
+	if not tutorial: Analytics.match_finished("win" if winner == "You" else ("other" if winner == "?" else "loss"))
 	_maybe_submit_rank()
 	if _results: _results.queue_free()
 	Sfx.play("win" if winner == "You" else "lose", 0.8)   # the results fanfare / sigh

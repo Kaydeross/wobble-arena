@@ -400,6 +400,9 @@ func buy(kind: String, k: String) -> String:
 	var r := buy_check(kind, k)
 	if r != "ok": return r
 	coins -= price_of(kind, k)
+	var loop := Engine.get_main_loop()   # Save is also built standalone by tests: look the Analytics autoload up lazily
+	var an: Node = (loop as SceneTree).root.get_node_or_null("Analytics") if loop is SceneTree else null
+	if an != null: an.track("coins_spent", {"kind": kind, "price": price_of(kind, k)})
 	if kind == "skin":
 		skins.append(k)
 		for id: String in LockerData.skin_emotes(k):

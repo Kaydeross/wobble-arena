@@ -211,6 +211,7 @@ func show_section(s: String) -> void:
 				_info("Where", "Account", "Open your account from the title screen (the chip at the top)")
 			else:
 				_buttons("Open", [["account", "Open account", func() -> void: account_requested.emit()]])
+			_toggle("analytics_optout", "Share anonymous usage data", "Helps us fix bugs and balance the game. No name, no account, nothing that identifies you. Never sent in Kids mode.", true)
 		"about":
 			_info("Version", "Wobblers Arena", version_text())
 			var vl := rows.get_node_or_null("Row_Version/Words/Sub") as Label
