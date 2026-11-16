@@ -518,6 +518,7 @@ func _on_version_input(e: InputEvent) -> void:
 
 ## One tap on the version line: seven taps in a row (each within 2.5 s of the last) open the Construction code field.
 func version_tap() -> void:
+	if not DlcUnlock.dev_code_allowed(): return    # release builds: no hidden developer-code entry
 	var now := Time.get_ticks_msec()
 	if now - _ver_t > 2500: _ver_taps = 0
 	_ver_t = now
