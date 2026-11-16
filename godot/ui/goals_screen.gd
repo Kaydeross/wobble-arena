@@ -30,7 +30,7 @@ func _ready() -> void:
 	streak_l.clip_text = true
 	streak_l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	head.add_child(streak_l)
-	streak_l.resized.connect(func() -> void: if streak_l.size.x >= 40.0: FitText.label_or_wrap(streak_l, 17, streak_l.size.x, 13))   # a long sentence (fr / es / ja) shrinks, then wraps, never "..."
+	streak_l.resized.connect(func() -> void: if streak_l.size.x >= 40.0: FitText.label_or_wrap(streak_l, 17, streak_l.size.x, UiTheme.MIN_FONT))   # a long sentence (fr / es / ja) shrinks, then wraps, never "..."
 	var chip := PanelContainer.new()
 	chip.name = "Coins"
 	chip.theme_type_variation = &"ChipPanel"
