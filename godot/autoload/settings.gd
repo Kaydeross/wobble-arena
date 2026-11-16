@@ -73,6 +73,7 @@ const DEFAULTS := {
 	"aim_mode": "normal",   # aiming system: normal (aim assist, standard damage) | advanced (no assist, +25% damage offline); docs/AIM.md
 	"damage_numbers": true, # floating damage numbers over the fighter you hit (read by the world's effects)
 	"sfx_volume": 1.0,      # sound effects bus 0..1 (autoload Sfx); `volume` stays the master volume
+	"sfx_3d": true,         # positional sound: world sources are heard where they happen (off = Sfx.play_at falls back to 2D)
 	"music_volume": 0.5,    # music bus 0..1 (autoload Music; the web settings.music)
 	"lang": "auto",         # language: auto (the device's) | en | zh_TW | zh_CN | ja | fr | es (autoload Lang, i18n/strings.json)
 	"first_fight_done": false, # the easy first match offered after the intro cards was played or left (scripts/main.gd)

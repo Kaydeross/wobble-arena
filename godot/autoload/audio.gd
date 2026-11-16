@@ -5,6 +5,11 @@ extends Node
 ## burst of the same effect does not sound like one machine; when every player is busy the pool may only cut a sound
 ## with the same or a lower priority, so rapid rifle fire never swallows a boom, a rocket or a K.O. stinger.
 ## Settings: `volume` (0..1, the web game's settings.vol) on the Master bus, `muted` skips playback.
+##
+## `Sfx.play_at(name, world_pos, volume)` is the positional twin: a second, smaller pool of AudioStreamPlayer3D nodes
+## (docs/AUDIO.md "Spatial sound"). The pool is built on the first play_at that needs it and never under the headless
+## dummy driver, so a headless suite's node-count baselines stay exactly what they were. Settings `sfx_3d` (off) falls
+## back to `play`, and so does every play_at that cannot get a 3D voice.
 
 ## Every name in the JS SOUNDS table that this client plays, in the order tools/render-sfx.js renders them (tests check
 ## each one has a stream). The last group are the big-moment cues added for Godot (the web game does not play them).
@@ -26,6 +31,14 @@ const PRIORITY := {
 const PITCH_VARY := 0.04           ## +-4 % pitch per play: the web game's `vary`, kept small so a weapon keeps its voice
 const VOL_DB_VARY := 1.5           ## +-1.5 dB per play: the same rhythm no longer sounds like one sample
 
+## 3D (positional) pool. Eight voices is enough for the handful of world sources that overlap in a brawl (a shot, a
+## boom, a crate and a couple of prop hits); the 2D pool keeps its twelve for the player's own sounds and the UI.
+const POOL_3D := 8
+## Arena scale: maps are about 30-45 m across. A sound is at its written volume within UNIT_SIZE metres, is roughly
+## half as loud 10 m away and fades out by MAX_DISTANCE, so a fight on the far side is a distant murmur, not silence.
+const UNIT_SIZE := 5.0
+const MAX_DISTANCE := 55.0
+
 var streams := {}                  ## name -> AudioStreamWAV
 var _pool: Array[AudioStreamPlayer] = []
 var _prio := PackedInt32Array()    ## per player: priority of the sound it is playing (0 = ordinary)
@@ -36,6 +49,16 @@ var _shot_t := {}                  ## fighter instance id -> sim time of its las
 var _busy_until := 0               ## ticks (ms) when the last started sound ends (see _exit_tree)
 var _unlocked := false             ## a user gesture has happened (web audio needs one)
 var _rng := RandomNumberGenerator.new()   ## pitch / volume jitter; its own RNG so the game's RNG stream stays untouched
+
+var _pool3d: Array[AudioStreamPlayer3D] = []   ## built lazily (see play_at); empty = no positional sound here
+var _since3d := PackedInt64Array()             ## per 3D player: ticks (ms) it was started (the oldest is cut first)
+## Test hooks / diagnostics: the last play_at request, how many came in and how many actually took a 3D voice.
+## Set `force_3d` from a test to build and drive the 3D pool under the headless dummy driver (never in a game).
+var force_3d := false
+var at_calls := 0
+var at_3d := 0
+var at_name := ""
+var at_pos := Vector3.ZERO
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -78,6 +101,97 @@ func play(sfx_name: String, volume := 1.0, priority := -1) -> void:
 	_since[i] = Time.get_ticks_msec()
 	_busy_until = maxi(_busy_until, _since[i] + int(s.get_length() * 1000.0 / p.pitch_scale))
 
+## Plays one sound effect at a world position: an AudioStreamPlayer3D from the small 3D pool, so the mixer pans it and
+## drops it with distance from the listener (the camera). Positional is only used when Settings `sfx_3d` is on and the
+## driver has real output (headless suites count nodes); otherwise this is exactly `play(name, volume)`. Unknown names
+## are ignored like `play`. The local player's own cues and the UI call `play` and never come through here.
+func play_at(sfx_name: String, world_pos: Vector3, volume := 1.0) -> void:
+	if _muted or volume <= 0.0: return
+	var s: AudioStream = streams.get(sfx_name)
+	if s == null: return
+	at_calls += 1
+	at_name = sfx_name
+	at_pos = world_pos
+	if not _use_3d():
+		play(sfx_name, volume)              # setting off (or headless): the 2D fallback
+		return
+	_ensure_pool_3d()
+	if _pool3d.is_empty():
+		play(sfx_name, volume)
+		return
+	at_3d += 1
+	var i := _free_player_3d()
+	if i < 0:
+		at_3d -= 1
+		play(sfx_name, volume)
+		return
+	var p := _pool3d[i]
+	p.stream = s
+	p.global_position = world_pos
+	p.volume_db = linear_to_db(volume) + _rng.randf_range(-VOL_DB_VARY, VOL_DB_VARY)
+	p.pitch_scale = 1.0 + _rng.randf_range(-PITCH_VARY, PITCH_VARY)
+	p.play()
+	_since3d[i] = Time.get_ticks_msec()
+	_busy_until = maxi(_busy_until, _since3d[i] + int(s.get_length() * 1000.0 / p.pitch_scale))
+
+## True when play_at should use a 3D voice: the Settings toggle is on and the audio driver is not the headless dummy.
+## `force_3d` is the test hook (the audio suite builds the pool headless to check its bound and the stealing).
+func _use_3d() -> bool:
+	if not bool(Settings.get_value("sfx_3d", true)): return false
+	return DisplayServer.get_name() != "headless" or force_3d
+
+## Builds the 3D pool once (no allocation per call afterwards). Deliberately lazy: a headless world suite that never
+## uses positional sound keeps exactly the node count it had before this feature.
+func _ensure_pool_3d() -> void:
+	if not _pool3d.is_empty() or not _use_3d(): return
+	_since3d.resize(POOL_3D)
+	for i in POOL_3D:
+		var p := AudioStreamPlayer3D.new()
+		p.bus = BUS
+		p.name = "Sfx3D%d" % i
+		p.unit_size = UNIT_SIZE
+		p.max_distance = MAX_DISTANCE
+		add_child(p)
+		_pool3d.append(p)
+
+## Index of an idle 3D player, else the one that has been playing longest (ties: the quietest) — a full positional pool
+## steals its oldest voice, where the 2D pool weighs priority first. No allocation: fixed array, indexed in place.
+func _free_player_3d() -> int:
+	var victim := -1
+	for i in POOL_3D:
+		if not _pool3d[i].playing: return i
+		if victim < 0 or _since3d[i] < _since3d[victim] \
+				or (_since3d[i] == _since3d[victim] and _pool3d[i].volume_db < _pool3d[victim].volume_db):
+			victim = i
+	return victim
+
+## The world position an event payload carries, or null when it has none. Breakable hits / breaks, explosions, knifes and
+## boomerangs put x/y/z on the event; a crate carries its own dictionary (its floor height, so a falling crate is heard
+## where it is about to land, not 26 m up).
+static func event_pos(e: Dictionary) -> Variant:
+	if e.has("x") and e.has("y") and e.has("z"):
+		return Vector3(float(e["x"]), float(e["y"]), float(e["z"]))
+	var c: Variant = e.get("crate")
+	if c is Dictionary and (c as Dictionary).has("x") and (c as Dictionary).has("z"):
+		var cd := c as Dictionary
+		return Vector3(float(cd["x"]), float(cd.get("gy", 0.0)) + 0.4, float(cd["z"]))
+	return null
+
+## Chest height of a fighter: the positional source for its own sounds (a gunshot, a melee swing, a bounce pad).
+static func fighter_pos(f: FighterState) -> Vector3:
+	return Vector3(f.phys.px, f.phys.py + 1.2, f.phys.pz)
+
+## Routes one match cue: 3D at the event's own position when it has one, else at the fighter that made it, else 2D.
+## The local player's own sounds stay 2D (`f == sim.player`), as do cues with no world source at all.
+func _emit(n: String, e: Dictionary, f: FighterState, sim: MatchSim, volume := 1.0) -> void:
+	var at: Variant = event_pos(e)
+	if at == null and f != null and (sim == null or f != sim.player):
+		at = fighter_pos(f)
+	if at is Vector3:
+		play_at(n, at, volume)
+	else:
+		play(n, volume)
+
 ## Index of a free player, else the oldest one whose priority `pr` may cut (-1 = nothing may be cut).
 ## No allocation: the pool is a fixed array and everything below indexes it.
 func _free_player(pr: int) -> int:
@@ -97,30 +211,33 @@ func _free_player(pr: int) -> int:
 ## through here). Explicit "sfx" events already carry the JS name (topple boing, kick, kick/shove whack, melee swing,
 ## melee hitSfx, knife throw swing, knife clink). A "swing" with no swing animation running is the dash / air-recover
 ## whoosh (do_dash, Skills.do_recover) and gets the movement dash instead of a melee swing, so it never plays twice.
+## Every cue that has a world source goes through `_emit`: an event with x/y/z is positional (prop hit / break, an
+## explosion, a knife clink), a fighter-only cue is positional when it is not the local player's own sound, and the
+## rest (the player's gunshot, reload, respawn, results) stay 2D.
 func on_event(e: Dictionary, sim: MatchSim) -> void:
 	var f: FighterState = e.get("f") if e.get("f") is FighterState else null
 	match String(e["type"]):
 		"sfx":
 			var n := str(e["name"])
 			if n == "swing" and f != null and f.swing < 0.0: n = "dash"
-			play(n)
+			_emit(n, e, f, sim)
 		"shot":                     # Fighter.fire ~6196: one shot sound per 0.07 s for fast guns
 			var w := sim.combat.wdata(str(e["key"]))
 			var id := f.get_instance_id() if f else 0
 			if float(w.get("cooldown", 1.0)) >= 0.1 or sim.combat.time - float(_shot_t.get(id, -1.0)) > 0.07:
 				_shot_t[id] = sim.combat.time
-				play(shot_name(w))
+				_emit(shot_name(w), e, f, sim)
 		"pad":                      # updatePads ~6382
-			play("bounce")
-		"crate":                    # spawnDrop ~6292
-			play("drop")
+			_emit("bounce", e, f, sim)
+		"crate":                    # spawnDrop ~6292: a crate drops into its spot; the source is the spot
+			_emit("drop", e, null, sim)
 		"crate_land":               # updatePickups ~6332
-			play("clink")
+			_emit("clink", e, null, sim)
 		"crate_take":               # heal / power-up crate ~6352 (weapon crates come as "pickup")
-			if f and f.is_player and sim.combat.wdata(str(e["crate"]["key"])).is_empty():
-				play("pickup")
+			if f != null and sim.combat.wdata(str(e["crate"]["key"])).is_empty():
+				_emit("pickup", e, f, sim, 1.0 if f.is_player else 0.6)
 		"pickup":                   # Fighter.pickup ~5256/5270
-			if f and f.is_player: play("pickup")
+			if f != null: _emit("pickup", e, f, sim, 1.0 if f.is_player else 0.6)
 		"reload":                   # reload start: the mag-out sound (~5180); shotguns load shells (~5240)
 			if f and f.is_player and f.slot >= 0 and f.slots[f.slot] != null:
 				var rw := sim.combat.wdata(str(f.slots[f.slot]["key"]))
@@ -139,6 +256,8 @@ static func shot_name(w: Dictionary) -> String:
 func _on_setting(key: String, _value: Variant) -> void:
 	if key == "volume" or key == "muted" or key == "sfx_volume":
 		_apply_settings()
+	elif key == "sfx_3d":
+		_stop_3d()                  # turned off: drop the positional voices, later play_at calls fall back to play
 
 func _apply_settings() -> void:
 	_muted = bool(Settings.get_value("muted", false))
@@ -160,11 +279,19 @@ func stop_all() -> void:
 	for i in n:
 		_prio[i] = 0
 		_pool[i].stop()
+	_stop_3d()
+
+## Stops every positional voice (the 3D pool is only built on demand, so this is a no-op before the first play_at).
+func _stop_3d() -> void:
+	for p in _pool3d: p.stop()
 
 ## On quit: stop everything and, if a sound was playing up to now, give the mix thread time to drop the stopped
 ## playbacks (it frees them a few buffers later; quitting mid-sound would otherwise report the streams as leaked).
 func _exit_tree() -> void:
 	for p in _pool:
+		p.stop()
+		p.stream = null
+	for p in _pool3d:
 		p.stop()
 		p.stream = null
 	streams.clear()
