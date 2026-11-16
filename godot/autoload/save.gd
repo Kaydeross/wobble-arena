@@ -204,6 +204,10 @@ func apply_blob(d: Variant) -> bool:
 						"ko": int(h.get("ko", 0)), "d": int(h.get("d", 0)), "w": 1 if h.get("w") else 0, "o": 1 if h.get("o") else 0})
 	if lk is Dictionary and lk.get("cls") is String and owns_class(lk["cls"]): look["cls"] = lk["cls"]   # after the stats (unlocks)
 	changed.emit()
+	var ld: Variant = load("res://ui/locker_data.gd")     # owners get their packs' outfits again on load (Phase B hook; a no-op until it exists)
+	if ld != null and ld.has_method("grant_pack_skins"):
+		for pid: String in PackRegistry.ids():
+			if DlcSave.owns(dlc, codes, pid): ld.grant_pack_skins(self, pid)
 	return true
 
 ## The Sandbox arena (SandboxLayout): the blob's cfg (web cfg.custom, cfg.blocks; Godot cfg.blockCols). {} if none.
@@ -460,7 +464,7 @@ func _wallet_spend_rejected(op: Dictionary, _r: Dictionary) -> void:
 			var i := slots.find(k)
 			if i >= 0: slots[i] = null
 		"dlc":
-			if not codes.has("dev"): dlc["owned"] = false
+			if not codes.has("dev"): DlcSave.set_owned(dlc, k, false)
 	_push_settings()
 	save()
 	changed.emit()

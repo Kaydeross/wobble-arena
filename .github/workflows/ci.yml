@@ -127,6 +127,8 @@ jobs:
         if: matrix.shard == 'net'
       - run: npm run test:godot-dlc-ui    # (blocking again: its Linux crash was the SystemFont fallback cycle, fixed in autoload/lang.gd)
         if: matrix.shard == 'rest'
+      - run: npm run test:godot-multipack
+        if: matrix.shard == 'rest'
       - run: npm run test:godot-title
         if: matrix.shard == 'rest'
       - run: npm run test:godot-title-fit    # about 30 s; the runner kills it itself after FIT_TIMEOUT_S and names the phase

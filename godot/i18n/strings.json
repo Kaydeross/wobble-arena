@@ -1525,6 +1525,13 @@
   "fr": "Ballerina Cappuccina",
   "es": "Ballerina Cappuccina"
  },
+ "Barbecue cleared!": {
+  "zh_TW": "BBQ 清空了！",
+  "zh_CN": "BBQ 清空了！",
+  "ja": "BBQをクリア！",
+  "fr": "Barbecue nettoyé !",
+  "es": "¡Barbacoa despejada!"
+ },
  "Barn": {
   "zh_TW": "穀倉",
   "zh_CN": "谷仓",
@@ -1665,12 +1672,26 @@
   "fr": "Gros Bruce",
   "es": "Bruce el grande"
  },
+ "Big Bruce is off for a nap": {
+  "zh_TW": "巨型 Bruce 收工了",
+  "zh_CN": "巨型 Bruce 收工了",
+  "ja": "ビッグ・ブルースは帰っていった",
+  "fr": "Gros Bruce est parti faire la sieste",
+  "es": "El Gran Bruce se fue a echar una siesta"
+ },
  "Big Santa": {
   "zh_TW": "巨型聖誕老人",
   "zh_CN": "巨型圣诞老人",
   "ja": "ビッグサンタ",
   "fr": "Gros Père Noël",
   "es": "Papá Noel gigante"
+ },
+ "Big Santa has gone home": {
+  "zh_TW": "巨型聖誕老人回家了",
+  "zh_CN": "巨型圣诞老人回家了",
+  "ja": "ビッグサンタは帰っていった",
+  "fr": "Le Gros Père Noël est rentré",
+  "es": "El Gran Papá Noel se fue a casa"
  },
  "Big team fight. First team to 20": {
   "zh_TW": "大型團戰。先達 20 次擊倒的隊伍勝",
@@ -1811,6 +1832,27 @@
   "ja": "ボス戦",
   "fr": "Combat de boss",
   "es": "Pelea de jefe"
+ },
+ "Boss rush: Backyard Mates, Grill Sergeant, Cricket Captain, Thong Champ, Outback Ollie, then Big Bruce.": {
+  "zh_TW": "頭目連戰：後院朋友、BBQ 隊長、板球隊長、夾腳拖冠軍、大地 Ollie，最後是巨型 Bruce。",
+  "zh_CN": "头目连战：后院朋友、BBQ 队长、板球队长、人字拖冠军、大地 Ollie，最后是巨型 Bruce。",
+  "ja": "ボスラッシュ：裏庭の仲間たち、グリル教官、クリケットキャプテン、ビーサンチャンプ、アウトバックのオリー、そして最後はビッグ・ブルース。",
+  "fr": "Enchaînement de boss : Potes du jardin, Sergent du grill, Capitaine de cricket, Champion des tongs, Ollie du bush, puis Gros Bruce.",
+  "es": "Jefes seguidos: Colegas del jardín, Sargento de la parrilla, Capitán de críquet, Campeón de chanclas, Ollie del interior y, al final, Bruce el grande."
+ },
+ "Boss rush: Elf Workshop, Snowman, Reindeer, Nutcracker, Grumpy Gus, then Big Santa.": {
+  "zh_TW": "頭目連戰：精靈玩具屋、雪人、Reindeer、堅果鉗、不開心的 Gus，最後是巨型聖誕老人。",
+  "zh_CN": "头目连战：精灵玩具屋、雪人、Reindeer、Nutcracker、不开心的 Gus，最后是巨型圣诞老人。",
+  "ja": "ボスラッシュ：エルフの工場、雪だるま、トナカイ、くるみ割り人形、ぶつぶつガス、そして最後はビッグサンタ。",
+  "fr": "Enchaînement de boss : Atelier des elfes, Bonhomme de neige, Renne, Casse-noisette, Gus le grincheux, puis Gros Père Noël.",
+  "es": "Jefes seguidos: Taller de los elfos, Muñeco de nieve, Reno, Cascanueces, Gus el gruñón y, al final, Papá Noel gigante."
+ },
+ "Boss rush: Line Cooks, Pastry Chef, Grill Master, Dishie Bot, Food Critic, then Chef Inferno.": {
+  "zh_TW": "頭目連戰：廚房小組、甜點師、火力大師、廚房機器人、評論家，最後是火焰主廚。",
+  "zh_CN": "头目连战：厨房小组、甜点师、火力大师、厨房机器人、评论家，最后是火焰主厨。",
+  "ja": "ボスラッシュ：ラインコック、パティシエ、グリルマスター、ディッシュボット、フードクリティック、そして最後はインフェルノシェフ。",
+  "fr": "Enchaînement de boss : Cuisiniers de ligne, Chef pâtissier, Maître du grill, Robot plongeur, Critique gastronomique, puis Chef Inferno.",
+  "es": "Jefes seguidos: Cocineros de línea, Chef pastelero, Maestro de la parrilla, Robot friegaplatos, Crítico gastronómico y, al final, Chef Infierno."
  },
  "Boss rush: Tradies, Engineer, Designer, Supervisor, Project Manager, then the Client.": {
   "zh_TW": "頭目連戰：工人、工程師、設計師、監工、專案經理，最後是客戶。",
@@ -2134,6 +2176,13 @@
   "fr": "Pays des bonbons",
   "es": "Tierra de caramelo"
  },
+ "Candy canes, snowballs and gift bombs": {
+  "zh_TW": "拐杖糖、雪球和禮物炸彈",
+  "zh_CN": "拐杖糖、雪球和礼物炸弹",
+  "ja": "キャンディケインと雪玉とギフト爆弾",
+  "fr": "Sucres d'orge, boules de neige et cadeaux piégés",
+  "es": "Bastones de caramelo, bolas de nieve y regalos bomba"
+ },
  "Candy canes, snowballs and gift bombs in Santa's toy workshop. Mind the ice": {
   "zh_TW": "在聖誕老人的玩具屋裡，拐杖糖、雪球和禮物炸彈。小心冰面",
   "zh_CN": "在圣诞老人的玩具屋里，拐杖糖、雪球和礼物炸弹。小心冰面",
@@ -2238,6 +2287,13 @@
   "ja": "インフェルノシェフ",
   "fr": "Chef Inferno",
   "es": "Chef Infierno"
+ },
+ "Chef Inferno hung up the apron": {
+  "zh_TW": "火焰主廚收工了",
+  "zh_CN": "火焰主厨收工了",
+  "ja": "インフェルノシェフはお休み中",
+  "fr": "Chef Inferno a raccroché le tablier",
+  "es": "El Chef Infierno colgó el delantal"
  },
  "Chef Toque": {
   "zh_TW": "廚師帽",
@@ -2931,6 +2987,13 @@
   "ja": "裏庭BBQで、クリケットバットとブーメランと飛んでくるビーサン。物干しに注意",
   "fr": "Battes de cricket, boomerangs et tongs volantes dans un barbecue au jardin. Attention au séchoir",
   "es": "Bates de críquet, bumeranes y chanclas voladoras en una barbacoa en el jardín. Cuidado con el tendedero"
+ },
+ "Cricket bats, boomerangs and thongs": {
+  "zh_TW": "板球拍、回力鏢和夾腳拖",
+  "zh_CN": "板球拍、回力镖和人字拖",
+  "ja": "クリケットバットとブーメランとビーサン",
+  "fr": "Battes de cricket, boomerangs et tongs",
+  "es": "Bates de críquet, bumeranes y chanclas"
  },
  "Crimson Samurai": {
   "zh_TW": "赤紅武士",
@@ -5130,6 +5193,13 @@
   "fr": "Cuisine chaos",
   "es": "Cocina caótica"
  },
+ "Kitchen cleared!": {
+  "zh_TW": "廚房清空了！",
+  "zh_CN": "厨房清空了！",
+  "ja": "キッチンをクリア！",
+  "fr": "Cuisine nettoyée !",
+  "es": "¡Cocina despejada!"
+ },
  "Knock-out replays": {
   "zh_TW": "擊倒重播",
   "zh_CN": "击倒重播",
@@ -6341,6 +6411,13 @@
   "fr": "Bords ouverts et caisses. Fais tomber les autres !",
   "es": "Bordes abiertos y cajas. ¡Empuja a la gente fuera!"
  },
+ "Open the %s hub": {
+  "zh_TW": "開啟%s頁面",
+  "zh_CN": "打开%s页面",
+  "ja": "%sを開く",
+  "fr": "Ouvrir %s",
+  "es": "Abrir %s"
+ },
  "Open your account from the title screen (the chip at the top)": {
   "zh_TW": "從標題畫面開啟你的帳號（頂端的小標籤）",
   "zh_CN": "从标题画面打开你的账号（顶部的小标签）",
@@ -6452,6 +6529,27 @@
   "ja": "合格",
   "fr": "RÉUSSI",
   "es": "APROBADO"
+ },
+ "PLAY": {
+  "zh_TW": "開始",
+  "zh_CN": "开始",
+  "ja": "プレイ",
+  "fr": "JOUER",
+  "es": "JUGAR"
+ },
+ "Packs": {
+  "zh_TW": "擴充包",
+  "zh_CN": "扩展包",
+  "ja": "拡張パック",
+  "fr": "Packs",
+  "es": "Packs"
+ },
+ "Pans, flames and flying soup": {
+  "zh_TW": "平底鍋、火焰和亂飛的熱鍋",
+  "zh_CN": "平底锅、火焰和乱飞的热锅",
+  "ja": "フライパンと炎と飛び交うスープ",
+  "fr": "Poêles, flammes et soupe volante",
+  "es": "Sartenes, llamas y sopa voladora"
  },
  "Particles, trails and flashes in a match. Auto follows this device (%s).": {
   "zh_TW": "比賽中的粒子、軌跡與閃光。自動：跟隨這部裝置（%s）。",
@@ -9624,6 +9722,13 @@
   "fr": "Peu commun",
   "es": "Poco común"
  },
+ "Unlock %s first": {
+  "zh_TW": "先解鎖%s",
+  "zh_CN": "先解锁%s",
+  "ja": "先に%sを解放してね",
+  "fr": "Débloquez d'abord %s",
+  "es": "Desbloquea %s primero"
+ },
  "Unlock Construction first": {
   "zh_TW": "請先解鎖建造",
   "zh_CN": "请先解锁建造",
@@ -9651,6 +9756,27 @@
   "ja": "すべて解放しました",
   "fr": "Tout est débloqué",
   "es": "Todo desbloqueado"
+ },
+ "Up to 8 at a backyard barbecue. Mind the hotplate and the clothesline.": {
+  "zh_TW": "最多 8 人在後院 BBQ 派對。小心鐵板和衣架。",
+  "zh_CN": "最多 8 人在后院 BBQ 派对。小心热板和衣架。",
+  "ja": "最大 8 人で裏庭 BBQ。熱い板と物干しに注意。",
+  "fr": "Jusqu'à 8 à un barbecue au jardin. Attention à la plaque et au séchoir.",
+  "es": "Hasta 8 en una barbacoa en el jardín. Cuidado con la plancha y el tendedero."
+ },
+ "Up to 8 in Santa's toy workshop. Mind the ice and the gift crates.": {
+  "zh_TW": "最多 8 人在聖誕老人的玩具屋。小心冰面和禮物箱。",
+  "zh_CN": "最多 8 人在圣诞老人的玩具屋。小心冰面和礼物箱。",
+  "ja": "最大 8 人でサンタのおもちゃ工場へ。氷とギフト箱に注意。",
+  "fr": "Jusqu'à 8 dans l'atelier du Père Noël. Attention à la glace et aux caisses cadeaux.",
+  "es": "Hasta 8 en el taller de juguetes de Papá Noel. Cuidado con el hielo y las cajas de regalos."
+ },
+ "Up to 8 in a chaotic kitchen. Aprons on, burners hot.": {
+  "zh_TW": "最多 8 人在混亂的廚房開打。小心火焰和熱鍋。",
+  "zh_CN": "最多 8 人在混乱的厨房开打。小心火焰和热锅。",
+  "ja": "最大 8 人のカオスなキッチン。エプロン着用、コンロは熱々。",
+  "fr": "Jusqu'à 8 dans une cuisine chaotique. Tablier sur le dos, feux allumés.",
+  "es": "Hasta 8 en una cocina caótica. Delantal puesto, fuegos encendidos."
  },
  "Up to 8 on a random building site. Hard hats on, tools out.": {
   "zh_TW": "最多 8 人，在隨機工地上開打。戴好安全帽，拿出工具。",
@@ -10078,6 +10204,13 @@
   "ja": "グラグラの布人形の脚、ダウンと起き上がり。転ぶのも仕様です",
   "fr": "Jambes de pantin qui vacillent, chutes et relevés. Tomber, c'est une fonctionnalité",
   "es": "Piernas de muñeco tambaleantes, caídas y levantadas. Caerse es una característica"
+ },
+ "Workshop cleared!": {
+  "zh_TW": "玩具屋清空了！",
+  "zh_CN": "玩具屋清空了！",
+  "ja": "工場をクリア！",
+  "fr": "Atelier nettoyé !",
+  "es": "¡Taller despejado!"
  },
  "World sounds come from where they happen: other players, crates, breaks": {
   "zh_TW": "音效會從它發生的位置傳出：其他玩家、箱子、撞擊",

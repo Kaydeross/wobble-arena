@@ -159,7 +159,26 @@ static func team_size(mode_id: String, modes: Dictionary, bots: int) -> int:
 
 static func maps_for(mode_id: String) -> Array:
 	if mode_id == "practice": return MODE_MAPS["practice"].duplicate()     # the Practice Range first, then the Test Map
+	if not MODE_MAPS.has(mode_id):
+		var pm := pack_maps(mode_id)           # a DLC pack's mode: its arenas come from the pack's hub.json (data, not code)
+		if not pm.is_empty(): return pm
 	return sort_maps(MODE_MAPS.get(mode_id, []))
+
+## The arenas of a DLC pack's game mode (res://data/extra/<pack>/hub.json `maps`), [] for any other mode. The registry is
+## loaded lazily: this script compiles before the autoloads in the --script tests.
+static func pack_maps(mode_id: String) -> Array:
+	var reg: Variant = load("res://dlc/pack_registry.gd")
+	return reg.maps_for_mode(mode_id) if reg != null else []
+
+## Is `mode_id` the game mode of a DLC pack (kitchen, xmas, australia, ... and Construction)?
+static func is_pack_mode(mode_id: String) -> bool:
+	var reg: Variant = load("res://dlc/pack_registry.gd")
+	return reg != null and bool(reg.is_pack_mode(mode_id))
+
+## `mode_id` unless it is a pack mode the profile does not own (then "classic"): the gate every start path runs through.
+static func owned_mode(mode_id: String) -> String:
+	var reg: Variant = load("res://dlc/pack_registry.gd")
+	return str(reg.allowed_mode(mode_id)) if reg != null else mode_id
 
 ## `ids` in MAP_ORDER (unknown ids last, in their own order).
 static func sort_maps(ids: Array) -> Array:

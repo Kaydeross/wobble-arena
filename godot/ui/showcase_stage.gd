@@ -164,10 +164,9 @@ static func _begin() -> SurfaceTool:
 	return st
 
 ## Diagonal warning stripes (accent / black), drawn once into a small texture; triplanar so any box wears them evenly.
-static func stripe_material(accent: Color) -> StandardMaterial3D:
+static func stripe_material(accent: Color, dark: Color = Color(ConstructionStyle.BLACK)) -> StandardMaterial3D:
 	var n := 64
 	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
-	var dark := Color(ConstructionStyle.BLACK)
 	for y in n:
 		for x in n:
 			img.set_pixel(x, y, accent if ((x + y) % n) < n / 2 else dark)
@@ -395,9 +394,9 @@ func set_pack(p: DLCPackData) -> void:
 	selected = -1
 	_hl.visible = false
 	var accent := p.accent_color if p != null else ConstructionStyle.YELLOW
-	var body := accent
-	var body_d := accent.darkened(0.2)
-	_stripe_mat_for(accent)
+	var body := p.body() if p != null else accent
+	var body_d := body.darkened(0.2)
+	_stripe_mat_for(accent, p.stripe_color if p != null else Color(ConstructionStyle.BLACK))
 	# shell
 	var st := _begin()
 	var w := BOX.x; var h := BOX.y; var d := BOX.z
@@ -467,8 +466,8 @@ func relabel() -> void:
 	if _arena_l != null and is_instance_valid(_arena_l):
 		_arena_l.text = TranslationServer.translate(str(Content.get_map(pack.arena_id).get("name", pack.arena_id))).to_upper()
 
-func _stripe_mat_for(accent: Color) -> void:
-	var fresh := stripe_material(accent)
+func _stripe_mat_for(accent: Color, dark: Color = Color(ConstructionStyle.BLACK)) -> void:
+	var fresh := stripe_material(accent, dark)
 	_stripe_mat.albedo_texture = fresh.albedo_texture     # the kerb shares it: one material, repainted
 
 ## A weapon for a rack cell: the same fused single mesh the Wobbler holds, turned side-on, tilted and scaled to the cell.

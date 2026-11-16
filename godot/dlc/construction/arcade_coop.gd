@@ -18,7 +18,8 @@ extends RefCounted
 ## instance (the registry's static scanner loads itself).
 ## ArcadeManager stays the run authority; `stage_arc(manager)` snapshots its live state for the next `start`.
 
-const PACK_ID := "construction"               ## the Construction DLC's pack (res://data/extra/construction/pack.json)
+const PACK_ID := "construction"               ## the default pack (res://data/extra/construction/pack.json); any DLC pack's run goes through the same code
+const PACK_REGISTRY := "res://dlc/pack_registry.gd"
 const SEATS := 2                              ## owner decision: two players per room
 const TEAMMATE_NAME := "Teammate Bot"
 const DEFAULT_DIFF := "normal"
@@ -26,36 +27,50 @@ const RETRY_SEED_STEP := 1009                 ## ArcadeManager.RETRY_SEED_STEP (
 const U32 := 0xFFFFFFFF
 const STATES := ["idle", "intro", "fight", "clearing", "cleared", "failing", "failed", "over", "won"]
 
-static var _table: Dictionary = {}
+static var _tables: Dictionary = {}           ## pack id -> its parsed stage table
+## The pack whose table every helper without an explicit `pack` reads (the run in progress; ArcadeManager sets it).
+static var active := PACK_ID
+
+## Makes `id` the active pack (unknown / empty = Construction).
+static func use_pack(id: String) -> void:
+	active = id if id != "" else PACK_ID
+
+static func _pk(pack: String) -> String:
+	return pack if pack != "" else active
 
 ## The pack's stages file through the Content pack registry ("" when the pack or its `stages` section is missing).
-static func stages_path() -> String:
+static func stages_path(pack: String = "") -> String:
 	var content: Variant = load("res://autoload/content.gd")
-	return str(content.pack_section_file(PACK_ID, "stages")) if content != null else ""
+	return str(content.pack_section_file(_pk(pack), "stages")) if content != null else ""
 
-## The parsed stages table ({difficulties, stages}).
-static func table() -> Dictionary:
-	if _table.is_empty():
-		var path := stages_path()
+## The parsed stages table ({difficulties, stages}) of `pack` (default: the active pack).
+static func table(pack: String = "") -> Dictionary:
+	var id := _pk(pack)
+	if not (_tables.get(id) is Dictionary) or (_tables[id] as Dictionary).is_empty():
+		var path := stages_path(id)
 		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(path)) if path != "" and FileAccess.file_exists(path) else null
-		if v is Dictionary: _table = v
-	return _table
+		_tables[id] = v if v is Dictionary else {}
+	return _tables[id]
 
-static func stages() -> Array:
-	var s: Variant = table().get("stages", [])
+## Forget the cached tables (a test that swaps the pack registry).
+static func reset_tables() -> void:
+	_tables.clear()
+
+static func stages(pack: String = "") -> Array:
+	var s: Variant = table(pack).get("stages", [])
 	return s if s is Array else []
 
-static func count() -> int:
-	return stages().size()
+static func count(pack: String = "") -> int:
+	return stages(pack).size()
 
-static func stage_def(stage: int) -> Dictionary:
-	var list := stages()
+static func stage_def(stage: int, pack: String = "") -> Dictionary:
+	var list := stages(pack)
 	if list.is_empty(): return {}
 	var i := clampi(stage, 0, list.size() - 1)
 	return list[i] if list[i] is Dictionary else {}
 
-static func difficulties() -> Dictionary:
-	var d: Variant = table().get("difficulties", {})
+static func difficulties(pack: String = "") -> Dictionary:
+	var d: Variant = table(pack).get("difficulties", {})
 	return d if d is Dictionary else {}
 
 ## A difficulty id the table knows (unknown -> normal).
@@ -75,10 +90,21 @@ static func stage_seed(run: int, stage: int, attempt: int = 0) -> int:
 
 ## The map the run plays on (the generated site when it exists, else the Site Yard). The Content autoload is looked up
 ## at runtime: the net tests compile this script before the autoloads exist (a static reference would fail that compile).
-static func site_map() -> String:
+static func site_map(pack: String = "") -> String:
 	var c := _content()
-	if c != null and c.get("maps") is Dictionary and (c.get("maps") as Dictionary).has("sitegen"): return "sitegen"
-	return "siteyard"
+	var maps: Dictionary = (c.get("maps") as Dictionary) if c != null and c.get("maps") is Dictionary else {}
+	var id := _pk(pack)
+	var reg: Variant = load(PACK_REGISTRY)
+	var m: String = str(reg.arcade_map(id, maps)) if reg != null else ""
+	if m != "": return m
+	if id != PACK_ID: return ""                    # another pack's arena that this build does not have: no Arcade there
+	return "sitegen" if maps.has("sitegen") else "siteyard"
+
+## The game mode id of the pack's runs ("construction" for Construction; a pack's own mode otherwise).
+static func mode_id(pack: String = "") -> String:
+	var reg: Variant = load(PACK_REGISTRY)
+	var m: String = str(reg.mode_of(_pk(pack))) if reg != null else ""
+	return m if m != "" else PACK_ID
 
 static func _content() -> Node:
 	var loop := Engine.get_main_loop()

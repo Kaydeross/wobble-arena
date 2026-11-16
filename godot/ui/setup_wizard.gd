@@ -81,11 +81,15 @@ static var _heavy: Font
 
 # ---------------- choices ----------------
 
-## Game types the wizard offers: every mode the port plays offline (ModeRules.PLAYABLE). Construction is not here: it
-## lives behind the title's Construction banner (dlc/construction/construction_hub.gd).
+## Game types the wizard offers: every mode the port plays offline (ModeRules.PLAYABLE) plus the game mode of every DLC pack
+## the player owns whose hub.json says `wizard` (dlc/pack_registry.gd: On Fire, Ho Ho Ho, Hey Mate; read live, so a
+## purchase shows up and a non-owner never sees them). Construction is not here: it lives behind the title's Construction
+## banner (dlc/construction/construction_hub.gd).
 static func modes() -> Array:
 	var out: Array = []
 	for m: String in ModeRules.PLAYABLE:
+		if Content.modes.has(m) and not out.has(m): out.append(m)
+	for m: String in PackRegistry.wizard_modes(Content.maps):   # the DLC packs the player OWNS (hub.json `wizard`), never anyone else's
 		if Content.modes.has(m) and not out.has(m): out.append(m)
 	return out
 
@@ -94,7 +98,7 @@ static func modes() -> Array:
 static func maps_for(mode: String) -> Array:
 	var out: Array = []
 	var fixed: Array = ModeRules.maps_for(mode)
-	if fixed.size() > 0:
+	if fixed.size() > 0 or PackRegistry.is_pack_mode(mode):    # a pack mode never falls back to "every map"
 		for id: String in fixed:
 			if Content.maps.has(id): out.append(id)
 		return out
@@ -1176,6 +1180,16 @@ class ModeIcon extends Control:
 				_poly(pts, g)
 				_rect(0.15, 0.62, 0.7, 0.1, g)
 				_rect(0.46, 0.3, 0.08, 0.3, INK)
+			"flame":
+				_poly([Vector2(0.5, 0.14), Vector2(0.72, 0.46), Vector2(0.78, 0.66), Vector2(0.66, 0.82), Vector2(0.34, 0.82), Vector2(0.22, 0.66), Vector2(0.3, 0.44), Vector2(0.42, 0.52)], g)
+				_poly([Vector2(0.5, 0.5), Vector2(0.62, 0.68), Vector2(0.56, 0.8), Vector2(0.44, 0.8), Vector2(0.38, 0.68)], INK)
+			"tree":
+				_poly([Vector2(0.5, 0.14), Vector2(0.72, 0.42), Vector2(0.28, 0.42)], g)
+				_poly([Vector2(0.5, 0.3), Vector2(0.8, 0.64), Vector2(0.2, 0.64)], g)
+				_rect(0.44, 0.64, 0.12, 0.18, INK)
+			"boomerang":
+				draw_polyline(PackedVector2Array([_p(0.22, 0.72), _p(0.34, 0.4), _p(0.58, 0.22), _p(0.8, 0.3)]), g, u * 0.11, true)
+				draw_circle(_p(0.8, 0.3), u * 0.05, g)
 			"target":
 				draw_circle(_p(0.5, 0.5), u * 0.32, g)
 				draw_circle(_p(0.5, 0.5), u * 0.22, INK)

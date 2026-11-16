@@ -50,6 +50,8 @@ const ITEMS = Object.freeze({
   'class:tank': 1500, 'class:dash': 1200, 'class:ace': 2000,
   // Construction DLC: bought with coins (the corrections table: no separate dlc_construction entitlement)
   'dlc:construction': 1500,
+  // The three extra DLC packs (godot/data/extra/<pack>/hub.json `price`; same rule as Construction)
+  'dlc:kitchen': 1500, 'dlc:xmas': 1500, 'dlc:australia': 1500,
 });
 
 /* Per-request caps derived from SaveProfile (godot/autoload/save.gd) and Quests (godot/logic/quests.gd):

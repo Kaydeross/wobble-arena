@@ -1,6 +1,8 @@
 class_name DlcUnlock
 extends RefCounted
-## The Construction DLC unlock: bought with coins (PRICE) or opened by the developer code. The code is never stored: only
+## The DLC unlock for every pack (Construction, On Fire, Ho Ho Ho, Hey Mate; ids in dlc/pack_registry.gd): bought with coins
+## (PRICE, or the pack's own `price` in its hub.json) or opened by the developer code. Every function takes the pack id last
+## ("" = Construction, so every older call is unchanged); the profile part per pack is DlcSave (Save.dlc). The code is never stored: only
 ## its salted SHA-256 (DEV_HASH) is compared, and it is never logged. The state lives in the profile (Save.dlc, blob key
 ## "dlc"; Save.codes gets "dev" for the developer code).
 ## The developer code unlocks the DLC and EVERYTHING else: every outfit, every emote, every class (the secret ones too)
@@ -19,28 +21,46 @@ static var _locked_until := 0
 static func _sv(sv: Object) -> Object:
 	return sv if sv != null else Save
 
-## Has the DLC: bought, or the developer code was used.
-static func owned(sv: Object = null) -> bool:
-	var s := _sv(sv)
-	return bool(s.dlc.get("owned", false)) or s.codes.has("dev")
+## Is `pack` one this build sells? Construction always; every other pack needs its hub file (PackRegistry).
+static func known(pack: String = "") -> bool:
+	return DlcSave.is_base(pack) or PackRegistry.has(pack)
 
-static func price() -> int:
-	return PRICE
+## Has the DLC: bought, or the developer code was used. A pack this build does not know is never owned.
+static func owned(sv: Object = null, pack: String = "") -> bool:
+	if not known(pack): return false
+	var s := _sv(sv)
+	return DlcSave.owns(s.dlc, s.codes, pack)
+
+static func price(pack: String = "") -> int:
+	return PRICE if DlcSave.is_base(pack) else PackRegistry.price(pack)
 
 ## Coins still missing for the DLC (0 when affordable).
-static func missing(sv: Object = null) -> int:
-	return maxi(0, PRICE - int(_sv(sv).coins))
+static func missing(sv: Object = null, pack: String = "") -> int:
+	return maxi(0, price(pack) - int(_sv(sv).coins))
 
-## Buys the DLC with coins. false when owned already or too poor (nothing changes).
-static func buy(sv: Object = null) -> bool:
+## Buys the DLC with coins. false when owned already, unknown or too poor (nothing changes). Once per pack.
+static func buy(sv: Object = null, pack: String = "") -> bool:
 	var s := _sv(sv)
-	if owned(s) or int(s.coins) < PRICE: return false
-	s.coins = int(s.coins) - PRICE
-	s.dlc["owned"] = true
+	if not known(pack) or owned(s, pack) or int(s.coins) < price(pack): return false
+	var pid := DlcSave.BASE_PACK if DlcSave.is_base(pack) else pack
+	s.coins = int(s.coins) - price(pack)
+	DlcSave.set_owned(s.dlc, pid, true)
+	grant_pack_items(s, pid)
 	if s.has_method("_wallet_active") and bool(s.call("_wallet_active")) and s.get("cloud") != null:
-		s.get("cloud").wallet_spend("dlc", "construction", PRICE)   # signed in: the server confirms the 1500-coin purchase
+		s.get("cloud").wallet_spend("dlc", pid, price(pack))   # signed in: the server confirms the 1500-coin purchase
 	s.commit()
 	return true
+
+## Phase B hook (cosmetics): gives a pack's outfits once, through LockerData.grant_pack_skins(Save, pack) when it exists
+## (looked up by name, so this tree runs with or without it). Called on purchase, on load for owners and by the dev code.
+static func grant_pack_items(s: Object, pack: String) -> void:
+	var ld: Variant = load("res://ui/locker_data.gd")
+	if ld != null and ld.has_method("grant_pack_skins"): ld.grant_pack_skins(s, pack)
+
+## Every owned pack's grant (a load, the dev code).
+static func grant_owned(s: Object) -> void:
+	for id: String in PackRegistry.ids():
+		if owned(s, id): grant_pack_items(s, id)
 
 static func hash_of(code: String) -> String:
 	return (SALT + code.strip_edges()).sha256_text()
@@ -76,6 +96,7 @@ static func redeem_with(code: String, hash: String, sv: Object = null) -> bool:
 	s.dlc["owned"] = true
 	if not s.codes.has("dev"): s.codes.append("dev")
 	unlock_everything(s)
+	grant_owned(s)
 	if not bool(s.dlc.get("bonus", false)):
 		s.dlc["bonus"] = true
 		s.coins = int(s.coins) + DEV_COINS

@@ -52,6 +52,7 @@ func until(cond: Callable, sec: float) -> bool:
 func _run() -> void:
 	TS = load("res://ui/title_showcase.gd")
 	PACKS = load("res://dlc/dlc_packs.gd")
+	PACKS.only = ["construction"]    # this test is about ONE shipped pack plus a synthetic second one; the four real packs are tests/multipack_test.gd
 	PD = load("res://dlc/dlc_pack_data.gd")
 	DU = load("res://dlc/construction/dlc_unlock.gd")
 	WOB = load("res://actors/wobbler.gd")

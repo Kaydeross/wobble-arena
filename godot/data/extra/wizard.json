@@ -4,7 +4,8 @@
  "sections": [
   {"name": "Classic", "modes": ["classic", "melee", "guns", "ninja", "explosive", "gungame", "deathmatch", "sudden"]},
   {"name": "Team", "modes": ["duel", "t2", "t3", "t4", "tdm", "chaos", "ctf"]},
-  {"name": "Special", "modes": ["mega", "giant", "lowg", "construction", "practice", "sandbox"]}
+  {"name": "Special", "modes": ["mega", "giant", "lowg", "construction", "practice", "sandbox"]},
+  {"name": "Packs", "modes": ["kitchen", "xmas", "australia"]}
  ],
  "modes": {
   "classic": {"short": "Everything drops from the sky", "col": "#ffcf5a", "icon": "crate"},
@@ -27,6 +28,9 @@
   "lowg": {"short": "Super low gravity. Float and soar", "col": "#b49bff", "icon": "moon"},
   "construction": {"short": "Tradies with hammers, wire and blowers", "col": "#ffb43d", "icon": "hat"},
   "practice": {"short": "Dummies and a rack of weapons. No score", "col": "#8fd1ff", "icon": "target"},
-  "sandbox": {"short": "Build an arena with blocks, then play it", "col": "#7be0a6", "icon": "blocks"}
+  "sandbox": {"short": "Build an arena with blocks, then play it", "col": "#7be0a6", "icon": "blocks"},
+  "kitchen": {"short": "Pans, flames and flying soup", "col": "#ff8a3d", "icon": "flame"},
+  "xmas": {"short": "Candy canes, snowballs and gift bombs", "col": "#ff6a6a", "icon": "tree"},
+  "australia": {"short": "Cricket bats, boomerangs and thongs", "col": "#f5c542", "icon": "boomerang"}
  }
 }

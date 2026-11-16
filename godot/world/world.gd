@@ -271,6 +271,7 @@ func load_map(id: String) -> void:
 		session.prepare_sim(sim, start_msg)   # rules + dynamic arena from `start` (the host also sets its mode / K.O. limit)
 	else:
 		var mode := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
+		if arcade == null and not trial: mode = ModeRules.owned_mode(mode)    # a DLC pack's mode only for its owner (a saved choice, a deep link, --mode=)
 		sim.combat.set_mode(mode if sim.combat.modes.has(mode) else "classic")   # the start weapon and crate pool follow it
 		sim.dyn_choice = "off" if build_mode else (dyn_choice if dyn_choice != "" else str(Settings.get_value("dyn", "random")))
 		if dyn_choice == "" and sim.combat.mode.get("chaos", false) and sim.dyn_choice == "off":
@@ -279,7 +280,7 @@ func load_map(id: String) -> void:
 		# Destructible props (docs/DESTRUCTIBLE.md): part of every OFFLINE arena match (no option), never on the Practice
 		# Range, the Sandbox, Construction or the Arcade. The breakables are picked from the map's own cover boxes, seeded
 		# per match (same seed = same set). A map with no usable cover simply has none.
-		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode) and destruct_choice != "off":
+		if arcade == null and not build_mode and not ["practice", "sandbox", "construction"].has(mode) and not ModeRules.is_pack_mode(mode) and destruct_choice != "off":
 			if Destruct.supported(id, map_node.map):
 				sim.destruct_seed = Dynamics.hash32(rng_seed, 17, 0, 0) if rng_seed > 0 else randi()
 				var break_plan := Destruct.plan_for(id, map_node.map, sim.destruct_seed, map_node.box_styles)
@@ -293,6 +294,7 @@ func load_map(id: String) -> void:
 	var bots := bot_count
 	if session == null:                    # offline game mode (pickMode / setBotCfg)
 		var mid := "sandbox" if build_mode else (mode_id if mode_id != "" else str(Settings.get_value("mode", "classic")))
+		if arcade == null and not trial: mid = ModeRules.owned_mode(mid)
 		if not sim.combat.modes.has(mid): mid = "classic"
 		# The Arcade run is cleared stage by stage (never by a K.O. count), so it stays out of the offline limit default.
 		var lim := 0 if arcade != null else (ko_limit if ko_limit >= 0 else int(Settings.get_value("limit", -1)))

@@ -7,8 +7,12 @@ extends RefCounted
 
 const PATHS: Array[String] = [
 	"res://dlc/packs/construction.tres",
+	"res://dlc/packs/kitchen.tres",
+	"res://dlc/packs/xmas.tres",
+	"res://dlc/packs/australia.tres",
 ]
 
+static var only: Array = []           ## tests: restrict the shipped packs to these ids (empty = all of them; the old one-pack showcase tests use ["construction"])
 static var extra: Array = []          ## tests: more DLCPackData after the shipped ones
 
 ## Every pack that loads and is valid (its weapons and arena exist in this build), shipped ones first.
@@ -17,7 +21,9 @@ static func all(weapons: Dictionary, maps: Dictionary) -> Array[DLCPackData]:
 	var seen := {}
 	var list: Array = []
 	for p: String in PATHS:
-		if ResourceLoader.exists(p): list.append(load(p))
+		if ResourceLoader.exists(p):
+			var r: Variant = load(p)
+			if only.is_empty() or (r is DLCPackData and only.has((r as DLCPackData).pack_id)): list.append(r)
 		else: push_warning("DLC pack %s is missing" % p)
 	list.append_array(extra)
 	for r: Variant in list:
