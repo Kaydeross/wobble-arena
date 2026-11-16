@@ -83,7 +83,9 @@
     "test:godot-destruct": "node tools/test-godot-destruct.js",
     "test:godot-reset": "node tools/test-reset-game.js",
     "test:godot-weapons-aim": "node tools/test-weapons-aim.js",
-    "test:godot-tutorial": "node tools/test-tutorial.js"
+    "test:godot-tutorial": "node tools/test-tutorial.js",
+    "balance": "node tools/run-balance-matrix.js",
+    "test:balance-tool": "node tools/run-balance-matrix.js --selftest"
   },
   "engines": {
     "node": ">=18"
