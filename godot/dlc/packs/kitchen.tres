@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="DLCPackData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://dlc/dlc_pack_data.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+pack_id = "kitchen"
+display_name = "On Fire"
+subtitle = "6 Weapons + Kitchen Chaos"
+accent_color = Color(1, 0.416, 0.169, 1)
+weapon_ids = Array[String](["fryingpan", "cleaver", "flambetorch", "rollingpin", "peppergrinder", "souppot"])
+arena_id = "kitchen_chaos"
+container_style = "hazard"
+body_color = Color(0.74, 0.77, 0.8, 1)
+stripe_color = Color(0.1, 0.1, 0.12, 1)
+badge_icon = "chef"
+badge_art = "chef"
+test_mode = "kitchen"
+unlock_kind = "pack"

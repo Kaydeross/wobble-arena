@@ -1,5 +1,9 @@
 class_name ConstructionHub
 extends UiPage
+## MULTI-PACK: the same page serves every DLC pack (dlc/pack_registry.gd): a row of pack badges in the header picks the pack
+## (Construction, On Fire, Ho Ho Ho, Hey Mate), and everything below (the two cards, the unlock, the pre-match card, the Arcade
+## flow) is that pack's: its name, colour, card lines, game mode, arena and Arcade table. `pack_id` is the page's pack
+## (Construction when it opens from the Construction title, the showcase's pack from UNLOCK PACK / PLAY).
 ## The Construction hub (title: the yellow Construction banner): two big cards, CLASSIC (up to 8 fighters on a random
 ## building site, offline) and ARCADE (boss rush, built by dlc/construction/arcade_manager.gd when it exists).
 ## Locked (DLC not owned: DlcUnlock): the cards are dimmed with a padlock, "Unlock for N coins" buys it ("Need N more"
@@ -15,6 +19,8 @@ extends UiPage
 signal start_requested(opts: Dictionary)
 signal arcade_requested
 
+const CLASSIC_DESC := "Up to 8 on a random building site. Hard hats on, tools out."
+const ARCADE_DESC := "Boss rush: Tradies, Engineer, Designer, Supervisor, Project Manager, then the Client."
 const ARCADE_MANAGER := "res://dlc/construction/arcade_manager.gd"
 const BOT_MIN := 1
 const BOT_MAX := 7
@@ -23,6 +29,11 @@ const SEED_MAX := 999999
 const TOUCH := 62.0
 const CARD_H := 224.0
 
+var pack_id := "construction"     ## the pack this page shows (PackRegistry id)
+var tabs: HBoxContainer           ## the pack badges in the header (one Button each)
+var _tab_bs := {}                 ## pack id -> its tab Button
+var _tapes: Array = []            ## the hazard tapes (repainted in the pack's colours)
+var _want_pack := ""              ## open_pack(): the pack the next open() shows
 var bots := BOT_MAX               ## default 7: eight fighters
 var diff := "normal"
 var site_seed := 0                ## 0 = random per match
@@ -59,6 +70,7 @@ func _init() -> void:
 
 func _ready() -> void:
 	build_frame("Construction")
+	_build_tabs()
 	var sp := Control.new()
 	sp.name = "Spacer"
 	sp.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -90,9 +102,9 @@ func _ready() -> void:
 	cards.name = "Cards"
 	cards.add_theme_constant_override("separation", UiTheme.SP_4)
 	main_view.add_child(cards)
-	classic_card = _card("Classic", "Classic", "Up to 8 on a random building site. Hard hats on, tools out.")
+	classic_card = _card("Classic", "Classic", CLASSIC_DESC)
 	cards.add_child(classic_card)
-	arcade_card = _card("Arcade", "Arcade", "Boss rush: Tradies, Engineer, Designer, Supervisor, Project Manager, then the Client.")
+	arcade_card = _card("Arcade", "Arcade", ARCADE_DESC)
 	cards.add_child(arcade_card)
 	cards.resized.connect(fit_cards.call_deferred)
 	classic_b = classic_card
@@ -130,8 +142,16 @@ func _ready() -> void:
 	Save.changed.connect(func() -> void: if visible: refresh())
 	super._ready()
 
+## Opens the hub on pack `id` ("" = Construction).
+func open_pack(id: String) -> void:
+	_want_pack = id
+	open()
+
 func open() -> void:
 	super.open()
+	pack_id = _want_pack if PackRegistry.has(_want_pack) else "construction"
+	_want_pack = ""
+	_apply_pack()
 	diff = str(Settings.get_value("difficulty", "normal"))
 	if not DIFFS.has(diff): diff = "normal"
 	site_seed = clampi(int(Settings.get_value("site_seed", 0)), 0, SEED_MAX)
@@ -140,7 +160,7 @@ func open() -> void:
 	show_arcade(0)
 	show_pre(false)
 	refresh()
-	if Tier.is_pc(): (classic_b if DlcUnlock.owned() else buy_b).grab_focus.call_deferred()
+	if Tier.is_pc(): (classic_b if pack_owned() else buy_b).grab_focus.call_deferred()
 
 func back() -> bool:
 	if code_sheet.visible: return code_sheet.back()
@@ -155,15 +175,10 @@ func back() -> bool:
 
 # ---------------- the cards ----------------
 
-## One big card (a button, like the wizard's cards): hazard tape on top, the name (and a padlock while locked), the
-## description and a footer line. The card is as tall as its words need (fit_cards).
-func _card(node_name: String, title: String, desc: String) -> Button:
-	var c := Button.new()
-	c.name = node_name
-	c.size_flags_horizontal = SIZE_EXPAND_FILL
-	c.custom_minimum_size = Vector2(0, CARD_H)
+## The card's frame in the pack's colour.
+func _style_card(c: Button, accent: Color) -> void:
 	for st: String in ["normal", "disabled", "pressed", "hover_pressed", "hover", "focus"]:
-		var sb := UiTheme.box(Color(0.075, 0.2, 0.245, 0.96), UiTheme.RADIUS, ConstructionStyle.YELLOW, 3, 6)
+		var sb := UiTheme.box(Color(0.075, 0.2, 0.245, 0.96), UiTheme.RADIUS, accent, 3, 6)
 		if st == "hover": sb.bg_color = Color(0.1, 0.26, 0.31, 0.98)
 		if st == "pressed" or st == "hover_pressed": sb.bg_color = Color(0.05, 0.15, 0.19, 1.0)
 		if st == "focus":
@@ -171,6 +186,15 @@ func _card(node_name: String, title: String, desc: String) -> Button:
 			sb.border_color = Color.WHITE
 			sb.shadow_size = 0
 		c.add_theme_stylebox_override(st, sb)
+
+## One big card (a button, like the wizard's cards): hazard tape on top, the name (and a padlock while locked), the
+## description and a footer line. The card is as tall as its words need (fit_cards).
+func _card(node_name: String, title: String, desc: String) -> Button:
+	var c := Button.new()
+	c.name = node_name
+	c.size_flags_horizontal = SIZE_EXPAND_FILL
+	c.custom_minimum_size = Vector2(0, CARD_H)
+	_style_card(c, ConstructionStyle.YELLOW)
 	var m := MarginContainer.new()
 	m.name = "Margin"
 	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -187,6 +211,7 @@ func _card(node_name: String, title: String, desc: String) -> Button:
 	tape.name = "Tape"
 	tape.custom_minimum_size = Vector2(0, 12)
 	v.add_child(tape)
+	_tapes.append(tape)
 	var top := HBoxContainer.new()
 	top.name = "Top"
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -241,35 +266,123 @@ func fit_cards() -> void:
 static func arcade_ready() -> bool:
 	return ResourceLoader.exists(ARCADE_MANAGER)
 
+## Is the signed-in profile the owner of this page's pack?
+func pack_owned() -> bool:
+	return DlcUnlock.owned(null, pack_id)
+
+## Has this pack a playable arena in this build (its map generators are merged)? Construction always has.
+func pack_maps_ready() -> bool:
+	return pack_id == "construction" or not PackRegistry.real_maps(pack_id, Content.maps).is_empty()
+
 func refresh() -> void:
 	if buy_b == null: return
-	var own := DlcUnlock.owned()
+	var own := pack_owned()
 	coins_l.text = str(Save.coins)
+	var maps_ok := pack_maps_ready()
 	for l: Control in _locks: l.visible = not own
-	var arc := arcade_ready()
-	classic_card.modulate = Color.WHITE if own else Color(1, 1, 1, 0.55)
+	var arc := arcade_ready() and ArcadeManager.count(pack_id) > 0 and maps_ok
+	classic_card.modulate = Color.WHITE if own and maps_ok else Color(1, 1, 1, 0.55)
 	arcade_card.modulate = Color.WHITE if own and arc else Color(1, 1, 1, 0.55)
-	classic_b.disabled = not own
+	classic_b.disabled = not own or not maps_ok
 	arcade_b.disabled = not own or not arc
-	var best := DlcSave.best(Save.dlc, arc_diff)
+	var best := DlcSave.best(Save.dlc, arc_diff, pack_id)
 	var ct := tr("Play") if own else tr("Unlock to play")
+	if own and not maps_ok: ct = tr("Coming soon")
 	var at := ""
 	if not arc: at = tr("Coming soon")
 	elif not own: at = tr("Unlock to play")
-	else: at = tr("Best: stage %d/%d") % [best, ArcadeManager.count()] if best > 0 else tr("Play")
+	else: at = tr("Best: stage %d/%d") % [best, ArcadeManager.count(pack_id)] if best > 0 else tr("Play")
 	(_tags[classic_card] as Label).text = ct
 	(_tags[arcade_card] as Label).text = at
 	for c: Button in [classic_card, arcade_card]:
 		(_tags[c] as Label).visible = (_tags[c] as Label).text != ""
 	buy_row.visible = not own
-	var miss := DlcUnlock.missing()
-	buy_b.text = (tr("Unlock for %d coins") % DlcUnlock.price()) if miss <= 0 else tr("Need %d more") % miss
+	var miss := DlcUnlock.missing(null, pack_id)
+	buy_b.text = (tr("Unlock for %d coins") % DlcUnlock.price(pack_id)) if miss <= 0 else tr("Need %d more") % miss
 	buy_b.disabled = miss > 0
-	classic_b.tooltip_text = "" if own else tr("Unlock Construction first")
+	classic_b.tooltip_text = "" if own else tr("Unlock %s first") % tr(PackRegistry.display_name(pack_id)) if pack_id != "construction" else tr("Unlock Construction first")
+	for id: String in _tab_bs:
+		var t: Button = _tab_bs[id]
+		(t.get_node("Center/Badge") as PackBadge).set_locked(not DlcUnlock.owned(null, id))
 	fit_cards.call_deferred()
 
+## Pack `id` becomes the page's pack (a tab was pressed).
+func pick_pack(id: String) -> void:
+	if not PackRegistry.has(id) or id == pack_id: return
+	pack_id = id
+	_apply_pack()
+	show_pre(false)
+	refresh()
+
+## The pack's name, colour, card lines and tab state on the page.
+func _apply_pack() -> void:
+	if tabs == null: return
+	var accent := _accent()
+	if arc_step == 0 and not pre.visible: title_l.text = tr(PackRegistry.display_name(pack_id))
+	var custom := pack_id != "construction"
+	var cd := PackRegistry.text(pack_id, "classic_desc")
+	var ad := PackRegistry.text(pack_id, "arcade_desc")
+	(classic_card.get_node("Margin/Stack/Desc") as Label).text = tr(cd if custom and cd != "" else CLASSIC_DESC)
+	(arcade_card.get_node("Margin/Stack/Desc") as Label).text = tr(ad if custom and ad != "" else ARCADE_DESC)
+	for c: Button in [classic_card, arcade_card]: _style_card(c, accent)
+	for t: Control in _tapes:
+		(t as ConstructionStyle.Hazard).tape = accent
+		(t as ConstructionStyle.Hazard).tape2 = PackRegistry.stripe(pack_id)
+		t.queue_redraw()
+	for id: String in _tab_bs:
+		var t: Button = _tab_bs[id]
+		t.set_pressed_no_signal(id == pack_id)
+	var seed_row := pre.get_node_or_null("Rows/Seed") as Control
+	if seed_row != null: seed_row.visible = PackRegistry.seed_map(pack_id) != ""
+	if refresh_ready(): refresh()
+
+func refresh_ready() -> bool:
+	return buy_b != null and coins_l != null
+
+## The pack's colour (its hub.json `accent`; Construction yellow).
+func _accent() -> Color:
+	return PackRegistry.accent(pack_id)
+
+## The row of pack badges in the header: one tap target per pack, the picked one framed in its colour.
+func _build_tabs() -> void:
+	tabs = HBoxContainer.new()
+	tabs.name = "Packs"
+	tabs.add_theme_constant_override("separation", 12)
+	tabs.size_flags_vertical = SIZE_SHRINK_CENTER
+	head.add_child(tabs)
+	var grp := ButtonGroup.new()
+	for id: String in PackRegistry.ids():
+		var t := Button.new()
+		t.name = "Pack_" + id
+		t.toggle_mode = true
+		t.button_group = grp
+		t.custom_minimum_size = Vector2(TOUCH, TOUCH)
+		t.tooltip_text = tr(PackRegistry.display_name(id))
+		t.set("accessibility_name", tr(PackRegistry.display_name(id)))
+		var col := PackRegistry.accent(id)
+		for st: String in ["normal", "disabled", "pressed", "hover_pressed", "hover", "focus"]:
+			var on := st == "pressed" or st == "hover_pressed"
+			var sb := UiTheme.box(Color(0.075, 0.2, 0.245, 0.96) if not on else Color(0.1, 0.26, 0.31, 1.0), UiTheme.RADIUS, col if on else col.darkened(0.5), 4 if on else 2, 0)
+			if st == "focus":
+				sb.draw_center = false
+				sb.border_color = Color.WHITE
+			if st == "hover": sb.bg_color = Color(0.1, 0.26, 0.31, 0.98)
+			t.add_theme_stylebox_override(st, sb)
+		var b := PackBadge.new(PackRegistry.badge(id), col, 38.0)
+		b.name = "Badge"
+		var cc := CenterContainer.new()
+		cc.name = "Center"
+		cc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cc.add_child(b)
+		t.add_child(cc)
+		t.pressed.connect(pick_pack.bind(id))
+		tabs.add_child(t)
+		_tab_bs[id] = t
+	JuicyButton.attach_all(tabs)
+
 func buy() -> bool:
-	if not DlcUnlock.buy(): return false
+	if not DlcUnlock.buy(null, pack_id): return false
 	Sfx.play("pickup")
 	refresh()
 	return true
@@ -399,15 +512,16 @@ static func diff_desc(d: String) -> String:
 
 ## "Best: stage 4/6", "Cleared" or "Not played yet" for a difficulty.
 func best_text(d: String) -> String:
-	var b := DlcSave.best(Save.dlc, d)
-	if b >= ArcadeManager.count() or DlcSave.won_diff(Save.dlc, d): return tr("Cleared")
-	return tr("Best: stage %d/%d") % [b, ArcadeManager.count()] if b > 0 else tr("Not played yet")
+	var b := DlcSave.best(Save.dlc, d, pack_id)
+	if b >= ArcadeManager.count(pack_id) or DlcSave.won_diff(Save.dlc, d, pack_id): return tr("Cleared")
+	return tr("Best: stage %d/%d") % [b, ArcadeManager.count(pack_id)] if b > 0 else tr("Not played yet")
 
 ## step 0 = the two cards, 1 = class, 2 = difficulty (the Arcade flow replaces the cards).
 func show_arcade(step: int) -> void:
-	if step > 0 and not DlcUnlock.owned(): step = 0
+	if step > 0 and not pack_owned(): step = 0
 	arc_step = step
 	var on := step > 0
+	if tabs != null: tabs.visible = not on and not pre.visible     # the pack badges are for the cards page
 	main_view.visible = not on and not pre.visible
 	arc_class_box.visible = step == 1
 	arc_diff_box.visible = step == 2
@@ -437,8 +551,8 @@ func show_arcade(step: int) -> void:
 		fit_diff_cards.call_deferred()
 		if Tier.is_pc(): (_diff_cards[arc_diff] as Button).grab_focus.call_deferred()
 	else:
-		title_l.text = tr("Construction")
-		if Tier.is_pc() and is_visible_in_tree(): (classic_b if DlcUnlock.owned() else buy_b).grab_focus.call_deferred()
+		title_l.text = tr(PackRegistry.display_name(pack_id))
+		if Tier.is_pc() and is_visible_in_tree(): (classic_b if pack_owned() else buy_b).grab_focus.call_deferred()
 
 func pick_diff(d: String) -> void:
 	arc_diff = DlcSave.norm(d)
@@ -555,19 +669,20 @@ func _pills(parent: Control, row_name: String, label: String, keys: Array, names
 		store[keys[i]] = b
 
 func open_pre() -> void:
-	if not DlcUnlock.owned(): return
+	if not pack_owned() or not pack_maps_ready(): return
 	show_pre(true)
 
 ## The pre-match card instead of the two big cards (and the page title says Classic).
 func show_pre(on: bool) -> void:
 	pre.visible = on
 	main_view.visible = not on and arc_step == 0
-	title_l.text = tr("Classic") if on else tr("Construction")
+	title_l.text = tr("Classic") if on else tr(PackRegistry.display_name(pack_id))
+	if tabs != null: tabs.visible = not on and arc_step == 0
 	if on:
 		_select()
 		if Tier.is_pc(): start_b.grab_focus.call_deferred()
 	elif Tier.is_pc() and is_visible_in_tree():
-		(classic_b if DlcUnlock.owned() else buy_b).grab_focus.call_deferred()
+		(classic_b if pack_owned() else buy_b).grab_focus.call_deferred()
 
 func set_bots(n: int) -> void:
 	bots = clampi(n, BOT_MIN, BOT_MAX)
@@ -598,11 +713,12 @@ static func site_map() -> String:
 
 ## Start: the Settings keys the match reads, then the offline match (scripts/main.gd: play_offline).
 func start() -> void:
-	if not DlcUnlock.owned(): return
-	var mp := site_map()
-	Settings.set_value("mode", "construction")
+	if not pack_owned() or not pack_maps_ready(): return
+	var mp := site_map() if pack_id == "construction" else str(PackRegistry.real_maps(pack_id, Content.maps)[0])
+	var mode := PackRegistry.mode_of(pack_id)
+	Settings.set_value("mode", mode)
 	Settings.set_value("bots", bots)
 	Settings.set_value("difficulty", diff)
 	Settings.set_value("offline_map", mp)
 	Settings.set_value("site_seed", site_seed)
-	start_requested.emit({"mode": "construction", "map": mp, "bots": bots, "difficulty": diff})
+	start_requested.emit({"mode": mode, "map": mp, "bots": bots, "difficulty": diff})

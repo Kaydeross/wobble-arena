@@ -1,0 +1,16 @@
+{
+ "_readme": "Hey Mate hub file (docs/PACKS_BRIEF.md, deliverable 4); see kitchen/hub.json for the fields.",
+ "order": 3,
+ "mode": "australia",
+ "maps": [
+  "backyard_bbq"
+ ],
+ "wizard": true,
+ "price": 1500,
+ "classic_desc": "Up to 8 at a backyard barbecue. Mind the hotplate and the clothesline.",
+ "arcade_desc": "Boss rush: Backyard Mates, Grill Sergeant, Cricket Captain, Thong Champ, Outback Ollie, then Big Bruce.",
+ "won_title": "Barbecue cleared!",
+ "won_sub": "Big Bruce is off for a nap",
+ "hats": [],
+ "victory_hat": ""
+}

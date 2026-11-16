@@ -1,0 +1,16 @@
+{
+ "_readme": "Ho Ho Ho hub file (docs/PACKS_BRIEF.md, deliverable 4); see kitchen/hub.json for the fields.",
+ "order": 2,
+ "mode": "xmas",
+ "maps": [
+  "toy_workshop"
+ ],
+ "wizard": true,
+ "price": 1500,
+ "classic_desc": "Up to 8 in Santa's toy workshop. Mind the ice and the gift crates.",
+ "arcade_desc": "Boss rush: Elf Workshop, Snowman, Reindeer, Nutcracker, Grumpy Gus, then Big Santa.",
+ "won_title": "Workshop cleared!",
+ "won_sub": "Big Santa has gone home",
+ "hats": [],
+ "victory_hat": ""
+}

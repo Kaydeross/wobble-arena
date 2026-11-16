@@ -24,6 +24,7 @@ extends Control
 
 signal test_requested(pack: DLCPackData)
 signal unlock_requested(pack: DLCPackData)
+signal play_requested(pack: DLCPackData)   ## PLAY on an owned pack (the hub opens on it)
 signal site_requested()                ## the DON'T ENTER / EXIT SITE sign or pill: the owner switches title
 signal ui_changed(k: float)            ## 0 = the title's own controls show, 1 = they are gone
 signal state_changed(state: int)
@@ -56,6 +57,8 @@ var prev_b: Button
 var next_b: Button
 var test_b: Button
 var unlock_b: Button
+var play_b: Button
+var badge: PackBadge
 var owned_chip: PanelContainer
 var header: PanelContainer
 var caption: Label
@@ -144,9 +147,19 @@ func refresh() -> void:
 	test_b.text = tr("TEST IN %s") % arena.to_upper()
 	test_b.tooltip_text = tr("Try every weapon of the pack on its arena. Nothing is saved.")
 	unlock_b.text = tr("UNLOCK PACK")
+	play_b.text = tr("PLAY")
+	play_b.tooltip_text = tr("Open the %s hub") % tr(p.display_name)
 	(owned_chip.get_child(0).get_node("Text") as Label).text = tr("Owned").to_upper()
+	var base := p.pack_id == DlcSave.BASE_PACK                    # Construction opens its hub from its own title
 	unlock_b.visible = not own
-	owned_chip.visible = own
+	var hubbed := not base and PackRegistry.has(p.pack_id)         # a DLC pack with a hub page gets PLAY; any other owned pack the OWNED chip
+	play_b.visible = own and hubbed
+	owned_chip.visible = own and not hubbed
+	badge.kind = p.badge_kind()
+	badge.col = p.accent_color
+	badge.set_locked(not own)
+	site_b.visible = state != State.IDLE and base                  # DON'T ENTER leads to the Construction title only
+	overlay.queue_redraw()
 	var many := packs.size() > 1
 	prev_b.visible = many
 	next_b.visible = many
@@ -210,6 +223,9 @@ func _build_overlay() -> void:
 	hr.add_theme_constant_override("separation", UiTheme.SP_3)
 	hr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(hr)
+	badge = PackBadge.new()
+	badge.name = "Badge"
+	hr.add_child(badge)
 	_lock = ConstructionStyle.Padlock.new()
 	_lock.name = "Lock"
 	_lock.size_flags_vertical = SIZE_SHRINK_CENTER
@@ -249,6 +265,10 @@ func _build_overlay() -> void:
 	unlock_b.pressed.connect(func() -> void:
 		if state == State.OPENED and pack() != null and not pack().is_unlocked: unlock_requested.emit(pack()))
 	bar.add_child(unlock_b)
+	play_b = _button("Play", true)
+	play_b.pressed.connect(func() -> void:
+		if state == State.OPENED and pack() != null and pack().is_unlocked: play_requested.emit(pack()))
+	bar.add_child(play_b)
 	owned_chip = PanelContainer.new()
 	owned_chip.name = "Owned"
 	owned_chip.theme_type_variation = &"ChipPanel"
@@ -327,8 +347,9 @@ func _show_opened_ui() -> void:
 		if c == null: continue
 		c.visible = on
 		c.modulate.a = ui_k
-	for b: Button in [prev_b, next_b, test_b, unlock_b, site_b]:
+	for b: Button in [prev_b, next_b, test_b, unlock_b, play_b, site_b]:
 		if b: b.disabled = not live
+	if site_b != null and pack() != null: site_b.visible = on and pack().pack_id == DlcSave.BASE_PACK
 	if back_b: back_b.disabled = state == State.CLOSING
 	for b: Button in proxies:
 		b.focus_mode = Control.FOCUS_ALL if live else Control.FOCUS_NONE
@@ -383,6 +404,7 @@ func _layout() -> void:
 	_name_l.add_theme_font_size_override("font_size", int(round(26.0 * minf(unit, 1.8))))
 	_sub_l.add_theme_font_size_override("font_size", int(round(18.0 * minf(unit, 1.8))))
 	_lock.custom_minimum_size = Vector2(22, 27) * minf(unit, 1.8)
+	badge.custom_minimum_size = Vector2(40, 40) * minf(unit, 1.6)
 	caption.add_theme_font_size_override("font_size", int(round(22.0 * minf(unit, 2.0))))
 	(owned_chip.get_child(0).get_node("Text") as Label).add_theme_font_size_override("font_size", fs)
 	owned_chip.custom_minimum_size = Vector2(0, t * 0.8)
@@ -402,7 +424,7 @@ func _layout() -> void:
 		next_b.tooltip_text = tr("Next pack")
 		prev_b.set("accessibility_name", prev_b.tooltip_text)
 		next_b.set("accessibility_name", next_b.tooltip_text)
-		for b: Button in [prev_b, next_b, test_b, unlock_b]:
+		for b: Button in [prev_b, next_b, test_b, unlock_b, play_b]:
 			b.add_theme_font_size_override("font_size", f2)
 			b.custom_minimum_size = Vector2(t * (1.1 if b == prev_b or b == next_b else 1.0), t)
 		bar.size = Vector2.ZERO
@@ -410,7 +432,7 @@ func _layout() -> void:
 		if not two_rows: break
 	while two_rows and bar.get_combined_minimum_size().x > s.size.x and fs_bar > FitText.MIN_SIZE:   # the longest words (fr / es): every bar font steps down until one row fits
 		fs_bar -= 1
-		for b: Button in [prev_b, next_b, test_b, unlock_b]: b.add_theme_font_size_override("font_size", fs_bar)
+		for b: Button in [prev_b, next_b, test_b, unlock_b, play_b]: b.add_theme_font_size_override("font_size", fs_bar)
 		bar.size = Vector2.ZERO
 	back_b.size = back_b.custom_minimum_size
 	back_b.position = Vector2(s.position.x, s.end.y - t)
@@ -419,7 +441,8 @@ func _layout() -> void:
 	var bar_y := s.end.y - t
 	if two_rows: bar_y -= t + GAP
 	bar.position = Vector2(s.end.x - bw, bar_y)
-	var h_room := site_b.position.x - GAP - s.position.x          # the header sits left of the sign: the pack name and its subtitle step down to fit
+	var right_edge := site_b.position.x if site_b.visible else s.end.x + GAP
+	var h_room := right_edge - GAP - s.position.x          # the header sits left of the sign: the pack name and its subtitle step down to fit
 	var nm_fs := int(round(26.0 * minf(unit, 1.8)))
 	var sb_fs := int(round(18.0 * minf(unit, 1.8)))
 	header.size = Vector2.ZERO
@@ -431,10 +454,10 @@ func _layout() -> void:
 		header.size = Vector2.ZERO
 	header.size = header.get_combined_minimum_size()
 	var hx := s.position.x + (s.size.x - header.size.x) * 0.5
-	header.position = Vector2(minf(hx, site_b.position.x - GAP - header.size.x), s.position.y)   # (the sign has the top right)
+	header.position = Vector2(minf(hx, right_edge - GAP - header.size.x), s.position.y)   # (the sign has the top right)
 	caption.size = Vector2(s.size.x, caption.get_combined_minimum_size().y)
 	caption.position = Vector2(s.position.x, bar_y - GAP * 0.5 - caption.size.y)
-	var top := header.position.y + header.size.y + GAP
+	var top := header.position.y + header.size.y + GAP + (14.0 * minf(unit, 1.6) if packs.size() > 1 else 0.0)   # (room for the pager dots)
 	var open := Rect2(s.position.x, top, s.size.x, maxf(40.0, caption.position.y - GAP * 0.5 - top))
 	stage.open_rect = _norm(open)
 	stage.idle_rect = _norm(Rect2(s.position + global_position, s.size))
@@ -467,10 +490,23 @@ func _place() -> void:
 
 ## The rod the pill hangs on.
 func _draw_tag_line() -> void:
+	_draw_pager()
 	if pill == null or not pill.visible or stage == null: return
 	var a := stage.project(stage.crate_pos() + Vector3(0, 0.0, ShowcaseStage.BOX.z * 0.5)) * size
 	var b := pill.position + Vector2(pill.size.x * 0.5, 3.0)
 	overlay.draw_line(a, b, Color(ConstructionStyle.BLACK, 0.9), 3.0 * unit, true)
+
+## One dot per pack under the header while a container is open (the current one is the pack's colour): where you are in the row.
+func _draw_pager() -> void:
+	if packs.size() < 2 or state == State.IDLE or header == null or not header.visible: return
+	var r := 5.0 * minf(unit, 1.6)
+	var gap := r * 3.0
+	var w := gap * (packs.size() - 1)
+	var c := Vector2(header.position.x + header.size.x * 0.5 - w * 0.5, header.position.y + header.size.y + r * 1.6)
+	for i in packs.size():
+		var on := i == index
+		var col := packs[i].accent_color if on else Color(1, 1, 1, 0.35)
+		overlay.draw_circle(c + Vector2(gap * i, 0), r if on else r * 0.7, Color(col, ui_k))
 
 ## The screen rect (global canvas px) of rack cell `i`: what a finger has to hit.
 func cell_screen_rect(i: int) -> Rect2:
@@ -498,7 +534,23 @@ func _on_stage_input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 		if tap_at((e as InputEventMouseButton).global_position): accept_event()
 
+var _swipe_from := Vector2.INF
+
+## A horizontal swipe over the opened container swaps the pack (left = next, right = previous), like the SWAP buttons.
+func _swipe(e: InputEvent) -> void:
+	if not (e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT): return
+	var pos := (e as InputEventMouseButton).global_position
+	if e.pressed:
+		_swipe_from = pos
+		return
+	var from := _swipe_from
+	_swipe_from = Vector2.INF
+	if from == Vector2.INF or state != State.OPENED: return
+	var d := pos - from
+	if absf(d.x) >= 90.0 * minf(unit, 2.0) and absf(d.y) < absf(d.x) * 0.6: swap(-1 if d.x > 0.0 else 1)
+
 func _on_catcher_input(e: InputEvent) -> void:
+	_swipe(e)
 	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT): return
 	catcher.accept_event()
 	if state != State.OPENED: return                 # mid-animation taps are dropped here, safely
@@ -595,6 +647,7 @@ func _swap_to(i: int) -> void:
 	index = i
 	stage.set_pack(pack())
 	refresh()
+	overlay.queue_redraw()
 
 func _thud() -> void:
 	thuds += 1

@@ -303,7 +303,11 @@ const { Client } = require('./wa-client');
       for (const k of Object.keys(classes)) if (classes[k] && classes[k].price) assert.equal(W.ITEMS['class:' + k], classes[k].price, 'shipped class price ' + k);
       const dlcPrice = /const PRICE := (\d+)/.exec(unlock);
       assert.ok(dlcPrice && W.ITEMS['dlc:construction'] === +dlcPrice[1], 'the Construction DLC price matches DlcUnlock.PRICE');
-      assert.equal(Object.keys(W.ITEMS).length, 22 + 26 + 3 + 1, 'the price table has every shipped purchasable item and nothing else');
+      for (const pk of ['kitchen', 'xmas', 'australia']) {
+        const hub = JSON.parse(fs.readFileSync(path.join(root, 'godot/data/extra', pk, 'hub.json'), 'utf8'));
+        assert.equal(W.ITEMS['dlc:' + pk], hub.price, 'the ' + pk + ' pack price matches its hub.json');
+      }
+      assert.equal(Object.keys(W.ITEMS).length, 22 + 26 + 3 + 1 + 3, 'the price table has every shipped purchasable item and nothing else');
     }
   }
 

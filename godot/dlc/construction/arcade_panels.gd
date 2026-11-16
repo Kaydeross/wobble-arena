@@ -12,6 +12,7 @@ class Portrait extends Control:
 	var cols: Array = []                 ## head colours
 	var ring := Color.WHITE
 	var crown := false
+	var hat_col := ConstructionStyle.YELLOW  ## the little hat on every head (Construction: the hard hat yellow; a pack: its colour)
 	func _init() -> void:
 		custom_minimum_size = Vector2(76, 76)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -30,7 +31,7 @@ class Portrait extends Control:
 		draw_circle(c + Vector2(-r * 0.34, -r * 0.1), r * 0.12, ink)
 		draw_circle(c + Vector2(r * 0.34, -r * 0.1), r * 0.12, ink)
 		draw_arc(c + Vector2(0, r * 0.15), r * 0.4, 0.3, PI - 0.3, 10, ink, maxf(2.0, r * 0.08), true)
-		var hat := ConstructionStyle.YELLOW
+		var hat := hat_col
 		draw_rect(Rect2(c.x - r * 0.95, c.y - r * 1.02, r * 1.9, r * 0.36), hat)         # a hard hat on every head
 		draw_rect(Rect2(c.x - r * 0.55, c.y - r * 1.3, r * 1.1, r * 0.32), hat)
 		if big and crown:
@@ -137,6 +138,9 @@ static func intro(m: ArcadeManager, d: Dictionary, on_start: Callable, waiting :
 	box.add_child(row)
 	var pt := Portrait.new()
 	pt.name = "Portrait"
+	if m.pack != ArcadeCoop.PACK_ID:
+		var pk: Variant = load("res://dlc/pack_registry.gd")
+		if pk != null: pt.hat_col = pk.accent(m.pack)
 	pt.ring = Color.from_rgba8((int(d["hp_bar_color"]) >> 16) & 255, (int(d["hp_bar_color"]) >> 8) & 255, int(d["hp_bar_color"]) & 255)
 	for b: Dictionary in d["bots"]:
 		var ci := int(b["color"])
@@ -242,12 +246,18 @@ static func won(m: ArcadeManager, on_quit: Callable, waiting := false) -> Contro
 	var fr := _frame("ArcadeVictory")
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
-	_title(box, TranslationServer.translate("Site cleared!"))
-	_line(box, "Sub", TranslationServer.translate("The Client signed off"), 20)
+	var reg: Variant = load("res://dlc/pack_registry.gd")
+	var wt: String = str(reg.text(m.pack, "won_title")) if reg != null and m.pack != ArcadeCoop.PACK_ID else ""
+	var ws: String = str(reg.text(m.pack, "won_sub")) if reg != null and m.pack != ArcadeCoop.PACK_ID else ""
+	_title(box, TranslationServer.translate(wt if wt != "" else "Site cleared!"))
+	_line(box, "Sub", TranslationServer.translate(ws if ws != "" else "The Client signed off"), 20)
 	_coin_row(box, TranslationServer.translate("+%d coins") % m.run_coins)
 	if m.seats.size() > 1: _line(box, "CoopCoins", TranslationServer.translate("Everyone keeps the coins"), 16)
-	var hat := TranslationServer.translate(LockerData.hat_name(ArcadeManager.FOREMAN_HAT))
-	if bool(m.victory.get("hat_first", false)):
+	var hat_id := m.victory_hat()
+	var hat := TranslationServer.translate(LockerData.hat_name(hat_id))
+	if hat_id == "":
+		pass                                           # a pack with no victory hat: coins only
+	elif bool(m.victory.get("hat_first", false)):
 		_line(box, "Hat", TranslationServer.translate("New hat: %s") % hat, 19, false, UiTheme.GOOD)
 	elif bool(m.victory.get("hat_owned", false)):
 		_line(box, "Hat", TranslationServer.translate("You own the %s") % hat, 19)

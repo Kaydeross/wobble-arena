@@ -11,17 +11,19 @@ const BLACK := Color("#14120b")
 ## Diagonal black / yellow warning tape filling its rectangle.
 class Hazard extends Control:
 	var stripe := 14.0
+	var tape := ConstructionStyle.YELLOW     ## the two tape colours (a DLC pack paints its own: the hub, the Arcade cards)
+	var tape2 := ConstructionStyle.BLACK
 	func _init() -> void:
 		clip_contents = true
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 	func _ready() -> void:
 		resized.connect(queue_redraw)
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), ConstructionStyle.YELLOW)
+		draw_rect(Rect2(Vector2.ZERO, size), tape)
 		var h := size.y
 		var x := -h
 		while x < size.x:
-			draw_colored_polygon(PackedVector2Array([Vector2(x, h), Vector2(x + stripe, h), Vector2(x + stripe + h, 0.0), Vector2(x + h, 0.0)]), ConstructionStyle.BLACK)
+			draw_colored_polygon(PackedVector2Array([Vector2(x, h), Vector2(x + stripe, h), Vector2(x + stripe + h, 0.0), Vector2(x + h, 0.0)]), tape2)
 			x += stripe * 2.0
 
 ## A small padlock (shackle, body, keyhole).
