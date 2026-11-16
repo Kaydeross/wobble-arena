@@ -2911,6 +2911,13 @@
   "fr": "Deathmatch",
   "es": "Deathmatch"
  },
+ "Deaths": {
+  "zh_TW": "死亡",
+  "zh_CN": "死亡",
+  "ja": "死亡",
+  "fr": "Morts",
+  "es": "Muertes"
+ },
  "Deck Hand": {
   "zh_TW": "甲板水手",
   "zh_CN": "甲板水手",
@@ -5031,6 +5038,13 @@
   "ja": "多",
   "fr": "Beaucoup",
   "es": "Muchas"
+ },
+ "Match result": {
+  "zh_TW": "比賽結果",
+  "zh_CN": "比赛结果",
+  "ja": "試合結果",
+  "fr": "Résultat du match",
+  "es": "Resultado"
  },
  "Match started": {
   "zh_TW": "比賽開始",
@@ -7173,6 +7187,13 @@
   "ja": "名前なしの利用データを共有",
   "fr": "Partager des données d'usage anonymes",
   "es": "Compartir datos de uso anónimos"
+ },
+ "Share card": {
+  "zh_TW": "分享卡片",
+  "zh_CN": "分享卡片",
+  "ja": "シェア",
+  "fr": "Partager",
+  "es": "Compartir"
  },
  "Sharp steering, quick reloads": {
   "zh_TW": "轉向靈敏，換彈快",
@@ -9462,6 +9483,13 @@
   "ja": "ルームを出ました。",
   "fr": "Salon quitté.",
   "es": "Has salido de la sala."
+ },
+ "You lose": {
+  "zh_TW": "你輸了",
+  "zh_CN": "你输了",
+  "ja": "あなたの負け",
+  "fr": "Tu as perdu",
+  "es": "Has perdido"
  },
  "You need %d more coins.": {
   "zh_TW": "還差 %d 金幣。",
