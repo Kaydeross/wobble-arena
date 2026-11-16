@@ -1,0 +1,10 @@
+{
+ "_readme": "Ho Ho Ho DLC pack manifest (docs/CONSTRUCTION_DLC.md, 'DLC pack manifest'; docs/PACKS_BRIEF.md). Same fields as construction/pack.json: id (= folder name), name (display name), version, requires, and the weapons / modes / stages sections (files relative to this folder). Data only: no new combat code.",
+ "id": "xmas",
+ "name": "Ho Ho Ho",
+ "version": 1,
+ "requires": [],
+ "weapons": "weapons.json",
+ "modes": "modes.json",
+ "stages": "stages.json"
+}

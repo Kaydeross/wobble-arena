@@ -123,6 +123,8 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-construction-data
         if: matrix.shard == 'net'
+      - run: npm run test:godot-packs-data
+        if: matrix.shard == 'net'
       - run: npm run test:godot-dlc-ui    # (blocking again: its Linux crash was the SystemFont fallback cycle, fixed in autoload/lang.gd)
         if: matrix.shard == 'rest'
       - run: npm run test:godot-title

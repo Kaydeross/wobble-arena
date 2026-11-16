@@ -720,6 +720,27 @@
   "fr": "5 contre 5 avec événements aléatoires : pluie de caisses, gravité faible, tempêtes de recul, géants. Première équipe à 50 K.O. gagne. Bonne chance",
   "es": "5 contra 5 con eventos aleatorios: lluvia de cajas, gravedad baja, tormentas de empuje, gigantes. El primer equipo en 50 K.O. gana. ¡Buena suerte!"
  },
+ "6 Weapons + Backyard BBQ": {
+  "zh_TW": "6 種武器 + 後院 BBQ",
+  "zh_CN": "6 种武器 + 后院 BBQ",
+  "ja": "武器 6 種 + 裏庭BBQ",
+  "fr": "6 armes + Barbecue au jardin",
+  "es": "6 armas + Barbacoa en el jardín"
+ },
+ "6 Weapons + Kitchen Chaos": {
+  "zh_TW": "6 種武器 + 廚房大亂鬥",
+  "zh_CN": "6 种武器 + 厨房大乱斗",
+  "ja": "武器 6 種 + カオスキッチン",
+  "fr": "6 armes + Cuisine en folie",
+  "es": "6 armas + Cocina caótica"
+ },
+ "6 Weapons + Toy Workshop": {
+  "zh_TW": "6 種武器 + 玩具屋",
+  "zh_CN": "6 种武器 + 玩具屋",
+  "ja": "武器 6 種 + おもちゃ工場",
+  "fr": "6 armes + Atelier de jouets",
+  "es": "6 armas + Taller de juguetes"
+ },
  "9 Weapons + Site Yard": {
   "zh_TW": "9 種武器 + 工地廣場",
   "zh_CN": "9 种武器 + 工地广场",
@@ -1322,6 +1343,13 @@
   "fr": "Audio",
   "es": "Audio"
  },
+ "Aussie Boomerang": {
+  "zh_TW": "袋鼠回力鏢",
+  "zh_CN": "袋鼠回力镖",
+  "ja": "オージーブーメラン",
+  "fr": "Boomerang australien",
+  "es": "Bumerán australiano"
+ },
  "Auto": {
   "zh_TW": "自動",
   "zh_CN": "自动",
@@ -1363,6 +1391,13 @@
   "ja": "平均fps",
   "fr": "fps moyen",
   "es": "fps medio"
+ },
+ "BBQ Tongs": {
+  "zh_TW": "BBQ 夾子",
+  "zh_CN": "BBQ 夹子",
+  "ja": "BBQトング",
+  "fr": "Pince à barbecue",
+  "es": "Pinzas de barbacoa"
  },
  "BLUE": {
   "zh_TW": "藍隊",
@@ -1419,6 +1454,20 @@
   "ja": "職人の応援！",
   "fr": "Ouvriers en renfort !",
   "es": "¡Obreros de refuerzo!"
+ },
+ "Backyard Mates": {
+  "zh_TW": "後院朋友",
+  "zh_CN": "后院朋友",
+  "ja": "裏庭の仲間たち",
+  "fr": "Potes du jardin",
+  "es": "Colegas del jardín"
+ },
+ "Bah, humbug! He wants his holiday quiet.": {
+  "zh_TW": "哼，無聊！他想安靜過節。",
+  "zh_CN": "哼，无聊！他想安静过节。",
+  "ja": "ふん、くだらん！静かに休みたいだけ。",
+  "fr": "Bah, balivernes ! Il veut des fêtes tranquilles.",
+  "es": "¡Bah, paparruchas! Quiere unas fiestas tranquilas."
  },
  "Balanced. No surprises": {
   "zh_TW": "均衡，沒有意外",
@@ -1524,6 +1573,20 @@
   "ja": "ビッグバット",
   "fr": "Grosse batte",
   "es": "Bate gigante"
+ },
+ "Big Bruce": {
+  "zh_TW": "巨型 Bruce",
+  "zh_CN": "巨型 Bruce",
+  "ja": "ビッグ・ブルース",
+  "fr": "Gros Bruce",
+  "es": "Bruce el grande"
+ },
+ "Big Santa": {
+  "zh_TW": "巨型聖誕老人",
+  "zh_CN": "巨型圣诞老人",
+  "ja": "ビッグサンタ",
+  "fr": "Gros Père Noël",
+  "es": "Papá Noel gigante"
  },
  "Big team fight. First team to 20": {
   "zh_TW": "大型團戰。先達 20 次擊倒的隊伍勝",
@@ -1875,6 +1938,13 @@
   "fr": "Oreilles de lapin",
   "es": "Orejas de conejo"
  },
+ "Bush hat, big heart, bigger tongs.": {
+  "zh_TW": "草帽、大大的心、更大的夾子。",
+  "zh_CN": "草帽、大大的心、更大的夹子。",
+  "ja": "ブッシュハット、大きな心、もっと大きなトング。",
+  "fr": "Chapeau de brousse, grand cœur, pince encore plus grande.",
+  "es": "Sombrero de monte, gran corazón, pinzas aún más grandes."
+ },
  "Button opacity": {
   "zh_TW": "按鈕不透明度",
   "zh_CN": "按钮不透明度",
@@ -1980,6 +2050,13 @@
   "fr": "Pays des bonbons",
   "es": "Tierra de caramelo"
  },
+ "Candy canes, snowballs and gift bombs in Santa's toy workshop. Mind the ice": {
+  "zh_TW": "在聖誕老人的玩具屋裡，拐杖糖、雪球和禮物炸彈。小心冰面",
+  "zh_CN": "在圣诞老人的玩具屋里，拐杖糖、雪球和礼物炸弹。小心冰面",
+  "ja": "サンタのおもちゃ工場でキャンディケイン、雪玉、ギフトボム。氷に注意",
+  "fr": "Cannes en sucre, boules de neige et cadeaux piégés dans l'atelier du Père Noël. Attention à la glace",
+  "es": "Bastones de caramelo, bolas de nieve y regalos bomba en el taller de Papá Noel. Cuidado con el hielo"
+ },
  "Cappuccino Assassino": {
   "zh_TW": "卡布奇諾刺客",
   "zh_CN": "卡布奇诺刺客",
@@ -2071,12 +2148,26 @@
   "fr": "Chef",
   "es": "Chef"
  },
+ "Chef Inferno": {
+  "zh_TW": "火焰主廚",
+  "zh_CN": "火焰主厨",
+  "ja": "インフェルノシェフ",
+  "fr": "Chef Inferno",
+  "es": "Chef Infierno"
+ },
  "Chill Out": {
   "zh_TW": "放鬆",
   "zh_CN": "放松",
   "ja": "くつろぎ",
   "fr": "Détente",
   "es": "Relax"
+ },
+ "Chilly welcome. Watch your footing on the ice.": {
+  "zh_TW": "冰冰的歡迎。在冰面上站穩腳步。",
+  "zh_CN": "冰冰的欢迎。在冰面上站稳脚步。",
+  "ja": "ひんやりおもてなし。氷の上では足元に注意。",
+  "fr": "Accueil glacial. Fais attention à tes pieds sur la glace.",
+  "es": "Bienvenida fría. Cuidado con los pies sobre el hielo."
  },
  "Chinese and Japanese text no longer shows empty boxes for missing characters": {
   "zh_TW": "中文和日文不會再因為缺字而顯示空白方塊",
@@ -2175,6 +2266,13 @@
   "ja": "クリア済み：今回のコインはなし",
   "fr": "Déjà réussie : pas de pièces cette fois",
   "es": "Ya superada: sin monedas esta vez"
+ },
+ "Cleaver": {
+  "zh_TW": "廚刀",
+  "zh_CN": "菜刀",
+  "ja": "クリーバー",
+  "fr": "Couperet",
+  "es": "Cuchilla"
  },
  "Click to look": {
   "zh_TW": "點擊轉動視角",
@@ -2708,6 +2806,27 @@
   "fr": "Combat d'équipe",
   "es": "Pelea de cuadrilla"
  },
+ "Cricket Bat": {
+  "zh_TW": "板球拍",
+  "zh_CN": "板球拍",
+  "ja": "クリケットバット",
+  "fr": "Batte de cricket",
+  "es": "Bate de críquet"
+ },
+ "Cricket Captain": {
+  "zh_TW": "板球隊長",
+  "zh_CN": "板球队长",
+  "ja": "クリケットキャプテン",
+  "fr": "Capitaine de cricket",
+  "es": "Capitán de críquet"
+ },
+ "Cricket bats, boomerangs and flying thongs in a backyard BBQ. Mind the clothesline": {
+  "zh_TW": "在後院 BBQ 派對裡，板球拍、回力鏢和亂飛的夾腳拖。小心衣架",
+  "zh_CN": "在后院 BBQ 派对里，板球拍、回力镖和乱飞的人字拖。小心衣架",
+  "ja": "裏庭BBQで、クリケットバットとブーメランと飛んでくるビーサン。物干しに注意",
+  "fr": "Battes de cricket, boomerangs et tongs volantes dans un barbecue au jardin. Attention au séchoir",
+  "es": "Bates de críquet, bumeranes y chanclas voladoras en una barbacoa en el jardín. Cuidado con el tendedero"
+ },
  "Crimson Samurai": {
   "zh_TW": "赤紅武士",
   "zh_CN": "赤红武士",
@@ -2967,6 +3086,13 @@
   "fr": "Réservé aux développeurs. Taper vite, puis tourner",
   "es": "Solo desarrolladores. Escribe rápido y gira"
  },
+ "Didgeridoo Blaster": {
+  "zh_TW": "Didgeridoo 砲",
+  "zh_CN": "Didgeridoo 炮",
+  "ja": "ディジュリドゥブラスター",
+  "fr": "Blaster didgeridoo",
+  "es": "Bláster didgeridoo"
+ },
  "Different game version": {
   "zh_TW": "遊戲版本不同",
   "zh_CN": "游戏版本不同",
@@ -2974,12 +3100,26 @@
   "fr": "Version du jeu différente",
   "es": "Versión del juego diferente"
  },
+ "Dinner Rush!": {
+  "zh_TW": "尖峰時間！",
+  "zh_CN": "高峰时间！",
+  "ja": "ディナーラッシュ！",
+  "fr": "Coup de feu !",
+  "es": "¡Hora punta!"
+ },
  "Disco Point": {
   "zh_TW": "迪斯可指",
   "zh_CN": "迪斯科指",
   "ja": "ディスコポイント",
   "fr": "Pointé disco",
   "es": "Señalar disco"
+ },
+ "Dishie Bot": {
+  "zh_TW": "廚房機器人",
+  "zh_CN": "厨房机器人",
+  "ja": "ディッシュボット",
+  "fr": "Robot plongeur",
+  "es": "Robot friegaplatos"
  },
  "Does the arena floor move? Random = a different moving floor every match": {
   "zh_TW": "競技場地板會移動嗎？隨機 = 每場比賽的移動地板都不同",
@@ -3197,6 +3337,13 @@
   "ja": "エフェクト",
   "fr": "Effets",
   "es": "Efectos"
+ },
+ "Elf Workshop": {
+  "zh_TW": "精靈玩具屋",
+  "zh_CN": "精灵玩具屋",
+  "ja": "エルフの工場",
+  "fr": "Atelier des elfes",
+  "es": "Taller de los elfos"
  },
  "Email (for your account, never shown)": {
   "zh_TW": "電子郵件（用於帳號，不會顯示）",
@@ -3653,6 +3800,13 @@
   "fr": "Drapeau libre",
   "es": "Bandera libre"
  },
+ "Flambé Torch": {
+  "zh_TW": "噴槍",
+  "zh_CN": "喷枪",
+  "ja": "バーナー",
+  "fr": "Chalumeau flambé",
+  "es": "Soplete de cocina"
+ },
  "Flamethrower": {
   "zh_TW": "火焰噴射器",
   "zh_CN": "火焰喷射器",
@@ -3666,6 +3820,13 @@
   "ja": "平ら",
   "fr": "Plat",
   "es": "Plano"
+ },
+ "Flip, flop, thwap. Calls in a mate when pressed.": {
+  "zh_TW": "拍拍拍！被打到就會叫朋友。",
+  "zh_CN": "拍拍拍！被打到就会叫朋友。",
+  "ja": "ペタ、ペタ、バシッ。追い込まれると仲間を呼びます。",
+  "fr": "Flip, flop, paf. Appelle un copain quand il est pressé.",
+  "es": "Flip, flop, ¡zas! Llama a un colega cuando lo aprietan."
  },
  "Floating": {
   "zh_TW": "漂浮",
@@ -3708,6 +3869,20 @@
   "ja": "床の地震",
   "fr": "Sol qui tremble",
   "es": "Suelo sísmico"
+ },
+ "Flour power. Mind the falling ingredients.": {
+  "zh_TW": "甜點大爆發。小心掉下來的材料。",
+  "zh_CN": "甜点大爆发。小心掉下来的材料。",
+  "ja": "フラワーパワー全開。落ちてくる材料に注意。",
+  "fr": "Pouvoir de la farine. Attention aux ingrédients qui tombent.",
+  "es": "El poder de la harina. Cuidado con los ingredientes que caen."
+ },
+ "Food Critic": {
+  "zh_TW": "評論家",
+  "zh_CN": "评论家",
+  "ja": "フードクリティック",
+  "fr": "Critique gastronomique",
+  "es": "Crítico gastronómico"
  },
  "Forgot password": {
   "zh_TW": "忘記密碼",
@@ -3820,6 +3995,20 @@
   "ja": "フロストバイキング",
   "fr": "Viking du givre",
   "es": "Vikingo de escarcha"
+ },
+ "Frying Pan": {
+  "zh_TW": "平底鍋",
+  "zh_CN": "平底锅",
+  "ja": "フライパン",
+  "fr": "Poêle à frire",
+  "es": "Sartén"
+ },
+ "Frying pans, flames and flying soup in a chaotic kitchen. Aprons recommended": {
+  "zh_TW": "平底鍋、火焰和亂飛的熱鍋，一團混亂的廚房大亂鬥",
+  "zh_CN": "平底锅、火焰和乱飞的热锅，一团混乱的厨房大乱斗",
+  "ja": "カオスなキッチンでフライパンと炎と飛んでくるスープ。エプロン推奨",
+  "fr": "Poêles, flammes et soupe volante dans une cuisine chaotique. Tablier conseillé",
+  "es": "Sartenes, llamas y sopa voladora en una cocina caótica. Se recomienda delantal"
  },
  "Full": {
   "zh_TW": "已滿",
@@ -3940,6 +4129,13 @@
   "fr": "Géant",
   "es": "Gigante"
  },
+ "Giant Candy Cane": {
+  "zh_TW": "巨型拐杖糖",
+  "zh_CN": "巨型拐杖糖",
+  "ja": "特大キャンディケイン",
+  "fr": "Canne en sucre géante",
+  "es": "Bastón de caramelo gigante"
+ },
  "Giant Mallet": {
   "zh_TW": "巨型木槌",
   "zh_CN": "巨型木槌",
@@ -3960,6 +4156,27 @@
   "ja": "巨人のプレイルーム",
   "fr": "Salle de jeux du géant",
   "es": "Cuarto de juegos del gigante"
+ },
+ "Gift Bomb": {
+  "zh_TW": "禮物炸彈",
+  "zh_CN": "礼物炸弹",
+  "ja": "ギフトボム",
+  "fr": "Cadeau piégé",
+  "es": "Regalo bomba"
+ },
+ "Gift Drop!": {
+  "zh_TW": "禮物從天而降！",
+  "zh_CN": "礼物从天而降！",
+  "ja": "ギフトが降ってくる！",
+  "fr": "Pluie de cadeaux !",
+  "es": "¡Lluvia de regalos!"
+ },
+ "Gift barrage incoming. Mind the presents.": {
+  "zh_TW": "禮物彈幕來了。小心禮物。",
+  "zh_CN": "礼物弹幕来了。小心礼物。",
+  "ja": "ギフトの雨が来る。落ちてくる箱に注意。",
+  "fr": "Pluie de cadeaux en approche. Attention aux paquets.",
+  "es": "Lluvia de regalos en camino. Cuidado con los paquetes."
  },
  "Goals": {
   "zh_TW": "目標",
@@ -4079,6 +4296,27 @@
   "ja": "グレネードランチャー",
   "fr": "Lance-grenades",
   "es": "Lanzagranadas"
+ },
+ "Grill Master": {
+  "zh_TW": "火力大師",
+  "zh_CN": "火力大师",
+  "ja": "グリルマスター",
+  "fr": "Maître du grill",
+  "es": "Maestro de la parrilla"
+ },
+ "Grill Sergeant": {
+  "zh_TW": "BBQ 隊長",
+  "zh_CN": "BBQ 队长",
+  "ja": "グリル教官",
+  "fr": "Sergent du grill",
+  "es": "Sargento de la parrilla"
+ },
+ "Grumpy Gus": {
+  "zh_TW": "不開心的 Gus",
+  "zh_CN": "不开心的 Gus",
+  "ja": "ぶつぶつガス",
+  "fr": "Gus le grincheux",
+  "es": "Gus el gruñón"
  },
  "Guest": {
   "zh_TW": "訪客",
@@ -4234,6 +4472,13 @@
   "fr": "Atterrissage héroïque",
   "es": "Aterrizaje heroico"
  },
+ "Hey Mate": {
+  "zh_TW": "你好，朋友",
+  "zh_CN": "你好，朋友",
+  "ja": "やあ、友よ",
+  "fr": "Salut, mon pote",
+  "es": "Eh, colega"
+ },
  "Hidden under %s. Shows with no outfit": {
   "zh_TW": "被 %s 遮住。不穿服裝時會顯示",
   "zh_CN": "被 %s 遮住。不穿服装时会显示",
@@ -4282,6 +4527,27 @@
   "ja": "一撃はトラック級、振りはちょっと遅めです。すごくご立腹です",
   "fr": "Frappe comme un camion, balance un peu moins vite. Très fâché",
   "es": "Pega como un camión, se mueve un poco más lento. Muy enfadado"
+ },
+ "Ho Ho Ho": {
+  "zh_TW": "Ho Ho Ho",
+  "zh_CN": "Ho Ho Ho",
+  "ja": "ホーホーホー",
+  "fr": "Ho Ho Ho",
+  "es": "Jo jo jo"
+ },
+ "Ho ho ho! The biggest present of all.": {
+  "zh_TW": "Ho ho ho！最大的一份禮物。",
+  "zh_CN": "Ho ho ho！最大的一份礼物。",
+  "ja": "ホーホーホー！いちばん大きなギフト。",
+  "fr": "Ho ho ho ! Le plus gros cadeau de tous.",
+  "es": "¡Jo, jo, jo! El regalo más grande de todos."
+ },
+ "Hoist Sweep!": {
+  "zh_TW": "衣架亂轉！",
+  "zh_CN": "衣架乱转！",
+  "ja": "物干しスイープ！",
+  "fr": "Séchoir en rotation !",
+  "es": "¡Tendedero giratorio!"
  },
  "Hold": {
   "zh_TW": "按住",
@@ -4395,6 +4661,27 @@
   "fr": "Héberger un salon demande un compte. Rejoindre fonctionne en invité.",
   "es": "Alojar una sala requiere cuenta. Unirse funciona como invitado."
  },
+ "Hot Soup Pot": {
+  "zh_TW": "熱鍋",
+  "zh_CN": "热锅",
+  "ja": "熱々スープポット",
+  "fr": "Marmite de soupe chaude",
+  "es": "Olla de sopa caliente"
+ },
+ "Hot, hot, hot. Stay off the burners.": {
+  "zh_TW": "好熱好熱好熱。離火遠一點。",
+  "zh_CN": "好热好热好热。离火远一点。",
+  "ja": "あつ、あつ、あつ。コンロに近づかないで。",
+  "fr": "Chaud, chaud, chaud. Éloigne-toi des feux.",
+  "es": "Calor, calor, calor. Aléjate de los fogones."
+ },
+ "Howzat! Duck under the spinning clothesline.": {
+  "zh_TW": "出局！快躲開旋轉的衣架。",
+  "zh_CN": "出局！快躲开旋转的衣架。",
+  "ja": "ハウザット！回る物干しをよけろ。",
+  "fr": "Howzat ! Baisse-toi sous le séchoir qui tourne.",
+  "es": "¡Howzat! Agáchate bajo el tendedero giratorio."
+ },
  "Huge": {
   "zh_TW": "超大",
   "zh_CN": "超大",
@@ -4422,6 +4709,13 @@
   "ja": "氷",
   "fr": "Glace",
   "es": "Hielo"
+ },
+ "Ice Alert!": {
+  "zh_TW": "冰面警報！",
+  "zh_CN": "冰面警报！",
+  "ja": "氷に注意！",
+  "fr": "Alerte verglas !",
+  "es": "¡Alerta de hielo!"
  },
  "In room \"%s\" as player %d. Waiting for the host to start…": {
   "zh_TW": "已進入房間「%s」，你是玩家 %d。等待房主開始…",
@@ -4807,6 +5101,13 @@
   "ja": "さあ、遊ぼう",
   "fr": "C'est parti",
   "es": "¡A jugar!"
+ },
+ "Line Cooks": {
+  "zh_TW": "廚房小組",
+  "zh_CN": "厨房小组",
+  "ja": "ラインコック",
+  "fr": "Cuisiniers de ligne",
+  "es": "Cocineros de línea"
  },
  "Live Wire": {
   "zh_TW": "電鞭",
@@ -5669,6 +5970,13 @@
   "fr": "Les nombres apparaissent au-dessus du joueur touché",
   "es": "Los números aparecen sobre el jugador al que golpeas"
  },
+ "Nutcracker": {
+  "zh_TW": "堅果鉗",
+  "zh_CN": "Nutcracker",
+  "ja": "くるみ割り人形",
+  "fr": "Casse-noisette",
+  "es": "Cascanueces"
+ },
  "OK": {
   "zh_TW": "確定",
   "zh_CN": "确定",
@@ -5717,6 +6025,13 @@
   "ja": "オン",
   "fr": "Activé",
   "es": "Sí"
+ },
+ "On Fire": {
+  "zh_TW": "火力全開",
+  "zh_CN": "火力全开",
+  "ja": "燃えてます",
+  "fr": "En feu",
+  "es": "En llamas"
  },
  "One control scheme per device, a Controls screen that shows yours, and a hands-on Training run": {
   "zh_TW": "每種裝置一套操作方式，操作畫面會顯示你在用的那一套，還有可以動手玩的訓練",
@@ -5858,6 +6173,27 @@
   "fr": "Casque orange",
   "es": "Casco naranja"
  },
+ "Order Up!": {
+  "zh_TW": "準備好了！",
+  "zh_CN": "好了！",
+  "ja": "オーダーアップ！",
+  "fr": "Commande prête !",
+  "es": "¡Pedido listo!"
+ },
+ "Order up! Keep your apron clean and your head down.": {
+  "zh_TW": "準備好了！頭低低的，別被打到。",
+  "zh_CN": "好了！头低低的，别被打到。",
+  "ja": "オーダーアップ！エプロンはきれいに、頭は低く。",
+  "fr": "Commande prête ! Garde ton tablier propre et la tête basse.",
+  "es": "¡Pedido listo! Mantén el delantal limpio y la cabeza baja."
+ },
+ "Ornament Launcher": {
+  "zh_TW": "聖誕球發射器",
+  "zh_CN": "圣诞球发射器",
+  "ja": "オーナメントランチャー",
+  "fr": "Lance-boules de Noël",
+  "es": "Lanzabolas navideñas"
+ },
  "Out": {
   "zh_TW": "出局",
   "zh_CN": "出局",
@@ -5878,6 +6214,13 @@
   "ja": "脱落 · 残り %d 人",
   "fr": "ÉLIMINÉ · %d en jeu",
   "es": "Fuera · quedan %d"
+ },
+ "Outback Ollie": {
+  "zh_TW": "大地 Ollie",
+  "zh_CN": "大地 Ollie",
+  "ja": "アウトバックのオリー",
+  "fr": "Ollie du bush",
+  "es": "Ollie del interior"
  },
  "Outfits": {
   "zh_TW": "服裝",
@@ -5949,6 +6292,13 @@
   "fr": "Les mots de passe font de 6 à 72 caractères.",
   "es": "Las contraseñas tienen de 6 a 72 caracteres."
  },
+ "Pastry Chef": {
+  "zh_TW": "甜點師",
+  "zh_CN": "甜点师",
+  "ja": "パティシエ",
+  "fr": "Chef pâtissier",
+  "es": "Chef pastelero"
+ },
  "Patch notes": {
   "zh_TW": "更新說明",
   "zh_CN": "更新说明",
@@ -5969,6 +6319,13 @@
   "ja": "一時停止中",
   "fr": "En pause",
   "es": "En pausa"
+ },
+ "Pepper Grinder": {
+  "zh_TW": "Pepper 磨",
+  "zh_CN": "Pepper 磨",
+  "ja": "ペッパーミル",
+  "fr": "Moulin à poivre",
+  "es": "Molinillo de pimienta"
  },
  "Perfect!": {
   "zh_TW": "完美！",
@@ -6614,6 +6971,13 @@
   "fr": "Actualiser",
   "es": "Actualizar"
  },
+ "Reindeer": {
+  "zh_TW": "Reindeer",
+  "zh_CN": "Reindeer",
+  "ja": "トナカイ",
+  "fr": "Renne",
+  "es": "Reno"
+ },
  "Reload": {
   "zh_TW": "換彈",
   "zh_CN": "换弹",
@@ -6802,6 +7166,13 @@
   "ja": "ロケットとグレネード。ドカン",
   "fr": "Roquettes et grenades. Boum",
   "es": "Cohetes y granadas. ¡Bum!"
+ },
+ "Rolling Pin": {
+  "zh_TW": "廚房木棒",
+  "zh_CN": "厨房木棒",
+  "ja": "めんぼう",
+  "fr": "Rouleau à pâtisserie",
+  "es": "Rodillo"
  },
  "Rooftops": {
   "zh_TW": "屋頂",
@@ -7068,6 +7439,13 @@
   "ja": "画面の揺れ",
   "fr": "Tremblement d'écran",
   "es": "Sacudida de pantalla"
+ },
+ "Scrub-a-dub-bonk. Calls in a mate when scuffed.": {
+  "zh_TW": "刷刷刷，咚！被打到就叫朋友來。",
+  "zh_CN": "刷刷刷，咚！被打到就叫朋友来。",
+  "ja": "ゴシゴシ、ボンク。ダメージを受けると仲間を呼びます。",
+  "fr": "Frotte, frotte, boum. Appelle un copain quand il est égratigné.",
+  "es": "Fregar, fregar, ¡bonk! Llama a un colega cuando se raya."
  },
  "Sea": {
   "zh_TW": "海上",
@@ -7426,6 +7804,20 @@
   "fr": "Taille",
   "es": "Tamaño"
  },
+ "Sizzle Time!": {
+  "zh_TW": "BBQ 時間！",
+  "zh_CN": "BBQ 时间！",
+  "ja": "ジュージュータイム！",
+  "fr": "C'est l'heure du grésillement !",
+  "es": "¡Hora de chisporrotear!"
+ },
+ "Sizzle drill, mate! Keep off the hotplate.": {
+  "zh_TW": "BBQ 大操練，朋友！別踩到熱盤。",
+  "zh_CN": "BBQ 大操练，朋友！别踩到热盘。",
+  "ja": "ジュージュー練習だ！熱い板には近づくな。",
+  "fr": "Exercice grésillant, mon pote ! Évite la plaque.",
+  "es": "¡Instrucción chisporroteante, colega! Lejos de la plancha."
+ },
  "Skater": {
   "zh_TW": "滑板少年",
   "zh_CN": "滑板少年",
@@ -7475,6 +7867,13 @@
   "fr": "Fluide !",
   "es": "¡Fluido!"
  },
+ "Snags are on. Mind the lads with the bats.": {
+  "zh_TW": "BBQ 開始了。小心拿球棒的朋友。",
+  "zh_CN": "BBQ 开始了。小心拿球棒的朋友。",
+  "ja": "ソーセージ焼けたよ。バットを持った仲間に注意。",
+  "fr": "Les saucisses sont sur le feu. Attention aux copains avec les battes.",
+  "es": "Las salchichas ya están. Cuidado con los colegas con bates."
+ },
  "Snake Shooter": {
   "zh_TW": "毒蛇發射器",
   "zh_CN": "毒蛇发射器",
@@ -7489,12 +7888,26 @@
   "fr": "Fusil de précision",
   "es": "Francotirador"
  },
+ "Snowball Blaster": {
+  "zh_TW": "雪球連發槍",
+  "zh_CN": "雪球连发枪",
+  "ja": "雪玉ブラスター",
+  "fr": "Lance-boules de neige",
+  "es": "Lanzabolas de nieve"
+ },
  "Snowball Cannon": {
   "zh_TW": "雪球砲",
   "zh_CN": "雪球炮",
   "ja": "スノーボールキャノン",
   "fr": "Canon à neige",
   "es": "Cañón de nieve"
+ },
+ "Snowman": {
+  "zh_TW": "雪人",
+  "zh_CN": "雪人",
+  "ja": "雪だるま",
+  "fr": "Bonhomme de neige",
+  "es": "Muñeco de nieve"
  },
  "Soak %s / %s": {
   "zh_TW": "測試 %s / %s",
@@ -7817,6 +8230,13 @@
   "ja": "かくかくと段階的に回転",
   "fr": "Raide, saccadé, tourne par étapes",
   "es": "Rígido, a sacudidas y girando por pasos"
+ },
+ "Stiff, shiny and a little bit cross. Calls in an elf.": {
+  "zh_TW": "硬硬的、亮亮的，有點生氣。會叫精靈來。",
+  "zh_CN": "硬硬的、亮亮的，有点生气。会叫精灵来。",
+  "ja": "カチカチでピカピカで、ちょっとおこりんぼ。エルフを呼びます。",
+  "fr": "Raide, brillant et un peu fâché. Appelle un elfe.",
+  "es": "Rígido, brillante y un poco enfadado. Llama a un elfo."
  },
  "Storm Surge": {
   "zh_TW": "風暴湧動",
@@ -8280,6 +8700,20 @@
   "fr": "L'arène s'agrandit ! De la place pour vaciller",
   "es": "¡La arena crece! Espacio para tambalearse"
  },
+ "The big backyard bash. Everyone is invited!": {
+  "zh_TW": "後院大派對。人人都來！",
+  "zh_CN": "后院大派对。人人都来！",
+  "ja": "裏庭の大パーティー。みんなで来てね！",
+  "fr": "La grande fête au jardin. Tout le monde est invité !",
+  "es": "¡La gran fiesta del jardín! ¡Todos están invitados!"
+ },
+ "The big finale. The whole kitchen is on fire!": {
+  "zh_TW": "壓軸大戲。整間廚房都著火了！",
+  "zh_CN": "压轴大戏。整间厨房都着火了！",
+  "ja": "大フィナーレ。キッチンが丸ごと燃えてる！",
+  "fr": "Le grand final. Toute la cuisine est en feu !",
+  "es": "¡El gran final! ¡Toda la cocina está en llamas!"
+ },
  "The big wobble update": {
   "zh_TW": "大晃動更新",
   "zh_CN": "大晃动更新",
@@ -8455,6 +8889,20 @@
   "fr": "Cette semaine",
   "es": "Esta semana"
  },
+ "Thong Champ": {
+  "zh_TW": "夾腳拖冠軍",
+  "zh_CN": "人字拖冠军",
+  "ja": "ビーサンチャンプ",
+  "fr": "Champion des tongs",
+  "es": "Campeón de chanclas"
+ },
+ "Thong Slapper": {
+  "zh_TW": "夾腳拖拍",
+  "zh_CN": "人字拖拍",
+  "ja": "ビーサンたたき",
+  "fr": "Tong claqueuse",
+  "es": "Chancla golpeadora"
+ },
  "Throwing Knives": {
   "zh_TW": "飛刀",
   "zh_CN": "飞刀",
@@ -8504,6 +8952,13 @@
   "fr": "Temps %s",
   "es": "Tiempo %s"
  },
+ "Tinsel Whip": {
+  "zh_TW": "彩條鞭",
+  "zh_CN": "彩条鞭",
+  "ja": "モールのムチ",
+  "fr": "Fouet en guirlande",
+  "es": "Látigo de espumillón"
+ },
  "Tiny and zippy, easy to launch": {
   "zh_TW": "又小又靈活，容易被彈飛",
   "zh_CN": "又小又灵活，容易被弹飞",
@@ -8517,6 +8972,13 @@
   "ja": "ちっちゃくてキビキビ。フリスビーみたいに飛ぶ",
   "fr": "Minuscule et vif. Vole comme un frisbee",
   "es": "Pequeño y rápido. Vuela como un frisbee"
+ },
+ "Tiny hats, big attitude. The toys are fighting back.": {
+  "zh_TW": "帽子小小，個性大大。玩具們反擊了。",
+  "zh_CN": "帽子小小，气势大大。玩具们反击了。",
+  "ja": "小さな帽子に大きな態度。おもちゃが反撃してきた。",
+  "fr": "Petits bonnets, grosse attitude. Les jouets se rebellent.",
+  "es": "Gorros pequeños, mucha actitud. Los juguetes contraatacan."
  },
  "Tip: Spring Glove does no damage, but it sends people flying.": {
   "zh_TW": "小提示：彈簧拳套不造成傷害，但能把人彈飛。",
@@ -8665,6 +9127,13 @@
   "fr": "Costaud et qui frappe fort. N'arrête pas d'en parler",
   "es": "Resistente y pega fuerte. No deja de hablar de ello"
  },
+ "Toy Mallet": {
+  "zh_TW": "玩具木槌",
+  "zh_CN": "玩具木槌",
+  "ja": "おもちゃのハンマー",
+  "fr": "Maillet jouet",
+  "es": "Mazo de juguete"
+ },
  "Toys": {
   "zh_TW": "玩具",
   "zh_CN": "玩具",
@@ -8805,6 +9274,13 @@
   "fr": "Deux rotations rapides, bras écartés",
   "es": "Dos giros rápidos, brazos abiertos"
  },
+ "Two stars. Needs more salt and fewer knock-outs.": {
+  "zh_TW": "兩星。鹽要多一點，擊倒要少一點。",
+  "zh_CN": "两星。盐要多一点，击倒要少一点。",
+  "ja": "星二つ。味つけをもっと、KOはもっと少なく。",
+  "fr": "Deux étoiles. Plus de sel et moins de K.O.",
+  "es": "Dos estrellas. Más sal y menos K.O."
+ },
  "Two teams, no friendly fire. First team to 30 K.O.s": {
   "zh_TW": "兩隊對戰，不會誤傷隊友。先達到 30 次擊倒的隊伍獲勝",
   "zh_CN": "两队对战，不会误伤队友。先达到 30 次击倒的队伍获胜",
@@ -8944,6 +9420,13 @@
   "ja": "ヴォールトフリップ",
   "fr": "Saut périlleux",
   "es": "Salto mortal"
+ },
+ "Vegemite Jar": {
+  "zh_TW": "Vegemite 盒子",
+  "zh_CN": "Vegemite 盒子",
+  "ja": "ベジマイトのびん",
+  "fr": "Pot de Vegemite",
+  "es": "Tarro de Vegemite"
  },
  "Version": {
   "zh_TW": "版本",

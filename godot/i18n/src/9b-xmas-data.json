@@ -1,0 +1,163 @@
+{
+ "Ho Ho Ho": {
+  "zh_TW": "Ho Ho Ho",
+  "zh_CN": "Ho Ho Ho",
+  "ja": "ホーホーホー",
+  "fr": "Ho Ho Ho",
+  "es": "Jo jo jo"
+ },
+ "6 Weapons + Toy Workshop": {
+  "zh_TW": "6 種武器 + 玩具屋",
+  "zh_CN": "6 种武器 + 玩具屋",
+  "ja": "武器 6 種 + おもちゃ工場",
+  "fr": "6 armes + Atelier de jouets",
+  "es": "6 armas + Taller de juguetes"
+ },
+ "Candy canes, snowballs and gift bombs in Santa's toy workshop. Mind the ice": {
+  "zh_TW": "在聖誕老人的玩具屋裡，拐杖糖、雪球和禮物炸彈。小心冰面",
+  "zh_CN": "在圣诞老人的玩具屋里，拐杖糖、雪球和礼物炸弹。小心冰面",
+  "ja": "サンタのおもちゃ工場でキャンディケイン、雪玉、ギフトボム。氷に注意",
+  "fr": "Cannes en sucre, boules de neige et cadeaux piégés dans l'atelier du Père Noël. Attention à la glace",
+  "es": "Bastones de caramelo, bolas de nieve y regalos bomba en el taller de Papá Noel. Cuidado con el hielo"
+ },
+ "Giant Candy Cane": {
+  "zh_TW": "巨型拐杖糖",
+  "zh_CN": "巨型拐杖糖",
+  "ja": "特大キャンディケイン",
+  "fr": "Canne en sucre géante",
+  "es": "Bastón de caramelo gigante"
+ },
+ "Snowball Blaster": {
+  "zh_TW": "雪球連發槍",
+  "zh_CN": "雪球连发枪",
+  "ja": "雪玉ブラスター",
+  "fr": "Lance-boules de neige",
+  "es": "Lanzabolas de nieve"
+ },
+ "Gift Bomb": {
+  "zh_TW": "禮物炸彈",
+  "zh_CN": "礼物炸弹",
+  "ja": "ギフトボム",
+  "fr": "Cadeau piégé",
+  "es": "Regalo bomba"
+ },
+ "Tinsel Whip": {
+  "zh_TW": "彩條鞭",
+  "zh_CN": "彩条鞭",
+  "ja": "モールのムチ",
+  "fr": "Fouet en guirlande",
+  "es": "Látigo de espumillón"
+ },
+ "Ornament Launcher": {
+  "zh_TW": "聖誕球發射器",
+  "zh_CN": "圣诞球发射器",
+  "ja": "オーナメントランチャー",
+  "fr": "Lance-boules de Noël",
+  "es": "Lanzabolas navideñas"
+ },
+ "Toy Mallet": {
+  "zh_TW": "玩具木槌",
+  "zh_CN": "玩具木槌",
+  "ja": "おもちゃのハンマー",
+  "fr": "Maillet jouet",
+  "es": "Mazo de juguete"
+ },
+ "Elf Workshop": {
+  "zh_TW": "精靈玩具屋",
+  "zh_CN": "精灵玩具屋",
+  "ja": "エルフの工場",
+  "fr": "Atelier des elfes",
+  "es": "Taller de los elfos"
+ },
+ "Tiny hats, big attitude. The toys are fighting back.": {
+  "zh_TW": "帽子小小，個性大大。玩具們反擊了。",
+  "zh_CN": "帽子小小，气势大大。玩具们反击了。",
+  "ja": "小さな帽子に大きな態度。おもちゃが反撃してきた。",
+  "fr": "Petits bonnets, grosse attitude. Les jouets se rebellent.",
+  "es": "Gorros pequeños, mucha actitud. Los juguetes contraatacan."
+ },
+ "Snowman": {
+  "zh_TW": "雪人",
+  "zh_CN": "雪人",
+  "ja": "雪だるま",
+  "fr": "Bonhomme de neige",
+  "es": "Muñeco de nieve"
+ },
+ "Chilly welcome. Watch your footing on the ice.": {
+  "zh_TW": "冰冰的歡迎。在冰面上站穩腳步。",
+  "zh_CN": "冰冰的欢迎。在冰面上站稳脚步。",
+  "ja": "ひんやりおもてなし。氷の上では足元に注意。",
+  "fr": "Accueil glacial. Fais attention à tes pieds sur la glace.",
+  "es": "Bienvenida fría. Cuidado con los pies sobre el hielo."
+ },
+ "Reindeer": {
+  "zh_TW": "Reindeer",
+  "zh_CN": "Reindeer",
+  "ja": "トナカイ",
+  "fr": "Renne",
+  "es": "Reno"
+ },
+ "Gift barrage incoming. Mind the presents.": {
+  "zh_TW": "禮物彈幕來了。小心禮物。",
+  "zh_CN": "礼物弹幕来了。小心礼物。",
+  "ja": "ギフトの雨が来る。落ちてくる箱に注意。",
+  "fr": "Pluie de cadeaux en approche. Attention aux paquets.",
+  "es": "Lluvia de regalos en camino. Cuidado con los paquetes."
+ },
+ "Nutcracker": {
+  "zh_TW": "堅果鉗",
+  "zh_CN": "Nutcracker",
+  "ja": "くるみ割り人形",
+  "fr": "Casse-noisette",
+  "es": "Cascanueces"
+ },
+ "Stiff, shiny and a little bit cross. Calls in an elf.": {
+  "zh_TW": "硬硬的、亮亮的，有點生氣。會叫精靈來。",
+  "zh_CN": "硬硬的、亮亮的，有点生气。会叫精灵来。",
+  "ja": "カチカチでピカピカで、ちょっとおこりんぼ。エルフを呼びます。",
+  "fr": "Raide, brillant et un peu fâché. Appelle un elfe.",
+  "es": "Rígido, brillante y un poco enfadado. Llama a un elfo."
+ },
+ "Grumpy Gus": {
+  "zh_TW": "不開心的 Gus",
+  "zh_CN": "不开心的 Gus",
+  "ja": "ぶつぶつガス",
+  "fr": "Gus le grincheux",
+  "es": "Gus el gruñón"
+ },
+ "Bah, humbug! He wants his holiday quiet.": {
+  "zh_TW": "哼，無聊！他想安靜過節。",
+  "zh_CN": "哼，无聊！他想安静过节。",
+  "ja": "ふん、くだらん！静かに休みたいだけ。",
+  "fr": "Bah, balivernes ! Il veut des fêtes tranquilles.",
+  "es": "¡Bah, paparruchas! Quiere unas fiestas tranquilas."
+ },
+ "Big Santa": {
+  "zh_TW": "巨型聖誕老人",
+  "zh_CN": "巨型圣诞老人",
+  "ja": "ビッグサンタ",
+  "fr": "Gros Père Noël",
+  "es": "Papá Noel gigante"
+ },
+ "Ho ho ho! The biggest present of all.": {
+  "zh_TW": "Ho ho ho！最大的一份禮物。",
+  "zh_CN": "Ho ho ho！最大的一份礼物。",
+  "ja": "ホーホーホー！いちばん大きなギフト。",
+  "fr": "Ho ho ho ! Le plus gros cadeau de tous.",
+  "es": "¡Jo, jo, jo! El regalo más grande de todos."
+ },
+ "Ice Alert!": {
+  "zh_TW": "冰面警報！",
+  "zh_CN": "冰面警报！",
+  "ja": "氷に注意！",
+  "fr": "Alerte verglas !",
+  "es": "¡Alerta de hielo!"
+ },
+ "Gift Drop!": {
+  "zh_TW": "禮物從天而降！",
+  "zh_CN": "礼物从天而降！",
+  "ja": "ギフトが降ってくる！",
+  "fr": "Pluie de cadeaux !",
+  "es": "¡Lluvia de regalos!"
+ }
+}
