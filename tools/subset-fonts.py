@@ -47,9 +47,14 @@ def catalog_chars(lang):
         chars.update(n)
     return ''.join(sorted(c for c in chars if ord(c) > 0x7f))
 
+coverage = {}
 for region, lang in LANG_OF.items():
     path = os.path.join(src, f'NotoSans{region}-Bold.otf')
     text = catalog_chars(lang)
+    cmap = TTFont(path).getBestCmap()
+    absent = [c for c in text if ord(c) not in cmap]
+    if absent: print(f'WARNING {region}: the source font has no glyph for {"".join(absent)}')
+    coverage[lang] = ''.join(c for c in text if ord(c) in cmap)
     opts = subset.Options()
     opts.layout_features = ['*']; opts.notdef_outline = True; opts.name_IDs = [1, 2, 3, 4, 6]; opts.hinting = False
     opts.drop_tables += ['DSIG']
@@ -64,3 +69,9 @@ for region, lang in LANG_OF.items():
         font.flavor = flavor
         font.save(out)
         print(f'{os.path.relpath(out, ROOT)}: {len(text)} chars, {os.path.getsize(out) // 1024} KB')
+
+# What the subsets cover, so `node tools/i18n.js --check` (npm test, CI) fails when a translation uses a character the
+# shipped fonts lack (it would show as a box on the web export and in the Godot build): rerun this script then.
+with open(os.path.join(ROOT, 'tools', 'cjk-coverage.json'), 'w', encoding='utf8') as f:
+    json.dump(coverage, f, ensure_ascii=False, indent=1)
+    f.write('\n')

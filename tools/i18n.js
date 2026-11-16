@@ -141,6 +141,15 @@ if (check) {
     let cur = ''; try { cur = fs.readFileSync(file, 'utf8'); } catch (e) { /* missing */ }
     if (cur !== text) { console.error(`${label} is out of date. Run: npm run i18n`); bad++; }
   }
+  // Every CJK / kana character a translation uses must be in the shipped subset fonts (tools/subset-fonts.py writes
+  // tools/cjk-coverage.json); a missing one renders as a box.
+  let cov = null; try { cov = JSON.parse(fs.readFileSync(path.join(__dirname, 'cjk-coverage.json'), 'utf8')); } catch (e) { /* none yet */ }
+  if (!cov) { console.error('tools/cjk-coverage.json is missing. Run: python3 tools/subset-fonts.py <dir with NotoSans{TC,SC,JP}-Bold.otf>'); bad++; }
+  else for (const lang of ['zh_TW', 'zh_CN', 'ja']) {
+    const have = new Set(cov[lang] || ''), miss = new Set();
+    for (const e of Object.values(webMerged)) for (const ch of (e && e[lang]) || '') { const cp = ch.codePointAt(0); if ((cp >= 0x2E80 && cp <= 0x9FFF || cp >= 0xF900 && cp <= 0xFAFF || cp >= 0xFF00 && cp <= 0xFFEF || cp >= 0x20000) && !have.has(ch)) miss.add(ch); }   // CJK, kana, fullwidth (emoji come from the system emoji font)
+    if (miss.size) { console.error(`${lang}: ${miss.size} character(s) missing from the subset font: ${[...miss].join('')}. Run: python3 tools/subset-fonts.py <dir with NotoSans{TC,SC,JP}-Bold.otf>`); bad++; }
+  }
   if (bad) process.exit(1);
   console.log(`translations ok: ${Object.keys(G.merged).length} godot + ${Object.keys(W.merged).length} web-only strings x ${LANGS.length} languages`);
 } else {

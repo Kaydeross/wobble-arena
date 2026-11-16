@@ -184,12 +184,15 @@ func _ready() -> void:
 	intro.closed.connect(func() -> void: if Tier.is_pc(): play.grab_focus.call_deferred())
 	var first: bool = auto_intro if auto_intro is bool else (Settings.persist and not bool(Settings.get_value("seen_intro", false)))
 	var quiet := session == null and join == "" and notice == ""
+	var newest := WhatsNew.newest_version()
+	# A brand-new player does not need the old notes. Mark them seen on the FIRST visit whichever card opens: before, this
+	# only ran when the intro did not open, so a new player's first return to the title (after Play / Quick play) popped
+	# What's new.
+	if first and Save.persist: Save.mark_news_seen(newest)
 	if first and quiet: intro.open()
 	else:
-		var newest := WhatsNew.newest_version()
 		var unseen: bool = auto_news if auto_news is bool else (Save.persist and newest != "" and newest != Save.last_seen_news)
 		if unseen and quiet and not first: news.open()
-		elif first and Save.persist: Save.mark_news_seen(newest)   # a brand-new player does not need the old notes
 
 ## Back (Escape / controller B via ui_cancel, Android's back gesture): close the top thing. The wizard and the Walldrobe
 ## handle ui_cancel themselves; the back gesture reaches them through here. On the bare title nothing happens.
@@ -570,7 +573,7 @@ func _status(t: String) -> void:
 func _fit_logo(avail: float, max_font: int) -> void:
 	var logo := $Safe/Col/Top/Logo as WobbleLogo
 	for two: bool in [false, true]:
-		logo.lines = PackedStringArray(["WOBBLERS", "ARENA"]) if two else PackedStringArray(["WOBBLERS ARENA"])
+		logo.lines = WobbleLogo.names(two)
 		var f := mini(max_font, 46) if two else max_font
 		var floor_f := 22 if two else 38
 		while f >= floor_f:
@@ -581,7 +584,7 @@ func _fit_logo(avail: float, max_font: int) -> void:
 ## The title home's logo: two lines (WOBBLERS / ARENA), `max_font` unless the room beside the chips is narrower.
 func _fit_logo_two(avail: float, max_font: int) -> void:
 	var logo := $Safe/Col/Top/Logo as WobbleLogo
-	logo.lines = PackedStringArray(["WOBBLERS", "ARENA"])
+	logo.lines = WobbleLogo.names(true)
 	var f := max_font
 	while f > 24:
 		logo.font_size = f
@@ -648,16 +651,20 @@ func apply_safe_area() -> void:
 ## Dock bottom left, Play bottom right, the version under it: each anchored to its corner of the hero area.
 func _fit_hero(inner: Vector2, u: float) -> void:
 	var k := minf(u, 2.0)
-	var d := dock.fit(k)
+	var ph := clampf(inner.y * 0.21, 84.0 * k, 128.0 * k)
+	var pw := clampf(inner.x * 0.31, 250.0 * k, 400.0 * k)
+	var d := dock.fit(k, inner.x - pw - 28.0 * k)          # (the dock never runs into Play, whatever the words are)
 	_corner(dock, false, d, Vector2.ZERO)
 	var build := hero.get_node("Build") as Label
 	build.add_theme_font_size_override("font_size", int(round(14.0 * minf(u, 1.8))))
 	var bs := build.get_combined_minimum_size()
 	_corner(build, true, bs, Vector2.ZERO)
-	var ph := clampf(inner.y * 0.21, 84.0 * k, 128.0 * k)
-	var pw := clampf(inner.x * 0.31, 250.0 * k, 400.0 * k)
-	(play.get_node("Row/Big") as Label).add_theme_font_size_override("font_size", int(ph * 0.6))
-	(play.get_node("Row/Icon") as TextureRect).custom_minimum_size = Vector2(ph * 0.42, ph * 0.42)
+	var big := play.get_node("Row/Big") as Label
+	var icon_w := ph * 0.42
+	var row_gap := float((play.get_node("Row") as BoxContainer).get_theme_constant("separation"))
+	var room := pw - icon_w - row_gap - 2.0 * 18.0 * k           # the word's room inside the button: its width minus the triangle, the gap and the padding
+	FitText.label(big, int(ph * 0.6), room, 18)                  # "Play" keeps its size; 開始遊戲 / Jugar step down until the word fits
+	(play.get_node("Row/Icon") as TextureRect).custom_minimum_size = Vector2(icon_w, icon_w)
 	play.custom_minimum_size = Vector2(pw, ph)
 	var lift := bs.y + 2.0
 	if inner.y > inner.x: lift += d.y + 12.0 * k      # (portrait is not a target, but Play must never sit on the dock)

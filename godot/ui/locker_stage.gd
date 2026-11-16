@@ -17,10 +17,14 @@ var _queue: Array = []
 static func look_key(lk: Dictionary) -> String:
 	return "live|%s|%s|%s|%d" % [lk.get("cls", "wobbler"), lk.get("skin", "none"), lk.get("hat", "none"), int(lk.get("color", 0))]
 
+const SIL_FILL := Color(0.03, 0.06, 0.09)       ## a masked item: this flat dark fill ...
+const SIL_RIM := 0.05                            ## ... and a rim of this width (model units) in the rarity colour
+
 func pose(id: String, yaw: float) -> void:
 	var lk: Dictionary = looks.get(id, {})
 	if lk.is_empty():
 		super.pose(id, yaw)
+		_flat(false)
 		return
 	_set_frame(str(lk.get("frame", "body")))
 	_wob.stop_emote()
@@ -28,10 +32,33 @@ func pose(id: String, yaw: float) -> void:
 	_wob.set_weapon("")
 	_wob.apply_state({"pos": Vector3.ZERO, "vel": Vector3.ZERO, "yaw": 0.0, "grounded": true, "aim": Vector3(0, -1, 0.35)})   # arm down: a compact pose to fit
 	for i in 90: _wob.animate(1.0 / 60.0)
+	_flat(lk.has("mask"), Color(lk.get("mask", "ffffff")))
 	_pivot.rotation.y = 0.0
 	fit_camera()
 	_pivot.rotation.y = yaw
 	current = id
+
+## A masked item (look["mask"] = the rim colour as a hex string) is drawn as a silhouette: every mesh gets one flat unlit dark
+## material (no colour, no texture, no detail) with an inverted-hull rim in `rim`, and the pedestal is hidden. The model never
+## shows in its own materials. Baked once, so no per-frame cost; plain materials work on every renderer.
+func _flat(on: bool, rim := Color.WHITE) -> void:
+	var ped := get_node_or_null("Pedestal") as MeshInstance3D
+	if ped != null: ped.visible = not on
+	var mat: StandardMaterial3D = null
+	if on:
+		mat = StandardMaterial3D.new()
+		mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mat.albedo_color = SIL_FILL
+		var hull := StandardMaterial3D.new()
+		hull.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		hull.albedo_color = rim
+		hull.cull_mode = BaseMaterial3D.CULL_FRONT
+		hull.grow = true
+		hull.grow_amount = SIL_RIM
+		mat.next_pass = hull
+	for n: Node in _wob.find_children("*", "MeshInstance3D", true, false):
+		(n as MeshInstance3D).material_override = mat
+		(n as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if on else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 ## Renders every key once (queued behind a bake already running).
 func bake(ids: Array) -> void:

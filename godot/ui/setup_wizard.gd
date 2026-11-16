@@ -607,6 +607,8 @@ func _card(title: String, sub: String, size: Vector2, art: Control = null, icon:
 		s.name = "Sub"
 		s.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		s.clip_text = true
+		if art != null:   # picture cards: one line under the picture; the font steps down (never below 12) before the text would be trimmed
+			s.resized.connect(func() -> void: if s.size.x >= 8.0: FitText.label(s, 15, s.size.x, 12))
 		if art == null:   # text-only cards: two lines of description
 			s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			s.max_lines_visible = 3
@@ -626,10 +628,11 @@ func _card(title: String, sub: String, size: Vector2, art: Control = null, icon:
 func _fit_title(l: Label, base: int) -> void:
 	if l.size.x < 8.0: return
 	var f := l.get_theme_font("font")
+	var txt := l.tr(l.text)        # (the translated word: the engine translates the English key itself when it draws)
 	var fs := base
-	while fs > 15 and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x:
+	while fs > 15 and f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x:
 		fs -= 1
-	if f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x and l.text.contains(" "):
+	if f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > l.size.x and txt.contains(" "):
 		fs = 17                     # still too long (French): two lines at a slightly smaller size, never an ellipsis
 		if l.autowrap_mode == TextServer.AUTOWRAP_OFF:
 			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

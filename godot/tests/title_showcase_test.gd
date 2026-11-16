@@ -239,6 +239,30 @@ func _apart(rects: Dictionary, tag: String) -> void:
 		for j in range(i + 1, keys.size()):
 			check(not (rects[keys[i]] as Rect2).grow(-0.5).intersects((rects[keys[j]] as Rect2).grow(-0.5)), "%s %s %s overlaps %s %s" % [tag, keys[i], rects[keys[i]], keys[j], rects[keys[j]]])
 
+## The title logo follows the language (zh_TW 搖擺擂台, zh_CN 摇摆擂台, ja グラグラ大乱闘; fr / es keep the brand) and
+## still fits its box, inside the safe area and clear of the coin / guest / gear chips, whatever the language.
+func _logo_langs(m: Control, rects: Dictionary, safe: Rect2, tag: String) -> void:
+	var logo := m.get_node("Safe/Col/Top/Logo") as WobbleLogo
+	var want := {"en": ["WOBBLERS", "ARENA"], "zh_TW": ["搖擺", "擂台"], "zh_CN": ["摇摆", "擂台"], "ja": ["グラグラ", "大乱闘"], "fr": ["WOBBLERS", "ARENA"], "es": ["WOBBLERS", "ARENA"]}
+	for loc: String in want:
+		TranslationServer.set_locale(loc)
+		await frames(3)
+		m.apply_safe_area()
+		await frames(2)
+		var ltag := "%s [%s]" % [tag, loc]
+		check(Array(logo.lines) == want[loc], "%s logo says %s (%s)" % [ltag, want[loc], logo.lines])
+		var lr := logo.get_global_rect()
+		check(safe.grow(0.5).encloses(lr), "%s logo %s inside the safe area" % [ltag, lr])
+		check(logo.get_combined_minimum_size().x <= logo.size.x + 0.5, "%s logo text fits its box (%.0f of %.0f)" % [ltag, logo.get_combined_minimum_size().x, logo.size.x])
+		for n: String in ["Coins", "Chip", "Gear"]:
+			check(not lr.grow(-0.5).intersects((rects[n] as Rect2).grow(-0.5)), "%s logo %s clear of %s %s" % [ltag, lr, n, rects[n]])
+		check(logo.font_size >= 36, "%s logo is big enough (%d)" % [ltag, logo.font_size])
+	TranslationServer.set_locale("en")
+	await frames(3)
+	m.apply_safe_area()
+	await frames(2)
+	check(Array(logo.lines) == ["WOBBLERS", "ARENA"], "%s switching back to English restores the logo" % tag)
+
 func _sizes(win: Vector2, ins_pt: Array) -> void:
 	var cs := UiScale.canvas_size(win, "normal", true)
 	var k := cs.x / win.x
@@ -267,6 +291,7 @@ func _sizes(win: Vector2, ins_pt: Array) -> void:
 	rects["Version"] = (m.hero.get_node("Build") as Control).get_global_rect()
 	check(safe.grow(0.5).encloses(rects["Dock"]) and safe.grow(0.5).encloses(rects["Logo"]) and safe.grow(0.5).encloses(rects["Version"]), "%s dock, logo and version inside the safe area" % tag)
 	_apart(rects, tag + " idle")
+	await _logo_langs(m, rects, safe, tag)
 	# the dock's words: legible (11 pt or more) and each fits its item; the items are apart; the no-subtitle rule: Play is one word
 	var items: Dictionary = {}
 	for it: Control in m.dock.row.get_children(): items[it.name] = it.get_global_rect()

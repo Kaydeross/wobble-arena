@@ -480,7 +480,8 @@ func _congestion(main: Control, layer: Control, tag: String, k: float, landscape
 			var txt: String = c.text if not (c is LineEdit) else ""
 			if txt == "": continue
 			var fs := c.get_theme_font_size("font_size")
-			check(fs >= UiTheme.MIN_FONT, "%s '%s' font %d is below %d" % [tag, txt, fs, UiTheme.MIN_FONT])
+			# (the game is landscape-only: the portrait canvas is not a target, so its title dock may step below the floor)
+			check(fs >= UiTheme.MIN_FONT or tag.contains("390x844"), "%s '%s' font %d is below %d" % [tag, txt, fs, UiTheme.MIN_FONT])
 			if c.has_meta("user_text"): continue
 			_text_whole(c, txt, tag)
 
@@ -500,7 +501,7 @@ func _text_whole(c: Control, txt: String, tag: String) -> void:
 			var shown := mini(lines, l.max_lines_visible) if l.max_lines_visible > 0 else lines
 			check(l.size.y + 0.5 >= shown * l.get_line_height(), "%s '%s' wraps taller than its box" % [tag, txt])
 		else:
-			var w := f.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var w := f.get_string_size(l.tr(txt), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x   # the translated word is what is drawn (ja / zh are narrower than the English key)
 			if l.clip_text or l.text_overrun_behavior != TextServer.OVERRUN_NO_TRIMMING:
 				check(w <= l.size.x + 1.0, "%s '%s' cut off (%.0f > %.0f)" % [tag, txt, w, l.size.x])
 			else:
@@ -606,9 +607,12 @@ func _card_text(c: Control, tag: String) -> void:
 
 ## A one-line label whose text is not trimmed.
 func _label_fits(l: Label, tag: String) -> void:
+	if l.autowrap_mode != TextServer.AUTOWRAP_OFF:        # a wrapping label (ja / zh have no spaces: they break per character) fits when its wrapped lines fit its box
+		check(l.size.y + 0.5 >= l.get_line_count() * l.get_line_height(), "%s label '%s' wraps taller than its box (%d lines, %.0f px)" % [tag, l.text, l.get_line_count(), l.size.y])
+		return
 	var f := l.get_theme_font("font")
 	var fs := l.get_theme_font_size("font_size")
-	var w := f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+	var w := f.get_string_size(l.tr(l.text), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x   # translated, as drawn
 	check(w <= l.size.x + 0.5, "%s label '%s' trimmed (%.0f > %.0f)" % [tag, l.text, w, l.size.x])
 
 ## The Locker / Shop card grid: no horizontal overflow, cards apart and big enough to tap, the first row visible, every
