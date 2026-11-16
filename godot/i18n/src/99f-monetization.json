@@ -1,0 +1,72 @@
+{
+ "Double coins": {
+  "zh_TW": "雙倍金幣",
+  "zh_CN": "双倍金币",
+  "ja": "コイン2倍",
+  "fr": "Doubler les pièces",
+  "es": "Duplicar monedas"
+ },
+ "2× daily bonus": {
+  "zh_TW": "每日獎勵 2倍",
+  "zh_CN": "每日奖励 2倍",
+  "ja": "デイリーボーナス2倍",
+  "fr": "Bonus quotidien ×2",
+  "es": "Bono diario ×2"
+ },
+ "Continue (+1 life)": {
+  "zh_TW": "繼續（+1 命）",
+  "zh_CN": "继续（+1 命）",
+  "ja": "コンティニュー（+1 ライフ）",
+  "fr": "Continuer (+1 vie)",
+  "es": "Continuar (+1 vida)"
+ },
+ "Remove ads": {
+  "zh_TW": "移除廣告",
+  "zh_CN": "移除广告",
+  "ja": "広告を削除",
+  "fr": "Supprimer les pubs",
+  "es": "Quitar anuncios"
+ },
+ "Restore purchases": {
+  "zh_TW": "恢復購買",
+  "zh_CN": "恢复购买",
+  "ja": "購入を復元",
+  "fr": "Restaurer les achats",
+  "es": "Restaurar compras"
+ },
+ "Opening the App Store…": {
+  "zh_TW": "正在開啟 App Store…",
+  "zh_CN": "正在打开 App Store…",
+  "ja": "App Store を開いています…",
+  "fr": "Ouverture de l'App Store…",
+  "es": "Abriendo la App Store…"
+ },
+ "Couldn't start the purchase. Try again in a moment.": {
+  "zh_TW": "無法開始購買。請稍後再試。",
+  "zh_CN": "无法开始购买。请稍后再试。",
+  "ja": "購入を開始できませんでした。しばらくしてからもう一度お試しください。",
+  "fr": "Impossible de lancer l'achat. Réessayez dans un instant.",
+  "es": "No se pudo iniciar la compra. Inténtalo de nuevo en un momento."
+ },
+ "Restoring purchases…": {
+  "zh_TW": "正在恢復購買…",
+  "zh_CN": "正在恢复购买…",
+  "ja": "購入を復元しています…",
+  "fr": "Restauration des achats…",
+  "es": "Restaurando compras…"
+ },
+ "Couldn't restore purchases. Try again in a moment.": {
+  "zh_TW": "無法恢復購買。請稍後再試。",
+  "zh_CN": "无法恢复购买。请稍后再试。",
+  "ja": "購入を復元できませんでした。しばらくしてからもう一度お試しください。",
+  "fr": "Impossible de restaurer les achats. Réessayez dans un instant.",
+  "es": "No se pudieron restaurar las compras. Inténtalo de nuevo en un momento."
+ },
+ "Purchases restored": {
+  "zh_TW": "購買已恢復",
+  "zh_CN": "购买已恢复",
+  "ja": "購入を復元しました",
+  "fr": "Achats restaurés",
+  "es": "Compras restauradas"
+ }
+}

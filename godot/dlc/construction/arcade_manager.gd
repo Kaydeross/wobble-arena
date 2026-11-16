@@ -86,6 +86,7 @@ var seed_base := 0
 var diff := DEFAULT_DIFF               ## easy, normal or nightmare (the table's `difficulties`; nightmare = the numbers as written)
 var player_class := ""                 ## the class picked for the run ("" = Settings "class")
 var lives := LIVES
+var continue_used := false             ## the one rewarded "+1 life" continue of this run (failed card)
 var stage := 0                         ## index into stages()
 var attempt := 0                       ## retries of this stage (fresh seed offset each)
 var state := "idle"                    ## idle, intro, fight, clearing, cleared, failing, failed, over, won
@@ -265,6 +266,7 @@ func init_online(arc: Dictionary, is_host: bool) -> void:
 	seat_count = clampi(seat_slots.size(), 1, ArcadeCoop.SEATS)
 	lives = int(arc.get("lv", ArcadeCoop.lives_for(diff, seat_count)))   # old hosts without `lv`: the co-op count
 	friendly_fire = bool(arc.get("ff", false))
+	continue_used = true            # online co-op: the continue is an offline-only card
 	rng.seed = seed_base
 	_seed_saved = SiteMap.current_seed
 	run_coins = 0; run_kos = 0; run_time = 0.0
@@ -279,7 +281,8 @@ func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF, p_seats: int = 1)
 	diff = p_diff if difficulties().has(p_diff) else DEFAULT_DIFF
 	seed_base = p_seed if p_seed > 0 else randi_range(1, 900000)
 	rng.seed = seed_base
-	lives = ArcadeCoop.lives_for(diff, seat_count); stage = 0; attempt = 0; state = "idle"
+	lives = ArcadeCoop.lives_for(diff, seat_count); continue_used = false
+	stage = 0; attempt = 0; state = "idle"
 	run_coins = 0; run_kos = 0; run_time = 0.0
 	history = []; last = {}; victory = {}
 	seats = []; seat_down = {}; seat_controls = []
@@ -1173,6 +1176,25 @@ func _failed() -> void:
 	_t_end = FAIL_DELAY
 	stage_failed.emit(stage)
 
+# ---------------- rewarded continue ----------------
+
+## The failed card's "Continue (+1 life)": one per offline run, only while the Ads policy allows a rewarded placement.
+func can_continue() -> bool:
+	if online or continue_used or state != "failed": return false
+	return AdUi.rewarded_visible(AdUi.ARCADE_CONTINUE)
+
+## Asks for the rewarded continue. A Remove ads owner is granted immediately (AdUi handles the free perk).
+func rewarded_continue() -> void:
+	if not can_continue(): return
+	if not AdUi.request_reward(AdUi.ARCADE_CONTINUE, _on_continue_result):
+		return
+
+func _on_continue_result(granted: bool) -> void:
+	if not granted or not can_continue(): return
+	continue_used = true
+	lives += 1
+	retry_stage()                     # the existing flow: same stage, fresh site, next attempt
+
 # ---------------- the seat API (the net layer maps its room slots onto these) ----------------
 
 ## The fighter of seat k (null out of range). Seats are in room-slot order: seat k is sim.fighters[k].
@@ -1308,7 +1330,8 @@ func _finish_attempt() -> void:
 			world.show_panel(ArcadePanels.over(self, quit_run))
 		else:
 			state = "failed"
-			world.show_panel(ArcadePanels.failed(self, retry_stage, quit_run))
+			if not online: Ads.on_attempt_ended()   # the failed card may offer a rewarded continue (not a finished match)
+			world.show_panel(ArcadePanels.failed(self, retry_stage, quit_run, false, rewarded_continue))
 
 ## The final victory: bonus coins and the Site Foreman hat, once. As with _pay(), each seat's share is in `seats`; this
 ## process pays this save once.
@@ -1342,6 +1365,7 @@ func next_stage() -> void:
 
 func retry_stage() -> void:
 	if state != "failed" or _reload_pending: return
+	if not online: Ads.on_match_started(false)        # the new attempt blocks ads again
 	attempt += 1
 	_reload()
 

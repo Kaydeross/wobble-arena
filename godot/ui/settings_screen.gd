@@ -43,6 +43,8 @@ var intro: IntroCards
 var code_sheet: DlcCodeSheet      ## the Construction code field: tap the version line 7 times in About (not in a match)
 var layout_editor: TouchLayoutEditor   ## Settings > Controls > Move buttons (ui/touch_layout_editor.gd)
 var reset_dialog: ResetDialog     ## Settings > About > Reset game: the irreversible confirmation (ui/reset_dialog.gd)
+var purchase_status: Label        ## Settings > Account: the Remove ads / Restore purchases result
+var _store_action := ""           ## the last purchase/restore the player asked for, for the result wording
 var _ver_taps := 0
 var _ver_t := 0
 
@@ -110,6 +112,7 @@ func _ready() -> void:
 	add_child(layout_editor)
 	layout_editor.closed.connect(_on_layout_closed)
 	Settings.changed.connect(_on_setting)
+	Entitlements.changed.connect(_on_entitlement_changed)
 	super._ready()
 	show_section(section)
 
@@ -212,6 +215,7 @@ func show_section(s: String) -> void:
 			else:
 				_buttons("Open", [["account", "Open account", func() -> void: account_requested.emit()]])
 			_toggle("analytics_optout", "Share anonymous usage data", "Helps us fix bugs and balance the game. No name, no account, nothing that identifies you. Never sent in Kids mode.", true)
+			_purchase_rows()
 		"about":
 			_info("Version", "Wobblers Arena", version_text())
 			var vl := rows.get_node_or_null("Row_Version/Words/Sub") as Label
@@ -228,6 +232,77 @@ func show_section(s: String) -> void:
 	JuicyButton.attach_all(rows)
 	scroll.scroll_vertical = 0
 	_focus_tab()
+
+# ============================== purchases (Remove ads / Restore) ==============================
+
+## Account: Remove ads and Restore purchases, only while a StoreKit/Play provider is registered and the purchases kill
+## switch is off (AdUi.purchases_visible). Apple review needs Restore purchases reachable from Settings.
+func _purchase_rows() -> void:
+	if not AdUi.purchases_visible(): return
+	var row := HBoxContainer.new()
+	row.name = "Row_Purchases"
+	row.custom_minimum_size = Vector2(0, TOUCH)
+	row.add_theme_constant_override("separation", 12)
+	rows.add_child(row)
+	var buy := Button.new()
+	buy.name = "RemoveAds"
+	buy.text = tr("Owned") if Entitlements.has("remove_ads") else tr("Remove ads")
+	buy.disabled = Entitlements.has("remove_ads")
+	buy.custom_minimum_size = Vector2(0, TOUCH)
+	buy.size_flags_horizontal = SIZE_EXPAND_FILL
+	buy.size_flags_vertical = SIZE_SHRINK_CENTER
+	buy.add_theme_font_size_override("font_size", 20)
+	buy.pressed.connect(_buy_remove_ads)
+	row.add_child(buy)
+	ui["remove_ads"] = buy
+	var restore := Button.new()
+	restore.name = "Restore"
+	restore.text = tr("Restore purchases")
+	restore.custom_minimum_size = Vector2(0, TOUCH)
+	restore.size_flags_horizontal = SIZE_EXPAND_FILL
+	restore.size_flags_vertical = SIZE_SHRINK_CENTER
+	restore.add_theme_font_size_override("font_size", 20)
+	restore.pressed.connect(_restore_purchases)
+	row.add_child(restore)
+	ui["restore_purchases"] = restore
+	purchase_status = Label.new()
+	purchase_status.name = "PurchaseStatus"
+	purchase_status.theme_type_variation = &"MutedLabel"
+	purchase_status.add_theme_font_size_override("font_size", 16)
+	purchase_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	purchase_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	rows.add_child(purchase_status)
+	ui["purchase_status"] = purchase_status
+
+func _buy_remove_ads() -> void:
+	if not AdUi.purchases_visible() or Entitlements.has("remove_ads"): return
+	_store_action = "buy"
+	var ok := Entitlements.purchase("remove_ads")
+	_set_purchase_status(tr("Opening the App Store…") if ok else tr("Couldn't start the purchase. Try again in a moment."))
+
+func _restore_purchases() -> void:
+	if not AdUi.purchases_visible(): return
+	_store_action = "restore"
+	var ok := Entitlements.restore()
+	_set_purchase_status(tr("Restoring purchases…") if ok else tr("Couldn't restore purchases. Try again in a moment."))
+
+func _set_purchase_status(t: String) -> void:
+	if is_instance_valid(purchase_status):
+		purchase_status.text = t
+		purchase_status.tooltip_text = t
+
+## The provider reported a verified purchase / restore: flip the row to Owned. Only a restore says "restored", so a
+## verified purchase never reads as one.
+func _on_entitlement_changed(id: String, owned: bool) -> void:
+	if id != "remove_ads": return
+	var action := _store_action
+	_store_action = ""
+	if not is_instance_valid(purchase_status): return
+	var buy: Variant = ui.get("remove_ads")
+	if buy is Button:
+		(buy as Button).text = tr("Owned") if owned else tr("Remove ads")
+		(buy as Button).disabled = owned
+	if owned and action == "restore": _set_purchase_status(tr("Purchases restored"))
 
 static func version_text() -> String:
 	var version := str(ProjectSettings.get_setting("application/config/version", "0.0.0"))

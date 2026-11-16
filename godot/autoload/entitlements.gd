@@ -27,15 +27,26 @@ func remove_ads() -> bool:
 func set_provider(provider: Object) -> void:
 	_provider = provider
 
+func has_provider() -> bool:
+	return _provider != null
+
 func purchase(id: String) -> bool:
 	if id not in KNOWN or _provider == null or not _provider.has_method("purchase"):
 		return false
-	return _accepted(_provider.call("purchase", id))
+	if not _accepted(_provider.call("purchase", id)):
+		return false
+	# Accepted is not owned: only the provider's own receipt-backed `owned()` answer may grant. An adapter that
+	# validates asynchronously calls grant_verified() itself when the receipt lands.
+	refresh_from_provider()
+	return true
 
 func restore() -> bool:
 	if _provider == null or not _provider.has_method("restore"):
 		return false
-	return _accepted(_provider.call("restore"))
+	if not _accepted(_provider.call("restore")):
+		return false
+	refresh_from_provider()          # a restore never invents ownership: owned() is the provider's verified answer
+	return true
 
 ## A provider's purchase/restore may return nothing (void) or an explicit bool. Only `false` means refused.
 static func _accepted(v: Variant) -> bool:
