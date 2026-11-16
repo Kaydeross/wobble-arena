@@ -265,18 +265,16 @@ func _test_stages(pid: String) -> void:
 		check(twist.has(ev_id), "%s: the Arcade twist event %s is recorded in the data" % [pid, ev_id])
 	print("STAGES %-9s 6 stages x 3 difficulties, %d unique bar colours, twist events %s" % [pid, colours.size(), str(twist.keys())])
 
-## An unknown stage event type must be ignored by StageEvents.update (the pack twists are data until phase C).
+## An unknown stage event type must be ignored by StageEvents.update. (The real pack events, dinner_rush etc., need a running match: tests/pack_maps_test.gd runs each one.)
 func _test_unknown_event() -> void:
 	var se: Variant = load("res://dlc/construction/stage_events.gd").new()   # loaded at run time: the script needs the Content autoload
 	se.evs = [
 		{"type": "zz_unknown_event", "every": 1.0, "params": {}, "t": 1.0, "done": false},
 		{"type": "zz_unknown_once", "every": 0.0, "params": {}, "t": 0.0, "done": false},
-		{"type": "dinner_rush", "every": 1.0, "params": {"burner_count": 3}, "t": 1.0, "done": false},
-		{"type": "sausage_sizzle", "every": 1.0, "params": {}, "t": 1.0, "done": false},
 	]
 	for i in 5: se.update(0.5)
 	check(se.t > 2.0 and se.fired.is_empty() and se.counts.is_empty(), "unknown stage events are ignored without firing anything")
-	check(not se.has("nope") and se.has("dinner_rush"), "StageEvents.has works for pack event ids")
+	check(not se.has("nope"), "StageEvents.has is false for an id that is not scheduled")
 
 # ---------------------------------------------------------------- i18n
 func _test_i18n(pid: String) -> void:
