@@ -189,6 +189,12 @@ func _on_disconnected() -> void:
 	elif phase != Phase.CLOSED and phase != Phase.IDLE:
 		_finish("Lost the connection to the game server. Try again in a moment.")
 
+## Analytics is an autoload, which may not exist when this script is compiled early (tests): look it up lazily.
+static func _track(event: String, params: Dictionary) -> void:
+	var loop := Engine.get_main_loop()
+	var an: Node = (loop as SceneTree).root.get_node_or_null("Analytics") if loop is SceneTree else null
+	if an != null: an.call("track", event, params)
+
 func _on_join_failed(reason: String) -> void:
 	# The server compares `build` strings; the web game bumps NET_BUILD every release while the room protocol stays
 	# `proto: 1` (PROTOCOL.md 6.1: build is informational). Retry once without a build: the host's hello check decides.
@@ -196,6 +202,7 @@ func _on_join_failed(reason: String) -> void:
 		_build_retry = true
 		net.join_room(room_code, "", expect_kind)
 		return
+	_track("online_join_result", {"ok": false, "reason": reason})
 	_finish(tr(NOJOIN_TEXT[reason]) if NOJOIN_TEXT.has(reason) else tr("Couldn't join the room (%s). Try again.") % reason)
 
 func _on_server(m: Dictionary) -> void:
@@ -274,6 +281,7 @@ func _on_room(m: Dictionary) -> void:
 			host_gd = NetSnapshot.to_int32(m.get("gd")) > 0
 			phase = Phase.LOBBY
 			_set_status(tr("In room \"%s\" as player %d. Waiting for the host to start…") % [room_name, slot])
+			if not _rehosting: _track("online_join_result", {"ok": true})
 			welcomed.emit(slot, room_name)
 			if _rehosting:
 				_rehosting = false; net.pslot = -1

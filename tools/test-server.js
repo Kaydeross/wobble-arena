@@ -260,6 +260,37 @@ const { Client } = require('./wa-client');
       console.log('ranking Upstash path: ok');
     } finally { global.fetch = realFetch; }
   }
+  /* ---- anonymous usage events: POST /api/event ---- */
+  { const base = 'http://127.0.0.1:' + srv.server.address().port, A = srv.accounts;
+    const post = async (b, raw) => { const r = await fetch(base + '/api/event', { method: 'POST', headers: { 'content-type': 'application/json' }, body: raw || JSON.stringify(b) }); return Object.assign({ status: r.status }, await r.json()); };
+    const iid = 'abcd1234efgh5678', now = Date.now();
+    const ok = await post({ iid, ver: '0.4.0', plat: 'ios', ip: '1.2.3.4', events: [{ n: 'match_start', t: now, p: { mode: 'classic', online: false, secs: 3.14159, nested: { a: 1 }, long: 'x'.repeat(500), 'Bad Key': 1 }, ip: '9.9.9.9' }, { n: 'install' }] });
+    assert.ok(ok.ok && ok.n === 2, 'a valid batch is accepted without any auth: ' + JSON.stringify(ok));
+    const stored = await srv.events.load(1);
+    assert.equal(stored.length, 2, 'both events stored in the daily bucket');
+    const m = stored.find(e => e.n === 'match_start');
+    assert.equal(m.p.long.length, 64, 'string params are truncated'); assert.equal(m.p.secs, 3.14, 'numbers are rounded'); assert.ok(!('nested' in m.p) && !('Bad Key' in m.p), 'non-scalar and badly named params are dropped');
+    assert.ok(!JSON.stringify(stored).includes('1.2.3.4') && !JSON.stringify(stored).includes('9.9.9.9') && !JSON.stringify(stored).includes('127.0.0.1'), 'no ip is ever stored');
+    assert.deepEqual(Object.keys(m).sort(), ['i', 'n', 'o', 'p', 't', 'v'], 'only the known fields are kept');
+    assert.equal((await post({ iid, events: [{ n: 'match_start' }, { n: 'purchase_card_number' }] })).err, 'name', 'a non-whitelisted name rejects the batch');
+    assert.equal((await srv.events.load(1)).length, 2, 'a rejected batch stores nothing');
+    assert.equal((await post({ iid: 'x'.repeat(41), events: [{ n: 'install' }] })).err, 'iid', 'iid over 40 chars is refused');
+    assert.equal((await post({ iid: 'short', events: [{ n: 'install' }] })).err, 'iid', 'a tiny iid is refused');
+    assert.equal((await post({ iid, events: Array.from({ length: 51 }, () => ({ n: 'install' })) })).err, 'events', 'more than 50 events is refused');
+    assert.equal((await post({ iid, events: [] })).err, 'events', 'an empty batch is refused');
+    assert.equal((await post(null, '{nope')).err, 'json', 'bad JSON is refused');
+    assert.equal((await post(null, JSON.stringify({ iid, events: [{ n: 'error', p: { text: 'y'.repeat(40000) } }] }))).status, 413, 'an oversize body is refused');
+    assert.equal((await fetch(base + '/api/event')).status, 404, 'GET is not an events route');
+    // the per-IP rate limit: 30 batches a minute (the requests above already used some)
+    const codes = []; for (let i = 0; i < 40; i++) codes.push((await post({ iid, events: [{ n: 'install' }] })).status);
+    assert.ok(codes.includes(429) && codes.slice(0, 5).every(c => c === 200 || c === 429), 'the per-IP rate limit answers 429');
+    // retention: a day bucket is capped and the oldest events go first
+    const E = require('../events').create(A.store); E.LIMITS.dayMax = 5;
+    for (let k = 0; k < 4; k++) await E.submit({ iid, events: [{ n: 'install', p: { k: 2 * k } }, { n: 'install', p: { k: 2 * k + 1 } }] }, 'ip' + k);
+    const cap = (await E.load(1)).filter(e => e.p.k !== undefined);
+    assert.equal(cap.length, 5, 'a daily bucket is capped'); assert.equal(cap[cap.length - 1].p.k, 7, 'the newest events are kept');
+    console.log('usage events: ok');
+  }
   [g1, g2, ...full].forEach(c => c.close());
   console.log('server integration tests pass'); await srv.stop(); process.exit(0);
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

@@ -15,6 +15,7 @@ const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 const accountStore = require('./accounts');
 const accounts = accountStore.create();
+const events = require('./events').create(accounts.store);   // anonymous usage events: POST /api/event (docs/ANALYTICS.md)
 const config = { requireAuth: process.env.REQUIRE_LOGIN !== '0' };     // online play needs a logged-in account (REQUIRE_LOGIN=0 turns that off)
 const REMOTE_CONFIG_PATH = process.env.REMOTE_CONFIG || path.join(__dirname, 'remote-config.json');
 
@@ -102,6 +103,7 @@ const server = http.createServer((req, res) => {
     }
     return;
   }
+  if (events.handle(req, res, ipOf(req))) return;
   if (accounts.handle(req, res, ipOf(req))) return;
   /* Unknown /api/* routes never fall through to the static-file handler: an API client must get JSON, so the Godot app
      can tell "this server build has no such endpoint" apart from "the game file is missing" (docs/PROTOCOL.md 4.1).
@@ -299,4 +301,4 @@ function start(port) {
 }
 function stop() { accounts.stopSweeps(); clearInterval(beat); clearInterval(sweep); if (accounts.store.flush) accounts.store.flush(); for (const ws of wss.clients) ws.terminate(); return new Promise(res => server.close(() => res())); }
 if (require.main === module) { start(); process.on('SIGTERM', () => stop().then(() => process.exit(0))); }
-module.exports = { start, stop, rooms, joinFails, LIMITS, server, config, accounts, ipOf };
+module.exports = { start, stop, rooms, joinFails, LIMITS, server, config, accounts, events, ipOf };

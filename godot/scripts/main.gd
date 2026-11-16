@@ -189,7 +189,9 @@ func _ready() -> void:
 	# only ran when the intro did not open, so a new player's first return to the title (after Play / Quick play) popped
 	# What's new.
 	if first and Save.persist: Save.mark_news_seen(newest)
-	if first and quiet: intro.open()
+	if first and quiet:
+		intro.open()
+		Analytics.track("ftue_step", {"step": "intro_shown"})
 	else:
 		var unseen: bool = auto_news if auto_news is bool else (Save.persist and newest != "" and newest != Save.last_seen_news)
 		if unseen and quiet and not first: news.open()

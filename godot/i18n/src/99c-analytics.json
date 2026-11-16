@@ -1,0 +1,16 @@
+{
+ "Share anonymous usage data": {
+  "zh_TW": "分享無名使用資料",
+  "zh_CN": "分享无名使用数据",
+  "ja": "名前なしの利用データを共有",
+  "fr": "Partager des données d'usage anonymes",
+  "es": "Compartir datos de uso anónimos"
+ },
+ "Helps us fix bugs and balance the game. No name, no account, nothing that identifies you. Never sent in Kids mode.": {
+  "zh_TW": "讓我們修正錯誤並調整遊戲平衡。不含名字、帳號,也不含任何能認出你的資料。兒童模式下永遠不會傳送。",
+  "zh_CN": "让我们修复错误并调整游戏平衡。不含名字、账号,也不含任何能认出你的信息。儿童模式下永远不会发送。",
+  "ja": "不具合の修正とゲームをよくするのに役立ちます。名前もアカウントも、あなたを特定できる情報も含まれません。キッズモードでは送信されません。",
+  "fr": "Aide à corriger les bugs et à équilibrer le jeu. Ni nom, ni compte, rien qui permette de vous identifier. Jamais envoyé en mode enfants.",
+  "es": "Nos ayuda a corregir errores y equilibrar el juego. Sin nombre, sin cuenta, nada que te identifique. Nunca se envía en modo infantil."
+ }
+}

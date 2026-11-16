@@ -118,6 +118,7 @@ func next() -> void:
 
 ## Skip or done: remembered, so it does not come back on its own.
 func finish() -> void:
+	if not bool(Settings.get_value("seen_intro", false)): Analytics.track("ftue_step", {"step": "intro_done" if page >= CARDS.size() - 1 else "intro_skipped", "page": page})
 	Settings.set_value("seen_intro", true)
 	if not visible: return
 	visible = false

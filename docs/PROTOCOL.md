@@ -304,6 +304,18 @@ outside the shown top N — with the `estimated` marker when the server says so 
 sign-in / Sync actions), opened from the Account sheet's Leaderboard button. Failure classification lives in
 `AccountApi.rank_failure()` (`unsupported | offline | auth | error`). Gameplay never waits for a submit.
 
+
+### 4.2 Anonymous usage events (`POST /api/event`)
+
+First-party analytics, no account and no token (`events.js`, full list in `docs/ANALYTICS.md`). Body:
+`{iid, ver, plat, events:[{n, t, p}]}`.
+
+- `iid`: anonymous random install id, 8 to 40 chars of `A-Za-z0-9_-`. `ver` / `plat`: short tags (`0.4.0`, `ios`). `t`: client epoch ms (replaced by server time when more than 2 days away). `p`: flat params.
+- 1 to 50 events per batch. `n` must be one of `install, session_start, session_end, ftue_step, match_start, match_end, coins_spent, online_join_result, error`; any other name rejects the whole batch (`400 err:"name"`). Params keep at most 8 scalar values (numbers, booleans, strings cut to 64 chars); everything else, and any other field, is dropped.
+- Limits: body 32 KB (`413`), 30 batches per IP per minute (`429 err:"slow"`, in memory). The IP is used only for that limit and is never stored.
+- Storage: the accounts store (Upstash if configured, else `data/db.json`), one append-only bucket per UTC day (`ev:YYYY-MM-DD`), max 20000 events per day (oldest dropped), expiring after 31 days.
+- Reply `{ok:true, n}`. Clients fire and forget: on any failure they retry once, then drop the batch.
+
 ---
 
 ## 5. Shared content ids a second client must know
