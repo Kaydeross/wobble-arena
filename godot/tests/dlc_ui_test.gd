@@ -66,6 +66,7 @@ func _run() -> void:
 
 func _unlock() -> void:
 	check(("wobblers-arena-dlc-v1:" + TEST_CODE).sha256_text() == TEST_HASH and DU.hash_of(" " + TEST_CODE + " ") == TEST_HASH, "the salted hash (spaces round the code are ignored)")
+	check(DU.dev_code_allowed() == not OS.has_feature("release"), "the developer code is allowed exactly when this is not a release build")
 	check(DU.price() == 1500 and DU.PRICE == 1500, "the DLC costs 1500 coins")
 	check(DU.DEV_HASH.length() == 64 and DU.DEV_HASH == DU.DEV_HASH.to_lower(), "the developer hash is 64 lower-case hex digits")
 	var s := _profile()
