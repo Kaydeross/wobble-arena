@@ -75,6 +75,27 @@ How the pieces fit since the integration track (`npm run test:godot-integration`
 
 Each track merges to `main` behind its own tests. The lead integrates `Fighter` (physics + combat + wobbler) in a second round once all three exist. Do not edit another track's files; if you need a change, describe it in your report.
 
+## Results podium (3D)
+
+The end-of-match result (`world/world.gd` `_show_offline_results` offline, `_show_results` for the Godot-hosted online
+result) now has a real 3D celebration over the frozen match: `world/winner_podium.gd` `WinnerPodium`.
+- One raised platform for the winner (a wide one for a whole winning team), a 2nd and a 3rd step, and everyone else
+  standing beside the podium on the arena floor. Every placed fighter is a fresh `Wobbler` (never the live match view,
+  which `World.present` hides while the podium is up), so nothing in the simulation moves. The winners play the `pump`
+  victory emote through `Wobbler.play_emote`, the same API the 2D moment (`ui/results_rewards.gd`) used for the local
+  winner.
+- The order is the result's own ordering, never a new one: the match winner first (`ModeRules.end_match`), then K.O.s
+  and damage dealt (the web result panel's `rank`); a team result puts the whole winning team on the top platform. A
+  guest whose `pend` message has no local winner falls back to that same ranking. No gameplay state, physics or
+  `combat.rng` is touched.
+- The set stands on the map's player start (solid ground by construction) and faces the middle of the arena, so the
+  arena is the backdrop. The results camera (`FollowCamera.begin_podium_shot` / `frame_podium`) eases off the follow
+  view onto the podium framing over `PODIUM_BLEND` seconds, with the solids pull-in `follow()` uses; the podium's
+  `camera_shot()` owns the distance / look point.
+- Skipped where there is no result celebration (tutorial, DLC test drive, Sandbox / Build mode) and in headless runs,
+  which draw nothing; hand-stepped suites opt in with `world.podium_in_tests`. The results panel, Play again / Quit to
+  title, the kill cam and spectating are unchanged. Test: `npm run test:godot-podium`.
+
 ## JSON cache and merged fighter meshes (post-v0.4.0)
 
 **JSON cache** (`autoload/content.gd`). Parsed content is immutable between releases, so every `res://data` JSON file is
@@ -115,4 +136,5 @@ are intact. Look meshes are cached and shared per class | outfit | hat | colour 
 - **Brand**: `tools/shoot-godot-brand.sh` renders `icon.png` and `ui/brand/launch_logo.png` (boot splash + iOS storyboard). `tools/shoot-godot-ui.sh` renders `docs/style/godot-ui-*.png`.
 
 ## Test commands
-`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match), `npm run test:godot-netguest` (Godot guest in a room hosted by a Node bot on the real server, plus interpolation parity and the bounded 100 ms snapshot buffer), `npm run test:godot-host` (Godot hosts on the real server: a web-protocol guest and a Godot guest, start, snapshots, hits, guard, K.O. -> pend, rematch, leaver -> bot), `npm run test:godot-construction` (Construction offline: wizard mode/map lists, Site Yard, crate pool, hammer/blower match), `npm run test:godot-ui` (title, online panel, settings sheet and every wizard page at 4 window sizes with safe areas, step names and cut-off labels, wizard navigation and saved choices, drag vs tap on the card grid, the character stage, HUD layout vs touch buttons, FPS overlay toggles). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR. `npm run test:godot-modes` (every ported mode plays to its end, parity with the JS).
+`npm test` (JS + content + `godot/data` drift), `npm run test:godot-physics`, `npm run test:godot` (cross-client join), `npm run test:godot-world` (every map builds, offline world keeps a scripted player on the floor, touch input), `npm run test:godot-integration` (offline match), `npm run test:godot-netguest` (Godot guest in a room hosted by a Node bot on the real server, plus interpolation parity and the bounded 100 ms snapshot buffer), `npm run test:godot-host` (Godot hosts on the real server: a web-protocol guest and a Godot guest, start, snapshots, hits, guard, K.O. -> pend, rematch, leaver -> bot), `npm run test:godot-construction` (Construction offline: wizard mode/map lists, Site Yard, crate pool, hammer/blower match), `npm run test:godot-ui` (title, online panel, settings sheet and every wizard page at 4 window sizes with safe areas, step names and cut-off labels, wizard navigation and saved choices, drag vs tap on the card grid, the character stage, HUD layout vs touch buttons, FPS overlay toggles). New Godot tests: add `tools/test-<name>.js` runner + npm script `test:godot-<name>`, and mention it in your PR. `npm run test:godot-modes` (every ported mode plays to its end, parity with the JS), `npm run test:godot-podium` (the 3D
+winner podium: ordering, emotes, camera, skips and no node leaks).

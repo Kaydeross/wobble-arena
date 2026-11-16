@@ -247,6 +247,64 @@ const { Client } = require('./wa-client');
     for (let i = 0; i < 6; i++) assert.ok((await rank(rick.token, { kos: i + 1 })).ok, 'rank update ' + i + ' inside the window');
     assert.equal((await rank(rick.token, { kos: 7 })).status, 429, 'ranking updates are rate limited');
     assert.equal((await ranks('?board=kos')).entries.find(e => e.name === 'Rate_Rick').score, 6, 'the rate-limited 7th update never reached the board');
+
+    /* ---- server-authoritative coin wallet: migration seed, capped grants, spends, idempotency, auth ---- */
+    const W = require('../wallet'), wallet = (m, p, body, tok) => api(m, p, body, tok);
+    const seedAcct = await api('POST', '/api/claim', { name: 'Wallet_Wanda', data: { wallet: { coins: 1234 } } });
+    const w0 = await wallet('GET', '/api/wallet', null, seedAcct.token);
+    assert.ok(w0.ok && w0.coins === 1234 && w0.seeded === true, 'first wallet use seeds from the cloud save: ' + JSON.stringify(w0));
+    assert.equal(w0.ledger[w0.ledger.length - 1].reason, 'migrate', 'the seed is a ledger entry');
+    assert.equal((await wallet('GET', '/api/wallet', null, seedAcct.token)).coins, 1234, 'seeding happens once');
+    const g1 = await wallet('POST', '/api/wallet/grant', { id: 'grant-match-1', reason: 'match', amount: 115, kos: 3, won: true }, seedAcct.token);
+    assert.ok(g1.ok && g1.coins === 1349 && g1.added === 115, 'a match grant is accepted: ' + JSON.stringify(g1));
+    assert.equal((await wallet('POST', '/api/wallet/grant', { id: 'grant-big-1', reason: 'match', amount: 1000, kos: 0 }, seedAcct.token)).err, 'cap', 'a grant over the match formula cap is refused');
+    const g1b = await wallet('POST', '/api/wallet/grant', { id: 'grant-match-1', reason: 'match', amount: 115, kos: 3, won: true }, seedAcct.token);
+    assert.ok(g1b.ok && g1b.replay === true && g1b.coins === 1349, 'retrying a grant with the same id does not double it');
+    assert.equal((await wallet('POST', '/api/wallet/grant', { id: 'grant-bad-1', reason: 'bogus', amount: 5 }, seedAcct.token)).err, 'reason', 'an unknown reason is refused');
+    assert.equal((await wallet('POST', '/api/wallet/grant', { id: 'short', reason: 'quest', amount: 5 }, seedAcct.token)).err, 'id', 'a bad idempotency id is refused');
+    assert.equal((await wallet('POST', '/api/wallet/spend', { id: 'spend-unknown-1', item: 'skin:nope' }, seedAcct.token)).err, 'item', 'an unknown item is refused');
+    const poor = await wallet('POST', '/api/wallet/spend', { id: 'spend-poor-1', item: 'skin:tripleT' }, seedAcct.token);
+    assert.equal(poor.status, 409, 'an unaffordable item is refused'); assert.equal(poor.err, 'coins'); assert.equal(poor.price, 3500);
+    assert.equal((await wallet('GET', '/api/wallet', null, seedAcct.token)).coins, 1349, 'a refused spend changes nothing');
+    const sp = await wallet('POST', '/api/wallet/spend', { id: 'spend-cowboy-1', item: 'skin:cowboy' }, seedAcct.token);
+    assert.ok(sp.ok && sp.coins === 949 && sp.spent === 400, 'a purchase spends exactly the shipped price: ' + JSON.stringify(sp));
+    const sp2 = await wallet('POST', '/api/wallet/spend', { id: 'spend-cowboy-1', item: 'skin:cowboy' }, seedAcct.token);
+    assert.ok(sp2.ok && sp2.replay === true && sp2.coins === 949, 'retrying a spend with the same id does not double-charge');
+    const dlc = await wallet('POST', '/api/wallet/spend', { id: 'spend-dlc-1', item: 'dlc:construction' }, seedAcct.token);
+    assert.equal(dlc.err, 'coins', 'the 1500-coin Construction DLC is in the price table'); assert.equal(dlc.price, 1500);
+    assert.equal((await wallet('GET', '/api/wallet')).status, 401, 'the wallet needs a login');
+    assert.equal((await wallet('POST', '/api/wallet/grant', { id: 'grant-anon-1', reason: 'ko', amount: 5 })).status, 401, 'grants need a login');
+    assert.equal((await wallet('POST', '/api/wallet/spend', { id: 'spend-anon-1', item: 'skin:cowboy' })).status, 401, 'spends need a login');
+    assert.equal((await wallet('POST', '/api/wallet/grant', { id: 'grant-anon-1', reason: 'ko', amount: 5 }, 'ab'.repeat(32))).status, 401, 'a bogus token cannot grant');
+
+    const rich = await api('POST', '/api/claim', { name: 'Wallet_Rich', data: { wallet: { coins: 999999999.9 } } });
+    assert.equal((await wallet('GET', '/api/wallet', null, rich.token)).coins, W.MAX_SEED, 'migration clamps an implausible cloud balance to MAX_SEED');
+
+    const capped = await api('POST', '/api/claim', { name: 'Wallet_Cap' });
+    for (let i = 0; i < 12; i++) {
+      const r = await wallet('POST', '/api/wallet/grant', { id: 'dailycap-' + String(i).padStart(2, '0'), reason: 'match', amount: 400, kos: 60, won: true }, capped.token);
+      assert.ok(r.ok, 'capped account grant ' + i + ': ' + JSON.stringify(r));
+    }
+    const over = await wallet('POST', '/api/wallet/grant', { id: 'dailycap-12', reason: 'match', amount: 400, kos: 60, won: true }, capped.token);
+    assert.equal(over.status, 409, 'the per-day cap refuses more earned coins'); assert.equal(over.err, 'cap'); assert.equal(over.coins, 4800);
+    assert.equal((await wallet('GET', '/api/wallet', null, capped.token)).coins, 4800, 'the daily cap leaves the balance at the cap');
+
+    /* the server price table is the shipped one: locker.json, classes.json and DlcUnlock.PRICE */
+    { const fs = require('fs'), path = require('path'), root = path.join(__dirname, '..');
+      const locker = JSON.parse(fs.readFileSync(path.join(root, 'godot/data/extra/locker.json'), 'utf8'));
+      const classes = JSON.parse(fs.readFileSync(path.join(root, 'godot/data/extra/classes.json'), 'utf8'));
+      const unlock = fs.readFileSync(path.join(root, 'godot/dlc/construction/dlc_unlock.gd'), 'utf8');
+      const price = id => (locker.skin_shop[id] || [0])[0];
+      for (const k of Object.keys(locker.skin_shop)) assert.equal(W.ITEMS['skin:' + k], price(k), 'shipped outfit price ' + k);
+      for (const k of Object.keys(locker.emotes)) {
+        const e = locker.emotes[k];
+        if (e.price > 0 && !e.code && !e.skin) assert.equal(W.ITEMS['emote:' + k], e.price, 'shipped emote price ' + k);
+      }
+      for (const k of Object.keys(classes)) if (classes[k] && classes[k].price) assert.equal(W.ITEMS['class:' + k], classes[k].price, 'shipped class price ' + k);
+      const dlcPrice = /const PRICE := (\d+)/.exec(unlock);
+      assert.ok(dlcPrice && W.ITEMS['dlc:construction'] === +dlcPrice[1], 'the Construction DLC price matches DlcUnlock.PRICE');
+      assert.equal(Object.keys(W.ITEMS).length, 22 + 26 + 3 + 1, 'the price table has every shipped purchasable item and nothing else');
+    }
   }
 
   /* ---- the same ranking code paths on the Upstash store: a fake REST endpoint over a Map ---- */
@@ -275,7 +333,12 @@ const { Client } = require('./wa-client');
       assert.ok(l1.ok && l1.entries.length === 1 && l1.entries[0].score === 21 && l1.entries[0].rank === 1, 'rank list on the Upstash path');
       let badBoard = null; try { await AU.routes.rankList({ board: 'bogus' }, {}); } catch (e) { badBoard = e; }
       assert.equal(badBoard && badBoard.status, 400, 'the same validation on the Upstash path');
-      console.log('ranking Upstash path: ok');
+      const wg = await AU.routes.walletGrant({ id: 'upstash-grant-1', reason: 'quest', amount: 500 }, { token: kim.token });
+      assert.ok(wg.ok && wg.coins === 500, 'wallet grant on the Upstash path: ' + JSON.stringify(wg));
+      const ws = await AU.routes.walletSpend({ id: 'upstash-spend-1', item: 'emote:hip' }, { token: kim.token });
+      assert.ok(ws.ok && ws.coins === 350 && ws.spent === 150, 'wallet spend on the Upstash path: ' + JSON.stringify(ws));
+      assert.equal((await AU.routes.walletGet({}, { token: kim.token })).coins, 350, 'wallet read on the Upstash path');
+      console.log('ranking + wallet Upstash path: ok');
     } finally { global.fetch = realFetch; }
   }
   /* ---- anonymous usage events: POST /api/event ---- */
