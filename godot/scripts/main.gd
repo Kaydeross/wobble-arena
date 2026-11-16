@@ -217,6 +217,9 @@ func go_back() -> bool:
 	if online_panel.visible: show_tab(false); return true
 	return false
 
+func _input(e: InputEvent) -> void:
+	ControlProfile.note_event(e)      # the title's words follow the device in use (keyboard / gamepad)
+
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("ui_cancel") and not e.is_echo() and go_back():
 		get_viewport().set_input_as_handled()
@@ -300,6 +303,11 @@ func play_trial(p: DLCPackData) -> void:
 	world.trial = true
 	world.trial_weapons = Array(p.real_weapons(Content.weapons))
 	get_tree().change_scene_to_node(world)
+
+## The controls training (world/tutorial.gd): the practice world with the coach card. Nothing in it is saved.
+func play_training() -> void:
+	if session != null: session.leave("")
+	Tutorial.launch(get_tree())
 
 ## The title's own controls: the icon dock (Quick play, Online, Walldrobe, Shop, Goals), the huge Play button and the
 ## version line (all in `hero`, laid out by apply_safe_area). Routes are the ones the old menu rail had.
@@ -417,6 +425,7 @@ static func _edge(p: Vector2, a: Vector2, b: Vector2) -> float:
 ## wizard). The world takes the class and the floor from Settings, so those two are written first (like the
 ## Construction hub's Start); play_offline gets the four keys it takes.
 func quick_play() -> void:
+	if TutorialOffer.maybe_show(self, quick_play, play_training): return   # a fresh profile is asked once (ui/tutorial_offer.gd)
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var over := QuickPlay.pick(rng)
@@ -884,6 +893,7 @@ func _enter_match(s: Dictionary) -> void:
 ## `over` (the Construction hub's Start: {mode, map, bots, difficulty}, its Settings keys already written) replaces the
 ## wizard's picks; the wizard's own Settings are then left alone.
 func play_offline(over: Dictionary = {}) -> void:
+	if over.is_empty() and TutorialOffer.maybe_show(self, play_offline, play_training): return
 	if session != null: session.leave("")
 	if over.is_empty(): wizard.save()
 	var world: Node = load(WORLD).instantiate()

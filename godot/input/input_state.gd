@@ -9,6 +9,11 @@ extends RefCounted
 ## Move:          move = Vector2(right, forward), length <= 1
 ## Look:          look = radians to add to (yaw, pitch) this frame (already scaled by sensitivity); World calls take_look()
 
+## Every real input action the player makes, whatever the device: a tap (press), a held action starting (hold), look
+## movement. The training (world/tutorial.gd) listens to these instead of guessing from the sim.
+signal action_down(action: String)
+signal looked(delta: Vector2)
+
 const SOURCES := ["key", "pad", "touch", "script"]
 
 var _move := {}            ## source -> Vector2
@@ -34,6 +39,7 @@ func move() -> Vector2:
 
 func hold(source: String, action: String, on: bool) -> void:
 	if on:
+		if not _held[source].has(action) and not is_held(action): action_down.emit(action)
 		_held[source][action] = true
 	else:
 		_held[source].erase(action)
@@ -60,6 +66,7 @@ func held_report() -> String:
 
 func press(action: String) -> void:
 	_pressed[action] = int(_pressed.get(action, 0)) + 1
+	action_down.emit(action)
 
 ## True once per press (taps are queued until the sim reads them).
 func consume(action: String) -> bool:
@@ -77,6 +84,7 @@ func aiming() -> bool:
 
 func add_look(yaw: float, pitch: float) -> void:
 	_look += Vector2(yaw, pitch)
+	if yaw != 0.0 or pitch != 0.0: looked.emit(Vector2(yaw, pitch))
 
 ## Look delta accumulated since the last call (x = yaw, y = pitch), then reset.
 func take_look() -> Vector2:

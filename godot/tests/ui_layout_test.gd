@@ -48,7 +48,7 @@ const CASES := [
 ]
 ## Screens: the title, its online panel, the settings sheet and the five setup-wizard pages.
 const SCREENS := ["title", "online", "rooms", "rooms-empty", "rooms-error", "set-controls", "set-camera", "set-graphics",
-	"set-audio", "set-gameplay", "set-account", "set-about", "help", "intro0", "intro1", "intro2", "pause", "pause-confirm",
+	"set-audio", "set-gameplay", "set-account", "set-about", "help", "help-touch", "help-pad", "intro0", "intro1", "intro2", "pause", "pause-confirm",
 	"pause-settings", "pause-help", "host", "host-mode", "host-rules", "host-coop", "lobby", "lobby-coop", "w0", "w1", "w2", "w3", "w4", "l0", "l1", "l2", "l3", "l4", "s0", "s1", "s2", "goals",
 	"a-guest", "a-login", "a-reset", "a-code", "a-signed", "a-signed-np", "a-protect", "a-password", "a-delete", "a-conflict",
 	"dlc-locked", "dlc-owned", "dlc-pre", "dlc-code", "dlc-arc-class", "dlc-arc-diff"]
@@ -58,7 +58,7 @@ const MIN_GAP_PT := 8.0      ## pt: the least space between two interactive cont
 const MAX_BAR := 4           ## the most buttons in one bar (footer, header, card row)
 ## Languages beyond English (the longest, and the shortest, text): on these screens at LANG_CASES
 const LANG_SCREENS := ["title", "online", "rooms", "w0", "w1", "w2", "w3", "w4", "l0", "l3", "s0", "goals", "set-controls", "set-graphics",
-	"set-gameplay", "set-about", "help", "pause", "pause-help", "host", "host-rules", "lobby", "a-guest", "dlc-locked", "dlc-owned", "dlc-pre", "dlc-code", "dlc-arc-class", "dlc-arc-diff"]
+	"set-gameplay", "set-about", "help", "help-touch", "help-pad", "pause", "pause-help", "host", "host-rules", "lobby", "a-guest", "dlc-locked", "dlc-owned", "dlc-pre", "dlc-code", "dlc-arc-class", "dlc-arc-diff"]
 const LANG_CASES := [
 	[Vector2(667, 375), [0.0, 0.0, 0.0, 0.0]], [Vector2(812, 375), [44.0, 0.0, 44.0, 21.0]], [Vector2(852, 393), [59.0, 0.0, 59.0, 21.0]],
 	[Vector2(926, 428), [47.0, 0.0, 47.0, 21.0]], [Vector2(1180, 820), [0.0, 24.0, 0.0, 20.0]],
@@ -188,6 +188,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	var wiz := scr.begins_with("w")
 	var lock := (scr.begins_with("l") and scr != "lobby") or (scr.begins_with("s") and not scr.begins_with("set-"))
 	var acct := scr.begins_with("a-")
+	load("res://input/control_profile.gd").set("force", {"help-touch": "touch", "help-pad": "gamepad"}.get(scr, "keyboard"))   # the Controls screen shows one scheme: keyboard unless asked
 	var over: Control = null          ## a new page / sheet checked generically (its visible controls)
 	var over_col: Control = null      ## its column (must fit the height)
 	var over_scroll: ScrollContainer = null
@@ -199,14 +200,15 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 		over = pm.card; over_col = pm.card
 		if scr == "pause-confirm": pm.ask_quit(); over = pm.confirm; over_col = pm.confirm
 		elif scr == "pause-settings": pm.open_settings(); over = pm.settings; over_col = pm.settings.col; over_scroll = pm.settings.scroll
-		elif scr == "pause-help": pm.open_help(); over = pm.help; over_col = pm.help.col
+		elif scr == "pause-help": pm.open_help(); over = pm.help; over_col = pm.help.col; over_scroll = pm.help._kb_holder   # (the keycap board scrolls on a narrow canvas)
 	elif scr.begins_with("set-"):
 		main.show_settings(true, scr.substr(4))
 		over = main.settings; over_col = main.settings.col; over_scroll = main.settings.scroll
-	elif scr == "help":
+	elif scr.begins_with("help"):
 		main.show_settings(true, "controls")
 		main.settings.open_help()
 		over = main.settings.help; over_col = main.settings.help.col
+		if scr == "help": over_scroll = main.settings.help._kb_holder   # (the keycap board scrolls on a narrow canvas)
 	elif scr == "goals":
 		main.open_goals()
 		over = main.goals; over_col = main.goals.col; over_scroll = main.goals.scroll
@@ -305,7 +307,7 @@ func _case(win: Vector2, ins_pt: Array, scr: String, mode := "normal", loc := "e
 	var groups: Array = []      ## lists of paths that must not overlap each other
 	if over != null:
 		for c: Control in _controls(over, over_scroll): inside.append(str(main.get_path_to(c)))
-		if over.name == "ControlsHelp": inside.append(str(main.get_path_to(over.pic)))
+		if over.name == "ControlsHelp" and not (over.pic is Container): inside.append(str(main.get_path_to(over.pic)))   # (the keycap board is a container: its cards are checked one by one)
 		groups.append(inside)
 		check(over.is_visible_in_tree(), "%s page shown" % tag)
 		if win.x > win.y: _touch_sizes(main, inside, tag)

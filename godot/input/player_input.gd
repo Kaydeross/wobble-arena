@@ -84,6 +84,9 @@ func _aim_toggles() -> bool:
 func _inv() -> float:
 	return -1.0 if bool(Settings.get_value("invert_y", false)) else 1.0
 
+func _input(e: InputEvent) -> void:
+	ControlProfile.note_event(e)      # which device is in use (keyboard / gamepad): the prompts and help follow it
+
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("pause") and not e.is_echo():
 		pause_requested.emit()

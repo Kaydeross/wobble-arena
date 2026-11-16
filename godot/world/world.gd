@@ -54,6 +54,9 @@ var arcade: ArcadeManager = null
 ## Open to players who do not own the pack, so NOTHING is saved or earned: no coins, stats, goals, history or ranking.
 @export var trial := false
 var trial_weapons: Array = []
+## The controls training (world/tutorial.gd): the Practice Range as `trial` (nothing saved) plus the coach card and steps.
+@export var tutorial := false
+var _tut: Tutorial = null
 ## Soak test (world/soak_run.gd): > 0 = a scripted-player performance run of this many seconds over `soak_maps`, logged to
 ## `soak_dir`. Built by SoakRun.make_world; the sim, combat and physics play as usual.
 @export var soak_duration := 0.0
@@ -156,7 +159,7 @@ func _ready() -> void:
 	# the pause menu (ui/pause_menu.gd): Resume, Settings, Controls, Quit to title (asks while the match runs)
 	pause_menu.resume_requested.connect(_toggle_pause)
 	pause_menu.quit_requested.connect(_on_title_pressed)
-	pause_menu.match_running = func() -> bool: return _results == null
+	pause_menu.match_running = func() -> bool: return _results == null and not tutorial
 	pause_menu.players = func() -> Array:
 		var names: Array = []
 		if sim != null:
@@ -186,7 +189,7 @@ func _ready() -> void:
 		add_child(soak)
 
 func _exit_tree() -> void:
-	if Ads.in_match: Ads.on_match_finished(session != null)
+	if Ads.in_match and not tutorial: Ads.on_match_finished(session != null)
 	if arcade != null: arcade.end_run()
 	if net_match:
 		net_match.dispose()
@@ -231,8 +234,10 @@ func load_map(id: String) -> void:
 	_banner_t = 0.0
 	spectating = null; touch.spectate_mode = false
 	_reward = {}
-	if not trial: Save.begin_match()
-	Ads.on_match_started(session != null)
+	if not trial:
+		Save.begin_match()
+		ControlProfile.note_match()             # the first two real matches show the control hint line (ui/hud.gd)
+	if not tutorial: Ads.on_match_started(session != null)
 	map_id = id
 	if build_mode:                       # the blocks are BuildHud's (meshes + solids it can change); no crates
 		id = "custom"; map_id = id
@@ -286,7 +291,8 @@ func load_map(id: String) -> void:
 	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, session.sim_bots(start_msg) if session != null else bots, skill)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
 	if arcade != null: arcade.setup_sim(sim)              # Arcade: the stage's fighters, tools and events
-	if trial: _place_trial_rack()
+	if trial and not tutorial: _place_trial_rack()
+	if tutorial: _tutorial_loadout()
 	_build_dyn_views()
 	if session != null:
 		net_match = session.make_match(sim)   # NetMatch (guest) or HostMatch (net/host_match.gd: bots, relaying)
@@ -321,6 +327,48 @@ func load_map(id: String) -> void:
 	hud.bind(self)
 	_setup_build()
 	if arcade != null: arcade.stage_ready(self)           # Arcade: the run strip and the stage's intro card
+	if tutorial: _tutorial_ready()
+
+## Training (world/tutorial.gd): an AK-47 in hand, a Ninja Katana in slot 2, the range's weapon rack cleared, the player
+## close to the nearest dummies.
+func _tutorial_loadout() -> void:
+	var c := sim.combat
+	var p := sim.player
+	c.place_at(p, 0.0, 1.0)             # (a fresh life: it empties the hands, so this comes first)
+	c.pickup(p, TutorialSteps.GUN)
+	c.pickup(p, TutorialSteps.NINJA)
+	c.equip_slot(p, 0)
+	sim.pickups.list.clear()
+
+func _tutorial_ready() -> void:
+	if _tut == null:
+		_tut = Tutorial.new()
+		add_child(_tut)
+		_tut.setup(self)
+	else:
+		_tut.restart()
+
+## Training: Back / Exit (the title) and Replay (a new world: the dummies, the loadout and the steps start over).
+func leave_training() -> void:
+	_on_title_pressed()
+
+func replay_training() -> void:
+	Tutorial.launch(get_tree())
+
+## The finish card's Play: a quick random offline match (like the title's Quick play).
+func start_match_from_training() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var over := QuickPlay.pick(rng)
+	Settings.set_value("class", str(over["class"]))
+	Settings.set_value("dyn", str(over["dyn"]))
+	var w: Node = load("res://world/world.tscn").instantiate()
+	w.map_id = str(over["map"])
+	w.mode_id = str(over["mode"])
+	w.bot_count = int(over["bots"])
+	w.difficulty = str(over["difficulty"])
+	get_tree().paused = false
+	get_tree().change_scene_to_node(w)
 
 ## Capture the Flag: the stand, the pole and the flag (nothing in other modes).
 func _build_ctf_view() -> void:

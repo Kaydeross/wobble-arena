@@ -105,6 +105,7 @@ func _ready() -> void:
 	add_child(settings)
 	settings.closed.connect(func() -> void: show_page("menu"))
 	help = ControlsHelp.new()
+	help.match_running = func() -> bool: return match_running.call()    # Training asks before it leaves a running match
 	add_child(help)
 	help.closed.connect(func() -> void: show_page("menu"))
 	safety = SafetySheet.new()
@@ -128,6 +129,7 @@ func _btn(n: String, text: String, primary: bool, cb: Callable) -> Button:
 func _texts() -> void:
 	quit_b.text = tr("Leave room") if online else tr("Quit to title")
 	report_b.visible = online
+	if help != null: help.can_train = not online    # a room cannot be left for the training
 	confirm_l.text = tr("Leave the room?") if online \
 		else tr("Quit this match? It won't count.")
 	stay_b.text = tr("Keep playing")

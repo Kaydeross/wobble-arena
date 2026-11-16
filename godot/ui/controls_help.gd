@@ -1,14 +1,33 @@
 class_name ControlsHelp
 extends UiPage
-## "Controls": one screen with a picture of the touch layout (the real TouchControls positions, mirrored when
-## left-handed) and what each part does: the move stick, drag to look, double-tap to aim, FIRE, JUMP, MELEE (tap =
-## shove, hold = kick), the context button (dash / reload), hotbar taps, pause and the emote button. A line under it
-## lists the keyboard and controller keys. Opened from the pause menu and from Settings > Controls.
+## "Controls": ONE scheme at a time, the one the player is on (input/control_profile.gd), with a small switch at the top
+## (Touch | Keyboard | Gamepad) to look at another.
+##   Touch     the picture of the touch layout (the real TouchControls positions, mirrored when left-handed) and four how-to lines
+##   Keyboard  a board of keycaps in cards: Move / Combat (SHOVE and KICK big and yellow) / Moves / Weapons, Emotes, Pause
+##   Gamepad   a drawn controller with a word on every button that does something
+## Every key and button is READ from the live bindings (ui/controls_art.gd, ControlProfile), so it stays true if one changes.
+## "Training" (top right) starts the guided practice (world/tutorial.gd). Opened from the pause menu and Settings > Controls.
 
-const KEYS := "Keyboard: WASD move · mouse look · click fire · right-click aim · Space jump · E shove · F kick · Q quick melee · 1-3 weapons (press the one in hand again for the spatula) · wheel cycles weapons · T G H emotes · Esc pause. Controller: sticks move and look · RT fire · LT aim · A jump · RB shove · B kick · Y next weapon · Start pause."
+signal training_requested
 
-var pic: Control
-var keys_l: Label
+var pic: Control                       ## the board / picture of the scheme shown (the layout test checks it)
+var tab_row: HBoxContainer
+var tabs := {}                         ## profile -> toggle button
+var pages := {}                        ## profile -> page control
+var shown := ""                        ## the profile on screen
+var training_b: Button
+var can_train := true:                 ## false online (a running room cannot be left for the training)
+	set(v):
+		can_train = v
+		if training_b != null: training_b.visible = v
+var match_running: Callable = func() -> bool: return false   ## the pause menu says whether a match is on (asks before leaving)
+var _armed := false
+var _touch_pic: Control
+var _pad_pic: Control
+var _kb_holder: DragScroll
+var _kb_wrap: Control                  ## plain Control between the scroller and the board: it carries the scaled height, never a width
+var _kb_cols := 4                      ## columns of the keyboard board now (3 on a narrow canvas)
+var _kb_wide := 0.0                    ## natural width of the 4-column board (decides when to go back to 4)
 
 func _init() -> void:
 	super._init()
@@ -16,18 +35,78 @@ func _init() -> void:
 
 func _ready() -> void:
 	build_frame("Controls")
+	var sp := Control.new()
+	sp.size_flags_horizontal = SIZE_EXPAND_FILL
+	head.add_child(sp)
+	training_b = Button.new()
+	training_b.name = "Training"
+	training_b.text = "Training"
+	training_b.theme_type_variation = &"PrimaryButton"
+	training_b.custom_minimum_size = Vector2(190, 62)
+	training_b.add_theme_font_size_override("font_size", 22)
+	training_b.pressed.connect(_on_training)
+	training_b.visible = can_train
+	head.add_child(training_b)
+	tab_row = HBoxContainer.new()
+	tab_row.name = "Tabs"
+	tab_row.add_theme_constant_override("separation", UiTheme.SP_3)
+	col.add_child(tab_row)
+	var g := ButtonGroup.new()
+	for p: String in ControlProfile.ALL:
+		var b := Button.new()
+		b.name = "Tab_" + p
+		b.text = ControlProfile.display_name(p)
+		b.theme_type_variation = &"TabButton"
+		b.toggle_mode = true
+		b.button_group = g
+		b.custom_minimum_size = Vector2(0, 62)
+		b.size_flags_horizontal = SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 20)
+		b.pressed.connect(show_profile.bind(p))
+		tab_row.add_child(b)
+		tabs[p] = b
+	var stack := Control.new()
+	stack.name = "Pages"
+	stack.size_flags_vertical = SIZE_EXPAND_FILL
+	stack.size_flags_horizontal = SIZE_EXPAND_FILL
+	stack.clip_contents = false
+	col.add_child(stack)
+	_build_touch(stack)
+	_build_keyboard(stack)
+	_build_pad(stack)
+	Settings.changed.connect(func(k: String, _v: Variant) -> void:
+		if k == "touch_lefty" and _touch_pic != null: _touch_pic.queue_redraw())
+	super._ready()
+	JuicyButton.attach_all(self)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_TRANSLATION_CHANGED and is_node_ready():
+		for p: String in tabs: (tabs[p] as Button).text = ControlProfile.display_name(p)
+		if visible: _refill.call_deferred()
+
+func _fill_page(p: String) -> Control:
+	var c := Control.new()
+	c.name = "Page_" + p
+	c.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	c.visible = false
+	pages[p] = c
+	return c
+
+func _build_touch(stack: Control) -> void:
+	var page := _fill_page(ControlProfile.TOUCH)
+	stack.add_child(page)
 	var mid := HBoxContainer.new()       # the picture on the left (names only), the how-to lines on the right
 	mid.name = "Mid"
-	mid.size_flags_vertical = SIZE_EXPAND_FILL
+	mid.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mid.add_theme_constant_override("separation", UiTheme.SP_4)
-	col.add_child(mid)
-	pic = Picture.new()
-	pic.name = "Picture"
-	pic.size_flags_vertical = SIZE_EXPAND_FILL
-	pic.size_flags_horizontal = SIZE_EXPAND_FILL
-	pic.size_flags_stretch_ratio = 3.0
-	pic.custom_minimum_size = Vector2(0, 220)
-	mid.add_child(pic)
+	page.add_child(mid)
+	_touch_pic = Picture.new()
+	_touch_pic.name = "Picture"
+	_touch_pic.size_flags_vertical = SIZE_EXPAND_FILL
+	_touch_pic.size_flags_horizontal = SIZE_EXPAND_FILL
+	_touch_pic.size_flags_stretch_ratio = 3.0
+	_touch_pic.custom_minimum_size = Vector2(0, 200)
+	mid.add_child(_touch_pic)
 	var how := VBoxContainer.new()
 	how.name = "How"
 	how.size_flags_horizontal = SIZE_EXPAND_FILL
@@ -52,16 +131,121 @@ func _ready() -> void:
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		d.custom_minimum_size = Vector2(120, 0)
 		one.add_child(d)
-	keys_l = Label.new()
-	keys_l.name = "Keys"
-	keys_l.text = KEYS
-	keys_l.theme_type_variation = &"MutedLabel"
-	keys_l.add_theme_font_size_override("font_size", 15)
-	keys_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	keys_l.custom_minimum_size = Vector2(200, 0)
-	col.add_child(keys_l)
-	Settings.changed.connect(func(k: String, _v: Variant) -> void: if k == "touch_lefty": pic.queue_redraw())
-	super._ready()
+
+func _build_keyboard(stack: Control) -> void:
+	var page := _fill_page(ControlProfile.KEYBOARD)
+	stack.add_child(page)
+	_kb_holder = DragScroll.new()
+	_kb_holder.name = "Scroll"
+	_kb_holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_kb_holder.resized.connect(_fit_board)
+	page.add_child(_kb_holder)
+	_kb_wrap = Control.new()
+	_kb_wrap.name = "Wrap"
+	_kb_wrap.size_flags_horizontal = SIZE_EXPAND_FILL
+	_kb_holder.add_child(_kb_wrap)
+
+func _build_pad(stack: Control) -> void:
+	var page := _fill_page(ControlProfile.GAMEPAD)
+	stack.add_child(page)
+
+## (Re)build the keyboard board and the controller from the live bindings.
+func _refill() -> void:
+	if _kb_holder == null: return
+	_set_board(_kb_cols)
+	_fit_board.call_deferred()
+	var pg: Control = pages[ControlProfile.GAMEPAD]
+	if _pad_pic != null: _pad_pic.queue_free()
+	_pad_pic = ControlsArt.PadPic.new()
+	_pad_pic.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	pg.add_child(_pad_pic)
+	_set_pic()
+	JuicyButton.attach_all(self)
+
+## The board with `n` columns (the old one goes).
+func _set_board(n: int) -> void:
+	for c in _kb_wrap.get_children(): c.queue_free()
+	_kb_cols = n
+	var nb := ControlsArt.keyboard_board(n)
+	_kb_wrap.add_child(nb)
+	if shown == ControlProfile.KEYBOARD: pic = nb
+
+func _board() -> Control:
+	for i in range(_kb_wrap.get_child_count() - 1, -1, -1):
+		var c := _kb_wrap.get_child(i)
+		if not c.is_queued_for_deletion(): return c as Control
+	return null
+
+## On a bigger window the board grows to fill the page (up to 1.6x); on a narrow canvas it drops to three columns (and the
+## page scrolls up and down): text never goes under 15 px and nothing is cut off sideways.
+func _fit_board() -> void:
+	if _kb_wrap == null or _board() == null: return
+	var avail := _kb_holder.size
+	if avail.x <= 0.0 or avail.y <= 0.0: return
+	var board := _board()
+	board.scale = Vector2.ONE
+	board.custom_minimum_size = Vector2.ZERO
+	board.size = Vector2.ZERO
+	var nat := board.size                                   # a container never goes below its content
+	if _kb_cols == 4: _kb_wide = nat.x
+	if _kb_cols == 4 and nat.x > avail.x + 0.5:
+		_set_board(3)
+		_fit_board.call_deferred()
+		return
+	if _kb_cols == 3 and _kb_wide > 0.0 and _kb_wide <= avail.x:
+		_set_board(4)
+		_fit_board.call_deferred()
+		return
+	board.custom_minimum_size = Vector2(maxf(avail.x, nat.x), 0)
+	board.size = Vector2.ZERO
+	var h1 := maxf(board.size.y, 1.0)
+	var k := clampf(minf(avail.x / maxf(nat.x, 1.0), avail.y * 0.97 / h1), 1.0, 1.6)
+	board.custom_minimum_size = Vector2(avail.x / k, 0)
+	board.size = Vector2.ZERO
+	board.position = Vector2.ZERO
+	board.scale = Vector2(k, k)
+	_kb_wrap.custom_minimum_size = Vector2(0, board.size.y * k)
+
+func _set_pic() -> void:
+	match shown:
+		ControlProfile.TOUCH: pic = _touch_pic
+		ControlProfile.KEYBOARD: pic = _board() if _kb_wrap != null and _board() != null else _kb_holder
+		_: pic = _pad_pic
+
+## Show one scheme: its tab pressed, the others hidden.
+func show_profile(p: String) -> void:
+	if not pages.has(p): return
+	shown = p
+	for k: String in pages:
+		(pages[k] as Control).visible = k == p
+		(tabs[k] as Button).set_pressed_no_signal(k == p)
+	_set_pic()
+	_disarm()
+	_fit_board.call_deferred()
+
+func open() -> void:
+	super.open()
+	_refill()
+	show_profile(ControlProfile.current())
+	_fit_board.call_deferred()
+	get_tree().create_timer(0.05).timeout.connect(_fit_board)                    # and once the page has its size
+
+# ---------------- Training ----------------
+
+func _on_training() -> void:
+	if not can_train: return
+	if bool(match_running.call()) and not _armed:        # leaving a running match: ask once (the same button again)
+		_armed = true
+		training_b.text = tr("Leave this match?")
+		get_tree().create_timer(3.0).timeout.connect(_disarm)
+		return
+	_disarm()
+	training_requested.emit()
+	Tutorial.launch(get_tree())
+
+func _disarm() -> void:
+	_armed = false
+	if training_b != null: training_b.text = "Training"
 
 ## The phone picture: a screen outline at the canvas aspect, the controls where TouchControls puts them, labels.
 class Picture extends Control:
