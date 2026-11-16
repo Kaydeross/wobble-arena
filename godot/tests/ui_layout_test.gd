@@ -1211,12 +1211,14 @@ func _purchases() -> void:
 	l._refresh_purchases()
 	check(not l.purchases_row.visible, "no provider: the Shop purchase row hides")
 
-	# Results: Double coins, hidden without a provider, one extra earned amount once, free for Remove ads, none in kids mode.
+	# Results: Double coins, hidden without a provider, one extra earned amount once, only after a verified reward, never
+	# twice from the same summary, free for Remove ads, none in kids mode.
 	sv.reset()
 	sv.coins = 500
-	var r := {"coins": 50, "kos": 2, "won": true, "total": 500, "next": {}}
+	var mk_reward := func() -> Dictionary: return {"coins": 50, "kos": 2, "won": true, "total": 500, "next": {}}
 	var RR = load("res://ui/results_rewards.gd")
-	var box0: Control = RR.make(r)
+	var r0: Dictionary = mk_reward.call()
+	var box0: Control = RR.make(r0)
 	var b0 := box0.find_child("DoubleCoins", true, false) as Button
 	check(b0 == null or not b0.visible, "no provider: the results Double coins button is not visible")
 	box0.free()
@@ -1225,7 +1227,8 @@ func _purchases() -> void:
 	var stub = load("res://tests/fake_ads_provider.gd").new()
 	stub.ads = ads
 	ads.set_provider(stub)
-	var box1: Control = RR.make(r)
+	var r1: Dictionary = mk_reward.call()
+	var box1: Control = RR.make(r1)
 	var b1 := box1.find_child("DoubleCoins", true, false) as Button
 	check(b1 != null and b1.visible, "with a provider: the results Double coins button shows")
 	b1.pressed.emit()
@@ -1233,12 +1236,32 @@ func _purchases() -> void:
 	check(not b1.visible, "the Double coins button hides after the reward")
 	b1.pressed.emit()
 	check(sv.coins == 550, "Double coins cannot be claimed twice")
+	# The same match summary rebuilt into a fresh panel must not offer (or pay) the double again.
+	var box1b: Control = RR.make(r1)
+	var b1b := box1b.find_child("DoubleCoins", true, false) as Button
+	check(b1b == null or not b1b.visible, "a rebuilt results panel does not offer Double coins again")
+	check(sv.coins == 550, "a rebuilt results panel does not pay Double coins again")
+	box1b.free()
 	box1.free()
+	# A provider that reports the video was not earned pays nothing, and the button stays usable for a retry.
+	sv.reset()
+	sv.coins = 500
+	stub.grant = false
+	var r_deny: Dictionary = mk_reward.call()
+	var box_deny: Control = RR.make(r_deny)
+	var b_deny := box_deny.find_child("DoubleCoins", true, false) as Button
+	b_deny.pressed.emit()
+	check(sv.coins == 500 and b_deny.visible, "no verified reward: no coins and the button stays (%d)" % sv.coins)
+	stub.grant = true
+	b_deny.pressed.emit()
+	check(sv.coins == 550 and not b_deny.visible, "a verified reward after one denied view pays exactly once (%d)" % sv.coins)
+	box_deny.free()
 	sv.reset()
 	sv.coins = 500
 	ent.grant_verified("remove_ads")
 	var before: int = stub.calls.size()
-	var box2: Control = RR.make(r)
+	var r2: Dictionary = mk_reward.call()
+	var box2: Control = RR.make(r2)
 	var b2 := box2.find_child("DoubleCoins", true, false) as Button
 	check(b2 != null and b2.visible, "a Remove ads owner still sees Double coins")
 	b2.pressed.emit()
@@ -1246,7 +1269,8 @@ func _purchases() -> void:
 	box2.free()
 	ent.revoke("remove_ads")
 	st.set_value("kids_mode", true)
-	var box3: Control = RR.make(r)
+	var r3: Dictionary = mk_reward.call()
+	var box3: Control = RR.make(r3)
 	var b3 := box3.find_child("DoubleCoins", true, false) as Button
 	check(b3 == null or not b3.visible, "kids mode: no Double coins button")
 	box3.free()

@@ -36,6 +36,8 @@ func _run() -> void:
 	ads.mark_loaded("interstitial", true)
 	ok(ads.show_interstitial(), "an eligible interstitial can show")
 	ok(fake.calls.has("show:interstitial"), "the provider receives the show call")
+	ok(not ads.show_rewarded("double_coins"), "one fullscreen ad at a time: a second show is refused while one is up")
+	ads.finish_interstitial(true)                       # the provider reports back, as a real one would
 	ads.on_match_started(false)
 	ok(not ads.can_request("rewarded"), "no ad can appear during a match")
 	ads.on_match_finished(false)
@@ -129,7 +131,7 @@ func _monetization(rc: Node, ads: Node, ent: Node, st: Node) -> void:
 	ok(world_script.exit_interstitial_allowed(false, false), "an offline title exit may offer the interstitial")
 	# a rematch never goes through the title exit at all: load_map keeps the World, so _exit_tree never runs.
 
-	# -- a provider that never calls back: the 60 s guard restores pause and audio --
+	# -- a provider that never calls back: the 60 s guard restores pause and audio, and the placement hears "not granted" --
 	var silent = load("res://tests/fake_ads_provider.gd").new()
 	silent.ads = ads
 	silent.finish = false
@@ -139,6 +141,8 @@ func _monetization(rc: Node, ads: Node, ent: Node, st: Node) -> void:
 	var sfx_bus := AudioServer.get_bus_index("SFX")
 	var music_bus := AudioServer.get_bus_index("Music")
 	var paused_before := paused
+	var timed_out := []
+	ads.reward_result.connect(func(granted: bool, placement: String) -> void: timed_out.append([granted, placement]))
 	ok(ads.show_rewarded("double_coins"), "a silent provider accepts the show")
 	ok(paused, "the world is paused while the ad is up")
 	ok(sfx_bus < 0 or AudioServer.is_bus_mute(sfx_bus), "sound effects are muted while the ad is up")
@@ -147,7 +151,24 @@ func _monetization(rc: Node, ads: Node, ent: Node, st: Node) -> void:
 	ok(paused == paused_before, "the safety timeout restores the pause state")
 	ok(sfx_bus < 0 or not AudioServer.is_bus_mute(sfx_bus), "the safety timeout unmutes sound effects")
 	ok(music_bus < 0 or not AudioServer.is_bus_mute(music_bus), "the safety timeout unmutes music")
+	ok(timed_out.size() == 1 and not timed_out[0][0] and timed_out[0][1] == "double_coins", "a timed-out placement hears not granted, so its button is not stuck")
 	ads.safety_timeout_s = 60.0
+
+	# -- a provider that refuses the show synchronously: nothing is left paused, muted or with a spent counter --
+	var refusing = load("res://tests/fake_ads_provider.gd").new()
+	refusing.ads = ads
+	refusing.refuse = true
+	ads.set_provider(refusing)
+	st.set_value("session_start", Time.get_unix_time_from_system() - 1000)
+	st.set_value("ads_matches_since", 3)
+	st.set_value("ads_last_shown_unix", 0)
+	ads.mark_loaded("interstitial", true)
+	ok(not ads.show_interstitial(), "a synchronously refused interstitial reports false")
+	ok(paused == paused_before and (sfx_bus < 0 or not AudioServer.is_bus_mute(sfx_bus)), "a refused show leaves the tree unpaused and the audio unmuted")
+	ok(int(st.get_value("ads_matches_since", -1)) == 3 and int(st.get_value("ads_last_shown_unix", -1)) == 0, "a refused interstitial does not spend the gap or the every-N counter")
+	ads.mark_loaded("rewarded", true)
+	ok(not ads.show_rewarded("double_coins"), "a synchronously refused rewarded show reports false")
+	ok(paused == paused_before, "a refused rewarded show leaves the tree unpaused")
 
 	# -- reset for the suites that follow --
 	ads.set_provider(null)
