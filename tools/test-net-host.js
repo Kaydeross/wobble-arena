@@ -14,7 +14,7 @@
    Classic and carries the standard rules fields (hp 150, grav 1.5, kb 0.5, crate fast, inf), no `gmode`; emotes are
    relayed (web guest -> Godot guest, stamped; the host's own -> web guest), a junk emote is dropped.
    Then (godot/tests/net_modes_host.gd + net_modes_peer.gd):
-   B. a room whose guests are all Godot clients (`gd: 1`: the Godot peer and a protocol guest saying gd) plays every
+   B. a room whose guests are all Godot clients (`gd: 2`: the Godot peer and a protocol guest saying gd) plays every
       app-only mode to its end in turn (rules.gmode, gteam, pp, grav 0.15, hp 300; gm Chaos events; pend);
    B2. a room with no web guests starts with `rules.nz` (host and guests set `Combat.net_zones`), a web joiner is
       refused during that zones match, and a Godot guest joining mid-match gets the flag;
@@ -86,10 +86,10 @@ async function modesRoom(url) {
   const code = (await host.waitLine(/^HOSTED code=/, 30000)).split('=')[1];
   const gd = await new Client(url, 'GdBot').open();
   await gd.join(code);
-  gd.toHost({ t: 'hello', build: BUILD, proto: PROTO, name: 'GdBot', skin: 'none', hat: 'none', color: 0x39b5a8, gd: 1 });
+  gd.toHost({ t: 'hello', build: BUILD, proto: PROTO, name: 'GdBot', skin: 'none', hat: 'none', color: 0x39b5a8, gd: 2 });
   const st = guestStream(gd, s => s.slot);
   const w = await gd.wait(m => m.op === 'msg' && m.m.t === 'welcome', 5000);
-  assert.equal(w.m.gd, 1, 'a Godot host says gd in welcome');
+  assert.equal(w.m.gd, 2, 'a Godot host says its capability level in welcome');
   peer = runGodot('res://tests/net_modes_peer.gd', [url, code, 'modes', String(MODES.length)], 'mpeer');
   const results = [];
   for (let i = 0; i < MODES.length; i++) {
@@ -350,9 +350,9 @@ async function arcadeCoop(url) {
   assert.ok(/two players/.test(REF.status), 'the host is told why: ' + REF.status);
   const lobbyGuest = await new Client(url, 'LobbyGuest').open();
   await lobbyGuest.join(code);
-  lobbyGuest.toHost({ t: 'hello', build: BUILD, proto: PROTO, name: 'LobbyGuest', skin: 'none', hat: 'none', color: 0x39b5a8, gd: 1 });
+  lobbyGuest.toHost({ t: 'hello', build: BUILD, proto: PROTO, name: 'LobbyGuest', skin: 'none', hat: 'none', color: 0x39b5a8, gd: 2 });
   const lw = await lobbyGuest.wait(m => m.op === 'msg' && m.m.t === 'welcome', 5000);
-  assert.equal(lw.m.gd, 1, 'the second client is a Godot client (the room is app-only)');
+  assert.equal(lw.m.gd, 2, 'the second client is a Godot client (the room is app-only)');
   const lr = await lobbyGuest.wait(m => m.op === 'msg' && m.m.t === 'roster', 5000);
   assert.equal(lr.m.modeName, 'Arcade co-op', 'the guest lobby is told it is an Arcade co-op room');
   const TWO = jl(await host.waitLine(/^CAN_START /, 20000));

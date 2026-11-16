@@ -162,8 +162,54 @@ func add_look(d: Vector2) -> void:
 ## so a restart can never inherit the previous match's 0.15x time scale or zoom.
 func reset_view() -> void:
 	end_impact()
+	end_podium_shot()
 	yaw = DEFAULT_YAW; pitch = DEFAULT_PITCH
 	travel = 0.0; centering = false; _ramp_t = 0.0; _yaw_v = 0.0; _pitch_v = 0.0; _latched = false; _own_yaw = yaw
+
+# ---------------- results podium shot (world/winner_podium.gd) ----------------
+
+## The 3D winner podium's results shot: the camera leaves the follow view, eases over PODIUM_BLEND to the podium
+## framing (the podium's camera_shot()) and stays there until the result closes. Presentation only: the match is frozen
+## offline (and over online) behind the results panel, and a tap / key still comes through the pause menu.
+const PODIUM_BLEND := 1.15        ## s: the smooth move from the match view to the podium shot
+const PODIUM_FOV := 54.0          ## narrower than play: the podium and the arena behind it fill the frame
+
+var podium_shot := false          ## true while the results camera owns the transform
+var _podium_t := 0.0
+var _podium_from_pos := Vector3.ZERO
+var _podium_from_look := Vector3.ZERO
+var _podium_from_fov := 72.0
+
+## Start the results shot from wherever the camera is now (called when the podium is built).
+func begin_podium_shot() -> void:
+	if podium_shot: return
+	podium_shot = true
+	_podium_t = 0.0
+	_podium_from_pos = global_position
+	_podium_from_look = global_position - global_transform.basis.z * 8.0
+	_podium_from_fov = fov
+
+func end_podium_shot() -> void:
+	podium_shot = false
+	_podium_t = 0.0
+
+## One rendered frame of the results shot: ease position / look / FOV in and pull the camera in front of any solid
+## between the podium and the shot (the same ray test follow() uses), so the result never looks through a wall.
+func frame_podium(dt: float, pos: Vector3, look: Vector3, solids: Array) -> void:
+	if not podium_shot: begin_podium_shot()
+	var to_cam := pos - look
+	var d := to_cam.length()
+	if d > 0.01:
+		to_cam /= d
+		var hit := ray_solids(look, to_cam, d, solids)
+		if hit < d: pos = look + to_cam * maxf(1.4, hit - 0.4)
+	_podium_t = minf(_podium_t + maxf(dt, 0.0), PODIUM_BLEND)
+	var k := smoothstep(0.0, 1.0, _podium_t / PODIUM_BLEND)
+	look_at_from_position(_podium_from_pos.lerp(pos, k), _podium_from_look.lerp(look, k), Vector3.UP)
+	var want := lerpf(_podium_from_fov, PODIUM_FOV, k)
+	if absf(fov - want) > 0.01: fov = want
+	aim_point = look
+	_shake_off = Vector3.ZERO
 
 ## Yaw the movement stick maps against (PlayerControl.cam_yaw): the camera yaw, except while auto-centre turns the camera
 ## under a held stick, when it stays where it was when the stick was pushed.

@@ -67,6 +67,7 @@
     "test:godot-remote-config": "node tools/test-remote-config.js",
     "test:godot-services": "node tools/test-services.js",
     "test:godot-killcam": "node tools/test-killcam.js",
+    "test:godot-podium": "node tools/test-podium.js",
     "test:godot-settings": "node tools/test-settings.js",
     "test:godot-analytics": "node tools/test-analytics.js",
     "test:godot-fx": "node tools/test-fx.js",

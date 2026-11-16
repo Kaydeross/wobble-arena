@@ -15,6 +15,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const walletStore = require('./wallet');            // server-authoritative coin wallet (docs/PROTOCOL.md 4.3)
 
 /* ---------------- storage ---------------- */
 function upstashStore(url, token) {
@@ -95,6 +96,7 @@ class Fail extends Error { constructor(status, err, msg) { super(msg); this.stat
 
 function create(store) {
   store = store || makeStore();
+  const wallet = walletStore.create(store);
   const fails = new Map();                                            // ip or account -> {n, t}: failed log-ins in the last 10 minutes
   const WINDOW = 10 * 60 * 1000;
   const failCount = k => { const f = fails.get(k); if (!f) return 0; if (Date.now() - f.t > WINDOW) { fails.delete(k); return 0; } return f.n; };
@@ -103,6 +105,7 @@ function create(store) {
   const lastSave = new Map();                                         // account -> time of the last save (one a second at most)
   const reports = new Map();                                          // account -> time of its last safety report (one per 10 s)
   const rankRates = new Map();                                        // account -> {n, t}: ranking updates in the current window
+  const walletRates = new Map();                                      // account -> {g, s, t}: wallet calls in the current minute
 
   /* ---------------- ranking (docs/PROTOCOL.md 4.1) ----------------
      The account record keeps each player's lifetime best (`u.rk`) and is only ever raised, never lowered. Each board has
@@ -171,6 +174,14 @@ function create(store) {
   }
 
 
+  /** Wallet calls per account per minute: grants and spends have separate small budgets. */
+  function walletRate(l, kind, max) {
+    const now = Date.now(), r = walletRates.get(l);
+    if (r && now - r.t < 60000) {
+      r[kind] = (r[kind] || 0) + 1;
+      if (r[kind] > max) throw new Fail(429, 'slow', 'Wallet updates too fast. Wait a minute and try again.');
+    } else walletRates.set(l, { g: 0, s: 0, t: now, [kind]: 1 });
+  }
   const getUser = async l => { const v = await store.get('user:' + l); try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
   const putUser = (l, u) => store.set('user:' + l, JSON.stringify(u));
   async function issue(l) { const t = newToken(); await store.set('tok:' + t, l, { ex: TOKEN_DAYS * 86400 }); return t; }
@@ -190,7 +201,7 @@ function create(store) {
   const needPass = a => { if (!a.u.p) throw new Fail(400, 'nopass', 'This name has no password yet. Protect it with a password first.'); };
   async function loadData(l) { const v = await store.get('data:' + l); try { return v ? JSON.parse(v) : null; } catch (e) { return null; } }
 
-  async function eraseUser(l, u) { await revokeSessions(l); await store.del('user:' + l); if (u.e) await store.del('email:' + lname(u.e)); await store.del('data:' + l); }
+  async function eraseUser(l, u) { await revokeSessions(l); await store.del('user:' + l); if (u.e) await store.del('email:' + lname(u.e)); await store.del('data:' + l); await wallet.erase(l); }
   /* Erase accounts nobody has used for an explicitly enabled ACCOUNT_TTL_DAYS (default 0 = never): the account, its saves and its tokens.
      Accounts from before lastSeen existed get lastSeen = now the first time, so nobody is erased by the upgrade. Returns counts only. */
   async function sweepAccounts(now) {
@@ -338,6 +349,25 @@ function create(store) {
       await store.set('mod:' + now + ':' + id, JSON.stringify({ reporter: a.l, target, room, reason, details, at: now }), { ex: 90 * 86400 });
       return { ok: true, id };
     },
+    /* ---------------- server-authoritative coin wallet (docs/PROTOCOL.md 4.3) ----------------
+       GET /api/wallet: the balance (seeds it once from the cloud save on first use).
+       POST /api/wallet/grant: earned coins, reason-capped and daily-capped.
+       POST /api/wallet/spend: a purchase from the server price table.
+       All three need a login; `id` makes a retried request a no-op that returns the same balance. */
+    async walletGet(b, ctx) {
+      const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
+      return wallet.read(a.l);
+    },
+    async walletGrant(b, ctx) {
+      const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
+      walletRate(a.l, 'g', 60);
+      return wallet.grant(a.l, b || {});
+    },
+    async walletSpend(b, ctx) {
+      const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
+      walletRate(a.l, 's', 30);
+      return wallet.spend(a.l, b || {});
+    },
     /* GET /api/rank?board=kos|wins|arcade&limit=N: the top scores (public; a valid token also gets `you`). */
     async rankList(b, ctx) {
       if (b.board !== undefined && boardArg(b.board) === null) throw new Fail(400, 'board', 'board must be kos, wins or arcade.');
@@ -388,7 +418,7 @@ function create(store) {
         stats: { kos: rk.kos, wins: rk.wins, matches: rk.matches, arcade: { easy: rk.arcade.easy, normal: rk.arcade.normal, nightmare: rk.arcade.nightmare } } };
     },
   };
-  const map = { '/api/signup': ['POST', 'signup'], '/api/claim': ['POST', 'claim'], '/api/protect': ['POST', 'protect'], '/api/login': ['POST', 'login'], '/api/me': ['GET', 'me'], '/api/save': ['PUT', 'save'], '/api/logout': ['POST', 'logout'], '/api/password': ['POST', 'password'], '/api/recovery': ['POST', 'recovery'], '/api/reset': ['POST', 'reset'], '/api/delete': ['POST', 'remove'], '/api/report': ['POST', 'report'], '/api/rank': { GET: 'rankList', POST: 'rankSubmit' } };
+  const map = { '/api/signup': ['POST', 'signup'], '/api/claim': ['POST', 'claim'], '/api/protect': ['POST', 'protect'], '/api/login': ['POST', 'login'], '/api/me': ['GET', 'me'], '/api/save': ['PUT', 'save'], '/api/logout': ['POST', 'logout'], '/api/password': ['POST', 'password'], '/api/recovery': ['POST', 'recovery'], '/api/reset': ['POST', 'reset'], '/api/delete': ['POST', 'remove'], '/api/report': ['POST', 'report'], '/api/rank': { GET: 'rankList', POST: 'rankSubmit' }, '/api/wallet': { GET: 'walletGet' }, '/api/wallet/grant': ['POST', 'walletGrant'], '/api/wallet/spend': ['POST', 'walletSpend'] };
 
   const CORS = { 'access-control-allow-origin': '*', 'access-control-allow-headers': 'content-type, authorization', 'access-control-allow-methods': 'GET, POST, PUT, OPTIONS', 'access-control-max-age': '86400' };
   const reply = (res, status, obj) => { res.writeHead(status, Object.assign({ 'content-type': 'application/json', 'cache-control': 'no-store' }, CORS)); res.end(JSON.stringify(obj)); };
@@ -417,12 +447,13 @@ function create(store) {
       }
       catch (e) {
         if (e instanceof Fail) reply(res, e.status, { ok: false, err: e.err, msg: e.message });
+        else if (e && e.status && e.err) reply(res, e.status, Object.assign({ ok: false, err: e.err, msg: e.message }, e.extra || {}));   // wallet.js errors carry coins/price/cap
         else { console.error('accounts error:', e && e.message); reply(res, 500, { ok: false, err: 'server', msg: 'The server had a problem. Try again in a moment.' }); }
       }
     })();
     return true;
   }
-  return { handle, who, store, kind: store.kind, routes, sweep: sweepAccounts, startSweeps, stopSweeps, TOUCH_MS };
+  return { handle, who, store, kind: store.kind, routes, wallet, sweep: sweepAccounts, startSweeps, stopSweeps, TOUCH_MS };
 }
 
 module.exports = { create, makeStore, fileStore, upstashStore, badName, filterDisplayName };
