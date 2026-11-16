@@ -75,6 +75,7 @@ const DEFAULTS := {
 	"sfx_volume": 1.0,      # sound effects bus 0..1 (autoload Sfx); `volume` stays the master volume
 	"music_volume": 0.5,    # music bus 0..1 (autoload Music; the web settings.music)
 	"lang": "auto",         # language: auto (the device's) | en | zh_TW | zh_CN | ja | fr | es (autoload Lang, i18n/strings.json)
+	"first_fight_done": false, # the easy first match offered after the intro cards was played or left (scripts/main.gd)
 	"seen_intro": false,    # the 3-card how-to (ui/intro_cards.gd) was shown or skipped once
 	"seen_tutorial": false, # the controls training (world/tutorial.gd) was offered (answered) or finished once; never offered again
 	"ctl_hint_matches": 0,  # real matches that showed the shove / kick hint line (input/control_profile.gd; 2 at most, none after the training)

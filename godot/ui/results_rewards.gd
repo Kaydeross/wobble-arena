@@ -5,6 +5,9 @@ extends RefCounted
 ## cheapest outfit or emote you do not own yet (a bar, or "You can buy it now!"). A "Goals" line says which coin goals
 ## the match completed (logic/quests.gd, claimed on the title's Goals screen) and the first-win-of-the-day streak bonus.
 
+## ui_shots (tests/ui_shots.gd) turns the count-up and the bar fill off so the docs screenshots show the final values.
+static var animate := true
+
 ## `r` = Save.finish_match()'s summary ({} = nothing earned, e.g. the match was left early: shows nothing).
 static func make(r: Dictionary) -> Control:
 	var box := VBoxContainer.new()
@@ -24,6 +27,12 @@ static func make(r: Dictionary) -> Control:
 	c.add_theme_font_size_override("font_size", 26)
 	c.add_theme_color_override("font_color", UiTheme.ACCENT)
 	row.add_child(c)
+	var earned := int(r.get("coins", 0))
+	if animate and earned > 0 and DisplayServer.get_name() != "headless":   # count-up (~1 s); the text is already final under headless / tests
+		c.text = TranslationServer.translate("+%d coins") % 0
+		c.ready.connect(func() -> void:
+			var tw := c.create_tween()
+			tw.tween_method(func(v: float) -> void: c.text = TranslationServer.translate("+%d coins") % int(round(v)), 0.0, float(earned), 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
 	var k := Label.new()
 	k.name = "Kos"
 	k.theme_type_variation = &"MutedLabel"
@@ -77,6 +86,11 @@ static func make(r: Dictionary) -> Control:
 	bar.custom_minimum_size = Vector2(0, 12)
 	bar.max_value = price
 	bar.value = mini(have, price)
+	if animate and DisplayServer.get_name() != "headless":   # the bar fills from where it stood before this match's coins
+		var from_v := float(maxi(0, int(r.get("before", have - int(r.get("coins", 0))))))
+		bar.value = minf(from_v, float(price))
+		bar.ready.connect(func() -> void:
+			bar.create_tween().tween_property(bar, "value", float(mini(have, price)), 1.0).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT))
 	var bg := UiTheme.box(Color(0, 0, 0, 0.35), 6, Color(1, 1, 1, 0.12), 1, 0)
 	var fg := UiTheme.box(UiTheme.GOOD if have >= price else UiTheme.ACCENT, 6, Color.TRANSPARENT, 0, 0)
 	bar.add_theme_stylebox_override("background", bg)

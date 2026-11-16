@@ -8,8 +8,9 @@ extends VBoxContainer
 ## Every pick is saved in Settings straight away (mode, offline_map, dyn, bots, difficulty, limit, class), so the next Play
 ## starts where the last one ended. Game types restrict arenas: when the remembered arena is not allowed in the new
 ## game type, the wizard moves to the nearest allowed one and says so in one line (`note`).
-## Game types are grouped in labelled sections (Classic / Team / Special, data/extra/wizard.json: also each card's short
-## line, colour and drawn icon; the selected card's full text shows in a detail line under the grid). The Moving floor
+## Game types show the `featured` ones in a first row (data/extra/wizard.json) and the rest in their labelled sections
+## (Classic / Team / Special) under a collapsed "More modes (%d)" toggle; the data also holds each card's short line,
+## colour and drawn icon, and the selected card's full text shows in a detail line under the grid. The Moving floor
 ## row lives on the Arena page. Character cards show the class parameters as bars (logic/class_stats.gd).
 ## Card grids scroll with DragScroll (drag + fling, a tap picks, a drag never does; wheel on PC) inside a frame that
 ## fades the edge where more cards are hidden; opening a page scrolls its selected card into view.
@@ -63,6 +64,9 @@ var _checks := {}           ## card Button -> its selected tick
 static var _text: Dictionary = {}
 var _map_bs := {}
 var _mode_bs := {}
+var _featured: Array = []   ## game types in the first row
+var more_box: VBoxContainer   ## every other game type section, collapsed until the More modes button is tapped
+var more_b: Button
 var _class_bs := {}
 var _class_art := {}        ## class id -> TextureRect
 var _dyn_bs := {}
@@ -668,29 +672,42 @@ func _pills(parent: Control, row_name: String, label: String, keys: Array, names
 
 func _build_mode(p: Control) -> void:
 	_grid_page(p, P_MODE, MODE_CARD.x)
-	var secs := sections()
+	var body: VBoxContainer = scroll_of(P_MODE).get_node("Pad/Body")
 	var grp := ButtonGroup.new()
-	var first := true
-	for sec: Array in secs:
-		var ids: Array = sec[1]
-		var g: GridContainer = _grids[P_MODE][1] if first else null
-		var sc_col := mode_color(ids[0])
-		if first:   # the grid made with the page gets the first section's header in front of it
-			var body: VBoxContainer = scroll_of(P_MODE).get_node("Pad/Body")
-			body.add_child(_section_head(sec[0], sc_col))
-			body.move_child(body.get_child(body.get_child_count() - 1), 0)
-		else:
-			g = new_grid(P_MODE, sec[0], sc_col)
-		first = false
-		for m: String in ids:
-			var b := _card(mode_name(m), mode_short(m), MODE_CARD, null, ModeIcon.new(str(mode_info(m).get("icon", "crate")), mode_color(m)))
-			b.name = m
-			b.button_group = grp
-			b.tooltip_text = mode_long(m)
-			b.pressed.connect(set_mode.bind(m))
-			g.add_child(b)
-			scroll_of(P_MODE).add_card(b)
-			_mode_bs[m] = b
+	_featured = featured_ids()
+	var gold := Color(1, 0.812, 0.353)
+	if not _featured.is_empty():   # the grid made with the page holds the featured row, with its header in front
+		body.add_child(_section_head("Featured", gold))
+		body.move_child(body.get_child(body.get_child_count() - 1), 0)
+		for m: String in _featured: _add_mode_card(_grids[P_MODE][1], m, grp)
+	more_box = VBoxContainer.new()
+	more_box.name = "More"
+	more_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	more_box.add_theme_constant_override("separation", UiTheme.SP_3)
+	more_box.visible = false
+	var rest := 0
+	var secs := sections()
+	for si in secs.size():
+		var ids: Array = (secs[si][1] as Array).filter(func(m: String) -> bool: return not _featured.has(m))
+		if ids.is_empty(): continue
+		rest += ids.size()
+		var before := body.get_child_count()
+		var g := new_grid(P_MODE, secs[si][0], mode_color(ids[0]))
+		for c: Node in body.get_children().slice(before):   # the section's header and grid live in the collapsible box
+			body.remove_child(c)
+			more_box.add_child(c)
+		for m: String in ids: _add_mode_card(g, m, grp)
+	if rest > 0:
+		more_b = Button.new()
+		more_b.name = "MoreToggle"
+		more_b.toggle_mode = true
+		more_b.custom_minimum_size = Vector2(0, 60)   # 60 canvas px = the project's 44 pt touch floor under UiScale
+		more_b.add_theme_font_size_override("font_size", 20)
+		more_b.set_meta("count", rest)
+		more_b.toggled.connect(func(on: bool) -> void: set_more_open(on))
+		body.add_child(more_b)
+		body.add_child(more_box)
+		set_more_open(false)
 	detail_l = _label("", 17, "MutedLabel")
 	detail_l.name = "Detail"
 	detail_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -698,6 +715,34 @@ func _build_mode(p: Control) -> void:
 	detail_l.custom_minimum_size.y = 46
 	detail_l.size_flags_vertical = SIZE_SHRINK_END
 	p.add_child(detail_l)
+
+## Game types shown in the first row: the `featured` list in data/extra/wizard.json, in its order and only the ones
+## this build offers (a mode missing from the content is skipped). Every other game type goes under More modes. The
+## page is built at startup, before the remote config can fetch, so this is deliberately the bundled list only.
+static func featured_ids() -> Array:
+	var all := modes()
+	var out: Array = []
+	for m: Variant in text_data().get("featured", []):
+		var id := str(m)
+		if all.has(id) and not out.has(id): out.append(id)
+	return out
+
+func _add_mode_card(g: GridContainer, m: String, grp: ButtonGroup) -> void:
+	var b := _card(mode_name(m), mode_short(m), MODE_CARD, null, ModeIcon.new(str(mode_info(m).get("icon", "crate")), mode_color(m)))
+	b.name = m
+	b.button_group = grp
+	b.tooltip_text = mode_long(m)
+	b.pressed.connect(set_mode.bind(m))
+	g.add_child(b)
+	scroll_of(P_MODE).add_card(b)
+	_mode_bs[m] = b
+
+## Expands or collapses the rest of the game types under the More modes button.
+func set_more_open(on: bool) -> void:
+	if more_box == null or more_b == null: return
+	more_box.visible = on
+	more_b.set_pressed_no_signal(on)
+	more_b.text = tr("Fewer modes") if on else tr("More modes (%d)") % int(more_b.get_meta("count", 0))
 
 func _build_arena(p: Control) -> void:
 	var names: Array = []
@@ -847,6 +892,7 @@ func _refresh() -> void:
 	dots.tooltip_text = tr(SHORT[page])
 	_select(_map_bs, map_id)
 	_select(_mode_bs, mode_id)
+	if more_box != null and not _featured.has(mode_id): set_more_open(true)   # the picked game type is never hidden
 	if detail_l: detail_l.text = tr("%s: %s") % [tr(mode_name(mode_id)), tr(mode_long(mode_id))]
 	_select(_dyn_bs, dyn)
 	_select(_class_bs, cls)

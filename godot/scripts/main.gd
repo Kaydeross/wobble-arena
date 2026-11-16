@@ -190,6 +190,11 @@ func _ready() -> void:
 	# What's new.
 	if first and Save.persist: Save.mark_news_seen(newest)
 	if first and quiet:
+		# A genuinely fresh profile only: a reinstalled or cloud-restored save already has matches, and seeing the intro
+		# again (a stale Settings file) must not force an automatic match into it.
+		if Settings.persist and not bool(Settings.get_value("first_fight_done", false)) \
+				and int(Save.stats["matches"]) == 0 and Save.hist.is_empty():
+			intro.closed.connect(_offer_first_fight, CONNECT_ONE_SHOT)   # only this first-run intro, never the Settings replay
 		intro.open()
 		Analytics.track("ftue_step", {"step": "intro_shown"})
 	else:
@@ -434,6 +439,18 @@ func quick_play() -> void:
 	Settings.set_value("class", str(over["class"]))
 	Settings.set_value("dyn", str(over["dyn"]))
 	play_offline({"mode": over["mode"], "map": over["map"], "bots": over["bots"], "difficulty": over["difficulty"]})
+
+## First-ever session, right after the intro cards: an easy Classic match against two bots (kids assist untouched),
+## no wizard and no tutorial offer. world.first_fight marks `first_fight_done` when it ends or is left.
+func _offer_first_fight() -> void:
+	if bool(Settings.get_value("first_fight_done", false)): return
+	var loop := Engine.get_main_loop()
+	var an: Node = (loop as SceneTree).root.get_node_or_null("Analytics") if loop is SceneTree else null
+	if an != null: an.track("ftue_step", {"step": "first_fight_offered"})
+	var maps := QuickPlay.maps_for("classic")
+	var map := "arena" if maps.has("arena") else (str(maps[0]) if not maps.is_empty() else "arena")
+	var diff := "easy" if Content.difficulties.has("easy") else "normal"
+	play_offline({"mode": "classic", "map": map, "bots": 2, "difficulty": diff, "first_fight": true})
 
 ## The tape wipe that plays between the normal and the Construction title (the DON'T ENTER / EXIT SITE sign and pill).
 func _build_wipe() -> void:
@@ -903,6 +920,7 @@ func play_offline(over: Dictionary = {}) -> void:
 	world.mode_id = str(over.get("mode", wizard.mode_id))
 	world.bot_count = int(over.get("bots", wizard.bots))
 	world.difficulty = str(over.get("difficulty", wizard.diff))
+	world.first_fight = bool(over.get("first_fight", false))
 	world.build_mode = world.mode_id == "sandbox"     # Sandbox opens the arena in build mode (ui/build_hud.gd)
 	if world.map_id == SiteMap.ID:    # the generated building site: the hub's seed, or a new random site every match (0)
 		var s := int(Settings.get_value("site_seed", 0))

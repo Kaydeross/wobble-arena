@@ -16,11 +16,14 @@ var skip_b: Button
 
 static var test_persist := -1     ## tests: 1 / 0 pretend the profile is / is not saved (-1 = the real Settings.persist)
 
-## Fresh install: saved profile, offer never answered, no match played yet.
+## Fresh install: saved profile, offer never answered, no match played yet. WP L4's automatic first fight IS recorded
+## like any match (stats, history, coins), but it is not the player's own first play: after it the training is still
+## offered once, so the first-run path does not lose this onboarding step.
 static func wanted() -> bool:
 	if not (Settings.persist if test_persist < 0 else test_persist == 1): return false
 	if bool(Settings.get_value("seen_tutorial", false)): return false
-	return int(Save.stats["matches"]) == 0 and Save.hist.is_empty()
+	if int(Save.stats["matches"]) == 0 and Save.hist.is_empty(): return true
+	return int(Save.stats["matches"]) == 1 and Save.hist.size() <= 1 and bool(Settings.get_value("first_fight_done", false))
 
 static func maybe_show(host: Control, next: Callable, start: Callable) -> bool:
 	if not wanted(): return false

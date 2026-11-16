@@ -537,6 +537,7 @@ func add_play_time(dt: float) -> void:
 ## goals this match completed, to claim on the Goals screen), streak (coins for the first win of the day, already
 ## added), days (the play streak)}. `mode_id`: the game type (for "play N game types").
 func finish_match(won: bool, mode_name: String = "", map_name: String = "", online: bool = false, mode_id: String = "") -> Dictionary:
+	var coins_before := coins
 	stats["matches"] += 1
 	if won: stats["wins"] += 1
 	if online: stats["onl"] += 1
@@ -548,7 +549,7 @@ func finish_match(won: bool, mode_name: String = "", map_name: String = "", onli
 		"mode": mode_id, "online": online}, quest_day(), stats, _quest_before)
 	coins += award_coins(int(g["streak"]))
 	_quest_before = Quests.done_keys(quests, quest_day(), stats)
-	var out := {"coins": bonus + award_coins(KO_COINS) * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "next": next_unlock(),
+	var out := {"coins": bonus + award_coins(KO_COINS) * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "before": coins_before, "next": next_unlock(),
 		"goals": g["done"], "streak": int(g["streak"]), "days": int(g["days"])}
 	var fresh: Array = []                               # secret classes this match unlocked (K.O.s count too)
 	for id: String in owned_classes():

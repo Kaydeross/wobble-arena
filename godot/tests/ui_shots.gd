@@ -32,6 +32,7 @@ var world: Node
 var i := 0
 
 func _initialize() -> void:
+	ResultsRewards.animate = false   # a screenshot shows the final rewards, not a frame of the count-up
 	var a := OS.get_cmdline_user_args()
 	for k in a.size():
 		if a[k] == "--shot" and k + 1 < a.size(): shot = a[k + 1]
