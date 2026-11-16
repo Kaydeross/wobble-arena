@@ -37,6 +37,8 @@ static func buy(sv: Object = null) -> bool:
 	if owned(s) or int(s.coins) < PRICE: return false
 	s.coins = int(s.coins) - PRICE
 	s.dlc["owned"] = true
+	if s.has_method("_wallet_active") and bool(s.call("_wallet_active")) and s.get("cloud") != null:
+		s.get("cloud").wallet_spend("dlc", "construction", PRICE)   # signed in: the server confirms the 1500-coin purchase
 	s.commit()
 	return true
 

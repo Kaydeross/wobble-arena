@@ -38,6 +38,11 @@ func _run() -> void:
 	# defaults (web wallet)
 	var s := _fresh()
 	check(s.coins == 500 and s.owned == ["wobble"] and s.skins.size() == 1 + LockerData.free_skins().size() and s.skins.has("hoodie"), "fresh profile: 500 coins, free outfits, Wobble Dance")
+	check(s.cloud == null and not s._wallet_active(), "a guest profile never touches the server wallet")
+	var g := _fresh()
+	g.persist = false
+	g.add_coins(25)
+	check(g.coins == 525 and g.buy("emote", "dab") == "ok" and g.coins == 225, "guest earning and buying stay fully local (%d)" % g.coins)
 	check(s.load_file() == "new", "no file = new")
 	# round trip through the file
 	s.coins = 1234

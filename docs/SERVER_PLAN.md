@@ -93,7 +93,7 @@ What you need to supply: **a domain** (about US$10/yr, on Cloudflare DNS) and **
 - The tunnel token and any Upstash token live only in `deploy/nas/.env` on the NAS. Never commit them or paste them in chat or screenshots. Roll them if exposed.
 - Keep `REQUIRE_LOGIN=1`. Put the app behind the tunnel only; remove the LAN port mapping so `wobble` is reachable only through `cloudflared`.
 - Set `TRUST_PROXY` only to match your real proxy. With `cloudflare`/`1`, direct access to port 3000 would let a client forge its address and dodge per-IP limits, hence the advice above.
-- The server is a relay: the host client is authoritative, so the room server cannot stop cheating (see roadmap B). Do not treat client coin counts as trusted until the server wallet exists.
+- The server is a relay: the host client is authoritative, so the room server cannot stop cheating (see roadmap B). Coins for signed-in accounts are server-authoritative (`/api/wallet`, docs/PROTOCOL.md 4.3); guests stay local. Run one wallet instance per database: concurrent instances need an atomic store compare-and-set first.
 - Password change/reset and account deletion revoke every session. The token is still stored in regular settings in this build, so Keychain/Keystore storage is a launch blocker.
 - Keep the NAS OS, Docker and the `cloudflared` image updated; the image runs as the non-root `node` user.
 - Back up `db.json` (section 7); it is the only state. `render.yaml` is not a production account store until a persistent Render disk or Upstash credentials are configured; a free Render redeploy wipes the file.

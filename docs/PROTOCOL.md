@@ -247,6 +247,9 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 | `/api/delete` | POST | `password` (not needed for a name-only account) | `{ok}` — revokes every session; **required by App Store 5.1.1(v)** |
 | `/api/rank` | GET | query `board=kos\|wins\|arcade`, `limit?` | `{ok, board, entries: [{rank, name, score, updated, me?}], you?}` — public; a valid Bearer token adds `you` |
 | `/api/rank` | POST | `kos?`, `wins?`, `matches?`, `arcade_best?`, `arcade_diff?` (`easy`\|`normal`\|`nightmare`, default `normal`), `board?`, `limit?` | `{ok, board, entries, you, stats}` — authenticated; stores the account's bests (monotonic) and returns the requested board |
+| `/api/wallet` | GET | – | `{ok, coins, seeded, today:{day,granted,cap}, ledger}` — authenticated; seeds once from the cloud save (4.3) |
+| `/api/wallet/grant` | POST | `id`, `reason` (`ko`\|`match`\|`quest`\|`streak`\|`earn`), `amount`, `kos?`, `won?` | `{ok, coins, added, ...}` — authenticated, capped per request and per day (4.3) |
+| `/api/wallet/spend` | POST | `id`, `item` (`kind:key`, e.g. `skin:cowboy`) | `{ok, coins, spent, item}` — authenticated; 409 `coins` when short, 400 `item` when unknown (4.3) |
 | `/health` | GET | – | `{ok, rooms, players, accounts, saved}` |
 
 `user` is `{username, email, created, hasPassword}` (`email` is `''` for a name-only account).
@@ -262,7 +265,7 @@ client can tell "this server build has no such endpoint" apart from "the game fi
 an endpoint may still answer its 404 with the plain text `not found`; clients must treat both as the same condition.
 Tokens last 365 days and are renewed by `/api/me`. Failed logins are rate limited (8 per account / 40 per IP per 10 min).
 
-The `data` blob is the whole client save (settings, coins, owned cosmetics, stats). Its schema belongs to the web client today; see §7 for why the server must own the economy before iOS ships.
+The `data` blob is the whole client save (settings, coins, owned cosmetics, stats). Coins in the blob are **no longer authoritative** for a signed-in account: the server wallet (4.3) owns the balance, and a cloud-save merge can never raise it. The blob keeps `wallet.coins` for the web client, but the Godot client overwrites it with the server balance after every wallet reply and when it takes a cloud save. Owned cosmetics and the rest of the blob stay client data.
 
 ### 4.1 Ranking (leaderboard)
 
@@ -315,6 +318,53 @@ First-party analytics, no account and no token (`events.js`, full list in `docs/
 - Limits: body 32 KB (`413`), 30 batches per IP per minute (`429 err:"slow"`, in memory). The IP is used only for that limit and is never stored.
 - Storage: the accounts store (Upstash if configured, else `data/db.json`), one append-only bucket per UTC day (`ev:YYYY-MM-DD`), max 20000 events per day (oldest dropped), expiring after 31 days.
 - Reply `{ok:true, n}`. Clients fire and forget: on any failure they retry once, then drop the batch.
+
+### 4.3 Server-authoritative coin wallet
+
+Signed-in coins live on the server (`wallet.js`), in the same store as accounts. Guests are unchanged: they keep the
+local profile and no wallet call is made. The three routes need `Authorization: Bearer <token>`; without a valid token
+they answer `401 err:"auth"`.
+
+- **Storage.** One record per account with the balance and an append-only ledger of the newest 100 entries
+  `{reason, amount, id, time, item?}`, oldest first. `reason` is `migrate`, a grant reason, or `spend` (negative
+  amount). Operations on one account are serialised in the server process, so two simultaneous requests cannot lose an
+  update. Idempotency ids (8–64 chars of `A-Za-z0-9_-`) are remembered for the newest 300 operations. A repeated id
+  returns the current balance with `replay: true` and changes nothing. Several server instances sharing one database
+  are **not** safe yet: that needs an atomic compare-and-set in the store, so run one wallet instance.
+- **Read (`GET /api/wallet`).** `{ok, coins, seeded, today:{day, granted, cap}, ledger}`. On the first wallet use it
+  seeds the balance **once** from the account's existing cloud-save `wallet.coins`, clamped to **100000** (the blob is
+  still client-trusted), and records a `migrate` ledger entry. An account with no cloud save seeds 0. Later cloud saves
+  never re-seed or raise the balance.
+- **Grants (`POST /api/wallet/grant`).** Body `{id, reason, amount, kos?, won?}`. `amount` is a whole number ≥ 1.
+  Per-request caps come from the shipped rewards (`godot/autoload/save.gd`, `godot/logic/quests.gd`):
+
+  | reason | what it pays | per-request cap |
+  |---|---|---|
+  | `ko` | one K.O. (`KO_COINS` 5) | 5 |
+  | `match` | the end-of-match `MATCH_COINS` 40 + `WIN_COINS` 60 when `won`, plus `KO_COINS` 5 per `kos` (0–60) | 100–400 |
+  | `quest` | one claimed goal: daily goal up to 150, weekly/weekly bonus 400, daily bonus 100, milestone up to 300 | 500 |
+  | `streak` | first win of a day: `STREAK_BASE` 20 + `STREAK_STEP` 10 × (up to `STREAK_MAX` 6 − 1) | 100 |
+  | `earn` | a generic client award (`SaveProfile.add_coins`) | 1000 |
+
+  There is also a **per-UTC-day cap of 5000** earned coins per account (`409 err:"cap"`); refused grants change
+  nothing. Over-cap requests are `400 err:"cap"`, unknown reasons `400 err:"reason"`, bad amounts `400 err:"amount"`,
+  malformed ids `400 err:"id"`. Wallet calls are rate limited per account: 60 grants and 30 spends a minute
+  (`429 err:"slow"`).
+- **Spends (`POST /api/wallet/spend`).** Body `{id, item}` where `item` is `kind:key` from a server-side price table
+  that mirrors the shipped content: **outfits** (`skin:`), **shop emotes** (`emote:`), the Godot-only **classes**
+  (`class:tank` 1500, `class:dash` 1200, `class:ace` 2000) and the Construction DLC (`dlc:construction` 1500, bought
+  with coins — there is no separate entitlement). Unknown items are `400 err:"item"`; insufficient balance is
+  `409 err:"coins"` with `{coins, price, item}` and changes nothing. A successful spend returns the new balance and
+  `spent`. `tools/test-server.js` checks the table against `godot/data/extra/locker.json`,
+  `godot/data/extra/classes.json` and `DlcUnlock.PRICE`, so shipped price drift fails `npm test`.
+- **Client (Godot).** `Save.cloud` (an `AccountApi`) fetches the balance after sign-in and keeps an operation queue in
+  the local settings (`wallet_ops`, tied to the account name). Earning and spending when signed in append an
+  idempotent operation, apply it locally for an instant UI and replay it to the server; a network failure retries, and
+  the balance shown is the server's balance plus any operations still queued. A rejected purchase is rolled back
+  locally. The cloud-save merge ignores `wallet.coins` when comparing saves and cannot raise the balance. Kids mode and
+  `--no-save` runs stay guest-local and need no network.
+- **Old servers.** A build without these routes answers `404` (JSON on this build, plain text on older ones). The
+  client keeps queued operations and retries; it does not fall back to trusting client coins.
 
 ---
 
