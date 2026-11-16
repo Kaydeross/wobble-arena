@@ -26,12 +26,18 @@ const LIMITS = {
   perRoom: 8,              // players in one room
   payload: 32 * 1024,      // biggest single message (bytes)
   rate: 400,               // messages per second a player may send (short bursts are fine)
+  joinFails: 10,           // failed joins (unknown or full room) per address per window before `nojoin` `slow`
+  joinWindow: 60000,       // ms
   perIp: 40,               // connections from one address
 };
 
 const rooms = new Map();   // id -> room
 let roomCounter = 0, totalConns = 0;
 const perIp = new Map();
+const joinFails = new Map();                                          // ip -> {n, t}: failed joins (none/full) in the current window (throttle, docs/PROTOCOL.md 1.2)
+function joinThrottled(ip) { const f = joinFails.get(ip); return !!f && Date.now() - f.t < LIMITS.joinWindow && f.n >= LIMITS.joinFails; }
+function joinFailed(ip) { const now = Date.now(); let f = joinFails.get(ip); if (!f || now - f.t >= LIMITS.joinWindow) { f = { n: 0, t: now }; joinFails.set(ip, f); } f.n++; }
+function pruneJoinFails() { const now = Date.now(); for (const [ip, f] of joinFails) if (now - f.t >= LIMITS.joinWindow) joinFails.delete(ip); }
 
 /* ---------------- web page ---------------- */
 const TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.json': 'application/json', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg', '.wav': 'audio/wav', '.woff2': 'font/woff2' };
@@ -189,7 +195,8 @@ function joinRoom(ws, r, build) {
   if (humans(r) >= r.info.max) { send(ws, { op: 'nojoin', reason: 'full' }); return false; }
   const cid = r.nextCid++; ws.room = r; ws.role = 'client'; ws.cid = cid; r.clients.set(cid, ws);
   send(ws, { op: 'joined', cid, id: r.id, pub: r.pub, kind: r.info.kind, arcade: !!r.info.arcade });
-  send(r.host, { op: 'peer', cid, ev: 'open' });
+  const pe = { op: 'peer', cid, ev: 'open' }; if (ws.user) pe.acct = ws.user;
+  send(r.host, pe);
   return true;
 }
 
@@ -214,10 +221,11 @@ const handlers = {
   join(ws, m) {
     if (config.requireAuth && !ws.user) { send(ws, { op: 'nojoin', reason: 'auth' }); return; }
     if (ws.room) { send(ws, { op: 'nojoin', reason: 'inroom' }); return; }
-    const r = findRoom(m.id); if (!r) { send(ws, { op: 'nojoin', reason: 'none' }); return; }
+    if (joinThrottled(ws.ip)) { send(ws, { op: 'nojoin', reason: 'slow' }); return; }   // too many wrong guesses lately: stops code brute-forcing
+    const r = findRoom(m.id); if (!r) { joinFailed(ws.ip); send(ws, { op: 'nojoin', reason: 'none' }); return; }
     const want = str(m.kind, 16);
     if (ROOM_KINDS.has(want) && want !== r.info.kind) { send(ws, { op: 'nojoin', reason: 'kind', kind: r.info.kind, arcade: !!r.info.arcade }); return; }   // the code is for another kind of room (docs/PROTOCOL.md 1.2)
-    joinRoom(ws, r, str(m.build, 16));
+    if (!joinRoom(ws, r, str(m.build, 16)) && ws.room === null) joinFailed(ws.ip);
   },
   quick(ws, m) {
     if (config.requireAuth && !ws.user) { send(ws, { op: 'nomatch', reason: 'auth' }); return; }
@@ -229,7 +237,9 @@ const handlers = {
   },
   tohost(ws, m) {
     if (ws.role !== 'client' || !ws.room || !m.m || typeof m.m !== 'object') return;
-    send(ws.room.host, { op: 'msg', from: ws.cid, m: m.m });
+    const out = { op: 'msg', from: ws.cid, m: m.m };
+    if (ws.user && m.m.t === 'hello') out.acct = ws.user;                // the account name comes from the login, not from the guest's own message
+    send(ws.room.host, out);
   },
   to(ws, m) {
     if (ws.role !== 'host' || !ws.room || !m.m || typeof m.m !== 'object') return;
@@ -277,7 +287,7 @@ wss.on('connection', (ws, req) => {
 const beat = setInterval(() => {                                      // drop connections that went silent
   for (const ws of wss.clients) { if (!ws.alive) { ws.terminate(); continue; } ws.alive = false; try { ws.ping(); } catch (e) { /* gone */ } }
 }, 20000);
-const sweep = setInterval(() => { for (const [id, r] of rooms) if (r.host.readyState > 1) leaveRoom(r.host); }, 30000);
+const sweep = setInterval(() => { pruneJoinFails(); for (const [id, r] of rooms) if (r.host.readyState > 1) leaveRoom(r.host); }, 30000);
 
 function start(port) {
   return new Promise(res => server.listen(port === undefined ? PORT : port, () => {
@@ -289,4 +299,4 @@ function start(port) {
 }
 function stop() { accounts.stopSweeps(); clearInterval(beat); clearInterval(sweep); if (accounts.store.flush) accounts.store.flush(); for (const ws of wss.clients) ws.terminate(); return new Promise(res => server.close(() => res())); }
 if (require.main === module) { start(); process.on('SIGTERM', () => stop().then(() => process.exit(0))); }
-module.exports = { start, stop, rooms, LIMITS, server, config, accounts, ipOf };
+module.exports = { start, stop, rooms, joinFails, LIMITS, server, config, accounts, ipOf };

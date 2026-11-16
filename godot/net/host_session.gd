@@ -76,6 +76,7 @@ var _match: WeakRef = null       ## the HostMatch of the running match
 var _closing: Array = []         ## [seconds left, cid]: guests to remove after their last message
 var _connect_t := 0.0
 var _last_info := ""
+var _acct := {}                  ## cid -> account name stamped by the relay on that guest's `hello` (wins over the name they typed)
 var _emote_t := {}               ## slot -> clock of its last emote
 var _resume := {}                ## host migration: the old match (NetMatch.capture_resume) until it is resumed
 var _resume_t := -1.0
@@ -287,7 +288,10 @@ func _on_server(m: Dictionary) -> void:
 		"msg":
 			if not m.has("from"): return             # the host only listens to guests
 			var inner: Variant = m.get("m")
-			if inner is Dictionary: _host_recv(NetSnapshot.to_int32(m["from"]), inner)
+			if inner is Dictionary:
+				var from := NetSnapshot.to_int32(m["from"])
+				if m.has("acct") and str(m["acct"]) != "": _acct[from] = str(m["acct"])   # the relay stamps a signed-in guest's account name
+				_host_recv(from, inner)
 			else: guarded += 1
 		"pong":
 			var pts := NetSnapshot.num(m.get("ts"), 0.0, 1e12, -1.0)
@@ -462,6 +466,7 @@ func _hello(cid: int, m: Dictionary) -> void:
 		_to(cid, {"t": "badver"}); _close_later(cid); return
 	var gd := NetSnapshot.to_int32(m.get("gd")) > 0
 	var info := clean_info(m, 0)
+	if _acct.has(cid): info["name"] = str(_acct[cid]).substr(0, 12)   # server-enforced name; no stamp (REQUIRE_LOGIN=0, tests) = the hello name
 	if gd: info["gd"] = NetClient.GD
 	if arcade and not gd:                                   # an Arcade run is app-only: never a Classic downgrade
 		_to(cid, {"t": "kick", "msg": "The Arcade co-op room is app-only: join from the Wobblers Arena app."})
@@ -507,6 +512,7 @@ func _hello(cid: int, m: Dictionary) -> void:
 
 ## hostDrop: a guest left (or was removed).
 func _drop(cid: int) -> void:
+	_acct.erase(cid)
 	if not cid_slot.has(cid): return
 	var id: int = cid_slot[cid]
 	cid_slot.erase(cid); conns.erase(id)

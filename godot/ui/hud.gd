@@ -44,9 +44,7 @@ var _indicators: Control          ## off-screen enemy arrows (ui/enemy_indicator
 var _ind_blocked: Array = []      ## screen rects those arrows slide past (reused every frame, no allocation)
 var _cross: Control
 var _cross_on := true            ## Settings `crosshair`: the aiming dot (the charged-melee ring and heavy-swing rim draw regardless)
-var _net: HBoxContainer          ## online only: "Room 4821 · Host · 34 ms" status pill under the K.O. panel
-var _net_dot: ColorRect
-var _net_l: Label
+var _net: PingBadge          ## online only: "Room 4821 · Host · 34 ms" status pill under the K.O. panel
 const HINT_SECS := 14.0          ## the control hint line (shove / kick keys) shows this long at the start of a match
 var _hint: Label
 var _center: Label
@@ -171,41 +169,21 @@ func _on_window_input(e: InputEvent) -> void:
 
 # ---------------- building ----------------
 
-const PING_GOOD := 60       ## ms: under this the status dot is green, up to PING_OK amber, above red
-const PING_OK := 140
+const PING_GOOD := PingBadge.GOOD
+const PING_OK := PingBadge.OK
 
 func _build_net() -> void:
-	_net = HBoxContainer.new()
-	_net.name = "NetStatus"
-	_net.add_theme_constant_override("separation", 5)
-	_net.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_net.modulate.a = 0.75
-	_net.visible = false
+	_net = PingBadge.new()
 	add_child(_net)
-	_net_dot = ColorRect.new()
-	_net_dot.custom_minimum_size = Vector2(8, 8)
-	_net_dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_net_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_net.add_child(_net_dot)
-	_net_l = _lbl(_net, UiTheme.MIN_FONT, UiTheme.MUTED)
 
 ## Colour of the latency dot: green < PING_GOOD, amber up to PING_OK, red above; grey while unknown (ping < 0).
 static func ping_color(ms: int) -> Color:
-	if ms < 0: return UiTheme.MUTED
-	if ms < PING_GOOD: return Color("5fd97a")
-	if ms <= PING_OK: return Color("f2b53c")
-	return Color("ef5b5b")
+	return PingBadge.color_for(ms)
 
 func _update_net(ko_bottom: float, x: float) -> void:
 	var s: Variant = world.session
-	_net.visible = s != null
+	_net.refresh(s)
 	if s == null: return
-	var txt := tr("Room %s") % str(s.room_code)
-	if s.is_host(): txt += " · " + tr("Host")
-	if s.ping_ms >= 0: txt += " · %d ms" % s.ping_ms
-	if _net_l.text != txt: _net_l.text = txt
-	_net_dot.color = ping_color(s.ping_ms)
-	_net.reset_size()
 	_net.position = Vector2(x + 4.0, ko_bottom + 4.0)
 
 func _build_ko() -> void:

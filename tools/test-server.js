@@ -76,6 +76,32 @@ const { Client } = require('./wa-client');
     process.env.TRUST_PROXY = 'cloudflare'; assert.equal(srv.ipOf(mk(spoof, '10.0.0.2')), '1.2.3.4', 'cloudflare mode uses cf-connecting-ip'); assert.equal(srv.ipOf(mk({ 'x-forwarded-for': '7.7.7.7' }, '10.0.0.2')), '7.7.7.7');
     delete process.env.TRUST_PROXY; }
 
+  /* ---- join throttle: 10 failed joins (unknown/full) per address per minute, then `nojoin` `slow` (docs/PROTOCOL.md 1.2) ---- */
+  { srv.joinFails.clear();
+    const t = await new Client(url, 'Thr').open(); await t.op('hi');
+    for (let i = 0; i < srv.LIMITS.joinFails; i++) { t.tx({ op: 'join', id: String(9000 + i) }); assert.equal((await t.op('nojoin')).reason, 'none', 'wrong code #' + i); }
+    t.tx({ op: 'join', id: '9999' }); assert.equal((await t.op('nojoin')).reason, 'slow', 'the 11th wrong code is throttled');
+    t.tx({ op: 'join', id }); assert.equal((await t.op('nojoin')).reason, 'slow', 'a real code is refused too while throttled (no oracle during the lockout)');
+    const t2 = await new Client(url, 'Thr2').open(); await t2.op('hi'); t2.tx({ op: 'join', id }); assert.equal((await t2.op('nojoin')).reason, 'slow', 'the throttle is per address, not per socket');
+    for (const f of srv.joinFails.values()) f.t -= srv.LIMITS.joinWindow + 1;   // the window passes
+    t.tx({ op: 'join', id: '9998' }); assert.equal((await t.op('nojoin')).reason, 'none', 'after the window the counter starts over');
+    srv.joinFails.clear(); t.close(); t2.close(); console.log('join throttle: ok'); }
+
+  /* ---- server-enforced names: the relay stamps the account name on a signed-in guest's hello (and peer open) ---- */
+  { const base = 'http://127.0.0.1:' + srv.server.address().port;
+    const claim = async n => (await (await fetch(base + '/api/claim', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: n }) })).json());
+    const acct = await claim('Real_Ann');
+    const hs = await new Client(url, 'Host2').open(); await hs.op('hi'); const rid = await hs.create(false);
+    const a = await new Client(url, 'FakeName').open(); await a.op('hi'); a.tx({ op: 'auth', token: acct.token }); assert.equal((await a.op('authed')).user, 'Real_Ann');
+    await a.join(rid); const pe = await hs.wait(m => m.op === 'peer' && m.ev === 'open'); assert.equal(pe.acct, 'Real_Ann', 'peer open carries the account');
+    a.hello(); const hm = await hs.wait(m => m.op === 'msg' && m.m.t === 'hello');
+    assert.equal(hm.acct, 'Real_Ann', 'hello is stamped with the account name'); assert.equal(hm.m.name, 'FakeName', 'the guest-typed name is still there (the host ignores it)');
+    a.toHost({ t: 'hello', name: 'x', acct: 'Admin' }); assert.equal((await hs.wait(m => m.op === 'msg' && m.m.t === 'hello')).acct, 'Real_Ann', 'a guest cannot forge the stamp');
+    a.toHost({ t: 'pend' }); assert.ok(!(await hs.wait(m => m.op === 'msg' && m.m.t === 'pend')).acct, 'only hello is stamped');
+    const b = await new Client(url, 'Anon').open(); await b.op('hi'); await b.join(rid); b.hello();
+    const bh = await hs.wait(m => m.op === 'msg' && m.from === b.cid && m.m.t === 'hello'); assert.ok(!('acct' in bh), 'a guest with no login is not stamped (REQUIRE_LOGIN=0 falls back to the hello name)');
+    [hs, a, b].forEach(c => c.close()); console.log('server-enforced names: ok'); }
+
   /* ---- accounts: claim a name, protect it, lastSeen, the 30-day sweep ---- */
   { const base = 'http://127.0.0.1:' + srv.server.address().port, A = srv.accounts, DAY = 86400000;
     const api = async (m, p, body, tok) => { const r = await fetch(base + p, { method: m, headers: Object.assign({ 'content-type': 'application/json' }, tok ? { authorization: 'Bearer ' + tok } : {}), body: body ? JSON.stringify(body) : undefined }); return Object.assign({ status: r.status }, await r.json()); };
