@@ -162,7 +162,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 18
 placeholder_text = "Room code"
-max_length = 16
+max_length = 4
 
 [node name="Join" type="Button" parent="Safe/Col/Body/Online/Box/Main/Side/CodeRow"]
 custom_minimum_size = Vector2(110, 62)

@@ -39,6 +39,8 @@ func _net_and_crosshair(world: Node, hud: Control) -> void:
 	gs.ping_ms = 200
 	hud.update(0.0)
 	check(dot.color == hud.ping_color(200) and lab.text.contains("200 ms"), "pill follows the ping (%s)" % lab.text)
+	check(pill is PingBadge and PingBadge.color_for(60) == PingBadge.color_for(0) and PingBadge.color_for(61) == PingBadge.color_for(140) and PingBadge.color_for(60) != PingBadge.color_for(61) and PingBadge.color_for(141) != PingBadge.color_for(140), "PingBadge: green <= 60, amber 61-140, coral above")
+	check(PingBadge.text_for("4821", false, 34) == "Room 4821 · 34 ms" and PingBadge.text_for("4821", true, -1) == "Room 4821 · Host" and PingBadge.color_for(-1) == UiTheme.MUTED, "PingBadge text: room + ms, ms hidden while unknown, Host marker")
 	var ko: Control = hud.get_node("Score")
 	check(pill.position.y >= ko.position.y + ko.size.y and pill.position.x >= ko.position.x, "pill sits under the K.O. panel, clear of it")
 	check(Rect2(Vector2.ZERO, hud.get_viewport_rect().size).encloses(Rect2(pill.position, pill.size)), "pill stays on screen")

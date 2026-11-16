@@ -84,10 +84,10 @@ An Arcade co-op room is Construction-only: when a client sends `arcade: true` (o
 | `created` | `id`, `pub` | You are the host (cid 0). Public rooms are `r<base36 counter>`; private rooms are a 4-digit numeric code (`0000`-`9999`, zero-padded). |
 | `nocreate` | `reason` | `auth`, `inroom`, `busy` |
 | `joined` | `cid`, `id`, `pub`, `kind`, `arcade` | You are a guest. `cid` is the server's connection id inside the room (1, 2, …) and is **not** the game slot. `kind`/`arcade` say what kind of room you just joined (1.4). |
-| `nojoin` | `reason`, `kind?` | `auth`, `inroom`, `none`, `full`, `build`, `kind`. `kind` means the room exists but its kind differs from the `kind` you asked for (and carries the room's real `kind`/`arcade`); `none` means no room with that code **on this server**. |
+| `nojoin` | `reason`, `kind?` | `auth`, `inroom`, `none`, `full`, `build`, `kind`, `slow`. `slow` = this address made 10 failed joins (`none`/`full`) in the last 60 s; every `join` from it is refused with `slow` until the window ends (it also hides whether a code exists, so codes cannot be brute-forced). `kind` means the room exists but its kind differs from the `kind` you asked for (and carries the room's real `kind`/`arcade`); `none` means no room with that code **on this server**. |
 | `nomatch` | `reason?` | No suitable public room, or `auth`/in a room. |
-| `msg` | `from?`, `m` | To the host: `from` = guest cid. To a guest: no `from` (it is from the host). |
-| `peer` | `cid`, `ev` | Host only. `ev` = `open` (a guest joined) or `close` (a guest left). |
+| `msg` | `from?`, `m`, `acct?` | To the host: `from` = guest cid. To a guest: no `from` (it is from the host). `acct` (host only, only on a guest's `hello`) is the guest's logged-in account username, stamped by the server from the `auth` token; the host must use it instead of the `name` inside `hello`. Absent for guests who are not logged in (REQUIRE_LOGIN=0, tests): fall back to the `hello` name. |
+| `peer` | `cid`, `ev`, `acct?` | Host only. `ev` = `open` (a guest joined; `acct` = their account username when logged in) or `close` (a guest left). |
 | `promoted` | `id`, `pub` | The old host left; **you** are the new host. |
 | `rehost` | `id` | The old host left; another guest is the new host. Re-send your `hello` to the new host. |
 | `kicked` | – | The host removed you. |

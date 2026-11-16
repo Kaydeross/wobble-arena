@@ -1,0 +1,9 @@
+{
+ "Too many wrong codes. Wait a minute, then try again.": {
+  "zh_TW": "輸入錯誤的代碼太多次了。請等一分鐘再試。",
+  "zh_CN": "输入错误的代码太多次了。请等一分钟再试。",
+  "ja": "間違ったコードが多すぎます。1分待ってからもう一度試してください。",
+  "fr": "Trop de codes incorrects. Attends une minute puis réessaie.",
+  "es": "Demasiados códigos incorrectos. Espera un minuto e inténtalo de nuevo."
+ }
+}
