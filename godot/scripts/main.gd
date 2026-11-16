@@ -95,7 +95,8 @@ var chip: PanelContainer
 var host_sheet: Control             ## "Host a room": name, room type, public / private, seats, bots
 var lobby: Control                  ## the room's lobby: players, Start / Start with bot (host only), Leave
 var _host := {"type": "versus", "pub": false, "max": 4, "bots": 2, "mode": "classic", "lim": -1, "hp": 200, "grav": 1.0, "kb": 1.0, "crate": "normal", "inf": false, "dyn": "off"}
-var _host_bs := {}                  ## "type_versus/coop", "pub_0/1", "max_N", "bots_N" -> Button
+var _host_bs := {}                  ## "type_versus/coop", "pub_0/1" -> Button
+var _host_num := {}                 ## "max" / "bots" -> {label, prev, next, lo, hi}: the Seats / Bots steppers
 var _host_tab := "Room"             ## the Host sheet's current tab
 var _join_kind := ""                ## the room-list row's kind the next join expects ("" = any kind)
 
@@ -977,7 +978,7 @@ func host_room() -> void:
 	if coop:
 		(session as HostSession).begin_host(url, coop_host_opts(), coop_host_info(), str(Settings.get_value("token", "")))
 	else:
-		(session as HostSession).begin_host(url, {"name": str(_ui["rname"].text), "pub": _host["pub"], "max": _host["max"], "bots": int(_host["bots"]),
+		(session as HostSession).begin_host(url, {"name": str(_ui["rname"].text), "pub": _host["pub"], "max": _host["max"], "bots": mini(int(_host["bots"]), int(_host["max"]) - 1),
 			"mode": mode, "map": _host_map(mode), "dyn": str(_host["dyn"]), "diff": str(Settings.get_value("difficulty", "normal")),
 			"lim": int(_host["lim"]), "hp": int(_host["hp"]), "grav": float(_host["grav"]), "kb": float(_host["kb"]), "crate": str(_host["crate"]),
 			"inf": bool(_host["inf"])},
@@ -1050,6 +1051,67 @@ func _pill_row(box: Control, row_name: String, label: String, keys: Array, names
 		_host_bs[prefix + str(keys[i])] = b
 	return row
 
+## One labelled stepper row (‹ value ›): the seat count and bot count go past 8 (WP 1.0-B), which is too
+## many pills for a phone, so they step instead. The value lives in `_host[key]` like the pill rows' picks.
+func _num_row(box: Control, row_name: String, label: String, key: String, lo: int, hi: int, label_w := 110.0) -> void:
+	var row := HBoxContainer.new()
+	row.name = row_name
+	row.add_theme_constant_override("separation", UiTheme.SP_3)
+	row.size_flags_horizontal = SIZE_EXPAND_FILL
+	box.add_child(row)
+	var l := Label.new()
+	l.name = "Label"
+	l.text = label
+	l.theme_type_variation = &"MutedLabel"
+	l.add_theme_font_size_override("font_size", 18)
+	l.custom_minimum_size = Vector2(label_w, 0)
+	l.size_flags_vertical = SIZE_SHRINK_CENTER
+	row.add_child(l)
+	var prev := Button.new()
+	prev.name = "Prev"; prev.text = "‹"
+	prev.theme_type_variation = &"TabButton"
+	prev.custom_minimum_size = Vector2(64, HOST_ROW_H)
+	prev.add_theme_font_size_override("font_size", 26)
+	prev.pressed.connect(_step_host_num.bind(key, -1))
+	row.add_child(prev)
+	var val := Label.new()
+	val.name = "Value"
+	val.text = str(_host[key])
+	val.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	val.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	val.size_flags_horizontal = SIZE_EXPAND_FILL
+	val.custom_minimum_size = Vector2(80, HOST_ROW_H)
+	val.add_theme_font_size_override("font_size", 20)
+	row.add_child(val)
+	var next := Button.new()
+	next.name = "Next"; next.text = "›"
+	next.theme_type_variation = &"TabButton"
+	next.custom_minimum_size = Vector2(64, HOST_ROW_H)
+	next.add_theme_font_size_override("font_size", 26)
+	next.pressed.connect(_step_host_num.bind(key, 1))
+	row.add_child(next)
+	_host_num[key] = {"label": val, "prev": prev, "next": next, "lo": lo, "hi": hi}
+
+## ‹ / › on the Seats / Bots steppers.
+func _step_host_num(key: String, d: int) -> void:
+	var n: Dictionary = _host_num.get(key, {})
+	if n.is_empty(): return
+	_host[key] = clampi(int(_host[key]) + d, int(n["lo"]), int(n["hi"]))
+	if key == "max":                                     # a seat count below the bot count would leave bots without seats
+		_host["bots"] = mini(int(_host["bots"]), int(_host["max"]) - 1)
+		_show_host_num("bots")
+	_show_host_num(key)
+	_host_hint()
+
+## Paint a stepper's value and disable its arrows at the ends.
+func _show_host_num(key: String) -> void:
+	var n: Dictionary = _host_num.get(key, {})
+	if n.is_empty(): return
+	var v := int(_host[key])
+	(n["label"] as Label).text = str(v)
+	(n["prev"] as Button).disabled = v <= int(n["lo"])
+	(n["next"] as Button).disabled = v >= int(n["hi"])
+
 ## Host sheet rules (index keys: node names cannot hold "0.5").
 const HOST_ROW_H := 60.0
 const HOST_LIMS := [-1, 0, 5, 10, 20, 30]
@@ -1067,7 +1129,8 @@ func _build_host_sheet() -> void:
 	if h is Dictionary:
 		for k in _host.keys():
 			if h.has(k): _host[k] = h[k]
-	_host["max"] = clampi(int(_host["max"]), 2, 8); _host["bots"] = clampi(int(_host["bots"]), 0, 7)
+	_host["max"] = clampi(int(_host["max"]), 2, GuestSession.NET_MAX)
+	_host["bots"] = clampi(int(_host["bots"]), 0, mini(GuestSession.NET_MAX - 1, int(_host["max"]) - 1))
 	if not h is Dictionary or not (h as Dictionary).has("mode"): _host["mode"] = str(Settings.get_value("mode", "classic"))
 	if not h is Dictionary or not (h as Dictionary).has("dyn"): _host["dyn"] = str(Settings.get_value("dyn", "off"))
 	_host["mode"] = HostSession.online_mode(str(_host["mode"]))
@@ -1140,8 +1203,9 @@ func _build_host_sheet() -> void:
 		name_row.add_child(b)
 		_host_bs["type_" + str(pair[0])] = b
 	_pill_row(room, "Vis", "Who can join", [0, 1], ["Private (code)", "Public"], "pub_", func(k: int) -> void: _host["pub"] = k == 1)
-	_pill_row(room, "Max", "Seats", [2, 3, 4, 5, 6, 7, 8], ["2", "3", "4", "5", "6", "7", "8"], "max_", func(k: int) -> void: _host["max"] = k)
-	_pill_row(room, "Bots", "Bots", [0, 1, 2, 3, 4, 5, 6, 7], ["0", "1", "2", "3", "4", "5", "6", "7"], "bots_", func(k: int) -> void: _host["bots"] = k)
+	# Seats and Bots step instead of pills: the relay takes 16-player rooms and 15 pills do not fit a phone (WP 1.0-B).
+	_num_row(room, "Max", "Seats", "max", 2, GuestSession.NET_MAX)
+	_num_row(room, "Bots", "Bots", "bots", 0, GuestSession.NET_MAX - 1)
 	var mode: VBoxContainer = box.get_node("Mode")
 	var mr := HBoxContainer.new()
 	mr.name = "Game"
@@ -1213,8 +1277,8 @@ func _build_host_sheet() -> void:
 	go.pressed.connect(func() -> void: host_room())
 	row.add_child(go)
 	_host_bs["pub_" + str(1 if _host["pub"] else 0)].button_pressed = true
-	_host_bs["max_" + str(_host["max"])].button_pressed = true
-	_host_bs["bots_" + str(_host["bots"])].button_pressed = true
+	_show_host_num("max")
+	_show_host_num("bots")
 	_host_bs["lim_" + str(HOST_LIMS.find(int(_host["lim"])))].button_pressed = true
 	_host_bs["dyn_" + str(_host["dyn"])].button_pressed = true
 	_host_bs["hp_" + str(int(_host["hp"]))].button_pressed = true

@@ -9,7 +9,7 @@ One Node process (`server.js`, image from the repo `Dockerfile`, `node:22-alpine
 - **Room relay** over WebSocket `/ws` (rooms, host migration, message relay; host-authoritative game, see `docs/PROTOCOL.md`).
 - **Account REST API** on the same port (`/api/...`: claim a name, sign-up, login, cloud save, leaderboard), handled by `accounts.js`.
 - **Static web game** from `public/` and **`/health`** for monitoring.
-- Bandwidth is small (8 players x 30 Hz JSON per room). A NAS CPU is plenty.
+- Bandwidth is small (16 players x 30 Hz JSON per room). A NAS CPU is plenty.
 
 The iOS app reads one address, `wss://<your hostname>/ws`; the REST API is derived from it (`wss` becomes `https`, `/ws` is dropped; `AccountApi.http_base`).
 

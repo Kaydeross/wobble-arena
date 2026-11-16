@@ -98,7 +98,7 @@ const HOST_FRAME := [HB + "Head/Title", HB + "Head/Tabs/Room", HB + "Head/Tabs/M
 ## gravity, ammo, knockback, crates)
 const HOST_TABS := {
 	"host": [HB + "Room/NameRow/RoomName", HB + "Room/NameRow/Pversus", HB + "Room/NameRow/Pcoop", HB + "Room/Vis/P0", HB + "Room/Vis/P1",
-		HB + "Room/Max/P2", HB + "Room/Max/P8", HB + "Room/Bots/P0", HB + "Room/Bots/P7"],
+		HB + "Room/Max/Prev", HB + "Room/Max/Value", HB + "Room/Max/Next", HB + "Room/Bots/Prev", HB + "Room/Bots/Value", HB + "Room/Bots/Next"],
 	"host-mode": [HB + "Mode/Game/Prev", HB + "Mode/Game/Name", HB + "Mode/Game/Next", HB + "Mode/ModeHint", HB + "Mode/Lim/P0", HB + "Mode/Lim/P5",
 		HB + "Mode/Floor/Poff", HB + "Mode/Floor/Pdrift"],
 	"host-rules": [HB + "Rules/Hp/P100", HB + "Rules/Hp/P500", HB + "Rules/Pair/Grav/P0", HB + "Rules/Pair/Grav/P2", HB + "Rules/Pair/Inf/P0",
@@ -801,6 +801,15 @@ func _logic() -> void:
 	var hh: Dictionary = main._host
 	check(hh["mode"] == "tdm" and hh["lim"] == 5 and hh["hp"] == 300 and is_equal_approx(hh["grav"], 0.5) and is_equal_approx(hh["kb"], 2.0) \
 		and hh["crate"] == "chaos" and hh["inf"] and hh["dyn"] == "quake", "the sheet's picks: %s" % hh)
+	# Seats / Bots are steppers because the room cap is 16 (WP 1.0-B): they reach the cap and stop
+	var max_next: Button = main.get_node(hb + "Room/Max/Next")
+	for i in GuestSession.NET_MAX: max_next.pressed.emit()
+	check(int(main._host["max"]) == GuestSession.NET_MAX, "Seats steps up to the room cap (%d)" % int(main._host["max"]))
+	check(max_next.disabled, "Seats stops at the room cap")
+	var max_prev: Button = main.get_node(hb + "Room/Max/Prev")
+	for i in GuestSession.NET_MAX: max_prev.pressed.emit()
+	check(int(main._host["max"]) == 2 and max_prev.disabled, "Seats steps down to 2 and stops (%d)" % int(main._host["max"]))
+	main._host["max"] = 4; main._host["bots"] = 2; main._show_host_num("max"); main._show_host_num("bots")   # back to the defaults for the rest
 	main.show_host(false)
 	var sum := HostSession.rules_text({"want": "tdm", "mode": "classic", "lim": 5, "hp": 300, "grav": 0.5, "kb": 2.0, "crate": "chaos", "inf": true, "dyn": "quake", "map": "Arena"})
 	check(sum.begins_with("Classic · Arena · first to 5 · 300 HP · gravity 0.5x · knockback 2x · chaos crates · infinite ammo · floor Quake") \

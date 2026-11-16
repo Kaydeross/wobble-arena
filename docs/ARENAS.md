@@ -37,7 +37,7 @@ Engine facts worth knowing when making maps: bot starts and the player start use
 | Sunny Farm | ok | two crate spots 0.2 m above a surface | none |
 | Test / Practice / Build Your Own | dev | skipped | none |
 
-Phone notes: the 36-46 m maps (arena, park, ice, moonbase, candy, haunted, beach, dojo, brawlpit, tower) suit iPhone landscape with 2-6 players; the 60-98 m ones (Grand Arena, Rink, Colosseum, Fortress, Temple, Farm, Playroom) are team/8-player maps and empty with 2-3. Remaining soft spots: Temple and Playroom are very large; the menu thumbnails frame the whole sky so the map is a small part of the picture (a UI tweak in `previewCam`, left to the interface session).
+Phone notes: the 36-46 m maps (arena, park, ice, moonbase, candy, haunted, beach, dojo, brawlpit, tower) suit iPhone landscape with 2-6 players; the 60-98 m ones (Grand Arena, Rink, Colosseum, Fortress, Temple, Farm, Playroom) are team/16-player maps and empty with 2-3. Remaining soft spots: Temple and Playroom are very large; the menu thumbnails frame the whole sky so the map is a small part of the picture (a UI tweak in `previewCam`, left to the interface session).
 
 ## New arenas (small and fast, all use exported primitives only)
 

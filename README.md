@@ -40,7 +40,7 @@ The co-op update, as it appears in the game's What's new card:
 - **20+ game types.** Classic, Melee Only, Guns Only, Ninja, Explosive, Weapon Ladder, Deathmatch, Sudden Death, team games from 1v1 to 5v5 Chaos, low-gravity Moon Drift and a Practice Range.
 - **Moving floors.** Pick Steady, Wobble, Tilt, Quake or Drift for any arena, or leave it on Random.
 - **Breakable props.** About half of each arena's cover is breakable in every offline match (it looks like any other cover); a broken prop shatters into pieces that sink into the ground, trees take their crowns with them, and it respawns about two minutes later.
-- **Offline and online.** Computer players in four difficulties, and online rooms for up to 8 players. The Godot game and the web game can play in the same room.
+- **Offline and online.** Computer players in four difficulties, and online rooms for up to 16 players. The Godot game and the web game can play in the same room.
 - **Quick play.** One tap for a random game type, arena, class and floor, straight into an offline match.
 - **Arcade co-op.** Two players online take on the boss rush together, and a bot holds the seat if your partner leaves.
 - **Kids mode.** An offline assist with gentle auto-aim and an edge guard, for half the coins and no leaderboard score.
