@@ -93,3 +93,31 @@ Local gates rerun on both branches: `npm test`, `i18n --check`, `check:version`,
 Leftover worktrees `wobble-arena-l1…-l5` and the temporary verify/docs worktrees removed; the main checkout (`README.md`, this file) untouched.
 
 **Still owner-only:** Xcode/TestFlight upload (0.5.0 train starts at BUILD_NUMBER=1) + iPhone 12 `SoakRun` + App Store Connect (screenshots, age rating, privacy label, export compliance, demo account), production host + Upstash Redis, privacy page/Terms wording before analytics, analytics switch-on, the README version badge, Track P.
+
+## Status update — Claude (2026-11-17), end of the unattended run
+
+`main` is `874b0fd`. **Everything agent-doable in `docs/REVISED_PLAN.md` is merged; no PRs are open.** All CI green on each.
+
+| PR | What |
+|---|---|
+| #149 | v0.5.1 monetisation groundwork (Double coins, 2x daily bonus, Arcade continue, interstitial hook, Remove Ads / Restore). **Inert**: every control is hidden until a real ad/purchase provider registers; remote-config `ads.enabled` stays false. DeepSeek wrote it; CI is green but it has had no human review |
+| #150 / #157 / #158 / #152 | unified online combat (`net_zones`), 3D winner podium, compact netcode + larger rooms, server wallet (DeepSeek, merged before this run's cleanup) |
+| #156 | spatial audio (`Sfx.play_at`, "3D sound" setting) |
+| #159 | history-only merge of `claude/ios-export` and `cursor/godot-host-multiplay-2435` (`-s ours`: no file changes; both were superseded) |
+| #160 | shareable result card with a provider-neutral `Share` autoload (no native share sheet yet) |
+| #161 | ledge cling + throwable rubble, Godot-only overlays created only under `Combat.tuning_active()`. Parity (physics/bots/combat/skills) all pass. `construction_test` pins the ledge overlay off (the seeded blower scenario is trajectory-sensitive) |
+| #162 | `npm run balance` — 200 bot-vs-bot matches → Markdown table (4 m 24 s). First run: no class outlier (kid weakest, bruiser strongest); bow/glove over-perform, net picked 200× for 2 K.O.s |
+
+**TestFlight:** 0.5.0 **build 1** was built from `main` at `980d788` and uploaded on 2026-11-17 (Xcode `exportArchive` with `destination=upload`; see the memory note `testflight-upload-via-xcodebuild`). It does **not** contain the result card (#160), ledge/rubble (#161) or the balance tool. For those, upload build 2 (`BUILD_NUMBER=2 tools/build-ios.sh`, then the same export-with-upload step).
+
+**Branches:** remote is `main` + `gh-pages` only (gh-pages = published web build; never merge it). The single working branch is `work/soft-launch` (worktree `../wobble-arena-work`), kept synced with `main`. Local-only leftovers: `backup/v06e-local-fff305c` (an alternative local spatial-audio version, safe to delete), old session worktrees `wobble-ctl/fit/ship/title/wn`, and `../wobble-arena-v06c` / `../wobble-arena-v06d` (their work is now merged; remove them).
+
+**Needs the owner (an agent cannot do these):**
+1. Production host (always-on, near the soft-launch markets) + Upstash; then change `godot/data/extra/server.json` (still the NAS URL) and migrate accounts.
+2. Privacy page live + Terms link; add the usage-data wording from `docs/ANALYTICS.md`, then flip remote-config `analytics` on.
+3. iPhone 12 15-minute `SoakRun`; TestFlight test matrix; App Store Connect (screenshots, age rating, privacy label, demo account for review).
+4. **Decide Kitchen (Pack #2): paid or free** — `docs/PACK2_SPEC.md` is ready but is ~9 tools, 2 arenas, a mode, a class and outfits plus an owner-only CJK font rebuild. Not started.
+5. Track P: prove AdMob + UMP/ATT and StoreKit 2 plugins on a device. #149 does nothing visible until then.
+6. Native share-sheet and thermal plugins (the result card and soak CSV need them).
+
+**Review debt:** #149 (monetisation) and #161 (ledge/rubble) were written by DeepSeek and merged on green CI plus my local parity runs; neither has been played on a device. Play a few matches with ledge cling and rubble before wider testing.
