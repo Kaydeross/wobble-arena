@@ -87,6 +87,15 @@ var trap_t := 0.0
 var trap_net: RefCounted = null  ## the Weapons.TrapNet holding this fighter down (trapNet), null = none
 var trap_x := 0.0                ## pinned here while trapped (trapX / trapZ)
 var trap_z := 0.0
+## Ledge cling (Godot-only overlay, docs/DAMAGE.md "Ledge cling and throwable rubble"; logic/ledge.gd). MatchSim creates
+## the Ledge only while `Combat.tuning_active()`, and the fields stay at their inert defaults everywhere else, so the
+## parity paths (web numbers, JS bots/physics references, online without net_zones) never enter a hang.
+var hang := {}                   ## {} = not hanging; else {solid, x, z, nx, nz, top} (the grabbed ledge)
+var hang_t := 0.0                ## s spent hanging (climb delay / pose)
+var hang_cool := 0.0             ## s before another grab after a climb or a drop
+var hang_drop := false           ## the controller asks to let go this step (CROUCH / a bot decision)
+## Throwable rubble (Godot-only overlay, offline; logic/rubble.gd): 1 = this fighter holds a chunk (Rubble owns it).
+var rubble := 0
 var lie_side := 1                ## which side they lie on under a net (lieSide, visual)
 var struggle := 0.0
 var burn := 0.0

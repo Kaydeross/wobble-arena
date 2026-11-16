@@ -133,6 +133,7 @@ func dispose() -> void:
 	for f: FighterState in fighters:
 		f.last_attacker = null; f.burner = null; f.swing_hit = {}; f.trap_net = null
 		f.carrying = null; f.carried_by = null; f.ball_owner = null; f.ball_t = -1.0
+		f.hang = {}; f.rubble = 0
 	weapons.clear()
 	rules.winner = null
 	fighters.clear()
@@ -332,6 +333,8 @@ func hit(v: FighterState, dmg: float, dx: float, dy: float, dz: float, force: fl
 		attacker.st["dmg"] += real; attacker.st["hits"] += 1; v.st["taken"] += real
 		if head:
 			attacker.st["heads"] += 1
+	if not v.hang.is_empty():       # a hit knocks a hanging fighter off the ledge (Ledge clears the rest next step)
+		v.hang = {}; v.hang_drop = false
 	v.hp -= dmg; v.flash = 0.12
 	if v.is_player:
 		ev({"type": "hurt", "f": v, "amount": 0.35 + dmg / 90.0})
@@ -609,6 +612,7 @@ func place_at(f: FighterState, x: float, z: float, y: float = 0.01) -> void:
 	if f.carrying != null: f.carrying.carried_by = null
 	if f.carried_by != null: f.carried_by.carrying = null
 	f.carrying = null; f.carried_by = null; f.carry_limp = false; f.ball_t = -1.0; f.ball_owner = null
+	f.hang = {}; f.hang_t = 0.0; f.hang_cool = 0.0; f.hang_drop = false; f.rubble = 0   # no ledge / rubble survives a life
 	bowl_slides.erase(f)              # a fresh life is not still sliding as a bowling ball
 	flame_push.erase(f)               # a fresh life does not inherit the last one's spent flame budget
 	sig_fx.erase(f)                   # ... nor a signature move window (Fortress Stance / Tac-Reload / a dive in flight)

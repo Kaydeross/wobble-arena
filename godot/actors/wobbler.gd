@@ -124,6 +124,7 @@ var crouch_k: float = 0.0
 var dead := false
 var down_t: float = 0.0
 var trap := false
+var hang := false                     # ledge cling pose (docs/DAMAGE.md; overlay only, false everywhere else)
 var invuln := false
 var swing: float = -1.0
 var swing_yaw: float = 0.0
@@ -1103,6 +1104,8 @@ func apply_state(s: Dictionary) -> void:
 	dead = nd
 	down_t = ndt
 	trap = s.get("trap", false)
+	hang = s.get("hang", false)
+	if hang: wish = Vector2.ZERO      # hanging: no stride, the legs dangle
 	invuln = s.get("invuln", false)
 	_stiff_override = s.get("stiff", -1.0)
 	rage = maxf(0.0, float(s.get("rage", 0.0)))               # faces (Sprint 2.4): optional, safe defaults
@@ -1205,6 +1208,11 @@ func animate(dt: float) -> void:
 		target = SIM_DOWN
 		st = 8.0
 
+	# Ledge cling (overlay only): both arms reach up to the lip and the legs dangle; no art beyond the existing rig.
+	var hanging := hang and not dead and down_t <= 0.0
+	if hanging:
+		target = Vector3(0.0, 1.0, 0.2).normalized()
+		st = 60.0
 	# aiming arm: a spring chasing the target direction (the "awkward aim")
 	var k_arm := (3.0 if swing >= 0.0 else 1.0) * (st / wob)
 	var cdamp := 2.0 * sqrt(k_arm) * 0.32
@@ -1215,7 +1223,7 @@ func animate(dt: float) -> void:
 	arm_dir = (arm_dir + arm_vel * dt).normalized()
 
 	# legs and the swinging off-arm: stride follows input, so sliding keeps the legs still
-	var walking := wish.length_squared() > 0.0025 and not dead and down_t <= 0.0
+	var walking := wish.length_squared() > 0.0025 and not dead and down_t <= 0.0 and not hanging
 	var sp_raw := Vector2(vel.x, vel.z).length()
 	stride += ((sp_raw if walking or not grounded else 0.0) - stride) * minf(1.0, 14.0 * dt)
 	var sp := stride
@@ -1225,6 +1233,11 @@ func animate(dt: float) -> void:
 	var leg1 := -sin(phase) * amp + (0.0 if grounded else -0.3)
 	var arm_lx := -sin(phase) * amp * 0.9 - lean.x * 0.8
 	var arm_lz := 0.15 + absf(lean.y) * 0.8
+	if hanging:                                       # the off hand grips the lip too, the feet swing a little
+		leg0 = 0.55 + sin(_time * 2.4) * 0.12
+		leg1 = -0.35 + sin(_time * 2.1 + 1.0) * 0.10
+		arm_lx = 2.7
+		arm_lz = 0.25
 	if hat_spin:
 		hat_spin.rotation.y += dt * 20.0
 	var body_y := 0.8 + (absf(sin(phase)) * 0.07 * minf(sp / 5.0, 1.0) if grounded else 0.0)

@@ -106,6 +106,9 @@ func _match() -> void:
 	world.hp_setting = 100.0
 	root.add_child(world)
 	var sim: MatchSim = world.sim
+	# The seeded 30 s scenario below is about the Air Blower's push / stun / blame. Ledge cling (tuned matches) shifts the whole
+	# trajectory, so this test pins the overlay off; ledge behaviour has its own suite (tests/ledge_rubble_test.gd).
+	sim.ledge = null
 	var p := sim.player
 	var st: InputState = world.input.state
 	check(sim.combat.mode_id == "construction", "world runs Construction")

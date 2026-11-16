@@ -409,3 +409,64 @@ refusals, the Fortress knockback immunity and K.O.-without-launch, the front par
 Phase Shift vs `hit()` and a fresh life, no RNG draw, bots never casting, and the touch context offer/priority/tap) plus
 `npm run test:godot-touch` (the SIG button's tap-staleness), `test:godot-ui`, `test:godot-bots`, `test:godot-physics`,
 `npm run i18n -- --check` and `npm run content:check`.
+
+## Ledge cling and throwable rubble (overlay only)
+
+Post-v0.5.0 WP 0.6-D, Godot only, and every entry point is behind **`Combat.tuning_active()`** (the same overlay gate as
+the sections above): the web game, online matches without `net_zones` and the JS parity suites never reach either
+feature. Data lives in the overlays `godot/data/extra/ledge.json` and `godot/data/extra/rubble.json` (shared/*.json and
+the synced `godot/data/*.json` are untouched); both files are validated by their logic classes and by
+`npm run test:godot-destruct`. No new input actions or touch buttons were added (JUMP / CROUCH / SHOVE / FIRE are
+reused, so the HUD and touch layout are unchanged), no new art is used (the hang is the existing wobbler rig's arms up
+with dangling legs), and nothing here draws a `CombatRng` number.
+
+### Ledge cling (`godot/logic/ledge.gd`)
+
+A fighter who walks off the edge of a platform, or is knocked past it but is still touching its face, catches the ledge:
+it hangs with its hands at the top, cannot move and can **JUMP to climb up** or **CROUCH to let go** (the drop pushes it
+outward). Bots catch and climb too (`BotBrain`'s ledge probe steers a falling bot toward a catchable lip and it climbs
+after `bot.climbDelay`; `BOT_FIRE` is unchanged). The catch window is `catch.topMin`..`topMax` metres of the ledge top
+above the hanging feet, `catch.reach` metres beyond the body radius, and only while falling (`catch.maxRise` 0); the feet
+hang `catch.hangDrop` 1.35 m below the lip, a climb starts `catch.cooldown` 0.45 s of recatch immunity, and the human
+input waits `PlayerControl.HANG_INPUT_DELAY` 0.12 s so a JUMP held while walking off does not skip the grab. A hanging
+fighter that takes a hit is knocked off (`Combat.hit`), a ledge that disappears (a broken breakable, a moved tile) is
+released, and `Combat.place_at` clears the hang on a fresh life.
+
+`MatchSim` creates a `Ledge` only while `tuning_active()` (and the overlay's `enabled` flag), calls it once per fixed step
+after the fighters' physics, and `FighterPhysics.step` returns early for a hanging fighter. In every other match `hang`
+stays its empty default, so the JS physics/bot references and the classic-rule matches are bit-identical. Online the
+same gate applies, so ledge cling only lights up when `net_zones` is on (the same rule as the rest of this file): a
+hanging guest is then visible to everyone through the `lg` snapshot field below.
+
+### Throwable rubble (`godot/logic/rubble.gd`)
+
+When the destructible mode breaks a cover component, a `Rubble` chunk of it is left on the floor (one chunk per break,
+up to `maxChunks`; the presentation debris is still `world/prop_debris.gd`). **SHOVE** next to a chunk picks it up,
+**FIRE** throws it at the crosshair (a ballistic throw at `speed` m/s) and **SHOVE** while holding puts it down. Pickup is
+only allowed when the fighter is alive, on its feet, not trapped / carried / carrying / mid-shove and empty-handed
+(`FighterState.rubble`), which is the "pickup only when eligible" rule the test pins. A thrown chunk is a light
+projectile resolved **through the existing `Combat.hit` path** by the thrower: `damage` 16, `force` 13 from
+`rubble.json`, with the ordinary body-part/mode/class modifiers and K.O. credit; it then hits one fighter or a solid and
+is spent. Bots walk to a chunk in `bot.grab` range, pick it up and throw it at a target inside `bot.throwMin`..
+`bot.throwMax` when they have line of sight (`BotBrain` only; `BOT_FIRE` is unchanged).
+
+**Online decision: no protocol message.** Rubble only spawns from the destructible mode, which is offline-only
+(`World.load_map` enables it only for an offline arena match), so a thrown chunk never has to be seen by a peer. Even if
+destructibles ever go online, the damage is decided by the thrower exactly like every other attacker-side hit in
+docs/PROTOCOL.md §3.1, so a thrown chunk can stay a transient local object and the receiver only needs the normal `h`.
+`MatchSim` creates the `Rubble` only for an offline match with `tuning_active()` and the destructible mode on, and keeps
+it off the protocol and off the parity paths.
+
+### Online snapshot field (`lg`)
+
+A hanging fighter must be visible to guests. The 30 Hz `S` entry gets one additive 0/1 field, `lg` (docs/PROTOCOL.md
+6.3): Godot-only, unknown to the web client (which ignores unknown `S` fields and can never hang), and it only drives the
+hanging pose on a ghost — the pinned position and zero velocity already travel in the ordinary `S` fields. It is encoded
+by `NetSnapshot.encode_entry` and decoded/cleared by `NetMatch.step_ghosts`; no new message type and no `PROTO` bump.
+
+Tests: `npm run test:godot-destruct` (its `tests/ledge_rubble_test.gd` run: the config validation and fallbacks, player
+catch / climb / drop / hit / disappearing ledge / input delay, the tuning-off no-op and the destructible wiring, bots
+catching / probing / climbing / picking up / throwing, pickup eligibility, the exact 16/13 hit and the thrower's credit,
+the chunk lifetime / drop / cap, and no `CombatRng` draw) and `npm run test:godot-combat` ("NETSNAP": the `lg`
+round-trip). The parity suites (`test:godot-physics`, `test:godot-bots`, `test:godot-combat`, `test:godot-modes`) are
+unchanged: with the overlay off no `Ledge` or `Rubble` is created.

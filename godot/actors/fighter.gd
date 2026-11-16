@@ -69,6 +69,7 @@ func visual_state() -> Dictionary:
 	v["skin"] = look["skin"]; v["hat"] = look["hat"]; v["color"] = look["color"]
 	v["rage"] = f.rage_t                                        # faces: angry brows while rage is up
 	v["off_stage"] = not p.grounded and p.py < -3.0 and not f.dead   # faces: falling out (every arena floor top is >= 0)
+	v["hang"] = not f.hang.is_empty()                                  # ledge cling pose (overlay only; empty offline-untuned)
 	return v
 
 ## Feed + animate the wobbler, then read the animation points back into the state.

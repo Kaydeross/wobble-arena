@@ -467,6 +467,7 @@ level (an old build would ignore `rules.nz` and its shots would use the classic 
 | `start.rules` | `grav: 0.15` | Moon Drift (`gmode: lowg`). |
 | `start` | `rs`, `rsx` | Host migration: the old match's state per (new) slot `[{id, x, y, z, yaw, hp, ko, dt, lv, el, d, gg}]` (`d` = was down: starts on its spawn; `el` = eliminated) and `{}` (`rsx`, reserved). `rules.dseed` / `dt0` keep the arena seed and clock. |
 | `start` | `arc` | Arcade co-op run (`6.4`): `{run, st, of, diff, seed, seats:[0,1], crew:[2,…], boss, big, state, lv}` — the whole run as the host sees it, re-sent with **every stage's** `start` (that is the stage-transition mechanism). |
+| `S` entry | `lg` | `1` = this fighter is hanging on a ledge (`docs/DAMAGE.md` "Ledge cling and throwable rubble"; app-only). Additive and 0/1: the web client ignores unknown `S` fields and can never hang, and the pinned position / zero velocity already travel in the normal fields, so this only drives the hanging pose on a ghost. No `PROTO` bump. |
 
 New room messages (host → all unless noted):
 

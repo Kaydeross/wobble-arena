@@ -61,6 +61,11 @@ var view_parent: Node3D = null
 var destruct_seed := 0
 var destruct_plan: Dictionary = {}
 var destruct: Destruct = null
+## Optional Godot-only gameplay overlays (docs/DAMAGE.md "Ledge cling and throwable rubble"): a Ledge while the balance
+## overlay is on (offline, or online with net_zones) and a Rubble only for an offline destructible match. Both are null
+## in every parity / web-equivalent match, so nothing inside them ever runs there.
+var ledge: Ledge = null
+var rubble: Rubble = null
 
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
@@ -78,6 +83,10 @@ func dispose() -> void:
 	if destruct != null:
 		destruct.clear()
 	destruct = null
+	if ledge != null: ledge.sim = null
+	if rubble != null: rubble.dispose()
+	ledge = null
+	rubble = null
 	if combat != null: combat.destruct = null
 	for b in controllers.values():
 		if b is BotBrain: b.target = null
@@ -115,6 +124,15 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		else:                              # bad config / no eligible cover: fail safe as a normal match
 			destruct.clear()
 			destruct = null
+	# Ledge cling / throwable rubble (overlay only, docs/DAMAGE.md): the ledge needs the tuning gate, the rubble needs the
+	# offline destructible match whose breaks feed it. Both stay null in every other match (parity paths included).
+	if combat.tuning_active() and Ledge.enabled():
+		ledge = Ledge.new()
+		ledge.setup(self)
+	if destructible and destruct != null and combat.tuning_active() and Rubble.enabled():
+		rubble = Rubble.new()
+		rubble.setup(self)
+		if combat.destruct != null: combat.destruct.rubble = rubble
 	combat.spawns = map.get("spawns", [])
 	combat.spawn_y = float(map["spawnY"]) if map.has("spawnY") else 4.0
 	combat.fighters = []
@@ -326,13 +344,18 @@ func step(dt: float) -> void:
 	for f: FighterState in fighters:
 		combat.timers(f, dt)
 		if not f.is_ghost: f.phys.step(dt, solids, f)
+	if ledge != null and combat.tuning_active():
+		for f: FighterState in fighters:
+			if not f.is_ghost: ledge.after_step(f, dt)
 	for f: FighterState in fighters:          # updatePads
+		if not f.hang.is_empty(): continue
 		var pi := f.phys.bounce_pads(pads, f)
 		if pi >= 0:
 			combat.kick_lean(f, -2.0, combat.rng.range_f(-1, 1)); combat.kick_head(f, -3.0, combat.rng.range_f(-2, 2))
 			combat.ev({"type": "pad", "f": f, "pad": pi})
 	pickups.update(dt)
 	combat.weapons.step_all(dt)           # updateRockets, updateGrenades, updateKnives, updateArrows, updateNets
+	if rubble != null: rubble.step(dt)    # thrown debris chunks (docs/DAMAGE.md "Ledge cling and throwable rubble")
 	_ring_out()
 	separate()
 	for f: FighterState in fighters:          # pinned under a net: nothing pushes them out

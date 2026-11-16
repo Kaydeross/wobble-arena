@@ -88,6 +88,9 @@ var solids: Array = []          ## the live sim.solids array (same reference, so
 var events: Array = []          ## the combat event list (same reference); breaks / respawns append events
 var parent: Node3D = null       ## where prop meshes live (the built MapNode); null = logic only (headless tests)
 var sim: MatchSim = null        ## the match (fighter overlap check before a respawn)
+## Optional throwable rubble (logic/rubble.gd, docs/DAMAGE.md): MatchSim wires it here when the offline match also has
+## the rubble overlay on, so each break leaves one logical chunk behind (the debris pieces stay presentation only).
+var rubble: Rubble = null
 var arena := ""
 var merge_exclude: Dictionary = {}  ## box index -> true, the map boxes owned by this mode (merged mesh must skip them)
 var merged_pruned := false      ## true when the built MapNode's merged meshes were rebuilt without those boxes
@@ -1154,6 +1157,7 @@ func _break(index: int, dir: Array) -> void:
 		"color": int(p["color"]), "dir": dir, "total": props.size(), "broken": _broken,
 		"respawn_in": float(p["respawn_t"])})
 	events.append({"type": "sfx", "name": "whack" if str(p["kind"]) == "barricade" else "clink", "x": cx, "y": cy + 0.4, "z": cz})
+	if rubble != null: rubble.spawn_from_break(p)   # one logical chunk of the debris can be picked up and thrown
 
 func _kill_tween(p: Dictionary) -> void:
 	var tw: Variant = p["tween"]
@@ -1309,6 +1313,7 @@ func clear() -> void:
 	merged_pruned = false
 	_broken = 0
 	_pending.clear()
+	rubble = null
 
 # ============================== helpers ==============================
 

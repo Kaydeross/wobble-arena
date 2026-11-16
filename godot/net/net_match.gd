@@ -369,6 +369,9 @@ func step_ghosts(dt: float) -> void:
 		ph.vx = e["vx"]; ph.vy = 0.0; ph.vz = e["vz"]
 		ph.wish_x = e["vx"] * 0.3; ph.wish_z = e["vz"] * 0.3
 		ph.grounded = e["g"]
+		# Ledge cling (Godot-only, docs/PROTOCOL.md 6.3): the owner says it is hanging; the snapshot already carries the
+		# pinned position, this only drives the hanging pose. Unknown to the web client.
+		g.hang = {} if not e.get("lg", false) else {"remote": true, "top": e["y"] + 1.5}
 		(sim.controllers[g] as GhostControl).squat = e["sq"]
 		g.hp = e["hp"]; g.invuln = 1.0 if e["iv"] else 0.0
 		if combat.lives_mode != 0:

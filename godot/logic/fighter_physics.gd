@@ -64,8 +64,12 @@ func place(x: float, y: float, z: float) -> void:
 	px = x; py = y; pz = z; vx = 0.0; vy = 0.0; vz = 0.0
 	ladder = {}
 
-## Fighter.physics: one step of movement for the fighter `st` (its status effects steer the control).
+## Fighter.physics: one step of movement for the fighter `st` (its status effects steer the control). A fighter hanging
+## on a ledge (logic/ledge.gd, overlay only) is pinned by Ledge instead: its `hang` is empty in every parity match, so
+## this guard costs one dictionary check and nothing below it ever runs untuned.
 func step(dt: float, solids: Array, st: FighterState) -> void:
+	if not st.hang.is_empty():
+		return
 	if ladder_step(dt, st):
 		want_jump = false
 		return
