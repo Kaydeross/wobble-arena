@@ -373,6 +373,7 @@ func _layout() -> void:
 	var portrait := size.y > size.x
 	stage.compact = portrait
 	pill.font_px = 21.0 * minf(unit, 2.0)
+	pill.fit_width(s.size.x * 0.5)          # a long name (CONSTRUCTION, 建造 · 新) steps the font down instead of running off the stage
 	pill.min_h = t
 	pill.size = pill.get_combined_minimum_size()
 	site_b.max_font = 30.0 * minf(unit, 2.0)
@@ -390,9 +391,11 @@ func _layout() -> void:
 	# the bar: one row beside Back when it fits (first with the long swap labels, then with arrows only), else its own row
 	var room := s.size.x - back_b.custom_minimum_size.x - GAP * 2.0
 	var two_rows := false
+	var fs_bar := fs
 	for attempt in 3:
 		var long := attempt == 0
 		var f2 := fs if attempt < 2 else maxi(UiTheme.MIN_FONT + 2, fs - 3)
+		fs_bar = f2
 		prev_b.text = (tr("‹ SWAP PACK") if long else "‹")
 		next_b.text = (tr("SWAP PACK ›") if long else "›")
 		prev_b.tooltip_text = tr("Previous pack")
@@ -405,6 +408,10 @@ func _layout() -> void:
 		bar.size = Vector2.ZERO
 		two_rows = bar.get_combined_minimum_size().x > room
 		if not two_rows: break
+	while two_rows and bar.get_combined_minimum_size().x > s.size.x and fs_bar > FitText.MIN_SIZE:   # the longest words (fr / es): every bar font steps down until one row fits
+		fs_bar -= 1
+		for b: Button in [prev_b, next_b, test_b, unlock_b]: b.add_theme_font_size_override("font_size", fs_bar)
+		bar.size = Vector2.ZERO
 	back_b.size = back_b.custom_minimum_size
 	back_b.position = Vector2(s.position.x, s.end.y - t)
 	var bw := minf(bar.get_combined_minimum_size().x, s.size.x)
@@ -412,7 +419,16 @@ func _layout() -> void:
 	var bar_y := s.end.y - t
 	if two_rows: bar_y -= t + GAP
 	bar.position = Vector2(s.end.x - bw, bar_y)
+	var h_room := site_b.position.x - GAP - s.position.x          # the header sits left of the sign: the pack name and its subtitle step down to fit
+	var nm_fs := int(round(26.0 * minf(unit, 1.8)))
+	var sb_fs := int(round(18.0 * minf(unit, 1.8)))
 	header.size = Vector2.ZERO
+	while header.get_combined_minimum_size().x > h_room and sb_fs > FitText.MIN_SIZE:
+		sb_fs -= 1
+		nm_fs = maxi(FitText.MIN_SIZE + 2, nm_fs - 1)
+		_name_l.add_theme_font_size_override("font_size", nm_fs)
+		_sub_l.add_theme_font_size_override("font_size", sb_fs)
+		header.size = Vector2.ZERO
 	header.size = header.get_combined_minimum_size()
 	var hx := s.position.x + (s.size.x - header.size.x) * 0.5
 	header.position = Vector2(minf(hx, site_b.position.x - GAP - header.size.x), s.position.y)   # (the sign has the top right)

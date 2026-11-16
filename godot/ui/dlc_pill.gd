@@ -49,6 +49,15 @@ func _refit() -> void:
 	custom_minimum_size = _want()
 	queue_redraw()
 
+## Steps the font down (never below FitText.MIN_SIZE) until the pill is no wider than `max_w`.
+func fit_width(max_w: float) -> void:
+	while font_px > float(FitText.MIN_SIZE) + 0.5 and _want().x > max_w:
+		font_px -= 1.0
+
+## What the audit (tests/fit_audit.gd) measures: the pill's own width at the drawn size and the width it was given.
+func text_fit() -> Vector2:
+	return Vector2(_want().x, size.x)
+
 func _want() -> Vector2:
 	var tw := _f().get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, int(font_px)).x
 	var gap := font_px * 0.45 if tag != "" else 0.0
