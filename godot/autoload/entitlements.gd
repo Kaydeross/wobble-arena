@@ -27,6 +27,9 @@ func remove_ads() -> bool:
 func set_provider(provider: Object) -> void:
 	_provider = provider
 
+func has_provider() -> bool:
+	return _provider != null
+
 func purchase(id: String) -> bool:
 	if id not in KNOWN or _provider == null or not _provider.has_method("purchase"):
 		return false

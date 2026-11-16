@@ -643,6 +643,13 @@
   "fr": "2 contre 2",
   "es": "2 contra 2"
  },
+ "2× daily bonus": {
+  "zh_TW": "每日獎勵 2倍",
+  "zh_CN": "每日奖励 2倍",
+  "ja": "デイリーボーナス2倍",
+  "fr": "Bonus quotidien ×2",
+  "es": "Bono diario ×2"
+ },
  "3 lives": {
   "zh_TW": "3 條命",
   "zh_CN": "3 条命",
@@ -2330,6 +2337,13 @@
   "fr": "DLC Chantier : la bannière du titre ouvre le Classique jusqu'à 8 sur un chantier aléatoire, neuf outils de chantier, casques et gilets fluo",
   "es": "DLC de construcción: el banner del título abre Clásico para hasta 8 en una obra aleatoria, nueve herramientas de obra, cascos y chalecos reflectantes"
  },
+ "Continue (+1 life)": {
+  "zh_TW": "繼續（+1 命）",
+  "zh_CN": "继续（+1 命）",
+  "ja": "コンティニュー（+1 ライフ）",
+  "fr": "Continuer (+1 vie)",
+  "es": "Continuar (+1 vida)"
+ },
  "Controls": {
   "zh_TW": "操作",
   "zh_CN": "操作",
@@ -2540,12 +2554,26 @@
   "fr": "Impossible de réinitialiser le mot de passe. Vérifier le code de récupération et réessayer.",
   "es": "No se pudo restablecer tu contraseña. Revisa tu código de recuperación e inténtalo de nuevo."
  },
+ "Couldn't restore purchases. Try again in a moment.": {
+  "zh_TW": "無法恢復購買。請稍後再試。",
+  "zh_CN": "无法恢复购买。请稍后再试。",
+  "ja": "購入を復元できませんでした。しばらくしてからもう一度お試しください。",
+  "fr": "Impossible de restaurer les achats. Réessayez dans un instant.",
+  "es": "No se pudieron restaurar las compras. Inténtalo de nuevo en un momento."
+ },
  "Couldn't set a password. Try again in a moment.": {
   "zh_TW": "無法設定密碼。請稍後再試。",
   "zh_CN": "无法设置密码。请稍后再试。",
   "ja": "パスワードを設定できませんでした。しばらくしてからもう一度お試しください。",
   "fr": "Impossible de définir un mot de passe. Réessaie dans un instant.",
   "es": "No se pudo poner la contraseña. Inténtalo de nuevo en un momento."
+ },
+ "Couldn't start the purchase. Try again in a moment.": {
+  "zh_TW": "無法開始購買。請稍後再試。",
+  "zh_CN": "无法开始购买。请稍后再试。",
+  "ja": "購入を開始できませんでした。しばらくしてからもう一度お試しください。",
+  "fr": "Impossible de lancer l'achat. Réessayez dans un instant.",
+  "es": "No se pudo iniciar la compra. Inténtalo de nuevo en un momento."
  },
  "Count Dusk": {
   "zh_TW": "黃昏伯爵",
@@ -2945,6 +2973,13 @@
   "ja": "ドーナツ・ドロップ",
   "fr": "Donut géant",
   "es": "Dona gigante"
+ },
+ "Double coins": {
+  "zh_TW": "雙倍金幣",
+  "zh_CN": "双倍金币",
+  "ja": "コイン2倍",
+  "fr": "Doubler les pièces",
+  "es": "Duplicar monedas"
  },
  "Double damage, 3 lives, shrinking arena": {
   "zh_TW": "雙倍傷害、3 條命、競技場會縮小",
@@ -5767,6 +5802,13 @@
   "fr": "Ouverture d'un salon…",
   "es": "Abriendo una sala…"
  },
+ "Opening the App Store…": {
+  "zh_TW": "正在開啟 App Store…",
+  "zh_CN": "正在打开 App Store…",
+  "ja": "App Store を開いています…",
+  "fr": "Ouverture de l'App Store…",
+  "es": "Abriendo la App Store…"
+ },
  "Orange": {
   "zh_TW": "橘",
   "zh_CN": "橘",
@@ -6341,6 +6383,13 @@
   "fr": "Lever le poing et rebondir",
   "es": "Sube el puño y rebota"
  },
+ "Purchases restored": {
+  "zh_TW": "購買已恢復",
+  "zh_CN": "购买已恢复",
+  "ja": "購入を復元しました",
+  "fr": "Achats restaurés",
+  "es": "Compras restauradas"
+ },
  "Purple": {
   "zh_TW": "紫",
   "zh_CN": "紫",
@@ -6558,6 +6607,13 @@
   "fr": "Retirer",
   "es": "Quitar"
  },
+ "Remove ads": {
+  "zh_TW": "移除廣告",
+  "zh_CN": "移除广告",
+  "ja": "広告を削除",
+  "fr": "Supprimer les pubs",
+  "es": "Quitar anuncios"
+ },
  "Replay": {
   "zh_TW": "再來一次",
   "zh_CN": "再来一次",
@@ -6585,6 +6641,20 @@
   "ja": "復活中…",
   "fr": "Réapparition…",
   "es": "Reapareciendo…"
+ },
+ "Restore purchases": {
+  "zh_TW": "恢復購買",
+  "zh_CN": "恢复购买",
+  "ja": "購入を復元",
+  "fr": "Restaurer les achats",
+  "es": "Restaurar compras"
+ },
+ "Restoring purchases…": {
+  "zh_TW": "正在恢復購買…",
+  "zh_CN": "正在恢复购买…",
+  "ja": "購入を復元しています…",
+  "fr": "Restauration des achats…",
+  "es": "Restaurando compras…"
  },
  "Results count up your coins and fill the next-unlock bar; unowned shop items are tier-coloured Mystery silhouettes": {
   "zh_TW": "結算畫面的金幣會一路數上去，下一個解鎖進度條也會走滿；未擁有的商店物品是稀有度顏色的神秘影子",

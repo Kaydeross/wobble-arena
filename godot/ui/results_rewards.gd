@@ -37,12 +37,33 @@ static func make(r: Dictionary) -> Control:
 	k.name = "Kos"
 	k.theme_type_variation = &"MutedLabel"
 	k.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var kos := int(r.get("kos", 0))
-	var kt: Array = [(TranslationServer.translate("%d K.O. × 5") if kos == 1 else TranslationServer.translate("%d K.O.s × 5")) % kos, TranslationServer.translate("match +40")]
-	if r.get("won", false): kt.append(TranslationServer.translate("win +60"))
-	kt.append(TranslationServer.translate("%d coins in all") % int(r.get("total", 0)))
-	k.text = " · ".join(kt)
+	k.text = _kos_text(r, int(r.get("total", 0)))
 	box.add_child(k)
+	# Double coins: one rewarded video (or the Remove ads free perk) pays an EXTRA earned amount, once per results panel.
+	# Nothing is built as visible without a registered provider: AdUi owns that test.
+	var ad_state := {"claimed": false, "total": int(r.get("total", 0))}
+	var double_b := Button.new()
+	double_b.name = "DoubleCoins"
+	double_b.text = TranslationServer.translate("Double coins")
+	double_b.custom_minimum_size = Vector2(0, 56)
+	double_b.add_theme_font_size_override("font_size", 23)
+	double_b.theme_type_variation = &"PrimaryButton"
+	double_b.visible = earned > 0 and AdUi.rewarded_visible(AdUi.DOUBLE_COINS)
+	var grant := func(granted: bool) -> void:
+		if not granted or ad_state["claimed"] or not is_instance_valid(double_b): return
+		ad_state["claimed"] = true
+		var sv := AdUi.save()
+		if sv != null: sv.call("add_coins", earned)
+		ad_state["total"] = int(ad_state["total"]) + earned
+		c.text = TranslationServer.translate("+%d coins") % (earned * 2)
+		k.text = _kos_text(r, int(ad_state["total"]))
+		double_b.visible = false
+	double_b.pressed.connect(func() -> void:
+		if ad_state["claimed"]: return
+		AdUi.request_reward(AdUi.DOUBLE_COINS, grant))
+	if double_b.visible:
+		box.add_child(double_b)
+		AdUi.prepare(AdUi.DOUBLE_COINS)
 	var cls: Array = r.get("classes", [])
 	if cls.size() > 0:                                   # a secret class unlocked by this match (ExtraClasses)
 		var u := Label.new()
@@ -97,6 +118,14 @@ static func make(r: Dictionary) -> Control:
 	bar.add_theme_stylebox_override("fill", fg)
 	box.add_child(bar)
 	return box
+
+## The "K.O.s × 5 · match +40 · %d coins in all" line, with the running total after a doubled reward.
+static func _kos_text(r: Dictionary, total: int) -> String:
+	var kos := int(r.get("kos", 0))
+	var kt: Array = [(TranslationServer.translate("%d K.O. × 5") if kos == 1 else TranslationServer.translate("%d K.O.s × 5")) % kos, TranslationServer.translate("match +40")]
+	if r.get("won", false): kt.append(TranslationServer.translate("win +60"))
+	kt.append(TranslationServer.translate("%d coins in all") % total)
+	return " · ".join(kt)
 
 ## "+100 goal completed: Win a match (claim it in Goals) · First win today +30 (3-day streak)", "" when there is nothing to say.
 static func goals_text(r: Dictionary) -> String:

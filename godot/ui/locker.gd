@@ -56,6 +56,9 @@ var confirm: Control
 var confirm_title: Label
 var confirm_sub: Label
 var confirm_buy: Button
+var purchases_row: VBoxContainer ## Shop: Remove ads / Restore purchases (hidden without a provider)
+var purchase_status: Label
+var _purchase_buy: Button
 var pending := []               ## [kind, key] waiting for the confirm card
 var _msg_t := 0.0
 var _heavy: Font
@@ -235,6 +238,7 @@ func _ready() -> void:
 	right.size_flags_horizontal = SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", UiTheme.SP_3)
 	body.add_child(right)
+	_build_purchases(right)
 	tab_row = HBoxContainer.new()
 	tab_row.name = "Tabs"
 	tab_row.add_theme_constant_override("separation", UiTheme.SP_3)
@@ -243,6 +247,7 @@ func _ready() -> void:
 	_build_foot()
 	_build_confirm()
 	save().changed.connect(_refresh_coins)
+	Entitlements.changed.connect(_on_entitlement_changed)
 	JuicyButton.attach_all(self)
 	open(shop, tab)
 
@@ -297,6 +302,38 @@ func _build_head() -> void:
 	switch_b.add_theme_font_size_override("font_size", 20)
 	switch_b.pressed.connect(func() -> void: open(not shop))
 	head.add_child(switch_b)
+
+## Shop only (above the tabs): Remove ads / Restore purchases. Both exist only while a StoreKit / Play provider is
+## registered and the purchases kill switch is off (AdUi.purchases_visible), so a store-less build shows nothing.
+func _build_purchases(parent: Control) -> void:
+	purchases_row = VBoxContainer.new()
+	purchases_row.name = "Purchases"
+	purchases_row.visible = false
+	purchases_row.add_theme_constant_override("separation", 2)
+	parent.add_child(purchases_row)
+	var row := HBoxContainer.new()
+	row.name = "Buttons"
+	row.add_theme_constant_override("separation", 10)
+	purchases_row.add_child(row)
+	_purchase_buy = Button.new()
+	_purchase_buy.name = "RemoveAds"
+	_purchase_buy.custom_minimum_size = Vector2(0, 54)
+	_purchase_buy.size_flags_horizontal = SIZE_EXPAND_FILL
+	_purchase_buy.add_theme_font_size_override("font_size", 19)
+	_purchase_buy.pressed.connect(_buy_remove_ads)
+	row.add_child(_purchase_buy)
+	var restore := Button.new()
+	restore.name = "Restore"
+	restore.text = tr("Restore purchases")
+	restore.custom_minimum_size = Vector2(0, 54)
+	restore.size_flags_horizontal = SIZE_EXPAND_FILL
+	restore.add_theme_font_size_override("font_size", 19)
+	restore.pressed.connect(_restore_purchases)
+	row.add_child(restore)
+	purchase_status = _label("", 15, "MutedLabel", true)
+	purchase_status.name = "Status"
+	purchase_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	purchases_row.add_child(purchase_status)
 
 func _build_preview(body: Control) -> void:
 	var p := PanelContainer.new()
@@ -420,6 +457,7 @@ func _build_tabs() -> void:
 	switch_b.text = "Walldrobe" if shop else "Shop"
 	switch_b.tooltip_text = "Your outfits, hats, colours, emotes and classes" if shop else "Buy outfits, emotes and classes with coins"
 	coins_chip.visible = shop
+	_refresh_purchases()
 
 func _build_confirm() -> void:
 	confirm = Control.new()
@@ -840,6 +878,34 @@ func _redraw_keep() -> void:
 		if k == "" and keys.size() > 0: k = keys[0]
 	_select_card(k, false)
 	scroll.scroll_vertical = sv
+
+func _buy_remove_ads() -> void:
+	if Entitlements.has("remove_ads"): return
+	var ok := Entitlements.purchase("remove_ads")
+	_set_purchase_status(tr("Opening the App Store…") if ok else tr("Couldn't start the purchase. Try again in a moment."))
+
+func _restore_purchases() -> void:
+	var ok := Entitlements.restore()
+	_set_purchase_status(tr("Restoring purchases…") if ok else tr("Couldn't restore purchases. Try again in a moment."))
+
+func _set_purchase_status(t: String) -> void:
+	if not is_instance_valid(purchase_status): return
+	purchase_status.text = t
+	if t != "": _set_msg(t, UiTheme.MUTED)
+
+func _on_entitlement_changed(id: String, owned: bool) -> void:
+	if id != "remove_ads": return
+	_refresh_purchases()
+	if owned: _set_purchase_status(tr("Purchases restored"))
+
+## Show the Shop's purchase row only when there is a provider and the kill switch allows it; Owned once bought.
+func _refresh_purchases() -> void:
+	if purchases_row == null: return
+	purchases_row.visible = shop and AdUi.purchases_visible()
+	if not purchases_row.visible: return
+	var owned := Entitlements.has("remove_ads")
+	_purchase_buy.text = tr("Owned") if owned else tr("Remove ads")
+	_purchase_buy.disabled = owned
 
 func _set_msg(t: String, c: Color = UiTheme.TEXT) -> void:
 	if msg_l == null: return

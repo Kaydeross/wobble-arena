@@ -120,6 +120,7 @@ const LFRAME := [L + "Head/Title", L + "Head/Sub", L + "Head/Coins", L + "Head/S
 	L + "Body/Right/Frame", L + "Foot/Back", L + "Foot/Action"]
 
 var fails := 0
+
 var pt_k := 1.0              ## pt per canvas px of the case being checked
 var size_tag := ""
 var touch_case := false      ## landscape at the 44 pt scale: every button / field on every screen is checked
@@ -152,6 +153,7 @@ func _run() -> void:
 	for t: String in min_pt: print("UI tap targets %s: min %.1f pt" % [t, min_pt[t]])
 	SafeArea.override = []
 	await _logic()
+	await _purchases()
 	for lg: String in ["fr", "ja"]:       # last (and left as is): Godot logs font errors at exit when a CJK language is switched back
 		root.get_node("Lang").apply(lg)
 		lang_tag = lg
@@ -1147,3 +1149,139 @@ func _labels_fit(n: Node, tag: String) -> void:
 			check(l.size.x + 0.5 >= need.x and l.size.y + 0.5 >= need.y, "%s label '%s' clipped (%s < %s)" % [tag, l.text, l.size, need])
 	for c in n.get_children():
 		_labels_fit(c, tag)
+
+
+## Settings > Account: Remove ads / Restore purchases appear only with a StoreKit provider (and not in kids mode).
+func _purchases() -> void:
+	var ent: Node = root.get_node("Entitlements")
+	var ads: Node = root.get_node("Ads")
+	var rc: Node = root.get_node("RemoteConfig")
+	var st: Node = root.get_node("Settings")
+	var sv: SaveProfile = root.get_node("Save")
+	st.set_value("kids_mode", false)
+	ent.revoke("remove_ads")
+	ent.set_provider(null)
+	ads.set_provider(null)
+	rc.values = {
+		"ads": {"enabled": true, "rewarded_enabled": true, "interstitial_every_matches": 3, "interstitial_min_gap_s": 30, "first_session_grace_s": 300},
+		"kill_switches": {"online": false, "ads": false, "purchases": false},
+	}
+	SafeArea.override = []
+	var vp := SubViewport.new()
+	vp.size = Vector2i(1170, 540)
+	vp.disable_3d = true
+	root.add_child(vp)
+	var main: Control = load("res://scenes/main.tscn").instantiate()
+	vp.add_child(main)
+	await process_frame
+	main.show_settings(true, "account")
+	await process_frame
+	var setts = main.settings
+	check(not setts.ui.has("remove_ads") and not setts.ui.has("restore_purchases"), "no provider: Settings > Account hides Remove ads / Restore purchases")
+	ent.set_provider(load("res://tests/fake_store_provider.gd").new())
+	setts.show_section("account")
+	await process_frame
+	check(setts.ui.has("remove_ads") and (setts.ui["remove_ads"] as Button).text == "Remove ads", "with a provider: Settings > Account shows Remove ads")
+	check(setts.ui.has("restore_purchases") and (setts.ui["restore_purchases"] as Button).text == "Restore purchases", "with a provider: Settings > Account shows Restore purchases")
+	setts._restore_purchases()
+	check(setts.purchase_status.text == "Restoring purchases…", "Restore purchases reports its result")
+	ent.grant_verified("remove_ads")
+	check((setts.ui["remove_ads"] as Button).text == "Owned" and (setts.ui["remove_ads"] as Button).disabled, "an owned Remove ads says Owned in Settings")
+	ent.revoke("remove_ads")
+	st.set_value("kids_mode", true)
+	setts.show_section("account")
+	await process_frame
+	check(not setts.ui.has("remove_ads") and not setts.ui.has("restore_purchases"), "kids mode hides the Settings purchase rows")
+	st.set_value("kids_mode", false)
+
+	# The Shop has the same rows, above its tabs.
+	main.show_settings(false)
+	main.open_locker(true)
+	await process_frame
+	var l = main.locker
+	check(l.purchases_row.visible and l._purchase_buy.text == "Remove ads", "with a provider: the Shop shows Remove ads")
+	check(l.find_child("Restore", true, false) is Button, "with a provider: the Shop shows Restore purchases")
+	l._restore_purchases()
+	check(l.purchase_status.text == "Restoring purchases…", "the Shop's Restore reports its result")
+	ent.grant_verified("remove_ads")
+	check(l._purchase_buy.text == "Owned" and l._purchase_buy.disabled, "an owned Remove ads says Owned in the Shop")
+	ent.revoke("remove_ads")
+	l.close()
+	ent.set_provider(null)
+	l._refresh_purchases()
+	check(not l.purchases_row.visible, "no provider: the Shop purchase row hides")
+
+	# Results: Double coins, hidden without a provider, one extra earned amount once, free for Remove ads, none in kids mode.
+	sv.reset()
+	sv.coins = 500
+	var r := {"coins": 50, "kos": 2, "won": true, "total": 500, "next": {}}
+	var RR = load("res://ui/results_rewards.gd")
+	var box0: Control = RR.make(r)
+	var b0 := box0.find_child("DoubleCoins", true, false) as Button
+	check(b0 == null or not b0.visible, "no provider: the results Double coins button is not visible")
+	box0.free()
+	ads.set_consent("declared")
+	ads.in_match = false
+	var stub = load("res://tests/fake_ads_provider.gd").new()
+	stub.ads = ads
+	ads.set_provider(stub)
+	var box1: Control = RR.make(r)
+	var b1 := box1.find_child("DoubleCoins", true, false) as Button
+	check(b1 != null and b1.visible, "with a provider: the results Double coins button shows")
+	b1.pressed.emit()
+	check(sv.coins == 550 and (box1.find_child("Earned", true, false) as Label).text == "+100 coins", "Double coins pays one extra earned amount (%d)" % sv.coins)
+	check(not b1.visible, "the Double coins button hides after the reward")
+	b1.pressed.emit()
+	check(sv.coins == 550, "Double coins cannot be claimed twice")
+	box1.free()
+	sv.reset()
+	sv.coins = 500
+	ent.grant_verified("remove_ads")
+	var before: int = stub.calls.size()
+	var box2: Control = RR.make(r)
+	var b2 := box2.find_child("DoubleCoins", true, false) as Button
+	check(b2 != null and b2.visible, "a Remove ads owner still sees Double coins")
+	b2.pressed.emit()
+	check(sv.coins == 550 and stub.calls.size() == before, "a Remove ads owner gets the free double (no video)")
+	box2.free()
+	ent.revoke("remove_ads")
+	st.set_value("kids_mode", true)
+	var box3: Control = RR.make(r)
+	var b3 := box3.find_child("DoubleCoins", true, false) as Button
+	check(b3 == null or not b3.visible, "kids mode: no Double coins button")
+	box3.free()
+	st.set_value("kids_mode", false)
+
+	# Goals: the 2x daily bonus button, hidden without a provider, pays one extra daily bonus, once per day.
+	sv.reset()
+	sv.coins = 500
+	st.set_value(AdUi.DAILY_BONUS_DAY, -1)
+	ads.set_provider(null)
+	main.open_goals()
+	await process_frame
+	var gs = main.goals
+	gs.refresh()                                  # rolls today's daily set first
+	var q: Dictionary = sv.quests
+	for k in q["d"].keys():
+		if q["d"][k] is int: q["d"][k] = 999
+	q["d"]["m"] = Quests.MODES.duplicate()
+	gs.refresh()
+	check(gs.rows.find_child("BonusAd", true, false) == null, "no provider: the 2x daily bonus button is hidden")
+	ads.set_provider(stub)
+	gs.refresh()
+	var bb := gs.rows.find_child("BonusAd", true, false) as Button
+	check(bb != null and bb.visible and bb.text == "2× daily bonus", "with a provider: the 2x daily bonus button shows")
+	var coins_before: int = sv.coins
+	bb.pressed.emit()
+	check(sv.coins == coins_before + Quests.DAILY_BONUS, "2x daily bonus pays one extra daily bonus (%d -> %d)" % [coins_before, sv.coins])
+	check(gs.rows.find_child("BonusAd", true, false) == null, "2x daily bonus is once per day")
+
+	# Clean up: no provider state leaks into the language cases that follow.
+	ads.set_provider(null)
+	ent.set_provider(null)
+	ent.revoke("remove_ads")
+	st.set_value("kids_mode", false)
+	st.set_value(AdUi.DAILY_BONUS_DAY, -1)
+	sv.reset()
+	vp.queue_free()
+	await process_frame
