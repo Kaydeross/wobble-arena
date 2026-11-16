@@ -13,7 +13,7 @@ combat or physics code is involved; the one hook in the match is the `trial` fla
 |          your wobbler (60 % of the height)               |
 |                                                          |
 | [⚡][🌐][👔][🛍][🎯2]                     [  ▶  Play  ]    |   dock bottom left, Play bottom right
-| Quick Online Wall. Shop Goals                  v0.4.0    |
+| Quick Online Wall. Shop Goals                  v0.5.0    |
 +----------------------------------------------------------+
 ```
 
