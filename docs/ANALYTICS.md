@@ -30,7 +30,7 @@ Common to every batch: `iid`, `ver` (game version), `plat` (`ios`, `android`, `m
 | `install` | once, the first time analytics is allowed on this install | none |
 | `session_start` | boot (or resume from background) | none |
 | `session_end` | the app is paused or closed | `secs` |
-| `ftue_step` | first-run milestones | `step`: `intro_shown`, `intro_done`, `intro_skipped`, `first_match_start`, `first_match_end` (+ `page`, `result`) |
+| `ftue_step` | first-run milestones | `step`: `intro_shown`, `intro_done`, `intro_skipped`, `first_fight_offered`, `first_match_start`, `first_match_end` (+ `page`, `result`) |
 | `match_start` | a match begins (not the tutorial) | `mode`, `map`, `online` |
 | `match_end` | the results show | `mode`, `map`, `online`, `result` (`win`/`loss`/`other`), `secs` |
 | `coins_spent` | a locker purchase (`Save.buy`) | `kind` (`skin`/`class`/`emote`), `price` |

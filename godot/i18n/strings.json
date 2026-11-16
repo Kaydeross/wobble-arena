@@ -3359,12 +3359,26 @@
   "fr": "Les pieds les plus rapides de l'arène. Léger comme une plume",
   "es": "Los pies más rápidos de la arena. Ligero como una pluma"
  },
+ "Featured": {
+  "zh_TW": "精選",
+  "zh_CN": "精选",
+  "ja": "おすすめ",
+  "fr": "À la une",
+  "es": "Destacados"
+ },
  "Few": {
   "zh_TW": "少",
   "zh_CN": "少",
   "ja": "少",
   "fr": "Peu",
   "es": "Pocas"
+ },
+ "Fewer modes": {
+  "zh_TW": "收起模式",
+  "zh_CN": "收起模式",
+  "ja": "モードを閉じる",
+  "fr": "Moins de modes",
+  "es": "Menos modos"
  },
  "Field of view": {
   "zh_TW": "視野角",
@@ -5073,6 +5087,13 @@
   "ja": "月明かりの道場",
   "fr": "Dojo sous la lune",
   "es": "Dojo bajo la luna"
+ },
+ "More modes (%d)": {
+  "zh_TW": "更多模式（%d）",
+  "zh_CN": "更多模式（%d）",
+  "ja": "ほかのモード（%d）",
+  "fr": "Plus de modes (%d)",
+  "es": "Más modos (%d)"
  },
  "Most K.O.s when the clock ran out": {
   "zh_TW": "時間到時擊倒最多",

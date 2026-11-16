@@ -533,6 +533,10 @@ func _page(main: Control, p: int, safe: Rect2, tag: String) -> void:
 	var w = main.wizard
 	var page: Control = w.pages[p]
 	check(page.is_visible_in_tree(), "%s page %d visible" % [tag, p])
+	if p == 0 and w.more_b != null:   # the layout checks cover every game type card: open More modes first
+		w.set_more_open(true)
+		await process_frame
+		await process_frame
 	var sc: ScrollContainer = page.get_node_or_null("Frame/Scroll")
 	var free: Array = []        ## controls outside the scroll area
 	if sc:
@@ -572,7 +576,7 @@ func _page(main: Control, p: int, safe: Rect2, tag: String) -> void:
 		if p == 0:
 			check(w.detail_l.is_visible_in_tree() and safe.grow(0.5).encloses(w.detail_l.get_global_rect()), "%s detail line visible inside the safe area" % tag)
 			check(w.detail_l.get_line_count() <= 2 and w.detail_l.get_global_rect().size.y >= w.detail_l.get_line_count() * 16.0, "%s detail line fits (%d lines)" % [tag, w.detail_l.get_line_count()])
-			check(body.get_children().filter(func(n: Node) -> bool: return String(n.name).begins_with("Head_")).size() >= 3, "%s game types are in labelled sections" % tag)
+			check(body.find_children("Head_*", "", true, false).size() >= 3, "%s game types are in labelled sections" % tag)
 		if p == 3:
 			for c: Control in cards:
 				var stats: Node = c.get_node_or_null("Margin/Col/Stats")
@@ -657,6 +661,17 @@ func _logic() -> void:
 	for m: String in ModeRules.PLAYABLE: check(names.has(m), "wizard offers %s" % m)
 	check(not names.has("construction"), "Construction is not a normal game type card (it lives behind the title banner)")
 	check(w._mode_bs.size() == names.size(), "a card per mode")
+	check(w.more_b != null and not w.more_box.visible and (w._mode_bs["classic"] as Control).is_visible_in_tree(), "game type page starts with the featured row and More modes collapsed")
+	check(not (w._mode_bs["melee"] as Control).is_visible_in_tree() and str(w.more_b.text).contains(str(w.more_b.get_meta("count"))), "other game types hide behind More modes (%s)" % w.more_b.text)
+	check(w._featured.has("classic") and w._featured.has("chaos") and w._featured.has("sudden") and w._featured.has("ctf"), "the featured row is the wizard.json favourites (%s)" % str(w._featured))
+	w.more_b.button_pressed = true
+	check(w.more_box.visible and (w._mode_bs["melee"] as Control).is_visible_in_tree(), "More modes expands the rest")
+	w.more_b.button_pressed = false
+	check(not w.more_box.visible, "More modes collapses again")
+	w.set_mode("melee")
+	check(w.more_box.visible and (w._mode_bs["melee"] as Control).is_visible_in_tree(), "a picked non-featured game type is always visible (auto-expands)")
+	w.set_mode("classic")
+	w.set_more_open(false)
 	var in_secs: Array = []
 	for sec: Array in w.sections():
 		check(str(sec[0]) != "" and (sec[1] as Array).size() > 0, "section %s has game types" % sec[0])

@@ -43,7 +43,7 @@ function compute(events, now) {
     sessionsPerDay: { total: sessions, days, avg: days ? sessions / days : null, byDay: perDay },
     medianSessionSecs: median(lengths),
     matchesPerSession: sessions ? matches / sessions : null,
-    ftue: Object.fromEntries(['intro_shown', 'intro_done', 'intro_skipped', 'first_match_start', 'first_match_end'].map(s => [s, steps[s] ? steps[s].size : 0])),
+    ftue: Object.fromEntries(['intro_shown', 'intro_done', 'intro_skipped', 'first_fight_offered', 'first_match_start', 'first_match_end'].map(s => [s, steps[s] ? steps[s].size : 0])),
     topErrors: [...errs].sort((a, b) => b[1].n - a[1].n).slice(0, 10).map(([k, v]) => ({ error: k, count: v.n, installs: v.iids.size })),
   };
 }

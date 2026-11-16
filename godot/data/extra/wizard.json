@@ -1,5 +1,6 @@
 {
- "_note": "Godot-only display text for the setup wizard (ui/setup_wizard.gd): the game type sections, each mode's short card line (2 lines at most, never truncated), a colour accent and a drawn icon kind (SetupWizard.ModeIcon). `long` replaces the web `desc` in the detail line under the grid where that is too long for 2 lines. shared/*.json stays as exported from the web game. A mode missing here falls back to its desc and the Special section.",
+ "_note": "Godot-only display text for the setup wizard (ui/setup_wizard.gd): `featured` lists the game types in the first row (the rest sit under the More modes toggle), the game type sections, each mode's short card line (2 lines at most, never truncated), a colour accent and a drawn icon kind (SetupWizard.ModeIcon). `long` replaces the web `desc` in the detail line under the grid where that is too long for 2 lines. shared/*.json stays as exported from the web game. A mode missing here falls back to its desc and the Special section.",
+ "featured": ["classic", "chaos", "sudden", "ctf"],
  "sections": [
   {"name": "Classic", "modes": ["classic", "melee", "guns", "ninja", "explosive", "gungame", "deathmatch", "sudden"]},
   {"name": "Team", "modes": ["duel", "t2", "t3", "t4", "tdm", "chaos", "ctf"]},

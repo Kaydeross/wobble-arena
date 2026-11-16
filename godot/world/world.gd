@@ -53,6 +53,7 @@ var arcade: ArcadeManager = null
 ## `trial_weapons` laid out as a rack round the player's start (they come back after a pick, like the Practice Range).
 ## Open to players who do not own the pack, so NOTHING is saved or earned: no coins, stats, goals, history or ranking.
 @export var trial := false
+var first_fight := false   ## the easy first match offered after the intro cards (scripts/main.gd): marks Settings first_fight_done when it ends or is left
 var trial_weapons: Array = []
 ## The controls training (world/tutorial.gd): the Practice Range as `trial` (nothing saved) plus the coach card and steps.
 @export var tutorial := false
@@ -189,6 +190,7 @@ func _ready() -> void:
 		add_child(soak)
 
 func _exit_tree() -> void:
+	if first_fight: Settings.set_value("first_fight_done", true)
 	if Ads.in_match and not tutorial: Ads.on_match_finished(session != null)
 	if arcade != null: arcade.end_run()
 	if net_match:
@@ -1221,6 +1223,11 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	Ads.on_match_finished(false)
 	if not tutorial: Analytics.match_finished("win" if won else "loss")
 	_maybe_submit_rank()
+	if first_fight:
+		first_fight = false   # one automatic match only: Play again is a normal match
+		Settings.set_value("first_fight_done", true)
+	if won and sim != null and views.has(sim.player):   # victory emote on the winner (the wheel is hidden on results: just the API)
+		views[sim.player].wobbler.play_emote("pump")
 	if _results: _results.queue_free()
 	_banner.visible = false
 	Sfx.play("win" if won else "lose", 0.8)     # the results fanfare / sigh (Music keeps a calm loop under it)
