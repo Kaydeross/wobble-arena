@@ -2,6 +2,19 @@
  "_note": "Patch notes for the What's new card (ui/whats_new.gd), newest first. `version` matches application/config/version in project.godot: the card opens by itself once when the newest version here is one the player hasn't seen. Voice and rules: docs/WRITING.md. Short lines, no trailing full stop, one silly beat at most.",
  "entries": [
   {
+   "version": "0.5.0",
+   "title": "A new title, a softer start",
+   "notes": [
+    "The title screen is a full-screen Hero Stage: a huge Play, an icon dock, a coin chip and the Construction container",
+    "One control scheme per device, a Controls screen that shows yours, and a hands-on Training run",
+    "New to the arena? You now start with a quick, winnable first fight",
+    "Game types are tidier: four Featured modes up front, the rest under More modes",
+    "Results count up your coins and fill the next-unlock bar; unowned shop items are tier-coloured Mystery silhouettes",
+    "Chinese and Japanese text no longer shows empty boxes for missing characters",
+    "Online: too many wrong room codes and you wait a minute"
+   ]
+  },
+  {
    "version": "0.4.0",
    "title": "The co-op update",
    "notes": [
