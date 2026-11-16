@@ -470,6 +470,13 @@ func _hello(cid: int, m: Dictionary) -> void:
 	var info := clean_info(m, 0)
 	if _acct.has(cid): info["name"] = str(_acct[cid]).substr(0, 12)   # server-enforced name; no stamp (REQUIRE_LOGIN=0, tests) = the hello name
 	if gd: info["gd"] = NetClient.GD
+	# An older app build cannot follow `rules.nz` (it would compute its shots with the classic rule while the host uses
+	# the zones table: the same shot would hurt differently depending on who fired). Capability 1 cannot join at all.
+	if gd and NetSnapshot.to_int32(m.get("gd")) < NetClient.GD:
+		_to(cid, {"t": "kick", "msg": "This room runs a newer version of Wobblers Arena. Update the app to join."})
+		_close_later(cid)
+		_set_status(tr("%s tried to join from an older version of the app: update to play.") % info["name"])
+		return
 	if arcade and not gd:                                   # an Arcade run is app-only: never a Classic downgrade
 		_to(cid, {"t": "kick", "msg": "The Arcade co-op room is app-only: join from the Wobblers Arena app."})
 		_close_later(cid)

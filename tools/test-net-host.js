@@ -195,6 +195,14 @@ async function zonesRoom(url) {
   console.log('B2 late web guest: ' + JSON.stringify(k.m));
   assert.ok(k.m.t === 'kick' && /unified combat rules/.test(k.m.msg), 'a web guest is refused during a zones match');
   web.close();
+  // an older app build (capability 1) ignores `rules.nz`, so its shots would use the classic rule: the host refuses it
+  const oldapp = await new Client(url, 'OldApp').open();
+  await oldapp.join(code);
+  oldapp.tx({ op: 'tohost', m: { t: 'hello', build: BUILD, proto: PROTO, gd: 1, name: 'OldApp', skin: 'none', hat: 'none', color: 0x39b5a8 } });
+  const oa = await oldapp.wait(m => m.op === 'msg' && m.m.t === 'kick', 5000);
+  console.log('B2 old app guest: ' + JSON.stringify(oa.m));
+  assert.ok(/Update the app/.test(oa.m.msg), 'an old app build is refused: its shots would use the classic damage rule');
+  oldapp.close();
   peer = runGodot('res://tests/net_modes_peer.gd', [url, code, 'zones', '1'], 'zpeer');
   const ps = await peer.waitLine(/^START n=1 /, 40000);
   const PR = JSON.parse(ps.slice(ps.indexOf('rules=') + 6, ps.lastIndexOf(' rs=')));
@@ -211,6 +219,7 @@ async function zonesRoom(url) {
   for (const l of errs) console.log('godot:', l);
   assert.equal(errs.length, 0, 'no Godot errors (zones)');
   assert.ok(ht.some(l => /^STATUS .*unified combat rules/.test(l)), 'the host names the refused web player');
+  assert.ok(ht.some(l => /^STATUS .*older version of the app/.test(l)), 'the host names the refused old app build');
   assert.equal(ch, 0, 'zones host exit code'); assert.equal(cp, 0, 'zones peer exit code');
   console.log('B2. unified online combat (net_zones) passes');
 }

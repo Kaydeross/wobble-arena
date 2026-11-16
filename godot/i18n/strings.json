@@ -440,6 +440,13 @@
   "fr": "%s a pris le drapeau !",
   "es": "¡%s agarró la bandera!"
  },
+ "%s tried to join from an older version of the app: update to play.": {
+  "zh_TW": "%s 想從舊版應用程式加入：請更新後再遊玩。",
+  "zh_CN": "%s 想从旧版应用加入：请更新后再游玩。",
+  "ja": "%s が古いバージョンのアプリから参加しようとしました：更新してから遊んでください。",
+  "fr": "%s a tenté de rejoindre depuis une ancienne version de l'application : mets l'application à jour pour jouer.",
+  "es": "%s intentó unirse desde una versión anterior de la aplicación: actualiza para jugar."
+ },
  "%s tried to join from the web browser: %s is app-only.": {
   "zh_TW": "%s 嘗試從網頁瀏覽器加入：%s 僅限 App。",
   "zh_CN": "%s 尝试从网页浏览器加入：%s 仅限 App。",

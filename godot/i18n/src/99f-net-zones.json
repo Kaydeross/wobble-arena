@@ -5,5 +5,12 @@
   "ja": "%s がブラウザから参加しようとしました：この試合は統一戦闘ルールを使用しており、Wobblers Arena アプリにしかありません。",
   "fr": "%s a tenté de rejoindre depuis le navigateur : cette partie utilise les règles de combat unifiées, que seule l'application Wobblers Arena possède.",
   "es": "%s intentó unirse desde el navegador: esta partida usa las reglas de combate unificadas, que solo tiene la aplicación Wobblers Arena."
+ },
+ "%s tried to join from an older version of the app: update to play.": {
+  "zh_TW": "%s 想從舊版應用程式加入：請更新後再遊玩。",
+  "zh_CN": "%s 想从旧版应用加入：请更新后再游玩。",
+  "ja": "%s が古いバージョンのアプリから参加しようとしました：更新してから遊んでください。",
+  "fr": "%s a tenté de rejoindre depuis une ancienne version de l'application : mets l'application à jour pour jouer.",
+  "es": "%s intentó unirse desde una versión anterior de la aplicación: actualiza para jugar."
  }
 }
