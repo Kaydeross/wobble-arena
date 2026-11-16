@@ -1,0 +1,58 @@
+{
+ "A new title, a softer start": {
+  "zh_TW": "全新標題畫面，更友善的開局",
+  "zh_CN": "全新标题画面，更友善的开局",
+  "ja": "新しいタイトル画面、やさしいはじまり",
+  "fr": "Un nouveau titre, un départ plus doux",
+  "es": "Nueva pantalla de título y un comienzo más suave"
+ },
+ "Chinese and Japanese text no longer shows empty boxes for missing characters": {
+  "zh_TW": "中文和日文不會再因為缺字而顯示空白方塊",
+  "zh_CN": "中文和日文不会再因为缺字而显示空白方块",
+  "ja": "中国語と日本語の文字が、足りない字で空の四角にならなくなりました",
+  "fr": "Le texte en chinois et en japonais n'affiche plus de carrés vides pour les caractères qui manquaient",
+  "es": "El texto en chino y japonés ya no muestra cuadros vacíos por caracteres que faltaban"
+ },
+ "Game types are tidier: four Featured modes up front, the rest under More modes": {
+  "zh_TW": "遊戲模式更清爽：四個精選模式放在最前面，其餘收進「更多模式」",
+  "zh_CN": "游戏模式更清爽：四个精选模式放在最前面，其余收进“更多模式”",
+  "ja": "ゲームタイプがすっきり：おすすめ4つを手前に、残りは「ほかのモード」の中へ",
+  "fr": "Modes de jeu plus rangés : quatre modes À la une devant, le reste dans Plus de modes",
+  "es": "Modos de juego más ordenados: cuatro Destacados delante, el resto en Más modos"
+ },
+ "New to the arena? You now start with a quick, winnable first fight": {
+  "zh_TW": "剛到競技場？現在開局就有一場快速、打得贏的戰鬥",
+  "zh_CN": "刚到竞技场？现在开局就有一场快速、打得赢的战斗",
+  "ja": "アリーナは初めて？最初の一戦は短くて勝てる相手になったよ",
+  "fr": "Nouveau dans l'arène ? Tu commences maintenant par un premier combat rapide et à ta portée",
+  "es": "¿Nuevo en la arena? Ahora empiezas con un primer combate rápido y fácil de ganar"
+ },
+ "One control scheme per device, a Controls screen that shows yours, and a hands-on Training run": {
+  "zh_TW": "每種裝置一套操作方式，操作畫面會顯示你在用的那一套，還有可以動手玩的訓練",
+  "zh_CN": "每种设备一套操作方式，操作画面会显示你在用的那一套，还有可以动手玩的训练",
+  "ja": "デバイスごとに操作はひとつ。使っている操作を表示する操作画面と、自分で動かせる練習も",
+  "fr": "Un jeu de commandes par appareil, un écran Commandes qui montre le tien, et un entraînement pratique",
+  "es": "Un esquema de controles por dispositivo, una pantalla de Controles que muestra el tuyo y una Práctica para probarlo"
+ },
+ "Online: too many wrong room codes and you wait a minute": {
+  "zh_TW": "線上：房間代碼錯太多次，就要等一分鐘",
+  "zh_CN": "在线：房间代码错太多次，就要等一分钟",
+  "ja": "オンライン：ルームコードを間違えすぎると、1分待つことに",
+  "fr": "En ligne : trop de codes de salon incorrects te font attendre une minute",
+  "es": "En línea: demasiados códigos de sala incorrectos te hacen esperar un minuto"
+ },
+ "Results count up your coins and fill the next-unlock bar; unowned shop items are tier-coloured Mystery silhouettes": {
+  "zh_TW": "結算畫面的金幣會一路數上去，下一個解鎖進度條也會走滿；未擁有的商店物品是稀有度顏色的神秘影子",
+  "zh_CN": "结算画面的金币会一路数上去，下一个解锁进度条也会走满；未拥有的商店物品是稀有度颜色的神秘影子",
+  "ja": "リザルトではコインがカウントアップし、次の解放バーも伸びます。未購入のショップアイテムはレア度カラーのミステリーシルエットに",
+  "fr": "Les résultats comptent tes pièces et remplissent la barre du prochain déblocage ; les articles non achetés sont des silhouettes « mystère » aux couleurs de leur rareté",
+  "es": "Los resultados cuentan tus monedas y llenan la barra del próximo desbloqueo; los artículos sin comprar son siluetas «misterio» del color de su rareza"
+ },
+ "The title screen is a full-screen Hero Stage: a huge Play, an icon dock, a coin chip and the Construction container": {
+  "zh_TW": "標題畫面變成全螢幕的英雄舞台：超大的「開始遊戲」、圖示列、金幣標籤和建造貨櫃",
+  "zh_CN": "标题画面变成全屏的英雄舞台：超大的“开始游戏”、图标栏、金币标签和建造集装箱",
+  "ja": "タイトル画面は全画面のヒーローステージに：大きなプレイ、アイコンドック、コインチップ、建設コンテナ",
+  "fr": "L'écran titre est une scène plein écran : un gros Jouer, un dock d'icônes, la pastille de pièces et le conteneur Construction",
+  "es": "La pantalla de título es un escenario a pantalla completa: un Jugar enorme, un dock de iconos, el chip de monedas y el contenedor de Construcción"
+ }
+}
