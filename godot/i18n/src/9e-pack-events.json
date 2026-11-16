@@ -1,0 +1,121 @@
+{
+ "Dinner Rush!": {
+  "zh_TW": "火力全開！",
+  "zh_CN": "火力全开！",
+  "ja": "ディナーラッシュ！",
+  "fr": "Coup de feu !",
+  "es": "¡Hora punta!"
+ },
+ "Ingredient Drop!": {
+  "zh_TW": "材料掉落！",
+  "zh_CN": "材料掉落！",
+  "ja": "食材ドロップ！",
+  "fr": "Pluie d'ingrédients !",
+  "es": "¡Lluvia de ingredientes!"
+ },
+ "Ice Zone!": {
+  "zh_TW": "結冰區！",
+  "zh_CN": "结冰区！",
+  "ja": "氷のゾーン！",
+  "fr": "Zone de glace !",
+  "es": "¡Zona de hielo!"
+ },
+ "Gift Barrage!": {
+  "zh_TW": "禮物雨！",
+  "zh_CN": "礼物雨！",
+  "ja": "ギフトの雨！",
+  "fr": "Pluie de cadeaux !",
+  "es": "¡Lluvia de regalos!"
+ },
+ "Hoist Sweep!": {
+  "zh_TW": "衣架轉圈圈！",
+  "zh_CN": "衣架转圈圈！",
+  "ja": "物干しスイープ！",
+  "fr": "Séchoir en folie !",
+  "es": "¡Tendedero giratorio!"
+ },
+ "Sausage Sizzle!": {
+  "zh_TW": "熱板噴發！",
+  "zh_CN": "热板喷发！",
+  "ja": "ソーセージじゅうじゅう！",
+  "fr": "Saucisses grillées !",
+  "es": "¡Salchichas a la plancha!"
+ },
+ "Kitchen Chaos": {
+  "zh_TW": "混亂廚房",
+  "zh_CN": "混乱厨房",
+  "ja": "カオスキッチン",
+  "fr": "Cuisine chaos",
+  "es": "Cocina caótica"
+ },
+ "Toy Workshop": {
+  "zh_TW": "玩具屋",
+  "zh_CN": "玩具屋",
+  "ja": "おもちゃ工場",
+  "fr": "Atelier de jouets",
+  "es": "Taller de juguetes"
+ },
+ "Backyard BBQ": {
+  "zh_TW": "後院BBQ",
+  "zh_CN": "后院BBQ",
+  "ja": "裏庭バーベキュー",
+  "fr": "Barbecue au jardin",
+  "es": "Barbacoa en el jardín"
+ },
+ "Kitchen": {
+  "zh_TW": "廚房",
+  "zh_CN": "厨房",
+  "ja": "キッチン",
+  "fr": "Cuisine",
+  "es": "Cocina"
+ },
+ "Xmas": {
+  "zh_TW": "聖誕",
+  "zh_CN": "圣诞",
+  "ja": "クリスマス",
+  "fr": "Noël",
+  "es": "Navidad"
+ },
+ "Australia": {
+  "zh_TW": "Australia",
+  "zh_CN": "Australia",
+  "ja": "オーストラリア",
+  "fr": "Australie",
+  "es": "Australia"
+ },
+ "BBQ": {
+  "zh_TW": "BBQ",
+  "zh_CN": "BBQ",
+  "ja": "バーベキュー",
+  "fr": "Barbecue",
+  "es": "Barbacoa"
+ },
+ "Hazard": {
+  "zh_TW": "機關",
+  "zh_CN": "机关",
+  "ja": "危険",
+  "fr": "Danger",
+  "es": "Peligro"
+ },
+ "A restaurant kitchen at the dinner rush: stainless prep islands for cover, glowing burners on the floor and the stoves (do not stand on them), rolling carts, and exhaust-vent bounce pads that fling you up to the pot rack.": {
+  "zh_TW": "超級混亂的廚房：用備料台躲起來，地板上的火力要小心，別站上去。推車滾來滾去，排風口的彈跳墊能把你彈到鍋架上。",
+  "zh_CN": "超级混乱的厨房：用备料台躲起来，地板上的火力要小心，别站上去。推车滚来滚去，排风口的弹跳垫能把你弹到锅架上。",
+  "ja": "ディナーラッシュ中のキッチン。ステンレスの調理台に隠れよう。床とコンロのバーナーは熱いので乗らないこと。カートも転がってくる。換気口のバウンスパッドでポットラックまで飛べる。",
+  "fr": "Une cuisine de restaurant en plein coup de feu : des îlots en inox pour s'abriter, des brûleurs incandescents au sol et sur les fourneaux (ne restez pas dessus), des chariots roulants, et des tremplins d'extracteur qui vous catapultent jusqu'au porte-casseroles.",
+  "es": "Una cocina de restaurante en la hora punta: islas de acero inoxidable para cubrirte, fogones encendidos en el suelo y en las cocinas (no te quedes encima), carritos con ruedas y trampolines de extractor que te lanzan hasta la rejilla de ollas."
+ },
+ "Santa's workshop on Christmas Eve: climb the giant tree, hide behind the present stacks, skid across the icy floor, and use the chimney bounce pad to reach the top. The candy-cane fence keeps the elves in.": {
+  "zh_TW": "聖誕夜的工作室：爬上巨大的聖誕樹，躲在禮物堆後面，在冰地上滑行，再用彈跳墊跳上屋頂。拐杖糖圍欄把小精靈圈在裡面。",
+  "zh_CN": "圣诞夜的工作室：爬上巨大的圣诞树，躲在礼物堆后面，在冰地上滑行，再用弹跳垫跳上屋顶。拐杖糖围栏把小精灵圈在里面。",
+  "ja": "クリスマスイブのサンタの作業場。大きなツリーに登って、ギフトの山に隠れて、氷の床をすべって、チムニーのバウンスパッドで屋根まで飛ぼう。キャンディケインのフェンスが小人たちを囲んでいる。",
+  "fr": "L'atelier du Père Noël la veille de Noël : grimpez sur le sapin géant, cachez-vous derrière les piles de cadeaux, glissez sur le sol gelé et rejoignez le sommet grâce au tremplin de la cheminée. La clôture en sucre d'orge garde les lutins à l'intérieur.",
+  "es": "El taller de Papá Noel en Nochebuena: sube al árbol gigante, escóndete tras las pilas de regalos, resbala por el suelo helado y llega a lo alto con el trampolín de la chimenea. La valla de bastones de caramelo mantiene dentro a los elfos."
+ },
+ "A sunny afternoon in the backyard: eskys for cover, a hot BBQ plate you do not want to stand on, a Hills Hoist that sweeps the lawn, and a trampoline that launches you like a kangaroo.": {
+  "zh_TW": "晴朗的後院：冰桶可以躲，很熱的鐵板別站上去，旋轉的衣架轉圈圈，彈跳墊把你彈得像袋鼠一樣高。",
+  "zh_CN": "晴朗的后院：冰桶可以躲，很热的热板别站上去，旋转的衣架转圈圈，弹跳垫把你弹得像袋鼠一样高。",
+  "ja": "晴れた日の裏庭。クーラーボックスに隠れよう。熱々のバーベキュープレートには乗らないこと。回る物干しに注意。トランポリンはカンガルーのように飛ばしてくれる。",
+  "fr": "Un après-midi ensoleillé dans le jardin : des glacières pour s'abriter, une plaque de barbecue brûlante où il vaut mieux ne pas rester, un séchoir rotatif qui balaie la pelouse et un trampoline qui vous catapulte comme un kangourou.",
+  "es": "Una tarde soleada en el jardín: neveras portátiles para cubrirte, una plancha de barbacoa ardiendo donde no quieres quedarte, un tendedero giratorio que barre el césped y una cama elástica que te lanza como un canguro."
+ }
+}

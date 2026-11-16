@@ -46,6 +46,7 @@
     "test:godot-construction": "node tools/test-construction.js",
     "test:godot-arcade": "node tools/test-arcade.js",
     "test:godot-site-map": "node tools/test-site-map.js",
+    "test:godot-pack-maps": "node tools/test-pack-maps.js",
     "test:godot-construction-data": "node tools/test-construction-data.js",
     "test:godot-packs-data": "node tools/test-packs-data.js",
     "test:godot-dlc-ui": "node tools/test-dlc-ui.js",

@@ -470,3 +470,12 @@ catching / probing / climbing / picking up / throwing, pickup eligibility, the e
 the chunk lifetime / drop / cap, and no `CombatRng` draw) and `npm run test:godot-combat` ("NETSNAP": the `lg`
 round-trip). The parity suites (`test:godot-physics`, `test:godot-bots`, `test:godot-combat`, `test:godot-modes`) are
 unchanged: with the overlay off no `Ledge` or `Rubble` is created.
+
+## Pack arena hazards (Kitchen / Xmas / Australia, `logic/pack_zones.gd`)
+
+The DLC pack arenas (`kitchen_chaos`, `toy_workshop`, `backyard_bbq`, built by `dlc/pack_maps.gd`) carry a `zones` list in the map: `burner`
+(stove / hotplate: sets you on fire through the existing `burn` status), `ice` (the existing `ice_grip` steering while grounded in the zone) and
+`hoist` (the spinning Hills Hoist: a rotating hit band through `Combat.hit`). Same gate as the ledge: `MatchSim.zones` is created ONLY when
+`Combat.tuning_active()` is on and the arena has zones (or a pack stage event calls `MatchSim.ensure_zones()`); otherwise it is `null` and
+`step()` pays two `!= null` tests. `FighterPhysics` is untouched. Stage events (`StageEvents`: `dinner_rush`, `ingredient_drop`, `ice_zone`,
+`gift_barrage`, `hoist_sweep`, `sausage_sizzle`) add temporary zones with a `left` timer. Tests: `npm run test:godot-pack-maps`.

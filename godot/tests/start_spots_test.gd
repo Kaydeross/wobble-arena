@@ -35,6 +35,7 @@ func _run() -> void:
 func _map(id: String) -> Dictionary:
 	if id == "custom": return MapBuilder.custom_map({})
 	if id == SiteMap.ID: return SiteMap.generate(424242)
+	if PackMaps.has(id): return PackMaps.generate(id, 424242)
 	return (content.get_map(id) as Dictionary).duplicate(true)   # (the test tags it with _id / _mode)
 
 func _sim(map: Dictionary, random_start: Variant, rng_seed := 0) -> MatchSim:
