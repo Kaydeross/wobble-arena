@@ -37,6 +37,18 @@ func _process(dt: float) -> void:
 	_t += dt
 	queue_redraw()
 
+## The label's font size: size.y * 0.46 up to max_font, stepped down until the word and its two arrows fit the face.
+func text_font_size() -> int:
+	if _font == null: _font = UiTheme.font(700)
+	var fs := int(clampf(size.y * 0.46, 18.0, max_font))
+	var room := size.x - 2.0 * EDGE - 22.0      # the plate minus its tape edge and the two arrows (English 'DON'T ENTER' keeps its size)
+	return FitText.size_for(_font, label, fs, room, FitText.MIN_SIZE)
+
+## What the audit (tests/fit_audit.gd) measures: the label's width at the drawn size and the room the face leaves.
+func text_fit() -> Vector2:
+	if _font == null: _font = UiTheme.font(700)
+	return Vector2(FitText.line_width(_font, label, text_font_size()), size.x - 2.0 * EDGE - 22.0)
+
 func _draw() -> void:
 	if _font == null: _font = UiTheme.font(700)
 	var pressed := get_draw_mode() == DRAW_PRESSED or get_draw_mode() == DRAW_HOVER_PRESSED
@@ -52,7 +64,7 @@ func _draw() -> void:
 	var face := r.grow(-2.0 - EDGE)
 	draw_rect(face, HazardTape.BLACK)
 	draw_rect(face.grow(-2.0), HazardTape.YELLOW)
-	var fs := int(clampf(size.y * 0.46, 18.0, max_font))
+	var fs := text_font_size()
 	var tw := _font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 	var asc := _font.get_ascent(fs)
 	var base := Vector2((size.x - tw) / 2.0, (size.y + asc - _font.get_descent(fs)) / 2.0)

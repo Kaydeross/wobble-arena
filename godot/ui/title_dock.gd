@@ -143,17 +143,23 @@ func add_item(item_name: String, icon_kind: String, text_key: String) -> DockIte
 
 ## Sizes every item to its word (at least as wide as the tile) and returns the dock's size. `k` scales it (the 60 px
 ## touch target must stay 44 pt: UiScale does that for landscape, so k is 1 there).
-func fit(k := 1.0) -> Vector2:
+func fit(k := 1.0, max_w := 0.0) -> Vector2:
 	var f := UiTheme.font(600)
 	var fs := int(round(WORD_FONT * k))
-	var w_max := 0.0
+	var sep := float(row.get_theme_constant("separation"))
+	var n := row.get_child_count()
+	while true:       # the words as long as the language needs; if the whole dock would pass `max_w`, every word steps down together
+		var total := 2.0 * PAD + sep * float(maxi(n - 1, 0))
+		for it: DockItem in row.get_children():
+			total += maxf(TILE.x * k, f.get_string_size(tr(it.word.text), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 8.0)
+		if max_w <= 0.0 or total <= max_w or fs <= FitText.MIN_SIZE: break
+		fs -= 1
 	for it: DockItem in row.get_children():
 		var word := it.word
 		word.add_theme_font_size_override("font_size", fs)
-		var tw := maxf(f.get_string_size(tr(word.text), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, f.get_string_size(word.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x)
+		var tw := f.get_string_size(tr(word.text), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
 		it.tile.custom_minimum_size = TILE * k
 		var lh := f.get_height(fs)
 		it.custom_minimum_size = Vector2(maxf(TILE.x * k, tw + 8.0), TILE.y * k + 3.0 + lh)
-		w_max = maxf(w_max, tw)
 	reset_size()
 	return get_combined_minimum_size()

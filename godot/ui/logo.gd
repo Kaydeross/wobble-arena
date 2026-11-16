@@ -4,7 +4,8 @@ extends Control
 ## a drop shadow and a slight per-letter tilt (optionally bobbing). Used by the title screen and to render the
 ## launch-screen PNG (tests/brand_shots.gd).
 
-@export var lines: PackedStringArray = PackedStringArray(["WOBBLERS ARENA"])
+@export var lines: PackedStringArray = PackedStringArray(["WOBBLERS ARENA"]):
+	set(v): lines = v; update_minimum_size(); queue_redraw()
 @export var font_size := 64:
 	set(v): font_size = v; update_minimum_size(); queue_redraw()
 @export var animate := false
@@ -20,6 +21,12 @@ var ink := INK          ## outline
 
 var _t := 0.0
 var _font: Font
+
+## The logo's words in the current language (the i18n keys "WOBBLERS ARENA" / "WOBBLERS" + "ARENA": fr and es keep the
+## brand, zh_TW 搖擺擂台, zh_CN 摇摆擂台, ja グラグラ大乱闘). `two` = stacked on two lines (the title home).
+static func names(two: bool) -> PackedStringArray:
+	if two: return PackedStringArray([TranslationServer.translate("WOBBLERS"), TranslationServer.translate("ARENA")])
+	return PackedStringArray([TranslationServer.translate("WOBBLERS ARENA")])
 
 ## Recolour the letters (the Construction DLC title uses hazard yellow / concrete on near-black).
 func set_palette(a: Color, b: Color, outline_col: Color) -> void:

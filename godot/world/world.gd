@@ -1197,16 +1197,16 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	info.text = tr("%s · %d K.O.s · %d deaths") % [tr(str(sim.combat.mode.get("name", sim.combat.mode_id))), sim.player.ko, deaths]
 	box.add_child(info)
 	box.add_child(ResultsRewards.make(_reward))
-	var again := Button.new(); again.text = "Play again"; again.custom_minimum_size = Vector2(0, 58)
+	var again := Button.new(); again.text = "Play again"; again.custom_minimum_size = Vector2(0, 60)
 	again.theme_type_variation = &"PrimaryButton"
 	again.add_theme_font_size_override("font_size", 26)
 	again.pressed.connect(func() -> void: load_map.call_deferred(map_id))
 	box.add_child(again)
 	if sim.combat.mode_id == "sandbox":   # the arena you built: back to the build palette
-		var ed := Button.new(); ed.name = "EditArena"; ed.text = "Edit arena"; ed.custom_minimum_size = Vector2(0, 54)
+		var ed := Button.new(); ed.name = "EditArena"; ed.text = "Edit arena"; ed.custom_minimum_size = Vector2(0, 60)
 		ed.pressed.connect(edit_arena)
 		box.add_child(ed)
-	var lv := Button.new(); lv.text = "Quit to title"; lv.custom_minimum_size = Vector2(0, 54)
+	var lv := Button.new(); lv.text = "Quit to title"; lv.custom_minimum_size = Vector2(0, 60)
 	lv.pressed.connect(_on_title_pressed)
 	box.add_child(lv)
 	JuicyButton.attach_all(box)

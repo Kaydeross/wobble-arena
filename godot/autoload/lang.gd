@@ -23,6 +23,7 @@ const LANGS := [
 
 var code := "en"                   ## the language in use (a code from LANGS, never "auto")
 var _loaded := false
+var _fonts: Dictionary = {}        ## every fallback font ever used (path or "sys:<code>" -> Font), kept for the whole run, see _set_fonts()
 
 func _ready() -> void:
 	load_strings()
@@ -114,16 +115,32 @@ func _set_fonts(c: String) -> void:
 		for l: Dictionary in LANGS:
 			if l.has("bundled") and not order.has(l.bundled): order.append(l.bundled)
 		for path: String in order:
-			if ResourceLoader.exists(path):
-				var f := load(path) as Font
-				if f != null: fb.append(f)
-		var names: Array = def.get("fonts", [])
-		if not names.is_empty():
-			var sys := SystemFont.new()
-			sys.font_names = PackedStringArray(names)
-			sys.font_weight = 700
-			fb.append(sys)
+			if not _fonts.has(path) and ResourceLoader.exists(path): _fonts[path] = load(path) as Font
+			if _fonts.get(path) != null: fb.append(_fonts[path])
+		var key := "sys:" + c
+		if not _fonts.has(key):
+			var names := device_fonts(def.get("fonts", []))
+			var sys: SystemFont = null
+			if not names.is_empty():
+				sys = SystemFont.new()
+				sys.font_names = names
+				sys.font_weight = 700
+			_fonts[key] = sys
+		if _fonts[key] != null: fb.append(_fonts[key])
+	# The fallback fonts stay referenced in _fonts after another language drops them: fonts built on Fredoka keep the old
+	# fallbacks' ids for a while, and a freed one logs 'Parameter "fd" is null' on every text measured (thousands of lines
+	# after a switch from a CJK language).
 	base.fallbacks = fb
+
+## The names in `names` that this device really has. A SystemFont is only added to the fallbacks when one exists: a SystemFont
+## that matches no installed font uses the project's default font (Fredoka) as its base and listens to its `changed` signal,
+## while Fredoka listens to its fallbacks', so the two invalidate each other without end (a native stack overflow: the game
+## dies with SIGSEGV on the first frame of a CJK language; seen on Linux with no CJK font installed, the CI runner).
+static func device_fonts(names: Array) -> PackedStringArray:
+	var out := PackedStringArray()
+	for n in names:
+		if str(n) != "" and OS.get_system_font_path(str(n), 700) != "": out.append(str(n))
+	return out
 
 ## The three bundled CJK fonts (a glyph missing in one is taken from the next), for text that shows CJK whatever the language is:
 ## the language picker's own names.
