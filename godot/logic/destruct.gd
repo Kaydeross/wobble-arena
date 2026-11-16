@@ -44,7 +44,7 @@ const VERSION := 2
 const KINDS := ["crate", "barricade"]
 ## Arenas the mode never runs on (the sandbox, the ranges, the shrinking floors and the
 ## Construction DLC's generated site). Everything else in maps.json is a normal arena and gets breakables.
-const NOT_SUPPORTED := ["custom", "test", "practice", "shrink", "squeeze", "sitegen"]
+const NOT_SUPPORTED := ["custom", "test", "practice", "shrink", "squeeze", "sitegen", "kitchen_chaos", "toy_workshop", "backyard_bbq"]
 ## Hard caps the config may lower but never raise (docs/GRAPHICS.md: no shadow casting, 40-60 draws of headroom).
 const HARD_MAX_PER_MAP := 60
 const DEFAULT_PER_MAP := 40

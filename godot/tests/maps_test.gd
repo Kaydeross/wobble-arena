@@ -30,6 +30,7 @@ func _run() -> void:
 	for id: String in ids:
 		var m: Dictionary = MapBuilder.custom_map({}) if id == "custom" else content.get_map(id)
 		if id == SiteMap.ID: m = SiteMap.generate(SiteMap.current_seed)   # generated (Construction DLC), like MapBuilder.build
+		if PackMaps.has(id): m = PackMaps.generate(id, PackMaps.current_seed)   # generated (DLC packs), like MapBuilder.build
 		_audit(id, m)
 	_custom_ref()
 	_mode_lists()
@@ -61,8 +62,9 @@ func _audit(id: String, m: Dictionary) -> void:
 	# web look + decor
 	var lk := MapBuilder.look(id)
 	var decor := MapBuilder.load_decor(MapBuilder._decor_id(id, m))
-	check(not lk.is_empty(), id + " has a web look (map_look.json)")
-	check(not decor.is_empty() and node.decor_tris > 0, id + " has web decor (decor/%s.bin)" % id)
+	if not PackMaps.has(id):    # the DLC pack arenas have no web export: the native hills / void backdrop and their own sky colours
+		check(not lk.is_empty(), id + " has a web look (map_look.json)")
+		check(not decor.is_empty() and node.decor_tris > 0, id + " has web decor (decor/%s.bin)" % id)
 	var env := MapBuilder.make_environment(m, id)
 	check(env != null and env.fog_enabled, id + " environment")
 	var kinds := {}

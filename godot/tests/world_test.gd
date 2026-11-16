@@ -31,6 +31,7 @@ func _run() -> void:
 	for id in content.map_ids():
 		var m: Dictionary = content.get_map(id)
 		if id == SiteMap.ID: m = SiteMap.generate(SiteMap.current_seed)   # Construction DLC: generated at build time, like maps_test does
+		if PackMaps.has(id): m = PackMaps.generate(id, PackMaps.current_seed)   # DLC packs: generated at build time too
 		var node := MapBuilder.build(id)
 		var want: int = m["geometry"]["boxes"].size()
 		check(node.solids.size() == want, "%s solids %d != boxes %d" % [id, node.solids.size(), want])

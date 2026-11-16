@@ -131,6 +131,7 @@ jobs:
         if: matrix.shard == 'rest'
         timeout-minutes: 8
       - run: npm run test:godot-site-map
+      - run: npm run test:godot-pack-maps
         if: matrix.shard == 'net'
       - run: npm run test:godot-sandbox
         if: matrix.shard == 'net'
