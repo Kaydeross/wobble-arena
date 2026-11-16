@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "comment": "Ledge cling (docs/DAMAGE.md 'Ledge cling and throwable rubble'), Godot-only and gated on Combat.tuning_active() like every other overlay: a fighter who walks off, or is knocked past, the edge of a platform catches it, hangs and can climb up (JUMP) or let go (CROUCH). This file tunes the catch window and the hang/climb pose distances; nothing here is read by the web game or the parity tests. catch.topMin / topMax = how far the ledge top may sit above the hanging feet; catch.reach = extra metres beyond the body radius a ledge is caught from; catch.maxRise = the highest upward speed that may still catch (0 = only while falling); catch.hangDrop = metres the feet hang below the ledge top; catch.cooldown = seconds before another catch after a climb or a drop; climb.inset = metres the body moves in over the ledge; climb.rise = metres the feet end above the top; drop.push = outward m/s when letting go; bot.climbDelay = seconds a bot hangs before climbing; bot.probeRange = how far a falling bot steers toward a catchable ledge.",
+  "enabled": true,
+  "catch": {
+    "topMin": 1.1,
+    "topMax": 2.2,
+    "reach": 0.35,
+    "maxRise": 0.0,
+    "hangDrop": 1.35,
+    "cooldown": 0.45
+  },
+  "climb": {
+    "inset": 0.35,
+    "rise": 0.03
+  },
+  "drop": {
+    "push": 1.6
+  },
+  "bot": {
+    "climbDelay": 0.25,
+    "probeRange": 2.8
+  }
+}

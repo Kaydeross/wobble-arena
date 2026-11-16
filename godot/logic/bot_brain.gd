@@ -144,6 +144,12 @@ static func ground_at(solids: Array, py: float, x: float, z: float, up: float = 
 ## botThink, one fixed step.
 func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 	if b.carried_by != null: return         # Fastball Special: a carried teammate bot does not act from overhead
+	# Ledge cling (overlay only, docs/DAMAGE.md): a bot that caught a ledge hangs for the overlay's delay, then climbs.
+	# `b.hang` is only ever written by Ledge (MatchSim creates it while Combat.tuning_active()), so the parity paths never
+	# enter this branch.
+	if not b.hang.is_empty():
+		b.phys.want_jump = sim.ledge != null and b.hang_t >= float((sim.ledge.cfg as Dictionary)["botClimbDelay"])
+		return
 	var combat := sim.combat
 	if not combat.brawl and PracticeRange.is_range(sim.map):    # practice-range dummies (rangeBot)
 		PracticeRange.range_bot(b, sim.fighters.find(b) - 1, sim.player, sim.map["range"], dt, self)
@@ -194,10 +200,18 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 			var cd := sqrt((c["x"] - p.px) * (c["x"] - p.px) + (c["z"] - p.pz) * (c["z"] - p.pz))
 			if cd < bd and not (tg and dist < 3.5): bd = cd; crate = c
 
+	# Throwable rubble (overlay only, offline destructible matches): a resting chunk worth the detour when an enemy is
+	# around, then walked to exactly like a crate. `sim.rubble` is null in every other match.
+	var chunk: Dictionary = {}
+	if sim.rubble != null and not busy and b.rubble == 0 and b.stun <= 0.0 and b.swing < 0.0 and b.kick_t < 0.0 \
+			and escape_t <= 0.0 and b.shove_cool <= 0.0 and tg != null and not tg.dead:
+		chunk = sim.rubble.bot_chunk(b, float((sim.rubble.cfg as Dictionary)["botGrab"]))
 	var goal: Array = []                           # Capture the Flag: [x, z, kind] = walk to the free flag / run with it / stay with the carrier
 	if combat.rules.ctf != null and brawl and not busy:
 		goal = combat.rules.ctf.bot_goal(b)
 		if goal.size() > 0 and goal[2] != "escort": crate = {}
+	if not chunk.is_empty() and crate.is_empty():
+		crate = chunk                                # walk to the chunk first: it is the ranged option that always works
 	var wish := [p.wish_x, p.wish_z]               # kept while stunned, like b.wish
 	var chasing := brawl and tg != null and not (escape_t > 0.0)
 	if not busy and b.swing < 0.0 and b.kick_t < 0.0 and b.stun <= 0.0:
@@ -221,7 +235,10 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 		elif chasing:
 			var pref: float = float(PREF.get(b.weapon, 8)) if ranged else 1.7
 			var id := 1.0 / maxf(dist, 0.05)            # (two bots can stand on exactly the same spot)
-			if ranged:
+			if sim.rubble != null and b.rubble == 1:    # holding a chunk: close to the overlay's throwing window
+				if dist > float((sim.rubble.cfg as Dictionary)["botThrowMax"]) * 0.8: wish = [dx * id, dz * id]
+				else: wish = [0.0, 0.0]
+			elif ranged:
 				if dist > pref + 2.0: wish = [dx * id, dz * id]
 				elif dist < pref * 0.55: wish = [-dx * id * 0.8, -dz * id * 0.8]
 				else: wish = [-dz * id * 0.65 * strafe, dx * id * 0.65 * strafe]   # circle-strafe
@@ -240,6 +257,11 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 		else: wish = [0.0, 0.0]
 	elif busy or b.swing >= 0.0 or b.kick_t >= 0.0: wish = [0.0, 0.0]
 
+	if not crate.is_empty() and str(crate.get("state", "")) != "" and sim.rubble != null:
+		var cdx: float = float(crate["x"]) - p.px
+		var cdz: float = float(crate["z"]) - p.pz
+		if _hyp(cdx, cdz) <= float((sim.rubble.cfg as Dictionary)["pickupRange"]):
+			sim.rubble.try_pickup(b)                 # in reach: SHOVE's equivalent (a bot has no input state for it)
 	# stuck watchdog: pushing for over a second without getting anywhere (under a platform, against a wall) -> give up and wander elsewhere
 	if not busy and b.swing < 0.0 and _hyp(wish[0], wish[1]) > 0.3:
 		if not wd_on: wd_on = true; wd_x = p.px; wd_z = p.pz; wd_t = 0.0
@@ -285,13 +307,24 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 		elif p.want_jump and tg and not ground_at(sim.solids, p.py, p.px + sin(b.face_yaw) * 3.6, p.pz + cos(b.face_yaw) * 3.6, 3.2): p.want_jump = false
 	if shrink_guard and not busy and not combat.rules.shrink.is_empty():   # Godot-only: keep off the edge of a shrinking floor
 		_shrink_guard(combat.rules.shrink["box"], p, wish)
+	# Ledge cling edge probe (overlay only): a falling bot steers toward a catchable ledge so the grab reaches. `sim.ledge`
+	# is null in every untuned match, so the parity reference never sees it.
+	if sim.ledge != null and not p.grounded and p.vy <= 0.0 and not busy:
+		var lp := sim.ledge.probe(p)
+		if not lp.is_empty():
+			var ldx := float(lp["x"]) - p.px
+			var ldz := float(lp["z"]) - p.pz
+			var ll := _hyp(ldx, ldz)
+			if ll > 0.05:
+				wish = [ldx / ll, ldz / ll]
+				p.want_jump = false
 	p.wish_x = wish[0]; p.wish_z = wish[1]
 
 	if combat.rules.dash_gear(b) and tg and not tg.dead and b.dash_n > 0 and b.dash_cd <= 0.0 \
 			and dist > 6.0 and dist < 26.0 and rng.next() < dt * 0.35:
 		combat.rules.do_dash(b, tg.phys.px - p.px, tg.phys.pz - p.pz)      # ninja dash toward the target
 	var aiming := false
-	if ranged and tg and not tg.dead and not busy and dist < float(d.get("sight", 20)) and crate.is_empty():
+	if ranged and b.rubble == 0 and tg and not tg.dead and not busy and dist < float(d.get("sight", 20)) and crate.is_empty():
 		# point the (wobbly) arm at them; fire once it's roughly lined up
 		var bf: Dictionary = BOT_FIRE.get(wt, BOT_FIRE_DEFAULT)
 		var tx: float = tg.chest_x + aim_off[0]
@@ -342,13 +375,22 @@ func think(b: FighterState, sim: MatchSim, dt: float) -> void:
 				b.cool = float(w["cooldown"]) + rng.range_f(cr[0], cr[1]) / atk
 				combat.weapons.call(Weapons.LAUNCH[wt], b, b.weapon, [])
 			if not (wt == "gun" and b.reloading): combat.use_ammo(b)
+	# Throwable rubble (overlay only): throw the held chunk at the target when it is inside the overlay's window. The throw
+	# is aimed ballistically (Rubble.throw_at) and resolved through Combat.hit; after it the bot is back on its weapon.
+	if sim.rubble != null and b.rubble == 1 and tg != null and not tg.dead and not busy and b.stun <= 0.0:
+		b.face_yaw = to_yaw
+		var ty_aim: float = tg.chest_y if tg.chest_y > tg.phys.py + 0.5 else tg.phys.py + 1.1
+		var av := Combat.norm3(tg.chest_x - b.shoulder_x, ty_aim - b.shoulder_y, tg.chest_z - b.shoulder_z)
+		b.aim_x = av[0]; b.aim_y = av[1]; b.aim_z = av[2]
+		if sim.rubble.bot_throw(b, tg, los, dist):
+			b.cool = maxf(b.cool, float((sim.rubble.cfg as Dictionary)["botThink"]) + 0.25)
 	if b.slot >= 0 and w.get("mag", 0) and not combat.inf and not b.reloading:      # bots top up their guns too, mostly when nobody is in sight
 		var bs: Variant = b.current_slot()
 		if bs != null and int(bs["mag"]) >= 0 and _can_reload_now(b) and (int(bs["mag"]) <= 0 or (not aiming and int(bs["mag"]) < float(w["mag"]) * 0.6)):
 			combat.start_reload(b)
 
 	# close-range attacks: kick, spatula (or a held melee weapon)
-	if not busy and b.kick_t < 0.0 and b.swing < 0.0 and tg and not tg.dead and dist < 2.4:
+	if not busy and b.kick_t < 0.0 and b.swing < 0.0 and b.rubble == 0 and tg and not tg.dead and dist < 2.4:
 		var kk := float(d.get("kick", 1))
 		var atk2 := float(d.get("atk", 1))
 		if brawl and b.kick_cool <= 0.0 and rng.next() < dt * 1.2 * kk:

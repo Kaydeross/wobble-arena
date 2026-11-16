@@ -1,0 +1,22 @@
+{
+  "version": 1,
+  "comment": "Throwable rubble (docs/DAMAGE.md 'Ledge cling and throwable rubble'), Godot-only overlay data gated on Combat.tuning_active(); the destructible mode is offline only, so rubble never spawns online. When a breakable prop shatters (docs/DESTRUCTIBLE.md) one chunk of it stays on the floor as a pickup: SHOVE next to it picks it up, FIRE throws it at the crosshair, SHOVE while holding puts it down. A thrown chunk is a light projectile resolved through the shared Combat.hit path by the thrower (no protocol message). damage/force are the hit; speed = throw speed (m/s) and up = fixed upward speed when thrown without a target point; gravity/life = flight and ground lifetime (s); pickupRange = metres; maxChunks = live chunks (oldest resting one is recycled); radius = chunk collision size, hitRadius = extra reach of a flying chunk against a fighter; cooldown = seconds between a pickup and the next one; bot.grab/throwMin/throwMax = how far a bot walks to a chunk and the window it throws one in; bot.think = seconds between a bot's rubble decisions.",
+  "enabled": true,
+  "damage": 16.0,
+  "force": 13.0,
+  "speed": 17.0,
+  "up": 3.2,
+  "gravity": 22.0,
+  "life": 16.0,
+  "maxChunks": 8,
+  "pickupRange": 1.9,
+  "cooldown": 0.45,
+  "radius": 0.28,
+  "hitRadius": 0.55,
+  "bot": {
+    "grab": 9.0,
+    "throwMin": 2.5,
+    "throwMax": 14.0,
+    "think": 0.35
+  }
+}

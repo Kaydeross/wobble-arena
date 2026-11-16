@@ -23,6 +23,19 @@ func _initialize() -> void:
 	var e := NetSnapshot.encode_entry(f, {"pt": 12.5})
 	ok(e["x"] == 1.0 and e["y"] == -2.67 and e["z"] == 10.12 and e["vx"] == 0.0 and e["vy"] == 7.78, "S rounding like toFixed(2): %s" % str(e))
 	ok(e["hp"] == 88 and e["pt"] == 13 and e["iv"] == 1 and e["g"] == 1 and e["d"] == 0 and e["w"] == "smg", "S flags: %s" % str(e))
+	ok(e["lg"] == 0, "S: not hanging -> lg 0")
+	# ledge cling (Godot-only additive field, docs/PROTOCOL.md 6.3): a hanging fighter round-trips its lg flag
+	f.hang = {"remote": true, "top": 4.0}
+	var e_hang := NetSnapshot.encode_entry(f)
+	ok(e_hang["lg"] == 1, "S: hanging -> lg 1")
+	var hang_back := NetSnapshot.decode_state(wire(NetSnapshot.encode_state([e_hang])))
+	ok(hang_back.size() == 1 and hang_back[0]["lg"] == true, "S: lg round-trips over JSON")
+	var fresh := FighterState.new(); fresh.net_slot = 1
+	var e_not := NetSnapshot.decode_state(wire(NetSnapshot.encode_state([NetSnapshot.encode_entry(fresh)])))
+	ok(e_not.size() == 1 and e_not[0]["lg"] == false, "S: a plain fighter decodes as not hanging")
+	var e_lg2 := NetSnapshot.decode_entry({"id": 1, "x": 0, "y": 0, "z": 0, "lg": 2})
+	ok(e_lg2["lg"] == false, "S: lg is a 0/1 flag, other values are not hanging")
+	f.hang = {}
 	var back := NetSnapshot.decode_state(wire(NetSnapshot.encode_state([e])))
 	ok(back.size() == 1, "S decodes one entry")
 	if back.size() == 1:

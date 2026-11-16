@@ -6859,6 +6859,13 @@
   "fr": "Salons",
   "es": "Salas"
  },
+ "Rubble in hand!": {
+  "zh_TW": "手上有石塊！",
+  "zh_CN": "手上有石块！",
+  "ja": "石を持った！",
+  "fr": "Un débris en main !",
+  "es": "¡Escombros en la mano!"
+ },
  "Rules": {
   "zh_TW": "規則",
   "zh_CN": "规则",

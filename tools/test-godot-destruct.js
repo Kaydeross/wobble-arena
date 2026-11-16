@@ -41,4 +41,10 @@ const r2 = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tes
 const out2 = (r2.stdout || '') + (r2.stderr || '');
 console.log(out2.split('\n').filter(l => /^(PROPDEBRIS|FAIL)|SCRIPT ERROR/.test(l)).join('\n'));
 if (r2.status !== 0 || !/^PROPDEBRIS ok/m.test(out2) || /SCRIPT ERROR/.test(out2)) { console.log('prop debris test FAILED'); process.exit(1); }
+// Ledge cling + throwable rubble (docs/DAMAGE.md "Ledge cling and throwable rubble"; tests/ledge_rubble_test.gd)
+const r3 = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/ledge_rubble_test.gd', '--', '--no-save'],
+  { encoding: 'utf8', timeout: 600000 });
+const out3 = (r3.stdout || '') + (r3.stderr || '');
+console.log(out3.split('\n').filter(l => /^(LEDGE_RUBBLE|FAIL)|SCRIPT ERROR/.test(l)).join('\n'));
+if (r3.status !== 0 || !/^LEDGE_RUBBLE ok/m.test(out3) || /SCRIPT ERROR/.test(out3)) { console.log('ledge/rubble test FAILED'); process.exit(1); }
 console.log('godot destruct test passes');

@@ -3,6 +3,8 @@ extends RefCounted
 ## Encode/decode of the in-match messages in docs/PROTOCOL.md section 3.1: the 30 Hz `S` state entry, the hit `h`
 ## and the K.O. `ko`. Matches the web game byte for byte where it matters: numbers are rounded exactly like
 ## JavaScript's `+v.toFixed(n)` and `Math.round`, and incoming hits are cleaned like `netCleanHit` / `netGuard`.
+## `lg` (0/1, Godot-only additive) says the fighter is hanging on a ledge (docs/PROTOCOL.md 6.3): the web client ignores
+## unknown `S` fields, and only a Godot client can hang at all.
 
 const HIT_MAX_D := 250.0
 const HIT_MAX_F := 120.0
@@ -18,7 +20,7 @@ static func encode_entry(f: FighterState, extra: Dictionary = {}) -> Dictionary:
 		"ax": fixed(f.arm_x, 2), "ay": fixed(f.arm_y, 2), "az": fixed(f.arm_z, 2),
 		"w": null if f.dead else f.weapon, "hp": Combat.js_round(f.hp), "d": 1 if f.dead else 0,
 		"g": 1 if p.grounded else 0, "sq": int(extra.get("sq", 0)), "iv": 1 if f.invuln > 0.0 else 0,
-		"lv": f.lives, "el": 1 if f.elim else 0}
+		"lv": f.lives, "el": 1 if f.elim else 0, "lg": 1 if not f.hang.is_empty() else 0}
 	if extra.has("pt"): e["pt"] = Combat.js_round(float(extra["pt"]))
 	return e
 
@@ -58,7 +60,7 @@ static func decode_entry(it: Variant) -> Dictionary:
 		r[k] = num(it.get(k), -1e6, 1e6, 0.0)
 	var w: Variant = it.get("w")
 	r["w"] = w if w is String and w.length() <= 24 else ""
-	for k in ["d", "g", "sq", "iv", "el"]:
+	for k in ["d", "g", "sq", "iv", "el", "lg"]:
 		r[k] = to_int32(it.get(k)) == 1
 	r["lv"] = to_int32(it.get("lv"))
 	if it.has("pt"): r["pt"] = num(it["pt"], -1e6, 1e6, 0.0)

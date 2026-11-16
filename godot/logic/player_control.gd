@@ -14,6 +14,7 @@ var aim_point: Array = []        ## [x, y, z] the crosshair is on ([] = straight
 var squat := false
 var _dash_held := false
 var _kids_target: FighterState = null   ## kids mode: the enemy being assisted (null = none)
+const HANG_INPUT_DELAY := 0.12          ## s of hanging before JUMP climbs, so a jump held while walking off does not skip the grab
 
 func _init(state: InputState) -> void:
 	input = state
@@ -25,6 +26,16 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 		_charge_cancel(p)
 		_drain_taps()
 		return
+	# Ledge cling (docs/DAMAGE.md "Ledge cling and throwable rubble"): while hanging only JUMP (climb up) and CROUCH
+	# (let go) do anything. `p.hang` is only ever written by Ledge, which MatchSim creates while Combat.tuning_active().
+	if not p.hang.is_empty():
+		_charge_cancel(p)
+		_drain_taps()
+		p.hang_drop = input.is_held("crouch")
+		if input.is_held("jump") and p.hang_t > HANG_INPUT_DELAY: p.phys.want_jump = true
+		p.face_yaw = cam_yaw
+		return
+	p.hang_drop = false
 	if p.is_player:
 		combat.aim_mode = Combat.settings_aim_mode()   # docs/AIM.md: the Settings row applies live, one copy per step
 	var ph := p.phys
@@ -83,8 +94,12 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	if input.consume("signature"): Skills.do_signature(p, sim, p.face_yaw)   # class signature move (logic/skills.gd)
 	if input.consume("kick"): combat.do_kick(p, cam_yaw)
 	if input.consume("shove"):
-		# Fastball Special: a shove next to an empty-handed teammate hoists them instead of shoving (suppressed shove)
-		if not combat.try_carry(p) and p.carrying == null: combat.shove(p, cam_yaw)
+		# Throwable rubble: SHOVE puts a held chunk down, or picks one up next to the fighter; the Fastball Special's
+		# teammate hoist comes first (a liftable teammate is the bigger moment) and the normal shove is the fallback.
+		if p.rubble == 1 and sim.rubble != null:
+			sim.rubble.drop(p)
+		elif not combat.try_carry(p) and p.carrying == null:
+			if sim.rubble == null or sim.rubble.try_pickup(p).is_empty(): combat.shove(p, cam_yaw)
 	if input.consume("spatula"): sim.quick_melee(p, cam_yaw)
 	if input.consume("spatula_equip"): combat.equip_slot(p, -1)   # touch: the Spatula tile is a real slot, not a swing
 	if input.consume("reload"): combat.start_reload(p)
@@ -126,6 +141,14 @@ func think(p: FighterState, sim: MatchSim, dt: float) -> void:
 	if p.carrying != null:
 		if fire: combat.throw_carry(p)
 		ph.speed *= Combat.CARRY_SPEED_MUL
+		return
+
+	# Throwable rubble: while a chunk is in hand FIRE throws it (a light projectile, no weapon fires); SHOVE put it down
+	# above. Gated by sim.rubble, which only an offline destructible + tuned match has.
+	if p.rubble == 1 and sim.rubble != null:
+		if fire:
+			if ap.size() == 3: sim.rubble.throw_at(p, ap[0], ap[1], ap[2])
+			else: sim.rubble.throw_dir(p)
 		return
 
 	var t: String = w.get("type", "")

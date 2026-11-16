@@ -296,6 +296,7 @@ func _off_checks() -> void:
 	var base_hash := _state_hash(base)
 	var base_rng := base.combat.rng.state
 	check(base.destruct == null, "off: no Destruct object")
+	check(base.rubble == null, "off: no rubble overlay without the destructible mode")
 	check(base.combat.destruct == null, "off: Combat has no destruct hook")
 	check(base.solids.size() == FighterPhysics.solids_from_map(m).size(), "off: no extra solids (%d)" % base.solids.size())
 	var tagged := 0
@@ -723,6 +724,7 @@ func _behaviour_one(id: String) -> void:
 	var sim := _match(id, true, 9001, parent, 0)
 	var d: Destruct = sim.destruct
 	check(d != null and d.total() > 0, "%s: mode on loads breakables" % id)
+	check(sim.rubble != null and d != null and sim.destruct.rubble == sim.rubble, "%s: the rubble overlay is wired to Destruct" % id)
 	if d == null:
 		parent.queue_free()
 		return

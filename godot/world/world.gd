@@ -108,6 +108,7 @@ var proj_views: ProjectileViews     ## rockets, grenades, arrows, nets, knives, 
 var _touch_was := false
 var _mats := {}
 var _debris: PropDebris = null       ## broken props shatter into pieces here (under the map node, freed with it)
+var _rubble_view: RubbleView = null  ## throwable rubble chunks (docs/DAMAGE.md; overlay only, null otherwise)
 var _dyn_tiles: Array = []         ## MeshInstance3D per sim.dyn.tiles entry (same order)
 var _dyn_blocks: Array = []        ## MeshInstance3D per sim.dyn.drift entry
 var _dyn_riders: Array = []        ## {node, y0, ti}: small floor decor riding a tile
@@ -235,6 +236,7 @@ func load_map(id: String) -> void:
 	if fx: fx.clear()
 	if trails: trails.clear()
 	_hitstop = 0
+	_rubble_view = null                 # freed with the old map node
 	if net_match: net_match.dispose(); net_match = null
 	if sim: sim.dispose()
 	if _results: _results.queue_free(); _results = null
@@ -329,6 +331,10 @@ func load_map(id: String) -> void:
 	if _kc_l: _kc_l.visible = false
 	_build_shrink_view()
 	_build_ctf_view()
+	if sim.rubble != null:                 # throwable rubble (docs/DAMAGE.md): one mesh per logical chunk
+		_rubble_view = RubbleView.new()
+		map_node.add_child(_rubble_view)
+		_rubble_view.setup(sim)
 	cam.reset_view()
 	feed.clear()
 	acc = 0.0
@@ -570,6 +576,7 @@ func present(dt: float) -> void:
 	_update_dyn_views()
 	_update_shrink_view()
 	if _ctf_view != null: _ctf_view.update(dt)
+	if _rubble_view != null and is_instance_valid(_rubble_view): _rubble_view.update_view()
 	if not frozen: proj_views.update(dt)
 	if fx:
 		fx.watch(views, dt)
@@ -623,6 +630,10 @@ func _drain_events() -> void:
 				_on_prop_hit(e)          # a breakable was hit but did not break: chips + dust + a tap sound
 			"prop_respawn":
 				_on_prop_respawn(e)      # a broken component materialised again: a small dust puff at its base
+			"ledge":
+				_on_ledge(e)             # ledge cling (overlay only): the catch / climb / drop cue
+			"rubble":
+				_on_rubble(e)            # throwable rubble (overlay only): pick / throw / land / hit cues
 			"match_end":
 				if not trial: _reward = Save.finish_match(str(e["name"]) == "You", "", map_id, true, sim.combat.mode_id)
 				_show_results(str(e["name"]))
@@ -691,6 +702,30 @@ func _on_prop_respawn(e: Dictionary) -> void:
 	if fx:
 		var base := Vector3(float(e["x"]), float(e["y"]) + 0.08, float(e["z"]))
 		fx.dust(base, 1, 2.2)
+
+## Ledge cling (docs/DAMAGE.md "Ledge cling and throwable rubble", overlay only): a catch / climb / drop cue for the local
+## player. Presentation only: the position and the pin are Ledge's.
+func _on_ledge(e: Dictionary) -> void:
+	var f: FighterState = e.get("f") if e.get("f") is FighterState else null
+	if f == null or f != sim.player: return
+	Sfx.play("jump" if str(e.get("kind", "")) == "climb" else "clink", 0.45)
+
+## Throwable rubble (docs/DAMAGE.md, overlay only): the pickup toast and the throw / land / hit cues. The chunk meshes are
+## RubbleView's; the damage number of a hit comes from the ordinary `hit` event.
+func _on_rubble(e: Dictionary) -> void:
+	var f: FighterState = e.get("f") if e.get("f") is FighterState else null
+	var at := Vector3(float(e.get("x", 0.0)), float(e.get("y", 0.0)), float(e.get("z", 0.0)))
+	match str(e.get("kind", "")):
+		"pickup":
+			Sfx.play("pickup", 0.7)
+			if f == sim.player: _toast(tr("Rubble in hand!"))
+		"throw":
+			Sfx.play("slap", 0.8)
+		"land":
+			if fx: fx.dust(at, 1, 2.0)
+		"hit":
+			Sfx.play("whack", 0.9)
+			if fx: fx.dust(at, 1, 2.4)
 
 func _on_ko(e: Dictionary) -> void:
 	var k: FighterState = e.get("killer")
