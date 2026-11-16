@@ -11,7 +11,7 @@ Goal: every screen reads at a glance on a phone held in landscape. Nothing overl
 - No label is set below `UiTheme.MIN_FONT` (14 px), and no visible text is truncated (ellipsis, clipped line, over-long wrap).
 - A busy bar (title top row and cards row, wizard footer and header, Walldrobe header and footer) holds at most 4 buttons.
 - The checks also run in Francais and Japanese on the key screens.
-- The title's menu rail is a vertical list of exactly six buttons, not a bar: it is counted on its own, must never overlap the column beside it, and the stage's TAP TO OPEN tag must stay clear of every other control (`_title_home`). See [TITLE.md](TITLE.md).
+- The title's icon dock is exactly five buttons in their own panel, counted on its own; the dock, Play, the chips, the logo and the CONSTRUCTION pill must never overlap (`_title_home`). See [TITLE.md](TITLE.md).
 
 ## What changed
 
