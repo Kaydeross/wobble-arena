@@ -18,6 +18,13 @@ const DLC_KEYS: Array[String] = ["pipewrench", "nailgun", "jackhammer", "spiritl
 	"conelauncher", "anglegrinder", "drill"]
 
 
+## The pack weapons (godot/data/extra/<pack>/weapons.json), modelled by the per-pack builders in godot/dlc/<pack>/*_models.gd.
+## (The Australia boomerang is "aussieboomerang": "boomerang" is a shared weapon.)
+const PACK_KEYS: Array[String] = ["fryingpan", "cleaver", "flambetorch", "rollingpin", "peppergrinder", "souppot",
+	"candycane", "snowballcannon", "giftbomb", "tinselwhip", "ornamentlauncher", "toymallet",
+	"cricketbat", "aussieboomerang", "thongslapper", "vegemitejar", "bbqtongs", "didgeridooblaster"]
+
+
 static func make_mat(c: int) -> Material:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = Color.hex(c << 8 | 0xff)
@@ -100,8 +107,9 @@ static func build(key: String, mat_fn: Callable = Callable()) -> Node3D:
 		"anglegrinder": _anglegrinder(b)
 		"drill": _drill(b)
 		_:
-			b.bx(0.14, 0.7, 0.18, 0x5a6270, 0, -0.3, -0.05)
-			b.bx(0.1, 0.12, 0.22, 0x3a3f4a, 0, -0.02, 0.12)
+			if not (KitchenModels.build(key, b) or XmasModels.build(key, b) or AustraliaModels.build(key, b)):   # the pack weapons
+				b.bx(0.14, 0.7, 0.18, 0x5a6270, 0, -0.3, -0.05)
+				b.bx(0.1, 0.12, 0.22, 0x3a3f4a, 0, -0.02, 0.12)
 	return root
 
 

@@ -1476,6 +1476,55 @@
   "fr": "Bonnet",
   "es": "Gorro"
  },
+ "Beard fluff included": {
+  "zh_TW": "附贈白毛",
+  "zh_CN": "附赠白毛",
+  "ja": "ふわふわひげ付き",
+  "fr": "Barbe duveteuse incluse",
+  "es": "Barba esponjosa incluida"
+ },
+ "Beat Australia on Nightmare": {
+  "zh_TW": "以噩夢難度通關袋鼠後院",
+  "zh_CN": "以噩梦难度通关袋鼠后院",
+  "ja": "ナイトメアでオーストラリアをクリア",
+  "fr": "Finissez Australie en Cauchemar",
+  "es": "Supera Australia en Pesadilla"
+ },
+ "Beat Australia on Normal": {
+  "zh_TW": "以普通難度通關袋鼠後院",
+  "zh_CN": "以普通难度通关袋鼠后院",
+  "ja": "ノーマルでオーストラリアをクリア",
+  "fr": "Finissez Australie en Normal",
+  "es": "Supera Australia en Normal"
+ },
+ "Beat Kitchen on Nightmare": {
+  "zh_TW": "以噩夢難度通關廚房",
+  "zh_CN": "以噩梦难度通关厨房",
+  "ja": "ナイトメアでキッチンをクリア",
+  "fr": "Finissez Cuisine en Cauchemar",
+  "es": "Supera Cocina en Pesadilla"
+ },
+ "Beat Kitchen on Normal": {
+  "zh_TW": "以普通難度通關廚房",
+  "zh_CN": "以普通难度通关厨房",
+  "ja": "ノーマルでキッチンをクリア",
+  "fr": "Finissez Cuisine en Normal",
+  "es": "Supera Cocina en Normal"
+ },
+ "Beat Xmas on Nightmare": {
+  "zh_TW": "以噩夢難度通關聖誕",
+  "zh_CN": "以噩梦难度通关圣诞",
+  "ja": "ナイトメアでクリスマスをクリア",
+  "fr": "Finissez Noël en Cauchemar",
+  "es": "Supera Navidad en Pesadilla"
+ },
+ "Beat Xmas on Normal": {
+  "zh_TW": "以普通難度通關聖誕",
+  "zh_CN": "以普通难度通关圣诞",
+  "ja": "ノーマルでクリスマスをクリア",
+  "fr": "Finissez Noël en Normal",
+  "es": "Supera Navidad en Normal"
+ },
  "Belly Bounce": {
   "zh_TW": "肚皮彈跳",
   "zh_CN": "肚皮弹跳",
@@ -2071,6 +2120,13 @@
   "fr": "Chef",
   "es": "Chef"
  },
+ "Chef Toque": {
+  "zh_TW": "廚師帽",
+  "zh_CN": "厨师帽",
+  "ja": "コック帽",
+  "fr": "Toque de chef",
+  "es": "Gorro de chef"
+ },
  "Chill Out": {
   "zh_TW": "放鬆",
   "zh_CN": "放松",
@@ -2406,6 +2462,20 @@
   "ja": "コードレスドリル",
   "fr": "Perceuse sans fil",
   "es": "Taladro inalámbrico"
+ },
+ "Cork Slouch Hat": {
+  "zh_TW": "木塞寬邊帽",
+  "zh_CN": "木塞宽边帽",
+  "ja": "コルクのつば広帽",
+  "fr": "Chapeau à bouchons",
+  "es": "Sombrero con corchos"
+ },
+ "Corks keep the flies off": {
+  "zh_TW": "木塞擋住小蟲",
+  "zh_CN": "木塞挡住小虫",
+  "ja": "コルクがハエよけ",
+  "fr": "Les bouchons chassent les mouches",
+  "es": "Los corchos espantan las moscas"
  },
  "Could not change it.": {
   "zh_TW": "無法變更。",
@@ -2981,6 +3051,13 @@
   "fr": "Pointé disco",
   "es": "Señalar disco"
  },
+ "Dishie Bot": {
+  "zh_TW": "廚房機器人",
+  "zh_CN": "厨房机器人",
+  "ja": "キッチンロボ",
+  "fr": "Robot plongeur",
+  "es": "Robot lavaplatos"
+ },
  "Does the arena floor move? Random = a different moving floor every match": {
   "zh_TW": "競技場地板會移動嗎？隨機 = 每場比賽的移動地板都不同",
   "zh_CN": "竞技场地板会移动吗？随机 = 每场比赛的移动地板都不同",
@@ -3198,12 +3275,33 @@
   "fr": "Effets",
   "es": "Efectos"
  },
+ "Elf Cap": {
+  "zh_TW": "精靈帽",
+  "zh_CN": "精灵帽",
+  "ja": "エルフの帽子",
+  "fr": "Bonnet d'elfe",
+  "es": "Gorro de elfo"
+ },
+ "Elf Tunic": {
+  "zh_TW": "精靈外衣",
+  "zh_CN": "精灵外衣",
+  "ja": "エルフのチュニック",
+  "fr": "Tunique d'elfe",
+  "es": "Túnica de elfo"
+ },
  "Email (for your account, never shown)": {
   "zh_TW": "電子郵件（用於帳號，不會顯示）",
   "zh_CN": "电子邮件（用于账号，不会显示）",
   "ja": "メールアドレス（アカウント用。表示されません）",
   "fr": "E-mail (pour le compte, jamais affiché)",
   "es": "Correo (para tu cuenta, nunca se muestra)"
+ },
+ "Ember Cork Slouch Hat": {
+  "zh_TW": "火紅木塞寬邊帽",
+  "zh_CN": "火红木塞宽边帽",
+  "ja": "燃えるコルク帽",
+  "fr": "Chapeau à bouchons braise",
+  "es": "Sombrero con corchos al rojo"
  },
  "Emotes": {
   "zh_TW": "表情動作",
@@ -3961,6 +4059,13 @@
   "fr": "Salle de jeux du géant",
   "es": "Cuarto de juegos del gigante"
  },
+ "Gilded Santa Hat": {
+  "zh_TW": "金色聖誕帽",
+  "zh_CN": "金色圣诞帽",
+  "ja": "ゴールドのサンタ帽",
+  "fr": "Bonnet de Noël doré",
+  "es": "Gorro navideño dorado"
+ },
  "Goals": {
   "zh_TW": "目標",
   "zh_CN": "目标",
@@ -3974,6 +4079,13 @@
   "ja": "ゴール：毎日・毎週・通算のコイン目標。毎日最初の勝利にはストリークボーナスもあります。コインはタダ、裏もありません",
   "fr": "Objectifs : pièces quotidiennes, hebdomadaires et à vie, plus un bonus de série pour la première victoire du jour. Pièces gratuites, sans piège",
   "es": "Objetivos: metas de monedas diarias, semanales y de por vida, además de un bonus por racha en tu primera victoria del día. Monedas gratis, sin trampa"
+ },
+ "Gold Cork Slouch Hat": {
+  "zh_TW": "金色木塞寬邊帽",
+  "zh_CN": "金色木塞宽边帽",
+  "ja": "ゴールドのコルク帽",
+  "fr": "Chapeau à bouchons doré",
+  "es": "Sombrero con corchos dorados"
  },
  "Got %s": {
   "zh_TW": "獲得 %s",
@@ -4163,6 +4275,13 @@
   "ja": "お化けの谷",
   "fr": "Vallon hanté",
   "es": "Valle embrujado"
+ },
+ "Head Chef Toque": {
+  "zh_TW": "主廚帽",
+  "zh_CN": "主厨帽",
+  "ja": "料理長の帽子",
+  "fr": "Toque de chef cuisinier",
+  "es": "Gorro de jefe de cocina"
  },
  "Head down, arm up. Classic": {
   "zh_TW": "低頭、舉起一隻手。經典款",
@@ -4458,6 +4577,13 @@
   "fr": "Dont %d pièces de bonus de victoire",
   "es": "Incluye %d monedas de bono de victoria"
  },
+ "Inferno Toque": {
+  "zh_TW": "火焰廚師帽",
+  "zh_CN": "火焰厨师帽",
+  "ja": "業火のコック帽",
+  "fr": "Toque infernale",
+  "es": "Gorro de chef infernal"
+ },
  "Infinite": {
   "zh_TW": "無限",
   "zh_CN": "无限",
@@ -4506,6 +4632,13 @@
   "ja": "ジェスター",
   "fr": "Bouffon",
   "es": "Bufón"
+ },
+ "Jingles when it shouldn't": {
+  "zh_TW": "會在不對的時候發出聲音",
+  "zh_CN": "会在不对的时候发出声音",
+  "ja": "鳴ってほしくない時に鳴る",
+  "fr": "Tintinnabule au mauvais moment",
+  "es": "Suena cuando no debe"
  },
  "Join %s": {
   "zh_TW": "加入 %s",
@@ -4653,6 +4786,13 @@
   "ja": "突き飛ばしの嵐",
   "fr": "Tempête de bousculades",
   "es": "Tormenta de empujones"
+ },
+ "Krampus Hat": {
+  "zh_TW": "惡鬼聖誕帽",
+  "zh_CN": "鬼怪圣诞帽",
+  "ja": "クランプスの帽子",
+  "fr": "Bonnet de Krampus",
+  "es": "Gorro de Krampus"
  },
  "LAUNCHED AT %d KM/H!": {
   "zh_TW": "以 %d 公里/小時 擊飛！",
@@ -6236,6 +6376,13 @@
   "fr": "Pointe le ciel, pointe le sol",
   "es": "Señala al cielo, señala al suelo"
  },
+ "Pointy ears included": {
+  "zh_TW": "附贈尖耳",
+  "zh_CN": "附赠尖耳",
+  "ja": "とがった耳付き",
+  "fr": "Oreilles pointues incluses",
+  "es": "Orejas puntiagudas incluidas"
+ },
  "Practice  ·  %d K.O.s": {
   "zh_TW": "練習  ·  %d 擊倒",
   "zh_CN": "练习  ·  %d 击倒",
@@ -6382,6 +6529,13 @@
   "ja": "パスワードで名前を守る",
   "fr": "Protéger mon nom avec un mot de passe",
   "es": "Proteger mi nombre con contraseña"
+ },
+ "Proudly stained": {
+  "zh_TW": "紅紅黃黃，很得意",
+  "zh_CN": "红红黄黄，很得意",
+  "ja": "ソースのしみもピカピカ",
+  "fr": "Taché avec fierté",
+  "es": "Manchado con orgullo"
  },
  "Public": {
   "zh_TW": "公開",
@@ -6950,6 +7104,13 @@
   "fr": "Père Noël",
   "es": "Papá Noel"
  },
+ "Santa Hat and Beard": {
+  "zh_TW": "聖誕帽附白毛",
+  "zh_CN": "圣诞帽附白毛",
+  "ja": "サンタ帽とひげ",
+  "fr": "Bonnet de Père Noël et barbe",
+  "es": "Gorro de Papá Noel y barba"
+ },
  "Save": {
   "zh_TW": "儲存",
   "zh_CN": "保存",
@@ -7068,6 +7229,13 @@
   "ja": "画面の揺れ",
   "fr": "Tremblement d'écran",
   "es": "Sacudida de pantalla"
+ },
+ "Scrubs up well": {
+  "zh_TW": "閃閃發亮",
+  "zh_CN": "闪闪发亮",
+  "ja": "ピカピカになる",
+  "fr": "Brille comme un sou neuf",
+  "es": "Queda reluciente"
  },
  "Sea": {
   "zh_TW": "海上",
@@ -7390,6 +7558,20 @@
   "ja": "シルバーナイト",
   "fr": "Chevalier d'argent",
   "es": "Caballero de plata"
+ },
+ "Singlet and Thongs": {
+  "zh_TW": "背心和夾腳拖",
+  "zh_CN": "背心和夹脚拖",
+  "ja": "タンクトップとビーサン",
+  "fr": "Débardeur et tongs",
+  "es": "Camiseta sin mangas y chanclas"
+ },
+ "Singlet, shorts and thongs": {
+  "zh_TW": "背心、短裝、夾腳拖",
+  "zh_CN": "背心、短装、夹脚拖",
+  "ja": "タンクトップ、短パン、ビーサン",
+  "fr": "Débardeur, short et tongs",
+  "es": "Camiseta, shorts y chanclas"
  },
  "Site Foreman Hard Hat": {
   "zh_TW": "工地主管安全帽",
@@ -7762,6 +7944,13 @@
   "fr": "Étape échouée",
   "es": "Etapa fallida"
  },
+ "Stained Apron": {
+  "zh_TW": "紅紅黃黃的廚師服",
+  "zh_CN": "红红黄黄的厨师服",
+  "ja": "ソースまみれのエプロン",
+  "fr": "Tablier taché",
+  "es": "Delantal manchado"
+ },
  "Stairs": {
   "zh_TW": "階梯",
   "zh_CN": "台阶",
@@ -7999,6 +8188,13 @@
   "ja": "タクティカルリロード",
   "fr": "Rechargement tactique",
   "es": "Recarga táctica"
+ },
+ "Tall hat, big ideas": {
+  "zh_TW": "高帽子，大點子",
+  "zh_CN": "高帽子，大点子",
+  "ja": "背の高い帽子、大きなアイデア",
+  "fr": "Grand chapeau, grandes idées",
+  "es": "Sombrero alto, grandes ideas"
  },
  "Tap %s to dash": {
   "zh_TW": "點 %s 衝刺",
