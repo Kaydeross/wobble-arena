@@ -20,6 +20,7 @@ var fails := 0
 var last_hp := -1.0
 var done := false
 var emoted := false
+var nz_printed := false
 
 func fail(what: String) -> void:
 	fails += 1
@@ -59,6 +60,7 @@ func _on_roster(r: Array) -> void:
 
 func _on_start(s: Dictionary) -> void:
 	starts += 1
+	nz_printed = false
 	if starts == 1:
 		world = load("res://world/world.tscn").instantiate()
 		world.session = session
@@ -100,6 +102,9 @@ func _process(dt: float) -> bool:
 		if after_start2 > 25.0: _finish(); return false
 	var sim: MatchSim = world.sim
 	var p := sim.player
+	if not nz_printed:
+		nz_printed = true
+		print("ZONES host=%d" % (1 if sim.combat.net_zones else 0))
 	var st: InputState = world.input.state
 	st.set_move("script", Vector2(0, 1) if t > 0.5 and t < 2.5 else Vector2.ZERO)
 	if p.hp != last_hp:

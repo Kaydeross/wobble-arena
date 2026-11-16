@@ -79,6 +79,11 @@ var start_msg := {}                ## the cleaned `start` this match was built f
 var net_match: NetMatch = null
 var _results: Control = null
 var _ads_on_exit := false          ## leaving to the title (not a rematch / online room): offer an interstitial in _exit_tree
+## The 3D winner podium (world/winner_podium.gd): the results moment's 3D celebration, built with the results panel
+## (offline, and the online host / guest results), cleared with the next match or the closed result. Presentation only
+## (no Combat, no physics, no RNG); skipped in tutorial / trial / sandbox and in headless runs, which never draw it.
+var podium: WinnerPodium = null
+var podium_in_tests := false   ## hand-stepped headless suites opt in: normal headless runs never draw the podium
 var _reward := {}                  ## Save.finish_match() summary for the results panel (ui/results_rewards.gd)
 var _rank_t := -1000000            ## Time.get_ticks_msec() of the last leaderboard submit attempt
 var _rank_pending := false         ## a submit is on the wire (never blocks the match)
@@ -233,6 +238,7 @@ func load_map(id: String) -> void:
 	if net_match: net_match.dispose(); net_match = null
 	if sim: sim.dispose()
 	if _results: _results.queue_free(); _results = null
+	_clear_podium()
 	if _shrink_mesh: _shrink_mesh.queue_free(); _shrink_mesh = null
 	_shrink_pad = null
 	_banner_t = 0.0
@@ -474,17 +480,20 @@ func tick(delta: float) -> void:
 			locked = countdown_locked()
 			var st := input.state
 			var look := st.take_look()
-			cam.add_look(look)               # look is presentation: it stays live during the countdown
-			if spectating == null:          # the auto-recentre follows the player's own walk, not a spectated fighter's
-				var p := sim.player.phys
-				cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
-		cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
+			if podium == null:               # the results shot owns the camera once the podium is up
+				cam.add_look(look)           # look is presentation: it stays live during the countdown
+				if spectating == null:       # the auto-recentre follows the player's own walk, not a spectated fighter's
+					var p := sim.player.phys
+					cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
+		if podium == null:
+			cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
 		if not locked:                       # the countdown freezes the sim: no acc, no sim_step, no catch-up on GO
 			acc += minf(dt, 0.1)
 			if not paused and not trial: Save.add_play_time(dt)
 			while acc >= SIM:
 				sim_step(SIM)
 				acc -= SIM
+	_update_podium(dt)
 	present(dt if (not paused or net_match != null) else 0.0)
 	_update_spectate()
 	_update_hud(delta)
@@ -501,7 +510,10 @@ func _process(delta: float) -> void:
 	if auto_run:
 		tick(delta)
 	elif not kill_cam.active:
-		cam.follow(minf(delta, 0.05), cam_target(), false, solids)
+		if podium != null:
+			_frame_podium_camera(minf(delta, 0.05))
+		else:
+			cam.follow(minf(delta, 0.05), cam_target(), false, solids)
 		_update_hud(delta)
 
 ## The rendered-frame half: the per-frame visual layer only (scale/position, ragdoll overlay, juice, name tag,
@@ -512,7 +524,7 @@ func present(dt: float) -> void:
 	var frozen := _hitstop > 0 and dt > 0.0
 	var sim_frozen := _sim_steps_since_present == 0 and dt > 0.0
 	for v: Fighter in views.values():
-		v.visible = not v.state.left
+		v.visible = not v.state.left and podium == null   # the podium's own Wobblers stand in for them at the result
 		var k := 1.5 if v.state.big_t > 0.0 else 1.0           # Chaos giant / the Arcade's Client
 		# Scale about the fighter's feet: the node scales around the world origin, and the wobbler places itself in world
 		# space, so a plain scale drew a giant away from his own hit spheres (and the hand points read back from the rig,
@@ -1220,6 +1232,65 @@ func _connect_rank_hooks() -> void:
 	if not arcade.run_won.is_connected(_on_arcade_rank_won):
 		arcade.run_won.connect(_on_arcade_rank_won)
 
+# ============================== 3D winner podium (world/winner_podium.gd) ==============================
+
+## The podium is part of the results moment, not of the match: it is skipped where there is no result celebration
+## (the Practice Range / a DLC test drive / the Sandbox arena) and in headless runs (no display, so the test suites
+## opt in with `podium_in_tests`, like `kill_cam_in_tests`).
+func podium_enabled() -> bool:
+	if sim == null or views.is_empty(): return false
+	if tutorial or trial or build_mode or arcade != null or soak_duration > 0.0: return false
+	if sim.combat.mode_id == "sandbox": return false
+	if DisplayServer.get_name() == "headless" and not podium_in_tests: return false
+	return true
+
+## Build the podium for the result just shown. The order and the winning team come from the match rules and the
+## results' own ranking (WinnerPodium.rank), never from anything new; the set stands on the map's player start, which
+## is solid ground by construction, and faces the middle of the arena with the arena behind it in the shot.
+func _build_podium() -> void:
+	_clear_podium()
+	if not podium_enabled(): return
+	var winner: Variant = sim.combat.rules.winner
+	var looks := {}
+	for f: FighterState in sim.fighters:
+		if views.has(f): looks[f] = views[f].look
+	var spawn := map_node.spawn_point()
+	var base := Vector3(spawn.x, spawn.y - 0.01, spawn.z)
+	var inward := Vector2(-base.x, -base.z)          # face the middle of the arena: the camera stands there
+	if inward.length() < 0.5: inward = Vector2(0.0, -1.0)
+	inward = inward.normalized()
+	var p := WinnerPodium.new()
+	add_child(p)
+	p.setup(sim.fighters, looks, base, atan2(inward.x, inward.y), sim.combat.teams != 0, _winning_team(winner), winner)
+	podium = p
+	cam.begin_podium_shot()
+
+## The winning team of a team-mode result: the rules' winner first, else the higher team K.O. count (-1 = no teams).
+func _winning_team(winner: Variant) -> int:
+	if sim == null or sim.combat.teams == 0: return -1
+	if winner is FighterState and (winner as FighterState).team >= 0: return (winner as FighterState).team
+	return 0 if sim.combat.rules.team_ko(0) >= sim.combat.rules.team_ko(1) else 1
+
+func _clear_podium() -> void:
+	if podium == null: return
+	var old := podium
+	podium = null
+	if old.get_parent() != null: old.get_parent().remove_child(old)
+	old.queue_free()
+	cam.end_podium_shot()
+
+## Per rendered frame while the result is up: the podium's own animation (idle wobble / the winners' emote) and, unless
+## the game is paused, the smooth camera move onto the podium framing.
+func _update_podium(dt: float) -> void:
+	if podium == null: return
+	podium.update(dt)
+	if not paused: _frame_podium_camera(dt)
+
+func _frame_podium_camera(dt: float) -> void:
+	if podium == null: return
+	var shot: Dictionary = podium.camera_shot()
+	cam.frame_podium(dt, shot["pos"], shot["look"], solids)
+
 ## finishMatch offline: the result with Play again / Title (themed, centred, over the HUD).
 func _show_offline_results(won: bool, winner_name: String) -> void:
 	Ads.on_match_finished(false)
@@ -1275,6 +1346,7 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 	_dim_behind(p)
 	touch.release_all()
 	input.release_mouse()
+	_build_podium()
 
 ## An Arcade run's card (stage intro / clear / failed / run over / victory) over the frozen match, like the results panel.
 func show_panel(p: Control) -> void:
@@ -1283,6 +1355,7 @@ func show_panel(p: Control) -> void:
 		_results = null
 		if old.get_parent() != null: old.get_parent().remove_child(old)
 		old.queue_free()
+	_clear_podium()                         # an Arcade card replaces a result: the podium never outlives its panel
 	_banner.visible = false
 	p.set_anchors_preset(Control.PRESET_CENTER)
 	p.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -1300,6 +1373,7 @@ func close_panel() -> void:
 	if r != null:
 		if r.get_parent() != null: r.get_parent().remove_child(r)    # out of the tree at once (its dim goes with it)
 		r.queue_free()
+	_clear_podium()
 	acc = 0.0
 
 ## A fighter that joined after the map was built (an Arcade backup call): its Wobbler and bookkeeping.
@@ -1509,6 +1583,7 @@ func _show_results(winner: String) -> void:
 	$UI.move_child(p, pause_menu.get_index())   # under the pause menu, over the HUD and touch layer
 	_results = p
 	_dim_behind(p)
+	_build_podium()
 
 func _on_net_votes(list: Array, total: int) -> void:
 	if _results: (_results.find_child("Votes", true, false) as Label).text = tr("Rematch votes: %d / %d") % [list.size(), total]
