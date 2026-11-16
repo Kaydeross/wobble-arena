@@ -20,12 +20,30 @@ var audit
 var langs: Array = []
 var only_size := ""
 var sizes := {}
+var lang_budget := 90.0      ## seconds one language may take (FIT_LANG_BUDGET_S); past it the run fails with the phase it was in
+var aborted := false
+var _t0 := 0
+var _lang_t0 := 0
+var _phase := ""
 
 func _initialize() -> void:
 	process_frame.connect(_run, CONNECT_ONE_SHOT)
 
 func frames(n: int) -> void:
 	for i in n: await process_frame
+
+## Marks the phase the audit is in ("FITAT <seconds> <lang> <phase>": tools/test-title-fit.js shows the last one when the run is
+## killed) and enforces the per-language time budget: a slow or stuck phase fails with its name instead of hanging the job.
+func _at(lang: String, phase: String) -> void:
+	var now := Time.get_ticks_msec()
+	if _phase != "" and not _phase.begins_with(lang + " "): _lang_t0 = now
+	if _phase == "": _lang_t0 = now
+	_phase = lang + " " + phase
+	print("FITAT %6.1f %s" % [(now - _t0) / 1000.0, _phase])
+	if not aborted and (now - _lang_t0) / 1000.0 > lang_budget:
+		aborted = true
+		print("FIT failed (time budget): %s took more than %.0f s, last phase '%s'" % [lang, lang_budget, _phase])
+		quit(1)
 
 func _main_in(cs: Vector2) -> Array:
 	var vp := SubViewport.new()
@@ -40,6 +58,8 @@ func _main_in(cs: Vector2) -> Array:
 	return [vp, m]
 
 func _run() -> void:
+	_t0 = Time.get_ticks_msec()
+	if OS.get_environment("FIT_LANG_BUDGET_S") != "": lang_budget = float(OS.get_environment("FIT_LANG_BUDGET_S"))
 	Audit = load("res://tests/fit_audit.gd")
 	audit = Audit.new()
 	audit.load_keys()
@@ -48,6 +68,7 @@ func _run() -> void:
 	for a in OS.get_cmdline_user_args():
 		if a.begins_with("--lang="): langs = [a.substr(7)]
 		if a.begins_with("--size="): only_size = a.substr(7)
+	_font_checks(lang_node)
 	var PACKS: GDScript = load("res://dlc/dlc_packs.gd")
 	var PD: GDScript = load("res://dlc/dlc_pack_data.gd")
 	var save: Node = root.get_node("Save")
@@ -64,6 +85,8 @@ func _run() -> void:
 			if only_size != "" and only_size != "%dx%d" % [win.x, win.y] and only_size != "%dx%d%s" % [win.x, win.y, c[2] if c.size() > 2 else ""]: continue
 			var ins: Array = c[1]
 			var mode: String = c[2] if c.size() > 2 else "normal"
+			_at(lang, "%dx%d %s title" % [win.x, win.y, mode])
+			if aborted: return
 			var cs := UiScale.canvas_size(win, mode, true)
 			var k := cs.x / win.x
 			SafeArea.override = [ins[0] * k, ins[1] * k, ins[2] * k, ins[3] * k]
@@ -99,10 +122,12 @@ func _run() -> void:
 			audit.audit(m, lang, win, cs, mode + " " + "open-owned")
 			save.dlc["owned"] = false
 			if (win.x == 852.0 or win.x == 667.0) and mode == "normal" and not OS.get_cmdline_user_args().has("--no-sweep"):
+				_at(lang, "%dx%d screens" % [win.x, win.y])
 				await _sweep(m, lang, win, cs)
 			vp.queue_free()
 			await frames(2)
 			if (win.x == 852.0 or win.x == 667.0) and mode == "normal" and not OS.get_cmdline_user_args().has("--no-sweep"):
+				_at(lang, "%dx%d world" % [win.x, win.y])
 				await _sweep_world(lang, win, cs)
 	# a language switched live (Settings > language) with the title already up: it re-fits (Play, the dock, the showcase)
 	if only_size == "" and not OS.get_cmdline_user_args().has("--no-live"):
@@ -112,6 +137,8 @@ func _run() -> void:
 		SafeArea.override = [59.0 * k, 0.0, 59.0 * k, 21.0 * k]
 		PACKS.extra = [p]
 		for lang: String in langs:
+			_at(lang, "live switch")
+			if aborted: return
 			lang_node.apply("en")
 			var a: Array = await _main_in(cs)
 			lang_node.apply(lang)
@@ -124,7 +151,22 @@ func _run() -> void:
 			await frames(2)
 	SafeArea.override = []
 	PACKS.extra = []
+	_at("-", "report")
 	_report()
+
+## A SystemFont joins the UI font's fallbacks only when the device has one of its fonts. One that matches nothing takes the
+## project font as its base and the two invalidate each other without end (SIGSEGV on Linux without CJK fonts: the CI runner).
+func _font_checks(lang_node: Node) -> void:
+	var n := 0
+	if not lang_node.device_fonts(["No Such Font 0451", ""]).is_empty(): n += 1
+	var base: FontFile = load(lang_node.FONT_PATH)
+	for l: Dictionary in lang_node.LANGS:
+		lang_node.apply(str(l.code))
+		for f: Font in base.fallbacks:
+			if f is SystemFont and lang_node.device_fonts((f as SystemFont).font_names).is_empty(): n += 1
+		if base.fallbacks.is_empty() == l.has("bundled"): n += 1
+	lang_node.apply("en")
+	if n > 0: audit.fails.append({"lang": "en", "size": "-", "path": "Lang._set_fonts", "text": "system font fallback", "kind": "a SystemFont with no installed font (or no bundled CJK font) in the fallbacks", "need": float(n), "avail": 0.0, "ratio": 1.0})
 
 ## The other first-screen UIs the owner reaches: the setup wizard (every page), Settings (every section), Goals, the online panel.
 func _sweep(m: Control, lang: String, win: Vector2, cs: Vector2) -> void:
