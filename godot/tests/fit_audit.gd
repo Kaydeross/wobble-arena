@@ -13,6 +13,7 @@ var untranslated: Dictionary = {}   ## lang -> {english text -> true}
 var worst: Dictionary = {}     ## lang -> {ratio, what}
 var keys: Dictionary = {}      ## english source strings with translations (res://i18n/strings.json)
 var checked := 0
+var _latin: RegEx
 
 func load_keys() -> void:
 	var f := FileAccess.open("res://i18n/strings.json", FileAccess.READ)
@@ -149,14 +150,20 @@ func audit(root: Node, lang: String, win: Vector2, cs: Vector2, scn: String) -> 
 			if _related(a[0], b[0]): continue
 			var ra: Rect2 = a[1]
 			var rb: Rect2 = b[1]
-			if ra.grow(-1.0).intersects(rb.grow(-1.0)):
+			if _overlap(ra, rb):
 				_fail(lang, size, root, a[0], _text_of(a[0]), "overlaps '%s'" % _text_of(b[0]), 0.0, 0.0)
 			elif ra.grow(MIN_GAP * 0.5).intersects(rb.grow(MIN_GAP * 0.5)) and absf(ra.get_center().y - rb.get_center().y) < minf(ra.size.y, rb.size.y) * 0.5:
 				_fail(lang, size, root, a[0], _text_of(a[0]), "too close to '%s' (< %.0f px)" % [_text_of(b[0]), MIN_GAP], 0.0, MIN_GAP)
 		for b in buttons:
 			if _related(a[0], b): continue
-			if (a[1] as Rect2).grow(-1.0).intersects(_visible_part(b as Control, (b as Control).get_global_rect()).grow(-1.0)):
+			if _overlap(a[1] as Rect2, _visible_part(b as Control, (b as Control).get_global_rect())):
 				_fail(lang, size, root, a[0], _text_of(a[0]), "overlaps button %s" % b.name, 0.0, 0.0)
+
+## True when the two rects overlap by more than 1 px on each side. A rect too small to shrink (a 1 px label, a button scrolled
+## out of view) overlaps nothing: Rect2.grow(-1) would give it a negative size, which Godot reports as an error.
+func _overlap(a: Rect2, b: Rect2) -> bool:
+	if minf(a.size.x, a.size.y) <= 2.0 or minf(b.size.x, b.size.y) <= 2.0: return false
+	return a.grow(-1.0).intersects(b.grow(-1.0))
 
 ## `r` clipped to the scroll areas it lives in (what is really on screen); a zero-size rect when it is scrolled out of view.
 func _visible_part(c: Control, r: Rect2) -> Rect2:
@@ -192,14 +199,13 @@ func _text_of(c: Node) -> String:
 func _track_translation(lang: String, text: String) -> void:
 	if lang == "en" or keys.is_empty(): return
 	# text is shown already translated; flag English keys that have no entry for this language
-	for src: String in keys:
-		if src == text and str((keys[src] as Dictionary).get(lang, "")) == "":
-			if not untranslated.has(lang): untranslated[lang] = {}
-			untranslated[lang][text] = true
-	var has_latin := false
-	var re := RegEx.new()
-	re.compile("[A-Za-z]{4,}")
-	has_latin = re.search(text) != null
+	if keys.has(text) and str((keys[text] as Dictionary).get(lang, "")) == "":
+		if not untranslated.has(lang): untranslated[lang] = {}
+		untranslated[lang][text] = true
+	if _latin == null:
+		_latin = RegEx.new()
+		_latin.compile("[A-Za-z]{4,}")
+	var has_latin := _latin.search(text) != null
 	if has_latin and not keys.has(text) and lang in ["zh_TW", "zh_CN", "ja"]:
 		if not untranslated.has(lang): untranslated[lang] = {}
 		untranslated[lang]["(no key) " + text] = true

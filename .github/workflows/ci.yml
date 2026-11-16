@@ -117,13 +117,13 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-construction-data
         if: matrix.shard == 'net'
-      - run: npm run test:godot-dlc-ui
+      - run: npm run test:godot-dlc-ui    # (blocking again: its Linux crash was the SystemFont fallback cycle, fixed in autoload/lang.gd)
         if: matrix.shard == 'rest'
-        continue-on-error: true   # known Linux headless teardown crash: visible, not blocking
       - run: npm run test:godot-title
         if: matrix.shard == 'rest'
-      - run: npm run test:godot-title-fit
+      - run: npm run test:godot-title-fit    # about 30 s; the runner kills it itself after FIT_TIMEOUT_S and names the phase
         if: matrix.shard == 'rest'
+        timeout-minutes: 8
       - run: npm run test:godot-site-map
         if: matrix.shard == 'net'
       - run: npm run test:godot-sandbox
