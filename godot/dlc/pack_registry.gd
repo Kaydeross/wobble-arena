@@ -140,8 +140,17 @@ static func arcade_map(id: String, content_maps: Dictionary) -> String:
 static func seed_map(id: String) -> String:
 	return str(_read(id).get("seed_map", ""))
 
-static func victory_hat(id: String) -> String:
-	return str(_read(id).get("victory_hat", ""))
+## The Arcade victory hat id of a pack ("" = none). hub.json `victory_hat` wins when set; otherwise the pack's
+## locker.json `pack_items[pack].arcade_hats[diff]` (Normal and Nightmare have their own hat; Easy shows the Normal one so the
+## "Win on Normal or Nightmare for a hat" hint still names it).
+static func victory_hat(id: String, diff: String = "normal") -> String:
+	var fixed := str(_read(id).get("victory_hat", ""))
+	if fixed != "": return fixed
+	var ld: Variant = load("res://ui/locker_data.gd")
+	if ld == null: return ""
+	var ah: Variant = ((ld.pack_items() as Dictionary).get(id, {}) as Dictionary).get("arcade_hats", {})
+	if not (ah is Dictionary): return ""
+	return str((ah as Dictionary).get(diff if diff != "easy" else "normal", (ah as Dictionary).get("normal", "")))
 
 static func hats(id: String) -> Array:
 	var h: Variant = _read(id).get("hats", [])

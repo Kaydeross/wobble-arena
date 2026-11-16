@@ -231,7 +231,7 @@ func mode_id() -> String:
 func victory_hat() -> String:
 	if pack == ArcadeCoop.PACK_ID: return FOREMAN_HAT
 	var reg: Variant = load("res://dlc/pack_registry.gd")
-	return str(reg.victory_hat(pack)) if reg != null else ""
+	return str(reg.victory_hat(pack, diff)) if reg != null else ""
 
 ## The title's Arcade card: builds a World for a new run (null when the DLC is not owned or the table is missing).
 ## The caller puts it in the tree (scripts/main.gd: change_scene_to_node). `p_ff` overrides the co-op friendly-fire option
