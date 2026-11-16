@@ -31,7 +31,9 @@ const PUSH_DELAY := 15.0
 const RETRY_DELAY := 15.0
 const FAST_RETRY := 1.5
 const TIMEOUT := 10.0
-const KEYS := ["token", "user", "email", "cloud_t", "cloud_dirty", "cloud_user"]
+const KEYS := ["token", "user", "email", "cloud_t", "cloud_dirty", "cloud_user", "wallet_ops", "wallet_user"]
+const WALLET_RETRY := 15.0            ## seconds before a failed wallet call is retried
+const WALLET_OP_CAP := 200            ## operations kept while offline (never silently dropped below this)
 
 var profile: Node                  ## the SaveProfile this syncs (the Save autoload, or a test's)
 var use_settings := true           ## false: login state in `mem` only (tests: a second "device")
@@ -50,6 +52,14 @@ var pending := {}                  ## {data, t} of the cloud save waiting for an
 var _push_in := -1.0               ## seconds until the next push (-1 = none planned)
 var _applying := false
 
+## Server wallet (docs/PROTOCOL.md 4.3). Signed-in accounts earn and spend through it; guests never touch it.
+var wallet_coins := -1             ## the last balance the server reported (-1 = not known yet)
+var wallet_ready := false          ## GET /api/wallet answered for this login
+var wallet_unsupported := false    ## this server build has no wallet routes (404): keep the queue, never trust local coins
+var _wallet_busy := false
+var _wallet_in := -1.0             ## seconds until the next wallet retry (-1 = none planned)
+var _wallet_seq := 0
+
 func _ready() -> void:
 	if profile == null: profile = get_parent()
 	if profile and profile.has_signal("changed") and not profile.changed.is_connected(_on_profile_changed):
@@ -63,9 +73,11 @@ func _st() -> Node:
 	return get_tree().root.get_node_or_null("Settings")
 
 func getv(k: String) -> Variant:
+	var d: Variant = {"token": "", "user": "", "email": "", "cloud_t": 0, "cloud_dirty": false, "cloud_user": "",
+		"wallet_ops": [], "wallet_user": ""}.get(k)
 	var st := _st()
-	if st: return st.get_value(k)
-	return mem.get(k, {"token": "", "user": "", "email": "", "cloud_t": 0, "cloud_dirty": false, "cloud_user": ""}[k])
+	if st: return st.get_value(k, d)
+	return mem.get(k, d)
 
 func setv(k: String, v: Variant) -> void:
 	var st := _st()
@@ -238,6 +250,7 @@ func delete_account(password: String) -> void:
 			if _auth_failed(r): _finish("delete", false, str(r["msg"])); return
 			if not r["ok"]: _finish("delete", false, str(r.get("msg", "Couldn't delete your account. Try again in a moment."))); return
 			_clear_login()
+			setv("wallet_ops", []); setv("wallet_user", "")   # the wallet went with the account
 			if profile:
 				_applying = true
 				profile.reset()
@@ -369,6 +382,7 @@ func verify() -> void:
 		if r.get("user") is Dictionary: setv("email", str(r["user"].get("email", "")))
 		has_password = bool(r.get("hasPassword", true))
 		_merge(r.get("data"), int(r.get("t", 0)))
+		wallet_fetch()
 		changed.emit())
 
 func _set_server(ws_url: String) -> void:
@@ -383,11 +397,13 @@ func _signed_in(r: Dictionary) -> void:
 	setv("email", str(u.get("email", "")) if u is Dictionary else "")
 	has_password = bool(u.get("hasPassword", true)) if u is Dictionary else true
 	expired = false; stale = false; pending = {}; offline = false
+	_wallet_login()
 
 func _clear_login() -> void:
 	setv("token", ""); setv("user", ""); setv("email", "")
 	setv("cloud_user", ""); dirty = false; t = 0; has_password = true
 	stale = false; pending = {}; busy = false; offline = false; _push_in = -1.0
+	wallet_coins = -1; wallet_ready = false; wallet_unsupported = false; _wallet_busy = false; _wallet_in = -1.0
 
 func _auth_failed(r: Dictionary) -> bool:
 	if int(r.get("status", 0)) == 401 and r.get("err") == "auth":
@@ -399,6 +415,171 @@ func _expire() -> void:
 	_clear_login()
 	expired = true
 	changed.emit()
+
+# ============================== server wallet (docs/PROTOCOL.md 4.3) ==============================
+#
+# Signed-in coins are the server's. Earning and spending append an operation with a stable idempotency id, apply it
+# locally for an instant UI, and replay it to /api/wallet/grant or /api/wallet/spend. The queue lives in the local
+# settings (`wallet_ops`) tied to `wallet_user`, so it survives a restart and an offline session; a retry never
+# double-grants or double-charges. The shown balance is always the last server balance plus the operations still
+# queued. Guests never reach this code (SaveProfile checks signed_in()); kids mode still halves before queueing.
+
+## After a sign-in: replay this account's queued operations and take the server balance (which seeds the wallet once
+## from the cloud save). Another account's queue is dropped: it was never confirmed for this login.
+func _wallet_login() -> void:
+	wallet_ready = false
+	wallet_unsupported = false
+	wallet_coins = -1
+	_wallet_busy = false
+	_wallet_in = -1.0
+	var who := user().to_lower()
+	if str(getv("wallet_user")) != who:
+		setv("wallet_user", who)
+		setv("wallet_ops", [])
+	wallet_fetch()
+
+## GET /api/wallet. `cb(ok)` when it answers; a network failure is retried, a 404 means the server build is old.
+func wallet_fetch(cb := Callable()) -> void:
+	if not signed_in() or expired:
+		if cb.is_valid(): cb.call(false)
+		return
+	if _wallet_busy:
+		_wallet_plan(FAST_RETRY)          # one call at a time: the balance after the queued operation is newer
+		if cb.is_valid(): cb.call(false)
+		return
+	call_api(HTTPClient.METHOD_GET, "/api/wallet", null, str(getv("token")), func(r: Dictionary) -> void:
+		if bool(r.get("ok", false)):
+			_wallet_take(r)
+			wallet_ready = true
+			wallet_unsupported = false
+			offline = false
+			_apply_wallet_balance()
+			changed.emit()
+			_wallet_flush()
+			if cb.is_valid(): cb.call(true)
+			return
+		if int(r.get("status", 0)) == 404:
+			wallet_unsupported = true
+			wallet_ready = false
+			_wallet_plan(60.0)
+			changed.emit()
+		elif _auth_failed(r):
+			pass
+		else:
+			if r.get("err") == "net": offline = true
+			_wallet_plan(retry_delay)
+		if cb.is_valid(): cb.call(false))
+
+## Queue earned coins (`SaveProfile` already applied them locally). `meta` carries kos/won for the match cap.
+func wallet_grant(reason: String, amount: int, meta := {}) -> void:
+	if not signed_in() or expired or amount <= 0: return
+	var op := {"op": "grant", "id": _wallet_new_id("g"), "reason": reason, "amount": amount}
+	for k: String in ["kos", "won"]:
+		if meta.has(k): op[k] = meta[k]
+	_wallet_push_op(op)
+
+## Queue a purchase (`SaveProfile` already took the coins and granted the item). The server price table decides.
+func wallet_spend(kind: String, key: String, price: int) -> void:
+	if not signed_in() or expired: return
+	_wallet_push_op({"op": "spend", "id": _wallet_new_id("s"), "item": "%s:%s" % [kind, key], "kind": kind, "key": key, "price": price})
+
+func _wallet_push_op(op: Dictionary) -> void:
+	var ops := _wallet_ops()
+	if ops.size() >= WALLET_OP_CAP:                  # keep the newest; the oldest is already applied locally
+		ops.pop_front()
+	ops.append(op)
+	_wallet_set_ops(ops)
+	_wallet_flush()
+
+## The queue (a copy: Settings owns the stored Array).
+func _wallet_ops() -> Array:
+	var v: Variant = getv("wallet_ops")
+	return (v as Array).duplicate(true) if v is Array else []
+
+func _wallet_set_ops(a: Array) -> void:
+	setv("wallet_ops", a)
+
+## Coins the queue has applied locally but the server has not confirmed yet.
+func _wallet_pending_delta() -> int:
+	var n := 0
+	for op: Dictionary in _wallet_ops():
+		if op.get("op") == "grant": n += int(op.get("amount", 0))
+		elif op.get("op") == "spend": n -= int(op.get("price", 0))
+	return n
+
+## Send the oldest queued operation. One at a time, in order, so a grant and a spend cannot overtake each other.
+func _wallet_flush() -> void:
+	if _wallet_busy or not signed_in() or expired or wallet_unsupported or not wallet_ready: return
+	var ops := _wallet_ops()
+	if ops.is_empty(): return
+	var op: Dictionary = ops[0]
+	var path := "/api/wallet/grant" if op.get("op") == "grant" else "/api/wallet/spend"
+	var body := {}
+	if op.get("op") == "grant":
+		body = {"id": op["id"], "reason": op.get("reason", ""), "amount": op.get("amount", 0)}
+		for k: String in ["kos", "won"]:
+			if op.has(k): body[k] = op[k]
+	else:
+		body = {"id": op["id"], "item": op.get("item", "")}
+	_wallet_busy = true
+	call_api(HTTPClient.METHOD_POST, path, body, str(getv("token")), func(r: Dictionary) -> void:
+		_wallet_busy = false
+		if bool(r.get("ok", false)):
+			offline = false
+			_wallet_drop_first()
+			_wallet_take(r)
+			_apply_wallet_balance()
+			changed.emit()
+			_wallet_flush()
+			return
+		var status := int(r.get("status", 0))
+		var err := str(r.get("err", ""))
+		if status == 401 or err == "auth":
+			_expire()
+		elif status == 404:
+			wallet_unsupported = true
+			changed.emit()
+		elif err == "net" or status == 0:
+			offline = true
+			_wallet_plan(retry_delay)
+		elif err == "slow" or err == "fast":
+			_wallet_plan(FAST_RETRY)
+		else:
+			_wallet_drop_first()                                       # a refused operation can never succeed: drop it
+			if op.get("op") == "spend" and profile and profile.has_method("_wallet_spend_rejected"):
+				profile._wallet_spend_rejected(op, r)
+			elif profile and profile.has_method("_wallet_grant_rejected"):
+				profile._wallet_grant_rejected(op, r)
+			if r.get("coins") is int or r.get("coins") is float:
+				_wallet_take(r)
+				_apply_wallet_balance()
+			else:
+				wallet_fetch()                                         # no balance in a validation error: resync
+			changed.emit()
+			_wallet_flush())
+
+func _wallet_drop_first() -> void:
+	var ops := _wallet_ops()
+	if not ops.is_empty():
+		ops.remove_at(0)
+		_wallet_set_ops(ops)
+
+func _wallet_take(r: Dictionary) -> void:
+	var c: Variant = r.get("coins")
+	if c is int or c is float: wallet_coins = maxi(0, floori(float(c)))
+
+## The shown balance: server balance plus whatever is still queued.
+func _apply_wallet_balance() -> void:
+	if wallet_coins < 0 or profile == null: return
+	if profile.has_method("_set_server_coins"):
+		profile._set_server_coins(wallet_coins + _wallet_pending_delta())
+
+func _wallet_plan(delay: float) -> void:
+	if _wallet_in < 0.0 or _wallet_in > delay: _wallet_in = delay
+
+func _wallet_new_id(prefix: String) -> String:
+	_wallet_seq += 1
+	return "%s-%d-%d-%d" % [prefix, int(Time.get_unix_time_from_system()), _wallet_seq, randi() % 1000000]
 
 # ============================== cloud sync ==============================
 
@@ -442,11 +623,18 @@ func _plan(delay: float) -> void:
 	_push_in = delay
 
 func _process(dt: float) -> void:
-	if _push_in < 0.0: return
-	_push_in -= dt
-	if _push_in <= 0.0:
-		_push_in = -1.0
-		push()
+	if _push_in >= 0.0:
+		_push_in -= dt
+		if _push_in <= 0.0:
+			_push_in = -1.0
+			push()
+	if _wallet_in >= 0.0:
+		_wallet_in -= dt
+		if _wallet_in <= 0.0:
+			_wallet_in = -1.0
+			if not _wallet_busy:
+				if wallet_ready: _wallet_flush()
+				else: wallet_fetch()      # the first fetch failed: try again, then replay the queue
 
 ## Send the profile now (PUT /api/save {data, base}). `cb(ok)` when it is done (also when there is nothing to send).
 func push(cb := Callable()) -> void:
@@ -500,9 +688,17 @@ func _merge(data: Variant, ct: int) -> void:
 func _same(data: Dictionary) -> bool:
 	var tmp: Node = profile.get_script().new()
 	tmp.apply_blob(JSON.parse_string(JSON.stringify(data)))
-	var a := JSON.stringify(tmp.get_blob())
+	var a := _wallet_blob_key(tmp.get_blob())
 	tmp.free()
-	return a == JSON.stringify(JSON.parse_string(JSON.stringify(profile.get_blob())))
+	return a == _wallet_blob_key(profile.get_blob())
+
+## The comparison key for a blob: `wallet.coins` is not this client's truth any more, so two saves that differ only in
+## coins are the same save. Owned items, stats and everything else still decide.
+static func _wallet_blob_key(d: Variant) -> String:
+	var v: Variant = JSON.parse_string(JSON.stringify(d))
+	if v is Dictionary and v.get("wallet") is Dictionary:
+		v["wallet"]["coins"] = 0
+	return JSON.stringify(v)
 
 func _conflict(data: Variant, ct: int) -> void:
 	stale = true
@@ -524,7 +720,9 @@ func keep_device() -> void:
 	pending = {}
 	stale = false
 	dirty = true
+	if wallet_coins >= 0: _apply_wallet_balance()   # the server balance still wins over the cloud blob
 	push()
+	wallet_fetch()                                  # another device may have earned since: resync after answering
 
 ## Conflict answer: the cloud save replaces this device's progress.
 func use_cloud() -> void:
@@ -534,8 +732,15 @@ func use_cloud() -> void:
 func _use(data: Variant, ct: int) -> void:
 	pending = {}
 	stale = false
+	var keep_coins := int(profile.coins)
 	_applying = true
 	profile.apply_blob(data)
+	# The cloud save can never raise (or lower) the server balance: once the wallet is known it wins, otherwise keep
+	# what this device shows until the wallet fetch answers.
+	if wallet_coins >= 0 and profile.has_method("_set_server_coins"):
+		profile._set_server_coins(wallet_coins + _wallet_pending_delta())
+	else:
+		profile.coins = keep_coins
 	if profile.has_method("_push_settings"): profile._push_settings()
 	if profile.has_method("save"): profile.save()
 	_applying = false

@@ -12,6 +12,8 @@ extends Node
 ## A file without "format" is a raw web blob (format 0) and is migrated on the next write.
 ##
 ## Coins (web): you start with 500; +5 per K.O. you score; +40 for every finished match and +60 more for a win.
+## Signed in, coins come from the server wallet (net/account_api.gd, docs/PROTOCOL.md 4.3) and the cloud save can no
+## longer raise them; guests and `--no-save` runs keep the local wallet above, unchanged.
 ## The equipped look is mirrored into Settings (skin, hat, color, class), which the match, the online `join` info and
 ## the setup wizard's Character page already read; a class picked in the wizard comes back here.
 ## Coin goals (logic/quests.gd: daily, weekly, milestones, the play streak) live under the blob key "quests", which only
@@ -372,6 +374,19 @@ func class_progress(id: String) -> int:
 func owned_classes() -> Array:
 	return WobblerLooks.data("classes").keys().filter(owns_class)
 
+## Signed in: coins are the server wallet's (net/account_api.gd). Guests stay fully local.
+func _wallet_active() -> bool:
+	return cloud != null and cloud.signed_in()
+
+## The server balance (plus queued operations) as shown in the Locker, results and the hub. Called by AccountApi only:
+## never the other way round, so no wallet operation is created by a balance update.
+func _set_server_coins(n: int) -> void:
+	n = maxi(0, n)
+	if n == coins: return
+	coins = n
+	save()
+	changed.emit()
+
 ## Why an item can or cannot be bought: "ok", "owned", "coins" (not enough), "not_for_sale".
 func buy_check(kind: String, k: String) -> String:
 	if kind == "class":
@@ -399,10 +414,18 @@ func missing(kind: String, k: String) -> int:
 func buy(kind: String, k: String) -> String:
 	var r := buy_check(kind, k)
 	if r != "ok": return r
-	coins -= price_of(kind, k)
+	var price := price_of(kind, k)
+	coins -= price
+	_grant_item(kind, k)
+	if _wallet_active(): cloud.wallet_spend(kind, k, price)   # optimistic: the server confirms, a refusal rolls it back
 	var loop := Engine.get_main_loop()   # Save is also built standalone by tests: look the Analytics autoload up lazily
 	var an: Node = (loop as SceneTree).root.get_node_or_null("Analytics") if loop is SceneTree else null
-	if an != null: an.track("coins_spent", {"kind": kind, "price": price_of(kind, k)})
+	if an != null: an.track("coins_spent", {"kind": kind, "price": price})
+	_commit()
+	return "ok"
+
+## Ownership side of a purchase (shared by the local and wallet paths).
+func _grant_item(kind: String, k: String) -> void:
 	if kind == "skin":
 		skins.append(k)
 		for id: String in LockerData.skin_emotes(k):
@@ -415,8 +438,38 @@ func buy(kind: String, k: String) -> String:
 		_push_settings()
 	else:
 		_own_emote(k)
-	_commit()
-	return "ok"
+
+## The server refused a purchase (insufficient balance on another device, an unknown item, an old server): undo the
+## optimistic ownership here; AccountApi then shows the server's balance. Coins are restored by that balance, not here.
+func _wallet_spend_rejected(op: Dictionary, _r: Dictionary) -> void:
+	var kind := str(op.get("kind", ""))
+	var k := str(op.get("key", ""))
+	match kind:
+		"skin":
+			skins.erase(k)
+			if look["skin"] == k: look["skin"] = "none"
+			for id: String in LockerData.skin_emotes(k):
+				owned.erase(id)
+				var i := slots.find(id)
+				if i >= 0: slots[i] = null
+		"class":
+			classes.erase(k)
+			if look["cls"] == k: look["cls"] = "wobbler"
+		"emote":
+			owned.erase(k)
+			var i := slots.find(k)
+			if i >= 0: slots[i] = null
+		"dlc":
+			if not codes.has("dev"): dlc["owned"] = false
+	_push_settings()
+	save()
+	changed.emit()
+
+## The server refused an earned award (over a cap, or a server build without the wallet): drop the optimistic coins;
+## AccountApi resyncs the exact balance straight afterwards.
+func _wallet_grant_rejected(op: Dictionary, _r: Dictionary) -> void:
+	coins = maxi(0, coins - int(op.get("amount", 0)))
+
 
 func _own_emote(id: String) -> void:
 	owned.append(id)
@@ -429,9 +482,19 @@ func _own_emote(id: String) -> void:
 static func award_coins(n: int) -> int:
 	return KidsAssist.reward_coins(n)
 
+## Adds coins and returns how many were actually paid (kids mode pays half; odd awards round down).
 func add_coins(n: int) -> void:
-	coins = maxi(0, coins + award_coins(n))
+	_earn(n, "earn")
 	_commit()
+
+## One earned award: kids-mode halving first, then the local balance and (signed in) the wallet queue. The caller
+## decides when to save (`on_ko` waits for the end of the match, like before).
+func _earn(n: int, reason: String, meta := {}) -> int:
+	var a := award_coins(n)
+	if a <= 0: return 0
+	coins += a
+	if _wallet_active(): cloud.wallet_grant(reason, a, meta)
+	return a
 
 ## Puts an owned emote in slot `i` (it moves there if it was in another slot, like the web Locker).
 func equip_emote(id: String, i: int = 0) -> bool:
@@ -485,10 +548,8 @@ func goals_to_claim() -> int:
 ## Claims a done goal: its coins are added and saved (half in kids mode, like every other award). Returns the coins
 ## added (0 = nothing to claim).
 func claim_goal(key: String) -> int:
-	var n := award_coins(Quests.claim(quests, key, quest_day(), stats))
-	if n > 0:
-		coins += n
-		_commit()
+	var n := _earn(Quests.claim(quests, key, quest_day(), stats), "quest")
+	if n > 0: _commit()
 	return n
 
 ## Coins for a finished match (web endMatch: +40, +60 more for a win) plus the K.O.s in it (web: +5 each, paid as
@@ -515,7 +576,7 @@ func on_ko(mine: bool, died: bool, melee := false) -> void:
 		_streak += 1
 		stats["kos"] += 1
 		stats["best"] = maxi(int(stats["best"]), _streak)
-		coins += award_coins(KO_COINS)
+		_earn(KO_COINS, "ko")
 		changed.emit()
 	if died:
 		_streak = 0
@@ -544,10 +605,10 @@ func finish_match(won: bool, mode_name: String = "", map_name: String = "", onli
 	hist.push_front({"m": mode_name.substr(0, 24), "map": map_name.substr(0, 24), "ko": match_kos, "d": match_deaths, "w": 1 if won else 0, "o": 1 if online else 0})
 	if hist.size() > 8: hist.resize(8)
 	var bonus := award_coins(MATCH_COINS + (WIN_COINS if won else 0))
-	coins += bonus
+	_earn(MATCH_COINS + (WIN_COINS if won else 0), "match", {"kos": match_kos, "won": won})
 	var g := Quests.on_match(quests, {"won": won, "kos": match_kos, "hits": match_hits, "heads": match_heads, "mkos": match_mkos,
 		"mode": mode_id, "online": online}, quest_day(), stats, _quest_before)
-	coins += award_coins(int(g["streak"]))
+	_earn(int(g["streak"]), "streak")
 	_quest_before = Quests.done_keys(quests, quest_day(), stats)
 	var out := {"coins": bonus + award_coins(KO_COINS) * match_kos, "kos": match_kos, "hits": match_hits, "won": won, "total": coins, "before": coins_before, "next": next_unlock(),
 		"goals": g["done"], "streak": int(g["streak"]), "days": int(g["days"])}
