@@ -42,8 +42,9 @@ var action_b: Button
 var back_b: Button
 var switch_b: Button
 var preview_tr: TextureRect
-var mystery_p: Control          ## the big "?" that replaces the 3D preview of a masked item (null when none is picked)
+var mystery_p: Control          ## the big mystery emote icon that replaces the 3D preview of a masked emote (null otherwise)
 var _preview_box: VBoxContainer
+var _prev_sil := ""             ## the bake key of the masked silhouette the big preview shows ("" = the live stage)
 var tab_row: HBoxContainer
 var tab_bs := {}
 var scroll: DragScroll
@@ -136,17 +137,14 @@ static func rarity(t: String, k: String) -> String:
 	if t == "class": return ExtraClasses.rarity(k)
 	return "common"
 
-## An outfit / emote / class you do not own of a masked tier (LockerData.MASKED_RARITIES: rare, mythic): the Shop shows a
-## "?" tile, "Mystery <rarity>" and no 3D preview of it until you buy / unlock it. An emote that comes with an outfit hides
+## An outfit / emote / class you do not own that costs coins: the Shop shows a "?" tile, "Mystery <tier>" and no 3D
+## preview of it until you buy it. Only free and owned items show normally. An emote that comes with an outfit hides
 ## with the outfit. (Secret classes have their own ??? silhouette.)
 static func is_masked(t: String, k: String) -> bool:
 	if t != "skin" and t != "emote" and t != "class": return false
 	if is_owned(t, k) or (t == "class" and is_secret(k)): return false
-	if LockerData.is_masked_rarity(rarity(t, k)): return true
-	if t == "emote":
-		var sk := str(LockerData.emote(k).get("skin", ""))
-		return sk != "" and LockerData.is_masked_rarity(LockerData.skin_rarity(sk))
-	return false
+	if t == "emote" and LockerData.emote(k).has("skin"): return LockerData.skin_price(str(LockerData.emote(k)["skin"])) > 0
+	return save().price_of(t, k) > 0
 
 ## A secret class (ExtraClasses hidden) not unlocked yet: shown as a ??? silhouette.
 static func is_secret(k: String) -> bool:
@@ -172,6 +170,12 @@ static func try_look(t: String, k: String) -> Dictionary:
 ## The render key + look for a card's art (null art for colours and emotes).
 static func bake_entry(t: String, k: String) -> Array:
 	var lk: Dictionary = save().look.duplicate()
+	if is_masked(t, k):                         # a silhouette in the tier colour: never the real materials (LockerStage._flat)
+		lk["mask"] = LockerData.rarity_color(rarity(t, k)).to_html(false)
+		match t:
+			"skin": lk["skin"] = k; return ["sil:skin:" + k, lk]
+			"class": lk["cls"] = k; return ["sil:cls:" + k, lk]
+		return []
 	match t:
 		"skin": lk["skin"] = k; return ["skin:" + k, lk]
 		"hat": lk["skin"] = "none"; lk["hat"] = k; lk["frame"] = "head"; return ["hat:" + k, lk]
@@ -512,7 +516,7 @@ func _rebuild() -> void:
 		scroll.add_card(b)
 		b.pressed.connect(_select_card.bind(k))
 		cards[k] = b
-		var be := bake_entry(tab, k) if not is_masked(tab, k) else []        # (a masked card is never rendered)
+		var be := bake_entry(tab, k)
 		if be.size() == 2:
 			stage.looks[be[0]] = be[1]
 			bake.append(be[0])
@@ -545,6 +549,7 @@ func _reveal() -> void:
 	if cards.has(k): scroll.reveal(cards[k])
 
 func _on_baked(id: String) -> void:
+	if id == _prev_sil: preview_tr.texture = stage.baked.get(id)
 	if arts.has(id): (arts[id] as TextureRect).texture = stage.baked.get(id)
 
 ## A card: rarity edge, art (3D render, colour swatch or emote icon), name, and a line with the state or price.
@@ -631,7 +636,7 @@ func _card(t: String, k: String) -> Button:
 	return b
 
 func _art(t: String, k: String) -> Control:
-	if is_masked(t, k): return _mystery_art(rarity(t, k), 56)
+	if is_masked(t, k) and t == "emote": return _mystery_emote(k, 72)
 	match t:
 		"color":
 			var sw := LockerIcon.new("swatch", 70)
@@ -652,24 +657,13 @@ func _art(t: String, k: String) -> Control:
 	if t == "class" and is_secret(k): tr.modulate = SILHOUETTE
 	return tr
 
-## The "?" that stands in for a masked item: dark tile, big "?" in the rarity colour.
-func _mystery_art(r: String, fs: int) -> Control:
-	var rc := LockerData.rarity_color(r)
-	var pc := PanelContainer.new()
-	pc.name = "Mystery"
-	pc.custom_minimum_size = Vector2(0, 80)
-	pc.size_flags_horizontal = SIZE_EXPAND_FILL
-	pc.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pc.add_theme_stylebox_override("panel", UiTheme.box(Color(0.02, 0.05, 0.07, 0.85), 14, Color(rc, 0.55), 2, 0))
-	var q := _label("?", fs)
-	q.name = "Q"
-	q.add_theme_font_override("font", _heavy)
-	q.add_theme_color_override("font_color", rc.lightened(0.2))
-	q.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	q.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pc.add_child(q)
-	return pc
+## A masked emote: its icon as a flat dark disc with the tier-coloured rim and only a faint glyph shape.
+func _mystery_emote(k: String, size: float) -> Control:
+	var ic := EmoteIcon.new(k, size)
+	ic.masked = true
+	ic.size_flags_vertical = SIZE_EXPAND_FILL
+	ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return ic
 
 # ============================== picking + the action ==============================
 
@@ -681,17 +675,24 @@ func _select_card(k: String, play := true) -> void:
 	var lk := try_look(tab, k) if k != "" and not masked else save().look.duplicate()     # (a masked item is never put on the stage)
 	stage.preview(lk)
 	preview_tr.modulate = SILHOUETTE if tab == "class" and is_secret(k) else Color.WHITE
-	preview_tr.visible = not masked
+	preview_tr.visible = true
 	if mystery_p != null:
 		_preview_box.remove_child(mystery_p)
 		mystery_p.queue_free()
 		mystery_p = null
-	if masked:
-		mystery_p = _mystery_art(rarity(tab, k), 120)
-		mystery_p.size_flags_vertical = SIZE_EXPAND_FILL
-		mystery_p.custom_minimum_size = Vector2(0, 120)
-		_preview_box.add_child(mystery_p)
-		_preview_box.move_child(mystery_p, 1)
+	_prev_sil = ""
+	preview_tr.texture = stage.get_texture()
+	if masked:                                    # the silhouette, baked once; an emote shows its icon shape
+		var be := bake_entry(tab, k)
+		if be.size() == 2:
+			_prev_sil = be[0]
+			preview_tr.texture = stage.baked.get(_prev_sil)
+		else:
+			preview_tr.visible = false
+			mystery_p = _mystery_emote(k, 120)
+			mystery_p.custom_minimum_size = Vector2(0, 120)
+			_preview_box.add_child(mystery_p)
+			_preview_box.move_child(mystery_p, 1)
 	if tab == "emote" and play and k != "" and not masked: stage.emote(k)
 	_refresh()
 

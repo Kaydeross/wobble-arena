@@ -460,9 +460,9 @@ func next_unlock() -> Dictionary:
 			best = {"kind": "emote", "key": k, "name": _next_name(LockerData.emote_rarity(k), LockerData.emote_name(k)), "price": LockerData.emote_price(k)}
 	return best
 
-## An unowned rare / mythic item stays a mystery in the results too ("Mystery Rare"): only its price shows.
-func _next_name(rarity: String, real: String) -> String:
-	return LockerData.mystery_name(rarity) if LockerData.is_masked_rarity(rarity) else real
+## Every unowned item that costs coins stays a mystery in the results too ("Mystery Rare"): only its price shows.
+func _next_name(rarity: String, _real: String) -> String:
+	return LockerData.mystery_name(rarity)
 
 # ============================== match rewards + stats ==============================
 

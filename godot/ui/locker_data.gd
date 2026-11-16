@@ -13,9 +13,6 @@ const RARITIES := ["common", "uncommon", "rare", "epic", "legendary", "mythic"]
 ## web .ecard.r-* colours (build 75 store look)
 const RAR_COL := {"common": Color("#8b96a3"), "uncommon": Color("#3fd070"), "rare": Color("#4a9cf0"),
 	"epic": Color("#b86cf0"), "legendary": Color("#ffb02e"), "mythic": Color("#ff3d9a")}
-## The tiers whose unowned items stay a mystery (a "?" tile, "Mystery Rare", no 3D preview) until they are yours; epic /
-## legendary show normally. Add a tier here to mask it too.
-const MASKED_RARITIES := ["rare", "mythic"]
 ## Names for the colour swatches (cosmetics.json swatch order).
 const SWATCH_NAMES := ["Teal", "Red", "Blue", "Yellow", "Purple", "Green", "Orange", "White"]
 
@@ -132,10 +129,6 @@ static func rarity_rank(r: String) -> int:
 
 static func rarity_color(r: String) -> Color:
 	return RAR_COL.get(r, RAR_COL["common"])
-
-## An unowned item of this tier is masked in the Shop (LockerScreen.is_masked).
-static func is_masked_rarity(r: String) -> bool:
-	return MASKED_RARITIES.has(r)
 
 ## The name a masked item shows: "Mystery Rare", "Mystery Mythic" (translated).
 static func mystery_name(r: String) -> String:
