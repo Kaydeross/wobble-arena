@@ -965,6 +965,13 @@
   "fr": "AK-47",
   "es": "AK-47"
  },
+ "ARENA": {
+  "zh_TW": "擂台",
+  "zh_CN": "擂台",
+  "ja": "大乱闘",
+  "fr": "ARENA",
+  "es": "ARENA"
+ },
  "About": {
   "zh_TW": "關於",
   "zh_CN": "关于",
@@ -1853,6 +1860,13 @@
   "ja": "%d コインで購入",
   "fr": "Acheter pour %d",
   "es": "Comprar por %d"
+ },
+ "Buy it to reveal it": {
+  "zh_TW": "購買後揭曉",
+  "zh_CN": "购买后揭晓",
+  "ja": "買うと中身がわかる",
+  "fr": "Achetez-le pour le révéler",
+  "es": "Cómpralo para revelarlo"
  },
  "Buy outfits, emotes and classes with coins": {
   "zh_TW": "用金幣購買服裝、表情動作和角色",
@@ -4877,6 +4891,13 @@
   "ja": "BGM実装！ゲームも一緒に鼻歌まじりで、みんなをボンクしよう",
   "fr": "De la musique ! Le jeu fredonne enfin pendant que tu bouscules tout le monde",
   "es": "¡Música! Por fin el juego tararea mientras tú empujas a todo el mundo"
+ },
+ "Mystery %s": {
+  "zh_TW": "神秘%s",
+  "zh_CN": "神秘%s",
+  "ja": "ミステリー%s",
+  "fr": "%s mystère",
+  "es": "%s misterioso"
  },
  "Mythic": {
   "zh_TW": "神話",
@@ -8174,6 +8195,20 @@
   "ja": "移動はWASD、視点はマウス。クリックでマウスをキャプチャ、Escで解除。ゆれは自動です。",
   "fr": "WASD pour te déplacer, la souris pour regarder. Clique une fois pour capturer la souris ; Esc la libère. L'oscillation est automatique.",
   "es": "WASD para moverte, el ratón para mirar. Haz clic una vez para capturar el ratón; Esc lo suelta. El balanceo es automático."
+ },
+ "WOBBLERS": {
+  "zh_TW": "搖擺",
+  "zh_CN": "摇摆",
+  "ja": "グラグラ",
+  "fr": "WOBBLERS",
+  "es": "WOBBLERS"
+ },
+ "WOBBLERS ARENA": {
+  "zh_TW": "搖擺擂台",
+  "zh_CN": "摇摆擂台",
+  "ja": "グラグラ大乱闘",
+  "fr": "WOBBLERS ARENA",
+  "es": "WOBBLERS ARENA"
  },
  "Wait a moment": {
   "zh_TW": "請稍等一下",

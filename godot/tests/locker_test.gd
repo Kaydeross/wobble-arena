@@ -26,6 +26,7 @@ func _run() -> void:
 	_class_rules()
 	_emotes()
 	await _screen()
+	await _mystery()
 	await _previews()
 	await _wheel()
 	print("Locker ok" if fails == 0 else "Locker checks failed (%d)" % fails)
@@ -202,11 +203,12 @@ func _screen() -> void:
 	check(l.cards.size() == LockerData.shop_emotes().size() and not l.cards.has("pirouette") and not l.cards.has("wobble"), "Shop: emotes for sale only")
 	var icons := 0
 	for k: String in l.cards:
-		if l.cards[k].find_child("Art", true, false) is EmoteIcon: icons += 1
-	check(icons == l.cards.size(), "every emote card has an icon (%d / %d)" % [icons, l.cards.size()])
+		var art: Node = l.cards[k].find_child("Art", true, false)
+		if art is EmoteIcon or (l.is_masked("emote", k) and art.name == "Art" and art.find_child("Q", true, false) != null): icons += 1
+	check(icons == l.cards.size(), "every emote card has an icon or a mystery tile (%d / %d)" % [icons, l.cards.size()])
 	for id: String in LockerData.all_emotes(): check(EmoteIcon.GLYPHS.has(id), "emote %s has its own glyph" % id)
 	l.cards["dab"].pressed.emit()
-	check(l.stage.wobbler().emote_id == "dab", "an emote card plays on the preview")
+	check(l.stage.wobbler().emote_id != "dab", "a masked emote does not play on the preview")
 	check(l.action_state() == "coins" and l.action_b.text.begins_with("Need"), "an emote you cannot afford shows its price gap")
 	sv.add_coins(1000)
 	l.act(); l.buy_confirmed()
@@ -235,6 +237,96 @@ func _screen() -> void:
 	check(not l.empty_l.visible, "the empty line hides again")
 	l.back_b.pressed.emit()
 	check(not l.visible and main.get_node("Safe/Col").visible, "Back returns to the title")
+	sv.reset()
+	sv._push_settings()
+	vp.queue_free()
+	await process_frame
+
+## Unowned rare / mythic items are masked in the Shop (list, preview, confirm, results), owned ones and the other tiers are not,
+## and buying one reveals it.
+func _mystery() -> void:
+	var sv: SaveProfile = root.get_node("Save")
+	sv.reset()
+	sv.coins = 20000
+	var vp := SubViewport.new()
+	vp.size = Vector2i(1170, 540)
+	root.add_child(vp)
+	var main: Control = load("res://scenes/main.tscn").instantiate()
+	vp.add_child(main)
+	await process_frame
+	main.shop_b.pressed.emit()
+	await process_frame
+	var l = main.locker
+	check(l.shop and l.tab == "skin", "the Shop opens on Outfits")
+	var skins: Array = LockerData.shop_skins()
+	var seen := {}
+	for k: String in skins:
+		var r := LockerData.skin_rarity(k)
+		seen[r] = true
+		var card: Button = l.cards[k]
+		var art: Node = card.find_child("Art", true, false)
+		var masked := LockerData.is_masked_rarity(r)
+		check(l.is_masked("skin", k) == masked, "outfit %s (%s): masked = %s" % [k, r, masked])
+		check((art.find_child("Q", true, false) != null) == masked, "outfit %s card shows %s" % [k, "a ? tile" if masked else "its render"])
+		var nm := (card.find_child("Name", true, false) as Label).text
+		if masked:
+			check(nm == "Mystery " + LockerData.rarity_label(r) and not nm.contains(LockerData.skin_name(k)), "masked outfit %s hides its name (%s)" % [k, nm])
+			check(not l.stage.looks.has("skin:" + k), "masked outfit %s is never rendered" % k)
+			check(card.has_node("Lock") and (card.find_child("L", true, false) as Label).text == str(LockerData.skin_price(k)), "masked outfit %s still shows its price" % k)
+		else:
+			check(nm == LockerData.skin_name(k) and l.stage.looks.has("skin:" + k), "outfit %s (%s) shows normally" % [k, r])
+	check(seen.has("rare") and seen.has("mythic") and seen.has("uncommon") and seen.has("epic"), "the Shop has rare, mythic, uncommon and epic outfits to compare")
+	# tap a masked one: no 3D preview of it, a ? panel, price + how to get it
+	l.cards["astro"].pressed.emit()
+	check(not l.preview_tr.visible and l.mystery_p != null and l.mystery_p.visible, "a masked card shows the ? panel instead of the render")
+	check(l.stage.current == l.stage.look_key(sv.look) and not l.stage.current.contains("astro"), "the stage never wears the masked outfit (%s)" % l.stage.current)
+	check(l.name_l.text == "Mystery Rare" and l.info_l.text.contains("700 coins") and l.info_l.text.contains("reveal"), "masked info: tier, price, how (%s / %s)" % [l.name_l.text, l.info_l.text])
+	check(l.action_state() == "buy" and l.action_b.text == "Buy for 700", "a masked outfit can still be bought")
+	l.act()
+	check(l.confirm_title.text == "Buy Mystery Rare?" and not l.confirm_title.text.contains("Astronaut"), "the confirm card keeps it masked (%s)" % l.confirm_title.text)
+	l.show_confirm(false)
+	# common-tier tap: normal preview
+	l.cards["cowboy"].pressed.emit()
+	check(l.preview_tr.visible and l.mystery_p == null and l.stage.current.contains("cowboy") and l.name_l.text == "Sheriff", "a non-masked card previews as before")
+	# mythic with an emote: the emote hides with it
+	check(l.is_masked("emote", "pirouette") and l.is_masked("skin", "ballerina"), "an outfit emote hides with its outfit")
+	check(not l.info_l.text.contains("Comes with"), "no emote name leaks")
+	l.cards["ballerina"].pressed.emit()
+	check(not l.info_l.text.contains("Pirouette") and not l.info_l.text.contains("Ballerina") and l.name_l.text == "Mystery Mythic", "a masked mythic outfit leaks nothing (%s)" % l.info_l.text)
+	# buy: revealed
+	l.cards["astro"].pressed.emit()
+	l.act()
+	check(l.buy_confirmed() == "ok" and sv.owns_skin("astro"), "buy the masked outfit")
+	check(not l.is_masked("skin", "astro") and l.msg_l.text.contains("Astronaut"), "buying reveals its name (%s)" % l.msg_l.text)
+	check(l.preview_tr.visible and l.mystery_p == null and l.stage.current.contains("astro"), "buying reveals it on the wobbler")
+	check((l.cards["astro"].find_child("Name", true, false) as Label).text == "Astronaut" and l.cards["astro"].find_child("Q", true, false) == null, "the owned rare card shows normally")
+	check(l.stage.looks.has("skin:astro"), "the owned outfit is rendered")
+	# emotes: rare / mythic masked, uncommon not
+	l._show_tab("emote")
+	for id: String in l.cards:
+		var r := LockerData.emote_rarity(id)
+		check(l.is_masked("emote", id) == LockerData.is_masked_rarity(r), "emote %s (%s) masked correctly" % [id, r])
+	l.cards["nova"].pressed.emit()
+	check(l.stage.wobbler().emote_id == "" or l.stage.wobbler().emote_id != "nova", "a masked emote is not played")
+	check(l.name_l.text == "Mystery Mythic", "masked emote name (%s)" % l.name_l.text)
+	l.act(); check(l.buy_confirmed() == "ok", "buy the masked emote")
+	check(not l.is_masked("emote", "nova") and l.msg_l.text.contains("Supernova"), "an owned emote shows its name (%s)" % l.msg_l.text)
+	# classes: epic stays visible, a rare one is masked
+	l._show_tab("class")
+	for k: String in l.cards:
+		check(l.is_masked("class", k) == LockerData.is_masked_rarity(ExtraClasses.rarity(k)), "class %s (%s) masked correctly" % [k, ExtraClasses.rarity(k)])
+	# the Walldrobe: owned items normal
+	l.switch_b.pressed.emit()
+	l._show_tab("skin")
+	check(l.cards.has("astro") and (l.cards["astro"].find_child("Name", true, false) as Label).text == "Astronaut", "the Walldrobe shows the owned rare normally")
+	# the results panel's next unlock never names a masked item
+	sv.reset()
+	var nx := sv.next_unlock()
+	check(not nx.is_empty() and (not LockerData.is_masked_rarity(LockerData.skin_rarity(str(nx["key"]))) or str(nx["name"]).begins_with("Mystery")), "results: next unlock hides a masked name (%s)" % nx.get("name"))
+	for k: String in LockerData.shop_skins():
+		if LockerData.is_masked_rarity(LockerData.skin_rarity(k)):
+			sv.skins = ["none"]
+			break
 	sv.reset()
 	sv._push_settings()
 	vp.queue_free()

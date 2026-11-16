@@ -10,7 +10,7 @@ extends SceneTree
 ## type page scrolled to the Godot-only modes, Chaos picked), newmodes-players (Players page in Team Deathmatch),
 ## teams (Team Deathmatch with the team scoreboard), locker-skin / locker-hat / locker-color / locker-emote /
 ## locker-class (the Walldrobe tabs, ui/locker.gd: a few outfits, emotes and a class bought first, a card picked; --pick
-## KEY picks another card), shop (the Shop, an outfit tried on), shop-class (the Shop's Class tab, a class tried on),
+## KEY picks another card), shop (the Shop, an outfit tried on), shop-class (the Shop's Class tab, a class tried on), shop-emote (its Emotes tab; unowned rare / mythic cards are masked, --pick astro on the outfit tab or --pick zombie here taps a masked one, --pick dab an owned rare one),
 ## shop-confirm (its Buy card), goals (the Goals screen after a won match: some goals to claim, one claimed), emote-wheel (a match with the emote wheel open while the player dances), results (the
 ## end-of-match panel with the coins and unlock progress), spectate (Sudden Death after the player fell off: spectator camera + line, touch layer on),
 ## account-guest (Pick a name) / account-signed (signed in, saved to the cloud 2 min ago) / account-signed-np (a name with no password yet); --lang ja|fr,
@@ -78,10 +78,10 @@ func _start() -> void:
 			sv.add_coins(700)
 		var m: Node = load("res://scenes/main.tscn").instantiate()
 		root.add_child(m)
-		var tab: String = ("class" if shot == "shop-class" else "skin") if shop else shot.substr(7)
+		var tab: String = ("class" if shot == "shop-class" else "emote" if shot == "shop-emote" else "skin") if shop else shot.substr(7)
 		m.open_locker(shop, tab)
 		var pick: String = {"skin": "cowboy", "hat": "crown", "color": "", "emote": "griddy", "class": "tank"}.get(tab, "")
-		if shop: pick = "dash" if tab == "class" else "pirate"
+		if shop: pick = "dash" if tab == "class" else "zombie" if tab == "emote" else "pirate"
 		if pick_arg != "": pick = pick_arg
 		if pick != "" and m.locker.cards.has(pick): m.locker._select_card(pick)
 		if shot == "shop-confirm": m.locker.act()

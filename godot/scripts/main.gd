@@ -564,7 +564,7 @@ func _status(t: String) -> void:
 func _fit_logo(avail: float, max_font: int) -> void:
 	var logo := $Safe/Col/Top/Logo as WobbleLogo
 	for two: bool in [false, true]:
-		logo.lines = PackedStringArray(["WOBBLERS", "ARENA"]) if two else PackedStringArray(["WOBBLERS ARENA"])
+		logo.lines = WobbleLogo.names(two)
 		var f := mini(max_font, 46) if two else max_font
 		var floor_f := 22 if two else 38
 		while f >= floor_f:
@@ -575,7 +575,7 @@ func _fit_logo(avail: float, max_font: int) -> void:
 ## The title home's logo: two lines (WOBBLERS / ARENA), `max_font` unless the room beside the chips is narrower.
 func _fit_logo_two(avail: float, max_font: int) -> void:
 	var logo := $Safe/Col/Top/Logo as WobbleLogo
-	logo.lines = PackedStringArray(["WOBBLERS", "ARENA"])
+	logo.lines = WobbleLogo.names(true)
 	var f := max_font
 	while f > 24:
 		logo.font_size = f
