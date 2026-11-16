@@ -67,6 +67,7 @@ var cid_slot := {}               ## server cid -> slot
 var slots: Array = []            ## the running match's slots (HostMatch fills the bots in)
 var limit := 0
 var dseed := 0
+var _nz := false                 ## this match plays the unified combat rules (every peer is on the app): sent as `rules.nz`
 var rv := {}                     ## slot -> true: rematch votes
 var rv_timer := -1.0
 var guarded := 0                 ## guest messages dropped by the guard rules (tests read it)
@@ -405,11 +406,12 @@ func _resume_start() -> void:
 		if x["id"] < s.size() and str(s[x["id"]]["kind"]) != "empty": rs.append(x)
 	var r: Dictionary = _resume.get("rules", {})
 	var sd: Variant = r.get("dseed")
+	var nz := 1 if r.get("nz") == true else 0          # keep the old match's damage rule across the migration
 	_start_x = {"rs": rs, "rsx": _resume.get("rsx", {})}
 	_dt0 = float(_resume.get("dt0", 0.0))
 	var keep_seed: int = int(sd) if (sd is float or sd is int) else -1
 	_resume = {}
-	_begin_match(s, keep_seed)
+	_begin_match(s, keep_seed, nz)
 
 # ============================== hostRecv ==============================
 
@@ -477,6 +479,11 @@ func _hello(cid: int, m: Dictionary) -> void:
 		_to(cid, {"t": "kick", "msg": "This room is playing %s, which only the Wobblers Arena app has. Ask the host to pick a Classic-style mode." % mode_label()})
 		_close_later(cid)
 		_set_status(tr("%s tried to join from the web browser: %s is app-only.") % [info["name"], tr(mode_label())])
+		return
+	if started and not gd and _nz:                          # a zones match never falls back to the classic rule mid-match
+		_to(cid, {"t": "kick", "msg": "This match uses the unified combat rules, which only the Wobblers Arena app has. Join from the app."})
+		_close_later(cid)
+		_set_status(tr("%s tried to join from the web browser: this match uses the unified combat rules, which only the Wobblers Arena app has.") % info["name"])
 		return
 	var id := _resume_seat(m, info) if not _resume.is_empty() else -1
 	if id < 0:
@@ -717,6 +724,7 @@ static func _num(v: float) -> String:
 func rule_snap(joiner: bool = false) -> Dictionary:
 	var r := {"mode": net_mode(mode_id), "hp": 300 if mode_id == "explosive" else hp, "crate": crate, "wstate": {},
 		"grav": 0.15 if mode_id == "lowg" else grav, "kb": kb, "inf": inf, "dyn": dyn_kind}
+	if _nz: r["nz"] = true                       # unified combat rules: every peer runs the Godot app (6.3)
 	if app_only(mode_id):
 		r["gmode"] = mode_id
 		if all_modes().get(mode_id, {}).get("teams"):
@@ -792,7 +800,9 @@ func arcade_slots() -> Array:
 
 ## netStartMatch (host): a fresh arena seed (or `keep_seed` for a resumed match), the world builds the match from
 ## `start_msg` (match_started), then HostMatch.setup calls match_ready and the `start` goes out with the bots' names.
-func _begin_match(s: Array, keep_seed: int = -1) -> void:
+## `nz_override` keeps a resumed match's zones flag (a migrated match must not change its damage rule); -1 = decide it
+## here from the room: the unified rules play only when every guest is a Godot client (no web guest).
+func _begin_match(s: Array, keep_seed: int = -1, nz_override: int = -1) -> void:
 	rv.clear(); rv_list = []; rv_total = 0; voted = false; rv_timer = -1.0
 	if not arcade: arc = {}
 	_refresh_mode()
@@ -801,6 +811,7 @@ func _begin_match(s: Array, keep_seed: int = -1) -> void:
 	slots = s
 	limit = eff_limit(mode_id)
 	dseed = keep_seed if keep_seed >= 0 else randi()
+	_nz = bool(nz_override) if nz_override >= 0 else web_guests().is_empty()
 	start_msg = {"slots": s, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap()}
 	start_msg.merge(_start_x)
 	if not arc.is_empty(): start_msg["arc"] = arc.duplicate(true)   # Arcade co-op: the run travels with the start

@@ -375,8 +375,8 @@ A Godot client can host a room that web and Godot guests join. It speaks exactly
 - **Start:** slots = the roster (human) plus, for the free seats, as many `bot` seats as the host picked and `empty`
   for the rest (the web host fills every seat with a bot or none; an `empty` seat is just a seat a late joiner can
   take). The `start` goes out after the host's match is set up, so bot seats carry the bots' real name / look / class.
-  `rules` = `{mode, hp, crate, wstate, grav, kb, inf, dyn, dseed, dt0?}`; `mode` through `HostSession.net_mode`
-  (= `netMode`); a fresh `dseed` every match and rematch;
+  `rules` = `{mode, hp, crate, wstate, grav, kb, inf, dyn, dseed, dt0?, nz?}`; `mode` through `HostSession.net_mode`
+  (= `netMode`); `nz` when every peer is a Godot client (see 6.3); a fresh `dseed` every match and rematch;
   `limit` 0 in lives / ladder modes.
 - **In match:** the host's own fighter and every bot in one `S` at 30 Hz (`sw`/`f`/`k` when they start an action);
   crates spawned only by the host, announced with `crate {cid, key, spot}`; every take (host, bot or guest) as
@@ -410,6 +410,7 @@ unknown guest messages). `PROTO` stays 1.
 | `roster` entries, `slots` entries | `gd: 1` | That player is a Godot client (a Godot host marks web players in its lobby). |
 | `roster` | `rl` | The Godot host's rules for the lobby line: `{want, mode, lim, hp, grav, kb, crate, inf, dyn, map}` (`want` = the host's pick, `mode` = what plays). |
 | `start.rules` | `gmode` | An app-only mode the Godot clients play (`mode` stays the web fallback, Classic): `tdm`, `deathmatch`, `sudden`, `chaos`, `lowg`, `duel`, `t2`, `t3`, `t4`, and (`6.4`) `construction` for an Arcade co-op room (`NetMatch.GODOT_MODES`). Sent only when every guest said `gd`. |
+| `start.rules` | `nz` | Unified combat rules: the host sets it at match start only when `web_guests()` is empty (every peer is a Godot client). Both sides set `Combat.net_zones` from it, which turns on the body-part zones table and the Godot balance/tuning overlay (docs/DAMAGE.md). Omitted = the classic web rule. A web guest who tries to join a running `nz` match gets `kick {msg}` (no mid-match fallback); in the lobby a web guest may join and the next match omits `nz`. |
 | `start.rules` | `gteam` | Team modes: the side (0 blue / 1 red) of every slot, `slot % 2`. |
 | `start.rules` | `pp` | Removed with the Godot Pillars mode: `pp` / `pt` are no longer sent or read by Godot hosts or guests (the web game still has them, 2.2). |
 | `start.rules` | `grav: 0.15` | Moon Drift (`gmode: lowg`). |
@@ -430,6 +431,9 @@ Rules a Godot host follows:
 - **Mode choice:** the Host sheet's pick plays when it is web-compatible (`netMode`) or every guest is a Godot client;
   otherwise the match plays Classic, the lobby line says why ("app-only: a web player is here") and the host's status
   names the web player. A web guest who joins a running app-only match gets `kick {msg}` with the reason.
+- **Unified combat (`rules.nz`):** latched at match start from `web_guests()` being empty, sent on every `start`
+  (including a mid-match join, so a Godot guest gets it); a web guest who tries to join a running zones match is
+  refused with `kick {msg}` through the same path (never a mid-match downgrade to Classic).
 - **Match end:** in an app-only mode the Godot guests never end the match themselves (`ModeRules.remote`): the host's
   K.O. limit / last one standing decides and sends `pend`. Team results name the side.
 - **Determinism:** the host's random source is seeded from the arena seed (`dseed`); Chaos events and

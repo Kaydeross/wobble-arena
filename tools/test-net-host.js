@@ -16,6 +16,8 @@
    Then (godot/tests/net_modes_host.gd + net_modes_peer.gd):
    B. a room whose guests are all Godot clients (`gd: 1`: the Godot peer and a protocol guest saying gd) plays every
       app-only mode to its end in turn (rules.gmode, gteam, pp, grav 0.15, hp 300; gm Chaos events; pend);
+   B2. a room with no web guests starts with `rules.nz` (host and guests set `Combat.net_zones`), a web joiner is
+      refused during that zones match, and a Godot guest joining mid-match gets the flag;
    C. host migration: the Godot host leaves mid-match, the relay promotes the Godot guest, which carries the match on
       (`start` with `rs`: same seats, K.O.s, bot, arena seed and clock); the web guest re-joins it with a plain hello.
    D. Arcade co-op (godot/tests/net_arcade_host.gd + net_arcade_peer.gd): the room is created through the ONLINE flow
@@ -28,7 +30,7 @@
       site seed, the same seed on both sides) where the guest's HUD/boss bar/shrink mirror `am`; the guest leaves (its
       seat becomes a fighting teammate bot with its class) and rejoins (current stage's `start`, seat 1 human again);
       the host wins and leaves (the guest pays the victory on its own save, then gets the run-over reason).
-      `ONLY=arcade npm run test:godot-host` runs this scenario alone (dev aid). */
+      `ONLY=arcade npm run test:godot-host` runs that scenario alone, `ONLY=zones` runs B2 alone (dev aids). */
 const { spawn, spawnSync } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -103,6 +105,7 @@ async function modesRoom(url) {
     if (want === 'lowg') assert.equal(R.grav, 0.15, 'Moon Drift gravity');
     if (want === 'explosive') assert.equal(R.hp, 300, 'Explosive health'); else assert.equal(R.hp, 150, 'host health');
     assert.ok(R.kb === 1.5 && R.crate === 'fast', 'host rules kept');
+    assert.equal(R.nz, true, want + ': every peer is on the app, so the host sets rules.nz');
     const team = s => (R.gteam ? R.gteam[s] : -1);
     if (i === 0) {                                     // a web player cannot join a running app-only match: told why
       const late = await new Client(url, 'LateWeb').open();
@@ -162,12 +165,54 @@ async function modesRoom(url) {
     if (m === 'lowg') assert.ok(/grav=0\.15/.test(l), 'Moon Drift gravity on the guest: ' + l);
     if (m === 'explosive') assert.ok(/maxhp=225 /.test(l), 'Explosive health (300 x Scamp 0.75) on the guest: ' + l);
     else assert.ok(/maxhp=112 /.test(l), 'host health (150 x Scamp 0.75) on the guest: ' + l);
+    assert.ok(/zones=true tuned=true/.test(l), m + ': the guest runs the unified rules from rules.nz: ' + l);
   });
+  assert.ok(ht.some(l => /^ZONES host=1$/.test(l)), 'the host also sets Combat.net_zones for an all-Godot room');
   assert.ok(pt.some(l => /^GM cw /.test(l)) && pt.some(l => /^GM cs /.test(l)), 'the Chaos event reached the Godot guest');
   assert.ok(pt.some(l => /^CHAOS_ON /.test(l)), 'the Godot guest ran the host\'s Chaos event');
   assert.equal(pt.filter(l => /^MATCH_END /.test(l)).length, MODES.length, 'the Godot guest saw every match end');
   assert.equal(ch, 0, 'modes host exit code'); assert.equal(cp, 0, 'modes peer exit code');
   console.log('B. app-only modes online pass');
+}
+
+// B2. unified online combat: a room with no web guests starts with rules.nz (the host and its guests set
+//     Combat.net_zones); a web joiner is refused while that zones match runs; a Godot guest joining mid-match gets
+//     the flag too.
+async function zonesRoom(url) {
+  host = runGodot('res://tests/net_modes_host.gd', [url, 'zones'], 'zhost');
+  const code = (await host.waitLine(/^HOSTED code=/, 30000)).split('=')[1];
+  await host.waitLine(/^STARTING ok=true/, 30000);
+  const sl = await host.waitLine(/^START n=1 /, 30000);
+  const R = JSON.parse(sl.slice(sl.indexOf('rules=') + 6));
+  console.log('B2 zones host start: ' + JSON.stringify(R));
+  assert.equal(R.mode, 'classic', 'the zones room plays a web-compatible mode');
+  assert.equal(R.nz, true, 'the host sets rules.nz when every guest is a Godot client (here: none yet)');
+  const z = await host.waitLine(/^ZONES host=/, 15000);
+  assert.equal(z, 'ZONES host=1', 'the host applies net_zones to its own Combat');
+  const web = await new Client(url, 'LateZonesWeb').open();
+  await web.join(code); web.hello();
+  const k = await web.wait(m => m.op === 'msg' && (m.m.t === 'kick' || m.m.t === 'welcome'), 5000);
+  console.log('B2 late web guest: ' + JSON.stringify(k.m));
+  assert.ok(k.m.t === 'kick' && /unified combat rules/.test(k.m.msg), 'a web guest is refused during a zones match');
+  web.close();
+  peer = runGodot('res://tests/net_modes_peer.gd', [url, code, 'zones', '1'], 'zpeer');
+  const ps = await peer.waitLine(/^START n=1 /, 40000);
+  const PR = JSON.parse(ps.slice(ps.indexOf('rules=') + 6, ps.lastIndexOf(' rs=')));
+  assert.equal(PR.nz, true, 'a Godot guest joining mid-match gets the zones flag in its start');
+  const pm = await peer.waitLine(/^MODE .*zones=true tuned=true/, 20000);
+  console.log('B2 zones mid-join guest: ' + pm);
+  await peer.waitLine(/^DONE /, 30000);
+  await host.waitLine(/^DONE /, 30000);
+  const [ch, cp] = await Promise.all([Promise.race([host.exited, sleep(30000).then(() => 'hang')]), Promise.race([peer.exited, sleep(30000).then(() => 'hang')])]);
+  if (ch === 'hang') host.p.kill(); if (cp === 'hang') peer.p.kill();
+  const ht = host.lines.map(x => x.l), pt = peer.lines.map(x => x.l);
+  console.log(ht.filter(l => /^(STARTING|START|ZONES|STATUS|DONE|FAIL)/.test(l)).map(l => 'zhost: ' + l).join('\n'));
+  const errs = [...ht, ...pt].filter(l => ERR.test(l));
+  for (const l of errs) console.log('godot:', l);
+  assert.equal(errs.length, 0, 'no Godot errors (zones)');
+  assert.ok(ht.some(l => /^STATUS .*unified combat rules/.test(l)), 'the host names the refused web player');
+  assert.equal(ch, 0, 'zones host exit code'); assert.equal(cp, 0, 'zones peer exit code');
+  console.log('B2. unified online combat (net_zones) passes');
 }
 
 // C. host migration: the Godot host leaves mid-match; the Godot guest (first in) carries the match on
@@ -593,6 +638,11 @@ async function arcadeCoop(url) {
     console.log('godot net host test (arcade only) passes');
     await srv.stop(); process.exit(0);
   }
+  if (process.env.ONLY === 'zones') {                      // dev aid: iterate on scenario B2 alone
+    await zonesRoom(url);
+    console.log('godot net host test (zones only) passes');
+    await srv.stop(); process.exit(0);
+  }
 
   // 0. the relay is unreachable: a clear error, no hang
   {
@@ -637,6 +687,7 @@ async function arcadeCoop(url) {
   assert.equal(S0.rules.dyn, 'off');
   assert.ok(S0.rules.grav === 1.5 && S0.rules.kb === 0.5 && S0.rules.crate === 'fast' && S0.rules.inf === true && typeof S0.rules.wstate === 'object', 'standard rules fields from the Host sheet');
   assert.ok(!('gmode' in S0.rules) && !('gteam' in S0.rules), 'no app-only mode with a web guest');
+  assert.ok(!('nz' in S0.rules), 'a web guest in the room: no unified-combat flag (classic damage rule)');
   web.toHost({ t: 'emote', e: 'wobble' }); web.toHost({ t: 'emote', e: 'no-such-emote' });
 
   // stream my own S: walking along x
@@ -736,6 +787,7 @@ async function arcadeCoop(url) {
   assert.ok(span(g2, 'z') > 3, 'Godot guest input moves its fighter on the host');
   assert.ok(span(p0, 'z') > 3 && span(p1, 'x') > 6 && p3.length > 10, 'the Godot guest sees the host, the web guest (relayed) and the bot');
   assert.ok(ht.some(l => /^HIT1 applied=true/.test(l)), 'host hit sent');
+  assert.ok(ht.some(l => /^ZONES host=0$/.test(l)), 'a web guest in the room: the host keeps the classic damage rule');
   assert.ok(ht.some(l => /^MATCH_OVER w=1/.test(l)), 'host ended the match');
   assert.ok(ht.some(l => /^START n=2 slots=human,human,human,bot/.test(l)), 'host rematch');
   const gl = ht.find(l => /^GUARDED /.test(l)); const guarded = gl ? +gl.split(' ')[1] : 0;
@@ -753,6 +805,7 @@ async function arcadeCoop(url) {
   assert.equal(ch, 0, 'host exit code'); assert.equal(cp, 0, 'peer exit code');
   console.log('godot net host test (mixed room) passes');
   await modesRoom(url);
+  await zonesRoom(url);
   await migration(url);
   await arcadeCoop(url);
   console.log('godot net host test passes');

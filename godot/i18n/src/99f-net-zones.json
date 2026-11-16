@@ -1,0 +1,9 @@
+{
+ "%s tried to join from the web browser: this match uses the unified combat rules, which only the Wobblers Arena app has.": {
+  "zh_TW": "%s 想從瀏覽器加入：這場比賽使用統一的戰鬥規則，只有 Wobblers Arena 應用程式才有。",
+  "zh_CN": "%s 想从浏览器加入：这场比赛使用统一的战斗规则，只有 Wobblers Arena 应用才有。",
+  "ja": "%s がブラウザから参加しようとしました：この試合は統一戦闘ルールを使用しており、Wobblers Arena アプリにしかありません。",
+  "fr": "%s a tenté de rejoindre depuis le navigateur : cette partie utilise les règles de combat unifiées, que seule l'application Wobblers Arena possède.",
+  "es": "%s intentó unirse desde el navegador: esta partida usa las reglas de combate unificadas, que solo tiene la aplicación Wobblers Arena."
+ }
+}
