@@ -375,7 +375,7 @@ async function arcadeCoop(url) {
   console.log('arcade host start: ' + JSON.stringify({ slots: S1.slots, kinds: S1.kinds, map: S1.map, arc: S1.arc, rules: S1.rules }));
   assert.equal(S1.map, 'sitegen', 'the arcade room plays the generated site');
   assert.equal(S1.slots, 6, 'slots = 2 seats + the 4 Tradies crew');
-  assert.ok(S1.slots <= 8, 'seats + crew within the 8-slot snapshot budget');
+  assert.ok(S1.slots <= 16, 'seats + crew within the 16-slot snapshot budget');
   assert.deepEqual(S1.kinds, ['human', 'bot', 'bot', 'bot', 'bot', 'bot'], 'seat 0 human, seat 1 the teammate bot, then crew');
   assert.equal(S1.arc.st, 0); assert.equal(S1.arc.of, 6); assert.equal(S1.arc.diff, 'normal');
   assert.deepEqual(S1.arc.seats, [0, 1], 'start.arc.seats');

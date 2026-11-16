@@ -4,8 +4,9 @@ extends RefCounted
 ## makeGhost/ghostEquip/ghostFire, netHandle, netSnap and netStep (public/index.html ~8931-9120):
 ## - the local player simulates itself (MatchSim/PlayerControl as offline);
 ## - every other slot is a ghost FighterState (`is_ghost`), moved by the `S` snapshots its owner sends
-##   (predict by the snapshot's age <= 0.2 s, ease with k = 1 - exp(-dt*22), snap beyond 6 m), with swings,
-##   shots and kicks replayed for the look only;
+##   (WP 1.0-B: draw them `SnapshotBuffer.DELAY` = 100 ms in the past from a small bounded snapshot buffer;
+##   fall back to the web game's <= 0.2 s extrapolation when the buffer has no pair, ease with
+##   k = 1 - exp(-dt*22), snap beyond 6 m), with swings, shots and kicks replayed for the look only;
 ## - hits on a ghost become `h` messages (Combat emits them), `h` aimed at me is applied through Combat.hit;
 ## - my own state goes out as `S` at 30 Hz, plus `sw`/`f`/`k`/`ko`/`take` when they happen.
 ## MatchSim.step calls pre_step() / post_controls(); the world feeds handle() and on_event().
@@ -14,9 +15,12 @@ extends RefCounted
 ## Chaos events), `start.rs` (the match state after a host migration) and `emote`.
 
 const HZ := 30.0
-const PREDICT_MAX := 0.2         ## seconds a snapshot is carried forward
+const PREDICT_MAX := 0.2         ## seconds a snapshot is carried forward: the late/missing fallback (interp)
 const EASE := 22.0               ## k = 1 - exp(-dt * EASE)
 const SNAP := 6.0                ## metres: further off than this, jump straight there
+## Remote fighters are drawn SnapshotBuffer.DELAY (100 ms) in the past from a bounded per-fighter buffer,
+## so it usually has a snapshot on both sides of the render time. Presentation only: hits still resolve
+## against the same authoritative simulation positions (Combat keeps using these ghosts).
 ## Modes only Godot clients play online (the web client's netMode turns them into Classic): sent as `rules.gmode`.
 ## "construction" is the Arcade co-op room (docs/ARCADE_COOP_PLAN.md M1): app-only like the rest, and the only one whose
 ## map/HP/lives/crew come from the Arcade run (`start.arc`) instead of the Host sheet.
@@ -36,6 +40,7 @@ var my_slot := -1
 var slots: Array = []            ## cleaned start.slots
 var ghosts := {}                 ## slot -> FighterState
 var ns := {}                     ## slot -> last decoded `S` entry (+ "rt": clock when it arrived)
+var bufs := {}                   ## slot -> SnapshotBuffer: the bounded interpolation history (WP 1.0-B)
 var clock := 0.0
 var send_t := 0.0
 var limit := 0
@@ -55,7 +60,7 @@ func _init(p_sim: MatchSim, p_send: Callable, p_slot: int) -> void:
 ## Break the reference cycles with the sim.
 func dispose() -> void:
 	if sim: sim.net = null
-	ghosts.clear(); ns.clear()
+	ghosts.clear(); ns.clear(); bufs.clear()
 	sim = null; combat = null
 
 # ============================== match setup (netStartMatch, guest side) ==============================
@@ -232,7 +237,7 @@ func remove_ghost(s: int) -> void:
 	if g == null: return
 	g.left = true; g.dead = true; g.hp = 0.0
 	g.phys.place(0.0, -300.0, 0.0)
-	ns.erase(s)
+	ns.erase(s); bufs.erase(s)
 
 ## netSlotChanged: a friend replaced a bot, or left. Returns the ghost whose look changed (or null).
 func slot_changed(s: int, kind: String, info: Dictionary) -> FighterState:
@@ -245,7 +250,7 @@ func slot_changed(s: int, kind: String, info: Dictionary) -> FighterState:
 	if kind == "empty":
 		remove_ghost(s); return g
 	if g.left:
-		g.left = false; g.dead = false; g.hp = combat.max_hp(g); ns.erase(s); g.weapon = ""; ghost_equip(g, "spatula")
+		g.left = false; g.dead = false; g.hp = combat.max_hp(g); ns.erase(s); bufs.erase(s); g.weapon = ""; ghost_equip(g, "spatula")
 	g.set_class(info["cls"], combat.classes.get(info["cls"], {}))
 	g.name = info["name"]
 	sim.looks[g] = look_of(info)
@@ -287,6 +292,15 @@ static func interp(g: Array, s: Dictionary, clock_now: float, rt: float, dt: flo
 	var far := sqrt(dx * dx + dz * dz) > SNAP or absf(ty - g[1]) > SNAP
 	var k := 1.0 if far else 1.0 - exp(-dt * EASE)
 	return [g[0] + (tx - g[0]) * k, g[1] + (ty - g[1]) * k, g[2] + (tz - g[2]) * k]
+
+## The same ease/snap step toward a buffered target (SnapshotBuffer.sample): the buffer already
+## interpolated between two snapshots, so the ghost only closes the remaining gap.
+static func ease_to(g: Array, target: Array, dt: float) -> Array:
+	var dx: float = target[0] - g[0]
+	var dz: float = target[2] - g[2]
+	var far := sqrt(dx * dx + dz * dz) > SNAP or absf(target[1] - g[1]) > SNAP
+	var k := 1.0 if far else 1.0 - exp(-dt * EASE)
+	return [g[0] + (target[0] - g[0]) * k, g[1] + (target[1] - g[1]) * k, g[2] + (target[2] - g[2]) * k]
 
 # ============================== per step (netSnap / netStep) ==============================
 
@@ -347,7 +361,10 @@ func step_ghosts(dt: float) -> void:
 		var e: Variant = ns.get(s)
 		if e == null: continue
 		var ph := g.phys
-		var at := interp([ph.px, ph.py, ph.pz], e, clock, e["rt"], dt)
+		var now: Array = [ph.px, ph.py, ph.pz]
+		var buf: SnapshotBuffer = bufs.get(s)
+		var target: Array = buf.sample(clock) if buf != null else []
+		var at: Array = ease_to(now, target, dt) if not target.is_empty() else interp(now, e, clock, e["rt"], dt)
 		ph.px = at[0]; ph.py = at[1]; ph.pz = at[2]
 		ph.vx = e["vx"]; ph.vy = 0.0; ph.vz = e["vz"]
 		ph.wish_x = e["vx"] * 0.3; ph.wish_z = e["vz"] * 0.3
@@ -464,10 +481,15 @@ func _mode_message(m: Dictionary) -> void:
 
 func _snapshot(e: Dictionary) -> void:
 	if e.is_empty(): return
-	var g: FighterState = ghosts.get(int(e["id"]))
+	var id := int(e["id"])
+	var g: FighterState = ghosts.get(id)
 	if g == null or g.left: return
+	var buf: SnapshotBuffer = bufs.get(id)
+	if buf == null:
+		buf = SnapshotBuffer.new(); bufs[id] = buf
 	e["rt"] = clock
-	ns[int(e["id"])] = e
+	if not buf.push(clock, e): return     # late / out-of-order: never drawn, so the ghost cannot move backwards
+	ns[id] = e
 
 ## Combat events this side must tell the others about (the world drains them every frame).
 func on_event(e: Dictionary) -> void:

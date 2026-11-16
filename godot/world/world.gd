@@ -78,6 +78,7 @@ var session: GuestSession = null   ## online guest session (null = offline)
 var start_msg := {}                ## the cleaned `start` this match was built from
 var net_match: NetMatch = null
 var _results: Control = null
+var _ads_on_exit := false          ## leaving to the title (not a rematch / online room): offer an interstitial in _exit_tree
 ## The 3D winner podium (world/winner_podium.gd): the results moment's 3D celebration, built with the results panel
 ## (offline, and the online host / guest results), cleared with the next match or the closed result. Presentation only
 ## (no Combat, no physics, no RNG); skipped in tutorial / trial / sandbox and in headless runs, which never draw it.
@@ -197,6 +198,7 @@ func _ready() -> void:
 func _exit_tree() -> void:
 	if first_fight: Settings.set_value("first_fight_done", true)
 	if Ads.in_match and not tutorial: Ads.on_match_finished(session != null)
+	if _ads_on_exit: Ads.show_interstitial.call_deferred()   # now that the match has ended; Ads owns every other gate
 	if arcade != null: arcade.end_run()
 	if net_match:
 		net_match.dispose()
@@ -1500,7 +1502,14 @@ func _on_net_ended(reason: String) -> void:
 func _on_net_rehosted() -> void:
 	_to_title("The host left. Waiting for the new host to start…")
 
+## The one exit that may offer an interstitial: leaving an offline match to the title. Never online, never the tutorial
+## (nothing is saved there) and never a rematch / Play again (those call load_map, not this). The session grace, the gap
+## and the every-N-matches rule are Ads.can_show's job.
+static func exit_interstitial_allowed(online: bool, tutorial_match: bool) -> bool:
+	return not online and not tutorial_match
+
 func _on_title_pressed() -> void:
+	if exit_interstitial_allowed(session != null, tutorial): _ads_on_exit = true
 	if session != null:
 		var msg := "You left the room."
 		if arcade != null and session is HostSession and (session as HostSession).arcade:

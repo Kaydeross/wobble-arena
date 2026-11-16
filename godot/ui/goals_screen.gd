@@ -14,6 +14,7 @@ var rows: VBoxContainer
 var coins_l: Label
 var streak_l: Label
 var claim_bs := {}                 ## goal key -> its button
+var _bonus_busy := false           ## a 2x daily bonus request is in flight
 
 func _init() -> void:
 	super._init()
@@ -81,6 +82,7 @@ func refresh() -> void:
 			group = g
 			_section(g)
 		_row(r)
+		if str(r["key"]) == "bonus": _bonus_ad_row(r)
 	JuicyButton.attach_all(rows)
 	_refresh_head()
 
@@ -164,6 +166,60 @@ func _row(r: Dictionary) -> void:
 	row.add_child(b)
 	scroll.add_card(b)
 	claim_bs[key] = b
+
+## The "2× daily bonus" rewarded button under the daily-bonus row: offered while the bonus is done and today's 2x has
+## not been granted. A Remove ads owner gets it without a video (AdUi.request_reward).
+func _bonus_ad_row(r: Dictionary) -> void:
+	if not bonus_ad_available(r): return
+	AdUi.prepare(AdUi.DAILY_BONUS)
+	var b := Button.new()
+	b.name = "BonusAd"
+	b.text = tr("2× daily bonus")
+	b.custom_minimum_size = Vector2(0, TOUCH)
+	b.add_theme_font_size_override("font_size", 20)
+	b.theme_type_variation = &"PrimaryButton"
+	b.disabled = _bonus_busy
+	b.pressed.connect(_request_bonus_ad.bind(b))
+	rows.add_child(b)
+
+func _request_bonus_ad(b: Button) -> void:
+	if _bonus_busy or bonus_ad_used(): return
+	_bonus_busy = true
+	b.disabled = true
+	var ok := AdUi.request_reward(AdUi.DAILY_BONUS, func(granted: bool) -> void:
+		_bonus_busy = false
+		if granted:
+			if grant_bonus_extra() > 0: Sfx.play("pickup")
+			var sv := scroll.scroll_vertical
+			refresh()
+			scroll.scroll_vertical = sv
+		elif is_instance_valid(b):
+			b.disabled = false)
+	if not ok and is_instance_valid(b):
+		_bonus_busy = false
+		b.disabled = false
+
+## Is the 2x offer on the daily-bonus row right now? The row itself is pure data, so the test can ask without the screen.
+static func bonus_ad_available(r: Dictionary) -> bool:
+	return str(r.get("key", "")) == "bonus" and bool(r.get("done", false)) \
+		and not bonus_ad_used() and AdUi.rewarded_visible(AdUi.DAILY_BONUS)
+
+## Already doubled today (persisted so a restart cannot grant it twice).
+static func bonus_ad_used() -> bool:
+	var sv := AdUi.save()
+	var st := AdUi.settings()
+	if sv == null or st == null: return true
+	return int(st.call("get_value", AdUi.DAILY_BONUS_DAY, -1)) == int(sv.call("quest_day"))
+
+## Adds one more daily bonus on top of the claim, once per day. Returns the coins when granted, 0 when already used.
+static func grant_bonus_extra() -> int:
+	if bonus_ad_used(): return 0
+	var sv := AdUi.save()
+	var st := AdUi.settings()
+	if sv == null or st == null: return 0
+	st.call("set_value", AdUi.DAILY_BONUS_DAY, int(sv.call("quest_day")))
+	sv.call("add_coins", Quests.DAILY_BONUS)
+	return Quests.DAILY_BONUS
 
 ## Claims a goal (its button): the coins go to your wallet. Returns the coins.
 func claim(key: String) -> int:

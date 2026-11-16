@@ -24,7 +24,7 @@ const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, 'public');
 const LIMITS = {
   rooms: 300,              // rooms at the same time
   conns: 3000,             // connections at the same time
-  perRoom: 8,              // players in one room
+  perRoom: 16,             // players in one room (1.0-B: was 8; docs/PROTOCOL.md 1)
   payload: 32 * 1024,      // biggest single message (bytes)
   rate: 400,               // messages per second a player may send (short bursts are fine)
   joinFails: 10,           // failed joins (unknown or full room) per address per window before `nojoin` `slow`

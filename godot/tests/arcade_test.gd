@@ -53,6 +53,7 @@ func _run() -> void:
 	await _gate()
 	await _full_run()
 	await _lives()
+	await _continue()
 	await _coop()
 	await _boss_hardening()
 	await _friendly_fire()
@@ -505,6 +506,72 @@ func _lives() -> void:
 	arc.retry_stage()
 	check(arc.state == "over", "no retry after the run is over")
 	await _free_world(w)
+
+# ---------------- 3a. rewarded continue ----------------
+
+## The failed card's Continue (+1 life): hidden with no provider, one per run with one, free for a Remove ads owner.
+func _continue() -> void:
+	_unlock()
+	var sv := _sv()
+	var ads: Node = root.get_node("Ads")
+	var ent: Node = root.get_node("Entitlements")
+	var rc: Node = root.get_node("RemoteConfig")
+	var st: Node = root.get_node("Settings")
+	rc.values = {
+		"ads": {"enabled": true, "rewarded_enabled": true, "interstitial_every_matches": 3, "interstitial_min_gap_s": 30, "first_session_grace_s": 300},
+		"kill_switches": {"online": false, "ads": false, "purchases": false},
+	}
+	st.set_value("kids_mode", false)
+	ent.revoke("remove_ads")
+	ads.set_consent("declared")
+	ads.set_provider(null)
+	var AP = load("res://dlc/construction/arcade_panels.gd")
+	var w := _launch(1, true, 1.0)
+	var arc = w.arcade
+	_start_fight(w)
+	for k in 20: w.tick(FRAME)
+	_kill_player(w)
+	var n := 0
+	while (arc.state == "fight" or arc.state == "failing") and n < 600:
+		w.tick(FRAME); n += 1
+	check(arc.state == "failed" and arc.lives == 2, "continue: the stage failed with 2 lives (%s, %d)" % [arc.state, arc.lives])
+	check(_ui(w, "ArcadeFailed").find_child("Continue", true, false) == null, "no provider: no Continue button on the failed card")
+	var stub = load("res://tests/fake_ads_provider.gd").new()
+	stub.ads = ads
+	ads.set_provider(stub)
+	w.show_panel(AP.failed(arc, arc.retry_stage, arc.quit_run, false, arc.rewarded_continue))
+	await _wait_frames(2)
+	var cb := _ui(w, "ArcadeFailed").find_child("Continue", true, false) as Button
+	check(cb != null and cb.visible and cb.text == "Continue (+1 life)", "with a provider: the Continue button shows")
+	_press(_ui(w, "ArcadeFailed"), "Continue")
+	await _wait_frames(3)
+	check(arc.continue_used and arc.lives == 3, "Continue restores one life (%d)" % arc.lives)
+	check(arc.state == "intro" and arc.stage == 1 and arc.attempt == 1, "Continue resumes the existing flow (stage %d, attempt %d, %s)" % [arc.stage, arc.attempt, arc.state])
+	check(not arc.can_continue(), "Continue is once per run")
+	await _free_world(w)
+
+	# A Remove ads owner: the same card grants the life without a video.
+	_unlock()
+	ads.set_provider(stub)
+	ent.grant_verified("remove_ads")
+	var w2 := _launch(1, true, 1.0)
+	var arc2 = w2.arcade
+	_start_fight(w2)
+	for k in 20: w2.tick(FRAME)
+	_kill_player(w2)
+	n = 0
+	while (arc2.state == "fight" or arc2.state == "failing") and n < 600:
+		w2.tick(FRAME); n += 1
+	var before: int = stub.calls.size()
+	w2.show_panel(AP.failed(arc2, arc2.retry_stage, arc2.quit_run, false, arc2.rewarded_continue))
+	await _wait_frames(2)
+	_press(_ui(w2, "ArcadeFailed"), "Continue")
+	await _wait_frames(3)
+	check(arc2.continue_used and arc2.lives == 3, "a Remove ads owner gets the free continue (%d)" % arc2.lives)
+	check(stub.calls.size() == before, "the free continue shows no video")
+	ent.revoke("remove_ads")
+	ads.set_provider(null)
+	await _free_world(w2)
 
 # ---------------- 3b. two seats (offline co-op) ----------------
 

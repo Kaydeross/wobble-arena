@@ -198,7 +198,8 @@ static func clear(m: ArcadeManager, s: Dictionary, on_next: Callable, on_quit: C
 	else: _buttons(box, _button(TranslationServer.translate("Next stage"), "Next", true, on_next), _button(TranslationServer.translate("Quit run"), "Quit", false, on_quit))
 	return p
 
-static func failed(m: ArcadeManager, on_retry: Callable, on_quit: Callable, waiting := false) -> Control:
+## `on_continue` is offered (when the manager's one-per-run rewarded continue is available) before Retry/Quit.
+static func failed(m: ArcadeManager, on_retry: Callable, on_quit: Callable, waiting := false, on_continue := Callable()) -> Control:
 	var fr := _frame("ArcadeFailed")
 	var p: PanelContainer = fr[0]
 	var box: VBoxContainer = fr[1]
@@ -210,8 +211,15 @@ static func failed(m: ArcadeManager, on_retry: Callable, on_quit: Callable, wait
 		for k in m.seats.size(): names.append(m.seat_name(k))
 		_line(box, "Seats", "%s: %s" % [TranslationServer.translate("Down"), " · ".join(names)], 18)
 	_line(box, "Hint", TranslationServer.translate("A fresh site, a fresh try."), 18)
-	if waiting: _waiting(box)
-	else: _buttons(box, _button(TranslationServer.translate("Retry stage"), "Retry", true, on_retry), _button(TranslationServer.translate("Quit run"), "Quit", false, on_quit))
+	if waiting:
+		_waiting(box)
+	else:
+		if on_continue.is_valid() and m.can_continue():
+			AdUi.prepare(AdUi.ARCADE_CONTINUE)
+			var cb := _button(TranslationServer.translate("Continue (+1 life)"), "Continue", false, on_continue)
+			box.add_child(cb)
+			JuicyButton.attach(cb)
+		_buttons(box, _button(TranslationServer.translate("Retry stage"), "Retry", true, on_retry), _button(TranslationServer.translate("Quit run"), "Quit", false, on_quit))
 	return p
 
 static func over(m: ArcadeManager, on_quit: Callable, waiting := false) -> Control:

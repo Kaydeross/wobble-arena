@@ -6,7 +6,7 @@ extends RefCounted
 
 const HIT_MAX_D := 250.0
 const HIT_MAX_F := 120.0
-const NET_MAX := 8
+const NET_MAX := 16              ## slot ids a snapshot may name (the relay's perRoom cap, docs/PROTOCOL.md 1)
 
 # ============================== `S` (state) ==============================
 
