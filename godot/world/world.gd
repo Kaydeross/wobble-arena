@@ -421,6 +421,34 @@ func _my_look() -> Dictionary:
 	if sk.has("col"): col = int(sk["col"])
 	return {"skin": str(Settings.get_value("skin", "none")), "hat": str(Settings.get_value("hat", "none")), "color": col}
 
+## The Share autoload, looked up lazily: world.gd is loaded by SceneTree tests, so it avoids autoload globals.
+func _share_service() -> Node:
+	return get_node_or_null("/root/Share")
+
+## The match context ResultCard needs but Save.finish_match()'s summary does not carry.
+func _card_extra(won: bool, result: String) -> Dictionary:
+	if sim == null:
+		return {"won": won, "result": result, "look": _my_look()}
+	return {
+		"mode": str(sim.combat.mode.get("name", sim.combat.mode_id)),
+		"arena": str(map_node.map.get("name", map_id)) if map_node != null else "",
+		"deaths": int(sim.player.st["deaths"]),
+		"team": sim.combat.teams != 0,
+		"won": won,
+		"result": result,
+		"look": _my_look(),
+	}
+
+## Render the result card offscreen and hand its PNG path to the platform provider.
+func _share_result(summary: Dictionary, extra: Dictionary) -> void:
+	var sh := _share_service()
+	if sh == null:
+		return
+	var path: String = await ResultCard.render(self, summary, extra)
+	if path == "":
+		return
+	sh.call("share_image", path, ResultCard.share_text(summary, extra))
+
 func player_pos() -> Vector3:
 	var p := sim.player.phys
 	return Vector3(p.px, p.py, p.pz)
@@ -1336,9 +1364,18 @@ func _show_offline_results(won: bool, winner_name: String) -> void:
 		var ed := Button.new(); ed.name = "EditArena"; ed.text = "Edit arena"; ed.custom_minimum_size = Vector2(0, 60)
 		ed.pressed.connect(edit_arena)
 		box.add_child(ed)
+	var actions := HBoxContainer.new(); actions.name = "Actions"
+	actions.add_theme_constant_override("separation", 12)
+	var share := ResultCard.share_control(_share_service())
+	if share != null:                       # no provider, no control (web/desktop/headless builds)
+		share.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		share.pressed.connect(func() -> void: await _share_result(_reward.duplicate(), _card_extra(won, l.text)))
+		actions.add_child(share)
 	var lv := Button.new(); lv.text = "Quit to title"; lv.custom_minimum_size = Vector2(0, 60)
+	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lv.pressed.connect(_on_title_pressed)
-	box.add_child(lv)
+	actions.add_child(lv)
+	box.add_child(actions)
 	JuicyButton.attach_all(box)
 	$UI.add_child(p)
 	$UI.move_child(p, pause_menu.get_index())
@@ -1575,9 +1612,18 @@ func _show_results(winner: String) -> void:
 		rm.disabled = true; rm.text = "Waiting for the others…")
 	box.add_child(ResultsRewards.make(_reward))
 	box.add_child(rm)
+	var actions := HBoxContainer.new(); actions.name = "Actions"
+	actions.add_theme_constant_override("separation", 12)
+	var share := ResultCard.share_control(_share_service())
+	if share != null:                       # no provider, no control (web/desktop/headless builds)
+		share.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		share.pressed.connect(func() -> void: await _share_result(_reward.duplicate(), _card_extra(winner == "You", l.text)))
+		actions.add_child(share)
 	var lv := Button.new(); lv.text = "Leave room"; lv.custom_minimum_size = Vector2(0, 54)
+	lv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lv.pressed.connect(_on_title_pressed)
-	box.add_child(lv)
+	actions.add_child(lv)
+	box.add_child(actions)
 	JuicyButton.attach_all(box)
 	$UI.add_child(p)
 	$UI.move_child(p, pause_menu.get_index())   # under the pause menu, over the HUD and touch layer

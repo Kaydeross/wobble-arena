@@ -1,0 +1,30 @@
+{
+ "Deaths": {
+  "zh_TW": "死亡",
+  "zh_CN": "死亡",
+  "ja": "死亡",
+  "fr": "Morts",
+  "es": "Muertes"
+ },
+ "Match result": {
+  "zh_TW": "比賽結果",
+  "zh_CN": "比赛结果",
+  "ja": "試合結果",
+  "fr": "Résultat du match",
+  "es": "Resultado"
+ },
+ "Share card": {
+  "zh_TW": "分享卡片",
+  "zh_CN": "分享卡片",
+  "ja": "シェア",
+  "fr": "Partager",
+  "es": "Compartir"
+ },
+ "You lose": {
+  "zh_TW": "你輸了",
+  "zh_CN": "你输了",
+  "ja": "あなたの負け",
+  "fr": "Tu as perdu",
+  "es": "Has perdido"
+ }
+}

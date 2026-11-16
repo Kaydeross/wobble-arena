@@ -49,6 +49,7 @@
     "test:godot-dlc-ui": "node tools/test-dlc-ui.js",
     "test:godot-title": "node tools/test-title.js",
     "test:godot-title-fit": "node tools/test-title-fit.js",
+    "test:godot-result-card": "node tools/test-result-card.js",
     "test:godot-modes": "node tools/test-modes.js",
     "test:godot-ctf": "node tools/test-ctf.js",
     "test:godot-sandbox": "node tools/test-sandbox.js",

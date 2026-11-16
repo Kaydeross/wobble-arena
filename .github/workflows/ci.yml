@@ -83,6 +83,8 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-ui
         if: matrix.shard == 'ui'
+      - run: npm run test:godot-result-card
+        if: matrix.shard == 'ui'
       - run: npm run test:godot-audio
         if: matrix.shard == 'rest'
       - run: npm run test:godot-settings
