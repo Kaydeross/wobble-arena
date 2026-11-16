@@ -32,7 +32,7 @@ Connect a WebSocket to `wss://<server>/ws`. Text frames only (binary is ignored)
 | Rate | 400 msg/s per connection (bursts up to 1.5×; over 200 dropped messages → close 1008) |
 | Connections | 3000 total, 40 per IP |
 | Rooms | 300 |
-| Players per room | 8 (`perRoom`) |
+| Players per room | 16 (`perRoom`; 8 before WP 1.0-B) |
 | Keep-alive | server pings every 20 s; a silent client is terminated |
 
 Messages are processed in order, but while an `auth` check is running the messages behind it wait.
@@ -63,7 +63,7 @@ Messages are processed in order, but while an `auth` check is running the messag
 | `mode` | string | 16 (mode id, e.g. `classic`) |
 | `modeName` | string | 24 |
 | `map` | string | 24 (display name) |
-| `max` | int | clamped 2–8 |
+| `max` | int | clamped 2–16 (`LIMITS.perRoom`) |
 | `started` | bool | |
 | `build` | string | 16 |
 | `kind` | string | `pvp` (a normal room) or `arcade-coop` (an Arcade co-op room, created from Play online > Host a room > Room type: Arcade co-op); default `pvp`, derived from `mode: "construction"` for older hosts |
@@ -214,7 +214,7 @@ All are objects with a `t` field, sent inside `tohost`/`to`/`all` (layer 1). The
 | `el` | 1 = eliminated (Lives modes) |
 | `pt` | Pillars clock (only from the host's own fighter) |
 
-**Receiving an `S`:** do not teleport. Predict forward by the age of the snapshot (≤0.2 s) using the velocity, then ease toward it with `k = 1 − exp(−dt·22)`. Snap if the error is over 6 m. The web client does this in `netStep`.
+**Receiving an `S`:** do not teleport. The web client predicts forward by the age of the snapshot (≤0.2 s) using the velocity, then eases toward it with `k = 1 − exp(−dt·22)`; it snaps if the error is over 6 m (`netStep`). The Godot client (WP 1.0-B) instead keeps a small bounded snapshot buffer per remote fighter and draws it 100 ms in the past, interpolating between the two snapshots around that render time; the same ≤0.2 s prediction is the fallback when a snapshot is missing or late, and a late or out-of-order snapshot is dropped (never drawn backwards). This is presentation only: hits still resolve against the authoritative simulation positions. The protocol is unchanged (`PROTO` stays 1).
 
 **Routing of `h`:** the attacker's side picks the destination. If the victim is a human, `to` = the victim's slot; if the victim is a bot (owned by the host), `to` = 0. The host applies `h` with `to = 0` itself and forwards other `h` to just that one guest (`hostOut` / `hostRecv`). A guest receiving `h` applies it to its own fighter only.
 

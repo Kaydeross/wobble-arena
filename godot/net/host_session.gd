@@ -84,7 +84,7 @@ var _resume_slot := -1           ## my slot in the old match
 var _start_x := {}               ## extra fields of the next `start` (rs / rsx after a migration)
 var _dt0 := 0.0                  ## the arena clock the next match starts at (a resumed match)
 
-## Start hosting. `opts`: name, pub, max (2..8 seats), bots (bool = every free seat / int = how many), lim (-1 auto),
+## Start hosting. `opts`: name, pub, max (2..NET_MAX seats, 16 today), bots (bool = every free seat / int = how many), lim (-1 auto),
 ## bhv, diff, mode, map, dyn, hp, grav, kb, crate, inf. `info` = {name, skin, hat, color, cls}.
 ## `arcade: true` (plus `arcade_diff` / `arcade_ff`) opens an Arcade co-op room instead: Construction mode on the
 ## generated site, two seats, a teammate bot, the stage table's own HP / gravity / knockback / crates / K.O. limit. It is

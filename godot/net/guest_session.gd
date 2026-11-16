@@ -24,7 +24,7 @@ signal ended(reason: String)                 ## the session is over (left, kicke
 enum Phase { IDLE, CONNECTING, JOINING, WAITING, LOBBY, MATCH, CLOSED }
 
 const PING_EVERY := 1.5
-const NET_MAX := 8
+const NET_MAX := 16              ## seats in a room: the relay cap (server.js LIMITS.perRoom, docs/PROTOCOL.md 1)
 ## What a guest may hear before `welcome` (clientRecv).
 const BEFORE_WELCOME := ["welcome", "full", "badver", "kick"]
 const NOJOIN_TEXT := {

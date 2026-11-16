@@ -7822,14 +7822,14 @@ function updateGrenades(dt) {
 const player = new Fighter({ color: 0x39b5a8, accent: 0xffe0b3, isPlayer: true });
 player.yaw = player.faceYaw = Math.PI;
 
-const BOT_NAMES = ['Bot Wibble','Bot Bonk','Bot Gus','Bot Pip','Bot Moxie','Bot Dozer','Bot Noodle','Bot Jelly','Bot Fizz','Bot Barney','Bot Tubs','Bot Wob'];
+const BOT_NAMES = ['Bot Wibble','Bot Bonk','Bot Gus','Bot Pip','Bot Moxie','Bot Dozer','Bot Noodle','Bot Jelly','Bot Fizz','Bot Barney','Bot Tubs','Bot Wob','Bot Splat','Bot Boing','Bot Zonk','Bot Biscuit'];   // 16: a guest in a 16-player room needs a ghost fighter per other seat (NET_MAX)
 const BOT_POOL = ['Bot Wibble','Bot Bonk','Bot Gus','Bot Pip','Bot Moxie','Bot Dozer','Bot Noodle','Bot Jelly','Bot Fizz','Bot Barney','Bot Tubs','Bot Wob','Bot Splat','Bot Boing','Bot Zonk','Bot Biscuit','Bot Waffle','Bot Squish','Bot Mango','Bot Pickles','Bot Doink','Bot Muffin','Bot Sprocket','Bot Nugget','Bot Tater','Bot Blorp','Bot Wumpus','Bot Pogo','Bot Crumb','Bot Zigzag'];
 const botNameFor = i => BOT_NAMES[i];
 function shuffleBotNames() {                         // every match the bots get a fresh random set of names
   const pool = BOT_POOL.slice(); for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
-  for (let i = 0; i < 12; i++) { BOT_NAMES[i] = pool[i]; if (typeof allBots !== 'undefined' && allBots[i]) { if (!allBots[i].isGhost) allBots[i].botName = pool[i]; if (allBots[i].orig) allBots[i].orig.name = pool[i]; } }
+  for (let i = 0; i < BOT_NAMES.length; i++) { BOT_NAMES[i] = pool[i]; if (typeof allBots !== 'undefined' && allBots[i]) { if (!allBots[i].isGhost) allBots[i].botName = pool[i]; if (allBots[i].orig) allBots[i].orig.name = pool[i]; } }
 }
-const BOT_COLORS = [0xf08a3c,0xd9534f,0x8e6bd8,0x4a90d9,0xe0b030,0x5fb760,0xe86fa5,0x7a8793,0x2fb5c7,0xb5651d,0x9acd32,0xff7f7f];
+const BOT_COLORS = [0xf08a3c,0xd9534f,0x8e6bd8,0x4a90d9,0xe0b030,0x5fb760,0xe86fa5,0x7a8793,0x2fb5c7,0xb5651d,0x9acd32,0xff7f7f,0x6fbf73,0xd7b45b,0x8f7fd8,0x5fa8c7];   // 16: one per NET_MAX ghost slot
 const DIFFS = {
   easy:   { speed: 3.0, dmg: 0.30, atk: 0.55, sight: 12, kick: 0.6, jump: 0,    react: 0.45 },
   normal: { speed: 4.4, dmg: 0.45, atk: 1.0,  sight: 20, kick: 1.0, jump: 0,    react: 0.25 },
@@ -7839,7 +7839,7 @@ const DIFFS = {
 const cfg = { grav: 1, kb: 1, inf: false, dyn: 'random', mode: 'classic', count: 3, behav: 'brawl', diff: 'normal', ffa: true, limit: 0, hp: 200, crate: 'normal', wstate: {}, custom: Object.assign({}, { size: 44, theme: 'grass', obs: 10, plat: 4, pads: 3, walls: 4, ice: false, seed: 7 }), blocks: [] };
 const maxHp = () => cfg.hp * (giantOn() ? 2 : 1);
 const allBots = [];
-for (let i = 0; i < 12; i++) {
+for (let i = 0; i < BOT_NAMES.length; i++) {
   const d = new Fighter({ color: BOT_COLORS[i], accent: 0xfff0d2 });
   d.yaw = d.faceYaw = rand(0, Math.PI * 2);
   d.speed = 2.2; d.aiT = rand(0.5, 3); d.wander = null; d.kickCool = rand(1, 4); d.dmgScale = 0.45;
@@ -8077,7 +8077,7 @@ document.addEventListener('input', e => { if (e.target && e.target.type === 'ran
 setInterval(syncRanges, 400);
 function setBotCfg(patch) {
   Object.assign(cfg, patch);
-  cfg.count = Math.max(0, Math.min(12, Math.round(cfg.count)));
+  cfg.count = Math.max(0, Math.min(NET_MAX - 1, Math.round(cfg.count)));   // online a guest in a 16-player room needs 15 ghosts; the UI still offers 12 bots
   if (!MODES[cfg.mode]) cfg.mode = 'classic';
   if (cfg.mode === 'pillars' && !(net && net.started)) cfg.count = 7;      // every pillar that has no real player gets a bot
   if (cfg.mode === 'explosive') cfg.hp = 300;                      // Explosive is always 300 health
@@ -9190,7 +9190,7 @@ el('settings-reset').onclick = () => askConfirm('Reset ALL settings (keys, sensi
 });
 
 /* ============================== online play (test) ============================== */
-const NET_PREFIX = 'wobble-arena-', NET_HZ = 30, NET_MAX = 8, NET_BUILD = 'b77.0', NET_PROTO = 1, PUB_SLOTS = 24;   // PUB_SLOTS: public rooms live at fixed spots (pub0, pub1, ...) so anybody can look them up
+const NET_PREFIX = 'wobble-arena-', NET_HZ = 30, NET_MAX = 16, NET_BUILD = 'b77.0', NET_PROTO = 1, PUB_SLOTS = 24;   // NET_MAX: the relay's perRoom cap (server.js, docs/PROTOCOL.md 1). PUB_SLOTS: public rooms live at fixed spots (pub0, pub1, ...) so anybody can look them up
 const slotCap = () => net.started && net.slots ? net.slots.length : NET_MAX;
 function netStatus(t) {
   t = t || ''; const busy = /(\u2026|\.\.\.)$/.test(t); if (t && !busy) netUnlock();
@@ -9244,7 +9244,7 @@ let netPending = false, netPendT = 0;                               // one conne
 const netLock = () => { if (netPending && performance.now() - netPendT < 20000) return false; netPending = true; netPendT = performance.now(); return true; };
 const netUnlock = () => { netPending = false; };
 const BHV_NAME = { dummy: 'Dummies', brawl: 'Brawlers' }, DIFF_NAME = { easy: 'Easy', normal: 'Normal', hard: 'Hard', insane: 'Insane' };
-function roomOpts() { const pil = netMode(cfg.mode) === 'pillars', c = cfg.count; return { max: pil ? 8 : c > 0 ? Math.max(2, Math.min(8, c + 1)) : 4, bots: pil || c > 0, lim: !MODES[netMode(cfg.mode)].ladder && [0, 5, 10, 20].includes(cfg.limit) ? cfg.limit : 0, bhv: cfg.behav === 'dummy' ? 'dummy' : 'brawl' }; }
+function roomOpts() { const pil = netMode(cfg.mode) === 'pillars', c = cfg.count; return { max: pil ? 8 : c > 0 ? Math.max(2, Math.min(NET_MAX, c + 1)) : 4, bots: pil || c > 0, lim: !MODES[netMode(cfg.mode)].ladder && [0, 5, 10, 20].includes(cfg.limit) ? cfg.limit : 0, bhv: cfg.behav === 'dummy' ? 'dummy' : 'brawl' }; }
 function roomSumParts() {
   const sc = netMode(cfg.mode), self = MODES[sc].lives || MODES[sc].ladder || sc === 'pillars', diff = net.host ? cfg.diff : (net.hdiff || 'normal'), bhv = net.bhv || 'brawl';
   return [['Fighters', tf('up to %d', net.optMax)], ['Bots', net.optBots ? (bhv === 'brawl' ? tf('%s, %s', t(BHV_NAME[bhv]), t(DIFF_NAME[diff])) : t(BHV_NAME[bhv])) : t('none (players only)')], ['Ends', self ? t('by itself') : net.optLim ? tf('first to %d', net.optLim) : t('free play')]];
@@ -10587,7 +10587,7 @@ function updateDmgNumbers(dt) {
   }
 }
 let boardT = 0, boardKey = '';
-{ let h = ''; for (let i = 0; i < 12; i++) h += '<div class="tag" id="tag' + i + '"><span id="tagn' + i + '"></span><u><i id="tagh' + i + '"></i></u></div>'; el('tags').innerHTML = h; }
+{ let h = ''; for (let i = 0; i < BOT_NAMES.length; i++) h += '<div class="tag" id="tag' + i + '"><span id="tagn' + i + '"></span><u><i id="tagh' + i + '"></i></u></div>'; el('tags').innerHTML = h; }
 function updateTags() {
   const can = typeof tmpA.project === 'function';
   const cap = document.body.classList.contains('ptouch') || window.innerHeight < 520, near = [];          // small screens: only the 3 nearest name tags

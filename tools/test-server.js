@@ -70,6 +70,24 @@ const { Client } = require('./wa-client');
   await full[0].join(id); await full[1].join(id);
   full[2].tx({ op: 'join', id }); assert.equal((await full[2].op('nojoin')).reason, 'full', 'room of 4 is full');
 
+  /* ---- room cap: 16 players (WP 1.0-B, docs/PROTOCOL.md 1): the cap accepts 16 seats, clamps a larger ask and refuses #17 ---- */
+  { assert.equal(srv.LIMITS.perRoom, 16, 'the relay room cap is 16');
+    const capHost = await new Client(url, 'CapHost').open(); await capHost.op('hi');
+    capHost.tx({ op: 'create', pub: true, info: { name: 'Big Room', mode: 'classic', modeName: 'Classic', map: 'Arena', max: 99 } });
+    const capId = (await capHost.wait(m => m.op === 'created')).id;
+    const lister = await new Client(url, 'CapList').open(); await lister.op('hi');
+    lister.tx({ op: 'list' });
+    const row = (await lister.op('rooms')).rooms.find(r => r.id === capId);
+    assert.ok(row && row.max === 16, 'a room asking for more than the cap is clamped to 16: ' + JSON.stringify(row));
+    const capJoiners = await Promise.all(Array.from({ length: 15 }, (_, i) => new Client(url, 'Cap' + i).open()));
+    await Promise.all(capJoiners.map(j => j.join(capId)));
+    const over = await new Client(url, 'CapOver').open(); await over.op('hi');
+    over.tx({ op: 'join', id: capId });
+    assert.equal((await over.op('nojoin')).reason, 'full', 'a 16-player room refuses the 17th player');
+    srv.joinFails.clear();
+    console.log('room cap: ok');
+    over.close(); capJoiners.forEach(j => j.close()); lister.close(); capHost.close(); }
+
   { const mk = (h, a) => ({ headers: h, socket: { remoteAddress: a } }), spoof = { 'x-forwarded-for': '6.6.6.6, 9.9.9.9', 'cf-connecting-ip': '1.2.3.4' };   // client-supplied header first, proxy-appended last
     delete process.env.TRUST_PROXY; assert.equal(srv.ipOf(mk(spoof, '10.0.0.2')), '10.0.0.2', 'proxy headers ignored by default (limits cannot be spoofed)');
     process.env.TRUST_PROXY = '1'; assert.equal(srv.ipOf(mk(spoof, '10.0.0.2')), '9.9.9.9', 'TRUST_PROXY=1 uses the last x-forwarded-for entry, not the spoofable first one'); assert.equal(srv.ipOf(mk({}, '10.0.0.2')), '10.0.0.2', 'no header falls back to the socket');
