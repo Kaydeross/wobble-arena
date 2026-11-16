@@ -45,6 +45,7 @@ static func build(map_id: String) -> MapNode:
 	if map.is_empty():
 		push_error("MapBuilder: unknown map " + map_id)
 	if map_id == SiteMap.ID: map = SiteMap.generate(SiteMap.current_seed)   # Construction DLC: a Building Site generated from the seed
+	elif PackMaps.has(map_id): map = PackMaps.generate(map_id, PackMaps.current_seed)   # DLC packs: kitchen_chaos / toy_workshop / backyard_bbq
 	return build_from(map_id, map)
 
 ## Build from a map Dictionary (one entry of maps.json).
@@ -57,6 +58,7 @@ static func build_from(map_id: String, map: Dictionary) -> MapNode:
 	root.solids = FighterPhysics.solids_from_map({"geometry": geo})
 	root.shadow_area = float(map.get("shadow", 32))
 	root.box_styles = look(map_id).get("boxes", {}) if map_id != "custom" else {}
+	if map.get("boxStyles") is Dictionary and not (map["boxStyles"] as Dictionary).is_empty(): root.box_styles = map["boxStyles"]   # pack arenas: glowing burners
 	_add_boxes(root, geo.get("boxes", []), root.box_styles)
 	for fp in geo.get("floorPads", []):
 		_add_floor_pad(root, float(fp["size"]), int(fp["color"]))
@@ -67,6 +69,9 @@ static func build_from(map_id: String, map: Dictionary) -> MapNode:
 	for l in geo.get("ladders", []):
 		_add_ladder(root, float(l["x"]), float(l["z"]), float(l["nx"]), float(l["nz"]), float(l["y0"]), float(l["y1"]))
 		root.ladders.append(l)
+	if map.get("zones") is Array:                                   # pack arenas: the Hills Hoist's spinning arms (PackSpinner)
+		for z: Variant in map["zones"]:
+			if z is Dictionary and str((z as Dictionary).get("kind", "")) == "hoist": root.add_child(PackSpinner.build(z))
 	if not _add_decor(root, _decor_id(map_id, map)):
 		_add_backdrop(root, map)
 	if gfx_q() >= 1:

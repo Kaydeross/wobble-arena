@@ -1,0 +1,35 @@
+{
+ "_note": "Godot-only On Fire pack mode (mode id = pack id, like construction): a classic-style brawl whose crates hold the pack's 6 weapons (dropWeights) plus Health Packs, power-ups and one themed shared weapon (dropAllow). Merged by ModeRules.merge_extra. Not in ModeRules.PLAYABLE and not in a picker: the DLC hub (phase D) starts it.",
+ "kitchen": {
+  "name": "On Fire",
+  "desc": "Frying pans, flames and flying soup in a chaotic kitchen. Aprons recommended",
+  "preset": {
+   "limit": 20
+  },
+  "start": "fryingpan",
+  "allowWeapons": [
+   "fryingpan",
+   "cleaver",
+   "flambetorch",
+   "rollingpin",
+   "peppergrinder",
+   "souppot",
+   "knife"
+  ],
+  "dropAllow": [
+   "heal",
+   "speed",
+   "rage",
+   "shield",
+   "knife"
+  ],
+  "dropWeights": {
+   "fryingpan": 0.8,
+   "cleaver": 0.8,
+   "flambetorch": 0.6,
+   "rollingpin": 0.8,
+   "peppergrinder": 0.8,
+   "souppot": 0.6
+  }
+ }
+}

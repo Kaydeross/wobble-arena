@@ -807,7 +807,7 @@ func set_hat(name: String) -> void:
 		hat.free()                                # frees the spin group and its meshes too
 	hat = null
 	hat_spin = null
-	hat_name = name if WobblerLooks.HATS.has(name) else "none"
+	hat_name = name if WobblerLooks.has_hat(name) else "none"
 	_hat_specs = [] if hat_name == "none" else WobblerLooks.hat_parts(hat_name)
 	if hat_name != "none":
 		hat = _group(neck, Vector3(0, 0.62, 0), "Hat")

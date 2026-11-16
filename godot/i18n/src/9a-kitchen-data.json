@@ -1,0 +1,163 @@
+{
+ "On Fire": {
+  "zh_TW": "火力全開",
+  "zh_CN": "火力全开",
+  "ja": "燃えてます",
+  "fr": "En feu",
+  "es": "En llamas"
+ },
+ "6 Weapons + Kitchen Chaos": {
+  "zh_TW": "6 種武器 + 廚房大亂鬥",
+  "zh_CN": "6 种武器 + 厨房大乱斗",
+  "ja": "武器 6 種 + カオスキッチン",
+  "fr": "6 armes + Cuisine en folie",
+  "es": "6 armas + Cocina caótica"
+ },
+ "Frying pans, flames and flying soup in a chaotic kitchen. Aprons recommended": {
+  "zh_TW": "平底鍋、火焰和亂飛的熱鍋，一團混亂的廚房大亂鬥",
+  "zh_CN": "平底锅、火焰和乱飞的热锅，一团混乱的厨房大乱斗",
+  "ja": "カオスなキッチンでフライパンと炎と飛んでくるスープ。エプロン推奨",
+  "fr": "Poêles, flammes et soupe volante dans une cuisine chaotique. Tablier conseillé",
+  "es": "Sartenes, llamas y sopa voladora en una cocina caótica. Se recomienda delantal"
+ },
+ "Frying Pan": {
+  "zh_TW": "平底鍋",
+  "zh_CN": "平底锅",
+  "ja": "フライパン",
+  "fr": "Poêle à frire",
+  "es": "Sartén"
+ },
+ "Cleaver": {
+  "zh_TW": "廚刀",
+  "zh_CN": "菜刀",
+  "ja": "クリーバー",
+  "fr": "Couperet",
+  "es": "Cuchilla"
+ },
+ "Flambé Torch": {
+  "zh_TW": "噴槍",
+  "zh_CN": "喷枪",
+  "ja": "バーナー",
+  "fr": "Chalumeau flambé",
+  "es": "Soplete de cocina"
+ },
+ "Rolling Pin": {
+  "zh_TW": "廚房木棒",
+  "zh_CN": "厨房木棒",
+  "ja": "めんぼう",
+  "fr": "Rouleau à pâtisserie",
+  "es": "Rodillo"
+ },
+ "Pepper Grinder": {
+  "zh_TW": "Pepper 磨",
+  "zh_CN": "Pepper 磨",
+  "ja": "ペッパーミル",
+  "fr": "Moulin à poivre",
+  "es": "Molinillo de pimienta"
+ },
+ "Hot Soup Pot": {
+  "zh_TW": "熱鍋",
+  "zh_CN": "热锅",
+  "ja": "熱々スープポット",
+  "fr": "Marmite de soupe chaude",
+  "es": "Olla de sopa caliente"
+ },
+ "Line Cooks": {
+  "zh_TW": "廚房小組",
+  "zh_CN": "厨房小组",
+  "ja": "ラインコック",
+  "fr": "Cuisiniers de ligne",
+  "es": "Cocineros de línea"
+ },
+ "Order up! Keep your apron clean and your head down.": {
+  "zh_TW": "準備好了！頭低低的，別被打到。",
+  "zh_CN": "好了！头低低的，别被打到。",
+  "ja": "オーダーアップ！エプロンはきれいに、頭は低く。",
+  "fr": "Commande prête ! Garde ton tablier propre et la tête basse.",
+  "es": "¡Pedido listo! Mantén el delantal limpio y la cabeza baja."
+ },
+ "Pastry Chef": {
+  "zh_TW": "甜點師",
+  "zh_CN": "甜点师",
+  "ja": "パティシエ",
+  "fr": "Chef pâtissier",
+  "es": "Chef pastelero"
+ },
+ "Flour power. Mind the falling ingredients.": {
+  "zh_TW": "甜點大爆發。小心掉下來的材料。",
+  "zh_CN": "甜点大爆发。小心掉下来的材料。",
+  "ja": "フラワーパワー全開。落ちてくる材料に注意。",
+  "fr": "Pouvoir de la farine. Attention aux ingrédients qui tombent.",
+  "es": "El poder de la harina. Cuidado con los ingredientes que caen."
+ },
+ "Grill Master": {
+  "zh_TW": "火力大師",
+  "zh_CN": "火力大师",
+  "ja": "グリルマスター",
+  "fr": "Maître du grill",
+  "es": "Maestro de la parrilla"
+ },
+ "Hot, hot, hot. Stay off the burners.": {
+  "zh_TW": "好熱好熱好熱。離火遠一點。",
+  "zh_CN": "好热好热好热。离火远一点。",
+  "ja": "あつ、あつ、あつ。コンロに近づかないで。",
+  "fr": "Chaud, chaud, chaud. Éloigne-toi des feux.",
+  "es": "Calor, calor, calor. Aléjate de los fogones."
+ },
+ "Dishie Bot": {
+  "zh_TW": "廚房機器人",
+  "zh_CN": "厨房机器人",
+  "ja": "ディッシュボット",
+  "fr": "Robot plongeur",
+  "es": "Robot friegaplatos"
+ },
+ "Scrub-a-dub-bonk. Calls in a mate when scuffed.": {
+  "zh_TW": "刷刷刷，咚！被打到就叫朋友來。",
+  "zh_CN": "刷刷刷，咚！被打到就叫朋友来。",
+  "ja": "ゴシゴシ、ボンク。ダメージを受けると仲間を呼びます。",
+  "fr": "Frotte, frotte, boum. Appelle un copain quand il est égratigné.",
+  "es": "Fregar, fregar, ¡bonk! Llama a un colega cuando se raya."
+ },
+ "Food Critic": {
+  "zh_TW": "評論家",
+  "zh_CN": "评论家",
+  "ja": "フードクリティック",
+  "fr": "Critique gastronomique",
+  "es": "Crítico gastronómico"
+ },
+ "Two stars. Needs more salt and fewer knock-outs.": {
+  "zh_TW": "兩星。鹽要多一點，擊倒要少一點。",
+  "zh_CN": "两星。盐要多一点，击倒要少一点。",
+  "ja": "星二つ。味つけをもっと、KOはもっと少なく。",
+  "fr": "Deux étoiles. Plus de sel et moins de K.O.",
+  "es": "Dos estrellas. Más sal y menos K.O."
+ },
+ "Chef Inferno": {
+  "zh_TW": "火焰主廚",
+  "zh_CN": "火焰主厨",
+  "ja": "インフェルノシェフ",
+  "fr": "Chef Inferno",
+  "es": "Chef Infierno"
+ },
+ "The big finale. The whole kitchen is on fire!": {
+  "zh_TW": "壓軸大戲。整間廚房都著火了！",
+  "zh_CN": "压轴大戏。整间厨房都着火了！",
+  "ja": "大フィナーレ。キッチンが丸ごと燃えてる！",
+  "fr": "Le grand final. Toute la cuisine est en feu !",
+  "es": "¡El gran final! ¡Toda la cocina está en llamas!"
+ },
+ "Dinner Rush!": {
+  "zh_TW": "尖峰時間！",
+  "zh_CN": "高峰时间！",
+  "ja": "ディナーラッシュ！",
+  "fr": "Coup de feu !",
+  "es": "¡Hora punta!"
+ },
+ "Order Up!": {
+  "zh_TW": "準備好了！",
+  "zh_CN": "好了！",
+  "ja": "オーダーアップ！",
+  "fr": "Commande prête !",
+  "es": "¡Pedido listo!"
+ }
+}

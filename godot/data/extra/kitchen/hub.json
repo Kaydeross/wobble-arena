@@ -1,0 +1,16 @@
+{
+ "_readme": "On Fire hub file (docs/PACKS_BRIEF.md, deliverable 4). `maps` are the pack arena ids made by the map generators (phase C: kitchen_chaos); `wizard` lists the pack mode in the setup wizard and Quick Play for owners only. hats / victory_hat take the pack hat ids from locker.json once they exist (empty = nothing gated).",
+ "order": 1,
+ "mode": "kitchen",
+ "maps": [
+  "kitchen_chaos"
+ ],
+ "wizard": true,
+ "price": 1500,
+ "classic_desc": "Up to 8 in a chaotic kitchen. Aprons on, burners hot.",
+ "arcade_desc": "Boss rush: Line Cooks, Pastry Chef, Grill Master, Dishie Bot, Food Critic, then Chef Inferno.",
+ "won_title": "Kitchen cleared!",
+ "won_sub": "Chef Inferno hung up the apron",
+ "hats": [],
+ "victory_hat": ""
+}

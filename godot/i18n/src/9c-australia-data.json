@@ -1,0 +1,163 @@
+{
+ "Hey Mate": {
+  "zh_TW": "你好，朋友",
+  "zh_CN": "你好，朋友",
+  "ja": "やあ、友よ",
+  "fr": "Salut, mon pote",
+  "es": "Eh, colega"
+ },
+ "6 Weapons + Backyard BBQ": {
+  "zh_TW": "6 種武器 + 後院 BBQ",
+  "zh_CN": "6 种武器 + 后院 BBQ",
+  "ja": "武器 6 種 + 裏庭BBQ",
+  "fr": "6 armes + Barbecue au jardin",
+  "es": "6 armas + Barbacoa en el jardín"
+ },
+ "Cricket bats, boomerangs and flying thongs in a backyard BBQ. Mind the clothesline": {
+  "zh_TW": "在後院 BBQ 派對裡，板球拍、回力鏢和亂飛的夾腳拖。小心衣架",
+  "zh_CN": "在后院 BBQ 派对里，板球拍、回力镖和乱飞的人字拖。小心衣架",
+  "ja": "裏庭BBQで、クリケットバットとブーメランと飛んでくるビーサン。物干しに注意",
+  "fr": "Battes de cricket, boomerangs et tongs volantes dans un barbecue au jardin. Attention au séchoir",
+  "es": "Bates de críquet, bumeranes y chanclas voladoras en una barbacoa en el jardín. Cuidado con el tendedero"
+ },
+ "Cricket Bat": {
+  "zh_TW": "板球拍",
+  "zh_CN": "板球拍",
+  "ja": "クリケットバット",
+  "fr": "Batte de cricket",
+  "es": "Bate de críquet"
+ },
+ "Aussie Boomerang": {
+  "zh_TW": "袋鼠回力鏢",
+  "zh_CN": "袋鼠回力镖",
+  "ja": "オージーブーメラン",
+  "fr": "Boomerang australien",
+  "es": "Bumerán australiano"
+ },
+ "Thong Slapper": {
+  "zh_TW": "夾腳拖拍",
+  "zh_CN": "人字拖拍",
+  "ja": "ビーサンたたき",
+  "fr": "Tong claqueuse",
+  "es": "Chancla golpeadora"
+ },
+ "Vegemite Jar": {
+  "zh_TW": "Vegemite 盒子",
+  "zh_CN": "Vegemite 盒子",
+  "ja": "ベジマイトのびん",
+  "fr": "Pot de Vegemite",
+  "es": "Tarro de Vegemite"
+ },
+ "BBQ Tongs": {
+  "zh_TW": "BBQ 夾子",
+  "zh_CN": "BBQ 夹子",
+  "ja": "BBQトング",
+  "fr": "Pince à barbecue",
+  "es": "Pinzas de barbacoa"
+ },
+ "Didgeridoo Blaster": {
+  "zh_TW": "Didgeridoo 砲",
+  "zh_CN": "Didgeridoo 炮",
+  "ja": "ディジュリドゥブラスター",
+  "fr": "Blaster didgeridoo",
+  "es": "Bláster didgeridoo"
+ },
+ "Backyard Mates": {
+  "zh_TW": "後院朋友",
+  "zh_CN": "后院朋友",
+  "ja": "裏庭の仲間たち",
+  "fr": "Potes du jardin",
+  "es": "Colegas del jardín"
+ },
+ "Snags are on. Mind the lads with the bats.": {
+  "zh_TW": "BBQ 開始了。小心拿球棒的朋友。",
+  "zh_CN": "BBQ 开始了。小心拿球棒的朋友。",
+  "ja": "ソーセージ焼けたよ。バットを持った仲間に注意。",
+  "fr": "Les saucisses sont sur le feu. Attention aux copains avec les battes.",
+  "es": "Las salchichas ya están. Cuidado con los colegas con bates."
+ },
+ "Grill Sergeant": {
+  "zh_TW": "BBQ 隊長",
+  "zh_CN": "BBQ 队长",
+  "ja": "グリル教官",
+  "fr": "Sergent du grill",
+  "es": "Sargento de la parrilla"
+ },
+ "Sizzle drill, mate! Keep off the hotplate.": {
+  "zh_TW": "BBQ 大操練，朋友！別踩到熱盤。",
+  "zh_CN": "BBQ 大操练，朋友！别踩到热盘。",
+  "ja": "ジュージュー練習だ！熱い板には近づくな。",
+  "fr": "Exercice grésillant, mon pote ! Évite la plaque.",
+  "es": "¡Instrucción chisporroteante, colega! Lejos de la plancha."
+ },
+ "Cricket Captain": {
+  "zh_TW": "板球隊長",
+  "zh_CN": "板球队长",
+  "ja": "クリケットキャプテン",
+  "fr": "Capitaine de cricket",
+  "es": "Capitán de críquet"
+ },
+ "Howzat! Duck under the spinning clothesline.": {
+  "zh_TW": "出局！快躲開旋轉的衣架。",
+  "zh_CN": "出局！快躲开旋转的衣架。",
+  "ja": "ハウザット！回る物干しをよけろ。",
+  "fr": "Howzat ! Baisse-toi sous le séchoir qui tourne.",
+  "es": "¡Howzat! Agáchate bajo el tendedero giratorio."
+ },
+ "Thong Champ": {
+  "zh_TW": "夾腳拖冠軍",
+  "zh_CN": "人字拖冠军",
+  "ja": "ビーサンチャンプ",
+  "fr": "Champion des tongs",
+  "es": "Campeón de chanclas"
+ },
+ "Flip, flop, thwap. Calls in a mate when pressed.": {
+  "zh_TW": "拍拍拍！被打到就會叫朋友。",
+  "zh_CN": "拍拍拍！被打到就会叫朋友。",
+  "ja": "ペタ、ペタ、バシッ。追い込まれると仲間を呼びます。",
+  "fr": "Flip, flop, paf. Appelle un copain quand il est pressé.",
+  "es": "Flip, flop, ¡zas! Llama a un colega cuando lo aprietan."
+ },
+ "Outback Ollie": {
+  "zh_TW": "大地 Ollie",
+  "zh_CN": "大地 Ollie",
+  "ja": "アウトバックのオリー",
+  "fr": "Ollie du bush",
+  "es": "Ollie del interior"
+ },
+ "Bush hat, big heart, bigger tongs.": {
+  "zh_TW": "草帽、大大的心、更大的夾子。",
+  "zh_CN": "草帽、大大的心、更大的夹子。",
+  "ja": "ブッシュハット、大きな心、もっと大きなトング。",
+  "fr": "Chapeau de brousse, grand cœur, pince encore plus grande.",
+  "es": "Sombrero de monte, gran corazón, pinzas aún más grandes."
+ },
+ "Big Bruce": {
+  "zh_TW": "巨型 Bruce",
+  "zh_CN": "巨型 Bruce",
+  "ja": "ビッグ・ブルース",
+  "fr": "Gros Bruce",
+  "es": "Bruce el grande"
+ },
+ "The big backyard bash. Everyone is invited!": {
+  "zh_TW": "後院大派對。人人都來！",
+  "zh_CN": "后院大派对。人人都来！",
+  "ja": "裏庭の大パーティー。みんなで来てね！",
+  "fr": "La grande fête au jardin. Tout le monde est invité !",
+  "es": "¡La gran fiesta del jardín! ¡Todos están invitados!"
+ },
+ "Sizzle Time!": {
+  "zh_TW": "BBQ 時間！",
+  "zh_CN": "BBQ 时间！",
+  "ja": "ジュージュータイム！",
+  "fr": "C'est l'heure du grésillement !",
+  "es": "¡Hora de chisporrotear!"
+ },
+ "Hoist Sweep!": {
+  "zh_TW": "衣架亂轉！",
+  "zh_CN": "衣架乱转！",
+  "ja": "物干しスイープ！",
+  "fr": "Séchoir en rotation !",
+  "es": "¡Tendedero giratorio!"
+ }
+}

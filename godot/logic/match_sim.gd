@@ -66,6 +66,9 @@ var destruct: Destruct = null
 ## in every parity / web-equivalent match, so nothing inside them ever runs there.
 var ledge: Ledge = null
 var rubble: Rubble = null
+## DLC pack arena hazards (logic/pack_zones.gd: burners, ice, the Hills Hoist): the same gate as the ledge, and only on an arena that
+## carries `zones` (or when a pack stage event asks via ensure_zones()). null in every parity / web-equivalent match.
+var zones: PackZones = null
 
 func _init(content_dir: String = "res://data") -> void:
 	combat.load_content(content_dir)
@@ -84,6 +87,8 @@ func dispose() -> void:
 		destruct.clear()
 	destruct = null
 	if ledge != null: ledge.sim = null
+	if zones != null: zones.dispose()
+	zones = null
 	if rubble != null: rubble.dispose()
 	ledge = null
 	rubble = null
@@ -129,6 +134,9 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	if combat.tuning_active() and Ledge.enabled():
 		ledge = Ledge.new()
 		ledge.setup(self)
+	if combat.tuning_active() and PackZones.wanted(map):
+		zones = PackZones.new()
+		zones.setup(self)
 	if destructible and destruct != null and combat.tuning_active() and Rubble.enabled():
 		rubble = Rubble.new()
 		rubble.setup(self)
@@ -341,6 +349,7 @@ func step(dt: float) -> void:
 		if c != null: c.think(f, self, dt)
 	think_us += Time.get_ticks_usec() - t0
 	if net != null: net.call("post_controls", dt, net_pre)
+	if zones != null: zones.pre_step()      # pack arenas only: the ice steering flag
 	for f: FighterState in fighters:
 		combat.timers(f, dt)
 		if not f.is_ghost: f.phys.step(dt, solids, f)
@@ -353,6 +362,7 @@ func step(dt: float) -> void:
 		if pi >= 0:
 			combat.kick_lean(f, -2.0, combat.rng.range_f(-1, 1)); combat.kick_head(f, -3.0, combat.rng.range_f(-2, 2))
 			combat.ev({"type": "pad", "f": f, "pad": pi})
+	if zones != null: zones.post_step(dt)   # pack arenas only: burners, the Hills Hoist, expiring event zones
 	pickups.update(dt)
 	combat.weapons.step_all(dt)           # updateRockets, updateGrenades, updateKnives, updateArrows, updateNets
 	if rubble != null: rubble.step(dt)    # thrown debris chunks (docs/DAMAGE.md "Ledge cling and throwable rubble")
@@ -370,6 +380,14 @@ func step(dt: float) -> void:
 		f.phys.crouch_k += (want - f.phys.crouch_k) * minf(1.0, dt * 14.0)
 		combat.weapons.climb_tick(f, dt)
 		combat.weapons.grab_tick(f, dt)
+
+## The pack hazard overlay for a stage event (Arcade): the arena's own, or a fresh one when the arena has none. null when the
+## balance overlay is off (online without net_zones, the parity paths): events then keep their toast and warning only.
+func ensure_zones() -> PackZones:
+	if zones == null and combat.tuning_active():
+		zones = PackZones.new()
+		zones.setup(self)
+	return zones
 
 ## meleeSweep for everyone (once per fixed simulation step, after the animation points were written, see World.sim_step).
 func sweep() -> void:

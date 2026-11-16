@@ -138,6 +138,7 @@ func reload() -> void:
 static func add_extra_maps(m: Dictionary) -> Dictionary:
 	if not m.has("custom"): m["custom"] = MapBuilder.custom_map({})
 	if not m.has(SiteMap.ID): m[SiteMap.ID] = SiteMap.header()   # Building Site (Construction DLC): MapBuilder.build generates the layout from SiteMap.current_seed
+	PackMaps.register(m)   # the DLC packs' generated arenas (kitchen_chaos, toy_workshop, backyard_bbq): `only` = the pack id, never in an ordinary mode's list
 	return m
 
 ## One data file as a Dictionary ({} and an error if missing or invalid), through the parsed-JSON cache and already a

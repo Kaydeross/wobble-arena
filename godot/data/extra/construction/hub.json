@@ -1,0 +1,16 @@
+{
+ "_readme": "Multi-pack hub file (godot/dlc/pack_registry.gd documents every field). Construction keeps its original hub / wizard behaviour: it is a hub-only pack (wizard false), its arenas stay in ModeRules.MODE_MAPS and its Arcade prefers the generated site.",
+ "order": 0,
+ "mode": "construction",
+ "maps": [
+  "siteyard",
+  "sitegen"
+ ],
+ "arcade_maps": [
+  "sitegen",
+  "siteyard"
+ ],
+ "wizard": false,
+ "price": 1500,
+ "seed_map": "sitegen"
+}

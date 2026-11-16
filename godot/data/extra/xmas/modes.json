@@ -1,0 +1,35 @@
+{
+ "_note": "Godot-only Ho Ho Ho pack mode (mode id = pack id, like construction): a classic-style brawl whose crates hold the pack's 6 weapons (dropWeights) plus Health Packs, power-ups and one themed shared weapon (dropAllow). Merged by ModeRules.merge_extra. Not in ModeRules.PLAYABLE and not in a picker: the DLC hub (phase D) starts it.",
+ "xmas": {
+  "name": "Ho Ho Ho",
+  "desc": "Candy canes, snowballs and gift bombs in Santa's toy workshop. Mind the ice",
+  "preset": {
+   "limit": 20
+  },
+  "start": "candycane",
+  "allowWeapons": [
+   "candycane",
+   "snowballcannon",
+   "giftbomb",
+   "tinselwhip",
+   "ornamentlauncher",
+   "toymallet",
+   "net"
+  ],
+  "dropAllow": [
+   "heal",
+   "speed",
+   "rage",
+   "shield",
+   "net"
+  ],
+  "dropWeights": {
+   "candycane": 0.8,
+   "snowballcannon": 0.8,
+   "giftbomb": 0.6,
+   "tinselwhip": 0.8,
+   "ornamentlauncher": 0.7,
+   "toymallet": 0.7
+  }
+ }
+}

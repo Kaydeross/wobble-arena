@@ -14,14 +14,21 @@ extends Resource
 @export var accent_color := Color("#ffc21a")
 @export var weapon_ids: Array[String] = []  ## shown on the racks, left to right, top row first
 @export var arena_id := ""                  ## the arena the test drive plays on (and the arena badge on the rack)
-## How the container is painted: "hazard" (accent body, black / accent warning stripes). Unknown styles fall back to it.
+## How the container is painted: "hazard" (accent body, stripes of the accent and `stripe_color` along the door feet),
+## "plain" (no stripes). Unknown styles fall back to "hazard". `body_color` (alpha 0 = the accent) paints the walls and
+## doors, `stripe_color` is the second stripe colour (Construction: black), so each pack has its own livery.
 @export var container_style := "hazard"
+@export var body_color := Color(0, 0, 0, 0)
+@export var stripe_color := Color("#14120b")
 ## The hat the wobbler wears while a weapon of this pack is previewed ("" = keeps its own hat). Preview only.
 @export var badge_icon := ""
+## The 2D badge drawn in the title header and the hub's pack cards (ui/pack_badge.gd): "hardhat", "chef", "santa" or "cork".
+## "" = the badge_icon.
+@export var badge_art := ""
 ## The game mode the test drive runs (its crate pool must allow the pack's weapons).
 @export var test_mode := "classic"
-## Which unlock the pack uses: "construction" = DlcUnlock (coins or the developer code, dlc/construction/dlc_unlock.gd).
-## "" = always unlocked (free packs).
+## Which unlock the pack uses: "construction" or "pack" = DlcUnlock for this pack_id (coins or the developer code,
+## dlc/construction/dlc_unlock.gd; per-pack ownership in Save.dlc). "" = always unlocked (free packs).
 @export var unlock_kind := ""
 
 ## Tests only: a Callable returning bool that replaces the ownership lookup for this pack (never set by the game).
@@ -36,7 +43,16 @@ func unlocked() -> bool:
 	match unlock_kind:
 		"": return true
 		"construction": return DlcUnlock.owned()
+		"pack": return DlcUnlock.owned(null, pack_id)
 	return false
+
+## The 2D badge kind (ui/pack_badge.gd).
+func badge_kind() -> String:
+	return badge_art if badge_art != "" else badge_icon
+
+## The container wall colour.
+func body() -> Color:
+	return body_color if body_color.a > 0.01 else accent_color
 
 ## The weapon ids that are real weapons in `weapons` (Content.weapons): a pack never shows a tool the build cannot give.
 func real_weapons(weapons: Dictionary) -> Array[String]:

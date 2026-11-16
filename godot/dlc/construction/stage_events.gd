@@ -14,6 +14,16 @@ extends RefCounted
 ##                   random different melee tool; giant_scale makes the boss a Giant (the manager flags big_t).
 ##   weapon_drop     every N s on a boss stage: a gun or thrown tool arrives as a real pickup crate. The boss may take
 ##                   it while holding its melee kit; its ammo is not topped up.
+## DLC pack events (Kitchen / Xmas / Australia stages, data/extra/<pack>/stages.json; the same `every` / `params` shape, all params optional):
+##   dinner_rush     every N s: `patches` burner patches (radius `radius`) glow on the floor, one near each player, after a `warning_time`
+##                   s amber ring; then they burn (PackZones burner zones) for `duration` s.
+##   sausage_sizzle  the same with small, quick hotplate bursts (more patches, a shorter warning).
+##   ice_zone        the same with slippery ice patches (PackZones ice zones: only under the balance overlay) for a long `duration`.
+##   ingredient_drop every N s: `crate_count` ingredient crates drop (the load-test crate, a different colour and toast).
+##   gift_barrage    every N s: a staggered barrage of `crate_count` gift crates (`stagger` s apart).
+##   hoist_sweep     every N s: a ring marks the sweep, then a giant Hills Hoist spins up over the arena's middle (PackZones hoist
+##                   zone + PackSpinner) and knocks everyone it touches for `duration` s.
+## An event type this build does not know is ignored (the update loop has no branch for it). Pack events never draw from the combat RNG.
 ## `counts` / `fired` record what fired and when (tests). `active_events()` is the online co-op host's `am.ev` source
 ## (docs/ARCADE_COOP_PLAN.md M4): the warning rings still on the floor, so a guest can draw the same red / amber rings
 ## without simulating the event (presentation only, the damage and the summon stay here).
@@ -49,6 +59,7 @@ var _swap_pool: Array = []
 var _weapon_drop_cid := 900000
 var _was_holding := true
 var _ev_id := 0                        ## a stable id per warning event: `am.ev` dedupes the guest's rings by it
+var _pulses: Array = []                ## DLC pack zone events in flight: {type, left_warn, left_on, on, zones, nodes, rings}
 
 func setup(manager: ArcadeManager, s: MatchSim, stage: Dictionary, p_rng: RandomNumberGenerator) -> void:
 	m = manager
@@ -114,6 +125,12 @@ func update(dt: float) -> void:
 					"revision_pads": _revision(e["params"])
 					"scope_creep": _creep(e["params"])
 					"weapon_drop": _weapon_drop(e["params"])
+					"dinner_rush": _zone_pulse("dinner_rush", "Dinner Rush!", "burner", e["params"], {"patches": 7, "radius": 3.2, "warning_time": 2.0, "duration": 3.5})
+					"sausage_sizzle": _zone_pulse("sausage_sizzle", "Sausage Sizzle!", "burner", e["params"], {"patches": 5, "radius": 2.2, "warning_time": 1.2, "duration": 2.5})
+					"ice_zone": _zone_pulse("ice_zone", "Ice Zone!", "ice", e["params"], {"patches": 3, "radius": 4.5, "warning_time": 1.5, "duration": 12.0})
+					"ingredient_drop": _pack_drop("ingredient_drop", "Ingredient Drop!", e["params"], {"crate_count": 4, "warning_time": 2.0, "stagger": 0.0}, Color(0.45, 0.72, 0.28))
+					"gift_barrage": _pack_drop("gift_barrage", "Gift Barrage!", e["params"], {"crate_count": 6, "warning_time": 1.8, "stagger": 0.3}, Color(0.85, 0.2, 0.3))
+					"hoist_sweep": _hoist_sweep(e["params"])
 		elif e["type"] == "backup_call" and not e["done"]:
 			var p: Dictionary = e["params"]
 			if m.boss != null and not m.boss.dead and m.boss_frac() <= float(p.get("hp_threshold", 0.5)):
@@ -124,6 +141,7 @@ func update(dt: float) -> void:
 	_update_crates(dt)
 	_update_pads(dt)
 	_update_summons(dt)
+	if not _pulses.is_empty(): _update_pulses(dt)
 
 ## The manager's boss phase n (1 = the first threshold): the change request swaps tools. The thresholds are the stage's
 ## own data (`change_request.params.phases`, PHASES fallback), so a phase the table does not list never swaps anything.
@@ -145,6 +163,7 @@ func finish() -> void:
 	_pads.clear()
 	for s: Dictionary in _summons: _free(s.get("node"))
 	_summons.clear()
+	_clear_pulses()
 
 func _free(n: Variant) -> void:
 	if n != null and is_instance_valid(n): (n as Node).queue_free()
@@ -188,7 +207,7 @@ func _load_test(p: Dictionary) -> void:
 			x = float(sp[0]); z = float(sp[1])
 		_crates.append(_new_crate(x, z, warn))
 
-func _new_crate(x: float, z: float, warn: float) -> Dictionary:
+func _new_crate(x: float, z: float, warn: float, col := Color(0.85, 0.6, 0.18)) -> Dictionary:
 	var h := {"id": _next_ev_id(), "x": x, "z": z, "y": CRATE_DROP_Y, "gy": 0.0, "vx": 0.0, "vz": 0.0,
 		"left": warn, "dur": maxf(warn, 0.1), "node": null, "ring": null}
 	if world != null:
@@ -197,7 +216,7 @@ func _new_crate(x: float, z: float, warn: float) -> Dictionary:
 		var bm := BoxMesh.new()
 		bm.size = Vector3(1.5, 1.5, 1.5)
 		box.mesh = bm
-		box.material_override = _unshaded(Color(0.85, 0.6, 0.18))
+		box.material_override = _unshaded(col)
 		box.position = Vector3(x, CRATE_DROP_Y, z)
 		_fx_root().add_child(box)
 		h["ring"] = ring; h["node"] = box
@@ -378,6 +397,141 @@ func _weapon_drop(p: Dictionary) -> void:
 		var sp: Array = spots[rng.randi() % spots.size()]
 		_weapon_drop_cid += 1
 		sim.pickups.spawn_at(key, sp, _weapon_drop_cid)
+
+# ---------------- DLC pack events (Kitchen / Xmas / Australia) ----------------
+
+## A staggered crate drop for a pack stage: the load-test crate and landing, with its own toast, colour and count. The first crates
+## land near the players; with `stagger` > 0 each next one starts that much later (a barrage).
+func _pack_drop(type: String, toast: String, p: Dictionary, def: Dictionary, col: Color) -> void:
+	var n := int(p.get("crate_count", def["crate_count"]))
+	var warn := float(p.get("warning_time", def["warning_time"]))
+	var stagger := float(p.get("stagger", def["stagger"]))
+	var spots := _floor_spots()
+	var live: Array = m.living_seats()
+	if live.is_empty(): live = [sim.player]
+	_fire(type)
+	_toast(TranslationServer.translate(toast))
+	for i in n:
+		var x := 0.0
+		var z := 0.0
+		if i < live.size():
+			var seat: FighterState = live[i]
+			var a := rng.randf_range(0.0, TAU)
+			var r := rng.randf_range(0.5, 3.0)
+			x = seat.phys.px + cos(a) * r
+			z = seat.phys.pz + sin(a) * r
+		else:
+			var sp: Array = spots[rng.randi() % spots.size()]
+			x = float(sp[0]) + rng.randf_range(-1.0, 1.0); z = float(sp[1]) + rng.randf_range(-1.0, 1.0)
+		_crates.append(_new_crate(x, z, warn + stagger * float(i), col))
+
+## A zone pulse: `patches` circles on the floor (one near each player, the rest on free floor spots), an amber / icy ring for
+## `warning_time` s, then the zones are live for `duration` s: burner patches set you alight (PackZones), ice patches are slippery
+## (only where the balance overlay is on: PackZones is created by MatchSim.ensure_zones() and is null otherwise, so then the
+## pulse is only the toast and the glow). Everything is deterministic from the stage rng.
+func _zone_pulse(type: String, toast: String, kind: String, p: Dictionary, def: Dictionary) -> void:
+	var n := maxi(1, int(p.get("patches", def["patches"])))
+	var r := float(p.get("radius", def["radius"]))
+	var warn := maxf(0.1, float(p.get("warning_time", def["warning_time"])))
+	var spots := _floor_spots()
+	var live: Array = m.living_seats()
+	if live.is_empty(): live = [sim.player]
+	_fire(type)
+	_toast(TranslationServer.translate(toast))
+	var pts: Array = []
+	for i in n:
+		if i < live.size():
+			var seat: FighterState = live[i]
+			var a := rng.randf_range(0.0, TAU)
+			pts.append([seat.phys.px + cos(a) * 2.0, seat.phys.pz + sin(a) * 2.0])
+		else:
+			var sp: Array = spots[rng.randi() % spots.size()]
+			pts.append([float(sp[0]), float(sp[1])])
+	var col := Color(1.0, 0.55, 0.1, 0.5) if kind == "burner" else Color(0.55, 0.85, 1.0, 0.5)
+	var rings: Array = []
+	if world != null:
+		for pt: Array in pts: rings.append(_warning_ring(float(pt[0]), float(pt[1]), 0.0, r, col))
+	_pulses.append({"type": type, "kind": kind, "pts": pts, "r": r, "left_warn": warn, "left_on": float(p.get("duration", def["duration"])),
+		"on": false, "zones": [], "nodes": [], "rings": rings})
+
+func _update_pulses(dt: float) -> void:
+	for i in range(_pulses.size() - 1, -1, -1):
+		var q: Dictionary = _pulses[i]
+		if not bool(q["on"]):
+			q["left_warn"] = float(q["left_warn"]) - dt
+			for ring: Variant in q["rings"]:                       # the warning blinks faster as it runs out
+				if ring != null and is_instance_valid(ring): (ring as Node3D).visible = float(q["left_warn"]) > 0.7 or int(float(q["left_warn"]) * 10.0) % 2 == 0
+			if float(q["left_warn"]) <= 0.0: _pulse_on(q)
+		else:
+			q["left_on"] = float(q["left_on"]) - dt
+			for nd: Variant in q["nodes"]:                          # a flicker on the burning patches, a steady sheen on ice
+				if nd != null and is_instance_valid(nd) and str(q["kind"]) == "burner":
+					(nd as Node3D).scale = Vector3.ONE * (1.0 + 0.04 * sin(t * 18.0))
+			if float(q["left_on"]) <= 0.0:
+				_end_pulse(q)
+				_pulses.remove_at(i)
+
+func _pulse_on(q: Dictionary) -> void:
+	q["on"] = true
+	for ring: Variant in q["rings"]: _free(ring)
+	q["rings"] = []
+	var zs: PackZones = sim.ensure_zones() if sim != null else null
+	var burner := str(q["kind"]) == "burner"
+	if str(q["kind"]) == "hoist":
+		var hz: Dictionary = q["hoist"]
+		hz["left"] = float(q["left_on"]) + 0.2
+		if zs != null:
+			zs.add(hz); (q["zones"] as Array).append(hz)
+		if world != null:
+			var sp := PackSpinner.build(hz)
+			_fx_root().add_child(sp)
+			(q["nodes"] as Array).append(sp)
+		return
+	for pt: Array in q["pts"]:
+		if zs != null:
+			var z := {"kind": q["kind"], "c": [float(pt[0]), float(pt[1])], "r": float(q["r"]), "top": 0.0, "left": float(q["left_on"]) + 0.2}
+			zs.add(z); (q["zones"] as Array).append(z)
+		if world != null:
+			var mi := MeshInstance3D.new()
+			var cm := CylinderMesh.new()
+			cm.top_radius = float(q["r"]); cm.bottom_radius = float(q["r"]); cm.height = 0.1; cm.radial_segments = 24
+			mi.mesh = cm
+			mi.material_override = _unshaded(Color(1.0, 0.42, 0.08, 0.7) if burner else Color(0.7, 0.92, 1.0, 0.6))
+			mi.position = Vector3(float(pt[0]), 0.1, float(pt[1]))
+			_fx_root().add_child(mi)
+			(q["nodes"] as Array).append(mi)
+
+func _end_pulse(q: Dictionary) -> void:
+	for ring: Variant in q["rings"]: _free(ring)
+	for nd: Variant in q["nodes"]: _free(nd)
+	if sim != null and sim.zones != null:
+		for z: Dictionary in q["zones"]: sim.zones.remove(z)
+	q["rings"] = []; q["nodes"] = []; q["zones"] = []
+
+func _clear_pulses() -> void:
+	for q: Dictionary in _pulses: _end_pulse(q)
+	_pulses.clear()
+
+## Hoist sweep: a big amber ring (the sweep's reach) on the floor, then a giant rotary clothesline spins over the arena's middle
+## (or the Hills Hoist's own pole) for `duration` s, knocking everyone its arms touch. Reuses the PackZones hoist hit band.
+func _hoist_sweep(p: Dictionary) -> void:
+	var r := float(p.get("radius", 14.0))
+	var warn := maxf(0.1, float(p.get("warning_time", 2.0)))
+	var dur := float(p.get("duration", 6.0))
+	var cx := 0.0
+	var cz := 0.0
+	for z: Variant in (sim.map.get("zones", []) as Array):
+		if z is Dictionary and str((z as Dictionary).get("kind", "")) == "hoist" and not (z as Dictionary).has("left"):
+			cx = float(z["x"]); cz = float(z["z"]); break
+	_fire("hoist_sweep")
+	_toast(TranslationServer.translate("Hoist Sweep!"))
+	var rings: Array = []
+	if world != null: rings.append(_warning_ring(cx, cz, 0.0, r, Color(1.0, 0.55, 0.1, 0.4)))
+	var dir := 1.0 if rng.randf() < 0.5 else -1.0
+	var pz := {"kind": "hoist", "x": cx, "z": cz, "r": r, "arms": int(p.get("arms", 2)), "omega": dir * float(p.get("omega", 1.6)),
+		"phase": rng.randf_range(0.0, TAU), "y0": 0.8, "y1": 1.7}
+	_pulses.append({"type": "hoist_sweep", "kind": "hoist", "pts": [], "r": r, "left_warn": warn, "left_on": dur, "on": false, "zones": [], "nodes": [],
+		"rings": rings, "hoist": pz})
 
 # ---------------- deadline_shrink ----------------
 

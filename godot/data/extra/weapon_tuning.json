@@ -201,6 +201,47 @@
     "grav": 1.4,
     "jump": 0.65
    }
+  },
+  "fryingpan": {
+   "swingStyle": "crush"
+  },
+  "cleaver": {
+   "swingStyle": "cleave"
+  },
+  "rollingpin": {
+   "swingStyle": "cleave"
+  },
+  "candycane": {
+   "swingStyle": "cleave"
+  },
+  "tinselwhip": {
+   "swingStyle": "whip"
+  },
+  "toymallet": {
+   "swingStyle": "crush"
+  },
+  "cricketbat": {
+   "swingStyle": "cleave"
+  },
+  "thongslapper": {
+   "swingStyle": "thrust"
+  },
+  "bbqtongs": {
+   "swingStyle": "thrust"
+  },
+  "snowballcannon": {
+   "chill": {
+    "time": 2.0,
+    "speed": 0.8,
+    "traction": 0.4
+   }
+  },
+  "giftbomb": {
+   "heavy": {
+    "time": 3.0,
+    "grav": 1.3,
+    "jump": 0.75
+   }
   }
  },
  "drops": {

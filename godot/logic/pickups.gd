@@ -178,7 +178,7 @@ func bot_wants(b: FighterState, p: Dictionary) -> bool:
 	if drops.get("powerups", {}).has(key):
 		return not (b.arcade_enemy and (key == "rage" or key == "shield"))
 	var w := combat.wdata(key)
-	var is_ranged := BOT_GUNS.has(key) or (combat.mode_id == "construction" and ["gun", "knife", "ball"].has(str(w.get("type", ""))))
+	var is_ranged := BOT_GUNS.has(key) or ((combat.mode_id == "construction" or ModeRules.is_pack_mode(combat.mode_id)) and ["gun", "knife", "ball"].has(str(w.get("type", ""))))
 	if not is_ranged: return false
 	return b.slot < 0 or (armed_weapon_crates and (armed_weapon_crate_owner == null or armed_weapon_crate_owner == b))
 

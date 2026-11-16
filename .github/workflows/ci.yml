@@ -123,7 +123,11 @@ jobs:
         if: matrix.shard == 'rest'
       - run: npm run test:godot-construction-data
         if: matrix.shard == 'net'
+      - run: npm run test:godot-packs-data
+        if: matrix.shard == 'net'
       - run: npm run test:godot-dlc-ui    # (blocking again: its Linux crash was the SystemFont fallback cycle, fixed in autoload/lang.gd)
+        if: matrix.shard == 'rest'
+      - run: npm run test:godot-multipack
         if: matrix.shard == 'rest'
       - run: npm run test:godot-title
         if: matrix.shard == 'rest'
@@ -131,6 +135,9 @@ jobs:
         if: matrix.shard == 'rest'
         timeout-minutes: 8
       - run: npm run test:godot-site-map
+      - run: npm run test:godot-pack-maps
+        if: matrix.shard == 'net'
+      - run: npm run test:godot-pack-models
         if: matrix.shard == 'net'
       - run: npm run test:godot-sandbox
         if: matrix.shard == 'net'

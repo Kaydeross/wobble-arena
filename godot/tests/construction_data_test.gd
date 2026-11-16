@@ -155,7 +155,11 @@ func _test_weapons() -> void:
 			check(false, "%s uses unsupported type %s" % [tid, t])
 
 	# 4. ExtraWeapons helper tests & merge purity
-	check(ExtraWeapons.ids().size() == EXPECTED_TOOLS.size(), "ExtraWeapons.ids() count matches")
+	# Pack tables are per pack: the Construction ids are a subset of the merged registry (other packs add their own).
+	var all_extra_ids: Array = ExtraWeapons.ids()
+	for tid in EXPECTED_TOOLS:
+		check(all_extra_ids.has(tid), "ExtraWeapons.ids() holds %s" % tid)
+	check(all_extra_ids.size() >= EXPECTED_TOOLS.size(), "ExtraWeapons.ids() holds at least the Construction tools")
 	for tid in EXPECTED_TOOLS:
 		check(ExtraWeapons.is_extra(tid), "ExtraWeapons.is_extra(%s)" % tid)
 	check(not ExtraWeapons.is_extra("hammer"), "ExtraWeapons.is_extra('hammer') is false")
@@ -328,8 +332,28 @@ func _rm_rf(path: String) -> void:
 func _legacy_merge_modes(shared: Variant) -> Dictionary:
 	var modes: Dictionary = (shared as Dictionary).duplicate(true) if shared is Dictionary else {}
 	_apply_legacy_modes_file(modes, "res://data/extra/modes.json")
-	_apply_legacy_modes_file(modes, CONSTRUCTION_DIR + "modes.json")
+	for d: String in _shipped_pack_dirs():                       # every shipped pack, sorted pack id (the registry's order)
+		_apply_legacy_modes_file(modes, "res://data/extra/%s/modes.json" % d)
 	return modes
+
+## Every shipped pack folder (res://data/extra/<id>/pack.json), sorted: the order the Content registry merges them in.
+func _shipped_pack_dirs() -> Array:
+	var out: Array = []
+	var dirs := DirAccess.get_directories_at("res://data/extra")
+	dirs.sort()
+	for d: String in dirs:
+		if FileAccess.file_exists("res://data/extra/%s/pack.json" % d): out.append(d)
+	return out
+
+## The pre-pack oracle for a pack table: the same section file of every shipped pack merged first-wins in sorted pack
+## order, without author (`_`) keys (what Content.pack_tables returns).
+func _legacy_pack_table(file: String) -> Dictionary:
+	var out := {}
+	for d: String in _shipped_pack_dirs():
+		var t := _strip_author_keys(_json("res://data/extra/%s/%s" % [d, file]))
+		for k: String in t:
+			if not out.has(k): out[k] = t[k]
+	return out
 
 func _apply_legacy_modes_file(modes: Dictionary, path: String) -> void:
 	if not FileAccess.file_exists(path): return
@@ -372,7 +396,8 @@ func _test_packs() -> void:
 
 	# 1. Every shipped pack.json parses, validates and is in the registry.
 	var ids: Array = cs.pack_ids()
-	check(ids == ["construction"], "packs: registry is [construction] (got %s)" % str(ids))
+	check(ids == _shipped_pack_dirs(), "packs: registry is every shipped pack, sorted (got %s)" % str(ids))
+	check(ids.has("construction"), "packs: registry holds construction")
 	var reg: Dictionary = cs.pack("construction")
 	check(str(reg.get("name", "")) == "Construction", "packs: construction name")
 	check(int(reg.get("version", 0)) == 1, "packs: construction version 1")
@@ -399,13 +424,21 @@ func _test_packs() -> void:
 	check(cs.pack_section_file("construction", "classes") == "", "packs: undeclared section resolves to ''")
 	check(cs.pack_section_file("nope", "weapons") == "", "packs: unknown pack resolves to ''")
 	check(cs.pack_section_file("construction", "nope") == "", "packs: unknown section resolves to ''")
-	check(cs.pack_paths("modes") == [CONSTRUCTION_DIR + "modes.json"], "packs: pack_paths(modes) order")
+	var mode_paths: Array = []
+	for d: String in _shipped_pack_dirs(): mode_paths.append("res://data/extra/%s/modes.json" % d)
+	check(cs.pack_paths("modes") == mode_paths, "packs: pack_paths(modes) order (sorted pack id)")
 
 	# 3. Byte/machine-equal legacy compare: the pack tables are exactly the pre-refactor files/merge result.
-	var legacy_weapons: Dictionary = _json(CONSTRUCTION_DIR + "weapons.json") if _json(CONSTRUCTION_DIR + "weapons.json") is Dictionary else {}
-	check(ExtraWeapons.data() == legacy_weapons, "packs: ExtraWeapons.data() == construction/weapons.json (byte-equal)")
+	var legacy_weapons: Dictionary = _legacy_pack_table("weapons.json")
+	var construction_weapons: Dictionary = _strip_author_keys(_json(CONSTRUCTION_DIR + "weapons.json"))
+	for k: String in construction_weapons:
+		check(ExtraWeapons.data().get(k) == construction_weapons[k], "packs: ExtraWeapons.data()[%s] == construction/weapons.json (byte-equal)" % k)
+	check(ExtraWeapons.data() == legacy_weapons, "packs: ExtraWeapons.data() == every pack's weapons.json merged in sorted order (byte-equal)")
 	var legacy_classes: Dictionary = _strip_author_keys(_json("res://data/extra/classes.json"))
-	check(ExtraClasses.data() == legacy_classes, "packs: ExtraClasses.data() == data/extra/classes.json (byte-equal)")
+	var pack_classes: Dictionary = _legacy_pack_table("classes.json")
+	for k: String in pack_classes:
+		if not legacy_classes.has(k): legacy_classes[k] = pack_classes[k]
+	check(ExtraClasses.data() == legacy_classes, "packs: ExtraClasses.data() == data/extra/classes.json + pack classes (byte-equal)")
 	var merged_modes: Dictionary = ModeRules.merge_extra((_json("res://data/modes.json") as Dictionary).duplicate(true))
 	var legacy_modes: Dictionary = _legacy_merge_modes(_json("res://data/modes.json"))
 	check(merged_modes == legacy_modes, "packs: ModeRules.merge_extra == legacy merge (byte-equal)")
@@ -469,11 +502,11 @@ func _test_packs() -> void:
 	check(ExtraWeapons.data() == legacy_weapons, "packs: hooks still byte-equal after reload()")
 
 	# 6. The documented autoload entry point: Content.load_dlc_packs() scans res://data/extra/*/pack.json itself.
-	check(content.load_dlc_packs().size() == 1, "packs: Content.load_dlc_packs() finds the shipped pack")
-	check(cs.pack_ids() == ["construction"], "packs: Content.load_dlc_packs() refreshes the registry")
+	check(content.load_dlc_packs().size() == _shipped_pack_dirs().size(), "packs: Content.load_dlc_packs() finds every shipped pack")
+	check(cs.pack_ids() == _shipped_pack_dirs(), "packs: Content.load_dlc_packs() refreshes the registry")
 	check(ExtraWeapons.data() == legacy_weapons, "packs: hooks follow the registry generation")
 
-	print("PACKS ok (1 shipped pack; weapons/classes/modes/stages byte-equal; %d synthetic manifests, %d reported as malformed; reload idempotent)" % [synth.size(), bad_count])
+	print("PACKS ok (%d shipped packs; weapons/classes/modes/stages byte-equal; %d synthetic manifests, %d reported as malformed; reload idempotent)" % [_shipped_pack_dirs().size(), synth.size(), bad_count])
 
 
 

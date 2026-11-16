@@ -49,6 +49,7 @@ static func skin_price(k: String) -> int:
 static func skin_rarity(k: String) -> String:
 	if k == "none" or free_skins().has(k): return "common"
 	if is_code_skin(k): return str(data()["code_skins"][k])
+	if (data().get("pack_skin_rarity", {}) as Dictionary).has(k): return str(data()["pack_skin_rarity"][k])
 	return str((data().get("skin_shop", {}).get(k, [0, "common"]) as Array)[1])
 
 static func skin_name(k: String) -> String:
@@ -105,8 +106,61 @@ static func hats() -> Array:
 	var ex := DlcSave.exclusive_hats()
 	var tree := Engine.get_main_loop() as SceneTree          # (the Save autoload by path: this script must compile without it, like in the --script tests)
 	var sv: Node = tree.root.get_node_or_null("Save") if tree != null else null
-	if ex.is_empty() or (sv != null and DlcSave.won_arcade(sv.dlc)): return all     # the Arcade victory hat is listed only once it is won
-	return all.filter(func(h: String) -> bool: return not ex.has(h))
+	if not (ex.is_empty() or (sv != null and DlcSave.won_arcade(sv.dlc))):     # the Arcade victory hat is listed only once it is won
+		all = all.filter(func(h: String) -> bool: return not ex.has(h))
+	return hats_for(all, sv.dlc if sv != null else {}, sv.codes if sv != null else [])
+
+# ---------------- pack cosmetics (locker.json pack_items; the looks are in godot/dlc/<pack>/<pack>_looks.gd) ----------------
+## pack_items = {pack: {hats: [ids], skins: [ids], arcade_hats: {normal: id, nightmare: id}}}. Pack hats are listed only for a pack's
+## owner, an Arcade victory hat only after that victory; pack outfits are never in the Shop and reach Save.skins through grant_pack_skins().
+## Contract with the multi-pack save (phase D): save.dlc["packs"][pack] = {owned: bool, arcade_clears: {easy|normal|nightmare: [stage ids]}},
+## the victory being the stage id "_victory" like Construction's (DlcSave.VICTORY); the developer code ("dev") owns every pack.
+
+static func pack_items() -> Dictionary:
+	return data().get("pack_items", {})
+
+static func pack_skins(pack: String) -> Array:
+	return (pack_items().get(pack, {}) as Dictionary).get("skins", [])
+
+## "" when `item` (hat or outfit id) belongs to no pack.
+static func pack_of(item: String) -> String:
+	var pi := pack_items()
+	for pack: String in pi:
+		var d: Dictionary = pi[pack]
+		if (d.get("hats", []) as Array).has(item) or (d.get("skins", []) as Array).has(item) or (d.get("arcade_hats", {}) as Dictionary).values().has(item):
+			return pack
+	return ""
+
+static func pack_owned(dlc: Dictionary, codes: Array, pack: String) -> bool:
+	if codes.has("dev"): return true
+	return bool((((dlc.get("packs", {}) as Dictionary).get(pack, {}) as Dictionary)).get("owned", false))
+
+static func pack_won(dlc: Dictionary, pack: String, diff: String) -> bool:
+	var st: Dictionary = (dlc.get("packs", {}) as Dictionary).get(pack, {})
+	return (((st.get("arcade_clears", {}) as Dictionary).get(diff, []) as Array)).has("_victory")
+
+## `all` without the pack hats the profile (`dlc`, `codes`) does not own, and without the Arcade victory hats it has not won.
+static func hats_for(all: Array, dlc: Dictionary, codes: Array) -> Array:
+	var out: Array = []
+	var pi := pack_items()
+	for h: String in all:
+		var pack := pack_of(h)
+		if pack == "": out.append(h); continue
+		var d: Dictionary = pi[pack]
+		var arcade: Dictionary = d.get("arcade_hats", {})
+		var diff := ""
+		for k: String in arcade:
+			if arcade[k] == h: diff = k
+		if diff != "":
+			if pack_won(dlc, pack, diff): out.append(h)
+		elif (d.get("hats", []) as Array).has(h) and pack_owned(dlc, codes, pack):
+			out.append(h)
+	return out
+
+## The pack's outfits not yet in `sv.skins`: append them when the pack is bought (and on load for an owner).
+static func grant_pack_skins(sv: Object, pack: String) -> void:
+	for k: String in pack_skins(pack):
+		if not (sv.skins as Array).has(k): (sv.skins as Array).append(k)
 
 static func hat_name(h: String) -> String:
 	return str(data().get("hat_label", {}).get(h, h.capitalize()))

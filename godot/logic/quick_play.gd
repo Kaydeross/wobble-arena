@@ -19,6 +19,8 @@ static func modes() -> Array:
 	for m: String in ModeRules.PLAYABLE:
 		if NOT_QUICK.has(m) or not Content.modes.has(m) or out.has(m): continue
 		out.append(m)
+	for m: String in PackRegistry.wizard_modes(Content.maps):    # the packs you own (hub.json `wizard`): a quick match may roll them
+		if Content.modes.has(m) and not out.has(m): out.append(m)
 	if out.is_empty() and Content.modes.has("classic"): out.append("classic")
 	return out
 
@@ -59,7 +61,11 @@ static func pick(rng: RandomNumberGenerator) -> Dictionary:
 	var diff := _pick(rng, difficulties(), "normal")
 	var floor_kind := _pick(rng, floors(), "off")
 	var bots := ModeRules.bot_count(mode, Content.modes, _range(rng, BOT_MIN, BOT_MAX))
-	# final guard: never hand the world an id it would have to fix up (an empty or stale content table)
+	# final guard: never hand the world an id it would have to fix up (an empty or stale content table); a pack mode you
+	# do not own (a stale pick) falls back to Classic on its own arena list
+	if not PackRegistry.mode_owned(mode):
+		mode = "classic"
+		map = _pick(rng, maps_for(mode), "arena")
 	if not Content.modes.has(mode): mode = "classic" if Content.modes.has("classic") else str(Content.modes.keys()[0])
 	if not Content.maps.has(map): map = _fallback_map()
 	if not Content.classes.has(cls) or not SetupWizard.owns_class(cls): cls = "wobbler" if Content.classes.has("wobbler") else str(Content.classes.keys()[0])

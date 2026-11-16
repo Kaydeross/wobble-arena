@@ -1,0 +1,35 @@
+{
+ "_note": "Godot-only Hey Mate pack mode (mode id = pack id, like construction): a classic-style brawl whose crates hold the pack's 6 weapons (dropWeights) plus Health Packs, power-ups and one themed shared weapon (dropAllow). Merged by ModeRules.merge_extra. Not in ModeRules.PLAYABLE and not in a picker: the DLC hub (phase D) starts it.",
+ "australia": {
+  "name": "Hey Mate",
+  "desc": "Cricket bats, boomerangs and flying thongs in a backyard BBQ. Mind the clothesline",
+  "preset": {
+   "limit": 20
+  },
+  "start": "cricketbat",
+  "allowWeapons": [
+   "cricketbat",
+   "aussieboomerang",
+   "thongslapper",
+   "vegemitejar",
+   "bbqtongs",
+   "didgeridooblaster",
+   "snake"
+  ],
+  "dropAllow": [
+   "heal",
+   "speed",
+   "rage",
+   "shield",
+   "snake"
+  ],
+  "dropWeights": {
+   "cricketbat": 0.7,
+   "aussieboomerang": 0.8,
+   "thongslapper": 0.8,
+   "vegemitejar": 0.7,
+   "bbqtongs": 0.8,
+   "didgeridooblaster": 0.6
+  }
+ }
+}

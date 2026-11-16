@@ -42,7 +42,6 @@ signal run_won
 signal seat_downed(index: int, seconds: float)
 signal seat_revived(index: int)
 
-const STAGES_PATH := "res://data/extra/construction/stages.json"
 const LIVES := 3
 const REVIVE_TIME := 6.0               ## a downed seat comes back after this long while a teammate is still up
 const RETRY_SEED_STEP := 1009
@@ -77,11 +76,12 @@ const ENEMY_BUFF_TIME := 2.0           ## an Arcade enemy's Speed Boost pickups 
 
 ## The run in progress (null = no Arcade run: every other mode). Cleared by end_run().
 static var running: ArcadeManager = null
-static var _stages: Array = []
-static var _diffs: Dictionary = {}
 const DEFAULT_DIFF := "normal"
 
 # ---------------- run state ----------------
+## The DLC pack this run belongs to (its stage table, its game mode, its arena, its save slot, its victory hat). Set with
+## set_pack() BEFORE start_run; "construction" = the original behaviour, byte for byte.
+var pack := "construction"
 var seed_base := 0
 var diff := DEFAULT_DIFF               ## easy, normal or nightmare (the table's `difficulties`; nightmare = the numbers as written)
 var player_class := ""                 ## the class picked for the run ("" = Settings "class")
@@ -185,19 +185,14 @@ var _guest_arc_cd := 0.0                 ## guest: s until that request is re-se
 
 # ---------------- the table ----------------
 
-static func stages() -> Array:
-	if _stages.is_empty():
-		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(STAGES_PATH)) if FileAccess.file_exists(STAGES_PATH) else null
-		if v is Dictionary and (v as Dictionary).get("stages") is Array: _stages = v["stages"]
-	return _stages
+## The pack's tables are read once, by ArcadeCoop (the one reader of stages.json); these follow the ACTIVE pack (the run in
+## progress) unless a pack is named.
+static func stages(p_pack: String = "") -> Array:
+	return ArcadeCoop.stages(p_pack)
 
 ## The `difficulties` table of stages.json (id -> multipliers); see its _readme.
-static func difficulties() -> Dictionary:
-	if _diffs.is_empty():
-		stages()
-		var v: Variant = JSON.parse_string(FileAccess.get_file_as_string(STAGES_PATH)) if FileAccess.file_exists(STAGES_PATH) else null
-		if v is Dictionary and (v as Dictionary).get("difficulties") is Dictionary: _diffs = v["difficulties"]
-	return _diffs
+static func difficulties(p_pack: String = "") -> Dictionary:
+	return ArcadeCoop.difficulties(p_pack)
 
 static func diff_def_of(id: String) -> Dictionary:
 	var t := difficulties()
@@ -213,32 +208,50 @@ func scaled(coins: int) -> int:
 func stage_coins(d: Dictionary) -> int:
 	return scaled(int(d.get("coin_reward", 0))) + scaled(int(d.get("first_clear_bonus", 0)))
 
-static func count() -> int:
-	return stages().size()
+static func count(p_pack: String = "") -> int:
+	return stages(p_pack).size()
 
 func stage_def() -> Dictionary:
 	return stages()[clampi(stage, 0, count() - 1)]
 
 ## The map the stages play on: the generated site, else the Site Yard.
-static func site_map() -> String:
-	return "sitegen" if Content.maps.has("sitegen") else "siteyard"
+static func site_map(p_pack: String = "") -> String:
+	return ArcadeCoop.site_map(p_pack)
+
+## Makes this run belong to `id` (an owned pack with a stage table): the stage table, mode and arena follow it.
+func set_pack(id: String) -> void:
+	pack = id if id != "" else ArcadeCoop.PACK_ID
+	ArcadeCoop.use_pack(pack)
+
+## The run's game mode id.
+func mode_id() -> String:
+	return ArcadeCoop.mode_id(pack)
+
+## The victory hat of this run's pack (the Site Foreman hat for Construction).
+func victory_hat() -> String:
+	if pack == ArcadeCoop.PACK_ID: return FOREMAN_HAT
+	var reg: Variant = load("res://dlc/pack_registry.gd")
+	return str(reg.victory_hat(pack, diff)) if reg != null else ""
 
 ## The title's Arcade card: builds a World for a new run (null when the DLC is not owned or the table is missing).
 ## The caller puts it in the tree (scripts/main.gd: change_scene_to_node). `p_ff` overrides the co-op friendly-fire option
 ## for tests; null (the game) reads Settings "arcade_ff" (the hub's toggle, off by default). `p_seats` = the player seats
 ## (1 = the solo run the game launches; the offline co-op test harness passes 2, like an online room).
 static func launch(seed_value: int = 0, p_diff: String = DEFAULT_DIFF, p_class: String = "", p_ff: Variant = null,
-		p_seats: int = 1) -> Node:
-	if not DlcUnlock.owned() or count() == 0: return null
+		p_seats: int = 1, p_pack: String = "") -> Node:
+	var pk := p_pack if p_pack != "" else ArcadeCoop.PACK_ID
+	if not DlcUnlock.owned(null, pk) or count(pk) == 0: return null    # a pack you do not own never launches
+	if ArcadeCoop.site_map(pk) == "" or not Content.maps.has(ArcadeCoop.site_map(pk)): return null   # its arena is not built in this build
 	var w: Node = load("res://world/world.tscn").instantiate()
 	var run := ArcadeManager.new()
+	run.set_pack(pk)
 	run.start_run(seed_value, p_diff, p_seats)
 	run.player_class = p_class
 	run.friendly_fire = bool(p_ff) if p_ff != null else bool(Settings.get_value("arcade_ff", false))
 	if p_class != "": w.player_class = p_class
 	w.arcade = run
-	w.map_id = site_map()
-	w.mode_id = "construction"
+	w.map_id = site_map(pk)
+	w.mode_id = ArcadeCoop.mode_id(pk)
 	return w
 
 # ---------------- the run ----------------
@@ -256,6 +269,7 @@ static func new_online(arc: Dictionary, is_host: bool) -> ArcadeManager:
 func init_online(arc: Dictionary, is_host: bool) -> void:
 	online = true
 	host_mode = is_host
+	set_pack(ArcadeCoop.PACK_ID)    # online co-op rooms are the Construction run (docs/PROTOCOL.md 6.4)
 	seed_base = maxi(1, int(arc.get("run", 1)))
 	diff = ArcadeCoop.norm_diff(str(arc.get("diff", DEFAULT_DIFF)))
 	stage = clampi(int(arc.get("st", 0)), 0, maxi(0, count() - 1))
@@ -277,6 +291,7 @@ func init_online(arc: Dictionary, is_host: bool) -> void:
 	running = self
 
 func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF, p_seats: int = 1) -> void:
+	ArcadeCoop.use_pack(pack)
 	seat_count = clampi(p_seats, 1, ArcadeCoop.SEATS)      # two seats = the co-op run (a longer fight, one extra life)
 	diff = p_diff if difficulties().has(p_diff) else DEFAULT_DIFF
 	seed_base = p_seed if p_seed > 0 else randi_range(1, 900000)
@@ -293,7 +308,9 @@ func start_run(p_seed: int = 0, p_diff: String = DEFAULT_DIFF, p_seats: int = 1)
 
 ## Back to normal: the site seed the game had, the arcade flag cleared. Safe to call twice.
 func end_run() -> void:
-	if running == self: running = null
+	if running == self:
+		running = null
+		ArcadeCoop.use_pack(ArcadeCoop.PACK_ID)    # the next reader (the hub, a Construction run) starts from the default pack
 	if _seed_saved >= 0:
 		SiteMap.current_seed = _seed_saved
 		_seed_saved = -1
@@ -327,7 +344,7 @@ func is_last_stage() -> bool:
 	return stage >= count() - 1
 
 func first_clear() -> bool:
-	return not DlcSave.has_cleared(Save.dlc, str(stage_def().get("id", "")), diff)
+	return not DlcSave.has_cleared(Save.dlc, str(stage_def().get("id", "")), diff, pack)
 
 # ---------------- World hooks ----------------
 
@@ -341,7 +358,7 @@ func begin_stage(w: Node) -> String:
 	_ev_phase = {}
 	_guest_clear_events()
 	if _down_l != null and is_instance_valid(_down_l): _down_l.visible = false
-	var mp := site_map()
+	var mp := site_map(pack)
 	var a: Dictionary = {}
 	if online:
 		a = w.start_msg.get("arc", {}) if w.start_msg.get("arc") is Dictionary else {}
@@ -362,7 +379,7 @@ func begin_stage(w: Node) -> String:
 		seed_base = maxi(1, int(a.get("run", seed_base)))
 		var sd := int(a.get("seed", stage_seed()))
 		if mp == "sitegen": SiteMap.set_seed(sd)
-		w.mode_id = "construction"
+		w.mode_id = mode_id()
 		w.bot_count = ArcadeCoop.crew_count(stage) + maxi(0, seat_count - 1)   # seats first, then the stage's crew
 		w.dyn_choice = "off"
 		w.difficulty = _stage_skill()
@@ -377,7 +394,7 @@ func begin_stage(w: Node) -> String:
 		return mp
 	var d := stage_def()
 	if mp == "sitegen": SiteMap.set_seed(stage_seed())
-	w.mode_id = "construction"
+	w.mode_id = mode_id()
 	w.bot_count = (d["bots"] as Array).size() + maxi(0, seat_count - 1)   # seats first, then the stage's crew
 	w.dyn_choice = "off"                       # a floor that stays put: the shrink is the stage's own event
 	w.difficulty = difficulty_override if difficulty_override != "" else str((d["bots"] as Array)[0].get("difficulty", "normal"))
@@ -925,12 +942,12 @@ func _guest_pay(cn: int) -> void:
 	var d := stage_def()
 	var id := str(host_last.get("id", d.get("id", "")))
 	if id == "": id = str(d.get("id", ""))
-	var first := not DlcSave.has_cleared(Save.dlc, id, diff)
+	var first := not DlcSave.has_cleared(Save.dlc, id, diff, pack)
 	var reward := int(host_last.get("reward", scaled(int(d.get("coin_reward", 0)))))
 	var bonus := int(host_last.get("first_bonus", scaled(int(d.get("first_clear_bonus", 0)))))
 	var coins := (reward + bonus) if first else 0     # the reward+bonus is the FIRST clear's pay, like ArcadeManager._pay
-	if first: DlcSave.mark_cleared(Save.dlc, id, diff)
-	DlcSave.set_best(Save.dlc, diff, stage + 1)
+	if first: DlcSave.mark_cleared(Save.dlc, id, diff, pack)
+	DlcSave.set_best(Save.dlc, diff, stage + 1, pack)
 	if coins > 0: Save.coins += coins
 	Save.commit()
 	var per: Array = []
@@ -950,17 +967,17 @@ func _guest_pay(cn: int) -> void:
 ## The final victory on MY OWN save: the victory bonus once per difficulty and the Site Foreman hat conditions, exactly
 ## as the host does on its own save (never two saves in one process).
 func _guest_win(cn: int) -> void:
-	var first := not DlcSave.won_diff(Save.dlc, diff)
-	var hat_first := DlcSave.HAT_DIFFS.has(diff) and not DlcSave.won_arcade(Save.dlc)
+	var first := not DlcSave.won_diff(Save.dlc, diff, pack)
+	var hat_first := DlcSave.HAT_DIFFS.has(diff) and not DlcSave.won_arcade(Save.dlc, pack)
 	var coins := 0
 	if first:
 		coins = scaled(VICTORY_COINS)
-		DlcSave.mark_cleared(Save.dlc, DlcSave.VICTORY, diff)
+		DlcSave.mark_cleared(Save.dlc, DlcSave.VICTORY, diff, pack)
 		Save.coins += coins
 		run_coins += coins
 	Save.commit()
-	var hat_owned := DlcSave.won_arcade(Save.dlc)
-	victory = {"coins": coins, "hat": FOREMAN_HAT, "first": first, "hat_first": hat_first, "hat_owned": hat_owned, "diff": diff}
+	var hat_owned := DlcSave.won_arcade(Save.dlc, pack)
+	victory = {"coins": coins, "hat": victory_hat(), "first": first, "hat_first": hat_first, "hat_owned": hat_owned, "diff": diff}
 	var per: Array = []
 	for k in seats.size():
 		per.append({"seat": k, "name": seat_name(k), "coins": coins, "first": first,
@@ -1291,12 +1308,12 @@ func _nearest_seat_dist(x: float, z: float) -> float:
 func _pay() -> Dictionary:
 	var d := stage_def()
 	var id := str(d["id"])
-	var first := not DlcSave.has_cleared(Save.dlc, id, diff)
+	var first := not DlcSave.has_cleared(Save.dlc, id, diff, pack)
 	var coins := 0
 	if first:
 		coins = stage_coins(d)
-		DlcSave.mark_cleared(Save.dlc, id, diff)
-	DlcSave.set_best(Save.dlc, diff, stage + 1)
+		DlcSave.mark_cleared(Save.dlc, id, diff, pack)
+	DlcSave.set_best(Save.dlc, diff, stage + 1, pack)
 	if coins > 0: Save.coins += coins
 	Save.commit()
 	var per: Array = []
@@ -1336,17 +1353,17 @@ func _finish_attempt() -> void:
 ## The final victory: bonus coins and the Site Foreman hat, once. As with _pay(), each seat's share is in `seats`; this
 ## process pays this save once.
 func _win() -> void:
-	var first := not DlcSave.won_diff(Save.dlc, diff)     # the victory bonus is paid once per difficulty
-	var hat_first := DlcSave.HAT_DIFFS.has(diff) and not DlcSave.won_arcade(Save.dlc)
+	var first := not DlcSave.won_diff(Save.dlc, diff, pack)     # the victory bonus is paid once per difficulty
+	var hat_first := DlcSave.HAT_DIFFS.has(diff) and not DlcSave.won_arcade(Save.dlc, pack)
 	var coins := 0
 	if first:
 		coins = scaled(VICTORY_COINS)
-		DlcSave.mark_cleared(Save.dlc, DlcSave.VICTORY, diff)
+		DlcSave.mark_cleared(Save.dlc, DlcSave.VICTORY, diff, pack)
 		Save.coins += coins
 		Save.commit()
 		run_coins += coins
-	var hat_owned := DlcSave.won_arcade(Save.dlc)
-	victory = {"coins": coins, "hat": FOREMAN_HAT, "first": first, "hat_first": hat_first, "hat_owned": hat_owned, "diff": diff}
+	var hat_owned := DlcSave.won_arcade(Save.dlc, pack)
+	victory = {"coins": coins, "hat": victory_hat(), "first": first, "hat_first": hat_first, "hat_owned": hat_owned, "diff": diff}
 	var per: Array = []
 	for k in seats.size():
 		per.append({"seat": k, "name": seat_name(k), "coins": coins, "first": first,

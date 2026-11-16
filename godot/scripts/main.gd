@@ -261,7 +261,8 @@ func _build_showcase() -> void:
 		return (settings != null and settings.visible) or (goals != null and goals.visible) or (hub != null and hub.visible)
 	showcase.ui_changed.connect(_on_showcase_ui)
 	showcase.test_requested.connect(play_trial)
-	showcase.unlock_requested.connect(func(_p: DLCPackData) -> void: open_hub())   # the existing unlock flow: coins or the code
+	showcase.unlock_requested.connect(func(p: DLCPackData) -> void: open_hub(p.pack_id))   # the existing unlock flow: coins or the code, on that pack
+	showcase.play_requested.connect(func(p: DLCPackData) -> void: open_hub(p.pack_id))     # an owned pack: its hub (Classic / Arcade)
 	showcase.site_requested.connect(toggle_dlc)                                    # DON'T ENTER / EXIT SITE: the Construction title
 	Save.changed.connect(showcase.refresh)
 	$Background.stage_3d = true
@@ -489,9 +490,10 @@ func _refresh_dock() -> void:
 func open_goals() -> void:
 	goals.open()
 
-## The Construction hub (Classic / Arcade, the DLC unlock) over the title.
-func open_hub() -> void:
-	hub.open()
+## The DLC hub (a pack's Classic / Arcade cards and its unlock; every pack one page) over the title. `pack` = the pack to
+## show first ("" = Construction, the original page).
+func open_hub(pack: String = "") -> void:
+	hub.open_pack(pack)
 
 ## The What's new card over the title.
 func open_news() -> void:
@@ -918,7 +920,7 @@ func play_offline(over: Dictionary = {}) -> void:
 	if over.is_empty(): wizard.save()
 	var world: Node = load(WORLD).instantiate()
 	world.map_id = str(over.get("map", wizard.map_id))
-	world.mode_id = str(over.get("mode", wizard.mode_id))
+	world.mode_id = ModeRules.owned_mode(str(over.get("mode", wizard.mode_id)))   # a pack mode only for its owner (Quick play, the wizard, a saved pick)
 	world.bot_count = int(over.get("bots", wizard.bots))
 	world.difficulty = str(over.get("difficulty", wizard.diff))
 	world.first_fight = bool(over.get("first_fight", false))
@@ -932,7 +934,7 @@ func play_offline(over: Dictionary = {}) -> void:
 func play_arcade() -> void:
 	var cls := str(Settings.get_value("class", "wobbler"))
 	if not Content.classes.has(cls) or not SetupWizard.owns_class(cls): cls = "wobbler"
-	var world: Node = ArcadeManager.launch(0, str(Settings.get_value("arcade_diff", "normal")), cls)
+	var world: Node = ArcadeManager.launch(0, str(Settings.get_value("arcade_diff", "normal")), cls, null, 1, hub.pack_id)
 	if world == null: return
 	if session != null: session.leave("")
 	get_tree().change_scene_to_node(world)
