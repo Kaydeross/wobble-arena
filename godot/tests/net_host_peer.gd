@@ -37,7 +37,8 @@ func _begin(args: PackedStringArray) -> void:
 	session.match_message.connect(func(m: Dictionary) -> void:
 		if m.get("t") == "slot": print("SLOTMSG %s" % JSON.stringify(m))
 		if m.get("t") == "emote": print("EMOTE %d %s" % [int(m.get("id", -1)), m.get("e")]))
-	session.begin(args[0], args[1], {"name": "GodotPeer", "skin": "none", "hat": "cone", "color": 0x39b5a8, "cls": "kid"})
+	session.begin(args[0], args[1], {"name": "GodotPeer", "skin": "singlet", "hat": "slouch",   # Australia pack look, sent to the host
+		 "color": 0x39b5a8, "cls": "kid"})
 
 func _on_start(s: Dictionary) -> void:
 	starts += 1
@@ -51,8 +52,23 @@ func _on_start(s: Dictionary) -> void:
 		world.session = session
 		world.start_msg = s
 		root.add_child(world)
+		_print_looks(s)
 	else:
 		t2 = 0.0
+
+## Pack cosmetics of the other players: this guest owns no pack (--no-save, a fresh profile) and must still resolve them.
+## LOOK <slot> skin hat color hat_parts skin_parts owned, then LOOKCLEAN for ids no build knows (they fall back to none).
+func _print_looks(s: Dictionary) -> void:
+	var sv: Node = root.get_node("Save")
+	for x: Dictionary in s["slots"]:
+		var lk := NetMatch.look_of(x)
+		var pack := LockerData.pack_of(str(lk["hat"]))
+		print("LOOK %d skin=%s hat=%s color=%d hat_parts=%d skin_parts=%d pack=%s owned=%s" % [x["id"], lk["skin"], lk["hat"], lk["color"],
+			WobblerLooks.hat_parts(lk["hat"]).size(), WobblerLooks.skin_parts(lk["skin"]).size(), pack,
+			pack != "" and LockerData.pack_owned(sv.dlc, sv.codes, pack)])
+	var junk := GuestSession.clean_info({"name": "Old", "skin": "no_such_outfit", "hat": "no_such_hat", "color": 0x39b5a8}, 1)
+	var core := GuestSession.clean_info({"name": "Core", "skin": "none", "hat": "hardhat", "color": 0x39b5a8}, 1)
+	print("LOOKCLEAN junk=%s/%s hardhat=%s" % [junk["skin"], junk["hat"], core["hat"]])
 
 func _process(dt: float) -> bool:
 	t_total += dt

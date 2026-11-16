@@ -677,6 +677,7 @@ async function arcadeCoop(url) {
   assert.equal(roster1.m.roster[0].cls, 'bruiser'); assert.equal(roster1.m.max, 4); assert.equal(roster1.m.lim, 1);
   assert.ok(roster1.m.rl && roster1.m.rl.want === 'tdm' && roster1.m.rl.mode === 'classic', 'roster rl: TDM picked, Classic played with a web guest: ' + JSON.stringify(roster1.m.rl));
   assert.equal(roster1.m.modeName, 'Classic');
+  assert.deepEqual([roster1.m.roster[0].hat, roster1.m.roster[0].skin], ['toque', 'apron'], 'the host\'s Kitchen pack hat and outfit are on the wire (roster)');
   { const l = await new Client(url, 'Lister').open(); l.tx({ op: 'list' }); const r = await l.wait(m => m.op === 'rooms'); assert.ok(!r.rooms.some(x => x.id === code), 'private room is not listed'); l.close(); }
 
   // Godot guest
@@ -691,6 +692,9 @@ async function arcadeCoop(url) {
   assert.deepEqual(S0.slots.slice(0, 3).map(s => s.name), ['GodotHost', 'WebGuest', 'GodotPeer']);
   assert.ok(/^Bot /.test(S0.slots[3].name), 'the bot has its name');
   assert.equal(S0.slots[2].cls, 'kid', 'the Godot guest class');
+  // pack cosmetics travel as plain hat/skin ids: the host's own (Kitchen) and a guest's (Australia), neither dropped to none
+  assert.deepEqual([S0.slots[0].hat, S0.slots[0].skin], ['toque', 'apron'], 'start: the host\'s pack look');
+  assert.deepEqual([S0.slots[2].hat, S0.slots[2].skin], ['slouch', 'singlet'], 'start: the Godot guest\'s pack look passed the host\'s cleanInfo');
   assert.equal(S0.map, 'arena'); assert.equal(S0.limit, 1);
   assert.equal(S0.rules.mode, 'classic'); assert.equal(S0.rules.hp, 150); assert.ok(Number.isInteger(S0.rules.dseed), 'dseed');
   assert.equal(S0.rules.dyn, 'off');
@@ -796,6 +800,12 @@ async function arcadeCoop(url) {
   assert.ok(span(g2, 'z') > 3, 'Godot guest input moves its fighter on the host');
   assert.ok(span(p0, 'z') > 3 && span(p1, 'x') > 6 && p3.length > 10, 'the Godot guest sees the host, the web guest (relayed) and the bot');
   assert.ok(ht.some(l => /^HIT1 applied=true/.test(l)), 'host hit sent');
+  // pack cosmetics show for everyone: the Godot guest owns no pack and still resolves the host's Kitchen look to real parts
+  const look0 = pt.find(l => /^LOOK 0 /.test(l)) || '';
+  console.log('peer: ' + look0 + '\nhost: ' + (ht.find(l => /^LOOK 2 /.test(l)) || '') + '\npeer: ' + (pt.find(l => /^LOOKCLEAN /.test(l)) || ''));
+  assert.match(look0, /^LOOK 0 skin=apron hat=toque color=16052714 hat_parts=[1-9]\d* skin_parts=[1-9]\d* pack=kitchen owned=false$/, 'a guest without the Kitchen pack sees the host\'s toque and apron: ' + look0);
+  assert.ok(ht.some(l => /^LOOK 2 skin=singlet hat=slouch$/.test(l)), 'the host sees the Godot guest\'s Australia pack look');
+  assert.ok(pt.some(l => /^LOOKCLEAN junk=none\/none hardhat=hardhat$/.test(l)), 'unknown ids still fall back to none; the Construction hard hat passes');
   assert.ok(ht.some(l => /^ZONES host=0$/.test(l)), 'a web guest in the room: the host keeps the classic damage rule');
   assert.ok(ht.some(l => /^MATCH_OVER w=1/.test(l)), 'host ended the match');
   assert.ok(ht.some(l => /^START n=2 slots=human,human,human,bot/.test(l)), 'host rematch');
