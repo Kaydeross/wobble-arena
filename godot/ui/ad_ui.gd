@@ -79,7 +79,8 @@ static func request_reward(placement: String, on_result: Callable) -> bool:
 		if not bool(a.call("can_show", "rewarded")): return false
 	var sig := a.get("reward_result") as Signal
 	var cb := func(granted: bool, p: String) -> void:
-		if p == placement: on_result.call(granted)
+		# The requester may have been freed while the ad was up (scene change): never call into a dead panel.
+		if p == placement and on_result.is_valid(): on_result.call(granted)
 	sig.connect(cb, CONNECT_ONE_SHOT)
 	if not bool(a.call("show_rewarded", placement)):
 		if sig.is_connected(cb): sig.disconnect(cb)

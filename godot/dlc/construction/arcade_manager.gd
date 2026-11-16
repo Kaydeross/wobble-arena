@@ -1330,7 +1330,7 @@ func _finish_attempt() -> void:
 			world.show_panel(ArcadePanels.over(self, quit_run))
 		else:
 			state = "failed"
-			if not online: Ads.on_match_finished(false)   # the attempt is over: the failed card may offer a rewarded continue
+			if not online: Ads.on_attempt_ended()   # the failed card may offer a rewarded continue (not a finished match)
 			world.show_panel(ArcadePanels.failed(self, retry_stage, quit_run, false, rewarded_continue))
 
 ## The final victory: bonus coins and the Site Foreman hat, once. As with _pay(), each seat's share is in `seats`; this

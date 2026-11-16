@@ -59,6 +59,7 @@ var confirm_buy: Button
 var purchases_row: VBoxContainer ## Shop: Remove ads / Restore purchases (hidden without a provider)
 var purchase_status: Label
 var _purchase_buy: Button
+var _store_action := ""         ## the last purchase/restore the player asked for, for the result wording
 var pending := []               ## [kind, key] waiting for the confirm card
 var _msg_t := 0.0
 var _heavy: Font
@@ -880,11 +881,14 @@ func _redraw_keep() -> void:
 	scroll.scroll_vertical = sv
 
 func _buy_remove_ads() -> void:
-	if Entitlements.has("remove_ads"): return
+	if not AdUi.purchases_visible() or Entitlements.has("remove_ads"): return
+	_store_action = "buy"
 	var ok := Entitlements.purchase("remove_ads")
 	_set_purchase_status(tr("Opening the App Store…") if ok else tr("Couldn't start the purchase. Try again in a moment."))
 
 func _restore_purchases() -> void:
+	if not AdUi.purchases_visible(): return
+	_store_action = "restore"
 	var ok := Entitlements.restore()
 	_set_purchase_status(tr("Restoring purchases…") if ok else tr("Couldn't restore purchases. Try again in a moment."))
 
@@ -896,7 +900,9 @@ func _set_purchase_status(t: String) -> void:
 func _on_entitlement_changed(id: String, owned: bool) -> void:
 	if id != "remove_ads": return
 	_refresh_purchases()
-	if owned: _set_purchase_status(tr("Purchases restored"))
+	# A verified purchase flips the row to Owned; only a restore says so, so buying Remove ads never reads as restored.
+	if owned and _store_action == "restore": _set_purchase_status(tr("Purchases restored"))
+	_store_action = ""
 
 ## Show the Shop's purchase row only when there is a provider and the kill switch allows it; Owned once bought.
 func _refresh_purchases() -> void:

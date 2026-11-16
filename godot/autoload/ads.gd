@@ -21,9 +21,10 @@ var _loaded := {INTERSTITIAL: false, REWARDED: false}
 var _ad_active := false
 var _was_paused := false
 var _ad_mutes := {}               ## AudioServer bus index -> whether it was muted before the ad
+var _placement := ""              ## the rewarded placement on screen ("" for an interstitial): reported on a timeout
 
 func _ready() -> void:
-	process_mode = Node.PROCESS_MODE_ALWAYS
+	# Only the safety Timer below opts into PROCESS_MODE_ALWAYS; this node needs no processing of its own, paused or not.
 	if int(Settings.get_value(SESSION_START, 0)) <= 0:
 		Settings.set_value(SESSION_START, Time.get_unix_time_from_system())
 
@@ -41,6 +42,10 @@ func consent_ready() -> bool:
 
 func can_request(placement: String) -> bool:
 	if placement not in [INTERSTITIAL, REWARDED] or _provider == null:
+		return false
+	if _ad_active:                                           # one fullscreen ad at a time: no nested show can cut the pause short
+		return false
+	if bool(Settings.get_value("kids_mode", false)):         # Kids mode never shows or triggers any ad
 		return false
 	if RemoteConfig.killed("ads") or not bool(RemoteConfig.ad_value("enabled", false)):
 		return false
@@ -84,18 +89,21 @@ func mark_loaded(placement: String, ok: bool) -> void:
 func show_interstitial() -> bool:
 	if not can_show(INTERSTITIAL) or _provider == null or not _provider.has_method("show"):
 		return false
-	Settings.set_value(LAST_SHOWN, Time.get_unix_time_from_system())
-	Settings.set_value(MATCHES_SINCE, 0)
+	_placement = ""
 	_loaded[INTERSTITIAL] = false
 	_begin_ad()
 	if not _accepted(_provider.call("show", INTERSTITIAL)):
 		_end_ad()
 		return false
+	# Only an accepted show spends the gap and the every-N-matches counter: a refused one must not burn them.
+	Settings.set_value(LAST_SHOWN, Time.get_unix_time_from_system())
+	Settings.set_value(MATCHES_SINCE, 0)
 	return true
 
 func show_rewarded(placement: String) -> bool:
 	if not can_show(REWARDED) or _provider == null or not _provider.has_method("show"):
 		return false
+	_placement = placement
 	_loaded[REWARDED] = false
 	_begin_ad()
 	if not _accepted(_provider.call("show", REWARDED, placement)):
@@ -125,13 +133,16 @@ func _end_ad() -> void:
 	if not _ad_active:
 		return
 	_ad_active = false
+	_placement = ""
 	var timer := get_node_or_null("AdSafety") as Timer
 	if timer != null: timer.stop()
 	for i: int in _ad_mutes:
 		AudioServer.set_bus_mute(i, bool(_ad_mutes[i]))
 	_ad_mutes.clear()
-	if is_inside_tree():
-		get_tree().paused = _was_paused
+	# Restore the pause state even if a scene change happened under the ad: the tree outlives the requesting node.
+	var tree := Engine.get_main_loop() as SceneTree
+	if tree != null:
+		tree.paused = _was_paused
 
 ## Created on first use: the Timer runs while the tree is paused.
 func _safety_timer() -> Timer:
@@ -145,9 +156,13 @@ func _safety_timer() -> Timer:
 		add_child(t)
 	return t
 
-## No completion arrived: restore the game. A late finish_* still emits its result and is idempotent here.
+## No completion arrived: restore the game and let the placement's requester hear "not granted", so its button does not
+## stay disabled. A late finish_* still emits its result and is idempotent here.
 func _on_ad_timeout() -> void:
+	var placement := _placement
 	_end_ad()
+	if placement != "":
+		reward_result.emit(false, placement)
 
 ## A provider's show/purchase may return nothing (void) or an explicit bool. Only `false` means refused.
 static func _accepted(v: Variant) -> bool:
@@ -173,6 +188,11 @@ func on_match_finished(online: bool) -> void:
 		return
 	Settings.set_value(MATCHES_SINCE, int(Settings.get_value(MATCHES_SINCE, 0)) + 1)
 	in_online_lobby = false
+
+## An offline Arcade attempt ended on its failed card. The run no longer blocks an ad, but this is not a finished match:
+## the interstitial frequency counter must not move. A retry re-enters through on_match_started().
+func on_attempt_ended() -> void:
+	in_match = false
 
 func on_lobby_entered(online: bool) -> void:
 	in_match = false

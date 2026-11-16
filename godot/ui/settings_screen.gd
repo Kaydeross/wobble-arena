@@ -44,6 +44,7 @@ var code_sheet: DlcCodeSheet      ## the Construction code field: tap the versio
 var layout_editor: TouchLayoutEditor   ## Settings > Controls > Move buttons (ui/touch_layout_editor.gd)
 var reset_dialog: ResetDialog     ## Settings > About > Reset game: the irreversible confirmation (ui/reset_dialog.gd)
 var purchase_status: Label        ## Settings > Account: the Remove ads / Restore purchases result
+var _store_action := ""           ## the last purchase/restore the player asked for, for the result wording
 var _ver_taps := 0
 var _ver_t := 0
 
@@ -274,11 +275,14 @@ func _purchase_rows() -> void:
 	ui["purchase_status"] = purchase_status
 
 func _buy_remove_ads() -> void:
-	if Entitlements.has("remove_ads"): return
+	if not AdUi.purchases_visible() or Entitlements.has("remove_ads"): return
+	_store_action = "buy"
 	var ok := Entitlements.purchase("remove_ads")
 	_set_purchase_status(tr("Opening the App Store…") if ok else tr("Couldn't start the purchase. Try again in a moment."))
 
 func _restore_purchases() -> void:
+	if not AdUi.purchases_visible(): return
+	_store_action = "restore"
 	var ok := Entitlements.restore()
 	_set_purchase_status(tr("Restoring purchases…") if ok else tr("Couldn't restore purchases. Try again in a moment."))
 
@@ -287,14 +291,18 @@ func _set_purchase_status(t: String) -> void:
 		purchase_status.text = t
 		purchase_status.tooltip_text = t
 
-## The provider reported a verified purchase / restore: flip the row to Owned and say so.
+## The provider reported a verified purchase / restore: flip the row to Owned. Only a restore says "restored", so a
+## verified purchase never reads as one.
 func _on_entitlement_changed(id: String, owned: bool) -> void:
-	if id != "remove_ads" or not is_instance_valid(purchase_status): return
+	if id != "remove_ads": return
+	var action := _store_action
+	_store_action = ""
+	if not is_instance_valid(purchase_status): return
 	var buy: Variant = ui.get("remove_ads")
 	if buy is Button:
 		(buy as Button).text = tr("Owned") if owned else tr("Remove ads")
 		(buy as Button).disabled = owned
-	if owned: _set_purchase_status(tr("Purchases restored"))
+	if owned and action == "restore": _set_purchase_status(tr("Purchases restored"))
 
 static func version_text() -> String:
 	var version := str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
