@@ -197,7 +197,7 @@ func show_section(s: String) -> void:
 			_toggle("muted", "Sound", "", true)
 			_slider("volume", "Main volume", "", 0.0, 1.0, 0.05, _pct)
 			_slider("sfx_volume", "Sound effects", "", 0.0, 1.0, 0.05, _pct)
-			_toggle("sfx_3d", "3D sound", "World sounds come from where they happen: other fighters, crates, breaks")
+			_toggle("sfx_3d", "3D sound", "World sounds come from where they happen: other players, crates, breaks")
 			_slider("music_volume", "Music", "", 0.0, 1.0, 0.05, _pct)
 			_toggle("haptics", "Haptics (vibration)", "A short vibration on hits, K.O.s and explosions. Phones only.")
 		"gameplay":
