@@ -192,3 +192,5 @@ Soft launch in 2–3 small markets, tune economy and balance (classes especially
 1. Merge PR #14; commit Stage 1 web look as the art reference; write `docs/ROADMAP.md`.
 2. Phase 0 export pipeline (with your editor session and Apple key).
 3. Start Phase 1 in three parallel sessions: architecture + MapBuilder, wobbler + animation, combat core + net guest.
+
+- Balance telemetry (WP 1.0-C): `npm run balance -- --matches 200 --out balance.md` plays headless bot-vs-bot matches and prints per-class / per-weapon tables with OUTLIER flags; see docs/BALANCE_TELEMETRY.md. Not part of CI (`npm run test:balance-tool` is the selftest).
