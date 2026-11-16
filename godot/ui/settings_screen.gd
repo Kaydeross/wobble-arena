@@ -168,7 +168,9 @@ func show_section(s: String) -> void:
 			_slider("mouse_sens", "Look speed (mouse and controller)", "", 0.3, 2.5, 0.05, _times)
 			_toggle("invert_y", "Invert up and down look", "")
 			_choice("aim_button", "Aim button", "Mouse and controller. On touch, double-tap to aim.", ["hold", "toggle"], ["Hold", "Toggle"])
-			_buttons("Help", [["help", "See the controls", open_help], ["intro", "Show the how-to again", open_intro]])
+			var help_items := [["help", "See the controls", open_help], ["intro", "Show the how-to again", open_intro]]
+			if not in_match: help_items.append(["training", "Training", open_training])   # (in a match: the pause menu's Controls page asks first)
+			_buttons("Help", help_items)
 		"camera":
 			_choice("cam_auto_center", "Camera", "Auto-centre swings the camera back behind you as you run", [false, true], ["Manual", "Auto-centre"])
 			_slider("cam_dist", "Camera distance", "", 0.7, 1.5, 0.05, _pct)
@@ -248,6 +250,10 @@ func open_help() -> void:
 
 func open_intro() -> void:
 	intro.open()
+
+## Settings > Controls > Training: the guided practice (world/tutorial.gd).
+func open_training() -> void:
+	Tutorial.launch(get_tree())
 
 ## Settings > Controls > Move buttons: drag the real touch buttons anywhere inside the safe area (ui/touch_layout_editor.gd).
 ## The Settings page itself is hidden meanwhile, so the editor's dimmed overlay sits over the title / paused match and the

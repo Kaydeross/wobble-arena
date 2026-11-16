@@ -8,8 +8,8 @@ extends RefCounted
 ##   keyboard  desktop (and a desktop browser): keyboard + mouse. The default.
 ##   gamepad   desktop with a controller: the profile follows the LAST device used, live: a pad button / a pushed stick
 ##             switches to gamepad, a key / mouse click or move switches back to keyboard.
-## No autoload: the first current() call hangs a tiny listener node on the root (it sees input before the UI does, so
-## it also works over menus). `force` pins a profile (tests, screenshots).
+## No autoload and no node of its own: PlayerInput (in a match) and the title scene hand it every input event
+## (note_event), so it works over menus too. `force` pins a profile (tests, screenshots).
 ##
 ## Labels are READ from the live bindings, never copied: the InputMap actions that PlayerInput.ensure_actions() seeded
 ## from its KEYS / MOUSE / PAD / PAD_AXES tables (so a rebinding shows up at once), the emote keys from EmoteWheel.KEYS,
@@ -25,28 +25,9 @@ const LOOK_STICK := "Right stick"   ## PlayerInput reads JOY_AXIS_RIGHT_X / Y di
 
 static var force := ""          ## tests / screenshots: pin a profile ("" = automatic)
 static var _last := KEYBOARD    ## the last desktop device used: keyboard | gamepad
-static var _watch: Watcher = null
 
-## The node that watches the devices; `changed(profile)` fires when the desktop device switches.
-class Watcher extends Node:
-	signal changed(profile: String)
-	func _init() -> void:
-		name = "ControlProfileWatcher"
-		process_mode = Node.PROCESS_MODE_ALWAYS
-	func _input(e: InputEvent) -> void:
-		ControlProfile.note_event(e)
-
-static func watcher() -> Watcher:
-	if _watch != null and is_instance_valid(_watch):
-		return _watch
-	var tree := Engine.get_main_loop() as SceneTree
-	if tree == null or tree.root == null:
-		return null
-	_watch = Watcher.new()
-	tree.root.add_child.call_deferred(_watch)
-	return _watch
-
-## Feeds one input event into the "last device" tracking (the watcher calls this; tests may too).
+## Feeds one input event into the "last device" tracking. PlayerInput._input (in a match) and main.gd._input (the title) call
+## it with every event, before the UI sees it; tests call it too.
 static func note_event(e: InputEvent) -> void:
 	var dev := ""
 	if e is InputEventJoypadButton and e.pressed: dev = GAMEPAD
@@ -54,12 +35,7 @@ static func note_event(e: InputEvent) -> void:
 	elif e is InputEventKey and e.pressed: dev = KEYBOARD
 	elif e is InputEventMouseButton and e.pressed and e.device != InputEvent.DEVICE_ID_EMULATION: dev = KEYBOARD
 	elif e is InputEventMouseMotion and e.device != InputEvent.DEVICE_ID_EMULATION and (e as InputEventMouseMotion).relative.length() > 2.0: dev = KEYBOARD
-	if dev == "" or dev == _last: return
-	var before := current()
-	_last = dev
-	var after := current()
-	if before != after and _watch != null and is_instance_valid(_watch):
-		_watch.changed.emit(after)
+	if dev != "": _last = dev
 
 static func reset() -> void:
 	force = ""
@@ -68,7 +44,6 @@ static func reset() -> void:
 static func current() -> String:
 	if force != "": return force
 	if TouchControls.wanted(): return TOUCH
-	watcher()
 	return _last
 
 static func is_valid(p: String) -> bool:
@@ -249,7 +224,7 @@ static func hint_line(profile := "") -> String:
 	var p := profile if profile != "" else current()
 	if p == TOUCH:
 		return tr_("Melee: tap to shove, hold to kick")
-	var line := tr_("%s shove  ·  %s kick  ·  %s jump") % [name_of("shove", p), name_of("kick", p), name_of("jump", p)]
+	var line := tr_("Shove: %s  ·  Kick: %s  ·  Jump: %s") % [name_of("shove", p), name_of("kick", p), name_of("jump", p)]
 	return line
 
 ## True while the hint line should show in a real match: not trained yet and fewer than HINT_MATCHES matches seen.

@@ -47,6 +47,7 @@ var _cross_on := true            ## Settings `crosshair`: the aiming dot (the ch
 var _net: HBoxContainer          ## online only: "Room 4821 · Host · 34 ms" status pill under the K.O. panel
 var _net_dot: ColorRect
 var _net_l: Label
+const HINT_SECS := 14.0          ## the control hint line (shove / kick keys) shows this long at the start of a match
 var _hint: Label
 var _center: Label
 var _impact: Control              ## final-K.O. comic badge (Sprint 2.1): the speedometer over the kill cam
@@ -517,7 +518,9 @@ func update(delta: float) -> void:
 	# --- hint, centre message, crosshair, nameplates, toast
 	var hint := ""
 	if Tier.is_pc() and not touch_on and not world.input.mouse_captured() and not world.paused:
-		hint = "Click to look"
+		hint = tr("Click to look")
+	if not world.trial and not world.paused and ControlProfile.hint_wanted() and world.sim.combat.time - world.sim.match_start < HINT_SECS:
+		hint += ("\n" if hint != "" else "") + ControlProfile.hint_line()   # the first two matches: what shove / kick are on this device
 	_hint.text = hint
 	_hint.visible = hint != ""
 	_hint.reset_size()

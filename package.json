@@ -78,7 +78,8 @@
     "test:godot-ranking": "node tools/test-ranking.js",
     "test:godot-destruct": "node tools/test-godot-destruct.js",
     "test:godot-reset": "node tools/test-reset-game.js",
-    "test:godot-weapons-aim": "node tools/test-weapons-aim.js"
+    "test:godot-weapons-aim": "node tools/test-weapons-aim.js",
+    "test:godot-tutorial": "node tools/test-tutorial.js"
   },
   "engines": {
     "node": ">=18"

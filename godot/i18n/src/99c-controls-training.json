@@ -1,0 +1,639 @@
+{
+ "Touch": {
+  "zh_TW": "觸控",
+  "zh_CN": "触控",
+  "ja": "タッチ",
+  "fr": "Tactile",
+  "es": "Táctil"
+ },
+ "Keyboard & mouse": {
+  "zh_TW": "鍵盤與滑鼠",
+  "zh_CN": "键盘和鼠标",
+  "ja": "キーボード＆マウス",
+  "fr": "Clavier et souris",
+  "es": "Teclado y ratón"
+ },
+ "Gamepad": {
+  "zh_TW": "手把",
+  "zh_CN": "手柄",
+  "ja": "ゲームパッド",
+  "fr": "Manette",
+  "es": "Mando"
+ },
+ "Training": {
+  "zh_TW": "訓練",
+  "zh_CN": "训练",
+  "ja": "練習",
+  "fr": "Entraînement",
+  "es": "Práctica"
+ },
+ "Leave this match?": {
+  "zh_TW": "離開這場比賽？",
+  "zh_CN": "离开这场比赛？",
+  "ja": "この試合をやめる？",
+  "fr": "Quitter ce match ?",
+  "es": "¿Salir de esta partida?"
+ },
+ "Combat": {
+  "zh_TW": "戰鬥",
+  "zh_CN": "战斗",
+  "ja": "戦闘",
+  "fr": "Combat",
+  "es": "Combate"
+ },
+ "Moves": {
+  "zh_TW": "動作",
+  "zh_CN": "动作",
+  "ja": "アクション",
+  "fr": "Actions",
+  "es": "Acciones"
+ },
+ "Mouse": {
+  "zh_TW": "滑鼠",
+  "zh_CN": "鼠标",
+  "ja": "マウス",
+  "fr": "Souris",
+  "es": "Ratón"
+ },
+ "Look around": {
+  "zh_TW": "轉動視角",
+  "zh_CN": "转动视角",
+  "ja": "見回す",
+  "fr": "Regarder autour",
+  "es": "Mirar alrededor"
+ },
+ "Fire": {
+  "zh_TW": "開火",
+  "zh_CN": "开火",
+  "ja": "発射",
+  "fr": "Tirer",
+  "es": "Disparar"
+ },
+ "Aim": {
+  "zh_TW": "瞄準",
+  "zh_CN": "瞄准",
+  "ja": "狙う",
+  "fr": "Viser",
+  "es": "Apuntar"
+ },
+ "Crouch": {
+  "zh_TW": "蹲下",
+  "zh_CN": "蹲下",
+  "ja": "しゃがむ",
+  "fr": "S'accroupir",
+  "es": "Agacharse"
+ },
+ "Recover": {
+  "zh_TW": "回穩",
+  "zh_CN": "回稳",
+  "ja": "立て直し",
+  "fr": "Se rattraper",
+  "es": "Recuperarse"
+ },
+ "Class move": {
+  "zh_TW": "職業技能",
+  "zh_CN": "职业技能",
+  "ja": "クラス技",
+  "fr": "Coup de classe",
+  "es": "Habilidad de clase"
+ },
+ "Spatula swing": {
+  "zh_TW": "鍋鏟揮擊",
+  "zh_CN": "锅铲挥击",
+  "ja": "フライ返しで一撃",
+  "fr": "Coup de spatule",
+  "es": "Golpe de espátula"
+ },
+ "Switch weapon": {
+  "zh_TW": "換武器",
+  "zh_CN": "换武器",
+  "ja": "武器を切り替え",
+  "fr": "Changer d'arme",
+  "es": "Cambiar de arma"
+ },
+ "Push them back": {
+  "zh_TW": "把對手推開",
+  "zh_CN": "把对手推开",
+  "ja": "相手を押し返す",
+  "fr": "Les repousser",
+  "es": "Empújalos"
+ },
+ "Send them flying": {
+  "zh_TW": "把對手踢飛",
+  "zh_CN": "把对手踢飞",
+  "ja": "相手を吹っ飛ばす",
+  "fr": "Les envoyer valser",
+  "es": "Mándalos volando"
+ },
+ "Ninja weapons": {
+  "zh_TW": "忍者武器",
+  "zh_CN": "忍者武器",
+  "ja": "忍者の武器",
+  "fr": "Armes ninja",
+  "es": "Armas ninja"
+ },
+ "In the air": {
+  "zh_TW": "在空中",
+  "zh_CN": "在空中",
+  "ja": "空中で",
+  "fr": "En l'air",
+  "es": "En el aire"
+ },
+ "Quick melee": {
+  "zh_TW": "快速近戰",
+  "zh_CN": "快速近战",
+  "ja": "すばやい近接攻撃",
+  "fr": "Mêlée rapide",
+  "es": "Cuerpo a cuerpo rápido"
+ },
+ "Dance": {
+  "zh_TW": "跳舞",
+  "zh_CN": "跳舞",
+  "ja": "踊る",
+  "fr": "Danser",
+  "es": "Bailar"
+ },
+ "Left mouse": {
+  "zh_TW": "滑鼠左鍵",
+  "zh_CN": "鼠标左键",
+  "ja": "マウス左",
+  "fr": "Clic gauche",
+  "es": "Clic izq."
+ },
+ "Right mouse": {
+  "zh_TW": "滑鼠右鍵",
+  "zh_CN": "鼠标右键",
+  "ja": "マウス右",
+  "fr": "Clic droit",
+  "es": "Clic der."
+ },
+ "Middle mouse": {
+  "zh_TW": "滑鼠中鍵",
+  "zh_CN": "鼠标中键",
+  "ja": "マウス中",
+  "fr": "Clic molette",
+  "es": "Clic central"
+ },
+ "D-pad up": {
+  "zh_TW": "方向鍵上",
+  "zh_CN": "方向键上",
+  "ja": "十字キー上",
+  "fr": "Croix haut",
+  "es": "Cruceta arriba"
+ },
+ "D-pad down": {
+  "zh_TW": "方向鍵下",
+  "zh_CN": "方向键下",
+  "ja": "十字キー下",
+  "fr": "Croix bas",
+  "es": "Cruceta abajo"
+ },
+ "D-pad left": {
+  "zh_TW": "方向鍵左",
+  "zh_CN": "方向键左",
+  "ja": "十字キー左",
+  "fr": "Croix gauche",
+  "es": "Cruceta izq."
+ },
+ "D-pad right": {
+  "zh_TW": "方向鍵右",
+  "zh_CN": "方向键右",
+  "ja": "十字キー右",
+  "fr": "Croix droite",
+  "es": "Cruceta der."
+ },
+ "Left stick": {
+  "zh_TW": "左搖桿",
+  "zh_CN": "左摇杆",
+  "ja": "左スティック",
+  "fr": "Stick gauche",
+  "es": "Palanca izq."
+ },
+ "Right stick": {
+  "zh_TW": "右搖桿",
+  "zh_CN": "右摇杆",
+  "ja": "右スティック",
+  "fr": "Stick droit",
+  "es": "Palanca der."
+ },
+ "Double-tap": {
+  "zh_TW": "連按兩下",
+  "zh_CN": "连按两下",
+  "ja": "ダブルタップ",
+  "fr": "Double appui",
+  "es": "Doble toque"
+ },
+ "Weapon tile": {
+  "zh_TW": "武器格",
+  "zh_CN": "武器格",
+  "ja": "武器タイル",
+  "fr": "Case d'arme",
+  "es": "Casilla de arma"
+ },
+ "Spatula tile": {
+  "zh_TW": "鍋鏟格",
+  "zh_CN": "锅铲格",
+  "ja": "フライ返しタイル",
+  "fr": "Case spatule",
+  "es": "Casilla de espátula"
+ },
+ "the stick": {
+  "zh_TW": "搖桿",
+  "zh_CN": "摇杆",
+  "ja": "スティック",
+  "fr": "le stick",
+  "es": "el stick"
+ },
+ "drag": {
+  "zh_TW": "拖曳",
+  "zh_CN": "拖动",
+  "ja": "ドラッグ",
+  "fr": "glisser",
+  "es": "arrastrar"
+ },
+ "emote button": {
+  "zh_TW": "表情按鈕",
+  "zh_CN": "表情按钮",
+  "ja": "エモートボタン",
+  "fr": "bouton emote",
+  "es": "botón de emote"
+ },
+ "Melee: tap to shove, hold to kick": {
+  "zh_TW": "近戰鍵：點一下推擠，按住踢",
+  "zh_CN": "近战键：点一下推挤，按住踢",
+  "ja": "近接：タップで突き飛ばし、長押しでキック",
+  "fr": "Mêlée : touche pour bousculer, maintiens pour un coup de pied",
+  "es": "Cuerpo a cuerpo: toca para empujar, mantén para patear"
+ },
+ "Learn the controls?": {
+  "zh_TW": "要學操作方式嗎？",
+  "zh_CN": "要学操作方式吗？",
+  "ja": "操作を覚える？",
+  "fr": "Apprendre les commandes ?",
+  "es": "¿Aprender los controles?"
+ },
+ "A one-minute practice with your %s controls. Nothing is saved.": {
+  "zh_TW": "用你的%s操作練習一分鐘。不會儲存任何進度。",
+  "zh_CN": "用你的%s操作练习一分钟。不会保存任何进度。",
+  "ja": "%sの操作で1分間練習します。何も保存されません。",
+  "fr": "Un entraînement d'une minute avec tes commandes (%s). Rien n'est enregistré.",
+  "es": "Una práctica de un minuto con tus controles (%s). No se guarda nada."
+ },
+ "Skip step": {
+  "zh_TW": "略過這步",
+  "zh_CN": "跳过这步",
+  "ja": "このステップをスキップ",
+  "fr": "Passer",
+  "es": "Saltar paso"
+ },
+ "Exit": {
+  "zh_TW": "離開",
+  "zh_CN": "退出",
+  "ja": "終了",
+  "fr": "Quitter",
+  "es": "Salir"
+ },
+ "Replay": {
+  "zh_TW": "再來一次",
+  "zh_CN": "再来一次",
+  "ja": "もう一度",
+  "fr": "Rejouer",
+  "es": "Repetir"
+ },
+ "You're ready!": {
+  "zh_TW": "準備好了！",
+  "zh_CN": "准备好了！",
+  "ja": "準備OK！",
+  "fr": "Tu es prêt !",
+  "es": "¡Estás listo!"
+ },
+ "Nothing in training was saved. Time to bonk some wobblers.": {
+  "zh_TW": "訓練不會儲存任何進度。去打幾個搖擺怪吧。",
+  "zh_CN": "训练不会保存任何进度。去揍几个摇摆怪吧。",
+  "ja": "練習の内容は保存されません。さあ、ウォブラーをぶっ飛ばそう。",
+  "fr": "Rien n'a été enregistré. À toi de bousculer quelques wobblers.",
+  "es": "No se guardó nada. Hora de dar sartenazos a unos wobblers."
+ },
+ "Nice!": {
+  "zh_TW": "好棒！",
+  "zh_CN": "好棒！",
+  "ja": "いいね！",
+  "fr": "Bien !",
+  "es": "¡Bien!"
+ },
+ "Great!": {
+  "zh_TW": "太好了！",
+  "zh_CN": "太好了！",
+  "ja": "すごい！",
+  "fr": "Super !",
+  "es": "¡Genial!"
+ },
+ "Boom!": {
+  "zh_TW": "轟！",
+  "zh_CN": "轰！",
+  "ja": "ドーン！",
+  "fr": "Boum !",
+  "es": "¡Pum!"
+ },
+ "You got it!": {
+  "zh_TW": "你學會了！",
+  "zh_CN": "你学会了！",
+  "ja": "できた！",
+  "fr": "Tu l'as !",
+  "es": "¡Lo tienes!"
+ },
+ "Smooth!": {
+  "zh_TW": "很流暢！",
+  "zh_CN": "很流畅！",
+  "ja": "なめらか！",
+  "fr": "Fluide !",
+  "es": "¡Fluido!"
+ },
+ "Perfect!": {
+  "zh_TW": "完美！",
+  "zh_CN": "完美！",
+  "ja": "パーフェクト！",
+  "fr": "Parfait !",
+  "es": "¡Perfecto!"
+ },
+ "Drag on the left side of the screen to move": {
+  "zh_TW": "在螢幕左側拖曳來移動",
+  "zh_CN": "在屏幕左侧拖动来移动",
+  "ja": "画面の左側をドラッグして移動",
+  "fr": "Glisse à gauche de l'écran pour avancer",
+  "es": "Arrastra en la izquierda de la pantalla para moverte"
+ },
+ "Push %s to move": {
+  "zh_TW": "推動%s來移動",
+  "zh_CN": "推动%s来移动",
+  "ja": "%sを倒して移動",
+  "fr": "Pousse %s pour avancer",
+  "es": "Empuja %s para moverte"
+ },
+ "Move with %s": {
+  "zh_TW": "用 %s 移動",
+  "zh_CN": "用 %s 移动",
+  "ja": "%sで移動",
+  "fr": "Avance avec %s",
+  "es": "Muévete con %s"
+ },
+ "Drag on the right side of the screen to look around": {
+  "zh_TW": "在螢幕右側拖曳來轉動視角",
+  "zh_CN": "在屏幕右侧拖动来转动视角",
+  "ja": "画面の右側をドラッグして見回す",
+  "fr": "Glisse à droite de l'écran pour regarder",
+  "es": "Arrastra en la derecha de la pantalla para mirar"
+ },
+ "Push %s to look around": {
+  "zh_TW": "推動%s來轉動視角",
+  "zh_CN": "推动%s来转动视角",
+  "ja": "%sを倒して見回す",
+  "fr": "Pousse %s pour regarder autour",
+  "es": "Empuja %s para mirar alrededor"
+ },
+ "Move the %s to look around": {
+  "zh_TW": "移動%s來轉動視角",
+  "zh_CN": "移动%s来转动视角",
+  "ja": "%sを動かして見回す",
+  "fr": "Bouge la %s pour regarder autour",
+  "es": "Mueve el %s para mirar alrededor"
+ },
+ "Tap %s to jump": {
+  "zh_TW": "點 %s 跳起來",
+  "zh_CN": "点 %s 跳起来",
+  "ja": "%sをタップしてジャンプ",
+  "fr": "Touche %s pour sauter",
+  "es": "Toca %s para saltar"
+ },
+ "Press %s to jump": {
+  "zh_TW": "按 %s 跳起來",
+  "zh_CN": "按 %s 跳起来",
+  "ja": "%sでジャンプ",
+  "fr": "Appuie sur %s pour sauter",
+  "es": "Pulsa %s para saltar"
+ },
+ "Pull %s to fire at the dummy": {
+  "zh_TW": "扣下 %s 向假人開火",
+  "zh_CN": "扣下 %s 向假人开火",
+  "ja": "%sを引いてダミーを撃つ",
+  "fr": "Tire sur %s pour viser le mannequin",
+  "es": "Aprieta %s para disparar al muñeco"
+ },
+ "Hold %s to fire at the dummy": {
+  "zh_TW": "按住 %s 向假人開火",
+  "zh_CN": "按住 %s 向假人开火",
+  "ja": "%sを押し続けてダミーを撃つ",
+  "fr": "Maintiens %s pour tirer sur le mannequin",
+  "es": "Mantén %s para disparar al muñeco"
+ },
+ "Double-tap the right side of the screen to aim": {
+  "zh_TW": "在螢幕右側連按兩下來瞄準",
+  "zh_CN": "在屏幕右侧连按两下来瞄准",
+  "ja": "画面の右側をダブルタップして狙う",
+  "fr": "Double-touche à droite de l'écran pour viser",
+  "es": "Toca dos veces la derecha de la pantalla para apuntar"
+ },
+ "Press %s to aim": {
+  "zh_TW": "按 %s 瞄準",
+  "zh_CN": "按 %s 瞄准",
+  "ja": "%sで狙う",
+  "fr": "Appuie sur %s pour viser",
+  "es": "Pulsa %s para apuntar"
+ },
+ "Hold %s to aim": {
+  "zh_TW": "按住 %s 瞄準",
+  "zh_CN": "按住 %s 瞄准",
+  "ja": "%sを押し続けて狙う",
+  "fr": "Maintiens %s pour viser",
+  "es": "Mantén %s para apuntar"
+ },
+ "Tap %s to reload": {
+  "zh_TW": "點 %s 換彈",
+  "zh_CN": "点 %s 换弹",
+  "ja": "%sをタップしてリロード",
+  "fr": "Touche %s pour recharger",
+  "es": "Toca %s para recargar"
+ },
+ "Press %s to reload": {
+  "zh_TW": "按 %s 換彈",
+  "zh_CN": "按 %s 换弹",
+  "ja": "%sでリロード",
+  "fr": "Appuie sur %s pour recharger",
+  "es": "Pulsa %s para recargar"
+ },
+ "Tap %s to shove": {
+  "zh_TW": "點 %s 推擠",
+  "zh_CN": "点 %s 推挤",
+  "ja": "%sをタップして突き飛ばし",
+  "fr": "Touche %s pour bousculer",
+  "es": "Toca %s para empujar"
+ },
+ "Press %s to shove": {
+  "zh_TW": "按 %s 推擠",
+  "zh_CN": "按 %s 推挤",
+  "ja": "%sで突き飛ばし",
+  "fr": "Appuie sur %s pour bousculer",
+  "es": "Pulsa %s para empujar"
+ },
+ "Hold %s to kick": {
+  "zh_TW": "按住 %s 踢人",
+  "zh_CN": "按住 %s 踢人",
+  "ja": "%sを長押ししてキック",
+  "fr": "Maintiens %s pour donner un coup de pied",
+  "es": "Mantén %s para patear"
+ },
+ "Press %s to kick": {
+  "zh_TW": "按 %s 踢人",
+  "zh_CN": "按 %s 踢人",
+  "ja": "%sでキック",
+  "fr": "Appuie sur %s pour donner un coup de pied",
+  "es": "Pulsa %s para patear"
+ },
+ "Tap the katana tile to switch weapon": {
+  "zh_TW": "點太刀格來換武器",
+  "zh_CN": "点太刀格来换武器",
+  "ja": "カタナのタイルをタップして武器を切り替え",
+  "fr": "Touche la case katana pour changer d'arme",
+  "es": "Toca la casilla de la katana para cambiar de arma"
+ },
+ "Press %s to switch weapon": {
+  "zh_TW": "按 %s 換武器",
+  "zh_CN": "按 %s 换武器",
+  "ja": "%sで武器を切り替え",
+  "fr": "Appuie sur %s pour changer d'arme",
+  "es": "Pulsa %s para cambiar de arma"
+ },
+ "Press %s to switch to the katana": {
+  "zh_TW": "按 %s 換成太刀",
+  "zh_CN": "按 %s 换成太刀",
+  "ja": "%sでカタナに持ち替え",
+  "fr": "Appuie sur %s pour prendre le katana",
+  "es": "Pulsa %s para sacar la katana"
+ },
+ "Tap %s to dash": {
+  "zh_TW": "點 %s 衝刺",
+  "zh_CN": "点 %s 冲刺",
+  "ja": "%sをタップしてダッシュ",
+  "fr": "Touche %s pour foncer",
+  "es": "Toca %s para lanzarte"
+ },
+ "Press %s to dash": {
+  "zh_TW": "按 %s 衝刺",
+  "zh_CN": "按 %s 冲刺",
+  "ja": "%sでダッシュ",
+  "fr": "Appuie sur %s pour foncer",
+  "es": "Pulsa %s para lanzarte"
+ },
+ "Tap the spatula tile to go back to it": {
+  "zh_TW": "點鍋鏟格換回鍋鏟",
+  "zh_CN": "点锅铲格换回锅铲",
+  "ja": "フライ返しのタイルをタップして戻す",
+  "fr": "Touche la case spatule pour la reprendre",
+  "es": "Toca la casilla de la espátula para volver a ella"
+ },
+ "Press %s to switch back to the spatula": {
+  "zh_TW": "按 %s 換回鍋鏟",
+  "zh_CN": "按 %s 换回锅铲",
+  "ja": "%sでフライ返しに戻す",
+  "fr": "Appuie sur %s pour reprendre la spatule",
+  "es": "Pulsa %s para volver a la espátula"
+ },
+ "Press %s again to go back to the spatula": {
+  "zh_TW": "再按一次 %s 換回鍋鏟",
+  "zh_CN": "再按一次 %s 换回锅铲",
+  "ja": "もう一度%sでフライ返しに戻す",
+  "fr": "Appuie encore sur %s pour reprendre la spatule",
+  "es": "Pulsa %s otra vez para volver a la espátula"
+ },
+ "Tap the pause button in the top corner": {
+  "zh_TW": "點右上角的暫停鍵",
+  "zh_CN": "点右上角的暂停键",
+  "ja": "右上の一時停止ボタンをタップ",
+  "fr": "Touche le bouton pause dans le coin",
+  "es": "Toca el botón de pausa de la esquina"
+ },
+ "Press %s to pause": {
+  "zh_TW": "按 %s 暫停",
+  "zh_CN": "按 %s 暂停",
+  "ja": "%sで一時停止",
+  "fr": "Appuie sur %s pour mettre en pause",
+  "es": "Pulsa %s para pausar"
+ },
+ "SHOVE": {
+  "zh_TW": "推擠",
+  "zh_CN": "推挤",
+  "ja": "突き飛ばし",
+  "fr": "BOUSCULER",
+  "es": "EMPUJAR"
+ },
+ "KICK": {
+  "zh_TW": "踢",
+  "zh_CN": "踢",
+  "ja": "キック",
+  "fr": "COUP DE PIED",
+  "es": "PATADA"
+ },
+ "Sprint": {
+  "zh_TW": "衝刺跑",
+  "zh_CN": "冲刺跑",
+  "ja": "スプリント",
+  "fr": "Sprint",
+  "es": "Correr"
+ },
+ "Reload": {
+  "zh_TW": "換彈",
+  "zh_CN": "换弹",
+  "ja": "リロード",
+  "fr": "Recharger",
+  "es": "Recargar"
+ },
+ "Next weapon": {
+  "zh_TW": "下一把武器",
+  "zh_CN": "下一把武器",
+  "ja": "次の武器",
+  "fr": "Arme suivante",
+  "es": "Arma siguiente"
+ },
+ "Wheel up": {
+  "zh_TW": "滾輪向上",
+  "zh_CN": "滚轮向上",
+  "ja": "ホイール上",
+  "fr": "Molette vers le haut",
+  "es": "Rueda arriba"
+ },
+ "Wheel down": {
+  "zh_TW": "滾輪向下",
+  "zh_CN": "滚轮向下",
+  "ja": "ホイール下",
+  "fr": "Molette vers le bas",
+  "es": "Rueda abajo"
+ },
+ "Mouse %d": {
+  "zh_TW": "滑鼠 %d",
+  "zh_CN": "鼠标 %d",
+  "ja": "マウス %d",
+  "fr": "Souris %d",
+  "es": "Ratón %d"
+ },
+ "Cycle weapons": {
+  "zh_TW": "輪流切換武器",
+  "zh_CN": "轮流切换武器",
+  "ja": "武器を順に切り替え",
+  "fr": "Parcourir les armes",
+  "es": "Recorrer las armas"
+ },
+ "Mouse wheel": {
+  "zh_TW": "滑鼠滾輪",
+  "zh_CN": "鼠标滚轮",
+  "ja": "マウスホイール",
+  "fr": "Molette",
+  "es": "Rueda"
+ },
+ "Shove: %s  ·  Kick: %s  ·  Jump: %s": {
+  "zh_TW": "推擠：%s  ·  踢：%s  ·  跳：%s",
+  "zh_CN": "推挤：%s  ·  踢：%s  ·  跳：%s",
+  "ja": "突き飛ばし：%s  ·  キック：%s  ·  ジャンプ：%s",
+  "fr": "Bousculer : %s  ·  Coup de pied : %s  ·  Saut : %s",
+  "es": "Empujar: %s  ·  Patear: %s  ·  Saltar: %s"
+ }
+}
