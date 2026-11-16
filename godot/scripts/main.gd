@@ -184,12 +184,15 @@ func _ready() -> void:
 	intro.closed.connect(func() -> void: if Tier.is_pc(): play.grab_focus.call_deferred())
 	var first: bool = auto_intro if auto_intro is bool else (Settings.persist and not bool(Settings.get_value("seen_intro", false)))
 	var quiet := session == null and join == "" and notice == ""
+	var newest := WhatsNew.newest_version()
+	# A brand-new player does not need the old notes. Mark them seen on the FIRST visit whichever card opens: before, this
+	# only ran when the intro did not open, so a new player's first return to the title (after Play / Quick play) popped
+	# What's new.
+	if first and Save.persist: Save.mark_news_seen(newest)
 	if first and quiet: intro.open()
 	else:
-		var newest := WhatsNew.newest_version()
 		var unseen: bool = auto_news if auto_news is bool else (Save.persist and newest != "" and newest != Save.last_seen_news)
 		if unseen and quiet and not first: news.open()
-		elif first and Save.persist: Save.mark_news_seen(newest)   # a brand-new player does not need the old notes
 
 ## Back (Escape / controller B via ui_cancel, Android's back gesture): close the top thing. The wizard and the Walldrobe
 ## handle ui_cancel themselves; the back gesture reaches them through here. On the bare title nothing happens.
