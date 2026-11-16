@@ -741,12 +741,40 @@
   "fr": "6 armes + Atelier de jouets",
   "es": "6 armas + Taller de juguetes"
  },
+ "6 weapons from the backyard": {
+  "zh_TW": "後院裡的 6 種武器",
+  "zh_CN": "后院里的 6 种武器",
+  "ja": "裏庭の武器6種",
+  "fr": "6 armes du jardin",
+  "es": "6 armas del patio trasero"
+ },
+ "6 weapons from the gift pile": {
+  "zh_TW": "禮物堆裡的 6 種武器",
+  "zh_CN": "礼物堆里的 6 种武器",
+  "ja": "ギフトの山の武器6種",
+  "fr": "6 armes du tas de cadeaux",
+  "es": "6 armas del montón de regalos"
+ },
+ "6 weapons, all kitchen kit": {
+  "zh_TW": "6 種武器，全是廚房家當",
+  "zh_CN": "6 种武器，全是厨房家当",
+  "ja": "武器6種、全部キッチン用品",
+  "fr": "6 armes, que du matériel de cuisine",
+  "es": "6 armas, todas de cocina"
+ },
  "9 Weapons + Site Yard": {
   "zh_TW": "9 種武器 + 工地廣場",
   "zh_CN": "9 种武器 + 工地广场",
   "ja": "武器 9 種 + 工事現場",
   "fr": "9 armes + Chantier",
   "es": "9 armas + Obra"
+ },
+ "9 weapons from the tool shed": {
+  "zh_TW": "工具間裡的 9 種武器",
+  "zh_CN": "工具间里的 9 种武器",
+  "ja": "道具小屋の武器9種",
+  "fr": "9 armes de la remise à outils",
+  "es": "9 armas del cobertizo de herramientas"
  },
  "A big farm on a sunny morning. Run into the big red barn and up to its hayloft, hide behind hay bales, fight round the tractor and the coop, or race over the haystack in the middle.": {
   "zh_TW": "陽光明媚的早晨，一座大農場。跑進紅色大穀倉，爬上它的草料閣樓，躲在乾草捆後面，繞著拖拉機和雞舍戰鬥，或是飛越中央的草垛。",
@@ -894,6 +922,13 @@
   "ja": "七段の階段状の長い尾根。両端は低く、中央は高い。坂の上で戦い、下り坂に相手を突き落とし、頂上を守ろう。ふもとのバウンスパッドで最初の段まで跳ね上がる。",
   "fr": "Une longue crête en sept marches, basse aux deux bouts et haute au milieu. Combats en montée, pousse les autres en descente et tiens le sommet. Les tremplins au pied font sauter sur la première marche.",
   "es": "Una larga cresta en siete escalones, baja en los dos extremos y alta en el medio. Lucha cuesta arriba, empuja cuesta abajo y mantén la cima. Los trampolines al pie te catapultan al primer escalón."
+ },
+ "A new building site every match": {
+  "zh_TW": "每場都是新工地",
+  "zh_CN": "每场都是新工地",
+  "ja": "毎試合ちがう工事現場",
+  "fr": "Un nouveau chantier à chaque match",
+  "es": "Una obra nueva en cada partida"
  },
  "A new building site every time: a fenced yard with a crane, an excavator, a bulldozer, spoil heaps, containers, scaffold towers and a trench with a bounce pad. Climb ladders, jump from machine to machine, and mind the open gates.": {
   "zh_TW": "每次都是全新的建築工地：圍欄工地裡有吊車、挖土機、推土機、土堆、貨櫃、鷹架塔和附彈跳墊的壕溝。爬梯子、在機器之間跳躍，小心敞開的大門。",
@@ -1167,6 +1202,13 @@
   "ja": "エアギター",
   "fr": "Air guitar",
   "es": "Guitarra aérea"
+ },
+ "Air-blast shove": {
+  "zh_TW": "氣流衝擊推開",
+  "zh_CN": "气流冲击推开",
+  "ja": "空気砲で押しのける",
+  "fr": "Souffle d'air qui repousse",
+  "es": "Empujón de aire"
  },
  "Alive · %d left": {
   "zh_TW": "存活 · 剩 %d 人",
@@ -1833,6 +1875,34 @@
   "fr": "Combat de boss",
   "es": "Pelea de jefe"
  },
+ "Boss rush up to Big Bruce": {
+  "zh_TW": "連戰頭目，直到巨型 Bruce",
+  "zh_CN": "连战头目，直到巨型 Bruce",
+  "ja": "ボスラッシュ、最後はビッグ・ブルース",
+  "fr": "Boss rush jusqu'à Gros Bruce",
+  "es": "Jefes seguidos hasta Bruce el grande"
+ },
+ "Boss rush up to Big Santa": {
+  "zh_TW": "連戰頭目，直到巨型聖誕老人",
+  "zh_CN": "连战头目，直到巨型圣诞老人",
+  "ja": "ボスラッシュ、最後はビッグサンタ",
+  "fr": "Boss rush jusqu'au Gros Père Noël",
+  "es": "Jefes seguidos hasta Papá Noel gigante"
+ },
+ "Boss rush up to Chef Inferno": {
+  "zh_TW": "連戰頭目，直到火焰主廚",
+  "zh_CN": "连战头目，直到火焰主厨",
+  "ja": "ボスラッシュ、最後はインフェルノシェフ",
+  "fr": "Boss rush jusqu'à Chef Inferno",
+  "es": "Jefes seguidos hasta Chef Infierno"
+ },
+ "Boss rush up to the Client": {
+  "zh_TW": "連戰頭目，直到業主出場",
+  "zh_CN": "连战头目，直到业主出场",
+  "ja": "ボスラッシュ、最後は発注者",
+  "fr": "Boss rush jusqu'au Client",
+  "es": "Jefes seguidos hasta el Cliente"
+ },
  "Boss rush: Backyard Mates, Grill Sergeant, Cricket Captain, Thong Champ, Outback Ollie, then Big Bruce.": {
   "zh_TW": "頭目連戰：後院朋友、BBQ 隊長、板球隊長、夾腳拖冠軍、大地 Ollie，最後是巨型 Bruce。",
   "zh_CN": "头目连战：后院朋友、BBQ 队长、板球队长、人字拖冠军、大地 Ollie，最后是巨型 Bruce。",
@@ -2063,6 +2133,13 @@
   "ja": "うさ耳",
   "fr": "Oreilles de lapin",
   "es": "Orejas de conejo"
+ },
+ "Burners that bite back": {
+  "zh_TW": "會反擊的火焰",
+  "zh_CN": "会反击的火焰",
+  "ja": "反撃してくるコンロ",
+  "fr": "Des feux qui mordent",
+  "es": "Fogones que muerden"
  },
  "Bush hat, big heart, bigger tongs.": {
   "zh_TW": "草帽、大大的心、更大的夾子。",
@@ -2882,6 +2959,13 @@
   "ja": "クレーンキック",
   "fr": "Coup de la grue",
   "es": "Patada de grulla"
+ },
+ "Cranes, cones and chaos": {
+  "zh_TW": "吊車、三角錐和一團混亂",
+  "zh_CN": "吊车、三角锥和一团混乱",
+  "ja": "クレーンとコーンと大混乱",
+  "fr": "Grues, cônes et chaos",
+  "es": "Grúas, conos y caos"
  },
  "Crate incoming: %s!": {
   "zh_TW": "補給箱來了：%s！",
@@ -3758,6 +3842,13 @@
   "fr": "Détente rapide, rechargement rapide, poches très profondes",
   "es": "Gatillo rápido, recarga rápida, bolsillos muy profundos"
  },
+ "Fast, short stabs": {
+  "zh_TW": "又快又短的刺擊",
+  "zh_CN": "又快又短的刺击",
+  "ja": "速くて短い突き",
+  "fr": "Coups courts et rapides",
+  "es": "Pinchazos rápidos y cortos"
+ },
  "Fastest feet in the arena, light as a feather": {
   "zh_TW": "競技場裡腳步最快，輕如鴻毛",
   "zh_CN": "竞技场里脚步最快，轻如鸿毛",
@@ -3891,6 +3982,13 @@
   "fr": "Tir : maintenir",
   "es": "Disparo: mantener"
  },
+ "Fires traffic cones": {
+  "zh_TW": "發射交通錐",
+  "zh_CN": "发射交通锥",
+  "ja": "カラーコーンを発射",
+  "fr": "Tire des cônes de chantier",
+  "es": "Dispara conos de tráfico"
+ },
  "Firing Range": {
   "zh_TW": "射擊場",
   "zh_CN": "射击场",
@@ -3995,6 +4093,13 @@
   "ja": "バーナー",
   "fr": "Chalumeau flambé",
   "es": "Soplete de cocina"
+ },
+ "Flames at close range": {
+  "zh_TW": "近距離噴火",
+  "zh_CN": "近距离喷火",
+  "ja": "近距離で炎が出る",
+  "fr": "Flammes à courte portée",
+  "es": "Llamas a corta distancia"
  },
  "Flamethrower": {
   "zh_TW": "火焰噴射器",
@@ -4654,6 +4759,13 @@
   "fr": "Trousse de soins",
   "es": "Botiquín"
  },
+ "Heavy swing, big topple": {
+  "zh_TW": "重重一揮，擊倒力大",
+  "zh_CN": "重重一挥，击倒力大",
+  "ja": "重い一振り、倒しやすい",
+  "fr": "Gros coup, gros déséquilibre",
+  "es": "Golpe pesado, gran derribo"
+ },
  "Height": {
   "zh_TW": "高度",
   "zh_CN": "高度",
@@ -4829,6 +4941,13 @@
   "fr": "Sweat à capuche",
   "es": "Sudadera"
  },
+ "Hooks and lifts rivals": {
+  "zh_TW": "掛住並抬起對手",
+  "zh_CN": "挂住并抬起对手",
+  "ja": "相手を引っかけて持ち上げる",
+  "fr": "Accroche et soulève les rivaux",
+  "es": "Engancha y levanta rivales"
+ },
  "Hop, kick and wave": {
   "zh_TW": "跳一下、踢一腳、揮揮手",
   "zh_CN": "跳一下、踢一脚、挥挥手",
@@ -4899,6 +5018,13 @@
   "fr": "Chaud, chaud, chaud. Éloigne-toi des feux.",
   "es": "Calor, calor, calor. Aléjate de los fogones."
  },
+ "Hotplates and a spinning clothesline": {
+  "zh_TW": "熱盤和轉不停的衣架",
+  "zh_CN": "热盘和转不停的衣架",
+  "ja": "ホットプレートとぐるぐる回る物干し",
+  "fr": "Plaques chaudes et séchoir tournant",
+  "es": "Planchas calientes y tendedero giratorio"
+ },
  "Howzat! Duck under the spinning clothesline.": {
   "zh_TW": "出局！快躲開旋轉的衣架。",
   "zh_CN": "出局！快躲开旋转的衣架。",
@@ -4912,6 +5038,13 @@
   "ja": "超巨大",
   "fr": "Immense",
   "es": "Enorme"
+ },
+ "Huge launch power": {
+  "zh_TW": "把人打飛的力道超大",
+  "zh_CN": "把人打飞的力道超大",
+  "ja": "大きく打ち上げる",
+  "fr": "Énorme puissance de lancer",
+  "es": "Gran potencia de lanzamiento"
  },
  "I have a password": {
   "zh_TW": "我有密碼",
@@ -5417,6 +5550,27 @@
   "fr": "Test de charge !",
   "es": "¡Prueba de carga!"
  },
+ "Lobbed jar, big splat": {
+  "zh_TW": "丟出去，砸出一大片",
+  "zh_CN": "丢出去，砸出一大片",
+  "ja": "投げるビン、べちゃっと命中",
+  "fr": "Pot lancé, gros splash",
+  "es": "Bote lanzado, gran salpicón"
+ },
+ "Lobbed soup, big splash": {
+  "zh_TW": "丟出熱鍋，滿地亂灑",
+  "zh_CN": "丢出热锅，满地乱洒",
+  "ja": "投げるスープ、大きな水しぶき",
+  "fr": "Soupe lancée, grosse éclaboussure",
+  "es": "Sopa lanzada, gran salpicadura"
+ },
+ "Lobbed, huge knockback": {
+  "zh_TW": "丟出去，擊退力超大",
+  "zh_CN": "丢出去，击退力超大",
+  "ja": "投げて大きく吹き飛ばす",
+  "fr": "Lancé, énorme recul",
+  "es": "Lanzado, retroceso enorme"
+ },
  "Lobby": {
   "zh_TW": "大廳",
   "zh_CN": "大厅",
@@ -5507,6 +5661,34 @@
   "ja": "細長い",
   "fr": "Long",
   "es": "Largo"
+ },
+ "Long reach, firm grip": {
+  "zh_TW": "距離長，抓得穩",
+  "zh_CN": "距离长，抓得稳",
+  "ja": "リーチ長め、持ち手も安定",
+  "fr": "Longue allonge, prise ferme",
+  "es": "Largo alcance, agarre firme"
+ },
+ "Long, quick reach": {
+  "zh_TW": "又長又快",
+  "zh_CN": "又长又快",
+  "ja": "長くて速い",
+  "fr": "Longue portée, rapide",
+  "es": "Alcance largo y rápido"
+ },
+ "Long, sparkly reach": {
+  "zh_TW": "又長又閃亮",
+  "zh_CN": "又长又闪亮",
+  "ja": "長くてキラキラ",
+  "fr": "Longue portée scintillante",
+  "es": "Alcance largo y brillante"
+ },
+ "Longest reach of all": {
+  "zh_TW": "最長的攻擊距離",
+  "zh_CN": "最长的攻击距离",
+  "ja": "いちばん長いリーチ",
+  "fr": "La plus longue allonge",
+  "es": "El mayor alcance"
  },
  "Look": {
   "zh_TW": "視角",
@@ -7167,6 +7349,13 @@
   "fr": "Partie rapide : un tap pour une arène et un mode au hasard",
   "es": "Juego rápido: un toque para una arena y un modo al azar"
  },
+ "Quick, light chops": {
+  "zh_TW": "又快又輕的揮擊",
+  "zh_CN": "又快又轻的挥击",
+  "ja": "軽くて速い切れ味",
+  "fr": "Coups rapides et légers",
+  "es": "Tajos rápidos y ligeros"
+ },
  "Quit match": {
   "zh_TW": "結束比賽",
   "zh_CN": "结束比赛",
@@ -7236,6 +7425,27 @@
   "ja": "射撃場",
   "fr": "Champ de tir",
   "es": "Campo de tiro"
+ },
+ "Rapid-fire nails": {
+  "zh_TW": "連發釘子",
+  "zh_CN": "连发钉子",
+  "ja": "連射ネイル",
+  "fr": "Clous en rafale",
+  "es": "Clavos en ráfaga"
+ },
+ "Rapid-fire pepper": {
+  "zh_TW": "連發調料",
+  "zh_CN": "连发调料",
+  "ja": "連射ペッパー",
+  "fr": "Poivre en rafale",
+  "es": "Pimienta en ráfaga"
+ },
+ "Rapid-fire snowballs": {
+  "zh_TW": "連發雪球",
+  "zh_CN": "连发雪球",
+  "ja": "連射スノーボール",
+  "fr": "Boules de neige en rafale",
+  "es": "Bolas de nieve en ráfaga"
  },
  "Rare": {
   "zh_TW": "稀有",
@@ -7979,6 +8189,13 @@
   "fr": "Shimmy",
   "es": "Shimmy"
  },
+ "Shiny thrown ornaments": {
+  "zh_TW": "閃亮亮的飛擲彩球",
+  "zh_CN": "闪亮亮的飞掷彩球",
+  "ja": "投げるピカピカのオーナメント",
+  "fr": "Boules brillantes lancées",
+  "es": "Adornos brillantes lanzados"
+ },
  "Ship": {
   "zh_TW": "船",
   "zh_CN": "船",
@@ -7992,6 +8209,13 @@
   "ja": "ショップ",
   "fr": "Boutique",
   "es": "Tienda"
+ },
+ "Short-range shove": {
+  "zh_TW": "近距離衝擊",
+  "zh_CN": "近距离冲击",
+  "ja": "近距離の衝撃",
+  "fr": "Poussée à courte portée",
+  "es": "Empujón de corto alcance"
  },
  "Shotgun": {
   "zh_TW": "霰彈槍",
@@ -8217,6 +8441,20 @@
   "fr": "Patinoire glissante",
   "es": "Pista resbaladiza"
  },
+ "Slippery ice and gift crates": {
+  "zh_TW": "滑溜溜的冰面和禮物箱",
+  "zh_CN": "滑溜溜的冰面和礼物箱",
+  "ja": "つるつるの氷とギフト箱",
+  "fr": "Glace glissante et caisses cadeaux",
+  "es": "Hielo resbaladizo y cajas de regalos"
+ },
+ "Slow, heavy swing": {
+  "zh_TW": "慢而重的揮擊",
+  "zh_CN": "慢而重的挥击",
+  "ja": "遅くて重い一振り",
+  "fr": "Coup lent et lourd",
+  "es": "Golpe lento y pesado"
+ },
  "Small": {
   "zh_TW": "小",
   "zh_CN": "小",
@@ -8258,6 +8496,13 @@
   "ja": "スナイパー",
   "fr": "Fusil de précision",
   "es": "Francotirador"
+ },
+ "Snow, sparkle and gift bombs": {
+  "zh_TW": "雪花、閃亮亮和禮物炸彈",
+  "zh_CN": "雪花、闪亮亮和礼物炸弹",
+  "ja": "雪とキラキラとギフト爆弾",
+  "fr": "Neige, paillettes et cadeaux piégés",
+  "es": "Nieve, brillos y regalos bomba"
  },
  "Snowball Blaster": {
   "zh_TW": "雪球連發槍",
@@ -8342,6 +8587,13 @@
   "ja": "宇宙カプセル",
   "fr": "Capsule spatiale",
   "es": "Cápsula espacial"
+ },
+ "Sparks at close range": {
+  "zh_TW": "近距離噴火花",
+  "zh_CN": "近距离喷火花",
+  "ja": "近距離で火花",
+  "fr": "Étincelles à courte portée",
+  "es": "Chispas a corta distancia"
  },
  "Spatula": {
   "zh_TW": "鍋鏟",
@@ -8433,6 +8685,13 @@
   "ja": "くるくる回ってジャンプ。全員が持っています",
   "fr": "Tourne et saute. Tout le monde l'a",
   "es": "Gira y salta. Todos la tienen"
+ },
+ "Spins through the air": {
+  "zh_TW": "在空中旋轉飛行",
+  "zh_CN": "在空中旋转飞行",
+  "ja": "空中をくるくる飛ぶ",
+  "fr": "Tourne dans les airs",
+  "es": "Gira por el aire"
  },
  "Spirit Level": {
   "zh_TW": "水平尺",
@@ -8595,6 +8854,13 @@
   "fr": "Stable",
   "es": "Estable"
  },
+ "Steady swing, good reach": {
+  "zh_TW": "穩穩一揮，距離不錯",
+  "zh_CN": "稳稳一挥，距离不错",
+  "ja": "安定した一振り、リーチ長め",
+  "fr": "Coup régulier, bonne allonge",
+  "es": "Golpe firme, buen alcance"
+ },
  "Step %d of %d": {
   "zh_TW": "第 %d 步，共 %d 步",
   "zh_CN": "第 %d 步，共 %d 步",
@@ -8699,6 +8965,13 @@
   "ja": "夕焼けビーチ",
   "fr": "Plage au coucher du soleil",
   "es": "Playa al atardecer"
+ },
+ "Sunshine, sausages and flying thongs": {
+  "zh_TW": "陽光、燒肉和飛天夾腳拖",
+  "zh_CN": "阳光、烧肉和飞天人字拖",
+  "ja": "お日さまとウインナーと飛ぶビーサン",
+  "fr": "Soleil, saucisses et tongs volantes",
+  "es": "Sol, salchichas y chanclas voladoras"
  },
  "Super low gravity. Float and soar": {
   "zh_TW": "超低重力。飄浮、翱翔",
@@ -9638,6 +9911,13 @@
   "fr": "Tourne par petits à-coups, bras tendu comme un arroseur",
   "es": "Gira a tirones, brazo extendido como un aspersor"
  },
+ "Turn up the heat. Dodge the soup": {
+  "zh_TW": "火開大一點，小心熱鍋",
+  "zh_CN": "火开大一点，小心热锅",
+  "ja": "火力アップ。スープに気をつけて",
+  "fr": "Montez le feu. Évitez la soupe",
+  "es": "Sube el fuego. Esquiva la sopa"
+ },
  "Twin Fang Bow": {
   "zh_TW": "雙牙弓",
   "zh_CN": "双牙弓",
@@ -9721,6 +10001,13 @@
   "ja": "解放する",
   "fr": "DÉBLOQUER",
   "es": "DESBLOQUEAR"
+ },
+ "Ultra-fast slaps": {
+  "zh_TW": "超快速拍打",
+  "zh_CN": "超快速拍打",
+  "ja": "超高速ビンタ",
+  "fr": "Claques ultra-rapides",
+  "es": "Cachetazos ultrarrápidos"
  },
  "Uncommon": {
   "zh_TW": "罕見",

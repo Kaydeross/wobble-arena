@@ -1,0 +1,34 @@
+{
+ "_readme": "Landing page data (ui/pack_landing.gd). See construction/landing.json.",
+ "backdrop": "australia",
+ "palette": {
+  "top": "#c4481c",
+  "bottom": "#f0a53c",
+  "glow": "#fff0b0",
+  "ink": "#fff8e8",
+  "card": "#3a2210",
+  "accent2": "#2f8f58"
+ },
+ "headline": "Hey Mate",
+ "tagline": "Sunshine, sausages and flying thongs",
+ "features": [
+  "6 weapons from the backyard",
+  "Hotplates and a spinning clothesline",
+  "Boss rush up to Big Bruce"
+ ],
+ "weapon_roles": {
+  "cricketbat": "Huge launch power",
+  "aussieboomerang": "Spins through the air",
+  "thongslapper": "Ultra-fast slaps",
+  "vegemitejar": "Lobbed jar, big splat",
+  "bbqtongs": "Long reach, firm grip",
+  "didgeridooblaster": "Air-blast shove"
+ },
+ "wobbler": {
+  "class": "wobbler",
+  "hat": "slouch",
+  "skin": "singlet",
+  "color": 15251600
+ },
+ "arena_seed": 7
+}
