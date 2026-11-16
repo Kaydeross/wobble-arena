@@ -20,7 +20,7 @@ Honest state of the Godot port after the unattended build-out. "Done" means port
 | 6 Store readiness | In progress | provider-neutral `Ads` / `Entitlements` / `RemoteConfig` / `Safety` policy with tests, session revocation and retention safety, name filter and report/block, remote config, CI export smoke build | native AdMob and StoreKit plugins, consent forms, analytics and crash reporting, server wallet, production server host, App Review items |
 | Online infra | In progress | NAS self-hosting runbook (`docs/SERVER_PLAN.md`), `deploy/nas` compose, `TRUST_PROXY` and production server URL config (#70) | production server URL is now set in `godot/data/extra/server.json`; a TestFlight build against it has not been played online yet |
 
-Release tracking: the checked-in native version is 0.4.0. Historical TestFlight builds are not a substitute for testing the current commit. The Phase 3 and 4 exit criteria ("a new player can install and reach a match with no dead ends", "60 fps on iPhone 12 for 15 minutes without thermal throttling") need device play and cannot be signed off from tests alone.
+Release tracking: the checked-in native version is 0.5.0 (the soft-launch build). Historical TestFlight builds are not a substitute for testing the current commit. The Phase 3 and 4 exit criteria ("a new player can install and reach a match with no dead ends", "60 fps on iPhone 12 for 15 minutes without thermal throttling") need device play and cannot be signed off from tests alone.
 
 ## Money model and execution order (approved 2026-11-14)
 
