@@ -46,6 +46,30 @@ length matches `dur` within 1 ms. Change a sound in `public/index.html` -> run `
   `APPLICATION_RESUMED` / `FOCUS_IN`, and on the first touch/click/key (the web AudioContext needs a user gesture).
 - `Sfx.on_event(e, sim)` maps match events to sounds; `World._drain_events` passes every event through it.
 
+### Spatial sound (`Sfx.play_at`)
+The arena is 30-45 m across, so a fight on the far side should not sound like it is in your ear. `Sfx.play_at(name,
+world_pos: Vector3, volume := 1.0)` is the positional twin of `play`: it takes a voice from a second, smaller pool of
+eight `AudioStreamPlayer3D`s (`POOL_3D`), sets `global_position`, and lets the mixer pan and attenuate it from the
+camera (the listener). The 2D pool's twelve players are untouched: `Sfx.play` still handles the UI, the player's own
+cues and anything with no world source.
+
+- Falloff is tuned to the arena: `unit_size` 5 m (full volume at the source, about half at 10 m) and `max_distance`
+  55 m, so a fight across the map is a distant murmur rather than silence. Voices use the same `SFX` bus, so Settings
+  > Audio "Sound effects" and the mute apply unchanged.
+- The pool is bounded and steals voices: an idle 3D player first, else the one that started longest ago (ties: the
+  quietest). Unlike the 2D pool there is no priority table — a positional cue is a short world sound, never a stinger.
+  Pitch / volume jitter comes from `Sfx`'s private RNG, never `combat.rng`.
+- The pool is built lazily on the first `play_at` that needs it, and never under the headless dummy driver, so the
+  node-count baselines of the headless suites do not move. `force_3d` is the test hook that builds it headless (the
+  audio suite uses it to check the bound and the stealing).
+- Settings > Audio "3D sound" (`sfx_3d`, default on) turns it off: `play_at` then falls straight back to `play`, and
+  any 3D voice already playing is stopped. A `play_at` that cannot get a 3D voice (headless, mute, unknown name) falls
+  back the same way or returns silently.
+- Routing lives in `Sfx.on_event`, not in the simulation: an event that carries `x`/`y`/`z` is positional (breakable
+  hit / break, explosion, knife clink, boomerang), a fighter-only event is positional when that fighter is not the
+  local player (the other players' gunshots, melee, bounce pads, pickups), and a crate uses its own position. The
+  local player's gunshots, reload, respawn, K.O. sting and the results fanfare stay 2D.
+
 | JS call site | Godot event | sound |
 |---|---|---|
 | `topple` | `sfx` (Combat) | boing |

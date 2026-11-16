@@ -1,0 +1,16 @@
+{
+ "3D sound": {
+  "zh_TW": "3D 音效",
+  "zh_CN": "3D 音效",
+  "ja": "3Dサウンド",
+  "fr": "Son 3D",
+  "es": "Sonido 3D"
+ },
+ "World sounds come from where they happen: other fighters, crates, breaks": {
+  "zh_TW": "音效會從它發生的位置傳出：其他角色、箱子、撞擊",
+  "zh_CN": "音效会从它发生的位置传出：其他角色、箱子、撞击",
+  "ja": "音は発生した場所から聞こえます：他のファイター、箱、衝撃",
+  "fr": "Les sons viennent de là où ils se produisent : autres combattants, caisses, impacts",
+  "es": "Los sonidos vienen de donde ocurren: otros luchadores, cajas, impactos"
+ }
+}
