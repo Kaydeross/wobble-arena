@@ -145,7 +145,7 @@ func _match() -> void:
 		if tg != null:
 			var d := Vector2(tg.phys.px - p.phys.px, tg.phys.pz - p.phys.pz)
 			world.cam.yaw = atan2(d.x, d.y)
-			world.cam.pitch = -0.1
+			world.cam.pitch = 0.0       # level aim at the target: the old -0.1 aimed ~6 deg low and only stunned through the full-strength aim assist
 			if p.weapon == "blower":
 				go = Vector2(0, 1) if d.length() > 4.0 else Vector2.ZERO
 				fire = d.length() < 7.0

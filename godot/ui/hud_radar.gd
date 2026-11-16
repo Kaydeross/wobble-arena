@@ -4,8 +4,11 @@ extends Control
 ## and the camera direction, inside a round teal panel with a white rim and a slow sweep.
 ## `sim` and `yaw` are set by hud.gd.
 
-const D := 124.0
+const D_FULL := 124.0          ## desktop / tablet diameter
+const D_COMPACT := 96.0        ## phones: a smaller disc leaves the top-right corner (and the play area under it) to the action
 const RANGE := 30.0
+
+var D := D_FULL                ## current diameter (canvas px), set_diameter
 
 var sim: MatchSim
 var yaw := 0.0
@@ -27,6 +30,18 @@ func _ready() -> void:
 	_content.draw.connect(_draw_content)
 	_mask.add_child(_content)
 	_ring = _layer("Ring", _draw_ring)
+
+## Resize the disc (phones use D_COMPACT). The layers and the clip mask follow; the radar keeps its RANGE in metres.
+func set_diameter(d: float) -> void:
+	if is_equal_approx(d, D): return
+	D = d
+	custom_minimum_size = Vector2(D, D)
+	size = custom_minimum_size
+	for c: Control in [_mask, _content, _ring]:
+		if c: c.size = size
+	for c: Control in [_mask, _ring]:
+		if c: c.queue_redraw()
+	queue_redraw()
 
 func _layer(n: String, f: Callable) -> Control:
 	var c := Control.new()

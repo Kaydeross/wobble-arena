@@ -21,9 +21,10 @@ assist would skew cross-play):
 - a target qualifies when it is an enemy (`Combat.is_friend`), alive, not a ghost and not left, **1–32 m** from the
   shoulder, with line of sight (`MatchSim.has_los`), and inside a **~7° cone** around the crosshair
   (`ASSIST_CONE_COS` 0.9925);
-- of the qualifying targets the one closest to the crosshair is picked; the aim direction is moved **85 %** of the way
-  from the crosshair to its **chest** (`ASSIST_PULL` 0.85), keeping the crosshair's distance so weapon range and falloff
-  do not change;
+- of the qualifying targets the one closest to the crosshair is picked; the aim direction is moved toward its **chest**
+  by up to **85 %** (`ASSIST_PULL` 0.85), keeping the crosshair's distance so weapon range and falloff do not change.
+  The pull is full strength inside the inner ~3.5° (`ASSIST_INNER_COS`) and **fades smoothly to nothing at the 7° cone
+  edge**, so the aim never snaps when the crosshair wobbles across the edge;
 - with no qualifying target the crosshair is untouched. The camera and the movement stick are never moved; this is the
   crosshair point only, and it is deliberately gentle (a target that is not roughly under the crosshair is not helped).
 
@@ -31,6 +32,12 @@ This is the "existing assistance, improved" half of the owner request: the base 
 shots exactly where the crosshair points (`Weapons.aim_from_hand`); Normal adds the small target magnetism the touch
 build had on the web (`touchAssist`), for mouse and controller too. The old, unused `touch_assist` setting is not
 wired into this (the assist row is the single switch).
+
+## Cycling weapons
+
+The cycle mirrors the web game's `cycleWeapon`: the order is `[spatula, filled slots...]` and wraps. Mouse wheel down /
+controller Y / a swipe right across the touch hotbar go forward (`swap`), mouse wheel up / a swipe left go back
+(`swap_back`, the web's `cycleBack`).
 
 ## Advanced: no assist, +25% damage
 

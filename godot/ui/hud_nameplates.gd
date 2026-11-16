@@ -5,10 +5,13 @@ extends Control
 
 const MAX_SHOWN := 3
 const MAX_DIST := 45.0
+const COMPACT_SHOWN := 2       ## phones: two plates, nearer targets only (the third pill was clutter over the arena)
+const COMPACT_DIST := 30.0
 const LIFT := 2.6              ## metres above the feet for a size-1 class (web: pos.y + 2.5)
 
 var sim: MatchSim
 var cam: Camera3D
+var compact := false           ## phone layout (hud.gd): fewer, nearer plates
 var _shown_hp := {}            ## FighterState -> eased hp fraction
 var _plates: Array = []        ## [screen pos, alpha, name, hp, colour]
 var _font: Font
@@ -29,12 +32,12 @@ func tick(dt: float) -> void:
 		var sz := float(sim.combat.classes.get(f.class_id, {}).get("size", 1.0))
 		var wp := Vector3(f.phys.px, f.phys.py + LIFT * sz, f.phys.pz)
 		var d := cp.distance_to(Vector3(f.phys.px, f.phys.py, f.phys.pz))
-		if d > MAX_DIST or cam.is_position_behind(wp): continue
+		if d > (COMPACT_DIST if compact else MAX_DIST) or cam.is_position_behind(wp): continue
 		near.append([d, f, wp])
 	near.sort_custom(func(a, b): return a[0] < b[0])
 	var keep := {}
 	var vs := get_viewport_rect().size
-	for n: Array in near.slice(0, MAX_SHOWN):
+	for n: Array in near.slice(0, COMPACT_SHOWN if compact else MAX_SHOWN):
 		var f: FighterState = n[1]
 		var sp := cam.unproject_position(n[2])
 		if sp.x < -60 or sp.x > vs.x + 60 or sp.y < -40 or sp.y > vs.y + 40: continue

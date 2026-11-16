@@ -25,3 +25,14 @@ Goal: every screen reads at a glance on a phone held in landscape. Nothing overl
 - Walldrobe, Settings, controls help, room browser, team board: spacing moved onto the scale.
 
 No simulation, combat, physics or gameplay behaviour changed; all text still goes through `tr()`.
+
+## Combat HUD on phones (mobile HUD review)
+
+A phone is a touch layer on a canvas that is not tablet-class (`MatchHud.compact`, `TouchControls.is_tablet`). Desktop and tablets keep the full HUD.
+
+- Radar 124 -> 96 canvas px (`HudRadar.D_COMPACT`); health bar drawn at 86 % (`HudHealth.COMPACT_K`), which frees room for the hotbar slots.
+- Score pill: the "No leader yet" line is hidden until someone leads (the row only returns with a leader).
+- Kill feed: the two latest lines, 3.5 s each (was four lines, 5 s) so it stays off the right thumb's play area.
+- Nameplates: two, within 30 m (was three, 45 m).
+- Off-screen enemy arrows (`ui/enemy_indicators.gd`): three nearest within 45 m on phones (six on tablets/desktop), a slightly bigger and brighter marker (30 px, min alpha 0.65), measured from the view centre, able to slide all the way round the rim past the hotbar (an enemy dead behind you used to get no arrow when the bottom edge was blocked), kept clear of the move stick, and for enemies behind the camera the vertical part of the arrow is the world height difference (damped) rather than camera-up, so looking down does not make level enemies point up.
+- `tests/ui_shots.gd` has a `busy` shot (five bots around the player, three off screen, a feed, a toast, a damage number, fingers down) and `--safe L,T,R,B` (pt) to fake a notch: `godot --path godot --resolution 852x393 --script res://tests/ui_shots.gd -- --no-save --shot busy --safe 59,0,59,21 --out FILE.png`.

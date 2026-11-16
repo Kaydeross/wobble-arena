@@ -242,6 +242,8 @@ func _touch_test() -> void:
 	var r1: Rect2 = tc.hotbar_slot_rect(1)
 	_touch(tc, 5, r1.get_center(), true); _drag(tc, 5, r1.get_center() + Vector2(80, 0)); _touch(tc, 5, r1.get_center() + Vector2(80, 0), false)
 	check(st.consume("swap"), "swipe across the hotbar cycles weapons")
+	_touch(tc, 5, r1.get_center(), true); _drag(tc, 5, r1.get_center() - Vector2(80, 0)); _touch(tc, 5, r1.get_center() - Vector2(80, 0), false)
+	check(st.consume("swap_back") and not st.peek("swap"), "swipe left across the hotbar cycles back")
 	while st.consume("slot1") or st.consume("slot2") or st.consume("slot3"): pass
 	# AIM: double-tap the look area toggles the scope; one tap does not
 	st.aim_toggle = false

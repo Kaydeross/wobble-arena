@@ -4,6 +4,7 @@ extends Control
 
 const W := 300.0
 const H := 62.0
+const COMPACT_K := 0.86         ## phones: the same bar drawn at this scale (a smaller footprint in the thumb zone)
 const TRAIL_WAIT := 0.45
 const TRAIL_SPEED := 0.55      ## fraction of the bar per second
 
@@ -16,6 +17,7 @@ var _trail_wait := 0.0
 var _pulse := 0.0
 var _font: Font
 var _font_b: Font
+var k_draw := 1.0              ## drawing scale (set_compact)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -23,6 +25,15 @@ func _ready() -> void:
 	size = custom_minimum_size
 	_font = get_theme_default_font()
 	_font_b = UiTheme.font(700)
+
+## Phones: an 86 % bar (size and drawing), so the hotbar next to it gets the room. Everything is drawn in the 300x62 box.
+func set_compact(on: bool) -> void:
+	var k := COMPACT_K if on else 1.0
+	if is_equal_approx(k, k_draw): return
+	k_draw = k
+	custom_minimum_size = Vector2(W, H) * k
+	size = custom_minimum_size
+	queue_redraw()
 
 func set_value(k: float, txt: String, cls: String) -> void:
 	k = clampf(k, 0.0, 1.0)
@@ -55,14 +66,16 @@ func _draw() -> void:
 		panel.shadow_color = Color(1, 0.2, 0.2, 0.25 + 0.35 * pl)
 		panel.shadow_size = int(6 + 8 * pl)
 		panel.shadow_offset = Vector2.ZERO
-	draw_style_box(panel, Rect2(Vector2.ZERO, size))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2(k_draw, k_draw))
+	var sz := size / k_draw        ## the logical 300x62 box
+	draw_style_box(panel, Rect2(Vector2.ZERO, sz))
 	# class name + numbers
 	draw_string_outline(_font_b, Vector2(14, 24), cls_text, HORIZONTAL_ALIGNMENT_LEFT, W * 0.55, 17, 4, Color(0, 0, 0, 0.25))
 	draw_string(_font_b, Vector2(14, 24), cls_text, HORIZONTAL_ALIGNMENT_LEFT, W * 0.55, 17, UiTheme.MUTED)
 	var tw := _font_b.get_string_size(hp_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-	draw_string(_font_b, Vector2(size.x - 14 - tw, 25), hp_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	draw_string(_font_b, Vector2(sz.x - 14 - tw, 25), hp_text, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
 	# bar: back, trail, fill, gloss, border
-	var bar := Rect2(12, 32, size.x - 24, 18)
+	var bar := Rect2(12, 32, sz.x - 24, 18)
 	var back := UiTheme.box(Color(0, 0, 0, 0.45), 9, Color(0, 0, 0, 0), 0, 0)
 	draw_style_box(back, bar)
 	if _trail > _shown + 0.002:
