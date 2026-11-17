@@ -86,7 +86,7 @@
   "spread": 0.03,
   "cooldown": 0.09,
   "stiff": 100,
-  "dmg": 3.2,
+  "dmg": 4.0,
   "range": 22,
   "force": 1.6,
   "maxForce": 2.6,

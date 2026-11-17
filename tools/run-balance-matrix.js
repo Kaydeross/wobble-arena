@@ -4,6 +4,11 @@
      npm run balance -- --matches 200 --out balance.md
    Options: --matches N (200)  --jobs N (CPUs-1, max 8)  --bots N (4 bots + the player's seat, also a bot = 5 fighters)  --seconds N (90)  --mode id (classic)
             --maps a,b,c (arena,rooftops,temple)  --seed BASE (1)  --out file.md  --json raw.json  --selftest
+            --starts a,b,c|pack   = controlled weapon comparison: in match i EVERY fighter gets starts[i % n] on every life (instead of the
+                                    mode's start weapon); 'pack' = the pack's own weapons (with --pack)
+            --timeout S (120: wall-clock limit of one match; raise it for long matches on a busy machine)
+            --pack id[,id..]|all  = a DLC pack's classic mode on its own arenas with its own weapons (kitchen, xmas, australia):
+                                    one report section per pack; mode and maps come from godot/data/extra/<pack>/hub.json
    Tooling only: no dependencies, nothing here touches the game. */
 const { spawn, spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
@@ -17,14 +22,14 @@ const OUTLIER_HI = 1.5, OUTLIER_LO = 0.5, MIN_KOS = 10;   // flag only groups wi
 
 function parseArgs(argv) {
   const o = { matches: 200, jobs: Math.max(1, Math.min(8, os.cpus().length - 1)), bots: 4, seconds: 90, mode: 'classic',
-    maps: ['arena', 'rooftops', 'temple'], seed: 1, out: '', json: '', selftest: false, weapon: '' };
+    maps: ['arena', 'rooftops', 'temple'], seed: 1, out: '', json: '', selftest: false, weapon: '', packs: [], starts: [], timeout: TIMEOUT_MS / 1000 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i], v = () => argv[++i];
     if (a === '--matches') o.matches = +v(); else if (a === '--jobs') o.jobs = Math.max(1, +v());
     else if (a === '--bots') o.bots = +v(); else if (a === '--seconds') o.seconds = +v();
     else if (a === '--mode') o.mode = v(); else if (a === '--maps') o.maps = v().split(',').filter(Boolean);
     else if (a === '--seed') o.seed = +v(); else if (a === '--out') o.out = v(); else if (a === '--json') o.json = v();
-    else if (a === '--weapon') o.weapon = v(); else if (a === '--selftest') o.selftest = true;
+    else if (a === '--weapon') o.weapon = v(); else if (a === '--starts') o.starts = v().split(',').filter(Boolean); else if (a === '--timeout') o.timeout = Math.max(1, +v()); else if (a === '--pack') o.packs = v().split(',').filter(Boolean); else if (a === '--selftest') o.selftest = true;
     else { console.error('unknown option ' + a); process.exit(2); }
   }
   return o;
@@ -37,9 +42,22 @@ function plan(o) {
   for (let i = 0; i < o.matches; i++) {
     const classes = [];
     for (let s = 0; s <= o.bots; s++) classes.push(CLASSES[(i * (o.bots + 1) + i + s) % CLASSES.length]);   // bots + the player's seat; +i also rotates who sits in seat 0
-    out.push({ i, seed: o.seed + i, map: o.maps[i % o.maps.length], classes });
+    const st = o.starts && o.starts.length ? o.starts[i % o.starts.length] : '';
+    out.push({ i, seed: o.seed + i, map: o.maps[Math.floor(i / (o.starts && o.starts.length || 1)) % o.maps.length], classes, start: st });
   }
   return out;
+}
+
+/* The DLC packs that have a classic mode of their own (a hub.json with a mode and arenas): [{id, mode, maps, weapons}]. */
+const EXTRA = path.join(GD, 'data', 'extra');
+function packInfo(id) {
+  const rd = f => JSON.parse(fs.readFileSync(path.join(EXTRA, id, f), 'utf8'));
+  const hub = rd('hub.json');
+  return { id, mode: hub.mode || id, maps: hub.maps || [], weapons: Object.keys(rd('weapons.json')).filter(k => !k.startsWith('_')) };
+}
+function allPacks() {
+  return fs.readdirSync(EXTRA).filter(d => fs.existsSync(path.join(EXTRA, d, 'hub.json')) && fs.existsSync(path.join(EXTRA, d, 'weapons.json')))
+    .map(packInfo).filter(p => p.maps.length).sort((a, b) => a.id.localeCompare(b.id));
 }
 
 function runOne(p, o) {
@@ -47,10 +65,11 @@ function runOne(p, o) {
     const args = ['--headless', '--path', GD, '--script', 'res://tests/balance_match.gd', '--', '--no-save',
       `--seed=${p.seed}`, `--bots=${o.bots}`, `--seconds=${o.seconds}`, `--mode=${o.mode}`, `--map=${p.map}`, `--classes=${p.classes.join(',')}`];
     if (o.weapon) args.push(`--weapon=${o.weapon}`);
+    if (p.start) args.push(`--start=${p.start}`);
     const c = spawn(GODOT, args, { stdio: ['ignore', 'pipe', 'pipe'] });
     let out = '', done = false;
     const fin = r => { if (!done) { done = true; clearTimeout(t); resolve(r); } };
-    const t = setTimeout(() => { c.kill('SIGKILL'); fin({ ok: false, why: 'timeout', plan: p }); }, TIMEOUT_MS);
+    const t = setTimeout(() => { c.kill('SIGKILL'); fin({ ok: false, why: 'timeout', plan: p }); }, (o.timeout || TIMEOUT_MS / 1000) * 1000);
     c.stdout.on('data', d => { out += d; }); c.stderr.on('data', d => { out += d; });
     c.on('error', e => fin({ ok: false, why: e.message, plan: p }));
     c.on('close', code => {
@@ -77,7 +96,7 @@ const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : NaN;
 function aggregate(results) {
   const cls = {}, wep = {};
   const C = id => cls[id] || (cls[id] = { id, app: 0, kos: 0, deaths: 0, falls: 0, dmg: 0, hits: 0, wins: 0, secs: 0, crates: 0 });
-  const W = id => wep[id] || (wep[id] = { id, kos: 0, ttk: [], picks: 0 });
+  const W = id => wep[id] || (wep[id] = { id, kos: 0, ttk: [], picks: 0, dmg: 0, held: 0 });
   let totalKos = 0, fighterSecs = 0, crates = 0, fighters = 0, totalRingouts = 0, firstKos = [];
   for (const r of results) {
     const secs = r.seconds_simulated;
@@ -87,6 +106,8 @@ function aggregate(results) {
       if (r.winner === i) c.wins++;
       totalKos += f.kos; fighterSecs += secs; crates += f.crates_picked; fighters++;
       for (const [k, n] of Object.entries(f.weapon_picks || {})) W(k).picks += n;
+      for (const [k, n] of Object.entries(f.weapon_dmg || {})) W(k).dmg += n;
+      for (const [k, n] of Object.entries(f.weapon_secs || {})) W(k).held += n;
     });
     totalRingouts += r.total_ringouts;
     if (r.first_ko_time != null) firstKos.push(r.first_ko_time);
@@ -105,7 +126,9 @@ function aggregate(results) {
   const weaponRows = weapons.map(w => {
     const share = weaponKos ? w.kos / weaponKos : 0, even = 1 / weapons.length;
     return { id: w.id, kos: w.kos, koShare: share, avgTtk: mean(w.ttk), picks: w.picks, pickRate: fighterSecs ? w.picks / (fighterSecs / 60) : NaN,
-      kosPerPick: w.picks ? w.kos / w.picks : NaN, flag: flag(share, even, w.kos) };
+      kosPerPick: w.picks ? w.kos / w.picks : NaN, dmg: w.dmg, held: w.held, dmgPerPick: w.picks ? w.dmg / w.picks : NaN,
+      heldPerPick: w.picks ? w.held / w.picks : NaN, dmgPerMin: w.held ? w.dmg / (w.held / 60) : NaN, kosPerMin: w.held ? w.kos / (w.held / 60) : NaN,
+      flag: flag(share, even, w.kos) };
   });
   return { classRows, weaponRows, matches: results.length, fighters, totalKos, totalRingouts, cratesPerFighterMin: fighterSecs ? crates / (fighterSecs / 60) : NaN,
     avgFirstKo: mean(firstKos), avgKosPerMatch: results.length ? totalKos / results.length : NaN, secs: fighterSecs };
@@ -115,10 +138,11 @@ function table(head, rows) { return ['| ' + head.join(' | ') + ' |', '|' + head.
 
 function markdown(agg, meta) {
   const L = [];
-  L.push('# Balance telemetry', '');
+  L.push(meta && meta.title ? '# ' + meta.title : '# Balance telemetry', '');
   if (meta) {
     L.push(`- Matches: ${agg.matches} ok${meta.failed ? `, **${meta.failed} FAILED**` : ''} of ${meta.requested}  (${meta.bots} bots + player seat, ${meta.seconds} s sim each, mode ${meta.mode}, maps ${meta.maps.join('/')})`);
     L.push(`- Seeds: ${meta.seed}..${meta.seed + meta.requested - 1}`);
+    if (meta.starts && meta.starts.length) L.push(`- Start weapon sweep: every fighter gets one weapon on every life, match by match: ${meta.starts.join(', ')}`);
     L.push(`- Date: ${meta.date}   Commit: ${meta.commit}   Godot: ${meta.godot}   Wall time: ${meta.wall}`);
     L.push('');
   }
@@ -128,6 +152,12 @@ function markdown(agg, meta) {
   L.push('', '## Per weapon (by the weapon in hand at the K.O.)', '');
   L.push(table(['Weapon', 'K.O.s', 'K.O. share', 'Avg TTK (s)', 'Picks', 'Picks/fighter-min', 'K.O.s/pick', 'Flag'],
     agg.weaponRows.map(w => [w.id, w.kos, pct(w.koShare, 1), f2(w.avgTtk), w.picks, f2(w.pickRate), f2(w.kosPerPick), w.flag])));
+  if (agg.weaponRows.some(w => w.held > 0)) {
+    L.push('', '## Per weapon: damage and time in hand', '');
+    L.push(table(['Weapon', 'Picks', 'K.O.s/pick', 'Dmg/pick', 'Held s/pick', 'Dmg/held-min', 'K.O.s/held-min'],
+      agg.weaponRows.map(w => [w.id, w.picks, f2(w.kosPerPick), f2(w.dmgPerPick), f2(w.heldPerPick), f2(w.dmgPerMin), f2(w.kosPerMin)])));
+    L.push('', '_Damage and K.O.s count for the weapon in hand when they land. Held = seconds the weapon was in hand (all fighters). The per-pick columns are empty for a weapon nobody picks up (the default spatula)._');
+  }
   L.push('', '## Crates and pace', '');
   L.push(`- Crate pick rate: ${f2(agg.cratesPerFighterMin)} crates per fighter per minute (all crates incl. health / power-ups)`);
   L.push(`- K.O.s per match: ${f2(agg.avgKosPerMatch)}; ring-outs per match: ${f2(agg.totalRingouts / agg.matches)}; average first K.O. at ${f2(agg.avgFirstKo)} s`);
@@ -142,7 +172,7 @@ function markdown(agg, meta) {
 function selftest() {
   const mk = (cls, kos, deaths, falls, dmg, extra) => Object.assign({ class_id: cls, kos, deaths, falls, hits: 5, dmg, crates_picked: 2, weapon_picks: {} }, extra);
   const fx = [
-    { seconds_simulated: 60, total_ringouts: 2, first_ko_time: 10, winner: 0, fighters: [mk('kid', 6, 3, 1, 100, { weapon_picks: { bat: 2 } }), mk('alien', 2, 4, 1, 60)],
+    { seconds_simulated: 60, total_ringouts: 2, first_ko_time: 10, winner: 0, fighters: [mk('kid', 6, 3, 1, 100, { weapon_picks: { bat: 2 }, weapon_dmg: { bat: 90, spatula: 10 }, weapon_secs: { bat: 30, spatula: 30 } }), mk('alien', 2, 4, 1, 60)],
       ko_events: [{ wkey: 'bat', ttk: 10 }, { wkey: 'bat', ttk: 20 }, { wkey: 'spatula', ttk: 30 }, { wkey: 'spatula', ttk: 10 }, { wkey: 'bat', ttk: 6 }, { wkey: 'bat', ttk: 8 }, { wkey: 'spatula', ttk: 4 }, { wkey: 'spatula', ttk: 4 }] },
     { seconds_simulated: 60, total_ringouts: 0, first_ko_time: 20, winner: -1, fighters: [mk('kid', 2, 2, 0, 40, { weapon_picks: { bat: 1 } }), mk('alien', 2, 2, 0, 50)],
       ko_events: [{ wkey: 'spatula', ttk: 20 }, { wkey: 'spatula', ttk: 20 }, { wkey: 'bat', ttk: 20 }, { wkey: 'bat', ttk: 20 }] },
@@ -156,6 +186,11 @@ function selftest() {
   eq('alien share', al.koShare, 4 / 12); eq('alien win', al.winRate, 0);
   eq('bat kos', bat.kos, 6); eq('bat avg ttk', bat.avgTtk, (10 + 20 + 6 + 8 + 20 + 20) / 6); eq('bat picks', bat.picks, 3); eq('bat pickrate', bat.pickRate, 3 / (240 / 60));
   eq('crates/min', a.cratesPerFighterMin, 8 / 4);
+  eq('bat dmg/pick', bat.dmgPerPick, 30); eq('bat held/pick', bat.heldPerPick, 10); eq('bat dmg/min', bat.dmgPerMin, 180); eq('bat kos/min', bat.kosPerMin, 12);
+  if (!/Dmg\/held-min/.test(markdown(a, null))) bad.push('damage table missing');
+  const pk = allPacks().map(p => p.id);
+  for (const id of ['kitchen', 'xmas', 'australia']) if (!pk.includes(id)) bad.push('pack ' + id + ' not found (' + pk + ')');
+  if (packInfo('kitchen').weapons.length !== 6 || !packInfo('kitchen').maps.length) bad.push('kitchen pack info');
   eq('first ko avg', a.avgFirstKo, 15);
   // kid 66.7% of K.O.s vs even 50% -> 1.33x: not an outlier; with 3 classes it would be 2x -> outlier
   if (kid.flag !== 'low n') bad.push('kid flag should be low n (8 K.O.s < ' + MIN_KOS + ')');
@@ -181,21 +216,40 @@ async function main() {
   const ver = (spawnSync(GODOT, ['--version'], { encoding: 'utf8' }).stdout || '').trim();
   const git = (...a) => (spawnSync('git', a, { cwd: ROOT, encoding: 'utf8' }).stdout || '').trim();
   const dirty = git('status', '--porcelain', '--', 'godot', 'shared') ? '+dirty' : '';
-  const plans = plan(o);
-  console.error(`balance: ${o.matches} matches, ${o.jobs} jobs, ${o.bots} bots, ${o.seconds} s, maps ${o.maps.join(',')}`);
-  const runs = await pool(plans, o.jobs, p => runOne(p, o), (d, n, r) => {
-    if (!r.ok) console.error(`  match ${r.plan.i} (seed ${r.plan.seed}, ${r.plan.map}) failed: ${r.why}`);
-    if (d % 10 === 0 || d === n) console.error(`  ${d}/${n} done (${((Date.now() - t0) / 1000).toFixed(0)} s)`);
-  });
-  const good = runs.filter(r => r.ok).map(r => r.res), failed = runs.length - good.length;
-  const wallS = (Date.now() - t0) / 1000;
-  if (!good.length) { console.error('balance: every match failed'); process.exit(1); }
-  const agg = aggregate(good);
-  const md = markdown(agg, { requested: o.matches, failed, bots: o.bots, seconds: o.seconds, mode: o.mode, maps: o.maps, seed: o.seed,
-    date: new Date().toISOString().slice(0, 10), commit: git('rev-parse', '--short', 'HEAD') + dirty, godot: ver, wall: `${Math.floor(wallS / 60)} m ${Math.round(wallS % 60)} s` });
-  if (o.json) fs.writeFileSync(o.json, JSON.stringify({ options: o, failed, results: good }, null, 1));
+  // One run per pack with --pack (its mode on its arenas), else the one run the options describe.
+  let runsCfg = [Object.assign({}, o, { title: '' })];
+  if (o.packs.length) {
+    const known = allPacks(), want = o.packs.includes('all') ? known.map(p => p.id) : o.packs;
+    runsCfg = want.map(id => {
+      const p = known.find(k => k.id === id);
+      if (!p) { console.error(`unknown pack ${id} (have: ${known.map(k => k.id).join(', ')})`); process.exit(2); }
+      return Object.assign({}, o, { mode: p.mode, maps: p.maps, title: `Balance telemetry: pack ${p.id}`, packWeapons: p.weapons,
+        starts: o.starts.length === 1 && o.starts[0] === 'pack' ? p.weapons : o.starts });
+    });
+  }
+  const mds = [], raw = []; let anyGood = false, allFailed = true;
+  for (const cfg of runsCfg) {
+    const t1 = Date.now(), plans = plan(cfg);
+    console.error(`balance: ${cfg.matches} matches, ${cfg.jobs} jobs, ${cfg.bots} bots, ${cfg.seconds} s, mode ${cfg.mode}, maps ${cfg.maps.join(',')}`);
+    const runs = await pool(plans, cfg.jobs, p => runOne(p, cfg), (d, n, r) => {
+      if (!r.ok) console.error(`  match ${r.plan.i} (seed ${r.plan.seed}, ${r.plan.map}) failed: ${r.why}`);
+      if (d % 10 === 0 || d === n) console.error(`  ${d}/${n} done (${((Date.now() - t1) / 1000).toFixed(0)} s)`);
+    });
+    const good = runs.filter(r => r.ok).map(r => r.res), failed = runs.length - good.length;
+    const wrong = good.filter(r => r.mode && r.mode !== cfg.mode).length;   // the world fell back to another mode (e.g. an unowned pack)
+    if (wrong) console.error(`balance: ${wrong} matches ran mode ${good.find(r => r.mode !== cfg.mode).mode}, not ${cfg.mode}`);
+    const wallS = (Date.now() - t1) / 1000;
+    raw.push({ options: cfg, failed, results: good });
+    if (!good.length) { console.error('balance: every match failed'); continue; }
+    anyGood = true; if (failed < runs.length) allFailed = false;
+    mds.push(markdown(aggregate(good), { title: cfg.title, starts: cfg.starts, requested: cfg.matches, failed, bots: cfg.bots, seconds: cfg.seconds, mode: cfg.mode, maps: cfg.maps, seed: cfg.seed,
+      date: new Date().toISOString().slice(0, 10), commit: git('rev-parse', '--short', 'HEAD') + dirty, godot: ver, wall: `${Math.floor(wallS / 60)} m ${Math.round(wallS % 60)} s` }));
+  }
+  if (!anyGood) process.exit(1);
+  const md = mds.join('\n');
+  if (o.json) fs.writeFileSync(o.json, JSON.stringify(raw.length === 1 ? raw[0] : { runs: raw }, null, 1));
   if (o.out) { fs.writeFileSync(o.out, md); console.error('balance: wrote ' + o.out); } else console.log(md);
-  process.exit(failed && failed === runs.length ? 1 : 0);
+  process.exit(allFailed ? 1 : 0);
 }
 
-if (require.main === module) main(); else module.exports = { aggregate, markdown, plan, parseArgs };
+if (require.main === module) main(); else module.exports = { aggregate, markdown, plan, parseArgs, allPacks, packInfo };
