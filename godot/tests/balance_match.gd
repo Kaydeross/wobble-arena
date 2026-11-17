@@ -1,7 +1,9 @@
 extends SceneTree
 ## ONE fully-bot match for balance telemetry (driven by tools/run-balance-matrix.js; docs/BALANCE_TELEMETRY.md):
 ##   godot --headless --path godot --script res://tests/balance_match.gd -- --no-save --seed=7 [--bots=4 (+ the player seat = 5 fighters)] [--seconds=90]
-##         [--mode=classic] [--map=arena] [--class=<id> | --classes=a,b,c,d] [--weapon=<id>] [--diff=normal]
+##         [--mode=classic] [--map=arena] [--class=<id> | --classes=a,b,c,d] [--weapon=<id>] [--start=<id>] [--diff=normal]
+## --weapon = everyone holds it for the first life; --start = everyone gets it on EVERY life (it replaces the mode's start weapon for
+## this run, in memory only), the controlled way to compare one weapon with another. A DLC pack's mode is owned in memory for the run.
 ## Every seat (the player's too) is a BotBrain; the sim is hand-stepped at its fixed 1/120 s (no rendering, no realtime).
 ## Prints exactly one result line:  BALANCE {json}
 ## Deterministic for a given seed: the world seeds combat.rng, the dynamic arena is off and --no-save fixes the start spots.
@@ -27,6 +29,13 @@ func _run() -> void:
 	var one_class := _arg("class", "")
 	var class_list: PackedStringArray = _arg("classes", "").split(",", false)
 	var weapon := _arg("weapon", "")
+	var start_over := _arg("start", "")
+	# A DLC pack's mode (kitchen / xmas / australia) only starts for an owner: own it in memory for this run (--no-save, never
+	# written), or the world would quietly fall back to classic.
+	var reg: Variant = load("res://dlc/pack_registry.gd")
+	var sv := root.get_node_or_null("Save")
+	if reg != null and sv != null and bool(reg.is_pack_mode(mode)) and not bool(reg.mode_owned(mode)):
+		DlcSave.set_owned(sv.dlc, str(reg.pack_of_mode(mode)), true)
 	var world: Node = load("res://world/world.tscn").instantiate()
 	world.map_id = map
 	world.mode_id = mode
@@ -58,6 +67,10 @@ func _run() -> void:
 		var f: FighterState = fs[i]
 		f.set_class(cid, c.classes[cid])
 		f.hp = c.max_hp(f)
+	if start_over != "" and c.weapons_data.has(start_over):
+		c.mode["start"] = start_over                 # every respawn hands it out again (Combat.respawn reads mode.start)
+		for f: FighterState in fs:
+			c.clear_inventory(f); c.set_weapon(f, "spatula"); c.pickup(f, start_over)
 	if weapon != "" and c.weapons_data.has(weapon):
 		for f: FighterState in fs:
 			c.pickup(f, weapon)
@@ -69,9 +82,17 @@ func _run() -> void:
 	var crates: Array = []
 	var last_ko: Array = []
 	var weapon_picks: Array = []
+	var weapon_dmg: Array = []          # per fighter: damage dealt while each weapon was in hand
+	var weapon_secs: Array = []         # per fighter: seconds each weapon was in hand
+	var dmg_prev: Array = []
 	for i in fs.size():
-		picks.append(0); crates.append(0); last_ko.append(0.0); weapon_picks.append({})
+		picks.append(0); crates.append(0); last_ko.append(0.0); weapon_picks.append({}); weapon_dmg.append({}); weapon_secs.append({})
+		dmg_prev.append(float((fs[i] as FighterState).st["dmg"]))
+	for i in fs.size():                  # a weapon handed out at the start (the mode's start weapon, --start, --weapon) is one pick
+		var w0 := String((fs[i] as FighterState).weapon)
+		if w0 != "" and w0 != "spatula": weapon_picks[i][w0] = 1
 	var ko_events: Array = []
+	var crate_drops := {}               # crates that fell, by content key (weapons, heal, power-ups)
 	var ko_times: Array = []
 	var falls_t := {}
 	var steps := int(seconds / SIM)
@@ -96,15 +117,29 @@ func _run() -> void:
 			elif ty == "respawn":
 				var rf: FighterState = e.get("f")
 				if idx.has(rf): last_ko[idx[rf]] = sim.elapsed()
+			elif ty == "crate":
+				var ck := String((e.get("crate", {}) as Dictionary).get("key", ""))
+				crate_drops[ck] = int(crate_drops.get(ck, 0)) + 1
 			elif ty == "crate_take":
 				var tf: FighterState = e.get("f")
 				if idx.has(tf): crates[idx[tf]] += 1
 			elif ty == "pickup":
 				var pf: FighterState = e.get("f")
-				if idx.has(pf) and not bool(e.get("ammo_only", false)):
+				if s > 0 and idx.has(pf) and not bool(e.get("ammo_only", false)):   # step 0 only replays the set-up hand-outs (counted below)
 					var key := String(e.get("key", ""))
 					weapon_picks[idx[pf]][key] = int(weapon_picks[idx[pf]].get(key, 0)) + 1
 		c.events = []
+		for i in fs.size():
+			var hf: FighterState = fs[i]
+			var wk := hf.weapon if hf.weapon != "" else "spatula"
+			weapon_secs[i][wk] = float(weapon_secs[i].get(wk, 0.0)) + SIM
+			var dnow := float(hf.st["dmg"])
+			if dnow != dmg_prev[i]:
+				weapon_dmg[i][wk] = float(weapon_dmg[i].get(wk, 0.0)) + dnow - float(dmg_prev[i])
+				dmg_prev[i] = dnow
+	for i in fs.size():
+		for k: String in weapon_dmg[i]: weapon_dmg[i][k] = snappedf(float(weapon_dmg[i][k]), 0.1)
+		for k: String in weapon_secs[i]: weapon_secs[i][k] = snappedf(float(weapon_secs[i][k]), 0.01)
 	var out_f: Array = []
 	var tot_ko := 0
 	var tot_falls := 0
@@ -114,7 +149,8 @@ func _run() -> void:
 		tot_ko += f.ko; tot_falls += int(st["falls"])
 		out_f.append({"seat": i, "class_id": f.class_id, "weapon_start": start_w[i], "weapon_end": f.weapon, "kos": f.ko,
 			"deaths": int(st["deaths"]), "falls": int(st["falls"]), "hits": int(st["hits"]), "dmg": snappedf(float(st["dmg"]), 0.1),
-			"crates_picked": crates[i], "weapon_picks": weapon_picks[i]})
+			"crates_picked": crates[i], "weapon_picks": weapon_picks[i],
+			"weapon_dmg": weapon_dmg[i], "weapon_secs": weapon_secs[i]})
 	var winner := -1
 	var best := -1
 	var tie := false
@@ -123,8 +159,8 @@ func _run() -> void:
 		if f.ko > best: best = f.ko; winner = i; tie = false
 		elif f.ko == best: tie = true
 	if tie or best <= 0: winner = -1
-	var res := {"seed": seed_n, "mode": mode, "map": map, "diff": diff, "seconds_simulated": snappedf(sim.elapsed(), 0.01),
-		"fighters": out_f, "total_kos": tot_ko, "total_ringouts": tot_falls,
+	var res := {"seed": seed_n, "mode": sim.combat.mode_id, "mode_asked": mode, "start": start_over, "map": map, "diff": diff, "seconds_simulated": snappedf(sim.elapsed(), 0.01),
+		"fighters": out_f, "total_kos": tot_ko, "total_ringouts": tot_falls, "crate_drops": crate_drops,
 		"first_ko_time": ko_times[0] if ko_times.size() > 0 else null, "ko_times": ko_times, "ko_events": ko_events, "winner": winner,
 		"real_s": snappedf((Time.get_ticks_msec() - t0) / 1000.0, 0.1)}
 	print("BALANCE " + JSON.stringify(res))
