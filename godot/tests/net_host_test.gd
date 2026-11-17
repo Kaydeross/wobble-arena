@@ -47,7 +47,8 @@ func _begin(args: PackedStringArray) -> void:
 	# Team Deathmatch is app-only: with the web guest in the room the match plays Classic (rules.mode, no gmode)
 	session.begin_host(args[0], {"name": "Godot room", "pub": false, "max": 4, "bots": 1, "lim": 1, "mode": "tdm", "map": "arena", "dyn": "off",
 		"hp": 150, "grav": 1.5, "kb": 0.5, "crate": "fast", "inf": true},
-		{"name": "GodotHost", "skin": "none", "hat": "crown", "color": 0x39b5a8, "cls": "bruiser"})
+		{"name": "GodotHost", "skin": "apron", "hat": "toque",   # Kitchen pack look: guests without the pack must see it
+		 "color": 0x39b5a8, "cls": "bruiser"})
 
 func _on_roster(r: Array) -> void:
 	var names: Array = []
@@ -66,6 +67,7 @@ func _on_start(s: Dictionary) -> void:
 		world.session = session
 		world.start_msg = s
 		root.add_child(world)
+		for x: Dictionary in s["slots"]: print("LOOK %d skin=%s hat=%s" % [x["id"], x["skin"], x["hat"]])
 	else:
 		after_start2 = 0.0
 		t = 0.0

@@ -1,21 +1,23 @@
 class_name PackLanding
 extends Control
 ## The landing page of a DLC pack: the hero of the pack hub (dlc/construction/construction_hub.gd, which serves every pack). Two parts:
-##   * the BACKDROP (ui/pack_landing_scene.gd), an animated full-page scene drawn in code, one per pack: a hot kitchen with flickering
-##     burner flames, a toy workshop with falling snow and twinkling lights, a sunny backyard with a turning Hills Hoist, and a light
-##     crane overlay for Construction (which keeps its own look);
-##   * the HERO BAND between the header and the cards: a glass panel with the pack's badge and title lockup (`headline`, uppercased,
-##     and the tagline), ONE small 3D stage (ui/pack_landing_stage.gd: the pack's wobbler in its hat and outfit idling beside a turntable
-##     that cycles through the pack's weapons, built from the real WeaponModels.build(id); tap it or wait to see the next), the weapon's
-##     name and role line, a top-down arena thumbnail (ui/pack_landing_arena.gd, drawn once from the pack's generator) and three features.
+##   * the BACKDROP (ui/pack_landing_scene.gd) behind the whole page: the pack's colours, and for Construction (which keeps its own
+##     look) a light crane overlay;
+##   * the HERO BAND between the header and the cards: the pack's badge and title lockup (`headline`, uppercased, and the tagline),
+##     the stage slot, the weapon's name and role line, a top-down arena thumbnail (ui/pack_landing_arena.gd, drawn once from the
+##     pack's generator) and three features. Kitchen, Xmas and Australia fill the band with a real 3D SET (ui/pack_landing_set.gd,
+##     rendered by the ONE SubViewport ui/pack_landing_stage.gd, like the title's Construction showcase): a kitchen with the Wobbler
+##     behind the prep counter, a snow globe with the Wobbler inside, a desert suburb with a kangaroo. The dressed Wobbler and the
+##     pack's weapon on its turntable (the real WeaponModels.build(id); tap the stage or wait to see the next) stand in the stage
+##     slot, the scenery runs on behind the texts (`scrim` keeps them readable). Construction keeps the small plain stage in its slot.
 ## The band takes only the space the cards leave over (its minimum height is 0, so the hub's layout and its tests do not change) and
 ## shows what fits: under MIN_H nothing, short bands (a phone in landscape) the lockup, the stage, the caption and the features, taller
 ## ones also the arena. The data is data/extra/<pack>/landing.json (all text is an English tr() key).
-## Performance budget: at most ONE SubViewport (the stage, reused for every weapon, rendered only while the band is on screen),
-## PackLandingScene.PARTICLE_CAP particles for the whole page, no per-frame allocation, the arena drawn once, everything paused
-## while the hub is hidden or covered. Lowest graphics tier (Tier.q() == 0): static backdrop, no particles, the stage renders once per
-## change. Headless: no stage, no particles (layout nodes stay, so tests can read the texts and buttons); PackLanding.force_fx
-## builds them anyway (tests).
+## Performance budget: at most ONE SubViewport (the stage, reused for every pack and weapon, as big as the band, no MSAA, rendered
+## only while the band is on screen), PackLandingScene.PARTICLE_CAP particles for the whole page, PackLandingSet.MESH_CAP mesh
+## instances, no per-frame allocation, the arena drawn once, everything paused while the hub is hidden or covered. Lowest graphics
+## tier (Tier.q() == 0): no particles, the stage renders once per change. Headless: no stage, no 3D, no particles (layout nodes
+## stay, so tests can read the texts and buttons); PackLanding.force_fx builds them anyway (tests).
 
 const FILE := "landing.json"
 const MIN_H := 74.0
@@ -42,9 +44,11 @@ var glass: Panel
 var badge: PackBadge
 var headline: Label
 var tagline: Label
-var stage_tex: TextureRect
+var view_clip: Panel                   ## the 3D set's picture, clipped to the band's rounded corners (under the glass frame)
+var view: TextureRect
+var scrim: Control                     ## darkens the set behind the texts, left and right of the stage slot
+var stage_tex: TextureRect             ## the stage slot: the plain stage's picture (Construction), or just the place the 3D set's subject shows
 var stage_btn: Button
-var fg: Control                        ## the layer over the 3D stage (the glass of the snow globe, the counter front of the kitchen)
 var w_name: Label
 var w_role: Label
 var arena_name: Label
@@ -127,7 +131,11 @@ func stage_count() -> int:
 	return 1 if stage != null else 0
 
 func particle_total() -> int:
-	return scene.particle_total() if scene != null else 0
+	return (scene.particle_total() if scene != null else 0) + (stage.particle_total() if stage != null else 0)
+
+## The band shows a 3D set (kitchen, xmas, australia), not the plain stage.
+func has_set() -> bool:
+	return stage != null and stage.set3d != null
 
 # ---------------- building ----------------
 
@@ -160,6 +168,30 @@ func _lab(n: String, bold: bool) -> Label:
 	return l
 
 func _build() -> void:
+	view_clip = Panel.new()
+	view_clip.name = "Set3D"
+	view_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view_clip.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
+	var vs := StyleBoxFlat.new()
+	vs.bg_color = Color.WHITE
+	vs.set_corner_radius_all(UiTheme.RADIUS)
+	vs.anti_aliasing = true
+	view_clip.add_theme_stylebox_override("panel", vs)
+	view_clip.visible = false
+	add_child(view_clip)
+	view = TextureRect.new()
+	view.name = "View"
+	view.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	view.stretch_mode = TextureRect.STRETCH_SCALE
+	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	view_clip.add_child(view)
+	scrim = Control.new()
+	scrim.name = "Scrim"
+	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scrim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	scrim.draw.connect(_draw_scrim)
+	view_clip.add_child(scrim)
 	glass = Panel.new()
 	glass.name = "Glass"
 	glass.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -180,12 +212,6 @@ func _build() -> void:
 	stage_tex.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	add_child(stage_tex)
 	content.append(stage_tex)
-	fg = Control.new()
-	fg.name = "StageFront"
-	fg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fg.draw.connect(func() -> void: if scene != null: scene.draw_foreground(fg))
-	add_child(fg)
-	content.append(fg)
 	stage_btn = Button.new()
 	stage_btn.name = "NextWeapon"
 	stage_btn.flat = true
@@ -235,15 +261,15 @@ func set_pack(id: String) -> void:
 		_fill.a = 0.72
 	var tier := Tier.q()
 	var fx := fx_on()
-	scene.setup(str(data.get("backdrop", id)), p, fx and tier > 0, fx and tier > 0)
-	scene.base_text = headline_text()
+	var kind := str(data.get("backdrop", id))
+	scene.setup(kind, p, fx and tier > 0, fx and tier > 0)
 	headline.add_theme_color_override("font_color", p.get("ink", TEXT) if p.has("ink") else TEXT)
 	headline.add_theme_color_override("font_outline_color", Color(p.get("glow", accent)).darkened(0.62))
 	badge.kind = PackRegistry.badge(id)
 	badge.col = accent
 	badge.queue_redraw()
 	var gs := StyleBoxFlat.new()
-	gs.bg_color = Color(0.02, 0.03, 0.04, 0.24)
+	gs.bg_color = Color(0.02, 0.03, 0.04, 0.0 if fx and PackLandingSet.has(kind) else 0.24)   # a 3D set fills the band: the scrim does the dimming
 	gs.border_color = Color(accent.r, accent.g, accent.b, 0.8)
 	gs.set_border_width_all(2)
 	gs.set_corner_radius_all(UiTheme.RADIUS)
@@ -252,6 +278,10 @@ func set_pack(id: String) -> void:
 	if fx:
 		_ensure_stage(tier)
 		stage.set_look(data.get("wobbler", {}))
+		stage.set_scene(kind, p, headline_text(), tier > 0)
+		var on_set := stage.set3d != null
+		stage_tex.texture = null if on_set else stage.get_texture()
+		view.texture = stage.get_texture() if on_set else null
 	if arena != null:
 		arena.frame_col = Color(accent.r, accent.g, accent.b, 0.9)
 		arena.set_map({})
@@ -265,12 +295,12 @@ func _ensure_stage(tier: int) -> void:
 	if stage == null:
 		stage = PackLandingStage.new()
 		add_child(stage)
-		stage_tex.texture = stage.get_texture()
 	stage.spin = tier > 0
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and headline != null and not data.is_empty():
 		_texts()
+		if has_set(): stage.set_scene(stage.set3d.kind, pal(data), headline_text(), stage.set3d.with_fx)   # the name on the snow globe
 		_layout()
 
 ## The texts in the language in use.
@@ -306,7 +336,7 @@ func _weapon_texts() -> void:
 func cycle(step: int) -> void:
 	if weapons.is_empty(): return
 	_show_weapon(posmod(wi + step, weapons.size()))
-	if scene != null and step != 0: scene.shake()
+	if stage != null and step != 0: stage.shake()
 	_auto = 0.0
 
 func _show_weapon(i: int) -> void:
@@ -323,6 +353,27 @@ func _draw_dots() -> void:
 	for f: Label in feats:
 		if f.visible and f.text != "":
 			dots.draw_circle(Vector2(f.position.x - 9.0, f.position.y + f.size.y * 0.5), 3.5, accent)
+
+## The dimming over a 3D set, left and right of the stage slot (the subject stays clear), fading out towards it.
+func _draw_scrim() -> void:
+	if not has_set() or not shown: return
+	var h := scrim.size.y
+	var x0 := stage_tex.position.x - view_clip.position.x
+	var x1 := x0 + stage_tex.size.x
+	var fade := 70.0
+	var c := Color(0.03, 0.035, 0.05, 0.5)
+	var c0 := Color(c.r, c.g, c.b, 0.0)
+	scrim.draw_rect(Rect2(0, 0, maxf(x0 - fade, 0.0), h), c)
+	_quad[0] = Vector2(x0 - fade, 0); _quad[1] = Vector2(x0 + 16.0, 0); _quad[2] = Vector2(x0 + 16.0, h); _quad[3] = Vector2(x0 - fade, h)
+	_qcol[0] = c; _qcol[1] = c0; _qcol[2] = c0; _qcol[3] = c
+	scrim.draw_polygon(_quad, _qcol)
+	_quad[0] = Vector2(x1 - 16.0, 0); _quad[1] = Vector2(x1 + fade, 0); _quad[2] = Vector2(x1 + fade, h); _quad[3] = Vector2(x1 - 16.0, h)
+	_qcol[0] = c0; _qcol[1] = c; _qcol[2] = c; _qcol[3] = c0
+	scrim.draw_polygon(_quad, _qcol)
+	scrim.draw_rect(Rect2(x1 + fade, 0, maxf(scrim.size.x - x1 - fade, 0.0), h), c)
+
+var _quad := PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO])
+var _qcol := PackedColorArray([Color.BLACK, Color.BLACK, Color.BLACK, Color.BLACK])
 
 ## Sets a control's size and remembers it: a control cannot be made smaller than the minimum size it had a moment ago (the cache
 ## updates after the frame), so _settle() applies the remembered sizes once more after it.
@@ -372,6 +423,7 @@ func _layout() -> void:
 	shown = fits
 	mini = not fits and H >= MINI_H and W >= MIN_W and not data.is_empty()
 	for c: Control in content: c.visible = fits
+	view_clip.visible = fits and has_set()
 	if stage != null: stage.active = fits and _vis
 	if not fits:
 		if mini: _layout_mini(W, H)
@@ -413,8 +465,11 @@ func _layout() -> void:
 	var srect := Rect2(x, iy + (ih - sh) * 0.5, sw, sh)
 	stage_tex.position = srect.position
 	_put_size(stage_tex, srect.size)
-	fg.position = Vector2.ZERO
-	_put_size(fg, Vector2(W, H))
+	if has_set():                                                    # the 3D set fills the glass; its subject shows in the stage slot
+		view_clip.position = glass.position
+		_put_size(view_clip, Vector2(W, ih + 2.0 * pad))
+		stage.frame(Vector2(W, ih + 2.0 * pad), Rect2(srect.position - glass.position, srect.size))
+		scrim.queue_redraw()
 	var bh := minf(maxf(srect.size.y - 4.0, TOUCH), H - 2.0)
 	stage_btn.position = Vector2(srect.position.x + 2.0, srect.get_center().y - bh * 0.5)
 	_put_size(stage_btn, Vector2(srect.size.x - 4.0, bh))
@@ -471,12 +526,6 @@ func _layout() -> void:
 	dots.queue_redraw()
 
 ## A short band (a phone in landscape with the buy row showing): the lockup in one row, no stage.
-## The title lockup (badge + headline) in the scene's space.
-func _lockup_rect(origin: Vector2) -> Rect2:
-	if headline == null or not headline.visible: return Rect2()
-	var r := Rect2(badge.position, badge.size).merge(Rect2(headline.position, headline.size))
-	return Rect2(origin + r.position, r.size)
-
 func _layout_mini(W: float, H: float) -> void:
 	for c: Control in [glass, badge, headline, tagline]: c.visible = true
 	glass.position = Vector2.ZERO
@@ -520,12 +569,6 @@ func _process(dt: float) -> void:
 	var vis := is_visible_in_tree() and not covered
 	var hub_vis := scene != null and scene.get_parent() != null and (scene.get_parent() as Control).is_visible_in_tree() and not covered
 	if scene != null and scene.active != hub_vis: scene.active = hub_vis
-	if scene != null and hub_vis:
-		var r := Rect2(global_position - scene.global_position + glass.position, glass.size) if vis and (shown or mini) else Rect2()
-		scene.set_hero(r, _lockup_rect(r.position - glass.position) if r.size.x > 0.0 else Rect2(), Rect2(r.position - glass.position + stage_tex.position, stage_tex.size) if r.size.x > 0.0 and shown else Rect2())
-	if scene != null and vis and shown:
-		scene.fg_origin = global_position - scene.global_position
-		if scene.kind == "xmas" or scene.kind == "kitchen": fg.queue_redraw()
 	var on := vis and shown
 	if on != _vis:
 		_vis = on
