@@ -817,7 +817,7 @@ func _australia(pal: Dictionary) -> void:
 		var hxp := -SPAN - 2.0 + 9.2 * float(i) + (_f() - 0.5) * 1.5
 		if absf(hxp * 0.55 - sun_at.x) < 2.6: hxp -= 5.0                                           # the sun keeps its gap in the street
 		_house(self, Vector3(hxp, 0, -10.5 - 1.5 * float(i % 2)), 4.6 + _f() * 1.4, walls[i % 4], roofs[(i + 1) % 4])
-	var gums := [-4.3, 8.6, -9.5, 13.5, -17.0, 20.5, -25.5]
+	var gums := [-4.3, 8.6, -9.5, 13.5, -17.0, 20.5]  # six, not seven: keeps the set under the mesh cap with the denser backyard props
 	for i in gums.size(): _gum(self, Vector3(float(gums[i]), 0, -6.6 - 1.2 * float(i % 2)), 3.6 + 0.6 * float(i % 3))
 	# the corrugated-iron fence (the arena's sheet colours)
 	var rng := SiteMap.Rng.new(7)
