@@ -73,9 +73,29 @@ static func reset_attempts() -> void:
 	_wrong = 0
 	_locked_until = 0
 
-## The developer code works in debug / editor builds only; a release export refuses it (and the 7-tap entry is hidden).
+## Tests only: 1 = behave as a release export, 0 = as a debug build, -1 (the game) = the real OS.has_feature("release").
+## A test cannot flip OS.has_feature, so dev_code_allowed() asks is_release().
+static var release_override := -1
+
+static func is_release() -> bool:
+	if release_override >= 0: return release_override == 1
+	return OS.has_feature("release")
+
+## The REMOTE tester switch (RemoteConfig `tester_unlock`, default false; docs/OWNER_RELEASE_RUNBOOK.md "Tester unlock"). The
+## autoload is looked up by path at call time (this script compiles before the autoloads exist), so a refreshed config is
+## picked up by the very next call.
+static func tester_unlock() -> bool:
+	var loop := Engine.get_main_loop()
+	var rc: Node = (loop as SceneTree).root.get_node_or_null("RemoteConfig") if loop is SceneTree else null
+	if rc == null: return false
+	var v: Variant = rc.get_value("tester_unlock", false)
+	return typeof(v) == TYPE_BOOL and v
+
+## The developer code works in debug / editor builds, and in a release build (TestFlight) only while the remote config says
+## `tester_unlock: true`. Off by default everywhere: an App Store build ignores the code (and the 7-tap entry in Settings,
+## which asks this same function, stays hidden). One code unlocks ALL packs (redeem_with: unlock_everything + grant_owned).
 static func dev_code_allowed() -> bool:
-	return not OS.has_feature("release")
+	return not is_release() or tester_unlock()
 
 ## The developer code (exact, case-sensitive; spaces round it are ignored). true = DLC and everything else unlocked.
 static func redeem(code: String, sv: Object = null) -> bool:

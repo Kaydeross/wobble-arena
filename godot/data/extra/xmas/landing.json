@@ -1,0 +1,34 @@
+{
+ "_readme": "Landing page data (ui/pack_landing.gd). See construction/landing.json.",
+ "backdrop": "xmas",
+ "palette": {
+  "top": "#0a2a1c",
+  "bottom": "#40101a",
+  "glow": "#ffd86b",
+  "ink": "#f7f3ea",
+  "card": "#10261d",
+  "accent2": "#2e9a4a"
+ },
+ "headline": "Ho Ho Ho",
+ "tagline": "Snow, sparkle and gift bombs",
+ "features": [
+  "6 weapons from the gift pile",
+  "Slippery ice and gift crates",
+  "Boss rush up to Big Santa"
+ ],
+ "weapon_roles": {
+  "candycane": "Hooks and lifts rivals",
+  "snowballcannon": "Rapid-fire snowballs",
+  "giftbomb": "Lobbed, huge knockback",
+  "tinselwhip": "Long, sparkly reach",
+  "ornamentlauncher": "Shiny thrown ornaments",
+  "toymallet": "Heavy swing, big topple"
+ },
+ "wobbler": {
+  "class": "wobbler",
+  "hat": "santabeard",
+  "skin": "elftunic",
+  "color": 15780000
+ },
+ "arena_seed": 7
+}

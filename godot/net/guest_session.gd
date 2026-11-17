@@ -331,7 +331,8 @@ func _on_room(m: Dictionary) -> void:
 
 # ============================== cleaning (cleanInfo) ==============================
 
-## cleanInfo: a player's name/outfit/hat/colour/class, junk replaced by defaults.
+## cleanInfo: a player's name/outfit/hat/colour/class, junk replaced by defaults. Hats and outfits are checked against every
+## id this build can draw (core + pack cosmetics, see data()); an id it does not know becomes "none".
 static func clean_info(m: Dictionary, id: int) -> Dictionary:
 	var cos: Dictionary = data("cosmetics")
 	var skin: Variant = m.get("skin")
@@ -367,7 +368,11 @@ static func clean_start(m: Dictionary, my_slot: int) -> Dictionary:
 
 ## res://data/<name>.json, read once (static: the net code also runs in headless tests before autoloads exist).
 static var _data := {}
+## "cosmetics" is WobblerLooks' table: cosmetics.json plus the Godot-only hats and outfits (locker.json extra_hats /
+## extra_skins: the Construction hard hats and the pack cosmetics). A player's look must pass clean_info on every app,
+## whether or not the viewer owns that pack: owning gates equipping (LockerData), never showing.
 static func data(file_name: String) -> Dictionary:
+	if file_name == "cosmetics": return WobblerLooks.data("cosmetics")
 	if not _data.has(file_name):
 		var v: Variant = Combat.read_json("res://data/%s.json" % file_name)
 		_data[file_name] = v if v is Dictionary else {}

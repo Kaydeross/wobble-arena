@@ -535,6 +535,35 @@ Never put the password in the repo, a screenshot or a PR.
 
 Watch crash-free rate and the first-match funnel for the first week before widening.
 
+### 4.9 Tester unlock: the secret code in TestFlight builds (remote switch)
+
+A release export (TestFlight and the App Store) ignores the secret code and hides the seven-tap entry in Settings > About,
+unless the server's config says `tester_unlock: true`. Debug and editor builds always accept it. One code unlocks **all**
+four packs (Construction, On Fire, Ho Ho Ho, Hey Mate), their outfits and hats, every emote and class, and pays 5000 coins
+once. The switch is **off by default everywhere**: the bundled `godot/data/extra/remote_config.json`, `remote-config.json`
+and the server code all say `false`, so an install that cannot reach the server, or a server that is not told otherwise,
+refuses the code.
+
+**Turn it on for testing (no app update needed):**
+
+1. On the production host, either set the environment variable `TESTER_UNLOCK=1` and restart the server, or edit the
+   file the host reads for `/api/config` (`REMOTE_CONFIG`, default `remote-config.json`) and set `"tester_unlock": true`.
+   The environment variable wins over the file; `TESTER_UNLOCK=0` forces it off.
+2. Check: `curl -s https://play.<your-domain>/api/config` shows `"tester_unlock":true`.
+3. In the TestFlight build, relaunch the game (the config is fetched at start and again whenever it refreshes). Settings >
+   About > tap the version line seven times, enter the code.
+
+**Turn it off before App Store release (do this before row 28 of the checklist):**
+
+1. Remove `TESTER_UNLOCK` from the host (or set it to `0`) and set `"tester_unlock": false` in the config file.
+2. `curl -s https://play.<your-domain>/api/config` must show `"tester_unlock":false`.
+3. On a TestFlight build, relaunch: the seven taps now do nothing and a typed code is refused.
+4. Do not ship the App Store build until step 2 shows `false`. A player who already redeemed the code while it was on keeps
+   what it unlocked (that is saved in the profile); the switch only controls whether the code is accepted.
+
+- [ ] `"tester_unlock": false` on the production config before the App Store submission
+- [ ] `curl -s https://play.<your-domain>/api/config` shows `"tester_unlock":false`
+
 ---
 
 ## 5. Analytics and metrics gates before ad spend
@@ -657,3 +686,4 @@ decision before the row can be ticked.
 | [ ] | 31 | Crash-free ≥ 99 %, first match ≥ 70 %, D1 ≥ 30 %, D7 ≥ 8 % | Owner | |
 | [ ] | 32 | **OPEN:** Track P go/no-go note, plugin choice and where the note lives | Owner | |
 | [ ] | 33 | Ad spend approved only after row 31 | Owner | |
+| [ ] | 34 | `tester_unlock` is `false` on the production config before the App Store submission (section 4.9) | Owner | |

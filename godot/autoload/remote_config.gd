@@ -24,6 +24,7 @@ const DEFAULTS := {
 	},
 	"kill_switches": {"online": false, "ads": false, "purchases": false},
 	"analytics": false,
+	"tester_unlock": false,    # TestFlight / test builds: lets the secret code work in a release build. Keep false for the App Store
 	"updated": "",
 }
 
@@ -112,6 +113,8 @@ static func validate(raw: Dictionary) -> Dictionary:
 	out["news"] = str(raw.get("news", "")).replace("\n", " ").substr(0, 160)
 	out["updated"] = str(raw.get("updated", "")).substr(0, 32)
 	out["analytics"] = bool(raw.get("analytics", false))
+	var tu: Variant = raw.get("tester_unlock", false)
+	out["tester_unlock"] = typeof(tu) == TYPE_BOOL and tu   # a real JSON true only: "true", 1 and "yes" do not count
 	var min_version := str(raw.get("minimum_version", DEFAULTS["minimum_version"]))
 	out["minimum_version"] = min_version if _version_ok(min_version) else DEFAULTS["minimum_version"]
 	var ads: Variant = raw.get("ads")

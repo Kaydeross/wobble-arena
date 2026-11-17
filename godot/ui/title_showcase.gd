@@ -26,6 +26,7 @@ signal test_requested(pack: DLCPackData)
 signal unlock_requested(pack: DLCPackData)
 signal play_requested(pack: DLCPackData)   ## PLAY on an owned pack (the hub opens on it)
 signal site_requested()                ## the DON'T ENTER / EXIT SITE sign or pill: the owner switches title
+signal packs_requested()               ## the PACKS chip (top left while a container is open): the owner opens the pack selector (ui/pack_selector.gd)
 signal ui_changed(k: float)            ## 0 = the title's own controls show, 1 = they are gone
 signal state_changed(state: int)
 
@@ -53,6 +54,7 @@ var thuds := 0                         ## landings so far (tests)
 var pill: DlcPill
 var site_b: DontEnterSign
 var back_b: Button
+var packs_b: Button                    ## top left while a container is open: all packs at a glance (the pack selector)
 var prev_b: Button
 var next_b: Button
 var test_b: Button
@@ -249,6 +251,11 @@ func _build_overlay() -> void:
 	back_b.text = "Back"
 	back_b.pressed.connect(func() -> void: back())
 	overlay.add_child(back_b)
+	packs_b = _button("Packs")
+	packs_b.text = "Packs"
+	packs_b.pressed.connect(func() -> void:
+		if state == State.OPENED: packs_requested.emit())
+	overlay.add_child(packs_b)
 	bar = HBoxContainer.new()
 	bar.name = "Bar"
 	bar.add_theme_constant_override("separation", int(GAP))
@@ -343,13 +350,14 @@ func _show_opened_ui() -> void:
 	catcher.visible = on
 	pill.visible = state == State.IDLE and pack() != null
 	mouse_filter = Control.MOUSE_FILTER_STOP if state == State.IDLE and shown else Control.MOUSE_FILTER_IGNORE
-	for c: Control in [header, caption, back_b, bar, site_b]:
+	for c: Control in [header, caption, back_b, packs_b, bar, site_b]:
 		if c == null: continue
 		c.visible = on
 		c.modulate.a = ui_k
-	for b: Button in [prev_b, next_b, test_b, unlock_b, play_b, site_b]:
+	for b: Button in [prev_b, next_b, test_b, unlock_b, play_b, site_b, packs_b]:
 		if b: b.disabled = not live
 	if site_b != null and pack() != null: site_b.visible = on and pack().pack_id == DlcSave.BASE_PACK
+	if packs_b != null: packs_b.visible = on and packs.size() > 1
 	if back_b: back_b.disabled = state == State.CLOSING
 	for b: Button in proxies:
 		b.focus_mode = Control.FOCUS_ALL if live else Control.FOCUS_NONE
@@ -358,7 +366,7 @@ func _show_opened_ui() -> void:
 
 func _set_ui_k(v: float) -> void:
 	ui_k = v
-	for c: Control in [header, caption, back_b, bar, site_b]:
+	for c: Control in [header, caption, back_b, packs_b, bar, site_b]:
 		if c: c.modulate.a = v
 	ui_changed.emit(v)
 
@@ -436,13 +444,22 @@ func _layout() -> void:
 		bar.size = Vector2.ZERO
 	back_b.size = back_b.custom_minimum_size
 	back_b.position = Vector2(s.position.x, s.end.y - t)
+	packs_b.text = tr("Packs")
+	packs_b.tooltip_text = tr("Packs")
+	packs_b.set("accessibility_name", packs_b.tooltip_text)
+	packs_b.add_theme_font_size_override("font_size", fs)
+	var pw := packs_b.get_theme_font("font").get_string_size(packs_b.text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 36.0
+	packs_b.custom_minimum_size = Vector2(maxf(t * 1.5, pw), t)
+	packs_b.size = packs_b.custom_minimum_size
+	packs_b.position = s.position
+	var packs_w := packs_b.size.x + GAP if packs.size() > 1 else 0.0
 	var bw := minf(bar.get_combined_minimum_size().x, s.size.x)
 	bar.size = Vector2(bw, t)
 	var bar_y := s.end.y - t
 	if two_rows: bar_y -= t + GAP
 	bar.position = Vector2(s.end.x - bw, bar_y)
 	var right_edge := site_b.position.x if site_b.visible else s.end.x + GAP
-	var h_room := right_edge - GAP - s.position.x          # the header sits left of the sign: the pack name and its subtitle step down to fit
+	var h_room := right_edge - GAP - s.position.x - packs_w          # the header sits left of the sign: the pack name and its subtitle step down to fit
 	var nm_fs := int(round(26.0 * minf(unit, 1.8)))
 	var sb_fs := int(round(18.0 * minf(unit, 1.8)))
 	header.size = Vector2.ZERO
@@ -454,7 +471,7 @@ func _layout() -> void:
 		header.size = Vector2.ZERO
 	header.size = header.get_combined_minimum_size()
 	var hx := s.position.x + (s.size.x - header.size.x) * 0.5
-	header.position = Vector2(minf(hx, right_edge - GAP - header.size.x), s.position.y)   # (the sign has the top right)
+	header.position = Vector2(minf(maxf(hx, s.position.x + packs_w), right_edge - GAP - header.size.x), s.position.y)   # (the sign has the top right)
 	caption.size = Vector2(s.size.x, caption.get_combined_minimum_size().y)
 	caption.position = Vector2(s.position.x, bar_y - GAP * 0.5 - caption.size.y)
 	var top := header.position.y + header.size.y + GAP + (14.0 * minf(unit, 1.6) if packs.size() > 1 else 0.0)   # (room for the pager dots)

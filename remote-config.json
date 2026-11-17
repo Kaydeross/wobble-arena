@@ -16,5 +16,6 @@
     "purchases": false
   },
   "analytics": false,
+  "tester_unlock": false,
   "updated": ""
 }

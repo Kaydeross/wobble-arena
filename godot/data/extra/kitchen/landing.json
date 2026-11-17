@@ -1,0 +1,34 @@
+{
+ "_readme": "Landing page data (ui/pack_landing.gd). See construction/landing.json.",
+ "backdrop": "kitchen",
+ "palette": {
+  "top": "#12151a",
+  "bottom": "#3a1810",
+  "glow": "#ff7a1c",
+  "ink": "#f4f1ea",
+  "card": "#1b1e24",
+  "accent2": "#ffd34a"
+ },
+ "headline": "On Fire",
+ "tagline": "Turn up the heat. Dodge the soup",
+ "features": [
+  "6 weapons, all kitchen kit",
+  "Burners that bite back",
+  "Boss rush up to Chef Inferno"
+ ],
+ "weapon_roles": {
+  "fryingpan": "Heavy swing, big topple",
+  "cleaver": "Quick, light chops",
+  "flambetorch": "Flames at close range",
+  "rollingpin": "Steady swing, good reach",
+  "peppergrinder": "Rapid-fire pepper",
+  "souppot": "Lobbed soup, big splash"
+ },
+ "wobbler": {
+  "class": "wobbler",
+  "hat": "toque",
+  "skin": "apron",
+  "color": 15780000
+ },
+ "arena_seed": 7
+}
