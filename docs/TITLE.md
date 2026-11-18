@@ -122,24 +122,97 @@ between 1.5 and 7.5 ms on all three renderers (130 fps or more) and too noisy to
 **Not measured on a device**: an iPhone and the web export in a phone browser still need a real run (the perf overlay,
 Settings > Graphics, works on the title).
 
-## Pack selector and pack transitions
+## Pack selector (`ui/pack_selector.gd`)
 
-`ui/pack_selector.gd` (`PackSelector`, a `UiPage`) is the deck of every pack: reached from the opened container's top-left
-**Packs** chip (`TitleShowcase.packs_requested` -> `main.open_packs`), so the idle title stays as clean as above. The cards
-come from `PackRegistry.ids()` (the hub's order) and `DLCPacks`; the centred card is scaled up, the others dimmed and
-smaller with parallax between their layers (badge, weapon icons, pattern rail, backdrop glow). Swipe (a drag of 14 px
-or more; a tap on a side card centres it), the two arrows, the page dots (header, or their own row in portrait),
-Left / Right and the pad all move it, **clamped** at both ends. The big button says PLAY (owned) or UNLOCK PACK (locked).
-UNLOCK PACK emits `unlock_requested` (the existing hub card: coins or the code); PLAY plays the pack's transition and the
-hub opens at its switch point (`play_requested` -> `main._open_hub_from_selector`); the hub's Back returns to the selector.
-The secret code stays in Settings > About (seven taps) and unlocks every pack (`DlcUnlock.redeem_with`).
+`PackSelector` (a `UiPage`) is the carousel of every pack. It is reached from the opened container's top-left **Packs**
+chip (`TitleShowcase.packs_requested` -> `main.open_packs(pack_id)`), so the idle title stays as clean as above. The cards
+come from `PackRegistry.ids()` (the hub's `order`) and `DLCPacks`; nothing in the selector is hard-coded per pack except the
+icon triple (`ICONS`) and the rail pattern drawn by `art()` (see "How to add a fifth pack" in `CONSTRUCTION_DLC.md`).
 
-`ui/pack_transition.gd` (`PackTransition.play(pack_id, parent, on_done, on_end)`) is one drawn transition per pack, 0.9 to
-1.4 s: construction = the hazard-tape wipe (`ui/dlc_transition.gd`, untouched), kitchen = a flame wall
-(`shaders/pack_flame_wipe.gdshader`, the only shader) + embers + a frying-pan CLANG, xmas = snow swirl, wrapping paper, a
-ribbon cross and a bow that unwraps again, australia = three layers of dust, a sunburst, a spinning boomerang with streaks
-and a whip crack. Each is a function of one number `p` (cover 0 to 0.45, `on_done` at 0.5, reveal 0.55 to 1). The lowest
-graphics tier (Settings > Graphics > Effects: Low, or the web build) plays a plain colour wipe. A tap, key or pad button
-skips it, a safety timer ends it at 2x its length + 1 s, and headless runs end it at once with the same callbacks. At most 60
-particles, drawn from fixed arrays with a local `RandomNumberGenerator`. Test: `npm run test:godot-pack-selector`; images:
-`godot/tests/pack_selector_shots.gd` (windowed Godot, run by hand).
+- **Layout**: the centred card is scaled up, the side cards (`SIDE_SCALE`) are smaller and dimmed, and each layer of a card (badge,
+  weapon icons, pattern rail, backdrop glow) moves with its own parallax.
+- **Input**: swipe (a drag of 14 px or more; a tap on a side card centres it), the two arrows, the page dots (in the header, or
+  their own row in portrait), Left / Right and the pad. The position is **clamped** at both ends (a drag may overshoot by
+  0.25 of a card, then eases back). It eases to the target with `pos = lerp(pos, target, 1 - exp(-12 dt))`, so it is
+  frame-rate independent.
+- **Buttons**: the big button says PLAY (owned) or UNLOCK PACK (locked). UNLOCK PACK emits `unlock_requested` (the existing hub card:
+  coins or the code). PLAY plays the pack's transition and the hub opens at its switch point (`play_requested` ->
+  `main._open_hub_from_selector`); the hub's Back returns to the selector. While a transition runs (`busy`) ENTER is ignored and a
+  second press skips it.
+- **Secret code**: stays in Settings > About (seven taps) and, when allowed (see "Tester unlock" below), unlocks every pack
+  (`DlcUnlock.redeem_with`).
+
+## Per-pack smoothed transitions (`ui/pack_transition.gd`)
+
+`PackTransition.play(pack_id, parent, on_done, on_end)` draws one transition per pack, 1.15 to 1.35 s (`DURATION`), chosen by
+`style_for(id)`:
+
+| Pack | Style | What it is |
+| --- | --- | --- |
+| construction | `site` | the hazard-tape wipe (`ui/dlc_transition.gd`, untouched) |
+| kitchen | `fire` | a flame wall (`shaders/pack_flame_wipe.gdshader`, the only shader), embers and a frying-pan CLANG |
+| xmas | `xmas` | snow swirl, wrapping paper, a ribbon cross and a bow that unwraps again |
+| australia | `outback` | three layers of dust, a sunburst, a spinning boomerang with streaks and a whip crack |
+
+Each is a function of one number `p` (cover 0 to 0.45, `on_done` at 0.5 = the moment the hub opens behind it, reveal 0.55 to 1),
+so it is smooth and can be scrubbed in a test. The lowest graphics tier (Settings > Graphics > Effects: Low, or the web build,
+`tier_lite()`) plays a plain colour wipe (`lite`). A tap, key or pad button skips it, a safety timer ends it at 2x its length + 1 s,
+and headless runs end it at once with the same callbacks. At most 60 particles, drawn from fixed arrays with a local
+`RandomNumberGenerator` (seeded from the pack id, so a screenshot is reproducible). An unknown pack id falls back to `lite`.
+
+## 3D landing pages (`ui/pack_landing*.gd`)
+
+Every pack's hub (`dlc/construction/construction_hub.gd` serves all packs) opens on a landing page, `PackLanding`
+(`ui/pack_landing.gd`), built from `godot/data/extra/<pack>/landing.json` (palette, `headline`, `tagline`, three `features`,
+`weapon_roles`, the dressed `wobbler`, `arena_seed`; every text is an English `tr()` key).
+
+| Part | File | What |
+| --- | --- | --- |
+| Backdrop | `pack_landing_scene.gd` | the pack's two colours top to bottom; Construction adds a crane and hazard-tape overlay (CPUParticles2D) |
+| Hero band | `pack_landing.gd` | badge, title lockup, stage slot, weapon name and role, arena thumbnail and features; it takes only the height the cards leave (shows what fits: under `MIN_H` nothing, short bands the lockup, stage, caption and features, tall ones also the arena) |
+| Arena thumbnail | `pack_landing_arena.gd` | a still top-down picture drawn once from the arena's own boxes (`PackMaps.generate`) |
+| 3D stage | `pack_landing_stage.gd` | the ONE `SubViewport` of the page, reused for every pack and weapon, no MSAA, at most 520 k pixels, rendered only while the band is on screen; `frame()` puts the subject into the stage slot with a shifted-lens camera so the scenery runs on behind the texts |
+| 3D set | `pack_landing_set.gd` | the lit low-poly scene built in code, chosen by `kind` (`KINDS`) |
+
+The three sets (`PackLandingSet`, all primitives, no image files):
+
+- **kitchen**: tiled wall, a stainless prep counter the Wobbler stands behind, pots on a swinging rail, a stove with glowing burners
+  (one small flickering OmniLight), a hood, pendant lamps; the weapon turns on a turntable on the counter.
+- **xmas** (snow globe): the Wobbler inside a glass sphere (a small fresnel shader), a red base with a gold band, a mini tree and
+  gifts, snow falling inside the glass, fairy lights on the wall; `shake()` swirls the snow.
+- **australia** (desert suburb): red dirt, a big sun, a corrugated fence, low-poly houses, gum trees, a turning Hills Hoist with
+  washing and a kangaroo (idle bob, ear twitch; `shake()` makes it hop).
+
+Tap the stage (or wait `CYCLE_S`, 3.6 s) to see the pack's next weapon on the turntable (the real `WeaponModels.build(id)`).
+
+Budgets (checked by `tests/pack_landing_test.gd`): one SubViewport; at most `MESH_CAP` = 250 mesh instances for the whole stage (the
+Australia set uses 244, so there is no room left: check before adding props); `PARTICLE_CAP` = 100 particles for the whole page;
+nothing allocated per frame; everything paused while the hub is hidden or covered. The key light casts the page's one cheap
+orthogonal shadow, never on the lowest tier. Lowest graphics tier (`Tier.q() == 0`): no particles and the stage renders once per
+change. Headless: no stage, 3D or particles (the layout nodes stay so tests read the texts and buttons); `PackLanding.force_fx = true`
+builds them anyway. Visual code only: random numbers come from a local `RandomNumberGenerator`, never `combat.rng`.
+
+Known polish gaps: outside the hero band the page is a flat gradient, the stage slot shows as a brighter window, portrait keeps the
+older small band, and no iPhone frame times have been measured for the sets.
+
+## Tester unlock (`tester_unlock`)
+
+The secret code (and the seven-tap entry in Settings > About) works in debug and editor builds always. In a **release** build
+(TestFlight, App Store) it works only while the remote config flag `tester_unlock` is a real JSON `true`:
+
+- `DlcUnlock.dev_code_allowed()` = `not is_release() or tester_unlock()`; `tester_unlock()` reads `RemoteConfig.get_value("tester_unlock")`
+  at call time, so a refreshed config applies at the next attempt.
+- `RemoteConfig.validate` accepts only a real boolean `true` (`"true"`, `1`, `"yes"` count as false). Default `false` in the client,
+  in the bundled `godot/data/extra/remote_config.json` and in the server's `remote-config.json`.
+- Turn it on for testers with `TESTER_UNLOCK=1` (or `true` / `yes`) on the server, or `"tester_unlock": true` in the file the host reads
+  for `/api/config`. Check `curl -s https://play.<your-domain>/api/config`. **Turn it off before the App Store** (checklist item in
+  `OWNER_RELEASE_RUNBOOK.md` 4.9; wire format in `PROTOCOL.md`).
+- One right code unlocks all packs (`redeem_with`: unlock everything plus `grant_owned`). Tests: `npm run test:godot-pack-selector`
+  (section 3) and `godot/tests/remote_config_test.gd`.
+
+## Tests and screenshots (selector, transitions, landing)
+
+- `npm run test:godot-pack-selector`: the carousel, clamping, buttons, transitions (every style, skip, lite tier) and the tester switch.
+  Images: `godot/tests/pack_selector_shots.gd` (windowed Godot, run by hand).
+- `npm run test:godot-pack-landing`: the landing page for every pack, texts in five languages, one SubViewport, mesh and particle
+  budgets, tiers, and the hub layout at five phone and tablet sizes. Images: `godot/tests/pack_landing_shots.gd`.
