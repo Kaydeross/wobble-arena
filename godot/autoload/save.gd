@@ -68,6 +68,7 @@ var match_heads := 0                 ## headshots the player landed
 var match_mkos := 0                  ## K.O.s the player scored with a melee weapon
 var _quest_before: Array = []        ## goals already done when the match began (Quests.done_keys)
 var _streak := 0
+var _skin_emote_grants: Dictionary = {}   ## outfit -> emotes that outfit's purchase granted this session (so a refusal takes back only those)
 var _seen_classes: Array = []        ## secret classes already announced on a results panel (this session)
 var _bak_t := -1.0e9
 var _syncing := false
@@ -432,8 +433,12 @@ func buy(kind: String, k: String) -> String:
 func _grant_item(kind: String, k: String) -> void:
 	if kind == "skin":
 		skins.append(k)
+		var gave: Array = []
 		for id: String in LockerData.skin_emotes(k):
-			if not owned.has(id): _own_emote(id)
+			if not owned.has(id):
+				_own_emote(id)
+				gave.append(id)
+		_skin_emote_grants[k] = gave
 		look["skin"] = k
 		_push_settings()
 	elif kind == "class":
@@ -442,6 +447,7 @@ func _grant_item(kind: String, k: String) -> void:
 		_push_settings()
 	else:
 		_own_emote(k)
+		for sk: String in _skin_emote_grants: _skin_emote_grants[sk].erase(k)   # bought on its own now: a refused outfit must not take it
 
 ## The server refused a purchase (insufficient balance on another device, an unknown item, an old server): undo the
 ## optimistic ownership here; AccountApi then shows the server's balance. Coins are restored by that balance, not here.
@@ -452,10 +458,11 @@ func _wallet_spend_rejected(op: Dictionary, _r: Dictionary) -> void:
 		"skin":
 			skins.erase(k)
 			if look["skin"] == k: look["skin"] = "none"
-			for id: String in LockerData.skin_emotes(k):
+			for id: String in _skin_emote_grants.get(k, []):         # only the emotes this purchase granted (none known: keep them all)
 				owned.erase(id)
 				var i := slots.find(id)
 				if i >= 0: slots[i] = null
+			_skin_emote_grants.erase(k)
 		"class":
 			classes.erase(k)
 			if look["cls"] == k: look["cls"] = "wobbler"
