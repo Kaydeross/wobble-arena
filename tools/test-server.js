@@ -248,6 +248,16 @@ const { Client } = require('./wa-client');
     assert.equal((await rank(rick.token, { kos: 7 })).status, 429, 'ranking updates are rate limited');
     assert.equal((await ranks('?board=kos')).entries.find(e => e.name === 'Rate_Rick').score, 6, 'the rate-limited 7th update never reached the board');
 
+    /* ---- wallet rate map is pruned: expired entries do not pile up, live limits unchanged ---- */
+    { const realNow = Date.now; let fake = realNow.call(Date);
+      try { Date.now = () => fake;
+        for (let i = 0; i < 600; i++) A.walletRate('prune_' + i, 's', 30);
+        assert.equal(A.walletRateSize(), 600, 'the rate map holds one entry per account in the window');
+        fake += 61000;
+        A.walletRate('prune_live', 's', 2); A.walletRate('prune_live', 's', 2);
+        assert.ok(A.walletRateSize() < 10, 'expired rate entries are pruned on access: ' + A.walletRateSize());
+        assert.throws(() => A.walletRate('prune_live', 's', 2), e => e.status === 429, 'a live entry still rate limits after a prune');
+      } finally { Date.now = realNow; } }
     /* ---- server-authoritative coin wallet: migration seed, capped grants, spends, idempotency, auth ---- */
     const W = require('../wallet'), wallet = (m, p, body, tok) => api(m, p, body, tok);
     const seedAcct = await api('POST', '/api/claim', { name: 'Wallet_Wanda', data: { wallet: { coins: 1234 } } });

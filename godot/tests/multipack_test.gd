@@ -130,6 +130,25 @@ func _ownership() -> void:
 	r.look["skin"] = "singlet"
 	r._wallet_spend_rejected({"kind": "dlc", "key": "australia"}, {})
 	check(not r.skins.has("singlet") and r.look["skin"] == "none", "a refused pack purchase unequips its outfit")
+	# a refused outfit purchase takes back only the emotes that purchase granted, not ones already owned
+	var sk := ""
+	for cand: Variant in LockerData.shop_skins():
+		if LockerData.skin_emotes(str(cand)).size() > 0: sk = str(cand); break
+	check(sk != "", "a shop outfit with emotes exists to test with")
+	if sk != "":
+		var em: String = LockerData.skin_emotes(sk)[0]
+		var own := _profile()
+		own.coins = 100000
+		own._own_emote(em)                                 # bought separately before the outfit
+		own.buy("skin", sk)
+		own._wallet_spend_rejected({"kind": "skin", "key": sk}, {})
+		check(not own.skins.has(sk) and own.owned.has(em), "a refused outfit keeps an emote that was already owned")
+		var fresh := _profile()
+		fresh.coins = 100000
+		fresh.buy("skin", sk)
+		check(fresh.owned.has(em), "the outfit purchase grants its emote")
+		fresh._wallet_spend_rejected({"kind": "skin", "key": sk}, {})
+		check(not fresh.owned.has(em), "a refused outfit takes back the emotes it granted")
 
 ## AccountApi with a scripted network: each call_api pops the next scripted reply (no server, no HTTP).
 class StubApi extends AccountApi:

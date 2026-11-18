@@ -175,8 +175,14 @@ function create(store) {
 
 
   /** Wallet calls per account per minute: grants and spends have separate small budgets. */
+  let walletPruned = 0;
   function walletRate(l, kind, max) {
-    const now = Date.now(), r = walletRates.get(l);
+    const now = Date.now();
+    if (walletRates.size >= 256 && now - walletPruned >= 1000) {         // drop expired windows so the map cannot grow without bound
+      walletPruned = now;
+      for (const [k, v] of walletRates) if (now - v.t >= 60000) walletRates.delete(k);
+    }
+    const r = walletRates.get(l);
     if (r && now - r.t < 60000) {
       r[kind] = (r[kind] || 0) + 1;
       if (r[kind] > max) throw new Fail(429, 'slow', 'Wallet updates too fast. Wait a minute and try again.');
@@ -453,7 +459,7 @@ function create(store) {
     })();
     return true;
   }
-  return { handle, who, store, kind: store.kind, routes, wallet, sweep: sweepAccounts, startSweeps, stopSweeps, TOUCH_MS };
+  return { handle, who, store, kind: store.kind, routes, wallet, walletRate, walletRateSize: () => walletRates.size, sweep: sweepAccounts, startSweeps, stopSweeps, TOUCH_MS };
 }
 
 module.exports = { create, makeStore, fileStore, upstashStore, badName, filterDisplayName };
