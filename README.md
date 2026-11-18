@@ -5,7 +5,7 @@
 <br />
 
 [![iOS beta on TestFlight](https://img.shields.io/badge/iOS_beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/v1/app/6833812750)
-![Version 0.4.0](https://img.shields.io/badge/version-0.4.0-FFCF4D?style=for-the-badge)
+![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-FFCF4D?style=for-the-badge)
 ![Godot 4.7](https://img.shields.io/badge/Godot-4.7-478CBF?style=for-the-badge&logo=godotengine&logoColor=white)
 ![iOS, Android, macOS, Windows, Web](https://img.shields.io/badge/iOS_·_Android_·_macOS_·_Windows_·_Web-17323A?style=for-the-badge)
 
@@ -22,15 +22,17 @@ Play offline against computer players, open a room and play online with friends 
   <em>A Classic match on Sunny Arena: crates drop from the sky, and whoever grabs the weapon first gets the swing.</em>
 </div>
 
-## What's new in 0.4.0
+## What's new in 0.5.0
 
-The co-op update, as it appears in the game's What's new card:
+A new title, a softer start, as it appears in the game's What's new card:
 
-- **Arcade co-op.** Two players online beat the six-stage boss rush together, and a bot takes over if your mate leaves.
-- **Quick play.** One tap on the title screen for a random arena and mode, straight into an offline match.
-- **A new title screen.** Play and Quick play on the left, the rest on the right.
-- **A fairer start.** Matches open with a countdown, and you spawn on a random safe spot.
-- **Fixed.** Melee Arcade bosses, and the FIRE button that could stick.
+- The title screen is a full-screen Hero Stage: a huge Play, an icon dock, a coin chip and the Construction container
+- One control scheme per device, a Controls screen that shows yours, and a hands-on Training run
+- New to the arena? You now start with a quick, winnable first fight
+- Game types are tidier: four Featured modes up front, the rest under More modes
+- Results count up your coins and fill the next-unlock bar; unowned shop items are tier-coloured Mystery silhouettes
+- Chinese and Japanese text no longer shows empty boxes for missing characters
+- Online: too many wrong room codes and you wait a minute
 
 ## What's in it
 
@@ -163,3 +165,4 @@ npm run test:godot-combat
 Good places to start reading: the [Roadmap](docs/ROADMAP.md), the [Codemap](docs/CODEMAP.md), the [Godot architecture](docs/GODOT_ARCH.md) and the [network protocol](docs/PROTOCOL.md).
 
 The screenshots on this page are rendered from the game by the scripts in `tools/shoot-godot-*.sh`.
+
