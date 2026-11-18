@@ -1,6 +1,7 @@
 'use strict';
-/* One release version: godot/project.godot. App export presets and build scripts must agree, since a stale preset can
-   silently ship under the wrong marketing version. Run: npm run check:version */
+/* One release version: godot/project.godot. App export presets, build scripts and the README must agree, since a stale
+   preset can silently ship under the wrong marketing version (and a stale README badge / What's new section is the
+   same drift, just visible instead of shipped). Run: npm run check:version */
 const fs = require('fs');
 const path = require('path');
 
@@ -10,6 +11,10 @@ const found = project.match(/^config\/version="([^"]+)"$/m);
 if (!found) fail('godot/project.godot has no application/config/version');
 const version = found[1];
 if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(version)) fail(`project version is not semver-like: ${version}`);
+
+const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
+if (!readme.includes(`badge/version-${version}`)) fail(`README version badge does not match project version ${version}`);
+if (!readme.includes(`## What's new in ${version}`)) fail(`README "What's new in ${version}" section is missing`);
 
 const presets = fs.readFileSync(path.join(root, 'godot/export_presets.cfg'), 'utf8');
 const versions = [...presets.matchAll(/^(?:application\/short_version|application\/file_version|application\/product_version|version\/name)="([^"]+)"$/gm)]
