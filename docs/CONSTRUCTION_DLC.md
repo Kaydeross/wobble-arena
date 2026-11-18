@@ -118,6 +118,53 @@ Residual: `godot/dlc/construction/arcade_manager.gd` (the run manager) still rea
 future pack moves its stage table, make the manager read `ArcadeCoop.table()`/the same `Content.pack_section_file` (small
 follow-up, not part of this refactor).
 
+### How to add a fifth pack (hub, title, selector, landing)
+
+The zero-code recipe above only gets a pack's data merged. A pack players can buy, pick in the selector and play also needs the
+steps below. Use `australia` (smallest, newest) as the template and replace `<pack>` with the new lowercase id. Every pack-specific
+`match` that must grow is listed; there are no others (grep the existing ids to double-check).
+
+1. **Data folder `godot/data/extra/<pack>/`**: `pack.json` (id = folder name; `weapons`, `modes`, `stages`), `weapons.json` (six
+   weapons in the `shared/weapons.json` shape, using existing combat types only), `modes.json` (mode id = pack id), `stages.json`
+   (arcade bosses), `hub.json` (`order`, `mode`, `maps`, `wizard: true`, `price`, `classic_desc`, `arcade_desc`, `won_title`,
+   `won_sub`, `hats`, `victory_hat`; fields in `dlc/pack_registry.gd`) and `landing.json` (palette, `headline`, `tagline`, three
+   `features`, `weapon_roles` for every weapon, `wobbler`, `arena_seed`). Gate Godot-only combat behind `Combat.tuning_active()`; never
+   edit `shared/*.json`.
+2. **Weapons**: add a `godot/dlc/<pack>/<pack>_models.gd` (`<Pack>Models.build(key, node)`, helpers in `dlc/pack_kit.gd`) and add it
+   to the `or` chain in `actors/weapon_models.gd` (`WeaponModels.build`). Look at `australia_models.gd`.
+3. **Cosmetics**: `<pack>_looks.gd` with `HAT_IDS`, `SKIN_IDS`, `FULL_BODY`, then add the pack to the lists in `dlc/pack_looks.gd`
+   (`hat`, `skin`, `replaces_head`, `all_hat_ids`, `all_skin_ids`) and to `data/extra/locker.json` (`extra_hats`, `extra_skins`,
+   `pack_items`).
+4. **Arena**: `<pack>_map.gd` (`ID`, `header()`, `try_layout(seed, attempt)`) plus `<pack>_props.gd`; register it in `dlc/pack_maps.gd`
+   (`IDS`, `PACK_OF`, and the two `match` blocks in `header` and `_try`). Keep it within the arena checks (`npm run test:godot-pack-maps`).
+5. **Pack resource**: `godot/dlc/packs/<pack>.tres` (`DLCPackData`: `pack_id`, `display_name`, `subtitle`, `accent_color`, `weapon_ids`,
+   `arena_id`, colours, `badge_icon` = the preview hat, `badge_art`, `test_mode` = mode id, `unlock_kind = "pack"`) and add its path to
+   `DLCPacks.PATHS` in `dlc/dlc_packs.gd` (an explicit list: a directory scan is not reliable in an export). The title container and
+   the weapon racks then work without code.
+6. **Price**: `price` in `hub.json` (coins; default `DlcUnlock.PRICE` = 1500, read by `PackRegistry.price` / `DlcUnlock.price`).
+   Signed-in players pay through the server wallet (`wallet_spend("dlc", pack, price)`); `server.js` has no per-pack list, but
+   check the wallet section of `docs/PROTOCOL.md` and the price on the server before shipping.
+7. **Selector**: in `ui/pack_selector.gd` add the pack to `ICONS` (three icon names) and a `match` branch in `art()` (the rail pattern)
+   and in the particle `match kind` of the backdrop (floating embers, snow, dust); an unlisted pack still shows, with defaults.
+8. **Transition**: in `ui/pack_transition.gd` add the id to `DURATION` and `style_for()` and, for a new look, a new inner class plus a
+   branch in the `match style` of `_init`. Unknown ids play the plain `lite` wipe, which is acceptable for a first build.
+9. **Landing scene**: add `"<pack>"` to `PackLandingSet.KINDS`, a `_<pack>(pal)` builder and a branch in `build()`'s `match k`
+   (`ui/pack_landing_set.gd`), plus the `match kind` in `animate()` (the idle motion). Build it from boxes and spheres, stay under
+   `MESH_CAP` = 250 mesh instances and `PARTICLE_CAP` = 100, no per-frame allocation, local RNG only. The page's `backdrop` key in `landing.json` is
+   the set's kind; `pack_landing_scene.gd` only draws the two palette colours.
+10. **i18n, all 5 languages** (`zh_TW`, `zh_CN`, `ja`, `fr`, `es`): create `godot/i18n/src/<nn>-<pack>-data.json` (weapon names, stage
+    names, taglines, `hub.json` / `landing.json` / `pack.json` texts, event announcements and cosmetic names; the existing
+    `9a`/`9b`/`9c` files are the pattern), then `node tools/i18n.js` and `npm run i18n -- --check`. CJK glyphs must be in
+    `tools/cjk-coverage.json`: reword, never edit fonts.
+11. **Tests to run** (one Godot suite at a time): `npm test`, `npm run i18n -- --check`, `npm run test:godot-packs-data`,
+    `npm run test:godot-pack-models`, `npm run test:godot-pack-maps`, `npm run test:godot-multipack`, `npm run test:godot-dlc-ui`,
+    `npm run test:godot-pack-selector`, `npm run test:godot-pack-landing`, `npm run test:godot-title`, and a balance run
+    (`npm run balance -- --pack <pack> --starts pack`, tables in `BALANCE_TELEMETRY.md`). Tests that count packs (four today) must be
+    updated. New `.gd` files create `.uid` files: commit them. Existing tests use the pack count and the ids of the four packs, so
+    expect to touch them (grep `"australia"` in `godot/tests/` and `tools/test-*.js`).
+12. **Last**: add the pack to the in-game news and README What's new if it ships, and remember the tester path (`tester_unlock`,
+    `TITLE.md`) so testers can open it in a release build.
+
 ## Parity Guarantees
 
 - **Shared Data Still Follows the Web**: the DLC data is Godot-only and does not touch the shared weapon or mode tables. The only shared changes in the same balance pass are the Mammoth Pistol `headMul` 15.33 -> 8 and Giant Mallet `ammo` 4 -> 6, both edited in `public/index.html` and re-exported with `npm run content`, so web and Godot still read identical numbers (see [BALANCE_FIXES.md](BALANCE_FIXES.md)).
