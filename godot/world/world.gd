@@ -91,6 +91,7 @@ var emote_wheel: EmoteWheel        ## the in-match emote button + wheel (ui/emot
 var control: PlayerControl
 var map_node: MapBuilder.MapNode
 var solids: Array = []
+var cam_bounds := Rect2()            ## a walled pack yard's fence rectangle: the follow camera stays inside it (empty = open arena)
 var views := {}                    ## FighterState -> Fighter
 var player_view: Fighter
 var acc := 0.0
@@ -305,6 +306,7 @@ func load_map(id: String) -> void:
 	sim.setup(id, map_node.map, map_node.ladders, map_node.pads, cid, control, session.sim_bots(start_msg) if session != null else bots, skill)
 	if not tutorial: Analytics.match_started(sim.combat.mode_id, map_id, session != null)
 	solids = sim.solids                   # the live collision (moving tiles / blocks) for the camera too
+	cam_bounds = FollowCamera.arena_bounds(solids) if PackMaps.has(map_id) else Rect2()
 	if arcade != null: arcade.setup_sim(sim)              # Arcade: the stage's fighters, tools and events
 	if trial and not tutorial: _place_trial_rack()
 	if tutorial: _tutorial_loadout()
@@ -522,7 +524,7 @@ func tick(delta: float) -> void:
 					var p := sim.player.phys
 					cam.auto_center(dt, look, st.move(), Vector2(p.vx, p.vz), st.aiming() or st.is_held("fire") or touch.look_held(), st.is_held("sprint"))
 		if podium == null:
-			cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids)
+			cam.follow(dt, cam_target(), input.state.aiming() and spectating == null, solids, FollowCamera.AIM_FOV, cam_bounds)
 		if not locked:                       # the countdown freezes the sim: no acc, no sim_step, no catch-up on GO
 			acc += minf(dt, 0.1)
 			if not paused and not trial: Save.add_play_time(dt)
@@ -549,7 +551,7 @@ func _process(delta: float) -> void:
 		if podium != null:
 			_frame_podium_camera(minf(delta, 0.05))
 		else:
-			cam.follow(minf(delta, 0.05), cam_target(), false, solids)
+			cam.follow(minf(delta, 0.05), cam_target(), false, solids, FollowCamera.AIM_FOV, cam_bounds)
 		_update_hud(delta)
 
 ## The rendered-frame half: the per-frame visual layer only (scale/position, ragdoll overlay, juice, name tag,
@@ -1261,7 +1263,7 @@ func _end_kill_cam() -> void:
 	if _kc_l: _kc_l.visible = false
 	input.state.clear()
 	acc = 0.0
-	cam.follow(0.0, cam_target(), false, solids)   # straight back to the follow camera
+	cam.follow(0.0, cam_target(), false, solids, FollowCamera.AIM_FOV, cam_bounds)   # straight back to the follow camera
 
 # ============================== leaderboard (docs/PROTOCOL.md 4.1) ==============================
 
