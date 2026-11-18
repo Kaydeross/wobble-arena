@@ -289,6 +289,16 @@ const { Client } = require('./wa-client');
     assert.equal(over.status, 409, 'the per-day cap refuses more earned coins'); assert.equal(over.err, 'cap'); assert.equal(over.coins, 4800);
     assert.equal((await wallet('GET', '/api/wallet', null, capped.token)).coins, 4800, 'the daily cap leaves the balance at the cap');
 
+    /* idempotency ids that collide with Object.prototype names (they pass the id format) must still be remembered once used */
+    { const proto = await api('POST', '/api/claim', { name: 'Wallet_Proto', data: { wallet: { coins: 1000 } } });
+      for (const id of ['__proto__', 'constructor', 'hasOwnProperty']) {
+        const s1 = await wallet('POST', '/api/wallet/spend', { id, item: 'emote:hip' }, proto.token);
+        const s2 = await wallet('POST', '/api/wallet/spend', { id, item: 'emote:hip' }, proto.token);
+        assert.ok(s1.ok && s2.ok && s2.replay === true && s2.coins === s1.coins, 'a retry of spend id ' + id + ' is a replay, not a second charge: ' + JSON.stringify(s2));
+      }
+      assert.equal((await wallet('GET', '/api/wallet', null, proto.token)).coins, 1000 - 3 * 150, 'three ids, three charges (not six)');
+    }
+
     /* the server price table is the shipped one: locker.json, classes.json and DlcUnlock.PRICE */
     { const fs = require('fs'), path = require('path'), root = path.join(__dirname, '..');
       const locker = JSON.parse(fs.readFileSync(path.join(root, 'godot/data/extra/locker.json'), 'utf8'));

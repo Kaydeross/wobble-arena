@@ -805,6 +805,7 @@ async function arcadeCoop(url) {
   console.log('peer: ' + look0 + '\nhost: ' + (ht.find(l => /^LOOK 2 /.test(l)) || '') + '\npeer: ' + (pt.find(l => /^LOOKCLEAN /.test(l)) || ''));
   assert.match(look0, /^LOOK 0 skin=apron hat=toque color=16052714 hat_parts=[1-9]\d* skin_parts=[1-9]\d* pack=kitchen owned=false$/, 'a guest without the Kitchen pack sees the host\'s toque and apron: ' + look0);
   assert.ok(ht.some(l => /^LOOK 2 skin=singlet hat=slouch$/.test(l)), 'the host sees the Godot guest\'s Australia pack look');
+  assert.ok(pt.some(l => /^CLSCLEAN extra=tank junk=wobbler$/.test(l)), 'a Godot-only class (Bulwark) passes cleanInfo, an unknown one becomes wobbler: ' + (pt.find(l => /^CLSCLEAN /.test(l)) || 'no line'));
   assert.ok(pt.some(l => /^LOOKCLEAN junk=none\/none hardhat=hardhat$/.test(l)), 'unknown ids still fall back to none; the Construction hard hat passes');
   assert.ok(ht.some(l => /^ZONES host=0$/.test(l)), 'a web guest in the room: the host keeps the classic damage rule');
   assert.ok(ht.some(l => /^MATCH_OVER w=1/.test(l)), 'host ended the match');
