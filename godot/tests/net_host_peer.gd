@@ -69,6 +69,10 @@ func _print_looks(s: Dictionary) -> void:
 	var junk := GuestSession.clean_info({"name": "Old", "skin": "no_such_outfit", "hat": "no_such_hat", "color": 0x39b5a8}, 1)
 	var core := GuestSession.clean_info({"name": "Core", "skin": "none", "hat": "hardhat", "color": 0x39b5a8}, 1)
 	print("LOOKCLEAN junk=%s/%s hardhat=%s" % [junk["skin"], junk["hat"], core["hat"]])
+	# Godot-only classes (extra/classes.json: Bulwark, Zippy, Ace) must survive cleanInfo; an unknown class id falls back
+	var cx := GuestSession.clean_info({"name": "X", "cls": "tank"}, 1)
+	var cj := GuestSession.clean_info({"name": "X", "cls": "no_such_class"}, 1)
+	print("CLSCLEAN extra=%s junk=%s" % [cx["cls"], cj["cls"]])
 
 func _process(dt: float) -> bool:
 	t_total += dt

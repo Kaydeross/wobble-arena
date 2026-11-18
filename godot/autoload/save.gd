@@ -464,7 +464,11 @@ func _wallet_spend_rejected(op: Dictionary, _r: Dictionary) -> void:
 			var i := slots.find(k)
 			if i >= 0: slots[i] = null
 		"dlc":
-			if not codes.has("dev"): DlcSave.set_owned(dlc, k, false)
+			if not codes.has("dev"):
+				DlcSave.set_owned(dlc, k, false)
+				for sk: String in LockerData.pack_skins(k):             # the purchase gave the pack's outfits: take them back too
+					skins.erase(sk)
+					if look["skin"] == sk: look["skin"] = "none"
 	_push_settings()
 	save()
 	changed.emit()

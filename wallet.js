@@ -133,8 +133,11 @@ function create(store) {
       for (const id of ids.slice(0, ids.length - IDS_MAX)) delete w.ids[id];
     }
   }
-  function seen(w, id) { return Object.prototype.hasOwnProperty.call(w.ids, id); }
-  function mark(w, id, now) { w.ids[id] = now; clip(w); }
+  /* ids are a plain JSON object, so a caller id such as "__proto__" would be swallowed by the setter and never remembered
+     (a retry then charged twice). Keep every id under a prefix so no id can collide with an Object.prototype name. */
+  const key = id => 'i:' + id;
+  function seen(w, id) { return Object.prototype.hasOwnProperty.call(w.ids, key(id)) || Object.prototype.hasOwnProperty.call(w.ids, id); }
+  function mark(w, id, now) { w.ids[key(id)] = now; clip(w); }
 
   function view(w) {
     return {

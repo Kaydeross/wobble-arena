@@ -373,6 +373,7 @@ static var _data := {}
 ## whether or not the viewer owns that pack: owning gates equipping (LockerData), never showing.
 static func data(file_name: String) -> Dictionary:
 	if file_name == "cosmetics": return WobblerLooks.data("cosmetics")
+	if file_name == "classes": return WobblerLooks.data("classes")      # + the Godot-only classes (Bulwark, Zippy, Ace, pack classes): cleanInfo must not turn them into a Wobbler
 	if not _data.has(file_name):
 		var v: Variant = Combat.read_json("res://data/%s.json" % file_name)
 		_data[file_name] = v if v is Dictionary else {}

@@ -61,6 +61,7 @@ func _run() -> void:
 	if not standins.is_empty(): print("MULTIPACK stand-in arenas (phase C maps not in this tree): %s" % [standins])
 	_registry()
 	_ownership()
+	await _wallet_client()
 	_migration()
 	_wizard_and_quick()
 	_gate()
@@ -69,7 +70,8 @@ func _run() -> void:
 	await _hub_flow()
 	await _hub_layouts()
 	await _showcase()
-	for n in made: pass
+	for n in made:
+		if n is StubApi: (n as StubApi).free()
 	print("MULTIPACK %d hub layout cases (3 sizes x 4 packs x locked/owned x 5 languages)" % cases)
 	print("MULTIPACK %s" % ("ok" if fails == 0 else "FAILED (%d)" % fails))
 	quit(0 if fails == 0 else 1)
@@ -122,6 +124,48 @@ func _ownership() -> void:
 	DU.buy(r, "kitchen")
 	r._wallet_spend_rejected({"kind": "dlc", "key": "xmas"}, {})
 	check(not DU.owned(r, "xmas") and DU.owned(r, "kitchen"), "a refused wallet spend un-owns that pack only")
+	check(not r.skins.has("elftunic") and r.skins.has("apron"), "a refused pack purchase takes its outfits back, the other pack keeps its own")
+	r.coins = 5000
+	DU.buy(r, "australia")
+	r.look["skin"] = "singlet"
+	r._wallet_spend_rejected({"kind": "dlc", "key": "australia"}, {})
+	check(not r.skins.has("singlet") and r.look["skin"] == "none", "a refused pack purchase unequips its outfit")
+
+## AccountApi with a scripted network: each call_api pops the next scripted reply (no server, no HTTP).
+class StubApi extends AccountApi:
+	var replies: Array = []
+	var sent: Array = []
+	func call_api(_method: int, path: String, body: Variant, _token: String, cb: Callable) -> void:
+		sent.append({"path": path, "body": body})
+		cb.call(replies.pop_front() if not replies.is_empty() else {"ok": false, "status": 0, "err": "net"})
+
+func _stub() -> StubApi:
+	var a := StubApi.new()
+	a.use_settings = false
+	a.profile = _profile()
+	a.setv("token", "ab".repeat(32)); a.setv("user", "stubby"); a.setv("wallet_user", "stubby")
+	a.wallet_ready = true
+	a.wallet_coins = 1000
+	a.retry_delay = 30.0
+	made.append(a)
+	return a
+
+## A purchase the server could not answer (5xx, a gateway page, no JSON) must stay queued and be retried: only a real
+## refusal (a 4xx) drops it. Dropping it left the item owned and never charged.
+func _wallet_client() -> void:
+	for st: int in [500, 502, 503]:
+		var a := _stub()
+		a.replies = [{"ok": false, "status": st, "json": false, "text": "<html>Bad gateway</html>"}]
+		a.wallet_spend("skin", "cowboy", 400)
+		check(a._wallet_ops().size() == 1, "a %d on a wallet spend keeps the operation queued for a retry" % st)
+	var g := _stub()
+	g.replies = [{"ok": false, "status": 503, "json": false}]
+	g.wallet_grant("match", 40, {"won": true, "kos": 1})
+	check(g._wallet_ops().size() == 1, "a 503 on a wallet grant keeps the operation queued")
+	var rj := _stub()
+	rj.replies = [{"ok": false, "status": 409, "err": "coins", "coins": 10}]
+	rj.wallet_spend("skin", "cowboy", 400)
+	check(rj._wallet_ops().is_empty() and rj.wallet_coins == 10, "a real refusal (409) still drops the operation and takes the server balance")
 
 # ---------------- migration ----------------
 

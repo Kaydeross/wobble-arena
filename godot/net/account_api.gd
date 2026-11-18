@@ -542,7 +542,9 @@ func _wallet_flush() -> void:
 		elif err == "net" or status == 0:
 			offline = true
 			_wallet_plan(retry_delay)
-		elif err == "slow" or err == "fast":
+		elif status >= 500:                                            # the server (or a proxy page) failed: the operation never got an answer, so keep it and retry
+			_wallet_plan(retry_delay)
+		elif err == "slow" or err == "fast" or status == 429:
 			_wallet_plan(FAST_RETRY)
 		else:
 			_wallet_drop_first()                                       # a refused operation can never succeed: drop it
