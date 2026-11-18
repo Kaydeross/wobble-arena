@@ -30,6 +30,7 @@
     "test:godot-spring": "node tools/test-spring.js",
     "test:godot-wobbler": "node tools/test-wobbler.js",
     "test:godot-camera": "node tools/test-camera.js",
+    "test:godot-camera-fence": "node tools/test-camera-fence.js",
     "test:godot-ragdoll": "node tools/test-ragdoll.js",
     "test:godot-combat": "node tools/test-combat.js",
     "test:godot-integration": "node tools/test-integration.js",

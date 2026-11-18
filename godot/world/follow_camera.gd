@@ -267,7 +267,48 @@ static func smooth_damp(cur: float, target: float, vel: float, smooth: float, dt
 func forward_flat() -> Vector2:
 	return Vector2(sin(yaw), cos(yaw))
 
-func follow(dt: float, target: Vector3, aiming: bool, solids: Array, zoom_fov := AIM_FOV) -> void:
+## The inner rectangle (x, z) of a walled yard's fence, or an empty Rect2 for an open arena. Fence = the tall thin boxes
+## of the perimeter (Backyard BBQ's 2.8 m corrugated fence): per side the inner face shared by the most fence length wins,
+## so a stray tall post or prop cannot move it. Needs all four sides.
+static func arena_bounds(solids: Array) -> Rect2:
+	var sides := [{}, {}, {}, {}]    ## x-min wall, x-max wall, z-min wall, z-max wall: inner face (rounded cm) -> total length
+	for b: Dictionary in solids:
+		if float(b["top"]) - float(b["bottom"]) < 2.0 or float(b["top"]) < 2.0: continue
+		var w := float(b["maxX"]) - float(b["minX"])
+		var d := float(b["maxZ"]) - float(b["minZ"])
+		var cx := (float(b["minX"]) + float(b["maxX"])) * 0.5
+		var cz := (float(b["minZ"]) + float(b["maxZ"])) * 0.5
+		if w <= 0.6 and d >= 1.0 and absf(cx) > 8.0:
+			var si := 0 if cx < 0.0 else 1
+			var face := roundf((float(b["maxX"]) if cx < 0.0 else float(b["minX"])) * 100.0)
+			sides[si][face] = float(sides[si].get(face, 0.0)) + d
+		elif d <= 0.6 and w >= 1.0 and absf(cz) > 8.0:
+			var si := 2 if cz < 0.0 else 3
+			var face := roundf((float(b["maxZ"]) if cz < 0.0 else float(b["minZ"])) * 100.0)
+			sides[si][face] = float(sides[si].get(face, 0.0)) + w
+	var v: Array = []
+	for si in 4:
+		var best_len := 0.0
+		var best_face := 0.0
+		for f: float in sides[si]:
+			if float(sides[si][f]) > best_len: best_len = float(sides[si][f]); best_face = f
+		if best_len < 20.0: return Rect2()      # not a closed fence: an open arena keeps its framing
+		v.append(best_face / 100.0)
+	return Rect2(Vector2(v[0], v[2]), Vector2(v[1] - v[0], v[3] - v[2]))
+
+## Distance along the ray (o, d) at which it leaves `bounds` (o inside), or `far`.
+static func exit_bounds(o: Vector3, d: Vector3, far: float, bounds: Rect2) -> float:
+	var t := far
+	if d.x > 1e-9: t = minf(t, (bounds.end.x - o.x) / d.x)
+	elif d.x < -1e-9: t = minf(t, (bounds.position.x - o.x) / d.x)
+	if d.z > 1e-9: t = minf(t, (bounds.end.y - o.z) / d.z)
+	elif d.z < -1e-9: t = minf(t, (bounds.position.y - o.z) / d.z)
+	return t
+
+## `bounds`: the yard's fence rectangle (arena_bounds) or an empty Rect2. The camera arm sits above the head and behind,
+## so near a fence its ray passes OVER the fence top and the camera ends up outside the yard looking in: the arm is
+## also cut where it leaves the bounds.
+func follow(dt: float, target: Vector3, aiming: bool, solids: Array, zoom_fov := AIM_FOV, bounds := Rect2()) -> void:
 	aim += ((1.0 if aiming else 0.0) - aim) * minf(1.0, 12.0 * dt)
 	var cam_dist := float(Settings.get_value("cam_dist", 1.0))
 	var dist := lerpf(6.2, 2.4, aim) * cam_dist
@@ -293,6 +334,9 @@ func follow(dt: float, target: Vector3, aiming: bool, solids: Array, zoom_fov :=
 	var hit := ray_solids(pivot, dir, l, solids)
 	if hit < l:
 		l = maxf(0.5, hit - 0.3)
+	if bounds.has_area() and bounds.grow(-0.2).has_point(Vector2(pivot.x, pivot.z)):
+		var out := exit_bounds(pivot, dir, l, bounds.grow(-0.3))
+		if out < l: l = maxf(0.5, out)
 	var cam_pos := pivot + dir * l
 	look_at_from_position(cam_pos, cam_pos + fwd, Vector3.UP)
 	if absf(fov - want_fov) > 0.01:
