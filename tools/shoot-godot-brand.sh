@@ -5,7 +5,7 @@
 #   sh tools/shoot-godot-brand.sh
 set -e
 cd "$(dirname "$0")/.."
-GODOT="${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}"
+GODOT="${GODOT:-/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot}"
 OUT="$PWD/docs/style"
 mkdir -p "$OUT"
 timeout 120 "$GODOT" --headless --path godot --import >/dev/null 2>&1 || true

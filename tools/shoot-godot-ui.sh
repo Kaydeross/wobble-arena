@@ -10,7 +10,7 @@
 # size (852x393 pt; RES=WxH overrides).
 set -e
 cd "$(dirname "$0")/.."
-GODOT="${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}"
+GODOT="${GODOT:-/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot}"
 OUT="$PWD/docs/style"
 SUFFIX="${1:-}"
 [ $# -gt 0 ] && shift

@@ -7,7 +7,7 @@
 const { spawnSync } = require('child_process');
 const { isFatal } = require('./godot-log');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/ctf_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 900000, maxBuffer: 64 * 1024 * 1024 });

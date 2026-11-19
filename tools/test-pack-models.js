@@ -3,7 +3,7 @@
    builds on every class, locker.json is consistent and pack-gated. npm run test:godot-pack-models */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const gd = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', gd, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', gd, '--script', 'res://tests/pack_models_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 240000, maxBuffer: 64 << 20 });

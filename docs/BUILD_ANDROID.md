@@ -6,16 +6,16 @@ The Godot project is the same one used for iOS (`godot/`). Touch controls, the M
 
 ## Requirements
 
-- Godot **4.7.2.stable** (same as iOS), with Android export templates installed.
+- Godot **4.8.beta4** (same as iOS), with Android export templates installed.
 - JDK 17+ (OpenJDK is fine). Set `JAVA_HOME` so the build script can fill Godot Editor Settings if needed.
 - Android SDK with `platform-tools` and `build-tools` (Godot needs `adb` and `apksigner`). Set `ANDROID_HOME` (or `ANDROID_SDK_ROOT`).
 - Optional: `adb` on `PATH` for `--install`.
 - For Play Store `.aab` only: install the Gradle Android build template once (**Project → Install Android Build Template…**, or `godot --headless --path godot --install-android-build-template`). That creates `godot/android/` (gitignored).
 
-On macOS, Godot defaults to `/Applications/Godot.app`. On Linux, put `godot` on `PATH` or set `GODOT=`. Templates live in:
+On macOS, Godot defaults to `/Applications/Godot_4.8-beta4.app`. On Linux, put `godot` on `PATH` or set `GODOT=`. Templates live in:
 
-- macOS: `~/Library/Application Support/Godot/export_templates/4.7.2.stable/`
-- Linux: `~/.local/share/godot/export_templates/4.7.2.stable/`
+- macOS: `~/Library/Application Support/Godot/export_templates/4.8.beta4/`
+- Linux: `~/.local/share/godot/export_templates/4.8.beta4/`
 
 You need at least `android_release.apk` (and `android_debug.apk` for `--debug`). Godot 4.7 also ships `android_source.zip` for Gradle / `.aab` builds.
 
@@ -65,7 +65,7 @@ keytool -genkey -v -keystore wobble-arena-upload.keystore -alias upload \
 ## One-time setup
 
 1. **Package name.** Preset uses `com.kedrosng.wobblearena` (same reverse-DNS id as the iOS bundle). Create the app in [Google Play Console](https://play.google.com/console) with that package name before the first upload.
-2. **Export templates.** Godot → Editor → Manage Export Templates → Download for 4.7.2.
+2. **Export templates.** Godot → Editor → Manage Export Templates → Download for 4.8 beta 4.
 3. **JDK 17** on the machine that runs the script (`java -version`).
 4. **Release keystore** (step above) before any Play upload. Prefer a dedicated upload key; Play App Signing holds the app signing key.
 5. **Gradle template** only if you need `.aab` or Android plugins: Project → Install Android Build Template…. Re-install after upgrading Godot.

@@ -5,7 +5,7 @@
    Needs Godot (GODOT env var or the macOS default). Run: npm run test:godot-maps   (--verbose prints the AUDIT table) */
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const ROOT = path.join(__dirname, '..'), DIR = path.join(ROOT, 'godot');
 const verbose = process.argv.includes('--verbose');
 

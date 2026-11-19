@@ -6,7 +6,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path'), assert = require('assert');
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const a = SRC.indexOf('/* ==== DYN-PURE BEGIN'), b = SRC.indexOf('/* ==== DYN-PURE END');
 assert.ok(a > 0 && b > a, 'DYN-PURE block found');
 const D = new Function(SRC.slice(a, b) + '\nreturn { DYN_KINDS, dynHash, dynRand, dynRamp, dynMapAllowed, dynResolve, dynOffset, dynDelta, dynPlan };')();

@@ -3,7 +3,7 @@
    frame-time budget. npm run test:godot-ragdoll */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const gd = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', gd, '--import'], { timeout: 120000 });   // registers class_name scripts
 // --no-save keeps Settings (and the leg_wobble default/live-change checks) away from the user's settings.cfg

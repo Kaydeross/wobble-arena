@@ -3,7 +3,7 @@
    checks for K.O./respawn, HP range, finite positions and node leaks. Run: npm run test:godot-integration */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/integration_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 240000 });

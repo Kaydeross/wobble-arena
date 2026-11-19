@@ -28,7 +28,7 @@ Outcome: v0.5.0 becomes the soft-launch build with a short critical path; moneti
 | KillCam retains 5 s; add LAUNCHED badge | Buffer is 4 s @ 30 Hz, replays 1.4 s, offline only. Badge already exists (`hud.gd:480`). No capture/share code exists anywhere. |
 | Thermal readout wiring | Returns "n/a" unless a native `WobbleThermal` plugin exists; none ships. |
 | `i18n --check` covers CJK font subset | It does not check glyph coverage at all. |
-| `npm test` as the gate | Runs no Godot test. Parity suites need Godot at `/Applications/Godot.app` (not CI-portable). |
+| `npm test` as the gate | Runs no Godot test. Parity suites need Godot at `/Applications/Godot_4.8-beta4.app` (not CI-portable). |
 | Dev hash in `dlc_unlock.gd`, `server_info.gd` | Only `dlc_unlock.gd`; reachable by 7 taps on the version line, ungated in release. `server_info.gd` is not a backdoor. |
 | 12-player online Chaos | Relay room cap is 8 (`server.js:26`). |
 | `arcade_best` per-field merge; `dlc_construction` entitlement | `arcade_best` is not in the save blob (lives in `/api/rank`); the DLC is bought with 1500 coins. |

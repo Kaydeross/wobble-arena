@@ -27,7 +27,7 @@ REQUIRE_LOGIN=0 npm start          # Wobblers Arena server on port 3000
 From the title screen:
 
 ```sh
-/Applications/Godot.app/Contents/MacOS/Godot --path godot
+/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot --path godot
 ```
 
 Fill in **server** (`ws://127.0.0.1:3000/ws`, the default; it is remembered), **room code**, **your name**, pick a
@@ -37,7 +37,7 @@ for the host). When the host presses Start, Godot loads the map and you play.
 Or straight from the command line (skips typing):
 
 ```sh
-/Applications/Godot.app/Contents/MacOS/Godot --path godot -- --join=K7QMP --server=ws://127.0.0.1:3000/ws --name=Mac
+/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot --path godot -- --join=K7QMP --server=ws://127.0.0.1:3000/ws --name=Mac
 ```
 
 To join a server on another machine on your network, use its address, e.g. `--server=ws://192.168.1.20:3000/ws`
@@ -56,7 +56,7 @@ the `auth` op on every connect. **Log out** clears it.
 
 1. Start the server as in section 1. To use a phone, run it on a computer on the same Wi-Fi and note that
    computer's address (e.g. `192.168.1.20`).
-2. In the Godot app (desktop: `/Applications/Godot.app/Contents/MacOS/Godot --path godot`; phone: the exported app),
+2. In the Godot app (desktop: `/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot --path godot`; phone: the exported app),
    press **Play** once and pick the arena you want (the online room uses your last setup's arena when the game type
    allows it). Back on the title, open **Play online with friends**, set **server** to `ws://127.0.0.1:3000/ws`
    (phone: `ws://192.168.1.20:3000/ws`), type your name.

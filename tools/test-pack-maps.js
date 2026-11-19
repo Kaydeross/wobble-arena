@@ -3,7 +3,7 @@
    floor and off hazards, SiteNav flood fill, hazards, ice gating, stage events, 20 s bot matches). Run: npm run test:godot-pack-maps */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/pack_maps_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });

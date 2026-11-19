@@ -10,7 +10,7 @@ const { spawn } = require('child_process');
 process.env.REQUIRE_LOGIN = '0'; process.env.DATA_DIR = require('os').tmpdir() + '/wa-xplay-' + process.pid;
 const srv = require('../server');
 const { chromium } = require('playwright');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   await srv.start(0);

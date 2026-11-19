@@ -86,7 +86,7 @@ file" translation warnings are pre-existing; only errors fail.
 
 `npm test` runs no Godot test. CI's four `godot` shards run the whole Godot suite on Linux
 (see 1.3), so a green CI run on the shipping commit is the real Godot gate. To reproduce the
-0.5.0 local Godot set on this Mac, Godot must be at `/Applications/Godot.app`; run each suite
+0.5.0 local Godot set on this Mac, Godot must be at `/Applications/Godot_4.8-beta4.app`; run each suite
 once, never in parallel:
 
 ```bash

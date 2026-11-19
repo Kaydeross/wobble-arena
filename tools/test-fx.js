@@ -5,7 +5,7 @@
    Run: npm run test:godot-fx */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/fx_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 300000 });

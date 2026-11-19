@@ -38,7 +38,7 @@ const assert = require('assert');
 process.env.REQUIRE_LOGIN = '0'; process.env.DATA_DIR = os.tmpdir() + '/wa-nethost-' + process.pid;
 const srv = require('../server');
 const { Client, PROTO, BUILD } = require('./wa-client');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 const ERR = /SCRIPT ERROR|^ERROR|Parse Error|leaked/i;
 const sleep = ms => new Promise(r => setTimeout(r, ms));
