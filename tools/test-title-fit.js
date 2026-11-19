@@ -9,7 +9,7 @@
 const { spawn, spawnSync } = require('child_process');
 const { isFatal } = require('./godot-log');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 const TIMEOUT_S = Number(process.env.FIT_TIMEOUT_S || 300);
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });

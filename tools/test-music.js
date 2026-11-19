@@ -3,7 +3,7 @@
    godot/tests/music_test.gd headless. npm run test:godot-music */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const GD = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', GD, '--import'], { timeout: 120000 });
 const r = spawnSync(GODOT, ['--headless', '--path', GD, '--script', 'res://tests/music_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 120000 });

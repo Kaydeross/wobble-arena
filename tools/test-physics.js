@@ -3,7 +3,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
 const trace = require('./physics-reference');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 let bad = 0;
 spawnSync(GODOT, ['--headless', '--path', path.join(__dirname, '..', 'godot'), '--import'], { timeout: 120000 });   // registers class_name scripts
 const CLS = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'shared', 'classes.json'), 'utf8'));

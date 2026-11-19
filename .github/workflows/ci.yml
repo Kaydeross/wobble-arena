@@ -33,13 +33,13 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: /opt/godot
-          key: godot-4.7.2-linux-${{ runner.os }}
-      - name: Install Godot 4.7.2 (headless tests, no export templates needed)
+          key: godot-4.8-beta4-linux-${{ runner.os }}
+      - name: Install Godot 4.8 beta 4 (headless tests, no export templates needed)
         run: |
           if [ ! -x /opt/godot/godot ]; then
             mkdir -p /opt/godot && cd /opt/godot
-            curl -fsSL -o g.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-            unzip -q g.zip && mv Godot_v4.7.2-stable_linux.x86_64 godot && chmod +x godot
+            curl -fsSL -o g.zip https://github.com/godotengine/godot-builds/releases/download/4.8-beta4/Godot_v4.8-beta4_linux.x86_64.zip
+            unzip -q g.zip && mv Godot_v4.8-beta4_linux.x86_64 godot && chmod +x godot
           fi
       - run: npm ci || npm install
       - run: timeout 180 $GODOT --headless --path godot --import || true
@@ -177,19 +177,19 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: /opt/godot
-          key: godot-export-4.7.2-linux-${{ runner.os }}
+          key: godot-export-4.8-beta4-linux-${{ runner.os }}
       - name: Install Godot and web export templates
         run: |
           mkdir -p /opt/godot
           if [ ! -x /opt/godot/godot ]; then
             cd /opt/godot
-            curl -fsSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
-            unzip -q godot.zip && mv Godot_v4.7.2-stable_linux.x86_64 godot && chmod +x godot
+            curl -fsSL -o godot.zip https://github.com/godotengine/godot-builds/releases/download/4.8-beta4/Godot_v4.8-beta4_linux.x86_64.zip
+            unzip -q godot.zip && mv Godot_v4.8-beta4_linux.x86_64 godot && chmod +x godot
           fi
-          TPL="$HOME/.local/share/godot/export_templates/4.7.2.stable"
+          TPL="$HOME/.local/share/godot/export_templates/4.8.beta4"
           if [ ! -f "$TPL/web_release.zip" ]; then
             mkdir -p /tmp/godot-templates "$TPL"
-            curl -fsSL -o /tmp/godot-templates/templates.tpz https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz
+            curl -fsSL -o /tmp/godot-templates/templates.tpz https://github.com/godotengine/godot-builds/releases/download/4.8-beta4/Godot_v4.8-beta4_export_templates.tpz
             unzip -q /tmp/godot-templates/templates.tpz -d /tmp/godot-templates
             cp -R /tmp/godot-templates/templates/. "$TPL/"
           fi

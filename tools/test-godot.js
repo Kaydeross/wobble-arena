@@ -6,7 +6,7 @@ const assert = require('assert');
 process.env.REQUIRE_LOGIN = '0'; process.env.DATA_DIR = require('os').tmpdir() + '/wa-godot-' + process.pid;
 const srv = require('../server');
 const { Client } = require('./wa-client');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 (async () => {
   await srv.start(0);
   const url = 'ws://127.0.0.1:' + srv.server.address().port + '/ws';

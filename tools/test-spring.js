@@ -4,7 +4,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm');
 const SRC = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 function block(startRe) {                                    // from the match to the end of the brace block that follows (same slicer as physics-reference.js)
   const m = startRe.exec(SRC); if (!m) throw new Error('not found ' + startRe);
   let i = SRC.indexOf('{', m.index + m[0].length - 1), depth = 0, q = null;

@@ -8,7 +8,7 @@
 #   tools/build-android.sh --export-only  alias for the default export (kept for parity with build-ios.sh)
 #
 # Environment overrides:
-#   GODOT          Godot 4.7.2 binary (default: /Applications/Godot.app/... on macOS, or `godot` on PATH)
+#   GODOT          Godot 4.8 beta 4 binary (default: /Applications/Godot_4.8-beta4.app/... on macOS, or `godot` on PATH)
 #   BUILD_NUMBER   version/code (default: git commit count; must increase for every Play upload)
 #   GODOT_ANDROID_KEYSTORE_RELEASE_PATH / _USER / _PASSWORD
 #                  release signing (also read by Godot itself). Debug uses Godot's built-in debug keystore
@@ -18,15 +18,15 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [ -z "${GODOT:-}" ]; then
-  if [ -x /Applications/Godot.app/Contents/MacOS/Godot ]; then
-    GODOT=/Applications/Godot.app/Contents/MacOS/Godot
+  if [ -x /Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot ]; then
+    GODOT=/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot
   elif command -v godot >/dev/null 2>&1; then
     GODOT="$(command -v godot)"
   else
-    GODOT=/Applications/Godot.app/Contents/MacOS/Godot
+    GODOT=/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot
   fi
 fi
-GODOT_VERSION_WANTED="4.7.2.stable"
+GODOT_VERSION_WANTED="4.8.beta4"
 PACKAGE_ID="com.kedrosng.wobblearena"
 OUT="$ROOT/build/android"
 LOGS="$OUT/logs"

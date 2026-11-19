@@ -5,7 +5,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path');
 const { run, scenario, exactJson } = require('./combat-reference');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const GD = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', GD, '--import'], { timeout: 120000 });   // registers class_name scripts
 const tf = path.join(os.tmpdir(), 'wa-combat-' + process.pid + '.json');

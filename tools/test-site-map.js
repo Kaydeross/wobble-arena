@@ -4,7 +4,7 @@
    hi-vis vest) and a short Construction match on a generated site. Run: npm run test:godot-site-map */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/site_map_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 420000, maxBuffer: 64 << 20 });

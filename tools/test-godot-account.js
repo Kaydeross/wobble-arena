@@ -13,7 +13,7 @@ const assert = require('assert');
 process.env.REQUIRE_LOGIN = '0';
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'wa-account-'));
 const srv = require('../server');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 
 (async () => {

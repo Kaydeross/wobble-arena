@@ -1,7 +1,7 @@
 extends RefCounted
 ## Test-only rewarded-ad provider (the contract from the brief): load marks the placement ready, show completes it.
 ## Kept as its own file, not an inner class, because a `--script` SceneTree test with an inner class leaves the headless
-## renderer's RID cleanup incomplete under Godot 4.7.2 (shutdown-only leak warnings, not a gameplay failure).
+## renderer's RID cleanup incomplete under Godot 4.8 beta 4 (shutdown-only leak warnings, not a gameplay failure).
 var ads: Node
 var calls: Array = []
 var finish := true

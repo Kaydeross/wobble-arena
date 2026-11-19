@@ -11,7 +11,7 @@
    npm run test:godot-range */
 const { spawnSync } = require('child_process');
 const fs = require('fs'), os = require('os'), path = require('path'), vm = require('vm');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const ROOT = path.join(__dirname, '..'), GD = path.join(ROOT, 'godot');
 const SRC = fs.readFileSync(path.join(ROOT, 'public', 'index.html'), 'utf8');
 function block(startRe) {                                    // from the match to the end of the brace block that follows

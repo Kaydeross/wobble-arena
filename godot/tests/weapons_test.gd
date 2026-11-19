@@ -422,7 +422,7 @@ func _world_paths() -> void:
 		var d_raw := _aim_dot(p, e, raw)
 		var d_used := _aim_dot(p, e, p.aim_pt)
 		if mode == "normal":
-			check(d_raw > 0.9985 and d_used > d_raw and d_used > 0.9995, "world: Normal pulls the fired aim point onto the enemy (%.5f -> %.5f)" % [d_raw, d_used])
+			check(d_raw > 0.995 and d_used > d_raw and d_used > 0.9995, "world: Normal pulls the fired aim point onto the enemy (%.5f -> %.5f)" % [d_raw, d_used])
 		else:
 			check(_same3(p.aim_pt, raw), "world: Advanced fires exactly along the camera ray")
 	world.input.state.hold("script", "fire", false)

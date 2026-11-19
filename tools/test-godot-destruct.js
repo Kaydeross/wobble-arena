@@ -19,7 +19,7 @@
    (add to package.json as: "test:godot-destruct": "node tools/test-godot-destruct.js") */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 const sync = spawnSync(process.execPath, [path.join(__dirname, 'sync-shared.js'), '--check'], { encoding: 'utf8' });
 process.stdout.write(sync.stdout); process.stderr.write(sync.stderr);

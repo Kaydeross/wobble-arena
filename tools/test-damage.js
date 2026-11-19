@@ -4,7 +4,7 @@
    npm run test:godot-damage */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const GD = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', GD, '--import'], { timeout: 120000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', GD, '--script', 'res://tests/damage_test.gd'], { encoding: 'utf8', timeout: 300000 });

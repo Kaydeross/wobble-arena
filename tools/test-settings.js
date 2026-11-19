@@ -2,7 +2,7 @@
 /* Godot server-default test (Settings.server_default, Reset to default, wss -> https). Needs Godot (GODOT env var or the macOS default). Run: npm run test:godot-settings */
 const { spawnSync } = require('child_process');
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 spawnSync(GODOT, ['--headless', '--path', DIR, '--import'], { timeout: 180000 });   // registers class_name scripts
 const r = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/server_default_test.gd', '--', '--no-save'], { encoding: 'utf8', timeout: 300000 });

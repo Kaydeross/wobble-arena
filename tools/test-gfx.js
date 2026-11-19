@@ -9,7 +9,7 @@
 const { spawnSync } = require('child_process');
 require('./ensure-fresh')();
 const path = require('path');
-const GODOT = process.env.GODOT || '/Applications/Godot.app/Contents/MacOS/Godot';
+const GODOT = process.env.GODOT || '/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot';
 const DIR = path.join(__dirname, '..', 'godot');
 const args = process.argv.slice(2);
 const headless = args.includes('--headless');

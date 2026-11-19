@@ -7,7 +7,7 @@
 #   tools/build-ios.sh --skip-export    reuse build/ios/xcode from an earlier run
 #
 # Environment overrides:
-#   GODOT          Godot 4.7.2 binary (default: /Applications/Godot.app/Contents/MacOS/Godot)
+#   GODOT          Godot 4.8 beta 4 binary (default: /Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot)
 #   TEAM_ID        Apple team ID (default: 663Q47AS93)
 #   BUILD_NUMBER   CFBundleVersion (default: number of commits on HEAD; must increase for every upload)
 #   SIM_DEVICE     simulator name or UDID for --simulator (default: first available iPhone)
@@ -17,8 +17,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-GODOT="${GODOT:-/Applications/Godot.app/Contents/MacOS/Godot}"
-GODOT_VERSION_WANTED="4.7.2.stable"
+GODOT="${GODOT:-/Applications/Godot_4.8-beta4.app/Contents/MacOS/Godot}"
+GODOT_VERSION_WANTED="4.8.beta4"
 TEAM_ID="${TEAM_ID:-663Q47AS93}"
 BUNDLE_ID="com.kedrosng.wobblearena"
 SCHEME="WobbleArena"
@@ -93,7 +93,7 @@ fi
 
 # --- Simulator path ----------------------------------------------------------
 if [ "$MODE" = simulator ]; then
-  # The official Godot 4.7.2 template's simulator slice is x86_64 only, and iOS 26+ simulators no longer
+  # The official Godot 4.8 beta 4 template's simulator slice is x86_64 only, and iOS 26+ simulators no longer
   # run x86_64 apps. So we build the arm64 *device* binary unsigned, retag its Mach-O platform to
   # iOS Simulator with vtool, and ad-hoc sign it. Good enough to check that the app installs and boots.
   step "Building unsigned arm64 app (log: $LOGS/sim-build.log)"
