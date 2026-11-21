@@ -1994,6 +1994,13 @@
   "fr": "Fosse de combat",
   "es": "Foso de pelea"
  },
+ "Breakable props shatter into pieces, and now in online rooms too (all-app rooms only)": {
+  "zh_TW": "可破壞的道具會裂成一塊塊，現在連線房間也能用（僅限全 App 房間）",
+  "zh_CN": "可破坏的道具会裂成一块块，现在联机房间也能用（仅限全 App 房间）",
+  "ja": "こわせる小道具がバラバラになります。オンラインのルームでも使えます（アプリだけのルーム限定）",
+  "fr": "Les accessoires cassables volent en éclats, et maintenant aussi en ligne (salles 100 % appli seulement)",
+  "es": "Los objetos rompibles se hacen pedazos, y ahora también en línea (solo salas con la app)"
+ },
  "Bridges": {
   "zh_TW": "橋",
   "zh_CN": "桥",
@@ -2119,6 +2126,13 @@
   "ja": "忍者のために作られた場所。五重塔の屋根を持つ高い道場で、四方に階段、低い庭塀、隅の東屋があり、ダッシュで行き来して身を隠せる。月明かりの下に提灯と桜。",
   "fr": "Conçu pour les ninjas. Un dojo surélevé au toit de pagode, des escaliers sur chaque côté, de bas murs de jardin et des pavillons d'angle où dasher et se cacher. Lanternes et cerisiers en fleurs sous la lune.",
   "es": "Hecho para ninjas. Un dojo elevado con tejado de pagoda, escaleras por todos los lados, muros bajos de jardín y pabellones en las esquinas por los que impulsarse y esconderse. Linternas y flor de cerezo a la luz de la luna."
+ },
+ "Built on Godot 4.8 beta 4": {
+  "zh_TW": "改用 Godot 4.8 beta 4 打造",
+  "zh_CN": "改用 Godot 4.8 beta 4 打造",
+  "ja": "Godot 4.8 beta 4 で作り直しました",
+  "fr": "Construit avec Godot 4.8 beta 4",
+  "es": "Hecho con Godot 4.8 beta 4"
  },
  "Bulwark": {
   "zh_TW": "壁壘",
@@ -4814,6 +4828,13 @@
   "ja": "やあ、友よ",
   "fr": "Salut, mon pote",
   "es": "Eh, colega"
+ },
+ "Hey Mate is fairer: the Cricket Bat launches less, and bots now grab pack weapons": {
+  "zh_TW": "Hey Mate 更公平：板球棒的擊飛力變小，機器人也會撿起包裡的武器",
+  "zh_CN": "Hey Mate 更公平：板球棒的击飞力变小，机器人也会捡起包里的武器",
+  "ja": "Hey Mate がフェアに：クリケットバットの飛ばす力をひかえめにして、ボットもパックの武器を拾います",
+  "fr": "Hey Mate plus équitable : la batte de cricket lance moins fort, et les bots ramassent les armes du pack",
+  "es": "Hey Mate más justo: el bate de críquet lanza menos y los bots recogen las armas del pack"
  },
  "Hidden under %s. Shows with no outfit": {
   "zh_TW": "被 %s 遮住。不穿服裝時會顯示",
@@ -7839,6 +7860,13 @@
   "fr": "AUTRE PACK ›",
   "es": "OTRO PACK ›"
  },
+ "Safer accounts: no double charge for the same item, and a new password signs out your other devices": {
+  "zh_TW": "帳號更安全：同一件物品不會重複扣款，換新密碼後其他裝置會自動登出",
+  "zh_CN": "账号更安全：同一件物品不会重复扣款，换新密码后其他设备会自动登出",
+  "ja": "アカウントがより安全に：同じアイテムで二重に引かれず、パスワードを変えると、ほかの端末はすぐログアウトします",
+  "fr": "Comptes plus sûrs : pas de double débit pour un même objet, et un nouveau mot de passe déconnecte vos autres appareils",
+  "es": "Cuentas más seguras: no se cobra dos veces el mismo objeto y una contraseña nueva cierra la sesión en tus otros dispositivos"
+ },
  "Salute": {
   "zh_TW": "敬禮",
   "zh_CN": "敬礼",
@@ -8461,6 +8489,13 @@
   "ja": "小",
   "fr": "Petit",
   "es": "Pequeño"
+ },
+ "Smash it up, fair and square": {
+  "zh_TW": "大力破壞，公平對決",
+  "zh_CN": "大力破坏，公平对决",
+  "ja": "こわして、フェアに勝負",
+  "fr": "On casse tout, mais à armes égales",
+  "es": "A romper todo, sin trampas"
  },
  "Smoko's over. Watch your back around the tool shed.": {
   "zh_TW": "休息結束了。在工具棚附近多加小心。",

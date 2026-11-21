@@ -5,7 +5,7 @@
 <br />
 
 [![iOS beta on TestFlight](https://img.shields.io/badge/iOS_beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/v1/app/6833812750)
-![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-FFCF4D?style=for-the-badge)
+![Version 0.5.0](https://img.shields.io/badge/version-0.6.0-FFCF4D?style=for-the-badge)
 ![Godot 4.8 beta](https://img.shields.io/badge/Godot-4.8_beta-478CBF?style=for-the-badge&logo=godotengine&logoColor=white)
 ![iOS, Android, macOS, Windows, Web](https://img.shields.io/badge/iOS_·_Android_·_macOS_·_Windows_·_Web-17323A?style=for-the-badge)
 
@@ -21,6 +21,15 @@ Play offline against computer players, open a room and play online with friends 
   <img src="docs/readme/match.jpg" alt="A Classic match on Sunny Arena, with the health bar, weapon slots and radar" width="100%" />
   <em>A Classic match on Sunny Arena: crates drop from the sky, and whoever grabs the weapon first gets the swing.</em>
 </div>
+
+## What's new in 0.6.0
+
+Smash it up, fair and square, as it appears in the game's What's new card:
+
+- Breakable props shatter into pieces, and now in online rooms too (all-app rooms only)
+- Hey Mate is fairer: the Cricket Bat launches less, and bots now grab pack weapons
+- Safer accounts: no double charge for the same item, and a new password signs out your other devices
+- Built on Godot 4.8 beta 4
 
 ## What's new in 0.5.0
 
