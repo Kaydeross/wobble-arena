@@ -19,6 +19,7 @@ func _initialize() -> void:
 func _run() -> void:
 	for map_id in ["arena", "park", "farm"]:
 		await _map(map_id)
+	await _pose_event_regression()
 	print("PROPDEBRIS %s checks=%d fails=%d" % ["ok" if fails == 0 else "FAILED", checks, fails])
 	quit(0 if fails == 0 else 1)
 
@@ -57,5 +58,25 @@ func _map(map_id: String) -> void:
 	check(deb.piece_count() > 0, "%s: pieces still alive after 0.5 s" % map_id)
 	for k in 400: deb._process(1.0 / 60.0)
 	check(deb.piece_count() == 0 and deb.crown_count() == 0, "%s: pieces sink away afterwards" % map_id)
+	w.queue_free()
+	await process_frame
+
+## Regression: World._drain_pose_events used to REPLACE sim.combat.events with a new array. Destruct appends its break /
+## prop_hit / respawn events to the original array (same reference), so after the first lean/head/arm event of a match
+## every later break was stranded and its debris never appeared. The queue must stay the very same array.
+func _pose_event_regression() -> void:
+	var w: Node = load("res://world/world.tscn").instantiate()
+	w.map_id = "arena"; w.mode_id = "classic"
+	w.auto_run = false; w.bot_count = 1; w.rng_seed = 4242
+	root.add_child(w)
+	await process_frame
+	var d: Destruct = w.sim.destruct
+	var q: Array = w.sim.combat.events
+	q.append({"type": "lean", "f": w.sim.player, "a": 0.1, "b": 0.0})
+	w._drain_pose_events()
+	check(w.sim.combat.events == q and is_same(w.sim.combat.events, q), "pose drain keeps the same events array")
+	d.break_hit(0, 99999.0, [1.0, 0.0, 0.0])
+	w.present(0.0)
+	check(w._debris != null and w._debris.piece_count() > 0, "a break after a pose event still shatters into debris")
 	w.queue_free()
 	await process_frame

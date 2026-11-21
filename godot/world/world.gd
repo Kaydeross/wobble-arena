@@ -502,7 +502,10 @@ func _drain_pose_events() -> void:
 			if f != null and views.has(f): views[f].on_event(e)
 		else:
 			keep.append(e)
-	sim.combat.events = keep
+	# In place: Destruct / Rubble / ... keep a reference to this exact array ("same reference"); a new array would strand
+	# their break / prop_hit / respawn events in the old one and a broken prop would show no debris at all.
+	evs.clear()
+	evs.append_array(keep)
 
 ## One rendered frame: sim steps from the accumulator, then the presentation (animation, melee sweep, effects, HUD).
 func tick(delta: float) -> void:
