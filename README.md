@@ -6,7 +6,7 @@
 
 [![iOS beta on TestFlight](https://img.shields.io/badge/iOS_beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/v1/app/6833812750)
 ![Version 0.5.0](https://img.shields.io/badge/version-0.5.0-FFCF4D?style=for-the-badge)
-![Godot 4.7](https://img.shields.io/badge/Godot-4.7-478CBF?style=for-the-badge&logo=godotengine&logoColor=white)
+![Godot 4.8 beta](https://img.shields.io/badge/Godot-4.8_beta-478CBF?style=for-the-badge&logo=godotengine&logoColor=white)
 ![iOS, Android, macOS, Windows, Web](https://img.shields.io/badge/iOS_·_Android_·_macOS_·_Windows_·_Web-17323A?style=for-the-badge)
 
 </div>
@@ -37,7 +37,8 @@ A new title, a softer start, as it appears in the game's What's new card:
 ## What's in it
 
 - **11 classes.** Five to start with (Wobbler, Bruiser, Scamp, Gramps and Zorp) and six more to buy or unlock by playing. Each has its own health, speed, jump and knockback.
-- **39 weapons.** A spatula, bats, mallets and katanas; shotguns, snipers and miniguns; rocket and cluster launchers; and odd ones like the Net Gun, Snake Shooter and Twin Fang Bow.
+- **39 weapons, plus 18 in the DLC packs.** A spatula, bats, mallets and katanas; shotguns, snipers and miniguns; rocket and cluster launchers; and odd ones like the Net Gun, Snake Shooter and Twin Fang Bow.
+- **Three DLC packs.** On Fire (kitchen), Ho Ho Ho (Christmas) and Hey Mate (Australia), each with its own arena, weapons, outfits and a 3D landing page, plus Construction. Packs cost 1500 coins.
 - **30+ arenas.** A sunny arena, an ice rink, a volcano rim, a moon base, a candy land, a pirate ship, a haunted hollow and many more, plus a Sandbox where you build your own from blocks.
 - **20+ game types.** Classic, Melee Only, Guns Only, Ninja, Explosive, Weapon Ladder, Deathmatch, Sudden Death, team games from 1v1 to 5v5 Chaos, low-gravity Moon Drift and a Practice Range.
 - **Moving floors.** Pick Steady, Wobble, Tilt, Quake or Drift for any arena, or leave it on Random.
@@ -111,7 +112,7 @@ Behind the DON'T ENTER sign on the title screen is the Construction set: a works
 
 ## Run from source
 
-You need [Godot 4.7](https://godotengine.org/download) and, for the server and tests, Node 18 or newer.
+You need [Godot 4.8 (beta 4 for now, until 4.8 stable)](https://godotengine.org/download) and, for the server and tests, Node 18 or newer.
 
 Run the game:
 
@@ -155,7 +156,7 @@ npm run test:godot-combat
 
 | Path | What it is |
 | --- | --- |
-| [`godot/`](godot) | The game, in Godot 4.7 (GDScript) |
+| [`godot/`](godot) | The game, in Godot 4.8 beta (GDScript) |
 | [`shared/`](shared) | Classes, weapons, arenas and game types as JSON, shared by every client |
 | [`server.js`](server.js), [`accounts.js`](accounts.js) | Room list, message relay and accounts |
 | [`index.html`](index.html), [`public/`](public) | The original JavaScript web game (served by `npm start`). The Godot web export above replaces it for players |
