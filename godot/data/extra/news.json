@@ -2,6 +2,16 @@
  "_note": "Patch notes for the What's new card (ui/whats_new.gd), newest first. `version` matches application/config/version in project.godot: the card opens by itself once when the newest version here is one the player hasn't seen. Voice and rules: docs/WRITING.md. Short lines, no trailing full stop, one silly beat at most.",
  "entries": [
   {
+   "version": "0.6.0",
+   "title": "Smash it up, fair and square",
+   "notes": [
+    "Breakable props shatter into pieces, and now in online rooms too (all-app rooms only)",
+    "Hey Mate is fairer: the Cricket Bat launches less, and bots now grab pack weapons",
+    "Safer accounts: no double charge for the same item, and a new password signs out your other devices",
+    "Built on Godot 4.8 beta 4"
+   ]
+  },
+  {
    "version": "0.5.0",
    "title": "A new title, a softer start",
    "notes": [
