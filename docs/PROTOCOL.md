@@ -256,7 +256,7 @@ Base: same origin as the page (the iOS app must use a configurable `SERVER_URL`)
 
 **Inactive accounts are retained by default.** The server keeps a `lastSeen` per account (written by `/api/me`, `/api/save`, `/api/login` and the relay `auth` op, at most once an hour per account). A sweep at start-up and every 6 hours can erase accounts older than an explicitly configured positive `ACCOUNT_TTL_DAYS`; the default `0` never erases them. Erasure removes the account, cloud save, every token and the email and frees the name. Accounts created before `lastSeen` existed get `lastSeen = now` the first time the sweep sees them. The server logs counts only, never names.
 
-Password change and reset revoke every token for the account. Reset and password change return one fresh token for the current device. Account deletion also revokes every token. Do not attach a purchasable wallet to an account with automatic expiry enabled.
+Password change and reset revoke every token for the account: the account record carries a session version `sv` (random; new accounts start from one), a token record is `account` or `account|sv`, and a token whose `sv` differs from the account's no longer matches, so revoking is the same single write that stores the new password (no walk over the token keys; erasing an account still removes its tokens). Reset and password change return one fresh token for the current device. Account deletion also revokes every token. Do not attach a purchasable wallet to an account with automatic expiry enabled.
 
 Error shape: `{ok:false, err, msg}` with HTTP 400/401/409/413/429/500. An unknown `/api/*` path (or a method a
 route does not support) is `404 {ok:false, err:"none", msg:"Not found."}` — **always JSON**. `server.js` answers every
@@ -355,7 +355,10 @@ they answer `401 err:"auth"`.
   (`class:tank` 1500, `class:dash` 1200, `class:ace` 2000) and the Construction DLC (`dlc:construction` 1500, bought
   with coins — there is no separate entitlement). Unknown items are `400 err:"item"`; insufficient balance is
   `409 err:"coins"` with `{coins, price, item}` and changes nothing. A successful spend returns the new balance and
-  `spent`. `tools/test-server.js` checks the table against `godot/data/extra/locker.json`,
+  `spent`. Every item is one-time: the wallet keeps what the account bought (a map built from the ledger for wallets from
+  before it existed), and buying the same item again under a new `id` (a second device, a reinstall) is `ok` with
+  `owned: true, spent: 0` and is not charged. `today` in every wallet reply is the current UTC day (yesterday's grants do
+  not show as today's). `tools/test-server.js` checks the table against `godot/data/extra/locker.json`,
   `godot/data/extra/classes.json` and `DlcUnlock.PRICE`, so shipped price drift fails `npm test`.
 - **Client (Godot).** `Save.cloud` (an `AccountApi`) fetches the balance after sign-in and keeps an operation queue in
   the local settings (`wallet_ops`, tied to the account name). Earning and spending when signed in append an

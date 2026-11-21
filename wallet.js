@@ -139,10 +139,22 @@ function create(store) {
   function seen(w, id) { return Object.prototype.hasOwnProperty.call(w.ids, key(id)) || Object.prototype.hasOwnProperty.call(w.ids, id); }
   function mark(w, id, now) { w.ids[key(id)] = now; clip(w); }
 
+  /* Every item sold is one-time (an outfit, an emote, a class, a pack), so the wallet remembers what the account bought: the
+     same item bought again under a NEW id (a second device, a reinstall) is not charged twice. `own` is built from the ledger
+     for wallets written before it existed (the ledger keeps the newest LEDGER_MAX entries: older purchases are not known). */
+  function ownOf(w) {
+    if (!w.own || typeof w.own !== 'object') {
+      w.own = {};
+      for (const e of w.ledger || []) if (e && e.r === 'spend' && typeof e.item === 'string' && e.a < 0 && Object.prototype.hasOwnProperty.call(ITEMS, e.item)) w.own[e.item] = 1;
+    }
+    return w.own;
+  }
+
   function view(w) {
+    const today = dayOf(Date.now());       // yesterday's grants are not today's: the stored day only rolls over on the next grant
     return {
       ok: true, coins: int0(w.coins), seeded: w.seeded !== false,
-      today: { day: w.day, granted: int0(w.granted), cap: DAY_CAP },
+      today: { day: today, granted: w.day === today ? int0(w.granted) : 0, cap: DAY_CAP },
       ledger: (w.ledger || []).slice(-10).map(e => ({ reason: e.r, amount: e.a, id: e.id, time: e.t })),
     };
   }
@@ -181,11 +193,19 @@ function create(store) {
       if (!item || !Object.prototype.hasOwnProperty.call(ITEMS, item)) throw new WErr(400, 'item', 'Unknown item.');
       const w = await ensure(l);
       if (seen(w, id)) return Object.assign(view(w), { replay: true });
-      const price = ITEMS[item];
+      const price = ITEMS[item], own = ownOf(w);
+      if (own[item] === 1) {                                           // already bought: free, and remembered so a retry replays
+        const t = Date.now();
+        w.ledger.push({ r: 'spend', a: 0, id, t, item, dup: true });
+        mark(w, id, t);
+        await save(l, w);
+        return Object.assign(view(w), { spent: 0, item, owned: true });
+      }
       if (int0(w.coins) < price) throw new WErr(409, 'coins', 'Not enough coins.', { coins: int0(w.coins), price, item });
       const now = Date.now();
       w.coins = int0(w.coins) - price;
       w.ledger.push({ r: 'spend', a: -price, id, t: now, item });
+      own[item] = 1;
       mark(w, id, now);
       await save(l, w);
       return Object.assign(view(w), { spent: price, item });
