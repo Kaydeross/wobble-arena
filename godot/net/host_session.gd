@@ -67,6 +67,8 @@ var cid_slot := {}               ## server cid -> slot
 var slots: Array = []            ## the running match's slots (HostMatch fills the bots in)
 var limit := 0
 var dseed := 0
+var opt_dest := true             ## Host sheet: breakable cover in an all-app room (set_rules `dest`); web guests in the lobby switch it off
+var _dest := false               ## this match has destructible props (`rules.dest`): only possible with `_nz` (every peer on the app)
 var _nz := false                 ## this match plays the unified combat rules (every peer is on the app): sent as `rules.nz`
 var rv := {}                     ## slot -> true: rematch votes
 var rv_timer := -1.0
@@ -143,6 +145,7 @@ func set_rules(opts: Dictionary) -> void:
 	if opts.has("kb"): kb = float(opts["kb"]) if KBS.has(float(opts["kb"])) else 1.0
 	if opts.has("crate"): crate = str(opts["crate"]) if CRATES.has(str(opts["crate"])) else "normal"
 	if opts.has("inf"): inf = bool(opts["inf"])
+	if opts.has("dest"): opt_dest = bool(opts["dest"])
 	if opts.has("dyn"):
 		var dk := str(opts["dyn"])
 		dyn_kind = dk if Dynamics.KINDS.has(dk) else "off"
@@ -407,11 +410,12 @@ func _resume_start() -> void:
 	var r: Dictionary = _resume.get("rules", {})
 	var sd: Variant = r.get("dseed")
 	var nz := 1 if r.get("nz") == true else 0          # keep the old match's damage rule across the migration
+	var dst := 1 if r.get("dest") == true else 0       # ... and its breakable cover (the broken list is in rsx.brks)
 	_start_x = {"rs": rs, "rsx": _resume.get("rsx", {})}
 	_dt0 = float(_resume.get("dt0", 0.0))
 	var keep_seed: int = int(sd) if (sd is float or sd is int) else -1
 	_resume = {}
-	_begin_match(s, keep_seed, nz)
+	_begin_match(s, keep_seed, nz, dst)
 
 # ============================== hostRecv ==============================
 
@@ -487,6 +491,11 @@ func _hello(cid: int, m: Dictionary) -> void:
 		_close_later(cid)
 		_set_status(tr("%s tried to join from the web browser: %s is app-only.") % [info["name"], tr(mode_label())])
 		return
+	if started and not gd and _dest:                        # web clients cannot render or collide with breakable cover
+		_to(cid, {"t": "kick", "msg": "This room has breakable cover and uses the unified combat rules, which only the Wobblers Arena app has. Join from the app."})
+		_close_later(cid)
+		_set_status(tr("%s tried to join from the web browser: this room has breakable cover and uses the unified combat rules, which only the Wobblers Arena app has.") % info["name"])
+		return
 	if started and not gd and _nz:                          # a zones match never falls back to the classic rule mid-match
 		_to(cid, {"t": "kick", "msg": "This match uses the unified combat rules, which only the Wobblers Arena app has. Join from the app."})
 		_close_later(cid)
@@ -511,7 +520,7 @@ func _hello(cid: int, m: Dictionary) -> void:
 		hm.bot_to_human(id, info)
 		slots = hm.slots
 		_to(cid, start_msg_for(hm))
-		_to(cid, {"t": "crates", "list": hm.crate_list()})
+		_to(cid, {"t": "crates", "list": hm.crate_list()})   # (`brks` is in the start message)
 		_all({"t": "slot", "slot": id, "kind": "human", "info": slots[id]}, cid)
 		if arcade: arcade_refresh(hm)
 	else:
@@ -561,6 +570,8 @@ func _drop(cid: int) -> void:
 func start_msg_for(hm: HostMatch) -> Dictionary:
 	var m := {"t": "start", "slots": slots, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap(true)}
 	if not hm.arc.is_empty(): m["arc"] = hm.arc.duplicate(true)
+	var bl := hm.broken_list()
+	if _dest and not bl.is_empty(): m["brks"] = bl      # a late joiner: the components that are already broken
 	return m
 
 ## Arcade co-op: the slot model changed (a guest took a seat / a seat fell back to its bot); let the run re-flag the
@@ -731,6 +742,7 @@ static func _num(v: float) -> String:
 func rule_snap(joiner: bool = false) -> Dictionary:
 	var r := {"mode": net_mode(mode_id), "hp": 300 if mode_id == "explosive" else hp, "crate": crate, "wstate": {},
 		"grav": 0.15 if mode_id == "lowg" else grav, "kb": kb, "inf": inf, "dyn": dyn_kind}
+	if _dest: r["dest"] = true                   # breakable cover, host-authored (`brk` / `brs`, 6.5): app-only like nz
 	if _nz: r["nz"] = true                       # unified combat rules: every peer runs the Godot app (6.3)
 	if app_only(mode_id):
 		r["gmode"] = mode_id
@@ -809,7 +821,7 @@ func arcade_slots() -> Array:
 ## `start_msg` (match_started), then HostMatch.setup calls match_ready and the `start` goes out with the bots' names.
 ## `nz_override` keeps a resumed match's zones flag (a migrated match must not change its damage rule); -1 = decide it
 ## here from the room: the unified rules play only when every guest is a Godot client (no web guest).
-func _begin_match(s: Array, keep_seed: int = -1, nz_override: int = -1) -> void:
+func _begin_match(s: Array, keep_seed: int = -1, nz_override: int = -1, dest_override: int = -1) -> void:
 	rv.clear(); rv_list = []; rv_total = 0; voted = false; rv_timer = -1.0
 	if not arcade: arc = {}
 	_refresh_mode()
@@ -819,11 +831,19 @@ func _begin_match(s: Array, keep_seed: int = -1, nz_override: int = -1) -> void:
 	limit = eff_limit(mode_id)
 	dseed = keep_seed if keep_seed >= 0 else randi()
 	_nz = bool(nz_override) if nz_override >= 0 else web_guests().is_empty()
+	_dest = bool(dest_override) if dest_override >= 0 else dest_allowed()
 	start_msg = {"slots": s, "map": map_id, "custom": {}, "limit": limit, "rules": rule_snap()}
 	start_msg.merge(_start_x)
 	if not arc.is_empty(): start_msg["arc"] = arc.duplicate(true)   # Arcade co-op: the run travels with the start
 	_set_status("Match started" if _start_x.is_empty() else "You're the host now: the match goes on.")
 	match_started.emit(start_msg)
+
+## Breakable cover (docs/DESTRUCTIBLE.md, online): an all-app room (`_nz`: no web guest) on a supported arena in a mode that
+## has cover to shoot at, and never the Arcade run. Web guests in the lobby simply switch it off, like the other app-only rules.
+func dest_allowed() -> bool:
+	if not opt_dest or not _nz or arcade: return false
+	if ModeRules.OFFLINE_ONLY.has(mode_id) or mode_id == "practice" or ModeRules.is_pack_mode(mode_id): return false
+	return Destruct.supported(map_id, data("maps").get(map_id, {}))
 
 ## The world's HostMatch is set up: send the `start` (bots now have names) and refresh the room list. An Arcade co-op
 ## stage rebuilds the world the same way: the run's `arc` goes out with the stage's `start`.

@@ -214,7 +214,7 @@ func mode_state() -> Dictionary:
 ## A guest's message, already guarded and stamped by HostSession (netHandle on the host).
 func handle(m: Dictionary) -> void:
 	var t := str(m.get("t", ""))
-	if t == "crate" or t == "crates" or t == "pend" or t == "slot": return    # only the host says these
+	if t == "crate" or t == "crates" or t == "pend" or t == "slot" or t == "brk" or t == "brs": return    # only the host says these
 	super(m)
 
 ## Combat events: the host's own messages (hits on ghosts, K.O.s of its bots), crates and the match end.
@@ -228,6 +228,14 @@ func on_event(e: Dictionary) -> void:
 				crate_id += 1
 				c["cid"] = crate_id
 				_send({"t": "crate", "cid": crate_id, "key": c["key"], "spot": crate_spot(c)})
+		"break":                      # destructible props (docs/PROTOCOL.md 6.5): the host decides, every guest applies it
+			var dir: Array = []
+			var dv: Variant = e.get("dir", [])
+			if dv is Array and (dv as Array).size() >= 3:
+				dir = [NetSnapshot.fixed(float(dv[0]), 2), NetSnapshot.fixed(float(dv[1]), 2), NetSnapshot.fixed(float(dv[2]), 2)]
+			_send({"t": "brk", "i": int(e["index"]), "d": dir})
+		"prop_respawn":
+			_send({"t": "brs", "i": int(e["index"])})
 		"crate_take":
 			var c2: Dictionary = e["crate"]
 			var f: FighterState = e.get("f")
@@ -264,6 +272,10 @@ func crate_list() -> Array:
 
 func has_crate(cid: int) -> bool:
 	return sim != null and sim.pickups.find_cid(cid) >= 0
+
+## Components broken now (`brks`, for a guest joining mid-match).
+func broken_list() -> Array:
+	return sim.destruct.broken_indices() if sim != null and sim.destruct != null else []
 
 ## The dynamic-arena clock for a joiner (`dt0`).
 func dyn_clock() -> float:
