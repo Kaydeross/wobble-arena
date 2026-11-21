@@ -120,6 +120,16 @@ static func rule_dyn(rules: Dictionary) -> Dictionary:
 	return {"choice": k if k is String and Dynamics.KINDS.has(k) else "off", "seed": seed,
 		"t0": clampf(float(t0), 0.0, 36000.0) if (t0 is float or t0 is int) and is_finite(float(t0)) else 0.0}
 
+## Destructible props from the rules (docs/PROTOCOL.md 6.5): {on, seed}. `rules.dest` is set by a Godot host only when every
+## peer is on the app; the plan seed derives from the arena seed (`dseed`), so every peer picks the same breakable cover.
+static func rule_dest(rules: Dictionary) -> Dictionary:
+	var on: bool = rules.get("dest") == true
+	var sd: Variant = rules.get("dseed")
+	var seed := 0
+	if (sd is float or sd is int) and is_finite(float(sd)):
+		seed = int(fposmod(signf(float(sd)) * floor(absf(float(sd))), 4294967296.0))
+	return {"on": on, "seed": Dynamics.hash32(seed, 17, 0, 0)}
+
 ## After MatchSim.setup(.., bot_count = 0): my slot on the player, a ghost for every other slot (human, bot or empty).
 ## Returns {FighterState: look} for the world to draw.
 func setup(start: Dictionary) -> Dictionary:
@@ -153,8 +163,13 @@ func setup(start: Dictionary) -> Dictionary:
 		looks[g] = lk
 		if info["kind"] == "empty": remove_ghost(s)
 	_setup_mode()
+	if start.get("brks") is Array: apply_brks(start["brks"])           # a late joiner: what is already broken
 	if start.get("rs") is Array: apply_resume(start["rs"], start.get("rsx", {}))
 	return looks
+
+## Components that are already broken (`start.brks`, `rsx.brks`): out of collision and the picture, no debris.
+func apply_brks(list: Variant) -> void:
+	if list is Array and sim != null and sim.destruct != null: sim.destruct.restore_broken(list)
 
 ## App-only mode on a guest: the host decides the end and runs the Chaos events; sides from the rules.
 func _setup_mode() -> void:
@@ -176,6 +191,7 @@ func _assign_teams() -> void:
 
 ## The match state from before a host migration (`start.rs`: one entry per slot) and `rsx`.
 func apply_resume(rs: Array, rsx: Variant) -> void:
+	if rsx is Dictionary: apply_brks((rsx as Dictionary).get("brks"))
 	for e: Variant in rs:
 		if not (e is Dictionary): continue
 		var f := slot_fighter(NetSnapshot.to_int32(e.get("id")))
@@ -213,6 +229,9 @@ func capture_resume() -> Dictionary:
 			"yaw": NetSnapshot.fixed(f.yaw, 2), "hp": NetSnapshot.fixed(f.hp, 1), "ko": f.ko, "dt": int(f.st["deaths"]),
 			"lv": f.lives, "el": 1 if f.elim else 0, "d": 1 if (f.dead or f.left) else 0, "gg": f.gg_rung})
 	var x := {}
+	if sim.destruct != null:
+		var bl := sim.destruct.broken_indices()
+		if not bl.is_empty(): x["brks"] = bl      # the broken components go on with the new host
 	return {"slots": slots.duplicate(true), "map": sim.map_id, "limit": limit, "rules": rules.duplicate(true), "l": l, "rsx": x,
 		"dt0": roundf(maxf(0.0, sim.dyn_clock()) * 1000.0) / 1000.0, "my_slot": my_slot}
 
@@ -428,6 +447,10 @@ func handle(m: Dictionary) -> void:
 			if m.get("list") is Array:
 				for c: Variant in m["list"]:
 					if c is Dictionary: sim.pickups.spawn_at(str(c.get("key", "")), c.get("spot"), NetSnapshot.to_int32(c.get("cid")))
+		"brk":
+			_net_break(m)
+		"brs":
+			if sim.destruct != null: sim.destruct.net_respawn(NetSnapshot.to_int32(m.get("i")))
 		"take":
 			sim.pickups.remove_cid(NetSnapshot.to_int32(m.get("cid")))
 		"ko":
@@ -460,6 +483,21 @@ func handle(m: Dictionary) -> void:
 				var kind: String = m.get("kind") if m.get("kind") in ["human", "bot", "empty"] else "empty"
 				var g2 := slot_changed(s, kind, GuestSession.clean_info(info, s))
 				if g2 != null: combat.ev({"type": "relook", "f": g2})
+
+## `brk` from a Godot host (docs/PROTOCOL.md 6.5): component `i` (or every index of `l`) broke; `d` is the hit direction.
+## Guests never decide a break: this only applies the host's word.
+func _net_break(m: Dictionary) -> void:
+	var d: Destruct = sim.destruct
+	if d == null: return
+	var dir: Array = []
+	var dv: Variant = m.get("d")
+	if dv is Array and (dv as Array).size() >= 3:
+		dir = [NetSnapshot.num(dv[0], -1.0, 1.0, 0.0), NetSnapshot.num(dv[1], -1.0, 1.0, 0.0), NetSnapshot.num(dv[2], -1.0, 1.0, 0.0)]
+	if m.get("l") is Array:
+		for i: Variant in m["l"]:
+			d.net_break(NetSnapshot.to_int32(i), dir)
+	else:
+		d.net_break(NetSnapshot.to_int32(m.get("i")), dir)
 
 ## `gm` from a Godot host: "st" = K.O.s / deaths / ladder rungs per slot (1 Hz), "cw" / "cs" /
 ## "ce" = a Chaos event warned / started (g = the giant's slot) / ended.

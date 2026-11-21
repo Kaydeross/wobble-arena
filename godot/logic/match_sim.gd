@@ -51,7 +51,7 @@ var dyn_seed := 0
 var dyn_t0 := 0.0
 ## Microseconds spent in the controllers (player input + BotBrain.think) so far: the bot AI's cost (tests/bots_smoke_test.gd).
 var think_us := 0
-## Optional destructible environment mode (docs/DESTRUCTIBLE.md), OFFLINE ONLY and off by default. The caller (World) sets
+## Optional destructible environment mode (docs/DESTRUCTIBLE.md), off by default (offline always; online only when the host's `rules.dest` is set, docs/PROTOCOL.md 6.5). The caller (World) sets
 ## these before setup(): `destructible` turns the mode on, `view_parent` is the built map node the prop meshes go under
 ## (null = logic only, as in the headless destruct test), `destruct_seed` picks the match's breakable components (same seed
 ## = same set, another seed = another set) and `destruct_plan` is World's precomputed selection (so it can prune the merged
@@ -60,6 +60,10 @@ var destructible := false
 var view_parent: Node3D = null
 var destruct_seed := 0
 var destruct_plan: Dictionary = {}
+## Online destructible room (docs/PROTOCOL.md 6.5): every peer builds the same plan from the host's seed. A guest sets
+## `destruct_remote` (the host owns hp / breaks / respawns and sends `brk` / `brs`); neither role runs the offline rubble.
+var destruct_online := false
+var destruct_remote := false
 var destruct: Destruct = null
 ## Optional Godot-only gameplay overlays (docs/DAMAGE.md "Ledge cling and throwable rubble"): a Ledge while the balance
 ## overlay is on (offline, or online with net_zones) and a Rubble only for an offline destructible match. Both are null
@@ -124,6 +128,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 		var moving := {}                  # drifting blocks stay what they are: never breakable
 		for e: Dictionary in dyn.drift: moving[int(e["i"])] = true
 		destruct = Destruct.new()
+		destruct.remote = destruct_remote
 		destruct.setup(self, map_id, view_parent, destruct_plan, box_solids, moving)
 		if destruct.total() > 0: combat.destruct = destruct
 		else:                              # bad config / no eligible cover: fail safe as a normal match
@@ -137,7 +142,7 @@ func setup(p_map_id: String, p_map: Dictionary, map_ladders: Array, map_pads: Ar
 	if combat.tuning_active() and PackZones.wanted(map):
 		zones = PackZones.new()
 		zones.setup(self)
-	if destructible and destruct != null and combat.tuning_active() and Rubble.enabled():
+	if destructible and destruct != null and not destruct_online and combat.tuning_active() and Rubble.enabled():
 		rubble = Rubble.new()
 		rubble.setup(self)
 		if combat.destruct != null: combat.destruct.rubble = rubble

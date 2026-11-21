@@ -477,10 +477,12 @@ level (an old build would ignore `rules.nz` and its shots would use the classic 
 | `roster` | `rl` | The Godot host's rules for the lobby line: `{want, mode, lim, hp, grav, kb, crate, inf, dyn, map}` (`want` = the host's pick, `mode` = what plays). |
 | `start.rules` | `gmode` | An app-only mode the Godot clients play (`mode` stays the web fallback, Classic): `tdm`, `deathmatch`, `sudden`, `chaos`, `lowg`, `duel`, `t2`, `t3`, `t4`, and (`6.4`) `construction` for an Arcade co-op room (`NetMatch.GODOT_MODES`). Sent only when every guest said `gd`. |
 | `start.rules` | `nz` | Unified combat rules: the host sets it at match start only when `web_guests()` is empty (every peer is a Godot client). Both sides set `Combat.net_zones` from it, which turns on the body-part zones table and the Godot balance/tuning overlay (docs/DAMAGE.md). Omitted = the classic web rule. A web guest who tries to join a running `nz` match gets `kick {msg}` (no mid-match fallback); in the lobby a web guest may join and the next match omits `nz`. |
+| `start.rules` | `dest` | Breakable cover (`6.5`, docs/DESTRUCTIBLE.md): `true` when the host latched it at match start (an all-app room, `nz` on, a supported arena, not an Arcade run / offline-only mode). Omitted = no breakables. Every peer picks the same components from `rules.dseed` (`Destruct.plan_for`, seed `Dynamics.hash32(dseed, 17, 0, 0)`). A web guest who tries to join a running `dest` room gets `kick {msg}`; in the lobby a web guest switches it off for the next match. |
 | `start.rules` | `gteam` | Team modes: the side (0 blue / 1 red) of every slot, `slot % 2`. |
 | `start.rules` | `pp` | Removed with the Godot Pillars mode: `pp` / `pt` are no longer sent or read by Godot hosts or guests (the web game still has them, 2.2). |
 | `start.rules` | `grav: 0.15` | Moon Drift (`gmode: lowg`). |
-| `start` | `rs`, `rsx` | Host migration: the old match's state per (new) slot `[{id, x, y, z, yaw, hp, ko, dt, lv, el, d, gg}]` (`d` = was down: starts on its spawn; `el` = eliminated) and `{}` (`rsx`, reserved). `rules.dseed` / `dt0` keep the arena seed and clock. |
+| `start` | `rs`, `rsx` | Host migration: the old match's state per (new) slot `[{id, x, y, z, yaw, hp, ko, dt, lv, el, d, gg}]` (`d` = was down: starts on its spawn; `el` = eliminated) and `{}` (`rsx`, `{brks?: [component indices]}` since `6.5`). `rules.dseed` / `dt0` keep the arena seed and clock. |
+| `start` | `brks` | `6.5`: the breakable components that are already broken (ascending indices), only on a `start` sent to a guest joining a running `dest` match. Applied silently (no debris). |
 | `start` | `arc` | Arcade co-op run (`6.4`): `{run, st, of, diff, seed, seats:[0,1], crew:[2,…], boss, big, state, lv}` — the whole run as the host sees it, re-sent with **every stage's** `start` (that is the stage-transition mechanism). |
 | `S` entry | `lg` | `1` = this fighter is hanging on a ledge (`docs/DAMAGE.md` "Ledge cling and throwable rubble"; app-only). Additive and 0/1: the web client ignores unknown `S` fields and can never hang, and the pinned position / zero velocity already travel in the normal fields, so this only drives the hanging pose on a ghost. No `PROTO` bump. |
 
@@ -489,6 +491,8 @@ New room messages (host → all unless noted):
 | `t` | Fields | Meaning |
 |---|---|---|
 | `gm` | `k: "st"`, `ko[]`, `dt[]`, `gg[]` | 1 Hz mode state: every slot's K.O.s, deaths and Weapon Ladder rung. Godot guests take it over (team scores are the sums of `ko` by `gteam`). |
+| `brk` | `i`, `d?[3]` | `6.5` A breakable component broke on the host: its index in the shared plan and the hit direction (`d`, unit vector, 2 decimals; may be `[]`). A batch `l: [i, …]` is accepted instead of `i`. Guests apply it (solid out, mesh hidden, the same debris), never send it. |
+| `brs` | `i` | `6.5` The component respawned on the host (collision + fade-in mesh back). |
 | `gm` | `k: "cw"` / `"cs"` / `"ce"`, `id`, `fl?`, `g?` | Chaos: an event was announced (3 s countdown) / started / ended. `id` = `crates`, `gravity`, `knockback`, `giant`, `speed`, `floor`; `fl` = the floor it forces; `g` = the giant's slot. Guests apply it (gravity, knockback, speed, giant, floor) instead of rolling their own. |
 | `am` | `st`, `of`, `s`, `lv`, `hf`, `sh`, `dn[]`, `dnt[]`, `rv?`, `bt[]`, `ev[]`, `cn`, `last?`, `won`, `ph?`, `vic?` | Arcade co-op run state (`6.4`): stage index / count, state (`intro`/`fight`/`clearing`/`cleared`/`failing`/`failed`/`over`/`won`), shared lives, boss health fraction 0–1, shrinking-floor size in metres (0 = none), the downed player seats' slots and seconds to their revive, the latest revive instruction, the bot-played seats, the one-shot stage-event descriptors (`ev`, `6.4`), the clear/victory counter, the stage summary (`_pay()`: `seats[]` with each seat's K.O.s, `reward`/`bonus`, and the coins that save gets), `won`, the boss phase and the victory summary. Display state only: it never advances a stage or damages anyone; it does drive the guest's own cards/HUD/floor and its own save (per player, once per `cn`). |
 | `emote` | `id`, `e` | guest → host → others (and the host's own): player `id` plays emote `e` (an id of `godot/data/extra/locker.json` `emotes`). The host stamps `id`, drops unknown ids and more than one per 0.4 s. |
@@ -567,6 +571,30 @@ its health fraction); a real clear and a retry clear pay the guest's OWN save on
 floor; the guest leaves and seat 1 becomes a teammate bot that keeps the player's class and targets the crew; the guest
 REJOINS mid-run and gets a `start` with the current `arc.st`/seed and seat 1 (`slots[1].kind == "human"`, its class);
 the host wins (the guest pays the victory bonus + hat on its own save) and leaves (the run-over reason).
+
+## 6.5 Breakable cover (Godot only, additive)
+
+Collision is simulation state, so breaks are **host-authoritative** like crates: only the host rolls component hit points
+(bullets, melee, flame and blasts of every fighter it simulates, including the guests' replayed `f` / `sw` shots) and
+only the host runs the respawn timers.
+
+- **Rule:** `start.rules.dest` (6.3). The host latches it in `_begin_match` with `nz` (`HostSession.dest_allowed`): no web
+  guest, a supported arena, not Arcade co-op, not an offline-only / pack mode, and the Host option `dest` (default on,
+  `set_rules({dest})`). The breakable set is `Destruct.plan_for(map, Dynamics.hash32(dseed, 17, 0, 0))`, so host and guests
+  agree without sending it; a component is named by its index in that plan.
+- **Break:** when the host drains its `break` event (`HostMatch.on_event`) it sends `brk {i, d}`. A guest
+  (`NetMatch.handle`) calls `Destruct.net_break`: solid removed, mesh hidden and the same `break` event, so the world
+  spawns the same `PropDebris`. A guest's own shots only show chips (`prop_hit`); it never rolls hp or timers
+  (`Destruct.remote`), never sends `brk`, and a forged `brk` at the host is dropped (not in `GUEST_MSGS`, ignored by
+  `HostMatch.handle`).
+- **Respawn:** the host's timer fires `prop_respawn`, sent as `brs {i}`; the host postpones it while a fighter (a guest's
+  ghost included) stands in the box. The guest runs `Destruct.net_respawn`.
+- **Late join / rejoin:** the `start` for a joiner carries `brks` (the already-broken indices), applied silently.
+- **Host migration:** the promoted guest puts its broken list in `rsx.brks`; `rules.dest` and `dseed` are kept, the new
+  host restores the components as broken (no debris) and starts fresh respawn timers for them.
+- **Cross-play:** web clients cannot render or collide with the components, so the room is app-only: a web guest is
+  refused on `hello` while a `dest` match runs (`kick`), and never gets `dest` in a lobby it shares. No `PROTO` bump.
+- **No rubble:** the throwable-rubble overlay stays offline.
 
 ---
 

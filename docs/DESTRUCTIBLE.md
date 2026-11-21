@@ -23,8 +23,9 @@ selects from each arena's existing boxes instead. Online, Arcade and cross-play 
 
 **Mode gates (documented limits, not bugs):**
 
-- **Offline only.** Online rooms, host/guest sessions and Arcade co-op never have breakables: breaks and respawns are
-  simulation state every peer would have to agree on.
+- **Offline, and online only in all-app rooms.** Offline matches always have breakables. An online room has them only when
+  the host latched `rules.dest` (every peer on the app; see "Limits and the next milestone"): web guests and Arcade co-op
+  rooms never do, because breaks and respawns are simulation state every peer must agree on (host-authored `brk` / `brs`).
 - **On every real arena map**. Never on the Practice Range / Test Map, Sandbox (custom), Construction's generated
   `sitegen` site, Lava Pillars' generated lake, or the shrinking-floor maps (`shrink` / `squeeze`): those own or
   generate their collision in ways this mode does not analyse. Those levels simply have no breakables.
@@ -283,14 +284,17 @@ window): `godot --path godot --resolution 960x540 --script res://tests/destruct_
 
 ## Limits and the next milestone
 
-Known limits: offline only; every arena but no online; damage comes from bullets, melee, flame and explosions (thrown
+Known limits: every supported arena, offline and in app-only online rooms (below); damage comes from bullets, melee, flame and explosions (thrown
 knives / arrows / nets and the blower do not chip cover, matching their role as utility weapons); components do not
 ride the moving floor tiles (like the map's other cover boxes) and drifting blocks are never breakable; a break removes the whole component (no cascade or partial fracture);
 respawn is a fade-in of the original boxes, not rebuilt geometry; bots do not seek cover
 (nothing changed there).
 
-**Online (Godot-only rooms)** would need: a match rule (`start.rules.dest` like `dyn`/`dseed`/`dt0`), a host-authored
-`brk` event carrying component indices plus the already-broken + respawn schedule on `start` for late joiners, guest-side
-application (remove/restore the solid, show/hide the mesh - guests never roll hp or timers), rejoin/host-migration state
-in `rsx`, and a hard guard so web guests (who cannot render or collide with the components) are kept out of destructible
-rooms. See `docs/DESTRUCTIBLE_ENV_STUDY.md` sections 5-6 and `docs/PROTOCOL.md` for the message layout.
+**Online (Godot-only rooms)** - shipped. `start.rules.dest` turns it on (the host latches it with `nz`: every peer is on the
+app, a supported arena, not Arcade co-op, Host option `dest` on); every peer picks the same components from `dseed`.
+Breaks are host-authoritative: only the host rolls hp (it also simulates the guests' replayed shots) and the respawn
+timers, and tells the guests with `brk` / `brs`; a guest (`Destruct.remote`) applies them (solid out / back, mesh
+hidden / fading in, the same `break` event -> `PropDebris`), shows chips for its own shots and never decides anything. A
+joiner gets `start.brks`, a host migration carries `rsx.brks`, and a web guest is kept out of the room (`kick` on `hello`
+while a `dest` match runs; in the lobby it switches the rule off). The throwable rubble stays offline. Message layout:
+`docs/PROTOCOL.md` 6.5; test: `godot/tests/net_destruct_test.gd` (run by `tools/test-godot-destruct.js`).

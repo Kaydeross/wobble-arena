@@ -1,7 +1,7 @@
 class_name Destruct
 extends RefCounted
 ## Optional destructible-arena mode (docs/DESTRUCTIBLE.md), milestone M1 "all maps": breakable COVER ON EVERY ARENA MAP,
-## picked procedurally from the map's own `maps.json` boxes, OFFLINE ONLY and off by default.
+## picked procedurally from the map's own `maps.json` boxes, off by default (offline always; online only in all-app rooms, docs/PROTOCOL.md 6.5).
 ##
 ## Instead of authoring props (M0), the mode analyses a map's existing box geometry, groups boxes that are one object
 ## (a wall plus its thin cap, a stacked crate pile), throws away everything essential (ground slabs, roofs, boundary /
@@ -93,6 +93,7 @@ var sim: MatchSim = null        ## the match (fighter overlap check before a res
 var rubble: Rubble = null
 var arena := ""
 var merge_exclude: Dictionary = {}  ## box index -> true, the map boxes owned by this mode (merged mesh must skip them)
+var remote := false             ## a guest of an online match: the host owns hp, breaks and respawns (`brk` / `brs`); no damage, no timers here
 var merged_pruned := false      ## true when the built MapNode's merged meshes were rebuilt without those boxes
 var _broken := 0
 var _pending: Array = []        ## prop indices with a running respawn timer (no per-step allocation; break is rare)
@@ -1014,22 +1015,29 @@ func break_hit(index: int, dmg: float, dir: Array = []) -> bool:
 	var p: Dictionary = props[index]
 	if bool(p["broken"]): return false
 	var amount := maxf(0.0, dmg)
+	if remote:                            # guest: the shot only shows its chips; hp / the break are the host's (`brk`)
+		_emit_hit(p, index, amount, dir)
+		return false
 	p["hp"] = float(p["hp"]) - amount
 	if float(p["hp"]) > 0.0:
 		_set_damage_tier(p)
 		_pulse(p)
-		var hit_at := _hit_point(p, dir)
-		events.append({"type": "prop_hit", "id": p["id"], "kind": p["kind"], "index": index,
-			"hp": float(p["hp"]), "max_hp": float(p["max_hp"]), "dmg": amount,
-			"frac": float(p["hp"]) / maxf(1.0, float(p["max_hp"])), "tier": int(p["damage"]),
-			"x": hit_at[0], "y": hit_at[1], "z": hit_at[2],
-			"cx": float(p["x"]), "cy": float(p["y"]) + float(p["h"]) * 0.5, "cz": float(p["z"]),
-			"w": float(p["w"]), "h": float(p["h"]), "d": float(p["d"]), "color": int(p["color"])})
-		events.append({"type": "sfx", "name": "whack" if str(p["kind"]) == "barricade" else "clink",
-			"x": hit_at[0], "y": hit_at[1], "z": hit_at[2]})
+		_emit_hit(p, index, amount, dir)
 		return false
 	_break(index, dir)
 	return true
+
+## The `prop_hit` + tap sound of a hit that did not break the component.
+func _emit_hit(p: Dictionary, index: int, amount: float, dir: Array) -> void:
+	var hit_at := _hit_point(p, dir)
+	events.append({"type": "prop_hit", "id": p["id"], "kind": p["kind"], "index": index,
+		"hp": float(p["hp"]), "max_hp": float(p["max_hp"]), "dmg": amount,
+		"frac": float(p["hp"]) / maxf(1.0, float(p["max_hp"])), "tier": int(p["damage"]),
+		"x": hit_at[0], "y": hit_at[1], "z": hit_at[2],
+		"cx": float(p["x"]), "cy": float(p["y"]) + float(p["h"]) * 0.5, "cz": float(p["z"]),
+		"w": float(p["w"]), "h": float(p["h"]), "d": float(p["d"]), "color": int(p["color"])})
+	events.append({"type": "sfx", "name": "whack" if str(p["kind"]) == "barricade" else "clink",
+		"x": hit_at[0], "y": hit_at[1], "z": hit_at[2]})
 
 ## Where the hit is shown: the side of the component facing the shot (so chips spray off the face that was hit), falling
 ## back to the centre when no direction is known.
@@ -1131,7 +1139,7 @@ func flame_hit(ox: float, oy: float, oz: float, dx: float, dy: float, dz: float,
 
 ## Take a component out of the world: remove its solid, hide (never free) its mesh, start the
 ## randomised respawn timer and record the presentation events. The mesh is recycled when it respawns.
-func _break(index: int, dir: Array) -> void:
+func _break(index: int, dir: Array, silent := false) -> void:
 	var p: Dictionary = props[index]
 	p["broken"] = true
 	p["breaks"] = int(p["breaks"]) + 1
@@ -1147,8 +1155,12 @@ func _break(index: int, dir: Array) -> void:
 		(mesh as Node3D).visible = false
 		for raw: Variant in (p["mesh_nodes"] as Array):
 			if raw is MeshInstance3D: (raw as MeshInstance3D).transparency = 0.0
-	p["respawn_t"] = _respawn_rng.randf_range(_respawn_min, _respawn_max)
-	_pending.append(index)
+	if not remote:                        # a guest never rolls a timer: the host sends `brs` when the component is back
+		p["respawn_t"] = _respawn_rng.randf_range(_respawn_min, _respawn_max)
+		_pending.append(index)
+	else:
+		p["respawn_t"] = 0.0
+	if silent: return                     # a state catch-up (late join / migration): no debris, no sound
 	var cx := float(p["x"])
 	var cy := float(p["y"])
 	var cz := float(p["z"])
@@ -1202,7 +1214,7 @@ func _blocked(p: Dictionary) -> bool:
 	var bottom := float(p["bottom"])
 	var top := float(p["top"])
 	for f: FighterState in sim.fighters:
-		if f.dead or f.is_ghost: continue
+		if f.dead or (f.is_ghost and not f.net_human): continue   # an online guest's ghost still blocks a respawn on the host
 		var px := f.phys.px
 		var py := f.phys.py
 		var pz := f.phys.pz
@@ -1244,6 +1256,41 @@ func _respawn(index: int) -> void:
 		"x": float(p["x"]), "y": float(p["y"]), "z": float(p["z"]), "w": float(p["w"]), "h": float(p["h"]),
 		"d": float(p["d"]), "color": int(p["color"]), "total": props.size(), "broken": _broken})
 	events.append({"type": "sfx", "name": "pop", "x": float(p["x"]), "y": float(p["y"]) + float(p["h"]) * 0.5, "z": float(p["z"])})
+
+# ============================== online (docs/PROTOCOL.md 6.5) ==============================
+
+## Guest side of a host-authored `brk`: break component `index` exactly as the host did (solid out, mesh hidden, the same
+## `break` event so the world spawns the debris). False when it is unknown or already broken.
+func net_break(index: int, dir: Array = []) -> bool:
+	if index < 0 or index >= props.size() or bool(props[index]["broken"]): return false
+	_break(index, dir)
+	return true
+
+## Guest side of `brs`: the component is back (collision + fade-in mesh + the pop). False when it was not broken.
+func net_respawn(index: int) -> bool:
+	if index < 0 or index >= props.size() or not bool(props[index]["broken"]): return false
+	_respawn(index)
+	var at := _pending.find(index)
+	if at >= 0: _pending.remove_at(at)
+	return true
+
+## Catch-up state: mark these components broken without debris or sound (`start.brks` for a late joiner, `rsx.brks` after a
+## host migration). A host that takes over runs its own respawn timers for them from now on. Returns how many it broke.
+func restore_broken(list: Array) -> int:
+	var n := 0
+	for raw: Variant in list:
+		var i := int(raw) if (raw is int or raw is float) else -1
+		if i < 0 or i >= props.size() or bool(props[i]["broken"]): continue
+		_break(i, [], true)
+		n += 1
+	return n
+
+## Indices of the components that are broken now (for `brks` / `rsx.brks`), ascending.
+func broken_indices() -> Array:
+	var out: Array = []
+	for i in props.size():
+		if bool(props[i]["broken"]): out.append(i)
+	return out
 
 # ============================== queries ==============================
 

@@ -47,4 +47,10 @@ const r3 = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tes
 const out3 = (r3.stdout || '') + (r3.stderr || '');
 console.log(out3.split('\n').filter(l => /^(LEDGE_RUBBLE|FAIL)|SCRIPT ERROR/.test(l)).join('\n'));
 if (r3.status !== 0 || !/^LEDGE_RUBBLE ok/m.test(out3) || /SCRIPT ERROR/.test(out3)) { console.log('ledge/rubble test FAILED'); process.exit(1); }
+// Online breakable cover (docs/PROTOCOL.md 6.5; tests/net_destruct_test.gd: host + guest Worlds in one process)
+const r4 = spawnSync(GODOT, ['--headless', '--path', DIR, '--script', 'res://tests/net_destruct_test.gd', '--', '--no-save'],
+  { encoding: 'utf8', timeout: 600000 });
+const out4 = (r4.stdout || '') + (r4.stderr || '');
+console.log(out4.split('\n').filter(l => /^(NETDESTRUCT|FAIL)|SCRIPT ERROR/.test(l)).join('\n'));
+if (r4.status !== 0 || !/^NETDESTRUCT ok/m.test(out4) || /SCRIPT ERROR/.test(out4)) { console.log('online destruct test FAILED'); process.exit(1); }
 console.log('godot destruct test passes');

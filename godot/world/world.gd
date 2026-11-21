@@ -289,6 +289,19 @@ func load_map(id: String) -> void:
 					sim.destructible = true
 					sim.destruct_plan = break_plan
 					sim.view_parent = map_node   # the component meshes replace the merged map boxes at setup
+	if session != null and not build_mode and arcade == null and destruct_choice != "off":
+		# Online breakable cover (docs/PROTOCOL.md 6.5): `rules.dest` from a Godot host. Every peer derives the same plan from
+		# the host's seed; the host rolls hp / breaks / respawns and tells the guests (`brk` / `brs`), a guest only applies.
+		var rd := NetMatch.rule_dest(start_msg.get("rules", {}))
+		if rd["on"] and Destruct.supported(id, map_node.map):
+			var online_plan := Destruct.plan_for(id, map_node.map, int(rd["seed"]), map_node.box_styles)
+			if not (online_plan.get("props", []) as Array).is_empty():
+				sim.destruct_seed = int(rd["seed"])
+				sim.destructible = true
+				sim.destruct_online = true
+				sim.destruct_remote = not session.is_host()
+				sim.destruct_plan = online_plan
+				sim.view_parent = map_node
 	control = PlayerControl.new(input.state)
 	var cid := player_class if player_class != "" else str(Settings.get_value("class", "wobbler"))
 	if not sim.combat.classes.has(cid): cid = "wobbler"
