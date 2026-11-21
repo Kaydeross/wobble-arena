@@ -27,7 +27,11 @@ extends RefCounted
 const AIM_ERR := {"easy": 2.2, "normal": 1.1, "hard": 0.45, "insane": 0.12}       ## BOT_AIM_ERR
 const PREF := {"net": 7, "flame": 5, "katana": 12, "boomerang": 11, "shuriken": 13, "typhoon": 13, "bow": 14, "glauncher": 12,
 	"cluster": 11, "knife": 9, "snake": 7, "ak": 10, "smg": 6, "minigun": 8, "revolver": 10, "mammoth": 9, "snow": 8, "uzi": 8,
-	"shotgun": 5, "sniper": 24, "glove": 3.2, "rocket": 12, "meteor": 14}           ## BOT_PREF (preferred range by weapon key)
+	"shotgun": 5, "sniper": 24, "glove": 3.2, "rocket": 12, "meteor": 14,
+	# DLC pack weapons (godot/data/extra/<pack>/weapons.json; keys that exist only in a pack mode, so no parity path reads them).
+	# The default 8 m kept a bot outside the 92% of the range it fires from: the 7 m Flambe Torch and Didgeridoo Blaster never fired.
+	"flambetorch": 4.5, "didgeridooblaster": 4.5, "peppergrinder": 9, "snowballcannon": 10, "ornamentlauncher": 10,
+	"aussieboomerang": 11, "giftbomb": 10, "souppot": 10, "vegemitejar": 9}           ## BOT_PREF (preferred range by weapon key)
 const GRAB := {"easy": 9, "normal": 15, "hard": 32, "insane": 70}                  ## BOT_GRAB (how far a bot walks for a crate)
 
 ## ---- BOT_FIRE: how bots use each non-gun ranged weapon TYPE (web: rocket + PROJ[type]) ----

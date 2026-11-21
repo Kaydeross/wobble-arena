@@ -137,7 +137,21 @@ Caveats when reading these numbers:
 
 - Bots swing every melee weapon at the same pace (`BotBrain`: 1 to 2 s between swings whatever the weapon's cooldown), so a fast weapon gets no credit for its speed: the Cleaver, Thong Slapper, BBQ Tongs and Tinsel Whip (and the Cordless Drill) read low here and are stronger in a player's hands. For them damage per pick and damage per second on paper matter more than Dmg/held-min. This is why the Thong Slapper and BBQ Tongs barely move in the table after a 17 to 25% damage buff: about 40 of their Dmg/held-min is kicks.
 - Thrust-style melee weapons (Thong Slapper, BBQ Tongs, like the Trident and the Drill; the style is set in `weapon_tuning.json`) hit a narrow line and land less often with bots than cleave or whip weapons.
-- Bots have no preferred range for the pack ranged weapons (`BotBrain.PREF` default 8 m) and fire only inside 92% of the weapon's range, so they seldom fire the Didgeridoo Blaster (range 7 m: 76 s in hand per pick). A bot holding one is mostly harmless.
+- Bots now have preferred ranges for the pack ranged weapons (`BotBrain.PREF`: Flambe Torch and Didgeridoo Blaster 4.5 m, the rest 9 to 11 m), so the 7 m weapons are fired from inside their 92% range (the old default 8 m kept bots out of it).
 - K.O.s per pick are noisy at this sample size: the unchanged Cleaver read 0.12 and then 0.07 (18 and 11 K.O.s). Treat a difference under about 2x as no difference.
-- Hey Mate still has about twice the K.O.s per match of the other two packs after the nerf, nearly all ring-outs: every life starts with the Cricket Bat. The weapon itself is now inside the base band; the rest comes from the mode's start weapon (`modes.json`), which this pass did not touch.
+- Bots walk to pack crate weapons, melee too (`Pickups._bot_wants_pack_weapon`, only while `Combat.tuning_active()`, never for the human), instead of only when empty-handed with a ranged weapon. A bot used to hold its start weapon all match.
 - Damage is counted for the weapon in hand, so a projectile that lands after a swap is credited to the next weapon.
+
+### 0.6.0 pass: Hey Mate parity (bot pack crates, Cricket Bat launch)
+
+Before: Hey Mate ran 14.1 K.O.s per match against 10.4 (kitchen) and 8.0 (xmas), 91% of them ring-outs (12.8 per match, first K.O. at 7 s), 62% with the Cricket Bat. Start-weapon sweep of the arena (16 matches each, everyone on that start weapon): Cricket Bat 13.7 K.O.s/match (13.5 ring-outs), base Mallet 11.7, spatula 7.5, BBQ Tongs 5.7. So the start weapon's launch, not the arena alone, drove it. Changes: Cricket Bat `force` 25 -> 17 and `lift` 0.6 -> 0.45 (bat start: 8.1 K.O.s, 6.6 ring-outs, first K.O. at 24 s), plus the bot changes above.
+
+Real pack modes, `npm run balance -- --pack kitchen,xmas,australia --matches 30 --bots 7 --seconds 150 --timeout 400`, K.O.s per match (ring-outs per match), same seeds:
+
+| Pack | Before | After |
+|---|---|---|
+| kitchen | 10.4 (3.7) | 7.6 (3.1) |
+| xmas | 8.0 (3.8) | 6.6 (4.2) |
+| australia | 14.1 (12.8) | 7.6 (5.8) |
+
+Hey Mate is now 1.0 to 1.15x the other packs (target: within 1.5x). The other two packs fell by 14 to 27% only because their bots now swap weapons too. Cricket Bat share of Hey Mate K.O.s 62% -> 37%; its picks stay about 1 per fighter-minute (start weapon hand-outs).
