@@ -179,8 +179,21 @@ func bot_wants(b: FighterState, p: Dictionary) -> bool:
 		return not (b.arcade_enemy and (key == "rage" or key == "shield"))
 	var w := combat.wdata(key)
 	var is_ranged := BOT_GUNS.has(key) or ((combat.mode_id == "construction" or ModeRules.is_pack_mode(combat.mode_id)) and ["gun", "knife", "ball"].has(str(w.get("type", ""))))
+	if _bot_wants_pack_weapon(b, key, w): return true
 	if not is_ranged: return false
 	return b.slot < 0 or (armed_weapon_crates and (armed_weapon_crate_owner == null or armed_weapon_crate_owner == b))
+
+## Pack modes (overlay: only while Combat.tuning_active(), so the parity paths never get here): every life starts with the mode's
+## start weapon, so the "only when empty-handed" rule left the pack's crate weapons to the player (a bot held the Cricket Bat
+## all match and took ring-outs with it). A bot now also walks to a pack weapon crate (melee too) that it is not carrying yet,
+## from its normal grab distance, and takes it into its hand (Combat.pickup equips for bots).
+func _bot_wants_pack_weapon(b: FighterState, key: String, w: Dictionary) -> bool:
+	if not combat.tuning_active() or b.is_player or b.arcade_enemy or not ModeRules.is_pack_mode(combat.mode_id): return false
+	if combat.mode_id == "construction" or not ["melee", "gun", "knife", "ball"].has(str(w.get("type", ""))): return false
+	if not combat.weapons_data.has(key) or key == b.weapon: return false
+	for sl: Variant in b.slots:
+		if sl != null and str((sl as Dictionary)["key"]) == key: return false
+	return true
 
 ## updatePickups: drop timer, falling, landing, being picked up, expiring.
 func update(dt: float) -> void:

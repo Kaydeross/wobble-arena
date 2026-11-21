@@ -168,6 +168,33 @@ func _test_mode(pid: String) -> void:
 	for i in 1500:
 		var key := sim.pickups.pick_crate_key()
 		seen[key] = true
+	# Bots take the pack's crate weapons (melee too) they are not carrying, so one start weapon is not all a bot ever swings
+	# (BotBrain / Pickups._bot_wants_pack_weapon): never the human's, and only while the tuning overlay is on, so no parity path changes.
+	var bf := FighterState.new()
+	var held := str(m.get("start", ""))
+	bf.weapon = held
+	var pcombat: Combat = sim.combat
+	pcombat.brawl = true
+	check(pcombat.tuning_active(), "%s: the sim runs the tuning overlay" % pid)
+	for wid: String in PACKS[pid]["weapons"]:
+		check(sim.pickups.bot_wants(bf, {"key": wid}) == (wid != held), "%s: a bot holding %s %s %s" % [pid, held, "ignores" if wid == held else "walks to", wid])
+	check(sim.pickups.bot_wants(bf, {"key": "heal"}) == (bf.hp < pcombat.max_hp(bf) * 0.85), "%s: heal crates keep their own rule" % pid)
+	bf.slots[1] = {"key": str(PACKS[pid]["weapons"][1]), "ammo": 3.0, "mag": -1, "pend": false}
+	bf.slot = 1                                  # (a bot holding a gun is not empty-handed: the old rule would not want a gun crate either)
+	check(not sim.pickups.bot_wants(bf, {"key": str(PACKS[pid]["weapons"][1])}), "%s: nothing to gain from a weapon already in a slot" % pid)
+	bf.slots[1] = null
+	bf.slot = -1
+	bf.is_player = true
+	for wid: String in PACKS[pid]["weapons"]:
+		if wid != held and str(pcombat.wdata(wid).get("type", "")) == "melee":
+			check(not sim.pickups.bot_wants(bf, {"key": wid}), "%s: the human is not a bot (%s)" % [pid, wid]); break
+	bf.is_player = false
+	var tuned: Dictionary = pcombat.tuned_weapons
+	pcombat.tuned_weapons = {}
+	for wid: String in PACKS[pid]["weapons"]:
+		if wid != held and str(pcombat.wdata(wid).get("type", "")) == "melee":
+			check(not sim.pickups.bot_wants(bf, {"key": wid}), "%s: without the tuning overlay a bot ignores melee crate %s as before" % [pid, wid]); break
+	pcombat.tuned_weapons = tuned
 	sim.dispose()
 	for wid: String in PACKS[pid]["weapons"]:
 		check(seen.has(wid), "%s: crates drop %s" % [pid, wid])
