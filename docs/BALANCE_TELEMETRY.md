@@ -155,3 +155,29 @@ Real pack modes, `npm run balance -- --pack kitchen,xmas,australia --matches 30 
 | australia | 14.1 (12.8) | 7.6 (5.8) |
 
 Hey Mate is now 1.0 to 1.15x the other packs (target: within 1.5x). The other two packs fell by 14 to 27% only because their bots now swap weapons too. Cricket Bat share of Hey Mate K.O.s 62% -> 37%; its picks stay about 1 per fighter-minute (start weapon hand-outs).
+
+Controlled sweep after the pass (`npm run balance -- --pack all --starts pack --matches 48 --bots 7 --seconds 120 --timeout 400`; every fighter starts each life with the match's weapon, but bots now also take crate weapons, so the columns are the weapon in hand, not a pure start-weapon run):
+
+| Pack | Weapon | K.O.s/pick | Dmg/pick | Dmg/held-min | K.O.s/held-min |
+|---|---|---|---|---|---|
+| australia | cricketbat | 0.08 | 45 | 152 | 0.26 |
+| australia | aussieboomerang | 0.05 | 34 | 176 | 0.26 |
+| australia | thongslapper | 0.05 | 29 | 51 | 0.08 |
+| australia | vegemitejar | 0.05 | 5 | 26 | 0.26 |
+| australia | bbqtongs | 0.04 | 24 | 54 | 0.09 |
+| australia | didgeridooblaster | 0.32 | 14 | 36 | 0.78 |
+| kitchen | fryingpan | 0.08 | 30 | 103 | 0.28 |
+| kitchen | cleaver | 0.05 | 29 | 73 | 0.11 |
+| kitchen | flambetorch | 0.26 | 97 | 261 | 0.70 |
+| kitchen | rollingpin | 0.12 | 40 | 118 | 0.36 |
+| kitchen | peppergrinder | 0.04 | 35 | 84 | 0.10 |
+| kitchen | souppot | 0.02 | 5 | 30 | 0.11 |
+| xmas | candycane | 0.07 | 49 | 108 | 0.15 |
+| xmas | snowballcannon | 0.08 | 37 | 70 | 0.15 |
+| xmas | giftbomb | 0.06 | 3 | 26 | 0.51 |
+| xmas | tinselwhip | 0.08 | 39 | 75 | 0.16 |
+| xmas | ornamentlauncher | 0.08 | 36 | 171 | 0.37 |
+| xmas | toymallet | 0.22 | 48 | 123 | 0.56 |
+
+Per match in this sweep: australia 5.4 K.O.s (4.4 ring-outs), kitchen 6.4 (1.8), xmas 5.0 (3.7). The Cricket Bat is now mid-table (0.26 K.O.s per held minute against 1.56 before the first pass and 0.92 after it). The Didgeridoo Blaster now fires (0.32 K.O.s per pick, up from 0.12, since bots stand at 4.5 m): its force 14 knocks people off, but 36 damage per held minute is the lowest of the pack's guns, so leave it. Real-mode parity is in the table above.
+
