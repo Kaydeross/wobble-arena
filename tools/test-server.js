@@ -198,6 +198,32 @@ const { Client } = require('./wa-client');
     // accounts made before lastSeen: not erased by the upgrade, they get lastSeen = now
     await A.store.set('user:legacy_lou', JSON.stringify({ u: 'Legacy_Lou', e: 'lou@example.com', p: 'x', r: 'x', c: Date.now() - 400 * DAY, l: Date.now() - 200 * DAY }));
     const mg = await A.sweep(); assert.equal(mg.migrated, 1); const lou = await rec('Legacy_Lou'); assert.ok(lou && Math.abs(lou.s - Date.now()) < 5000, 'legacy account got lastSeen = now');
+    // sessions: a password change or a recovery reset cuts every other login at once, without walking every token in the store
+    { const sess = await api('POST', '/api/signup', { username: 'Sess_Sid', email: 'sid@example.com', password: 'secret1' });
+      const l2 = await api('POST', '/api/login', { id: 'Sess_Sid', password: 'secret1' }), l3 = await api('POST', '/api/login', { id: 'sid@example.com', password: 'secret1' });
+      const realScan = A.store.scan; let scans = 0; A.store.scan = async (...a) => { scans++; return realScan.apply(A.store, a); };
+      try {
+        const pw = await api('POST', '/api/password', { old: 'secret1', next: 'secret2' }, l2.token);
+        assert.ok(pw.ok && pw.token, 'password change answers with a fresh token');
+        assert.equal(scans, 0, 'revoking sessions does not scan the whole token keyspace (one record write)');
+        for (const t of [sess.token, l3.token, l2.token]) assert.equal((await api('GET', '/api/me', null, t)).status, 401, 'an older login stops working after a password change');
+        assert.ok((await api('GET', '/api/me', null, pw.token)).ok, 'the fresh token works, and keeps working on later visits');
+        assert.ok((await api('GET', '/api/me', null, pw.token)).ok);
+        const rs = await api('POST', '/api/reset', { id: 'Sess_Sid', code: sess.recovery, password: 'secret3' });
+        assert.ok(rs.ok && rs.token, 'recovery reset works: ' + JSON.stringify(rs));
+        assert.equal(scans, 0, 'a reset does not scan either');
+        assert.equal((await api('GET', '/api/me', null, pw.token)).status, 401, 'a reset cuts the sessions that were open');
+        assert.ok((await api('GET', '/api/me', null, rs.token)).ok);
+        assert.ok((await api('POST', '/api/login', { id: 'Sess_Sid', password: 'secret3' })).ok, 'the new password logs in');
+      } finally { A.store.scan = realScan; }
+      // a deleted name picked up by someone else does not inherit the old logins, even one the delete missed
+      const del = await api('POST', '/api/claim', { name: 'Reuse_Rae' });
+      assert.ok((await api('POST', '/api/delete', {}, del.token)).ok);
+      await A.store.set('tok:' + del.token, 'reuse_rae', { ex: 3600 });          // a token left behind (a crash between the two writes)
+      const again = await api('POST', '/api/claim', { name: 'Reuse_Rae' });
+      assert.ok(again.ok); assert.equal((await api('GET', '/api/me', null, del.token)).status, 401, 'a token from the deleted account does not open the new one');
+      assert.ok((await api('GET', '/api/me', null, again.token)).ok);
+    }
     assert.equal((await A.sweep()).erased, 0, 'and survives the next sweep'); delete process.env.ACCOUNT_TTL_DAYS;
 
     /* ---- ranking: GET /api/rank and the authenticated, validated, rate-limited POST /api/rank ---- */
@@ -258,6 +284,18 @@ const { Client } = require('./wa-client');
         assert.ok(A.walletRateSize() < 10, 'expired rate entries are pruned on access: ' + A.walletRateSize());
         assert.throws(() => A.walletRate('prune_live', 's', 2), e => e.status === 429, 'a live entry still rate limits after a prune');
       } finally { Date.now = realNow; } }
+    /* ---- the failed-log-in / sign-up / save / report / ranking maps are pruned too ---- */
+    { const realNow = Date.now; let fake = realNow.call(Date);
+      try { Date.now = () => fake;
+        const before = A.rateSizes();
+        for (let i = 0; i < 600; i++) await assert.rejects(A.routes.login({ id: 'nobody_' + i, password: 'wrong-pass' }, { ip: '10.9.' + (i >> 8) + '.' + (i & 255) }), e => e.status === 401);
+        assert.ok(A.rateSizes() - before >= 1200, 'failed log-ins are remembered per address and per name: ' + (A.rateSizes() - before));
+        fake += 11 * 60 * 1000;
+        A.pruneRates();
+        assert.ok(A.rateSizes() <= before + 5, 'expired failure windows are dropped once the maps are large: ' + A.rateSizes() + ' vs ' + before);
+        for (let i = 0; i < 8; i++) await assert.rejects(A.routes.login({ id: 'victim_x', password: 'wrong-pass' }, { ip: '10.8.0.1' }), e => e.status === 401 || e.status === 429);
+        await assert.rejects(A.routes.login({ id: 'victim_x', password: 'wrong-pass' }, { ip: '10.8.0.1' }), e => e.status === 429, 'a live failure window still locks the name after a prune');
+      } finally { Date.now = realNow; } }
     /* ---- server-authoritative coin wallet: migration seed, capped grants, spends, idempotency, auth ---- */
     const W = require('../wallet'), wallet = (m, p, body, tok) => api(m, p, body, tok);
     const seedAcct = await api('POST', '/api/claim', { name: 'Wallet_Wanda', data: { wallet: { coins: 1234 } } });
@@ -301,12 +339,39 @@ const { Client } = require('./wa-client');
 
     /* idempotency ids that collide with Object.prototype names (they pass the id format) must still be remembered once used */
     { const proto = await api('POST', '/api/claim', { name: 'Wallet_Proto', data: { wallet: { coins: 1000 } } });
-      for (const id of ['__proto__', 'constructor', 'hasOwnProperty']) {
-        const s1 = await wallet('POST', '/api/wallet/spend', { id, item: 'emote:hip' }, proto.token);
-        const s2 = await wallet('POST', '/api/wallet/spend', { id, item: 'emote:hip' }, proto.token);
+      for (const [id, item] of [['__proto__', 'emote:hip'], ['constructor', 'emote:clap'], ['hasOwnProperty', 'emote:disco']]) {   // three ids, three items (150 + 200 + 250)
+        const s1 = await wallet('POST', '/api/wallet/spend', { id, item }, proto.token);
+        const s2 = await wallet('POST', '/api/wallet/spend', { id, item }, proto.token);
         assert.ok(s1.ok && s2.ok && s2.replay === true && s2.coins === s1.coins, 'a retry of spend id ' + id + ' is a replay, not a second charge: ' + JSON.stringify(s2));
       }
-      assert.equal((await wallet('GET', '/api/wallet', null, proto.token)).coins, 1000 - 3 * 150, 'three ids, three charges (not six)');
+      assert.equal((await wallet('GET', '/api/wallet', null, proto.token)).coins, 1000 - 600, 'three ids, three charges (not six)');
+    }
+
+    /* an item is bought once: a second purchase of it under a NEW id (another device, a reinstall) costs nothing and says so,
+       instead of charging twice. The client then just shows the server balance; an `ok` reply keeps its local ownership. */
+    { const dup = await api('POST', '/api/claim', { name: 'Wallet_Dup', data: { wallet: { coins: 4000 } } });
+      const a = await wallet('POST', '/api/wallet/spend', { id: 'dup-pack-aaaa1', item: 'dlc:australia' }, dup.token);
+      assert.ok(a.ok && a.spent === 1500 && a.coins === 2500 && !a.owned, 'the first purchase charges: ' + JSON.stringify(a));
+      const b = await wallet('POST', '/api/wallet/spend', { id: 'dup-pack-bbbb2', item: 'dlc:australia' }, dup.token);
+      assert.ok(b.ok && b.owned === true && b.spent === 0 && b.coins === 2500, 'the same pack again under a new id is not charged: ' + JSON.stringify(b));
+      const b2 = await wallet('POST', '/api/wallet/spend', { id: 'dup-pack-bbbb2', item: 'dlc:australia' }, dup.token);
+      assert.ok(b2.ok && b2.replay === true && b2.coins === 2500, 'a retry of the free duplicate is a replay');
+      assert.equal((await wallet('POST', '/api/wallet/spend', { id: 'dup-pack-cccc3', item: 'dlc:kitchen' }, dup.token)).spent, 1500, 'a different pack is still charged');
+      assert.equal((await wallet('GET', '/api/wallet', null, dup.token)).coins, 1000, 'two packs, two charges');
+      // a wallet written before ownership was tracked (no `own` map): the ledger of past purchases tells what is owned
+      const old = await api('POST', '/api/claim', { name: 'Wallet_Old', data: { wallet: { coins: 3000 } } });
+      assert.equal((await wallet('GET', '/api/wallet', null, old.token)).coins, 3000);
+      const key = 'wallet:wallet_old', rec = JSON.parse(await A.store.get(key));
+      rec.ledger.push({ r: 'spend', a: -400, id: 'legacy-spend-1', t: Date.now(), item: 'skin:cowboy' }); rec.coins -= 400; delete rec.own;
+      await A.store.set(key, JSON.stringify(rec));
+      const o1 = await wallet('POST', '/api/wallet/spend', { id: 'legacy-spend-2', item: 'skin:cowboy' }, old.token);
+      assert.ok(o1.ok && o1.owned === true && o1.spent === 0 && o1.coins === 2600, 'an old wallet remembers its purchases from the ledger: ' + JSON.stringify(o1));
+    }
+    /* the daily total shown by the wallet belongs to today: yesterday's grants do not show as today's */
+    { const day = await api('POST', '/api/claim', { name: 'Wallet_Day' });
+      assert.ok((await wallet('POST', '/api/wallet/grant', { id: 'day-grant-0001', reason: 'quest', amount: 100 }, day.token)).ok);
+      const key = 'wallet:wallet_day', rec = JSON.parse(await A.store.get(key)); rec.day -= 1; await A.store.set(key, JSON.stringify(rec));
+      assert.equal((await wallet('GET', '/api/wallet', null, day.token)).today.granted, 0, 'a new UTC day starts at 0 granted');
     }
 
     /* the server price table is the shipped one: locker.json, classes.json and DlcUnlock.PRICE */

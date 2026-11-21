@@ -188,18 +188,42 @@ function create(store) {
       if (r[kind] > max) throw new Fail(429, 'slow', 'Wallet updates too fast. Wait a minute and try again.');
     } else walletRates.set(l, { g: 0, s: 0, t: now, [kind]: 1 });
   }
+  /* The other rate maps (failed log-ins, sign-ups, saves, reports, ranking updates) only ever dropped an entry when the same key came
+     back, so names or addresses that never return piled up for the life of the process. Expired windows are dropped once the maps
+     hold a few hundred entries, at most once a second, like the wallet map above. */
+  let ratesPruned = 0;
+  const rateSizes = () => fails.size + signups.size + lastSave.size + reports.size + rankRates.size;
+  function pruneRates() {
+    const now = Date.now();
+    if (rateSizes() < 512 || now - ratesPruned < 1000) return;
+    ratesPruned = now;
+    for (const [k, f] of fails) if (now - f.t > WINDOW) fails.delete(k);
+    for (const [k, s] of signups) if (now - s.t >= 3600000) signups.delete(k);
+    for (const [k, t] of lastSave) if (now - t >= 800) lastSave.delete(k);
+    for (const [k, t] of reports) if (now - t >= 10000) reports.delete(k);
+    for (const [k, r] of rankRates) if (now - r.t >= RANK.windowMs) rankRates.delete(k);
+  }
   const getUser = async l => { const v = await store.get('user:' + l); try { return v ? JSON.parse(v) : null; } catch (e) { return null; } };
   const putUser = (l, u) => store.set('user:' + l, JSON.stringify(u));
-  async function issue(l) { const t = newToken(); await store.set('tok:' + t, l, { ex: TOKEN_DAYS * 86400 }); return t; }
-  async function revokeSessions(l) {
-    for (const k of await store.scan('tok:')) if ((await store.get(k)) === l) await store.del(k);
+  /* A token record is the account (`l`) or `l|sv`: the account's session version. Changing a password or resetting it gives the
+     account a new random `sv` in the same write that stores the new password, so every older token stops matching at once
+     (it used to walk and read every token key in the store, one request each on Upstash, after the password was already changed).
+     A new account also starts from a random `sv`, so a token left over from a deleted account of the same name never opens it.
+     Records and tokens from before `sv` carry none (0) and match as long as the account has none. */
+  const newSv = () => crypto.randomInt(1, 2147483647);
+  const tokVal = (l, sv) => (sv ? l + '|' + sv : l);
+  function tokParse(v) { const s = String(v || ''), i = s.indexOf('|'); return i < 0 ? { l: s, sv: 0 } : { l: s.slice(0, i), sv: Number(s.slice(i + 1)) || 0 }; }
+  async function issue(l, sv) { const t = newToken(); await store.set('tok:' + t, tokVal(l, sv), { ex: TOKEN_DAYS * 86400 }); return t; }
+  async function dropTokens(l) {                                       // account erased: remove its tokens (the name is free to be picked again)
+    for (const k of await store.scan('tok:')) if (tokParse(await store.get(k)).l === l) await store.del(k);
   }
   async function who(token) {                                          // token -> account record, or null; counts as a visit (lastSeen)
     if (typeof token !== 'string' || !/^[0-9a-f]{64}$/.test(token)) return null;
-    const l = await store.get('tok:' + token); if (!l) return null;
-    const u = await getUser(l); if (!u) return null;
+    const raw = await store.get('tok:' + token); if (!raw) return null;
+    const { l, sv } = tokParse(raw);
+    const u = await getUser(l); if (!u || (u.sv || 0) !== sv) return null;
     const now = Date.now(); if (!(now - (u.s || 0) < TOUCH_MS)) { u.s = now; await putUser(l, u); }   // not on every request: once an hour at most
-    return { l, u };
+    return { l, u, raw };
   }
   const pub = u => ({ username: u.u, email: u.e || '', created: u.c, hasPassword: !!u.p });
   const newSignups = ip => { const s = signups.get(ip); if (s && Date.now() - s.t < 3600000 && s.n >= 40) throw new Fail(429, 'slow', 'Too many new accounts from this network. Try again in a while.'); return s; };
@@ -207,7 +231,7 @@ function create(store) {
   const needPass = a => { if (!a.u.p) throw new Fail(400, 'nopass', 'This name has no password yet. Protect it with a password first.'); };
   async function loadData(l) { const v = await store.get('data:' + l); try { return v ? JSON.parse(v) : null; } catch (e) { return null; } }
 
-  async function eraseUser(l, u) { await revokeSessions(l); await store.del('user:' + l); if (u.e) await store.del('email:' + lname(u.e)); await store.del('data:' + l); await wallet.erase(l); }
+  async function eraseUser(l, u) { await dropTokens(l); await store.del('user:' + l); if (u.e) await store.del('email:' + lname(u.e)); await store.del('data:' + l); await wallet.erase(l); }
   /* Erase accounts nobody has used for an explicitly enabled ACCOUNT_TTL_DAYS (default 0 = never): the account, its saves and its tokens.
      Accounts from before lastSeen existed get lastSeen = now the first time, so nobody is erased by the upgrade. Returns counts only. */
   async function sweepAccounts(now) {
@@ -218,7 +242,7 @@ function create(store) {
       if (!u.s) { u.s = now; await putUser(l, u); out.migrated++; continue; }
       if (ttl > 0 && now - u.s > ttl * DAY) { await eraseUser(l, u); gone.add(l); out.erased++; }
     }
-    if (gone.size) for (const k of await store.scan('tok:')) { const l = await store.get(k); if (gone.has(l)) await store.del(k); }
+    if (gone.size) for (const k of await store.scan('tok:')) { if (gone.has(tokParse(await store.get(k)).l)) await store.del(k); }
     lastSave.forEach((_, l) => { if (gone.has(l)) lastSave.delete(l); });
     return out;
   }
@@ -242,13 +266,13 @@ function create(store) {
       const l = lname(un), le = lname(em);
       if (await store.get('user:' + l)) throw new Fail(409, 'username', 'That username is taken. Pick another one.');
       const rc = newRecovery();
-      const user = { u: un, e: em, p: await hashPw(pw), r: await hashPw(cleanRecovery(rc)), c: Date.now(), l: Date.now(), s: Date.now() };
+      const user = { u: un, e: em, p: await hashPw(pw), r: await hashPw(cleanRecovery(rc)), c: Date.now(), l: Date.now(), s: Date.now(), sv: newSv() };
       if (!(await store.set('user:' + l, JSON.stringify(user), { nx: true }))) throw new Fail(409, 'username', 'That username is taken. Pick another one.');
       if (!(await store.set('email:' + le, l, { nx: true }))) { await store.del('user:' + l); throw new Fail(409, 'email', 'That email already has an account. Try logging in.'); }
       let t = 0;
       if (b.data && typeof b.data === 'object') { const j = JSON.stringify(b.data); if (j.length <= SAVE_MAX) { t = Date.now(); await store.set('data:' + l, JSON.stringify({ t, d: b.data })); } }
       countSignup(ctx.ip, s);
-      return { ok: true, token: await issue(l), user: pub(user), data: t ? b.data : null, t, recovery: rc };
+      return { ok: true, token: await issue(l, user.sv), user: pub(user), data: t ? b.data : null, t, recovery: rc };
     },
     async claim(b, ctx) {                                                 // just pick a name: a password-less account (add one later with /api/protect)
       const un = String(b.name || b.username || '').trim();
@@ -257,12 +281,12 @@ function create(store) {
       if (badName(un)) throw new Fail(400, 'username', 'That username isn\'t allowed. Pick another one.');
       const s = newSignups(ctx.ip), l = lname(un);
       if (await store.get('user:' + l)) throw new Fail(409, 'username', 'That username is taken. Pick another one.');
-      const now = Date.now(), user = { u: un, e: '', p: '', r: '', c: now, l: now, s: now };
+      const now = Date.now(), user = { u: un, e: '', p: '', r: '', c: now, l: now, s: now, sv: newSv() };
       if (!(await store.set('user:' + l, JSON.stringify(user), { nx: true }))) throw new Fail(409, 'username', 'That username is taken. Pick another one.');
       let t = 0;
       if (b.data && typeof b.data === 'object') { const j = JSON.stringify(b.data); if (j.length <= SAVE_MAX) { t = now; await store.set('data:' + l, JSON.stringify({ t, d: b.data })); } }
       countSignup(ctx.ip, s);
-      return { ok: true, token: await issue(l), user: pub(user), data: t ? b.data : null, t };
+      return { ok: true, token: await issue(l, user.sv), user: pub(user), data: t ? b.data : null, t };
     },
     async protect(b, ctx) {                                               // put a password on a name-only account so it can log in on another device
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
@@ -280,12 +304,12 @@ function create(store) {
       if (!u || !(await checkPw(pw, u.p))) { addFail('ip:' + ctx.ip); if (l0) addFail('acc:' + l0); throw new Fail(401, 'wrong', 'Wrong username or password. Check them and try again.'); }
       fails.delete('acc:' + l0); u.l = u.s = Date.now(); await putUser(l0, u);
       const d = await loadData(l0);
-      return { ok: true, token: await issue(l0), user: pub(u), data: d ? d.d : null, t: d ? d.t : 0 };
+      return { ok: true, token: await issue(l0, u.sv || 0), user: pub(u), data: d ? d.d : null, t: d ? d.t : 0 };
     },
     async me(b, ctx) {
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
       const d = await loadData(a.l);
-      await store.set('tok:' + ctx.token, a.l, { ex: TOKEN_DAYS * 86400 });                // every visit renews the login, so people who keep playing stay logged in
+      await store.set('tok:' + ctx.token, a.raw, { ex: TOKEN_DAYS * 86400 });                // every visit renews the login, so people who keep playing stay logged in
       return { ok: true, user: pub(a.u), data: d ? d.d : null, t: d ? d.t : 0, hasRecovery: !!a.u.r, hasPassword: !!a.u.p };
     },
     async save(b, ctx) {
@@ -309,9 +333,8 @@ function create(store) {
       if (np.length < 6 || np.length > 72) throw new Fail(400, 'password', 'Passwords need 6 to 72 characters.');
       if (failCount('acc:' + a.l) >= 8) throw new Fail(429, 'slow', 'Too many wrong tries. Wait 10 minutes and try again.');
       if (!(await checkPw(String(b.old || ''), a.u.p))) { addFail('acc:' + a.l); throw new Fail(401, 'wrong', 'That password is wrong.'); }
-      a.u.p = await hashPw(np); await putUser(a.l, a.u);
-      await revokeSessions(a.l);
-      return { ok: true, token: await issue(a.l) };
+      a.u.p = await hashPw(np); a.u.sv = newSv(); await putUser(a.l, a.u);     // the new password and the new session version in ONE write
+      return { ok: true, token: await issue(a.l, a.u.sv) };
     },
     async recovery(b, ctx) {                                              // make a new recovery code (needs the password); the old one stops working
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.'); needPass(a);
@@ -329,10 +352,9 @@ function create(store) {
       const u = l0 ? await getUser(l0) : null;
       if (!u || !u.r || !(await checkPw(code, u.r))) { addFail('ip:' + ctx.ip); if (l0) addFail('acc:' + l0); throw new Fail(401, 'wrong', 'That username and recovery code don\'t match. Check the code (letters and numbers, no mix-ups between O and 0).'); }
       fails.delete('acc:' + l0);
-      const rc = newRecovery(); u.p = await hashPw(np); u.r = await hashPw(cleanRecovery(rc)); u.l = u.s = Date.now(); await putUser(l0, u);
-      await revokeSessions(l0);
+      const rc = newRecovery(); u.p = await hashPw(np); u.r = await hashPw(cleanRecovery(rc)); u.l = u.s = Date.now(); u.sv = newSv(); await putUser(l0, u);
       const d = await loadData(l0);
-      return { ok: true, token: await issue(l0), user: pub(u), data: d ? d.d : null, t: d ? d.t : 0, recovery: rc };
+      return { ok: true, token: await issue(l0, u.sv), user: pub(u), data: d ? d.d : null, t: d ? d.t : 0, recovery: rc };
     },
     async remove(b, ctx) {
       const a = await who(ctx.token); if (!a) throw new Fail(401, 'auth', 'Please log in again.');
@@ -449,6 +471,7 @@ function create(store) {
       try {
         const q = (req.url || '').split('?')[1] || '';
         const b = req.method === 'GET' ? Object.fromEntries(new URLSearchParams(q)) : await readBody(req);   // GET query: board/limit for /api/rank
+        pruneRates();
         const out = await routes[name](b, { ip, token }); reply(res, out.ok === false ? 409 : 200, out);
       }
       catch (e) {
@@ -459,7 +482,7 @@ function create(store) {
     })();
     return true;
   }
-  return { handle, who, store, kind: store.kind, routes, wallet, walletRate, walletRateSize: () => walletRates.size, sweep: sweepAccounts, startSweeps, stopSweeps, TOUCH_MS };
+  return { handle, who, store, kind: store.kind, routes, wallet, walletRate, walletRateSize: () => walletRates.size, rateSizes, pruneRates, sweep: sweepAccounts, startSweeps, stopSweeps, TOUCH_MS };
 }
 
 module.exports = { create, makeStore, fileStore, upstashStore, badName, filterDisplayName };
