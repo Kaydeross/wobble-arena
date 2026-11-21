@@ -1,4 +1,4 @@
-# Handover: Wobblers Arena (Claude → DeepSeek), updated 2026-11-21
+# Handover: Wobblers Arena (Claude, with DeepSeek helpers), updated 2026-11-21
 
 Read this first, then `docs/REVISED_PLAN.md` (trust the code over the old plan). Repo `/Users/kedrosng/Developer/wobble-arena` (GitHub `Kaydeross/wobble-arena`). Godot 4.8 beta 4 game (until 4.8 stable) + Node relay. iOS first.
 
@@ -23,6 +23,9 @@ Read this first, then `docs/REVISED_PLAN.md` (trust the code over the old plan).
   - **#173** the engine base moved to **Godot 4.8 beta 4** until 4.8 stable: build, test and screenshot scripts, CI and docs target `4.8.beta4` (app `/Applications/Godot_4.8-beta4.app`, templates in `export_templates/4.8.beta4`), assets were re-imported with the 4.8 importer, and the pre-assist aim precondition in `weapons_test` went from 0.9985 to 0.995 (the aim-assist check itself is unchanged). All 66 `test:godot*` suites passed locally on 4.8 beta 4; the PR left "CI green with the 4.8 beta 4 Linux build" unticked, so check CI on `main`.
 - **TestFlight**: 0.5.0 builds 1 to 7 are uploaded (build 4 contains everything in #165; build 7 is the latest). Upload recipe: memory note `testflight-upload-via-xcodebuild` (no ASC API key here: build with `BUILD_NUMBER=<n> tools/build-ios.sh` from a fresh `origin/main` worktree, then `xcodebuild -exportArchive` with an options plist whose `destination` is `upload`). Each upload needs a higher `BUILD_NUMBER` (next is 8). Builds are now made with Godot 4.8 beta 4 templates, so install them first.
 - **Secret code in release builds** works only when the remote flag `tester_unlock` is true: set `TESTER_UNLOCK=1` on the server, or `"tester_unlock": true` in the remote config file (runbook `docs/OWNER_RELEASE_RUNBOOK.md` §4.9). Turn it off before the App Store.
+
+- **0.6.0 plan:** verify-and-release train (docs catch-up, minimum-version gate for older builds, Hey Mate and bot balance, landing polish, an audit pass, engine pin, version bump, device gate, TestFlight and web). A 0.6.0 train restarts `BUILD_NUMBER` at 1 (runbook 4.2); the 0.5.0 train is at build 7.
+- Prop debris sync (offline then online break) is a separate thread (#176): don't touch prop or debris code from other work.
 
 ## Good small first tasks for DeepSeek (do one, review, then the next)
 1. Housekeeping: remove merged worktrees and branches (`wobble-arena-v06c`, `v06d`, `wobble-ctl/fit/ship/title/wn`, `packB/C/D/E1/E2/E3/F1/F2/F3`, `wobble-arena-work`, and `backup/v06e-local-fff305c` only if the owner agrees) and clear the old stashes. Look before deleting.
